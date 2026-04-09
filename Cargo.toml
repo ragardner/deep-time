@@ -1,0 +1,14 @@
+[package]
+name = "deep-time-core"
+version = "0.1.0"
+edition = "2024"
+description = "Core high-precision time types and timescales (i1024 + DeepTime)"
+license = "Apache-2.0"
+repository = "https://github.com/ragardner/deep-time-core"
+keywords = ["time", "timescale", "astronomy", "astrodynamics"]
+rust-version = "1.90"
+
+[dependencies]
+
+[lib]
+crate-type = ["rlib"]
