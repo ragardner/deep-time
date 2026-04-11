@@ -31,3 +31,17 @@ pub(crate) const TT_TAI_OFFSET_SUBSEC: u128 = 184 * 10u128.pow(33); // 0.184 × 
 
 /// Helper that returns the exact TT–TAI offset as a `Delta`.
 pub const TT_TAI_OFFSET_DELTA: Delta = Delta::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
+
+// 10¹⁵ is exactly representable in f64 (within 53-bit mantissa).
+// 10²¹ completes the 36-digit scale exactly in u128.
+pub(crate) const POW15: u128 = 1_000_000_000_000_000;
+pub(crate) const POW21: u128 = MICROQUECTOS_PER_SEC / POW15; // exactly 10²¹
+
+/// L_G = 6.969290134 × 10^{-10} (exact IAU defining constant for TCG ↔ TT)
+pub(crate) const LG: f64 = 6.969290134e-10;
+/// L_B = 1.550519768 × 10^{-8} (exact IAU defining constant for TCB ↔ TDB)
+pub(crate) const LB: f64 = 1.550519768e-8;
+/// Reference epoch T₀ = 2443144.5003725 JD (1977 Jan 1.0 TAI at geocenter)
+pub(crate) const TCG_TCB_REF_JD: f64 = 2443144.5003725;
+/// TDB₀ = −65.5 µs (exact IAU 2006 constant)
+pub(crate) const TDB0: Delta = Delta::from_sec_f64(-0.0000655);

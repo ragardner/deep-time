@@ -196,7 +196,7 @@ impl Point {
     }
 
     /// Returns the current system time in the requested `TimePov`.
-    #[cfg(feature = "std")]
+    #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     #[inline]
     pub fn now(target: TimePov) -> Self {
         use crate::UnixTimestamp;
@@ -206,6 +206,24 @@ impl Point {
             .expect("system time before Unix epoch");
         let secs = dur.as_secs() as i128;
         let nanos = dur.subsec_nanos() as i128;
+
+        secs.unix_seconds()
+            .add(crate::Delta::from_ns(nanos))
+            .to_pov(target)
+    }
+
+    /// Browser WASM version using JavaScript's `Date.now()`
+    #[cfg(all(target_arch = "wasm32", feature = "js"))]
+    #[inline]
+    pub fn now(target: TimePov) -> Self {
+        use crate::UnixTimestamp;
+
+        // `Date.now()` returns milliseconds since Unix epoch as f64.
+        // We cast early and use integer math (perfectly safe for current timestamps).
+        let millis = js_sys::Date::now() as i128;
+        let secs = millis / 1000;
+        let nanos = (millis % 1000) * 1_000_000;
+
         secs.unix_seconds()
             .add(crate::Delta::from_ns(nanos))
             .to_pov(target)

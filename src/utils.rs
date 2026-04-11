@@ -38,29 +38,3 @@ pub(crate) const fn floor_f64(x: f64) -> f64 {
         i as f64 - 1.0
     }
 }
-
-/// Const-fn compatible ceil (replaces f64::ceil)
-pub(crate) const fn ceil_f64(x: f64) -> f64 {
-    let i = x as i64;
-    if x <= 0.0 {
-        i as f64
-    } else if (i as f64) == x {
-        i as f64
-    } else {
-        i as f64 + 1.0
-    }
-}
-
-/// Const-fn compatible round (halfway cases round away from zero, matching Rust's f64::round)
-pub(crate) const fn round_f64(x: f64) -> f64 {
-    let floor = floor_f64(x);
-    let frac = x - floor;
-    if frac < 0.5 {
-        floor
-    } else if frac > 0.5 {
-        floor + 1.0
-    } else {
-        // halfway case
-        if x >= 0.0 { floor + 1.0 } else { floor }
-    }
-}

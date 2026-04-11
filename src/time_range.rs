@@ -1,6 +1,6 @@
 //! High-precision evenly-spaced `Point` iterator (the "linspace" for time).
 
-use crate::{Delta, Point, floor_f64};
+use crate::{Delta, Point};
 
 /// Builder for nice ergonomic syntax: `start.every(5.minutes()).until(end)`
 #[derive(Clone, Debug)]
@@ -128,11 +128,12 @@ impl ExactSizeIterator for TimeRange {
         }
 
         let total = self.end.duration_since(self.start);
-        let step_f = self.step.as_sec_f64().abs();
-        let total_f = total.as_sec_f64().abs();
+        let steps = total.abs_div_floor(self.step);
 
-        let steps = floor_f64(total_f / step_f) as usize;
-
-        if self.inclusive { steps + 1 } else { steps }
+        if self.inclusive {
+            steps.saturating_add(1)
+        } else {
+            steps
+        }
     }
 }

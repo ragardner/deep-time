@@ -14,6 +14,7 @@ categories = ["date-and-time", "no-std", "science"]
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
 tsify = { version = "=0.5.5", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
+js-sys = { version = "0.3", optional = true }
 
 [features]
 # ──────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ js = [
     "serde",
     "dep:tsify",
     "dep:wasm-bindgen",
+    "dep:js-sys",
 ]
 
 [lib]
