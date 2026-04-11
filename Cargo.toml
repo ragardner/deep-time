@@ -2,13 +2,44 @@
 name = "deep-time-core"
 version = "0.1.0"
 edition = "2024"
-description = "Core high-precision time types and timescales (i1024 + DeepTime)"
+rust-version = "1.90"
+description = "Core high-precision time types and povs (Point + Delta)"
 license = "Apache-2.0"
 repository = "https://github.com/ragardner/deep-time-core"
-keywords = ["time", "timescale", "astronomy", "astrodynamics"]
-rust-version = "1.90"
+keywords = ["time", "pov", "astronomy", "astrodynamics", "no-std"]
+categories = ["date-and-time", "no-std", "science"]
 
 [dependencies]
+# Optional dependencies only
+serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
+tsify = { version = "=0.5.5", optional = true }
+wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
+
+[features]
+# ──────────────────────────────────────────────────────────────
+# CORE / NO-STD FEATURES
+# ──────────────────────────────────────────────────────────────
+default = []          # Do not enable std by accident
+
+alloc = []            # Enables `alloc`
+std = ["alloc"]       # Enables the full std library + alloc
+
+# ──────────────────────────────────────────────────────────────
+# SERIALIZATION
+# ──────────────────────────────────────────────────────────────
+serde = ["dep:serde"] # Enables `Serialize`/`Deserialize`
+
+# ──────────────────────────────────────────────────────────────
+# WEB / WASM / TYPESCRIPT INTEROP
+# ──────────────────────────────────────────────────────────────
+# Enables full JS/WASM + TypeScript definitions support.
+# Pulls in `std`, `serde`, `tsify`, and `wasm-bindgen`.
+js = [
+    "std",
+    "serde",
+    "dep:tsify",
+    "dep:wasm-bindgen",
+]
 
 [lib]
 crate-type = ["rlib"]
