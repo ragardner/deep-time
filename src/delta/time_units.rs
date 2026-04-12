@@ -1,13 +1,13 @@
 //! Ergonomic time-unit constructors (optional import).
 //!
 //! ```
-//! use deep_time_core::{TimePov, TimeUnits};
+//! use deep_time_core::{ClockType, TimeUnits};
 //!
 //! let delta = 5.seconds() + 250.milliseconds() + 123_456.nanoseconds();
-//! let point = 3.days().ago(TimePov::UTC);
+//! let stamp = 3.days().ago(ClockType::UTC);
 //! ```
 
-use crate::{Delta, Point, TimePov};
+use crate::{ClockType, Delta, Timestamp};
 
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
@@ -25,9 +25,9 @@ pub trait TimeUnits: Copy + Sized {
     fn weeks(self) -> Delta;
     fn years(self) -> Delta; // 365.25 days (standard approximation)
 
-    // ── Point constructors (anchored at "now" in the chosen POV) ──
-    fn ago(self, pov: TimePov) -> Point;
-    fn from_now(self, pov: TimePov) -> Point;
+    // ── Timestamp constructors (anchored at "now" in the chosen clock type) ──
+    fn ago(self, clock_type: ClockType) -> Timestamp;
+    fn from_now(self, clock_type: ClockType) -> Timestamp;
 }
 
 // Integer implementations (all common signed/unsigned types)
@@ -63,13 +63,13 @@ macro_rules! impl_time_units_int {
                 fn years(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(31_557_600)) }
 
                 #[inline(always)]
-                fn ago(self, pov: TimePov) -> Point {
-                    Point::from_sec(0, pov).sub(self.seconds())
+                fn ago(self, clock_type: ClockType) -> Timestamp {
+                    Timestamp::from_sec(0, clock_type).sub(self.seconds())
                 }
 
                 #[inline(always)]
-                fn from_now(self, pov: TimePov) -> Point {
-                    Point::from_sec(0, pov).add(self.seconds())
+                fn from_now(self, clock_type: ClockType) -> Timestamp {
+                    Timestamp::from_sec(0, clock_type).add(self.seconds())
                 }
             }
         )*
@@ -126,26 +126,26 @@ impl TimeUnits for f64 {
     }
 
     #[inline]
-    fn ago(self, pov: TimePov) -> Point {
-        Point::from_sec(0, pov).sub(self.seconds())
+    fn ago(self, clock_type: ClockType) -> Timestamp {
+        Timestamp::from_sec(0, clock_type).sub(self.seconds())
     }
 
     #[inline]
-    fn from_now(self, pov: TimePov) -> Point {
-        Point::from_sec(0, pov).add(self.seconds())
+    fn from_now(self, clock_type: ClockType) -> Timestamp {
+        Timestamp::from_sec(0, clock_type).add(self.seconds())
     }
 }
 
 impl Delta {
-    /// Returns a `Point` that is this duration ago from the given time scale.
+    /// Returns a `Timestamp` that is this duration ago from the given clock type.
     #[inline(always)]
-    pub fn ago(self, pov: TimePov) -> Point {
-        Point::from_sec(0, pov).sub(self)
+    pub fn ago(self, clock_type: ClockType) -> Timestamp {
+        Timestamp::from_sec(0, clock_type).sub(self)
     }
 
-    /// Returns a `Point` that is this duration from now in the given time scale.
+    /// Returns a `Timestamp` that is this duration from now in the given clock type.
     #[inline(always)]
-    pub fn from_now(self, pov: TimePov) -> Point {
-        Point::from_sec(0, pov).add(self)
+    pub fn from_now(self, clock_type: ClockType) -> Timestamp {
+        Timestamp::from_sec(0, clock_type).add(self)
     }
 }

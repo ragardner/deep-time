@@ -3,41 +3,41 @@
 //! These are thin wrappers around existing UTC ↔ TAI conversion logic
 //! so they automatically handle leap seconds correctly.
 
-use crate::{Delta, MICROQUECTOS_PER_MILLISEC, Point, TimePov};
+use crate::{ClockType, Delta, MICROQUECTOS_PER_MILLISEC, Timestamp};
 
-impl Point {
-    /// Creates a `Point` from a classic Unix timestamp **in seconds**
+impl Timestamp {
+    /// Creates a `Timestamp` from a classic Unix timestamp **in seconds**
     /// since 1970-01-01 00:00:00 UTC.
     ///
-    /// The returned `Point` is in TAI (your internal hub).
+    /// The returned `Timestamp` is in TAI (your internal hub).
     #[inline]
     pub const fn from_unix_seconds(seconds: i128) -> Self {
-        Point::new(seconds, 0, TimePov::UTC).to_tai()
+        Timestamp::new(seconds, 0, ClockType::UTC).to_tai()
     }
 
-    /// Creates a `Point` from a Unix timestamp **in milliseconds**
+    /// Creates a `Timestamp` from a Unix timestamp **in milliseconds**
     /// since 1970-01-01 00:00:00 UTC.
     #[inline]
     pub const fn from_unix_milliseconds(millis: i128) -> Self {
-        Point::new(0, 0, TimePov::UTC)
+        Timestamp::new(0, 0, ClockType::UTC)
             .add(Delta::from_ms(millis))
             .to_tai()
     }
 
-    /// Creates a `Point` from a Unix timestamp **in microseconds**
+    /// Creates a `Timestamp` from a Unix timestamp **in microseconds**
     /// since 1970-01-01 00:00:00 UTC.
     #[inline]
     pub const fn from_unix_microseconds(micros: i128) -> Self {
-        Point::new(0, 0, TimePov::UTC)
+        Timestamp::new(0, 0, ClockType::UTC)
             .add(Delta::from_us(micros))
             .to_tai()
     }
 
-    /// Creates a `Point` from a Unix timestamp **in nanoseconds**
+    /// Creates a `Timestamp` from a Unix timestamp **in nanoseconds**
     /// since 1970-01-01 00:00:00 UTC.
     #[inline]
     pub const fn from_unix_nanoseconds(nanos: i128) -> Self {
-        Point::new(0, 0, TimePov::UTC)
+        Timestamp::new(0, 0, ClockType::UTC)
             .add(Delta::from_ns(nanos))
             .to_tai()
     }
@@ -48,7 +48,7 @@ impl Point {
     /// Sub-second precision is truncated (floor).
     #[inline]
     pub const fn to_unix_seconds(self) -> i128 {
-        let utc = self.to_pov(TimePov::UTC);
+        let utc = self.to_clock_type(ClockType::UTC);
         utc.sec()
     }
 
@@ -56,7 +56,7 @@ impl Point {
     /// since 1970-01-01 00:00:00 UTC.
     #[inline]
     pub const fn to_unix_milliseconds(self) -> i128 {
-        let utc = self.to_pov(TimePov::UTC);
+        let utc = self.to_clock_type(ClockType::UTC);
         utc.sec() * 1_000 + (utc.subsec() / MICROQUECTOS_PER_MILLISEC) as i128
     }
 
@@ -64,7 +64,7 @@ impl Point {
     /// since 1970-01-01 00:00:00 UTC.
     #[inline]
     pub const fn to_unix_microseconds(self) -> i128 {
-        let utc = self.to_pov(TimePov::UTC);
+        let utc = self.to_clock_type(ClockType::UTC);
         utc.sec() * 1_000_000 + (utc.subsec() / crate::MICROQUECTOS_PER_MICROSEC) as i128
     }
 }

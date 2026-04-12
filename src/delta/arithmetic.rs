@@ -145,6 +145,12 @@ impl Delta {
         DtBig::TEN.pow(36)
     }
 
+    /// Divides this duration by 2 using the existing high-precision f64 path.
+    #[inline]
+    pub fn div_by_2(self) -> Delta {
+        Delta::from_sec_f64(self.as_sec_f64() / 2.0)
+    }
+
     /// Convert `Delta` → total microquectoseconds (exact 320-bit signed integer).
     #[inline(always)]
     pub const fn to_big(self) -> DtBig {

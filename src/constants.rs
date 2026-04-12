@@ -1,5 +1,23 @@
 use crate::Delta;
 
+/// Solar gravitational parameter GM☉ in m³ s⁻²  
+/// (exact nominal value from IAU 2015 Resolution B3)
+pub const GM_SUN: f64 = 1.3271244e20;
+
+/// Speed of light in m/s (exact SI definition)
+pub const C: f64 = 299792458.0;
+
+/// Speed of light squared (c²) in m² s⁻².  
+/// Computed at compile time from the exact SI value of `C` — guarantees perfect consistency
+/// for weak-field relativistic calculations (e.g. Schwarzschild radius, post-Newtonian terms).
+pub const C_SQUARED: f64 = C * C;
+
+/// GM☉ / c³ in seconds (exact from your `GM_SUN` and `C` — used in Shapiro delay)
+pub const GM_SUN_OVER_C3: f64 = GM_SUN / (C * C_SQUARED);
+
+/// 2GM☉ / c³ — the standard prefactor in the one-way Shapiro delay formula
+pub const TWO_GM_SUN_OVER_C3: f64 = 2.0 * GM_SUN_OVER_C3;
+
 /// Microquectoseconds per second.
 pub const MICROQUECTOS_PER_SEC: u128 = 10u128.pow(36);
 /// Microquectoseconds per millisecond (10⁻³ s).

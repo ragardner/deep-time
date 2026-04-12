@@ -1,3 +1,5 @@
+use crate::{Delta, TWO_GM_SUN_OVER_C3};
+
 /// Private helper: `sin` that works in `const fn` (range reduction + Taylor).
 /// Accuracy is far better than needed for TDB-TT.
 pub const fn sin_approx(x: f64) -> f64 {
@@ -37,4 +39,19 @@ pub(crate) const fn floor_f64(x: f64) -> f64 {
     } else {
         i as f64 - 1.0
     }
+}
+
+/// First-order one-way Shapiro delay (Sun only).
+///
+/// ```math
+/// \Delta t_\text{Shapiro} = \frac{2GM_\odot}{c^3} \ln\left( \frac{r_\text{tx} + r_\text{rx} + d}{r_\text{tx} + r_\text{rx} - d} \right)
+/// ```
+#[inline]
+pub fn shapiro_one_way_delay(r_tx: f64, r_rx: f64, d: f64) -> Delta {
+    if r_tx <= 0.0 || r_rx <= 0.0 || d <= 0.0 {
+        return Delta::ZERO;
+    }
+    let arg = (r_tx + r_rx + d) / (r_tx + r_rx - d).max(1e-10);
+    let delay_sec = TWO_GM_SUN_OVER_C3 * arg.ln();
+    Delta::from_sec_f64(delay_sec)
 }

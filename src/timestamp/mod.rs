@@ -3,33 +3,33 @@ mod constructors;
 mod conversions;
 mod formatting;
 mod ops;
-mod point_pov;
+mod relativity;
 pub mod traits;
 mod unix;
 
-use crate::TimePov;
+use crate::ClockType;
 
-/// A high-precision timestamp expressed in a specific [`TimePov`].
+/// A high-precision timestamp expressed in a specific [`ClockType`].
 ///
-/// `Point` represents an instant in time as **seconds + microquectoseconds**
+/// `Timestamp` represents an instant in time as **seconds + microquectoseconds**
 /// (where 1 microquectosecond = 10⁻³⁶ s) since the reference epoch of the
-/// associated time scale.
+/// associated ClockType.
 ///
 /// - Precision: 10⁻³⁶ s
 /// - Range: ±~5 × 10³⁰ years.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
-pub struct Point {
-    /// Signed whole seconds since the reference epoch of the pov.
+pub struct Timestamp {
+    /// Signed whole seconds since the reference epoch of the clock_type.
     pub(crate) sec: i128,
     /// Fractional part in microquectoseconds (`0 ≤ microquectos < 10³⁶`).
     pub(crate) subsec: u128,
     /// The time scale this instant belongs to.
-    pub(crate) pov: TimePov,
+    pub(crate) clock_type: ClockType,
 }
 
-impl Point {
+impl Timestamp {
     #[inline(always)]
     pub const fn sec(&self) -> i128 {
         self.sec
@@ -41,7 +41,7 @@ impl Point {
     }
 
     #[inline(always)]
-    pub const fn pov(&self) -> TimePov {
-        self.pov
+    pub const fn clock_type(&self) -> ClockType {
+        self.clock_type
     }
 }

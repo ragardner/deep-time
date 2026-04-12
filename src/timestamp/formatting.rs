@@ -1,4 +1,4 @@
-use crate::Point;
+use crate::Timestamp;
 use core::fmt;
 
 fn write_fractional(subsec: u128, precision: usize, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -11,22 +11,22 @@ fn write_fractional(subsec: u128, precision: usize, f: &mut fmt::Formatter<'_>) 
     write!(f, ".{:0>width$}", value, width = prec)
 }
 
-impl fmt::Display for Point {
+impl fmt::Display for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let precision = f.precision().unwrap_or(12); // ← changed default (picosecond level)
 
         write!(f, "{}", self.sec())?;
         write_fractional(self.subsec(), precision, f)?;
-        write!(f, " [{}]", self.pov())
+        write!(f, " [{}]", self.clock_type())
     }
 }
 
-impl fmt::Debug for Point {
+impl fmt::Debug for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Point")
+        f.debug_struct("Timestamp")
             .field("sec", &self.sec())
             .field("subsec", &self.subsec())
-            .field("pov", &self.pov())
+            .field("clock_type", &self.clock_type())
             .finish()
     }
 }

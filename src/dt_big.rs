@@ -874,9 +874,7 @@ impl Div for DtBig {
 
     #[inline(always)]
     fn div(self, rhs: Self) -> Self {
-        if rhs.is_zero() {
-            panic!("attempt to divide by zero")
-        }
+        debug_assert!(!rhs.is_zero(), "division by zero in DtBig::div");
         self.wrapping_div(rhs)
     }
 }
@@ -1226,9 +1224,7 @@ impl Rem for DtBig {
 
     #[inline(always)]
     fn rem(self, rhs: Self) -> Self {
-        if rhs.is_zero() {
-            panic!("attempt to divide by zero")
-        }
+        debug_assert!(!rhs.is_zero(), "division by zero in DtBig::rem");
         self.wrapping_rem(rhs)
     }
 }
@@ -2869,61 +2865,21 @@ impl DtBig {
     /// Computes the quotient `q` such that `self = q * rhs + r` where `0 ≤ r < |rhs|`.
     /// This is the standard "Euclidean" remainder (always non-negative).
     ///
-    /// Panics on division by zero (exactly like the `Div` impl).
+    /// (Never panics in release builds. Returns `ZERO` on division by zero.)
+    #[inline(always)]
     pub const fn div_euclid(self, rhs: Self) -> Self {
-        if rhs.is_zero() {
-            panic!("attempt to divide by zero")
-        }
-
-        let q = self.wrapping_div(rhs);
-        let r = self.wrapping_rem(rhs);
-
-        // Remainder from truncating division has the sign of the dividend.
-        // We adjust the quotient so the final remainder is always in [0, |rhs|).
-        if r.is_negative() {
-            if rhs.is_negative() {
-                q.wrapping_add(Self::ONE)
-            } else {
-                q.wrapping_sub(Self::ONE)
-            }
-        } else {
-            q
-        }
-    }
-
-    /// Euclidean remainder.
-    ///
-    /// Returns the non-negative remainder `r` from Euclidean division
-    /// (`0 ≤ r < |rhs|`).
-    ///
-    /// Panics on division by zero (exactly like the `Rem` impl).
-    pub const fn rem_euclid(self, rhs: Self) -> Self {
-        if rhs.is_zero() {
-            panic!("attempt to divide by zero")
-        }
-
-        let r = self.wrapping_rem(rhs);
-
-        if r.is_negative() {
-            if rhs.is_negative() {
-                // r - rhs == r + |rhs| when rhs < 0
-                r.wrapping_sub(rhs)
-            } else {
-                r.wrapping_add(rhs)
-            }
-        } else {
-            r
-        }
+        debug_assert!(!rhs.is_zero(), "division by zero in DtBig::div_euclid");
+        self.wrapping_div_euclid(rhs)
     }
 
     /// Wrapping Euclidean division (never panics, returns zero on div-by-zero).
+    #[inline]
     pub const fn wrapping_div_euclid(self, rhs: Self) -> Self {
         if rhs.is_zero() {
             Self::ZERO
         } else {
             let q = self.wrapping_div(rhs);
             let r = self.wrapping_rem(rhs);
-
             if r.is_negative() {
                 if rhs.is_negative() {
                     q.wrapping_add(Self::ONE)
@@ -2936,13 +2892,25 @@ impl DtBig {
         }
     }
 
+    /// Euclidean remainder.
+    ///
+    /// Returns the non-negative remainder `r` from Euclidean division
+    /// (`0 ≤ r < |rhs|`).
+    ///
+    /// (Never panics in release builds. Returns `ZERO` on division by zero.)
+    #[inline(always)]
+    pub const fn rem_euclid(self, rhs: Self) -> Self {
+        debug_assert!(!rhs.is_zero(), "division by zero in DtBig::rem_euclid");
+        self.wrapping_rem_euclid(rhs)
+    }
+
     /// Wrapping Euclidean remainder (always non-negative, never panics).
+    #[inline]
     pub const fn wrapping_rem_euclid(self, rhs: Self) -> Self {
         if rhs.is_zero() {
             Self::ZERO
         } else {
             let r = self.wrapping_rem(rhs);
-
             if r.is_negative() {
                 if rhs.is_negative() {
                     r.wrapping_sub(rhs)
@@ -2956,6 +2924,7 @@ impl DtBig {
     }
 
     /// Checked Euclidean division. Returns `None` on division by zero.
+    #[inline]
     pub const fn checked_div_euclid(self, rhs: Self) -> Option<Self> {
         if rhs.is_zero() {
             None
@@ -2965,6 +2934,7 @@ impl DtBig {
     }
 
     /// Checked Euclidean remainder. Returns `None` on division by zero.
+    #[inline]
     pub const fn checked_rem_euclid(self, rhs: Self) -> Option<Self> {
         if rhs.is_zero() {
             None

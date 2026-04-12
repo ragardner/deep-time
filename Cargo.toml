@@ -3,10 +3,10 @@ name = "deep-time-core"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.90"
-description = "Core high-precision time types and povs (Point + Delta)"
+description = "Core high-precision time types and clocks"
 license = "Apache-2.0"
 repository = "https://github.com/ragardner/deep-time-core"
-keywords = ["time", "pov", "astronomy", "astrodynamics", "no-std"]
+keywords = ["time", "clock", "astronomy", "astrodynamics", "no-std"]
 categories = ["date-and-time", "no-std", "science"]
 
 [dependencies]

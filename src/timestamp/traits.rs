@@ -11,49 +11,49 @@
 //! let p4 = 1_234_567_890_i128.gps_seconds();
 //! ```
 
-use crate::{Delta, Point, TimePov};
+use crate::{ClockType, Delta, Timestamp};
 
 // ──────────────────────────────────────────────────────────────
 // Traits
 // ──────────────────────────────────────────────────────────────
 
 pub trait UnixTimestamp: Copy + Sized {
-    fn unix_seconds(self) -> Point;
-    fn unix_milliseconds(self) -> Point;
-    fn unix_microseconds(self) -> Point;
-    fn unix_nanoseconds(self) -> Point;
+    fn unix_seconds(self) -> Timestamp;
+    fn unix_milliseconds(self) -> Timestamp;
+    fn unix_microseconds(self) -> Timestamp;
+    fn unix_nanoseconds(self) -> Timestamp;
 }
 
 pub trait TAITimestamp: Copy + Sized {
-    fn tai_seconds(self) -> Point;
-    fn tai_milliseconds(self) -> Point;
-    fn tai_microseconds(self) -> Point;
-    fn tai_nanoseconds(self) -> Point;
+    fn tai_seconds(self) -> Timestamp;
+    fn tai_milliseconds(self) -> Timestamp;
+    fn tai_microseconds(self) -> Timestamp;
+    fn tai_nanoseconds(self) -> Timestamp;
 }
 
 pub trait J2000Timestamp: Copy + Sized {
-    fn j2000_seconds(self) -> Point;
-    fn j2000_milliseconds(self) -> Point;
-    fn j2000_microseconds(self) -> Point;
-    fn j2000_nanoseconds(self) -> Point;
+    fn j2000_seconds(self) -> Timestamp;
+    fn j2000_milliseconds(self) -> Timestamp;
+    fn j2000_microseconds(self) -> Timestamp;
+    fn j2000_nanoseconds(self) -> Timestamp;
 }
 
 pub trait UTCTimestamp: Copy + Sized {
-    fn utc_seconds(self) -> Point;
-    fn utc_milliseconds(self) -> Point;
-    fn utc_microseconds(self) -> Point;
-    fn utc_nanoseconds(self) -> Point;
+    fn utc_seconds(self) -> Timestamp;
+    fn utc_milliseconds(self) -> Timestamp;
+    fn utc_microseconds(self) -> Timestamp;
+    fn utc_nanoseconds(self) -> Timestamp;
 }
 
 pub trait GPSTimestamp: Copy + Sized {
-    fn gps_seconds(self) -> Point;
-    fn gps_milliseconds(self) -> Point;
-    fn gps_microseconds(self) -> Point;
-    fn gps_nanoseconds(self) -> Point;
+    fn gps_seconds(self) -> Timestamp;
+    fn gps_milliseconds(self) -> Timestamp;
+    fn gps_microseconds(self) -> Timestamp;
+    fn gps_nanoseconds(self) -> Timestamp;
 }
 
 // ──────────────────────────────────────────────────────────────
-// Macro for traits that use existing Point::from_* helpers
+// Macro for traits that use existing Timestamp::from_* helpers
 // ──────────────────────────────────────────────────────────────
 
 macro_rules! impl_timestamp_trait {
@@ -62,182 +62,182 @@ macro_rules! impl_timestamp_trait {
      $ctor_sec:ident, $ctor_ms:ident, $ctor_us:ident, $ctor_ns:ident) => {
         impl $trait for i8 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
         impl $trait for i16 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
         impl $trait for i32 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
         impl $trait for i64 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
         impl $trait for i128 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self)
             }
         }
         impl $trait for u8 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
         impl $trait for u16 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
         impl $trait for u32 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
         impl $trait for u64 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
         impl $trait for u128 {
             #[inline(always)]
-            fn $sec(self) -> Point {
-                Point::$ctor_sec(self as i128)
+            fn $sec(self) -> Timestamp {
+                Timestamp::$ctor_sec(self as i128)
             }
             #[inline(always)]
-            fn $ms(self) -> Point {
-                Point::$ctor_ms(self as i128)
+            fn $ms(self) -> Timestamp {
+                Timestamp::$ctor_ms(self as i128)
             }
             #[inline(always)]
-            fn $us(self) -> Point {
-                Point::$ctor_us(self as i128)
+            fn $us(self) -> Timestamp {
+                Timestamp::$ctor_us(self as i128)
             }
             #[inline(always)]
-            fn $ns(self) -> Point {
-                Point::$ctor_ns(self as i128)
+            fn $ns(self) -> Timestamp {
+                Timestamp::$ctor_ns(self as i128)
             }
         }
     };
@@ -292,27 +292,27 @@ impl_timestamp_trait!(
 );
 
 // ──────────────────────────────────────────────────────────────
-// GPS (uses its own POV constructor)
+// GPS (uses its own clock_type constructor)
 // ──────────────────────────────────────────────────────────────
 
 macro_rules! impl_gps_timestamp {
     ($ty:ty) => {
         impl GPSTimestamp for $ty {
             #[inline(always)]
-            fn gps_seconds(self) -> Point {
-                Point::new(self as i128, 0, TimePov::GPST)
+            fn gps_seconds(self) -> Timestamp {
+                Timestamp::new(self as i128, 0, ClockType::GPST)
             }
             #[inline(always)]
-            fn gps_milliseconds(self) -> Point {
-                Point::new(0, 0, TimePov::GPST).add(Delta::from_ms(self as i128))
+            fn gps_milliseconds(self) -> Timestamp {
+                Timestamp::new(0, 0, ClockType::GPST).add(Delta::from_ms(self as i128))
             }
             #[inline(always)]
-            fn gps_microseconds(self) -> Point {
-                Point::new(0, 0, TimePov::GPST).add(Delta::from_us(self as i128))
+            fn gps_microseconds(self) -> Timestamp {
+                Timestamp::new(0, 0, ClockType::GPST).add(Delta::from_us(self as i128))
             }
             #[inline(always)]
-            fn gps_nanoseconds(self) -> Point {
-                Point::new(0, 0, TimePov::GPST).add(Delta::from_ns(self as i128))
+            fn gps_nanoseconds(self) -> Timestamp {
+                Timestamp::new(0, 0, ClockType::GPST).add(Delta::from_ns(self as i128))
             }
         }
     };

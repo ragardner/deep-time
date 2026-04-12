@@ -7,13 +7,13 @@ pub mod time_units;
 /// A high-precision **duration** (time delta) expressed as **seconds + microquectoseconds**
 /// (where 1 microquectosecond = 10⁻³⁶ s).
 ///
-/// `Delta` is the delta counterpart of `Point`. It does **not** carry a [`TimePov`]
+/// `Delta` is the delta counterpart of `Timestamp`. It does **not** carry a [`ClockType`]
 /// because durations are scale-independent (they can be added to or subtracted from any
-/// `Point` regardless of its scale; any scale-specific adjustments like leap seconds
-/// are handled by the `Point` arithmetic).
+/// `Timestamp` regardless of its scale; any scale-specific adjustments like leap seconds
+/// are handled by the `Timestamp` arithmetic).
 ///
 /// - Precision: 10⁻³⁶ s
-/// - Range: ±~5 × 10³⁰ years (identical to `Point`).
+/// - Range: ±~5 × 10³⁰ years (identical to `Timestamp`).
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]

@@ -4,11 +4,13 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+mod clock_drift;
+mod clock_model;
+mod clock_type;
 mod common;
 mod delta;
-mod point;
-mod time_poly;
-mod time_pov;
+mod position;
+mod timestamp;
 mod utils;
 
 pub mod constants;
@@ -20,10 +22,14 @@ pub(crate) use constants::*;
 pub(crate) use dt_big::DtBig;
 pub(crate) use utils::*;
 
+pub use clock_drift::ClockDrift;
+pub use clock_model::ClockModel;
+pub use clock_type::ClockType;
 pub use delta::Delta;
 pub use delta::time_units::TimeUnits;
-pub use point::Point;
-pub use point::traits::{GPSTimestamp, J2000Timestamp, TAITimestamp, UTCTimestamp, UnixTimestamp};
-pub use time_poly::TimePoly;
-pub use time_pov::{TimePolyScale, TimePov};
+pub use position::Position;
 pub use time_range::TimeRange;
+pub use timestamp::Timestamp;
+pub use timestamp::traits::{
+    GPSTimestamp, J2000Timestamp, TAITimestamp, UTCTimestamp, UnixTimestamp,
+};
