@@ -1,6 +1,6 @@
 //! Quadratic polynomial for relativistic corrections, clock drift, and custom timescale steering.
 //!
-//! Used by spacecraft and probes to model the accumulated difference between Proper time (τ)
+//! Used by spacecraft to model the accumulated difference between Proper time (τ)
 //! and a coordinate time such as TT (or any other `ClockType`). The polynomial is evaluated
 //! with full 36-digit exact arithmetic via `DtBig` — no floating-point loss even over centuries.
 
@@ -104,6 +104,30 @@ impl ClockDrift {
     ) -> Self {
         let rate = -velocity_squared_over_2c2 - gravitational_potential_over_c2;
         Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(rate))
+    }
+
+    /// Creates a `ClockDrift` using the exact proper-time factor from the
+    /// weak-field isotropic metric (higher-order accuracy).
+    ///
+    /// This is mathematically more precise than the linear approximation while
+    /// remaining extremely fast and fully valid throughout the solar system.
+    ///
+    /// ```math
+    /// \frac{d\tau}{dt} = \sqrt{(1 - 2\phi) - (1 + 2\phi)\beta^2}
+    /// ```
+    ///
+    /// where \(\phi = \Phi/c^2 > 0\) and \(\beta^2 = v^2/c^2\).
+    #[inline]
+    pub fn from_weak_field_metric(
+        velocity_squared_over_2c2: f64,
+        gravitational_potential_over_c2: f64,
+    ) -> Self {
+        let phi = gravitational_potential_over_c2; // Φ/c² > 0
+        let beta2 = 2.0 * velocity_squared_over_2c2; // v²/c
+        let inside = (1.0 - 2.0 * phi) - (1.0 + 2.0 * phi) * beta2;
+        let rate_factor = inside.sqrt(); // dτ/dt
+        let rate_offset = rate_factor - 1.0;
+        Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(rate_offset))
     }
 
     /// Convenience using physical SI units.

@@ -1,11 +1,9 @@
-use crate::{C, ClockDrift, Delta, Position, Timestamp};
+use crate::{C, ClockDrift, Delta, Position, TWO_GM_SUN_OVER_C3, Timestamp};
 
 impl Timestamp {
     /// Computes the relativistic correction (first-order post-Newtonian clock-rate
     /// effect using the trapezoidal average plus Shapiro delay) to be added to
     /// the Newtonian geometric light time `|r_rx − r_tx| / c`.
-    ///
-    /// # Layman explanation
     ///
     /// Your spacecraft and the receiver (e.g. Earth station) clocks tick at
     /// slightly different rates because of motion (special relativity) and
@@ -69,8 +67,6 @@ impl Timestamp {
     /// Iteratively solves for the receive time and relativistic correction until
     /// the solution is consistent to the requested tolerance.
     ///
-    /// # Layman explanation
-    ///
     /// The true arrival time depends on the very delay we are calculating.
     /// This function keeps refining its guess of the arrival time (including both
     /// the straight-line travel time and the relativistic effects), recomputes
@@ -124,8 +120,6 @@ impl Timestamp {
     /// clock-rate offset along the signal path (Simpson’s rule). For low sample
     /// counts the routine falls back to the same trapezoidal average used by
     /// `one_way_relativistic_delay`.
-    ///
-    /// # Layman explanation
     ///
     /// For very long journeys (Kuiper Belt, interstellar precursors) or
     /// ultra-precise clocks, simply averaging the two endpoints is no longer
@@ -185,8 +179,6 @@ impl Timestamp {
     /// Computes the relativistic correction for a two-way round-trip ranging
     /// measurement (transmit → receive → immediate transponder reply).
     ///
-    /// # Layman explanation
-    ///
     /// Deep-space networks measure distance by sending a signal to a spacecraft
     /// and timing how long the reply takes. This function returns the tiny
     /// relativistic adjustment you must subtract from the raw measured round-trip
@@ -219,8 +211,6 @@ impl Timestamp {
 
     /// First-order one-way Shapiro delay (gravitational light-time delay) in the Sun’s field.
     ///
-    /// # Layman explanation
-    ///
     /// Radio signals passing close to the Sun are delayed by a few microseconds
     /// because spacetime is curved. This is the famous Shapiro time delay first
     /// measured in 1964 and now a routine correction in deep-space navigation.
@@ -230,7 +220,7 @@ impl Timestamp {
         }
 
         let arg = (r_tx + r_rx + d) / (r_tx + r_rx - d).max(1.0);
-        let delay_sec = crate::TWO_GM_SUN_OVER_C3 * arg.ln();
+        let delay_sec = TWO_GM_SUN_OVER_C3 * arg.ln();
 
         Delta::from_sec_f64(delay_sec)
     }

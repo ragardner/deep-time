@@ -1,12 +1,12 @@
-//! Time scale definitions and relativistic support for spacecraft and probes.
+//! Time scale definitions and relativistic support for spacecraft.
 //!
-//! # Spacecraft / Probe Usage Pattern (Recommended)
+//! # Spacecraft Usage Pattern
 //!
 //! ```ignore
 //! use deep_time_core::{Timestamp, ClockType, ClockDrift, ClockModel};
 //!
 //! // Onboard clock is always tagged as Proper time
-//! let onboard_tau = Timestamp::create_from_model(current_scale);        // or .apply_new_model(...)
+//! let onboard_tau = Timestamp::create_from_model(current_scale); // or .apply_new_model(...)
 //!
 //! // Latest relativistic model received from ground
 //! let scale = ClockModel::proper(last_contact, current_poly);
@@ -65,7 +65,7 @@ pub enum ClockType {
     /// Barycentric Celestial Reference System (BCRS).
     TCB,
     /// **Proper Time (τ)** – the relativistic proper time experienced by a moving
-    /// observer (spacecraft, probe, etc.).  
+    /// observer (spacecraft, etc.).  
     /// Onboard clocks run this type. Use `convert_using_drift(ClockType::TT, …)`  
     /// with a `ClockDrift` to convert to Earth coordinate time.
     Proper,

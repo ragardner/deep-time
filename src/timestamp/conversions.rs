@@ -67,7 +67,7 @@ impl Timestamp {
     /// Converts this instant to any other [`ClockType`] while applying an exact quadratic
     /// relativistic / clock-drift correction via a [`ClockDrift`].
     ///
-    /// **Primary use for spacecraft/probes**:
+    /// Primary use for spacecraft:
     /// - `self` is normally `ClockType::Proper` (onboard clock reading).
     /// - The polynomial models **target = reference + poly(dt)**.
     #[inline]
@@ -128,7 +128,7 @@ impl Timestamp {
 
     /// Creates a `Timestamp` from a fully self-describing [`ClockModel`].
     ///
-    /// This is the recommended way for spacecraft/probes to represent
+    /// This is the recommended way for spacecraft to represent
     /// onboard proper time that already carries its own relativistic model.
     #[inline]
     pub const fn create_from_model(model: ClockModel) -> Self {

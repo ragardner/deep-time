@@ -1,6 +1,6 @@
 use crate::{ClockDrift, ClockType, Timestamp};
 
-/// A fully self-describing relativistic time scale for spacecraft and probes.
+/// A fully self-describing relativistic time scale for spacecraft.
 ///
 /// Bundles a base `ClockType` (normally `Proper` or `Custom`) with the quadratic
 /// polynomial and reference epoch needed for exact conversion to any other scale

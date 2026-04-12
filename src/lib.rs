@@ -27,9 +27,9 @@ pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
 pub use delta::Delta;
 pub use delta::time_units::TimeUnits;
-pub use position::Position;
+pub use position::{Position, Velocity};
 pub use time_range::TimeRange;
 pub use timestamp::Timestamp;
 pub use timestamp::traits::{
-    GPSTimestamp, J2000Timestamp, TAITimestamp, UTCTimestamp, UnixTimestamp,
+    GPSTimestamp, J2000Timestamp, RelativisticTrajectory, TAITimestamp, UTCTimestamp, UnixTimestamp,
 };

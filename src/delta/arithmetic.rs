@@ -1,4 +1,4 @@
-use crate::{Delta, DtBig, MICROQUECTOS_PER_SEC, POW15, POW21, floor_f64};
+use crate::{Delta, DtBig, MICROQUECTOS_PER_SEC, POW15, POW21};
 
 impl Delta {
     /// Returns the sum of `self` and `rhs`.
@@ -84,7 +84,7 @@ impl Delta {
     }
 
     /// Returns `true` if this duration is exactly zero.
-    #[inline]
+    #[inline(always)]
     pub const fn is_zero(self) -> bool {
         self.sec == 0 && self.subsec == 0
     }
@@ -93,15 +93,12 @@ impl Delta {
     ///
     /// **Lossy by design** — returns the best possible `f64` representation
     /// (≈15.95 decimal digits). Use `sec` + `subsec` (or `DtBig`) for full 36-digit precision.
-    #[inline]
+    #[inline(always)]
     pub const fn as_sec_f64(self) -> f64 {
-        let whole = self.sec as f64;
-
         // Extract the top 15 decimal digits exactly (POW15 is fully representable in f64 mantissa)
-        let q = self.subsec / POW21; // integer division, exact
-        let frac = (q as f64) / (POW15 as f64);
-
-        whole + frac
+        let q = (self.subsec / POW21) as f64; // integer division, exact
+        let frac = q / (POW15 as f64);
+        self.sec as f64 + frac
     }
 
     /// Creates a `Delta` from a floating-point number of seconds.
@@ -114,39 +111,35 @@ impl Delta {
     /// `MICROQUECTOS_PER_SEC` (10³⁶) not being exactly representable in `f64`.
     /// We split the scaling into two exact steps: `10¹⁵` (safe in `f64` mantissa)
     /// followed by an integer `10²¹` multiply.
+    #[inline]
     pub const fn from_sec_f64(sec_f: f64) -> Self {
         if sec_f.is_nan() {
             return Self::ZERO;
-        }
-        if sec_f.is_infinite() {
+        } else if sec_f.is_infinite() {
             return if sec_f.is_sign_positive() {
                 Self::MAX
             } else {
                 Self::MIN
             };
+        } else {
+            let floor_f = sec_f.floor();
+            let frac = sec_f - floor_f;
+            let high = (frac * (POW15 as f64)) as u128;
+            Self {
+                sec: floor_f as i128,
+                subsec: high * POW21,
+            }
         }
-
-        let mut sec = floor_f64(sec_f) as i128;
-        let mut frac = sec_f - (sec as f64);
-
-        if frac < 0.0 {
-            sec -= 1;
-            frac += 1.0;
-        }
-
-        let high = (frac * (POW15 as f64)) as u128;
-        let subsec = high * POW21;
-
-        Self { sec, subsec }
     }
 
     /// 10³⁶ as a `DtBig` (constant)
+    #[inline(always)]
     const fn mqs() -> DtBig {
         DtBig::TEN.pow(36)
     }
 
     /// Divides this duration by 2 using the existing high-precision f64 path.
-    #[inline]
+    #[inline(always)]
     pub fn div_by_2(self) -> Delta {
         Delta::from_sec_f64(self.as_sec_f64() / 2.0)
     }
@@ -160,7 +153,7 @@ impl Delta {
     }
 
     /// Convert total microquectoseconds back to normalized/saturated `Delta`.
-    #[inline(always)]
+    #[inline]
     pub const fn from_big(total: DtBig) -> Self {
         let m = Self::mqs();
         let sec_big = total.div_euclid(m);

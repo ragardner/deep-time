@@ -6,7 +6,9 @@
 /// typically expressed in a heliocentric (Sun-centered) reference frame because
 /// the dominant gravitational light-time correction—the Shapiro delay—is
 /// calculated with respect to the Sun.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct Position {
     pub x: f64,
     pub y: f64,
@@ -68,5 +70,30 @@ impl Position {
         let dy = self.y - other.y;
         let dz = self.z - other.z;
         dx.hypot(dy).hypot(dz)
+    }
+}
+
+/// A 3-dimensional velocity vector expressed in Cartesian coordinates (vx, vy, vz)
+/// with units of meters per second (SI).
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+pub struct Velocity {
+    pub vx: f64,
+    pub vy: f64,
+    pub vz: f64,
+}
+
+impl Velocity {
+    /// Creates a new `Velocity` directly from its Cartesian components in m/s.
+    #[inline]
+    pub const fn new(vx: f64, vy: f64, vz: f64) -> Self {
+        Self { vx, vy, vz }
+    }
+
+    /// Returns the squared Euclidean norm (v²).
+    #[inline]
+    pub fn norm_squared(self) -> f64 {
+        self.vx * self.vx + self.vy * self.vy + self.vz * self.vz
     }
 }
