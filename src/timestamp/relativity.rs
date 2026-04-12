@@ -1,9 +1,19 @@
-use crate::{ClockDrift, Delta, Position, Timestamp};
+use crate::{C, ClockDrift, Delta, Position, Timestamp};
 
 impl Timestamp {
     /// Computes the relativistic correction (first-order post-Newtonian clock-rate
     /// effect using the trapezoidal average plus Shapiro delay) to be added to
     /// the Newtonian geometric light time `|r_rx − r_tx| / c`.
+    ///
+    /// # Layman explanation
+    ///
+    /// Your spacecraft and the receiver (e.g. Earth station) clocks tick at
+    /// slightly different rates because of motion (special relativity) and
+    /// gravity (general relativity). In addition, the radio signal itself
+    /// takes a tiny bit longer to travel when it passes near the Sun because
+    /// gravity curves spacetime (the Shapiro delay). This function returns the
+    /// combined correction you add to the simple “distance divided by speed of
+    /// light” calculation to achieve nanosecond-level accuracy.
     ///
     /// # Mathematics (first-order post-Newtonian)
     ///
@@ -23,8 +33,8 @@ impl Timestamp {
     /// ```
     ///
     /// This formulation is consistent with the standard relativistic light-time
-    /// model used in JPL’s Orbit Determination Program (Moyer, 2000) for deep-space
-    /// radiometric observables.
+    /// model used in JPL’s Orbit Determination Program (Moyer, 2000) and modern
+    /// deep-space navigation.
     ///
     /// # When to use
     /// - Routine interplanetary navigation: this function (fastest).
@@ -59,10 +69,14 @@ impl Timestamp {
     /// Iteratively solves for the receive time and relativistic correction until
     /// the solution is consistent to the requested tolerance.
     ///
-    /// The iteration includes both the geometric light time and the relativistic
-    /// correction, ensuring mutual consistency between the receive epoch, spacecraft
-    /// state, and the computed delay. Convergence typically occurs in 3–5 iterations
-    /// for deep-space geometries.
+    /// # Layman explanation
+    ///
+    /// The true arrival time depends on the very delay we are calculating.
+    /// This function keeps refining its guess of the arrival time (including both
+    /// the straight-line travel time and the relativistic effects), recomputes
+    /// the correction, and stops when the answer stops changing. It typically
+    /// converges in 3–5 steps to sub-nanosecond accuracy even for outer-solar-system
+    /// distances.
     pub fn iterative_one_way_relativistic_delay<F>(
         tx_time: Self,
         tx_v2_over_2c2: f64,
@@ -92,9 +106,6 @@ impl Timestamp {
             );
 
             let r_sep = tx_pos.distance_to(rx_pos);
-            // Geometric light time; replace with the crate’s exact speed-of-light
-            // constant (e.g. crate::C_M_PER_S) if Position uses meters.
-            const C: f64 = 299792458.0;
             let geometric = Delta::from_sec_f64(r_sep / C);
 
             let full_delay = geometric.add(rel_correction);
@@ -114,8 +125,13 @@ impl Timestamp {
     /// counts the routine falls back to the same trapezoidal average used by
     /// `one_way_relativistic_delay`.
     ///
-    /// All quadrature is performed in `f64` seconds (where full double-precision
-    /// is available for the small relativistic terms) before conversion to `Delta`.
+    /// # Layman explanation
+    ///
+    /// For very long journeys (Kuiper Belt, interstellar precursors) or
+    /// ultra-precise clocks, simply averaging the two endpoints is no longer
+    /// perfect. This version samples the relativistic rate at many points
+    /// *along the light path* and integrates the difference properly — the
+    /// gold-standard approach for the deepest solar-system and future missions.
     pub fn one_way_relativistic_delay_integrated<F>(
         tx_time: Self,
         rx_time_approx: Self,
@@ -124,7 +140,7 @@ impl Timestamp {
         rx_v2_over_2c2: f64,
         rx_phi_over_c2: f64,
         num_samples: usize, // 5–21 samples suffice; ≤ 2 falls back to trapezoidal
-        path_sampler: F,    // λ ∈ [0,1] → local δ(λ) (fractional clock-rate offset)
+        path_sampler: F,    // λ ∈ [0,1] → relative δ(λ) = δ_rx(λ) − δ_tx(λ)
         tx_pos: Position,
         rx_pos: Position,
     ) -> Delta
@@ -168,6 +184,13 @@ impl Timestamp {
 
     /// Computes the relativistic correction for a two-way round-trip ranging
     /// measurement (transmit → receive → immediate transponder reply).
+    ///
+    /// # Layman explanation
+    ///
+    /// Deep-space networks measure distance by sending a signal to a spacecraft
+    /// and timing how long the reply takes. This function returns the tiny
+    /// relativistic adjustment you must subtract from the raw measured round-trip
+    /// time to recover the true geometric distance.
     pub fn round_trip_relativistic_correction(
         tx_time: Self,
         round_trip_measured: Delta,
@@ -195,6 +218,12 @@ impl Timestamp {
     }
 
     /// First-order one-way Shapiro delay (gravitational light-time delay) in the Sun’s field.
+    ///
+    /// # Layman explanation
+    ///
+    /// Radio signals passing close to the Sun are delayed by a few microseconds
+    /// because spacetime is curved. This is the famous Shapiro time delay first
+    /// measured in 1964 and now a routine correction in deep-space navigation.
     fn shapiro_one_way_delay(r_tx: f64, r_rx: f64, d: f64) -> Delta {
         if r_tx <= 0.0 || r_rx <= 0.0 || d <= 0.0 {
             return Delta::ZERO;
