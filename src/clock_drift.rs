@@ -13,7 +13,7 @@ use crate::{
 ///
 /// - `alpha` comes from `alpha_from_weak_field_potential` (e.g. solar system use)
 ///   or from a full metric / onboard gravimeter.
-/// - `beta` comes from `probe_velocity.beta()`.
+/// - `beta` comes from `observer_velocity.beta()`.
 /// - `kretschmann` is 0.0 in the solar system today (future gravimetric
 ///   hardware will supply the real value).
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -109,7 +109,7 @@ impl ClockDrift {
         }
     }
 
-    /// Constant offset + constant drift rate (very common for GNSS and probe clock steering).
+    /// Constant offset + constant drift rate (very common for GNSS and observer clock steering).
     #[inline]
     pub const fn from_offset_and_rate(offset: Delta, rate: Delta) -> Self {
         Self {
@@ -180,22 +180,23 @@ impl ClockDrift {
         Self::from_weak_field_metric(v2_over_2c2, phi_over_c2)
     }
 
-    /// Creates a `ClockDrift` from the probe's velocity and the total local gravitational potential.
+    /// Creates a `ClockDrift` from the observer's velocity and the total local gravitational potential.
     ///
     /// This is the main convenience function most users should call. It computes the relativistic
     /// rate at which a clock on your spacecraft runs relative to coordinate time, taking into
     /// account both its motion (special relativity) and the gravity it experiences (general relativity).
     ///
-    /// - `velocity_m_s`: The speed of the probe in meters per second.
+    /// - `velocity_m_s`: The speed of the observer in meters per second.
     /// - `gravitational_potential_m2_s2`: The total gravitational potential Φ (in m²/s²) at the
-    ///   probe's location. This is usually negative and can include contributions from multiple bodies.
+    ///   observer's location. This is usually negative and can include contributions from multiple bodies.
     /// - `characteristic_length_scale`: The characteristic length (in meters) over which gravity
-    ///   varies significantly around the probe. For Earth orbit, GNSS, or solar-system navigation,
+    ///   varies significantly around the observer. For Earth orbit, GNSS, or solar-system navigation,
     ///   simply pass `0.0`. A non-zero value enables higher-order curvature effects and is only
     ///   needed for strong gravitational fields (e.g. neutron star or black hole flybys).
     ///
     /// Example:
     /// ```rust
+    /// use deep_time_core::ClockDrift;
     /// let drift = ClockDrift::from_velocity_potential_and_scale(
     ///     7800.0,      // velocity in m/s
     ///     -6.2e7,      // gravitational potential in m²/s²
@@ -219,7 +220,7 @@ impl ClockDrift {
     }
 
     /// Canonical low-level constructor — the single source of truth
-    /// for the entire unified timelike/null probe Lagrangian.
+    /// for the entire unified timelike/null observer Lagrangian.
     #[inline]
     pub fn from_unified_proper_time_rate(u: f64, kretschmann: f64) -> Self {
         let eps = curvature_regulator(kretschmann);

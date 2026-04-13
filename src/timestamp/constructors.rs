@@ -77,7 +77,7 @@ impl Timestamp {
     /// the reference epoch.
     ///
     /// The resulting `ClockModel` can be used to convert to/from the new
-    /// custom time even after the probe has left the system.
+    /// custom time even after the observer has left the system.
     #[inline]
     pub const fn new_custom_clock(self, drift: ClockDrift) -> ClockModel {
         ClockModel::custom(self, drift)
@@ -85,7 +85,7 @@ impl Timestamp {
 
     /// Convenience one-liner for creating a new local clock with zero drift.
     ///
-    /// Use this when the probe arrives at a new solar system or planet and
+    /// Use this when the observer arrives at a new solar system or planet and
     /// declares "this moment is time zero for our local time standard".
     /// The reference epoch is frozen forever; only the drift can be updated
     /// later if relativistic or gravitational effects are discovered.

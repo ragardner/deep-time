@@ -48,7 +48,7 @@ pub fn alpha_from_weak_field_potential(phi: f64) -> f64 {
 
 /// Kretschmann scalar from the total relativity experienced locally
 /// Computes the Kretschmann scalar \(\mathcal{K}\) from the total gravitational
-/// relativity experienced by a local observer at the probe’s spacetime point.
+/// relativity experienced by a local observer at the observer’s spacetime point.
 ///
 /// This is the canonical, physics-true convenience function for the master Lagrangian.
 /// It uses:
