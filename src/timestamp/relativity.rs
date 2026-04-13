@@ -51,8 +51,8 @@ impl Timestamp {
     ) -> Delta {
         let dt = rx_time_approx.duration_since(tx_time);
 
-        let tx_drift = ClockDrift::from_weak_field_approximation(tx_v2_over_2c2, tx_phi_over_c2);
-        let rx_drift = ClockDrift::from_weak_field_approximation(rx_v2_over_2c2, rx_phi_over_c2);
+        let tx_drift = ClockDrift::from_weak_field_metric(tx_v2_over_2c2, tx_phi_over_c2);
+        let rx_drift = ClockDrift::from_weak_field_metric(rx_v2_over_2c2, rx_phi_over_c2);
 
         let drift_correction = tx_drift.evaluate(dt).add(rx_drift.evaluate(dt)).div_by_2();
 
@@ -144,8 +144,8 @@ impl Timestamp {
         let dt = rx_time_approx.duration_since(tx_time);
         let dt_sec = dt.as_sec_f64();
 
-        let tx_drift = ClockDrift::from_weak_field_approximation(tx_v2_over_2c2, tx_phi_over_c2);
-        let rx_drift = ClockDrift::from_weak_field_approximation(rx_v2_over_2c2, rx_phi_over_c2);
+        let tx_drift = ClockDrift::from_weak_field_metric(tx_v2_over_2c2, tx_phi_over_c2);
+        let rx_drift = ClockDrift::from_weak_field_metric(rx_v2_over_2c2, rx_phi_over_c2);
 
         if num_samples <= 2 {
             let drift_correction = tx_drift.evaluate(dt).add(rx_drift.evaluate(dt)).div_by_2();

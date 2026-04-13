@@ -22,7 +22,7 @@ pub(crate) use constants::*;
 pub(crate) use dt_big::DtBig;
 pub(crate) use utils::*;
 
-pub use clock_drift::ClockDrift;
+pub use clock_drift::{ClockDrift, ResolvedMetric};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
 pub use delta::Delta;
@@ -33,3 +33,4 @@ pub use timestamp::Timestamp;
 pub use timestamp::traits::{
     GPSTimestamp, J2000Timestamp, RelativisticTrajectory, TAITimestamp, UTCTimestamp, UnixTimestamp,
 };
+pub use utils::{alpha_from_weak_field_potential, kretschmann_from_potential_and_scale};

@@ -4,7 +4,63 @@
 //! and a coordinate time such as TT (or any other `ClockType`). The polynomial is evaluated
 //! with full 36-digit exact arithmetic via `DtBig` — no floating-point loss even over centuries.
 
-use crate::{C_SQUARED, Delta, DtBig, MICROQUECTOS_PER_SEC};
+use crate::{
+    C_SQUARED, Delta, DtBig, MICROQUECTOS_PER_SEC, Velocity, alpha_from_weak_field_potential,
+    curvature_regulator, kretschmann_from_potential_and_scale,
+};
+
+/// Pre-resolved local spacetime metric quantities supplied by the caller.
+///
+/// - `alpha` comes from `alpha_from_weak_field_potential` (e.g. solar system use)
+///   or from a full metric / onboard gravimeter.
+/// - `beta` comes from `probe_velocity.beta()`.
+/// - `kretschmann` is 0.0 in the solar system today (future gravimetric
+///   hardware will supply the real value).
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub struct ResolvedMetric {
+    pub alpha: f64,
+    pub beta: f64,
+    pub kretschmann: f64,
+}
+
+impl ResolvedMetric {
+    #[inline(always)]
+    pub const fn new(alpha: f64, beta: f64, kretschmann: f64) -> Self {
+        Self {
+            alpha,
+            beta,
+            kretschmann,
+        }
+    }
+
+    /// Convenience for direct gravimeter / sensor paths.
+    #[inline(always)]
+    pub fn from_gravitic_and_velocity(alpha: f64, kretschmann: f64, velocity: Velocity) -> Self {
+        Self::new(alpha, velocity.beta(), kretschmann)
+    }
+
+    /// Recommended constructor for most users.
+    ///
+    /// Computes both the gravitational lapse `α` **and** the Kretschmann scalar
+    /// from the total local potential and the characteristic length scale.
+    ///
+    /// - Solar-system / GNSS users: pass `characteristic_length_scale = 0.0`
+    ///   (returns exactly the same rate as the old weak-field path).
+    /// - Strong-field users: `characteristic_length_scale`
+    ///     — the typical length scale (in meters) over which the
+    ///       gravitational field varies at the observer’s location.
+    #[inline(always)]
+    pub fn from_potential_velocity_and_scale(
+        phi_over_c2: f64, // Φ/c² (total local potential)
+        velocity: Velocity,
+        characteristic_length_scale: f64,
+    ) -> Self {
+        let alpha = alpha_from_weak_field_potential(phi_over_c2);
+        let kretschmann =
+            kretschmann_from_potential_and_scale(phi_over_c2, characteristic_length_scale);
+        Self::from_gravitic_and_velocity(alpha, kretschmann, velocity)
+    }
+}
 
 /// Quadratic polynomial: `constant + rate·dt + accel·dt²`
 ///
@@ -89,23 +145,6 @@ impl ClockDrift {
         Delta::from_big(total)
     }
 
-    /// Creates a `ClockDrift` using the standard first-order post-Newtonian
-    /// weak-field approximation.
-    ///
-    /// ```math
-    /// \delta \approx -\frac{v^2}{2c^2} - \frac{\Phi}{c^2}
-    /// ```
-    ///
-    /// where \( \Phi = +GM/r > 0 \) (positive Newtonian potential, Sun + planets).
-    #[inline]
-    pub const fn from_weak_field_approximation(
-        velocity_squared_over_2c2: f64,
-        gravitational_potential_over_c2: f64,
-    ) -> Self {
-        let rate = -velocity_squared_over_2c2 - gravitational_potential_over_c2;
-        Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(rate))
-    }
-
     /// Creates a `ClockDrift` using the exact proper-time factor from the
     /// weak-field isotropic metric (higher-order accuracy).
     ///
@@ -132,13 +171,70 @@ impl ClockDrift {
 
     /// Convenience using physical SI units.
     #[inline]
-    pub const fn from_velocity_and_potential(
+    pub fn from_velocity_and_potential(
         velocity_m_s: f64,
         gravitational_potential_m2_s2: f64, // Φ_total > 0 (multi-body OK)
     ) -> Self {
         let v2_over_2c2 = (velocity_m_s * velocity_m_s) / (2.0 * C_SQUARED);
         let phi_over_c2 = gravitational_potential_m2_s2 / C_SQUARED;
-        Self::from_weak_field_approximation(v2_over_2c2, phi_over_c2)
+        Self::from_weak_field_metric(v2_over_2c2, phi_over_c2)
+    }
+
+    /// Creates a `ClockDrift` from the probe's velocity and the total local gravitational potential.
+    ///
+    /// This is the main convenience function most users should call. It computes the relativistic
+    /// rate at which a clock on your spacecraft runs relative to coordinate time, taking into
+    /// account both its motion (special relativity) and the gravity it experiences (general relativity).
+    ///
+    /// - `velocity_m_s`: The speed of the probe in meters per second.
+    /// - `gravitational_potential_m2_s2`: The total gravitational potential Φ (in m²/s²) at the
+    ///   probe's location. This is usually negative and can include contributions from multiple bodies.
+    /// - `characteristic_length_scale`: The characteristic length (in meters) over which gravity
+    ///   varies significantly around the probe. For Earth orbit, GNSS, or solar-system navigation,
+    ///   simply pass `0.0`. A non-zero value enables higher-order curvature effects and is only
+    ///   needed for strong gravitational fields (e.g. neutron star or black hole flybys).
+    ///
+    /// Example:
+    /// ```rust
+    /// let drift = ClockDrift::from_velocity_potential_and_scale(
+    ///     7800.0,      // velocity in m/s
+    ///     -6.2e7,      // gravitational potential in m²/s²
+    ///     0.0,         // 0.0 = standard weak-field case
+    /// );
+    /// ```
+    #[inline]
+    pub fn from_velocity_potential_and_scale(
+        velocity_m_s: f64,
+        gravitational_potential_m2_s2: f64,
+        characteristic_length_scale: f64,
+    ) -> Self {
+        let phi = gravitational_potential_m2_s2 / C_SQUARED;
+        let velocity = Velocity::from_speed(velocity_m_s);
+        let resolved = ResolvedMetric::from_potential_velocity_and_scale(
+            phi,
+            velocity,
+            characteristic_length_scale,
+        );
+        Self::from_resolved_metric(resolved)
+    }
+
+    /// Canonical low-level constructor — the single source of truth
+    /// for the entire unified timelike/null probe Lagrangian.
+    #[inline]
+    pub fn from_unified_proper_time_rate(u: f64, kretschmann: f64) -> Self {
+        let eps = curvature_regulator(kretschmann);
+        let k = u + eps * (1.0 - u).powi(2);
+        let rate_factor = k.sqrt().max(0.0);
+        let rate_offset = rate_factor - 1.0;
+
+        Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(rate_offset))
+    }
+
+    /// High-level entry point — the main function users will call.
+    #[inline]
+    pub fn from_resolved_metric(resolved: ResolvedMetric) -> Self {
+        let u = resolved.alpha * resolved.alpha * (1.0 - resolved.beta * resolved.beta);
+        Self::from_unified_proper_time_rate(u, resolved.kretschmann)
     }
 }
 

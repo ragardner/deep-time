@@ -362,7 +362,7 @@ pub trait RelativisticTrajectory {
     /// is running slightly slow.
     fn proper_time_rate_at(&self, t: Timestamp) -> f64 {
         let (_, vel, phi) = self.state_and_potential_at(t);
-        let drift = ClockDrift::from_weak_field_approximation(
+        let drift = ClockDrift::from_weak_field_metric(
             vel.norm_squared() / (2.0 * C_SQUARED),
             phi / C_SQUARED,
         );
@@ -430,7 +430,7 @@ pub trait RelativisticTrajectory {
         if num_samples <= 2 {
             // Fast trapezoidal path (matches existing one-way relativistic delay code)
             let (_, vel0, phi0) = self.state_and_potential_at(start);
-            let rate0 = ClockDrift::from_weak_field_approximation(
+            let rate0 = ClockDrift::from_weak_field_metric(
                 vel0.norm_squared() / (2.0 * C_SQUARED),
                 phi0 / C_SQUARED,
             )
@@ -438,7 +438,7 @@ pub trait RelativisticTrajectory {
             .as_sec_f64();
 
             let (_, vel1, phi1) = self.state_and_potential_at(end);
-            let rate1 = ClockDrift::from_weak_field_approximation(
+            let rate1 = ClockDrift::from_weak_field_metric(
                 vel1.norm_squared() / (2.0 * C_SQUARED),
                 phi1 / C_SQUARED,
             )
@@ -459,7 +459,7 @@ pub trait RelativisticTrajectory {
             let t_i = start.add(Delta::from_sec_f64(lambda * dt_sec));
             let (_, vel, phi) = self.state_and_potential_at(t_i);
 
-            let rate = ClockDrift::from_weak_field_approximation(
+            let rate = ClockDrift::from_weak_field_metric(
                 vel.norm_squared() / (2.0 * C_SQUARED),
                 phi / C_SQUARED,
             )

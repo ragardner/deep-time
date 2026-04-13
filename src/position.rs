@@ -1,3 +1,5 @@
+use crate::C_SQUARED;
+
 /// A 3-dimensional position vector expressed in Cartesian coordinates (x, y, z)
 /// with units of meters (SI).
 ///
@@ -91,9 +93,32 @@ impl Velocity {
         Self { vx, vy, vz }
     }
 
+    /// Creates a `Velocity` from its scalar speed (magnitude) in m/s.
+    ///
+    /// Direction is set along the x-axis because only the speed matters
+    /// for relativistic calculations (`beta()`, `norm_squared()`, etc.).
+    /// This is the convenience constructor used by `ClockDrift::from_velocity_potential_and_scale`.
+    #[inline]
+    pub const fn from_speed(speed_m_s: f64) -> Self {
+        Self::new(speed_m_s, 0.0, 0.0)
+    }
+
     /// Returns the squared Euclidean norm (v²).
     #[inline]
     pub fn norm_squared(self) -> f64 {
         self.vx * self.vx + self.vy * self.vy + self.vz * self.vz
+    }
+
+    /// Speed in m/s (Euclidean magnitude).
+    #[inline]
+    pub fn speed(self) -> f64 {
+        self.norm_squared().sqrt()
+    }
+
+    /// Dimensionless 3-velocity β = v/c relative to the local chrono-rest frame.
+    /// This is exactly what the master Lagrangian and `ResolvedMetric` expect.
+    #[inline]
+    pub fn beta(self) -> f64 {
+        (self.norm_squared() / C_SQUARED).sqrt()
     }
 }
