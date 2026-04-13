@@ -27,23 +27,18 @@ pub(crate) const fn sin_approx(x: f64) -> f64 {
     sign * (x - x3 / 6.0 + x5 / 120.0 - x7 / 5040.0 + x9 / 362880.0 - x11 / 39916800.0)
 }
 
-/// Convenient alpha getter for solar-system / GNSS users
-/// Converts the familiar weak-field Newtonian potential Φ/c² into the
-/// general-relativistic lapse factor α.
+/// Converts the Newtonian gravitational potential Φ/c² (where Φ < 0 for bound orbits)
+/// into the relativistic lapse factor α = √(1 + 2Φ/c²).
 ///
-/// This is the **standard isotropic post-Newtonian approximation** used
-/// by JPL, ESA, GNSS, and virtually all solar-system ephemeris codes.
-/// It is **only valid in weak, nearly isotropic fields** (solar system,
-/// GNSS, planetary flybys). For strong fields or direct gravimetric
-/// sensors, supply α directly.
-///
-/// ```math
-/// α ≈ √(1 − 2φ)
-/// ```
-/// where φ = Φ/c² > 0.
+/// This is the standard weak-field approximation used by JPL, ESA, GNSS, and
+/// all modern solar-system navigation codes. It matches the physical convention
+/// used everywhere else in the library (`RelativisticState` stores Φ < 0).
 #[inline(always)]
-pub fn alpha_from_weak_field_potential(phi: f64) -> f64 {
-    (1.0 - 2.0 * phi).sqrt().max(0.0)
+pub fn alpha_from_weak_field_potential(gravitational_potential_over_c2: f64) -> f64 {
+    // gravitational_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
+    (1.0 + 2.0 * gravitational_potential_over_c2)
+        .sqrt()
+        .max(0.0)
 }
 
 /// Kretschmann scalar from the total relativity experienced locally
@@ -67,11 +62,15 @@ pub fn alpha_from_weak_field_potential(phi: f64) -> f64 {
 /// the value from your metric). The function returns a physically accurate non-zero
 /// curvature.
 #[inline]
-pub fn kretschmann_from_potential_and_scale(phi: f64, characteristic_length_scale: f64) -> f64 {
-    if characteristic_length_scale <= 0.0 || phi <= 0.0 {
+pub fn kretschmann_from_potential_and_scale(
+    gravitational_potential_over_c2: f64,
+    characteristic_length_scale: f64,
+) -> f64 {
+    if characteristic_length_scale <= 0.0 || gravitational_potential_over_c2 <= 0.0 {
         return 0.0;
     }
     // Exact weak-field limit: K ≈ 48 φ² / L⁴
-    let curvature_scale = 2.0 * phi / characteristic_length_scale.powi(2);
+    let curvature_scale =
+        2.0 * gravitational_potential_over_c2 / characteristic_length_scale.powi(2);
     12.0 * curvature_scale.powi(2)
 }

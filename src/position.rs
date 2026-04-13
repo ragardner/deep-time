@@ -1,4 +1,4 @@
-use crate::C_SQUARED;
+use crate::{C_SQUARED, Timestamp};
 
 /// A 3-dimensional position vector expressed in Cartesian coordinates (x, y, z)
 /// with units of meters (SI).
@@ -120,5 +120,67 @@ impl Velocity {
     #[inline]
     pub fn beta(self) -> f64 {
         (self.norm_squared() / C_SQUARED).sqrt()
+    }
+}
+
+/// A complete relativistic state of an observer (spacecraft, ground station,
+/// planet, etc.) at a specific instant.
+///
+/// This is the natural input type for all relativistic light-time calculations
+/// in the library. It bundles position, velocity, gravitational potential, and
+/// an optional length scale in convenient SI units.
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+pub struct RelativisticState {
+    /// Timestamp of this state (any [`ClockType`] is accepted).
+    pub time: Timestamp,
+    /// Position in meters (typically barycentric or heliocentric).
+    pub position: Position,
+    /// Velocity in meters per second.
+    pub velocity: Velocity,
+    /// Local gravitational potential Φ in m² s⁻² (negative for bound orbits).
+    /// Usually the sum of contributions from the Sun and planets.
+    pub gravitational_potential_m2_s2: f64,
+    /// Characteristic length scale (in meters) over which gravity varies
+    /// significantly at the observer’s location.  
+    /// Pass `0.0` (the default) for all solar-system, GNSS, and weak-field cases.
+    pub characteristic_length_scale: f64,
+}
+
+impl RelativisticState {
+    /// Creates a new state for typical solar-system or GNSS use.
+    #[inline]
+    pub const fn new(
+        time: Timestamp,
+        position: Position,
+        velocity: Velocity,
+        gravitational_potential_m2_s2: f64,
+    ) -> Self {
+        Self {
+            time,
+            position,
+            velocity,
+            gravitational_potential_m2_s2,
+            characteristic_length_scale: 0.0,
+        }
+    }
+
+    /// Creates a new state when strong-field or gravimeter data is available.
+    #[inline]
+    pub const fn new_strong_field(
+        time: Timestamp,
+        position: Position,
+        velocity: Velocity,
+        gravitational_potential_m2_s2: f64,
+        characteristic_length_scale: f64,
+    ) -> Self {
+        Self {
+            time,
+            position,
+            velocity,
+            gravitational_potential_m2_s2,
+            characteristic_length_scale,
+        }
     }
 }

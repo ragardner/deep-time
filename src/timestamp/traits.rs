@@ -11,7 +11,7 @@
 //! let p4 = 1_234_567_890_i128.gps_seconds();
 //! ```
 
-use crate::{C_SQUARED, ClockDrift, ClockType, Delta, Position, Timestamp, Velocity};
+use crate::{ClockDrift, ClockType, Delta, RelativisticState, Timestamp};
 
 // ──────────────────────────────────────────────────────────────
 // Traits
@@ -330,89 +330,48 @@ impl_gps_timestamp!(u64);
 impl_gps_timestamp!(u128);
 
 // ──────────────────────────────────────────────────────────────
-// RelativisticTrajectory trait
+// RelativisticTrajectory trait (unified master-Lagrangian edition)
 // ──────────────────────────────────────────────────────────────
 
 /// A trajectory or ephemeris capable of computing the accumulated **proper time** (τ)
-/// along a coordinate-time path (typically TT or TDB).
+/// along a coordinate-time path using the library’s *unified master-Lagrangian*
+/// formulation.
 ///
-/// Proper time is the time your spacecraft’s *onboard clock* actually experiences.
-/// Because of Einstein’s relativity (speed + gravity), it slowly drifts from Earth clocks.
-/// Implement this trait to tell the library “here’s my spacecraft’s path” — it will
-/// calculate exactly how much time passed on the spacecraft’s clock.
+/// Proper time is the time actually experienced by a moving clock (spacecraft, probe,
+/// planet, etc.). The implementation automatically uses the exact relativistic rate
+/// `dτ/dt = √K_eff` from the master Lagrangian (with intrinsic Planck-scale saturation
+/// when `characteristic_length_scale > 0`).
 ///
-/// The default implementation uses the same weak-field post-Newtonian approximation
-/// already used everywhere else in the library (`ClockDrift::from_weak_field_approximation`).
+/// This is the recommended integration point for any relativistic navigation,
+/// clock steering, or deep-space mission simulation.
 pub trait RelativisticTrajectory {
-    /// Returns the kinematic and gravitational state at coordinate time `t`.
+    /// Returns the **complete relativistic state** at coordinate time `t`.
     ///
-    /// Tell the library where the spacecraft is, how fast it is moving,
-    /// and how deep it is in the Sun’s gravity well at any given moment.
-    ///
-    /// The returned tuple contains:
-    /// - `Position`: Cartesian position (meters, usually Sun-centered)
-    /// - `Velocity`: Cartesian velocity (m/s)
-    /// - `f64`: Newtonian gravitational potential `Φ` (**positive** convention: `Φ = +GM/r`)
-    fn state_and_potential_at(&self, t: Timestamp) -> (Position, Velocity, f64);
+    /// This is the only method you must implement.
+    /// Everything else (proper-time rate, interval, correction) has high-quality
+    /// default implementations that use the unified Lagrangian.
+    fn relativistic_state_at(&self, t: Timestamp) -> RelativisticState;
 
-    /// Returns the instantaneous proper-time rate `dτ/dt` at time `t`.
+    /// Instantaneous proper-time rate `dτ/dt` at time `t`.
     ///
-    /// This tells you how fast (or slow) the onboard clock is currently ticking
-    /// compared to Earth coordinate time. A value of `0.999999999` means the clock
-    /// is running slightly slow.
+    /// Returns a value ≈ 1.0 in weak fields. In strong gravity or high velocity
+    /// it can be noticeably lower (and never reaches zero thanks to the built-in
+    /// Planck-scale core).
     fn proper_time_rate_at(&self, t: Timestamp) -> f64 {
-        let (_, vel, phi) = self.state_and_potential_at(t);
-        let drift = ClockDrift::from_weak_field_metric(
-            vel.norm_squared() / (2.0 * C_SQUARED),
-            phi / C_SQUARED,
+        let state = self.relativistic_state_at(t);
+        let drift = ClockDrift::from_velocity_potential_and_scale(
+            state.velocity.speed(),
+            state.gravitational_potential_m2_s2,
+            state.characteristic_length_scale,
         );
         1.0 + drift.evaluate(Delta::ZERO).as_sec_f64()
     }
 
     /// Computes the proper-time interval Δτ between two coordinate times.
     ///
-    /// Given any two moments on an Earth clock (start → end), this returns how much time
-    /// actually passed on the spacecraft’s clock. It automatically accounts for relativistic
-    /// effects using the same math NASA and ESA use for deep-space navigation.
-    ///
-    /// # Mathematics
-    ///
-    /// \[
-    /// \Delta\tau \approx \Delta t + \int_{t_0}^{t_1} \delta(t)\,\mathrm{d}t
-    /// \]
-    ///
-    /// where \(\delta(t) = -\frac{v^2}{2c^2} - \frac{\Phi}{c^2}\).
-    ///
-    /// Uses composite Simpson’s rule (high accuracy) when `num_samples > 2`
-    /// (**even** values recommended: 10, 20, 50, …) or the trapezoidal rule
-    /// for `num_samples ≤ 2`. Negative intervals are handled correctly.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// use deep_time_core::{Timestamp, Delta, ClockType, Position, Velocity, RelativisticTrajectory};
-    ///
-    /// struct EarthOrbit; // example trajectory
-    ///
-    /// impl RelativisticTrajectory for EarthOrbit {
-    ///     fn state_and_potential_at(&self, _t: Timestamp) -> (Position, Velocity, f64) {
-    ///         let pos = Position::from_au(1.0, 0.0, 0.0);
-    ///         let vel = Velocity::new(0.0, 29_780.0, 0.0); // ~29.78 km/s
-    ///         let phi = 1.3271244e20 / 1.495978707e11;     // Φ☉ at 1 AU (positive!)
-    ///         (pos, vel, phi)
-    ///     }
-    /// }
-    ///
-    /// let traj = EarthOrbit;
-    /// let start = Timestamp::ZERO.to_clock_type(ClockType::TDB);
-    /// let end   = start.add(Delta::from_sec_f64(365.25 * 86_400.0)); // 1 year later
-    ///
-    /// let dtau = traj.proper_time_interval(start, end, 50);
-    /// let dt   = end.duration_since(start);
-    ///
-    /// // Spacecraft clock runs ~0.5 s slower per year in Earth orbit
-    /// let difference = (dt - dtau).as_sec_f64();
-    /// ```
+    /// Uses composite Simpson’s rule (very high accuracy) when `num_samples > 2`.
+    /// Falls back to trapezoidal rule for `num_samples ≤ 2`.
+    /// Negative intervals are handled correctly.
     fn proper_time_interval(&self, start: Timestamp, end: Timestamp, num_samples: usize) -> Delta {
         let mut dt = end.duration_since(start);
         if dt.is_zero() {
@@ -428,24 +387,10 @@ pub trait RelativisticTrajectory {
         let dt_sec = dt.as_sec_f64();
 
         if num_samples <= 2 {
-            // Fast trapezoidal path (matches existing one-way relativistic delay code)
-            let (_, vel0, phi0) = self.state_and_potential_at(start);
-            let rate0 = ClockDrift::from_weak_field_metric(
-                vel0.norm_squared() / (2.0 * C_SQUARED),
-                phi0 / C_SQUARED,
-            )
-            .evaluate(Delta::ZERO)
-            .as_sec_f64();
-
-            let (_, vel1, phi1) = self.state_and_potential_at(end);
-            let rate1 = ClockDrift::from_weak_field_metric(
-                vel1.norm_squared() / (2.0 * C_SQUARED),
-                phi1 / C_SQUARED,
-            )
-            .evaluate(Delta::ZERO)
-            .as_sec_f64();
-
-            let integral = 0.5 * (rate0 + rate1) * dt_sec;
+            // Fast trapezoidal path
+            let rate0 = self.proper_time_rate_at(start);
+            let rate1 = self.proper_time_rate_at(end);
+            let integral = 0.5 * (rate0 + rate1 - 2.0) * dt_sec;
             return Delta::from_sec_f64(sign * (dt_sec + integral));
         }
 
@@ -457,14 +402,7 @@ pub trait RelativisticTrajectory {
         for i in 0..=num_samples {
             let lambda = (i as f64) / n;
             let t_i = start.add(Delta::from_sec_f64(lambda * dt_sec));
-            let (_, vel, phi) = self.state_and_potential_at(t_i);
-
-            let rate = ClockDrift::from_weak_field_metric(
-                vel.norm_squared() / (2.0 * C_SQUARED),
-                phi / C_SQUARED,
-            )
-            .evaluate(Delta::ZERO)
-            .as_sec_f64();
+            let rate = self.proper_time_rate_at(t_i);
 
             let coeff = if i == 0 || i == num_samples {
                 1.0
@@ -473,18 +411,15 @@ pub trait RelativisticTrajectory {
             } else {
                 4.0
             };
-            s += coeff * rate;
+            s += coeff * (rate - 1.0); // only integrate the relativistic deviation
         }
 
         let integral = (h / 3.0) * s;
         Delta::from_sec_f64(sign * (dt_sec + integral))
     }
 
-    /// Returns the relativistic correction Δτ − Δt (how much the onboard clock
-    /// has gained or lost relative to coordinate time).
-    ///
-    /// This is the number you usually care about for clock steering or navigation:
-    /// “How many seconds has my spacecraft clock drifted behind/ahead of Earth time?”
+    /// Relativistic correction: how much the onboard clock has gained or lost
+    /// relative to coordinate time (`Δτ − Δt`).
     fn relativistic_correction(
         &self,
         start: Timestamp,
