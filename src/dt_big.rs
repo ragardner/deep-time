@@ -396,7 +396,7 @@ impl Ord for DtBig {
 }
 
 impl DtBig {
-    /// Const-friendly three-way comparison (exact equivalent of your `Ord::cmp`).
+    /// Const-friendly three-way comparison (equivalent of `Ord::cmp`).
     ///
     /// This version is fully `const fn` on stable Rust:
     /// - No reliance on `Ord::cmp` (still not stably `const`).

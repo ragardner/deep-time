@@ -1,4 +1,4 @@
-use crate::{C_SQUARED, Timestamp};
+use crate::{C_SQUARED, TimePoint};
 
 /// A 3-dimensional position vector expressed in Cartesian coordinates (x, y, z)
 /// with units of meters (SI).
@@ -58,7 +58,7 @@ impl Position {
     /// required for Shapiro-delay calculations.
     #[inline]
     pub fn norm(self) -> f64 {
-        self.x.hypot(self.y).hypot(self.z)
+        libm::hypot(libm::hypot(self.x, self.y), self.z)
     }
 
     /// Computes the straight-line (Euclidean) distance between this position and
@@ -71,7 +71,7 @@ impl Position {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         let dz = self.z - other.z;
-        dx.hypot(dy).hypot(dz)
+        libm::hypot(libm::hypot(dx, dy), dz)
     }
 }
 
@@ -112,14 +112,14 @@ impl Velocity {
     /// Speed in m/s (Euclidean magnitude).
     #[inline]
     pub fn speed(self) -> f64 {
-        self.norm_squared().sqrt()
+        libm::sqrt(self.norm_squared().max(0.0))
     }
 
     /// Dimensionless 3-velocity β = v/c relative to the local chrono-rest frame.
     /// This is exactly what the master Lagrangian and `LocalSpacetime` expect.
     #[inline]
     pub fn beta(self) -> f64 {
-        (self.norm_squared() / C_SQUARED).sqrt()
+        libm::sqrt((self.norm_squared() / C_SQUARED).max(0.0))
     }
 }
 
@@ -133,8 +133,8 @@ impl Velocity {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct ObserverState {
-    /// Timestamp of this state (any [`ClockType`] is accepted).
-    pub time: Timestamp,
+    /// TimePoint of this state (any [`ClockType`] is accepted).
+    pub time: TimePoint,
     /// Position in meters (typically barycentric or heliocentric).
     pub position: Position,
     /// Velocity in meters per second.
@@ -152,7 +152,7 @@ impl ObserverState {
     /// Creates a new state for typical solar-system or GNSS use.
     #[inline]
     pub const fn new(
-        time: Timestamp,
+        time: TimePoint,
         position: Position,
         velocity: Velocity,
         gravitational_potential_m2_s2: f64,
@@ -169,7 +169,7 @@ impl ObserverState {
     /// Creates a new state when strong-field or gravimeter data is available.
     #[inline]
     pub const fn new_strong_field(
-        time: Timestamp,
+        time: TimePoint,
         position: Position,
         velocity: Velocity,
         gravitational_potential_m2_s2: f64,

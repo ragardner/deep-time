@@ -1,7 +1,7 @@
-use crate::{Delta, Timestamp};
+use crate::{Delta, TimePoint};
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
-impl Add<Delta> for Timestamp {
+impl Add<Delta> for TimePoint {
     type Output = Self;
 
     #[inline(always)]
@@ -10,14 +10,14 @@ impl Add<Delta> for Timestamp {
     }
 }
 
-impl AddAssign<Delta> for Timestamp {
+impl AddAssign<Delta> for TimePoint {
     #[inline(always)]
     fn add_assign(&mut self, rhs: Delta) {
         self.mut_add(rhs);
     }
 }
 
-impl Sub<Delta> for Timestamp {
+impl Sub<Delta> for TimePoint {
     type Output = Self;
 
     #[inline(always)]
@@ -26,18 +26,18 @@ impl Sub<Delta> for Timestamp {
     }
 }
 
-impl SubAssign<Delta> for Timestamp {
+impl SubAssign<Delta> for TimePoint {
     #[inline(always)]
     fn sub_assign(&mut self, rhs: Delta) {
         self.mut_sub(rhs);
     }
 }
 
-impl Sub<Timestamp> for Timestamp {
+impl Sub<TimePoint> for TimePoint {
     type Output = Delta;
 
     #[inline(always)]
-    fn sub(self, rhs: Timestamp) -> Delta {
+    fn sub(self, rhs: TimePoint) -> Delta {
         self.duration_since(rhs)
     }
 }

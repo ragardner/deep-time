@@ -1,15 +1,15 @@
-//! High-precision evenly-spaced `Timestamp` iterator (the "linspace" for time).
+//! High-precision evenly-spaced `TimePoint` iterator (the "linspace" for time).
 
-use crate::{Delta, Timestamp};
+use crate::{Delta, TimePoint};
 
 /// Builder for nice ergonomic syntax: `start.every(5.minutes()).until(end)`
 #[derive(Clone, Debug)]
 pub struct Every {
-    start: Timestamp,
+    start: TimePoint,
     step: Delta,
 }
 
-impl Timestamp {
+impl TimePoint {
     /// Start building a range: `start.every(step)`
     pub const fn every(self, step: Delta) -> Every {
         Every { start: self, step }
@@ -17,11 +17,11 @@ impl Timestamp {
 }
 
 impl Every {
-    pub fn until(self, end: Timestamp) -> TimeRange {
+    pub fn until(self, end: TimePoint) -> TimeRange {
         TimeRange::new(self.start, end, self.step, true)
     }
 
-    pub fn up_to(self, end: Timestamp) -> TimeRange {
+    pub fn up_to(self, end: TimePoint) -> TimeRange {
         TimeRange::new(self.start, end, self.step, false)
     }
 }
@@ -34,24 +34,24 @@ impl Every {
 /// - or the traditional `TimeRange::inclusive(...)` / `exclusive(...)`
 #[derive(Clone, Debug)]
 pub struct TimeRange {
-    start: Timestamp,
-    current: Timestamp,
-    end: Timestamp,
+    start: TimePoint,
+    current: TimePoint,
+    end: TimePoint,
     step: Delta,
     inclusive: bool,
     finished: bool,
 }
 
 impl TimeRange {
-    pub const fn inclusive(start: Timestamp, end: Timestamp, step: Delta) -> Self {
+    pub const fn inclusive(start: TimePoint, end: TimePoint, step: Delta) -> Self {
         Self::new(start, end, step, true)
     }
 
-    pub const fn exclusive(start: Timestamp, end: Timestamp, step: Delta) -> Self {
+    pub const fn exclusive(start: TimePoint, end: TimePoint, step: Delta) -> Self {
         Self::new(start, end, step, false)
     }
 
-    const fn new(start: Timestamp, end: Timestamp, step: Delta, inclusive: bool) -> Self {
+    const fn new(start: TimePoint, end: TimePoint, step: Delta, inclusive: bool) -> Self {
         Self {
             start,
             current: start,
@@ -64,7 +64,7 @@ impl TimeRange {
 }
 
 impl Iterator for TimeRange {
-    type Item = Timestamp;
+    type Item = TimePoint;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.finished {

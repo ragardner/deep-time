@@ -1,6 +1,6 @@
-use crate::{C, ClockDrift, Delta, ObserverState, TWO_GM_SUN_OVER_C3, Timestamp};
+use crate::{C, ClockDrift, Delta, ObserverState, TWO_GM_SUN_OVER_C3, TimePoint};
 
-impl Timestamp {
+impl TimePoint {
     /// Computes the total relativistic correction (differential clock-rate drift + Shapiro delay)
     /// that must be **added** to the Newtonian geometric light time `|r_rx − r_tx| / c`.
     ///
@@ -61,15 +61,15 @@ impl Timestamp {
     ///
     /// # Returns
     /// A tuple `(correction, final_rx_time)` where `correction` is the relativistic
-    /// delay and `final_rx_time` is the converged receive timestamp.
+    /// delay and `final_rx_time` is the converged receive TimePoint.
     pub fn iterative_one_way_relativistic_delay<F>(
         tx: ObserverState,
         mut rx_provider: F,
         tolerance: Delta,
         max_iter: usize,
-    ) -> (Delta, Timestamp)
+    ) -> (Delta, TimePoint)
     where
-        F: FnMut(Timestamp) -> ObserverState,
+        F: FnMut(TimePoint) -> ObserverState,
     {
         let mut rx = rx_provider(tx.time); // initial guess
         let mut rel_correction = Delta::ZERO;
@@ -183,7 +183,7 @@ impl Timestamp {
         }
 
         let arg = (r_tx + r_rx + d) / (r_tx + r_rx - d).max(1.0);
-        let delay_sec = TWO_GM_SUN_OVER_C3 * arg.ln();
+        let delay_sec = TWO_GM_SUN_OVER_C3 * libm::log(arg);
 
         Delta::from_sec_f64(delay_sec)
     }
@@ -192,7 +192,7 @@ impl Timestamp {
 #[cfg(test)]
 mod relativistic_tests {
     use super::*;
-    use crate::{Delta, Position, ObserverState, Timestamp, Velocity};
+    use crate::{Delta, ObserverState, Position, TimePoint, Velocity};
 
     /// Small helper to build a `ObserverState` quickly.
     fn make_state(
@@ -203,7 +203,7 @@ mod relativistic_tests {
         char_scale: f64,
     ) -> ObserverState {
         ObserverState {
-            time: Timestamp::from_tai_sec(tai_sec),
+            time: TimePoint::from_tai_sec(tai_sec),
             position: pos,
             velocity: vel,
             gravitational_potential_m2_s2: phi_m2_s2,
@@ -218,7 +218,7 @@ mod relativistic_tests {
         let tx = make_state(0, origin, zero_vel, 0.0, 0.0);
         let rx = make_state(0, origin, zero_vel, 0.0, 0.0);
 
-        let correction = Timestamp::one_way_relativistic_delay(tx, rx);
+        let correction = TimePoint::one_way_relativistic_delay(tx, rx);
         assert_eq!(correction, Delta::ZERO);
     }
 
@@ -235,7 +235,7 @@ mod relativistic_tests {
         let tx = make_state(0, tx_pos, Velocity::from_speed(0.0), -8.87e8, 0.0);
         let rx = make_state(520, rx_pos, Velocity::from_speed(0.0), -8.87e8, 0.0); // ≈520 s light time
 
-        let correction = Timestamp::one_way_relativistic_delay(tx, rx);
+        let correction = TimePoint::one_way_relativistic_delay(tx, rx);
         let got_us = correction.as_sec_f64() * 1_000_000.0;
 
         // Expected ≈ 119.45 µs (pure Shapiro delay; identical potentials + zero velocity
@@ -262,7 +262,7 @@ mod relativistic_tests {
         );
         let rx = make_state(520, rx_pos, Velocity::from_speed(29_000.0), -8.80e8, 0.0);
 
-        let correction = Timestamp::one_way_relativistic_delay(tx, rx);
+        let correction = TimePoint::one_way_relativistic_delay(tx, rx);
         let corr_sec = correction.as_sec_f64();
 
         // Typical magnitude for interplanetary links: tens of nanoseconds
@@ -285,7 +285,7 @@ mod relativistic_tests {
         let rx_phi = -8.80e8;
 
         let tolerance = Delta::from_ns(1);
-        let (correction, final_rx_time) = Timestamp::iterative_one_way_relativistic_delay(
+        let (correction, final_rx_time) = TimePoint::iterative_one_way_relativistic_delay(
             tx,
             |guessed_time| {
                 make_state(
@@ -322,7 +322,7 @@ mod relativistic_tests {
 
         let round_trip_measured = Delta::from_sec_f64(1010.0); // ≈ 2 × 505 s
 
-        let correction = Timestamp::round_trip_relativistic_correction(tx, round_trip_measured, rx);
+        let correction = TimePoint::round_trip_relativistic_correction(tx, round_trip_measured, rx);
         let corr_sec = correction.as_sec_f64();
 
         assert!(corr_sec > 0.0);
@@ -337,10 +337,10 @@ mod relativistic_tests {
         let tx = make_state(0, tx_pos, Velocity::from_speed(0.0), -8.87e8, 0.0);
         let rx = make_state(520, rx_pos, Velocity::from_speed(0.0), -8.80e8, 0.0);
 
-        let trapezoidal = Timestamp::one_way_relativistic_delay(tx, rx);
+        let trapezoidal = TimePoint::one_way_relativistic_delay(tx, rx);
 
         // path_sampler that returns zero (no varying rate difference) → should be identical
-        let integrated = Timestamp::one_way_relativistic_delay_integrated(tx, rx, 2, |_| 0.0);
+        let integrated = TimePoint::one_way_relativistic_delay_integrated(tx, rx, 2, |_| 0.0);
 
         let diff = (trapezoidal.as_sec_f64() - integrated.as_sec_f64()).abs();
         assert!(
@@ -359,7 +359,7 @@ mod relativistic_tests {
         let rx = make_state(520, rx_pos, Velocity::from_speed(0.0), -8.80e8, 0.0);
 
         // Use a realistic but constant relative rate offset for this test
-        let integrated = Timestamp::one_way_relativistic_delay_integrated(tx, rx, 21, |_| 1e-9);
+        let integrated = TimePoint::one_way_relativistic_delay_integrated(tx, rx, 21, |_| 1e-9);
 
         let corr_sec = integrated.as_sec_f64();
         assert!(corr_sec.abs() < 1e-3); // sanity check – no huge blow-up

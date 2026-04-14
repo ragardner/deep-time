@@ -3,10 +3,10 @@
 //! # Spacecraft Usage Pattern
 //!
 //! ```ignore
-//! use deep_time_core::{Timestamp, ClockType, ClockDrift, ClockModel};
+//! use deep_time_core::{TimePoint, ClockType, ClockDrift, ClockModel};
 //!
 //! // Onboard clock is always tagged as Proper time
-//! let onboard_tau = Timestamp::create_from_model(current_scale); // or .apply_new_model(...)
+//! let onboard_tau = TimePoint::create_from_model(current_scale); // or .apply_new_model(...)
 //!
 //! // Latest relativistic model received from ground
 //! let scale = ClockModel::proper(last_contact, current_poly);
@@ -20,13 +20,13 @@
 //! let onboard_equivalent = command_in_tt.convert_back_using_model(scale);
 //! ```
 //!
-//! This pattern gives you:
+//! This pattern provides:
 //! - Fully self-describing proper time (no external state needed)
 //! - Exact 36-digit quadratic corrections (velocity, gravity, clock drift)
 //! - Zero-cost `const fn` everywhere
 //! - Seamless round-tripping between Proper ↔ TT/TCB/etc.
 
-use crate::Timestamp;
+use crate::TimePoint;
 use core::fmt;
 
 /// Enum of the different time systems/clocks available.
@@ -112,9 +112,9 @@ impl ClockType {
     }
 
     /// Returns the reference epoch (zero instant) of this clock type,
-    /// expressed as a zero-duration [`Timestamp`] in this exact clock type.
-    pub const fn reference_epoch(self) -> Timestamp {
-        Timestamp::new(0, 0, self)
+    /// expressed as a zero-duration [`TimePoint`] in this exact clock type.
+    pub const fn reference_epoch(self) -> TimePoint {
+        TimePoint::new(0, 0, self)
     }
 }
 

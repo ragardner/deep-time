@@ -1,11 +1,11 @@
 use crate::{
-    ClockDrift, ClockModel, ClockType, MICROQUECTOS_PER_ATTOSEC, MICROQUECTOS_PER_FEMTOSEC,
+    ClockDrift, ClockModel, ClockType, Delta, MICROQUECTOS_PER_ATTOSEC, MICROQUECTOS_PER_FEMTOSEC,
     MICROQUECTOS_PER_MICROSEC, MICROQUECTOS_PER_MILLISEC, MICROQUECTOS_PER_NANOSEC,
     MICROQUECTOS_PER_PICOSEC, MICROQUECTOS_PER_QUECTOSEC, MICROQUECTOS_PER_RONTOSEC,
-    MICROQUECTOS_PER_SEC, MICROQUECTOS_PER_YOCTOSEC, MICROQUECTOS_PER_ZEPTOSEC, Timestamp,
+    MICROQUECTOS_PER_SEC, MICROQUECTOS_PER_YOCTOSEC, MICROQUECTOS_PER_ZEPTOSEC, TimePoint,
 };
 
-impl Timestamp {
+impl TimePoint {
     /// Zero duration on TAI (most common default).
     pub const ZERO: Self = Self {
         sec: 0,
@@ -13,8 +13,9 @@ impl Timestamp {
         clock_type: ClockType::TAI,
     };
 
-    /// J2000.0 reference epoch: 2000-01-01 12:00:00 TT  
-    /// **This is now the zero point for TAI** (your new standard count)
+    /// J2000_TAI is the library’s chosen internal zero point.
+    /// It corresponds exactly to the J2000.0 instant (2000-01-01 12:00:00 TT).
+    /// Therefore TAI zero in this library = J2000.0 TT (i.e. 2000-01-01 11:59:27.816 in real-world TAI).
     pub const J2000_TAI: Self = Self::ZERO;
 
     /// J1900 reference epoch: 1900-01-01 12:00:00 TAI (noon)
@@ -41,7 +42,7 @@ impl Timestamp {
     /// QZSS Time reference epoch (identical reference to GPST)
     pub const QZSS_EPOCH: Self = Self::new(0, 0, ClockType::QZSST);
 
-    /// Creates a new `Timestamp` with automatic normalization.
+    /// Creates a new `TimePoint` with automatic normalization.
     #[inline]
     pub const fn new(sec: i128, subsec: u128, clock_type: ClockType) -> Self {
         Self {
@@ -62,11 +63,9 @@ impl Timestamp {
         self
     }
 
-    /// Returns an exact copy of this `Timestamp`.
+    /// Returns an exact copy of this `TimePoint`.
     ///
     /// This is a zero-cost, always-inlined convenience method.
-    /// It is intentionally neutral so it can be used in any context
-    /// (onboard clocks, ground stations, simulations, etc.).
     #[inline(always)]
     pub const fn copy(self) -> Self {
         self
@@ -159,7 +158,6 @@ impl Timestamp {
         Self::from_sec(h * 3600, clock_type)
     }
 
-    #[inline]
     pub const fn from_hms(
         hr: i128,
         min: i128,
@@ -169,17 +167,14 @@ impl Timestamp {
         ns: i128,
         clock_type: ClockType,
     ) -> Self {
-        // Whole seconds (fast, tiny multipliers)
+        // Whole seconds
         let total_sec = hr * 3600i128 + min * 60i128 + sec;
-
         // Sub-second part only
         let sub_ns = ms * 1_000_000i128 + us * 1_000i128 + ns;
-
         // Fast path: nothing fractional
         if sub_ns == 0 {
             return Self::new(total_sec, 0, clock_type);
         }
-
         // Inline from_subunits logic for nanoseconds → microquectoseconds
         let abs_ns = sub_ns.unsigned_abs();
         let extra_sec = (abs_ns / 1_000_000_000u128) as i128;
@@ -238,8 +233,58 @@ impl Timestamp {
     }
 
     #[inline]
+    pub const fn from_utc_us(us: i128) -> Self {
+        Self::from_us(us, ClockType::UTC)
+    }
+
+    #[inline]
     pub const fn from_utc_ns(ns: i128) -> Self {
         Self::from_ns(ns, ClockType::UTC)
+    }
+
+    #[inline]
+    pub const fn from_unix_sec(s: i128) -> Self {
+        Self::new(
+            Self::UNIX_EPOCH_TAI.sec + s,
+            Self::UNIX_EPOCH_TAI.subsec,
+            ClockType::TAI,
+        )
+    }
+
+    #[inline]
+    pub const fn from_unix_ms(ms: i128) -> Self {
+        Self::from_unix_sec(0).add(Delta::from_ms(ms))
+    }
+
+    #[inline]
+    pub const fn from_unix_us(us: i128) -> Self {
+        Self::from_unix_sec(0).add(Delta::from_us(us))
+    }
+
+    #[inline]
+    pub const fn from_unix_ns(ns: i128) -> Self {
+        Self::from_unix_sec(0).add(Delta::from_ns(ns))
+    }
+
+    /// GPS Time (GPST) – seconds since GPS epoch (1980-01-06 00:00:00 GPST)
+    #[inline]
+    pub const fn from_gps_sec(s: i128) -> Self {
+        Self::new(s, 0, ClockType::GPST)
+    }
+
+    #[inline]
+    pub const fn from_gps_ms(ms: i128) -> Self {
+        Self::from_ms(ms, ClockType::GPST)
+    }
+
+    #[inline]
+    pub const fn from_gps_us(us: i128) -> Self {
+        Self::from_us(us, ClockType::GPST)
+    }
+
+    #[inline]
+    pub const fn from_gps_ns(ns: i128) -> Self {
+        Self::from_ns(ns, ClockType::GPST)
     }
 
     #[inline]
@@ -264,15 +309,12 @@ impl Timestamp {
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     #[inline]
     pub fn now(target: ClockType) -> Self {
-        use crate::UnixTimestamp;
-
         let dur = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .expect("system time before Unix epoch");
         let secs = dur.as_secs() as i128;
         let nanos = dur.subsec_nanos() as i128;
-
-        secs.unix_seconds()
+        crate::TimePoint::from_unix_sec(secs)
             .add(crate::Delta::from_ns(nanos))
             .to_clock_type(target)
     }
@@ -281,15 +323,12 @@ impl Timestamp {
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
     #[inline]
     pub fn now(target: ClockType) -> Self {
-        use crate::UnixTimestamp;
-
         // `Date.now()` returns milliseconds since Unix epoch as f64.
         // We cast early and use integer math (perfectly safe for current timestamps).
         let millis = js_sys::Date::now() as i128;
         let secs = millis / 1000;
         let nanos = (millis % 1000) * 1_000_000;
-
-        secs.unix_seconds()
+        crate::TimePoint::from_unix_sec(secs)
             .add(crate::Delta::from_ns(nanos))
             .to_clock_type(target)
     }

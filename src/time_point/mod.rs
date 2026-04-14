@@ -4,14 +4,14 @@ mod conversions;
 mod formatting;
 mod ops;
 mod relativity;
-pub mod traits;
+pub mod trajectory;
 mod unix;
 
 use crate::ClockType;
 
-/// A high-precision timestamp expressed in a specific [`ClockType`].
+/// A high-precision point in time expressed in a specific [`ClockType`].
 ///
-/// `Timestamp` represents an instant in time as **seconds + microquectoseconds**
+/// `TimePoint` represents an instant in time as **seconds + microquectoseconds**
 /// (where 1 microquectosecond = 10⁻³⁶ s) since the reference epoch of the
 /// associated ClockType.
 ///
@@ -20,7 +20,7 @@ use crate::ClockType;
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
-pub struct Timestamp {
+pub struct TimePoint {
     /// Signed whole seconds since the reference epoch of the clock_type.
     pub(crate) sec: i128,
     /// Fractional part in microquectoseconds (`0 ≤ microquectos < 10³⁶`).
@@ -29,7 +29,7 @@ pub struct Timestamp {
     pub(crate) clock_type: ClockType,
 }
 
-impl Timestamp {
+impl TimePoint {
     #[inline(always)]
     pub const fn sec(&self) -> i128 {
         self.sec

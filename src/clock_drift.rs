@@ -370,10 +370,12 @@ impl ClockDrift {
         let delta = u.max(0.0);
         let x = PLANCK_LENGTH_4 * kretschmann.max(0.0);
 
-        let num = delta * (1.0 + x) + x * ((1.0 - delta).powi(2));
+        // powi(2) replaced by manual square — mathematically identical, no libm needed
+        let one_minus_delta = 1.0 - delta;
+        let num = delta * (1.0 + x) + x * (one_minus_delta * one_minus_delta);
         let k_eff = num / (1.0 + x);
 
-        let rate_factor = k_eff.sqrt().max(0.0);
+        let rate_factor = libm::sqrt(k_eff).max(0.0);
         let rate_offset = rate_factor - 1.0;
 
         Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(rate_offset))

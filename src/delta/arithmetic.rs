@@ -1,4 +1,4 @@
-use crate::{Delta, DtBig, MICROQUECTOS_PER_SEC, POW15, POW21};
+use crate::{Delta, DtBig, MICROQUECTOS_PER_SEC, POW15, POW21, floor_f64};
 
 impl Delta {
     /// Returns the sum of `self` and `rhs`.
@@ -122,7 +122,7 @@ impl Delta {
                 Self::MIN
             };
         } else {
-            let floor_f = sec_f.floor();
+            let floor_f = floor_f64(sec_f);
             let frac = sec_f - floor_f;
             let high = (frac * (POW15 as f64)) as u128;
             Self {

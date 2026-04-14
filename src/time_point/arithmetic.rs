@@ -1,6 +1,6 @@
-use crate::{Delta, MICROQUECTOS_PER_SEC, Timestamp};
+use crate::{Delta, MICROQUECTOS_PER_SEC, TimePoint};
 
-impl Timestamp {
+impl TimePoint {
     /// Overflowing add. The result keeps the original [`ClockType`].
     pub const fn add(self, delta: Delta) -> Self {
         let mut sec = self.sec + delta.sec;
@@ -137,7 +137,7 @@ impl Timestamp {
 
     /// Returns the signed duration between two instants  
     /// (always computed in TAI internally so the result is correct  
-    /// even if the two `Timestamp`s have different clock types).
+    /// even if the two `TimePoint`s have different clock types).
     pub const fn duration_since(self, earlier: Self) -> Delta {
         let self_tai = self.to_tai();
         let earlier_tai = earlier.to_tai();

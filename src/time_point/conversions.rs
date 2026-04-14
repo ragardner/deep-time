@@ -1,10 +1,10 @@
 use crate::leap_seconds::leap_seconds_before;
 use crate::{
     ClockDrift, ClockModel, ClockType, Delta, LB, LG, POW15, POW21, TCG_TCB_REF_JD, TDB0,
-    TT_TAI_OFFSET_DELTA, Timestamp, sin_approx,
+    TT_TAI_OFFSET_DELTA, TimePoint, sin_approx,
 };
 
-impl Timestamp {
+impl TimePoint {
     /// Converts this instant to any other [`ClockType`], representing the exact same physical moment.
     #[inline]
     pub const fn to_clock_type(self, target: ClockType) -> Self {
@@ -15,7 +15,7 @@ impl Timestamp {
         tai.from_tai(target)
     }
 
-    /// Returns a copy of this `Timestamp` with a new [`ClockType`] while keeping the exact same
+    /// Returns a copy of this `TimePoint` with a new [`ClockType`] while keeping the exact same
     /// numerical seconds and subseconds value. This is zero-cost after conversion.
     #[inline]
     pub(crate) const fn with_clock_type(self, clock_type: ClockType) -> Self {
@@ -26,7 +26,7 @@ impl Timestamp {
         }
     }
 
-    /// Converts this `Timestamp` (in any clock type) to TAI — the library’s internal canonical time clock type.
+    /// Converts this `TimePoint` (in any clock type) to TAI — the library’s internal canonical time clock type.
     pub const fn to_tai(self) -> Self {
         match self.clock_type {
             ClockType::TAI => self,
@@ -47,7 +47,7 @@ impl Timestamp {
         }
     }
 
-    /// Converts a TAI `Timestamp` to any other requested [`ClockType`].
+    /// Converts a TAI `TimePoint` to any other requested [`ClockType`].
     pub const fn from_tai(self, target: ClockType) -> Self {
         match target {
             ClockType::TAI => self,
@@ -126,7 +126,7 @@ impl Timestamp {
         self.convert_back_using_drift(model.base, model.reference, model.drift)
     }
 
-    /// Creates a `Timestamp` from a fully self-describing [`ClockModel`].
+    /// Creates a `TimePoint` from a fully self-describing [`ClockModel`].
     ///
     /// This is the recommended way for spacecraft to represent
     /// onboard proper time that already carries its own relativistic model.
@@ -312,15 +312,15 @@ impl Timestamp {
         (jd - 2_400_000, frac)
     }
 
-    /// Creates a `Timestamp` from an exact Julian Date in TT (full precision, no loss).
+    /// Creates a `TimePoint` from an exact Julian Date in TT (full precision, no loss).
     #[inline]
     pub const fn from_jd_tt_exact(jd_days: i128, frac: Delta) -> Self {
         let total_sec = jd_days * 86_400 + frac.sec;
-        let tt = Timestamp::new(total_sec, frac.subsec, ClockType::TT);
+        let tt = TimePoint::new(total_sec, frac.subsec, ClockType::TT);
         tt.to_tai()
     }
 
-    /// Creates a `Timestamp` from an exact Modified Julian Date in TT.
+    /// Creates a `TimePoint` from an exact Modified Julian Date in TT.
     #[inline]
     pub const fn from_mjd_tt_exact(mjd_days: i128, frac: Delta) -> Self {
         Self::from_jd_tt_exact(mjd_days + 2_400_000, frac)
@@ -338,7 +338,7 @@ impl Timestamp {
         self.to_clock_type(ClockType::UTC).to_mjd_tt()
     }
 
-    /// Returns the numerical difference in seconds between two `Timestamp`s (ignores `ClockType`).
+    /// Returns the numerical difference in seconds between two `TimePoint`s (ignores `ClockType`).
     ///
     /// **Lossy by design** (for testing only). Use `duration_since` for the exact `Delta`.
     pub const fn numerical_seconds_since(&self, other: &Self) -> f64 {
@@ -364,17 +364,17 @@ mod tdb_tests {
     #[test]
     fn tdb_tai_roundtrip_is_accurate() {
         let test_points = [
-            Timestamp::from_tai_sec(0),                  // J2000 TAI
-            Timestamp::from_tai_sec(86_400 * 365),       // ~1 year later
-            Timestamp::from_tai_sec(-86_400 * 365 * 10), // 10 years before
-            Timestamp::from_tai_sec(1_000_000_000),      // ~31.7 years later
-            Timestamp::from_tai_sec(-2_208_945_600),     // J1900 epoch
+            TimePoint::from_tai_sec(0),                  // J2000 TAI
+            TimePoint::from_tai_sec(86_400 * 365),       // ~1 year later
+            TimePoint::from_tai_sec(-86_400 * 365 * 10), // 10 years before
+            TimePoint::from_tai_sec(1_000_000_000),      // ~31.7 years later
+            TimePoint::from_tai_sec(-2_208_945_600),     // J1900 epoch
         ];
 
         #[cfg(feature = "std")]
         {
             use std::eprintln;
-            let tai = Timestamp::ZERO;
+            let tai = TimePoint::ZERO;
             let tdb = tai.to_clock_type(ClockType::TDB);
             eprintln!("\nTAI sec={}, subsec={}", tai.sec, tai.subsec);
             eprintln!("TDB sec={}, subsec={}", tdb.sec, tdb.subsec);
@@ -398,7 +398,7 @@ mod tdb_tests {
     /// (TT = TAI + 32.184 s and TDB − TT ≈ −74.6 µs with this formula)
     #[test]
     fn tdb_minus_tt_at_j2000() {
-        let tai = Timestamp::ZERO;
+        let tai = TimePoint::ZERO;
         let tdb = tai.to_clock_type(ClockType::TDB);
 
         let diff_s = tdb.numerical_seconds_since(&tai); // see helper below
@@ -412,7 +412,7 @@ mod tdb_tests {
 
     #[test]
     fn tdb_minus_tt_at_j2000_2() {
-        let tai = Timestamp::ZERO;
+        let tai = TimePoint::ZERO;
         let tdb = tai.to_clock_type(ClockType::TDB);
         let diff_s = tdb.numerical_seconds_since(&tai);
         assert!((diff_s - 32.183925).abs() < 1e-6, "got {}", diff_s);
@@ -422,9 +422,9 @@ mod tdb_tests {
     #[test]
     fn tdb_correction_stays_within_bounds() {
         let points = [
-            Timestamp::from_tai_sec(0),
-            Timestamp::from_tai_sec(86_400 * 365 * 100),
-            Timestamp::from_tai_sec(-86_400 * 365 * 50),
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365 * 100),
+            TimePoint::from_tai_sec(-86_400 * 365 * 50),
         ];
 
         for &p in &points {
@@ -450,7 +450,7 @@ mod drift_tests {
 
     #[test]
     fn proper_to_tt_with_drift_roundtrip() {
-        let reference = Timestamp::from_tai_sec(0);
+        let reference = TimePoint::from_tai_sec(0);
         let drift = ClockDrift::new(
             Delta::from_ms(100), // exactly 0.1 s
             Delta::from_ns(1),   // exactly 1 ns/s = 1e-9 s/s
@@ -458,7 +458,7 @@ mod drift_tests {
         );
         let model = ClockModel::proper(reference, drift);
 
-        let onboard_proper = Timestamp::create_from_model(model).add(Delta::from_sec(1_000_000));
+        let onboard_proper = TimePoint::create_from_model(model).add(Delta::from_sec(1_000_000));
 
         let tt = onboard_proper.convert_using_model(model);
         let back = tt.convert_back_using_model(model);
@@ -468,11 +468,11 @@ mod drift_tests {
 
     #[test]
     fn zero_drift_is_identity() {
-        let reference = Timestamp::from_tai_sec(0);
+        let reference = TimePoint::from_tai_sec(0);
         let drift = ClockDrift::ZERO;
         let model = ClockModel::proper(reference, drift);
 
-        let p = Timestamp::from_tai_sec(1_234_567);
+        let p = TimePoint::from_tai_sec(1_234_567);
         let converted = p.convert_using_model(model);
 
         assert_eq!(converted, p.with_clock_type(ClockType::Proper));
@@ -480,11 +480,11 @@ mod drift_tests {
 
     #[test]
     fn constant_offset_only() {
-        let reference = Timestamp::from_tai_sec(0);
+        let reference = TimePoint::from_tai_sec(0);
         let drift = ClockDrift::from_constant(Delta::from_sec_f64(32.184));
         let model = ClockModel::proper(reference, drift);
 
-        let onboard = Timestamp::create_from_model(model).add(Delta::from_sec(100));
+        let onboard = TimePoint::create_from_model(model).add(Delta::from_sec(100));
         let tt = onboard.convert_using_model(model);
 
         let expected = onboard
@@ -495,7 +495,7 @@ mod drift_tests {
 
     #[test]
     fn convert_back_using_model_inverse() {
-        let reference = Timestamp::from_tai_sec(0);
+        let reference = TimePoint::from_tai_sec(0);
         let drift = ClockDrift::new(
             Delta::from_ms(500), // exactly 0.5 s
             Delta::from_ns(2),   // exactly 2 ns/s = 2e-9 s/s
@@ -504,7 +504,7 @@ mod drift_tests {
         let model = ClockModel::proper(reference, drift);
 
         // Start from onboard Proper time (the natural input for this API)
-        let proper = Timestamp::create_from_model(model).add(Delta::from_sec(1_000_000));
+        let proper = TimePoint::create_from_model(model).add(Delta::from_sec(1_000_000));
 
         let tt = proper.convert_using_model(model); // Proper → TT
         let back = tt.convert_back_using_model(model); // TT → Proper
@@ -514,16 +514,16 @@ mod drift_tests {
 
     #[test]
     fn apply_new_model_and_create_from_model() {
-        let reference = Timestamp::from_tai_sec(0);
+        let reference = TimePoint::from_tai_sec(0);
         let drift = ClockDrift::ZERO;
         let model = ClockModel::proper(reference, drift);
 
-        let raw = Timestamp::from_tai_sec(123);
+        let raw = TimePoint::from_tai_sec(123);
         let tagged = raw.apply_new_model(model);
 
         assert_eq!(tagged.clock_type(), ClockType::Proper);
         assert_eq!(
-            Timestamp::create_from_model(model),
+            TimePoint::create_from_model(model),
             reference.with_clock_type(ClockType::Proper)
         );
     }

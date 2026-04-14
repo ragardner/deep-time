@@ -3,41 +3,41 @@
 //! These are thin wrappers around existing UTC ↔ TAI conversion logic
 //! so they automatically handle leap seconds correctly.
 
-use crate::{ClockType, Delta, MICROQUECTOS_PER_MILLISEC, Timestamp};
+use crate::{ClockType, Delta, MICROQUECTOS_PER_MILLISEC, TimePoint};
 
-impl Timestamp {
-    /// Creates a `Timestamp` from a classic Unix timestamp **in seconds**
+impl TimePoint {
+    /// Creates a `TimePoint` from a classic Unix timestamp **in seconds**
     /// since 1970-01-01 00:00:00 UTC.
     ///
-    /// The returned `Timestamp` is in TAI (your internal hub).
+    /// The returned `TimePoint` is in TAI (your internal hub).
     #[inline]
     pub const fn from_unix_seconds(seconds: i128) -> Self {
-        Timestamp::new(seconds, 0, ClockType::UTC).to_tai()
+        TimePoint::new(seconds, 0, ClockType::UTC).to_tai()
     }
 
-    /// Creates a `Timestamp` from a Unix timestamp **in milliseconds**
+    /// Creates a `TimePoint` from a Unix timestamp **in milliseconds**
     /// since 1970-01-01 00:00:00 UTC.
     #[inline]
     pub const fn from_unix_milliseconds(millis: i128) -> Self {
-        Timestamp::new(0, 0, ClockType::UTC)
+        TimePoint::new(0, 0, ClockType::UTC)
             .add(Delta::from_ms(millis))
             .to_tai()
     }
 
-    /// Creates a `Timestamp` from a Unix timestamp **in microseconds**
+    /// Creates a `TimePoint` from a Unix timestamp **in microseconds**
     /// since 1970-01-01 00:00:00 UTC.
     #[inline]
     pub const fn from_unix_microseconds(micros: i128) -> Self {
-        Timestamp::new(0, 0, ClockType::UTC)
+        TimePoint::new(0, 0, ClockType::UTC)
             .add(Delta::from_us(micros))
             .to_tai()
     }
 
-    /// Creates a `Timestamp` from a Unix timestamp **in nanoseconds**
+    /// Creates a `TimePoint` from a Unix timestamp **in nanoseconds**
     /// since 1970-01-01 00:00:00 UTC.
     #[inline]
     pub const fn from_unix_nanoseconds(nanos: i128) -> Self {
-        Timestamp::new(0, 0, ClockType::UTC)
+        TimePoint::new(0, 0, ClockType::UTC)
             .add(Delta::from_ns(nanos))
             .to_tai()
     }

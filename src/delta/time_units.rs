@@ -3,31 +3,31 @@
 //! ```
 //! use deep_time_core::{ClockType, TimeUnits};
 //!
-//! let delta = 5.seconds() + 250.milliseconds() + 123_456.nanoseconds();
-//! let stamp = 3.days().ago(ClockType::UTC);
+//! let delta = 5.sec() + 250.ms() + 123_456.ns();
+//! let stamp = 3.d().ago(ClockType::UTC);
 //! ```
 
-use crate::{ClockType, Delta, Timestamp};
+use crate::{ClockType, Delta, TimePoint};
 
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
-/// Import it explicitly when you want the nice syntax:
+/// Import it explicitly to create `Delta`s directly from rust ints and floats:
 /// `use deep_time_core::TimeUnits;`
 pub trait TimeUnits: Copy + Sized {
     // ── Delta constructors ─────────────────────────────────────
-    fn nanoseconds(self) -> Delta;
-    fn microseconds(self) -> Delta;
-    fn milliseconds(self) -> Delta;
-    fn seconds(self) -> Delta;
-    fn minutes(self) -> Delta;
-    fn hours(self) -> Delta;
-    fn days(self) -> Delta; // 86400 s (civil day, not leap-second aware)
-    fn weeks(self) -> Delta;
-    fn years(self) -> Delta; // 365.25 days (standard approximation)
+    fn ns(self) -> Delta;
+    fn us(self) -> Delta;
+    fn ms(self) -> Delta;
+    fn sec(self) -> Delta;
+    fn min(self) -> Delta;
+    fn hr(self) -> Delta;
+    fn d(self) -> Delta; // 86400 s (civil day, not leap-second aware)
+    fn wk(self) -> Delta;
+    fn yr(self) -> Delta; // 365.25 days (standard approximation)
 
-    // ── Timestamp constructors (anchored at "now" in the chosen clock type) ──
-    fn ago(self, clock_type: ClockType) -> Timestamp;
-    fn from_now(self, clock_type: ClockType) -> Timestamp;
+    // ── TimePoint constructors (anchored at "now" in the chosen clock type) ──
+    fn ago(self, clock_type: ClockType) -> TimePoint;
+    fn from_now(self, clock_type: ClockType) -> TimePoint;
 }
 
 // Integer implementations (all common signed/unsigned types)
@@ -36,40 +36,40 @@ macro_rules! impl_time_units_int {
         $(
             impl TimeUnits for $ty {
                 #[inline(always)]
-                fn nanoseconds(self) -> Delta { Delta::from_ns(self as i128) }
+                fn ns(self) -> Delta { Delta::from_ns(self as i128) }
 
                 #[inline(always)]
-                fn microseconds(self) -> Delta { Delta::from_us(self as i128) }
+                fn us(self) -> Delta { Delta::from_us(self as i128) }
 
                 #[inline(always)]
-                fn milliseconds(self) -> Delta { Delta::from_ms(self as i128) }
+                fn ms(self) -> Delta { Delta::from_ms(self as i128) }
 
                 #[inline(always)]
-                fn seconds(self) -> Delta { Delta::from_sec(self as i128) }
+                fn sec(self) -> Delta { Delta::from_sec(self as i128) }
 
                 #[inline(always)]
-                fn minutes(self) -> Delta { Delta::from_min(self as i128) }
+                fn min(self) -> Delta { Delta::from_min(self as i128) }
 
                 #[inline(always)]
-                fn hours(self) -> Delta { Delta::from_hr(self as i128) }
+                fn hr(self) -> Delta { Delta::from_hr(self as i128) }
 
                 #[inline(always)]
-                fn days(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(86_400)) }
+                fn d(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(86_400)) }
 
                 #[inline(always)]
-                fn weeks(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(604_800)) }
+                fn wk(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(604_800)) }
 
                 #[inline(always)]
-                fn years(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(31_557_600)) }
+                fn yr(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(31_557_600)) }
 
                 #[inline(always)]
-                fn ago(self, clock_type: ClockType) -> Timestamp {
-                    Timestamp::from_sec(0, clock_type).sub(self.seconds())
+                fn ago(self, clock_type: ClockType) -> TimePoint {
+                    TimePoint::from_sec(0, clock_type).sub(self.sec())
                 }
 
                 #[inline(always)]
-                fn from_now(self, clock_type: ClockType) -> Timestamp {
-                    Timestamp::from_sec(0, clock_type).add(self.seconds())
+                fn from_now(self, clock_type: ClockType) -> TimePoint {
+                    TimePoint::from_sec(0, clock_type).add(self.sec())
                 }
             }
         )*
@@ -81,71 +81,128 @@ impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
 // f64 support (most useful for fractional units)
 impl TimeUnits for f64 {
     #[inline]
-    fn nanoseconds(self) -> Delta {
+    fn ns(self) -> Delta {
         Delta::from_ns(self as i128)
     }
 
     #[inline]
-    fn microseconds(self) -> Delta {
+    fn us(self) -> Delta {
         Delta::from_us(self as i128)
     }
 
     #[inline]
-    fn milliseconds(self) -> Delta {
+    fn ms(self) -> Delta {
         Delta::from_ms(self as i128)
     }
 
     #[inline]
-    fn seconds(self) -> Delta {
+    fn sec(self) -> Delta {
         Delta::from_sec(self as i128)
     }
 
     #[inline]
-    fn minutes(self) -> Delta {
-        (self * 60.0).seconds()
+    fn min(self) -> Delta {
+        (self * 60.0).sec()
     }
 
     #[inline]
-    fn hours(self) -> Delta {
-        (self * 3600.0).seconds()
+    fn hr(self) -> Delta {
+        (self * 3600.0).sec()
     }
 
     #[inline]
-    fn days(self) -> Delta {
-        (self * 86_400.0).seconds()
+    fn d(self) -> Delta {
+        (self * 86_400.0).sec()
     }
 
     #[inline]
-    fn weeks(self) -> Delta {
-        (self * 604_800.0).seconds()
+    fn wk(self) -> Delta {
+        (self * 604_800.0).sec()
     }
 
     #[inline]
-    fn years(self) -> Delta {
-        (self * 31_557_600.0).seconds()
+    fn yr(self) -> Delta {
+        (self * 31_557_600.0).sec()
     }
 
     #[inline]
-    fn ago(self, clock_type: ClockType) -> Timestamp {
-        Timestamp::from_sec(0, clock_type).sub(self.seconds())
+    fn ago(self, clock_type: ClockType) -> TimePoint {
+        TimePoint::from_sec(0, clock_type).sub(self.sec())
     }
 
     #[inline]
-    fn from_now(self, clock_type: ClockType) -> Timestamp {
-        Timestamp::from_sec(0, clock_type).add(self.seconds())
+    fn from_now(self, clock_type: ClockType) -> TimePoint {
+        TimePoint::from_sec(0, clock_type).add(self.sec())
+    }
+}
+
+impl TimeUnits for f32 {
+    #[inline]
+    fn ns(self) -> Delta {
+        Delta::from_ns(self as i128)
+    }
+
+    #[inline]
+    fn us(self) -> Delta {
+        Delta::from_us(self as i128)
+    }
+
+    #[inline]
+    fn ms(self) -> Delta {
+        Delta::from_ms(self as i128)
+    }
+
+    #[inline]
+    fn sec(self) -> Delta {
+        Delta::from_sec(self as i128)
+    }
+
+    #[inline]
+    fn min(self) -> Delta {
+        (self * 60.0f32).sec()
+    }
+
+    #[inline]
+    fn hr(self) -> Delta {
+        (self * 3600.0f32).sec()
+    }
+
+    #[inline]
+    fn d(self) -> Delta {
+        (self * 86_400.0f32).sec()
+    }
+
+    #[inline]
+    fn wk(self) -> Delta {
+        (self * 604_800.0f32).sec()
+    }
+
+    #[inline]
+    fn yr(self) -> Delta {
+        (self * 31_557_600.0f32).sec()
+    }
+
+    #[inline]
+    fn ago(self, clock_type: ClockType) -> TimePoint {
+        TimePoint::from_sec(0, clock_type).sub(self.sec())
+    }
+
+    #[inline]
+    fn from_now(self, clock_type: ClockType) -> TimePoint {
+        TimePoint::from_sec(0, clock_type).add(self.sec())
     }
 }
 
 impl Delta {
-    /// Returns a `Timestamp` that is this duration ago from the given clock type.
+    /// Returns a `TimePoint` that is this duration ago from the given clock type.
     #[inline(always)]
-    pub fn ago(self, clock_type: ClockType) -> Timestamp {
-        Timestamp::from_sec(0, clock_type).sub(self)
+    pub fn ago(self, clock_type: ClockType) -> TimePoint {
+        TimePoint::from_sec(0, clock_type).sub(self)
     }
 
-    /// Returns a `Timestamp` that is this duration from now in the given clock type.
+    /// Returns a `TimePoint` that is this duration from now in the given clock type.
     #[inline(always)]
-    pub fn from_now(self, clock_type: ClockType) -> Timestamp {
-        Timestamp::from_sec(0, clock_type).add(self)
+    pub fn from_now(self, clock_type: ClockType) -> TimePoint {
+        TimePoint::from_sec(0, clock_type).add(self)
     }
 }

@@ -1,4 +1,4 @@
-use crate::{ClockDrift, ClockType, Timestamp};
+use crate::{ClockDrift, ClockType, TimePoint};
 
 /// A fully self-describing relativistic time scale for spacecraft.
 ///
@@ -14,7 +14,7 @@ pub struct ClockModel {
     /// Base scale (usually `Proper` or `Custom`)
     pub base: ClockType,
     /// Epoch at which the polynomial was defined (e.g. last ground contact)
-    pub reference: Timestamp,
+    pub reference: TimePoint,
     /// Quadratic correction model (exact 36-digit precision)
     pub drift: ClockDrift,
 }
@@ -22,7 +22,7 @@ pub struct ClockModel {
 impl ClockModel {
     /// Creates a new self-describing scale (most common for Proper time).
     #[inline]
-    pub const fn new(base: ClockType, reference: Timestamp, drift: ClockDrift) -> Self {
+    pub const fn new(base: ClockType, reference: TimePoint, drift: ClockDrift) -> Self {
         Self {
             base,
             reference,
@@ -32,22 +32,22 @@ impl ClockModel {
 
     /// Convenience constructor for a pure Proper-time scale with relativistic correction.
     #[inline]
-    pub const fn proper(reference: Timestamp, drift: ClockDrift) -> Self {
+    pub const fn proper(reference: TimePoint, drift: ClockDrift) -> Self {
         Self::new(ClockType::Proper, reference, drift)
     }
 
     /// Convenience constructor for a custom scale.
     #[inline]
-    pub const fn custom(reference: Timestamp, drift: ClockDrift) -> Self {
+    pub const fn custom(reference: TimePoint, drift: ClockDrift) -> Self {
         Self::new(ClockType::Custom, reference, drift)
     }
 
-    /// Attaches this self-describing scale to an existing `Timestamp`.
+    /// Attaches this self-describing scale to an existing `TimePoint`.
     ///
     /// Useful when you have a raw onboard reading and the latest polynomial update
     /// from ground control.
     #[inline]
-    pub const fn attach_to(self, point: Timestamp) -> Timestamp {
+    pub const fn attach_to(self, point: TimePoint) -> TimePoint {
         point.with_clock_type(self.base)
     }
 
@@ -62,9 +62,9 @@ impl ClockModel {
         }
     }
 
-    /// Convenience: creates a `Timestamp` in this scale from a TAI instant.
+    /// Convenience: creates a `TimePoint` in this scale from a TAI instant.
     #[inline]
-    pub const fn from_tai(self, tai: Timestamp) -> Timestamp {
+    pub const fn from_tai(self, tai: TimePoint) -> TimePoint {
         tai.with_clock_type(self.base)
     }
 }

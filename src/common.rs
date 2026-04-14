@@ -1,8 +1,8 @@
-use crate::{Delta, Timestamp};
+use crate::{Delta, TimePoint};
 
 /// Macro that implements time increment and decrement methods for time-related types.
 ///
-/// This macro is applied to both `Timestamp` and `Delta` types, providing a consistent
+/// This macro is applied to both `TimePoint` and `Delta` types, providing a consistent
 /// API for adding and subtracting various time units.
 ///
 /// All operations use **saturating arithmetic** to prevent overflow and underflow,
@@ -414,5 +414,5 @@ macro_rules! impl_time_inc {
     };
 }
 
-// Apply the implementation to both `Timestamp` and `Delta` types.
-impl_time_inc!(Timestamp, Delta);
+// Apply the implementation to both `TimePoint` and `Delta` types.
+impl_time_inc!(TimePoint, Delta);

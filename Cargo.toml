@@ -10,7 +10,9 @@ keywords = ["time", "clock", "astronomy", "astrodynamics", "no-std"]
 categories = ["date-and-time", "no-std", "science"]
 
 [dependencies]
-# Optional dependencies only
+libm = "0.2"
+
+# Optional dependencies
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
 tsify = { version = "=0.5.5", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }

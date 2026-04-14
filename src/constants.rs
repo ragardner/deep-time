@@ -12,7 +12,7 @@ pub const C: f64 = 299792458.0;
 /// for weak-field relativistic calculations (e.g. Schwarzschild radius, post-Newtonian terms).
 pub const C_SQUARED: f64 = C * C;
 
-/// GM☉ / c³ in seconds (exact from your `GM_SUN` and `C` — used in Shapiro delay)
+/// GM☉ / c³ in seconds (exact from `GM_SUN` and `C` — used in Shapiro delay)
 pub const GM_SUN_OVER_C3: f64 = GM_SUN / (C * C_SQUARED);
 
 /// 2GM☉ / c³ — the standard prefactor in the one-way Shapiro delay formula

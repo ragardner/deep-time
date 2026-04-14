@@ -4,7 +4,7 @@
 //! Last leap second: 2017-01-01 (TAI-UTC = 37 s)
 //! File expires: 28 December 2026
 
-use crate::Timestamp;
+use crate::TimePoint;
 
 /// (NTP timestamp of the leap second insertion, cumulative leap seconds *after* this insertion)
 ///
@@ -41,15 +41,15 @@ const LEAP_SECONDS: &[(i128, i128)] = &[
 ];
 
 /// Returns leap seconds inserted **before** this TAI instant (TAI = UTC + result).
-pub const fn leap_seconds_before(tai: Timestamp) -> i128 {
+pub const fn leap_seconds_before(tai: TimePoint) -> i128 {
     let mut offset = 0i128;
     let mut i = 0usize;
 
     while i < LEAP_SECONDS.len() {
         let leap_ntp = LEAP_SECONDS[i].0;
 
-        // J2000 noon (your TAI zero) → NTP timestamp
-        const J2000_NTP_OFFSET: i128 = 3_155_328_000 + 43_200; // exact
+        // J2000 noon (TAI zero) → NTP timestamp
+        const J2000_NTP_OFFSET: i128 = 3_155_328_000 + 43_200;
 
         let tai_ntp = tai.sec() + J2000_NTP_OFFSET;
 

@@ -1,4 +1,4 @@
-// #![no_std]
+#![no_std]
 #[cfg(feature = "alloc")]
 extern crate alloc;
 #[cfg(feature = "std")]
@@ -10,7 +10,7 @@ mod clock_type;
 mod common;
 mod delta;
 mod position;
-mod timestamp;
+mod time_point;
 mod utils;
 
 pub mod constants;
@@ -28,9 +28,7 @@ pub use clock_type::ClockType;
 pub use delta::Delta;
 pub use delta::time_units::TimeUnits;
 pub use position::{ObserverState, Position, Velocity};
+pub use time_point::TimePoint;
+pub use time_point::trajectory::RelativisticTrajectory;
 pub use time_range::TimeRange;
-pub use timestamp::Timestamp;
-pub use timestamp::traits::{
-    GPSTimestamp, J2000Timestamp, RelativisticTrajectory, TAITimestamp, UTCTimestamp, UnixTimestamp,
-};
 pub use utils::{alpha_from_weak_field_potential, kretschmann_from_potential_and_scale};
