@@ -1,5 +1,5 @@
 use crate::{
-    C, C_SQUARED, ClockDrift, Delta, LocalSpacetime, Position, TWO_GM_SUN_OVER_C3, TimePoint,
+    C, C_SQUARED, ClockDrift, Delta, LocalSpacetime, Position, Real, TWO_GM_SUN_OVER_C3, TimePoint,
     Velocity,
 };
 
@@ -464,9 +464,9 @@ impl ObserverState {
         let dt_sec = rx.time.duration_since(self.time).as_sec_f();
 
         let num_samples = samples.len();
-        let n = num_samples as f64;
-        let h = 1.0 / n;
-        let mut s = 0.0_f64;
+        let n = num_samples as Real;
+        let h = f!(1.0) / n;
+        let mut s = f!(0.0);
 
         for i in 0..num_samples {
             let local = samples[i];
@@ -474,16 +474,16 @@ impl ObserverState {
             let rate_offset = drift.rate.as_sec_f();
 
             let coeff = if i == 0 || i == num_samples - 1 {
-                1.0
+                f!(1.0)
             } else if i % 2 == 0 {
-                2.0
+                f!(2.0)
             } else {
-                4.0
+                f!(4.0)
             };
             s += coeff * rate_offset;
         }
 
-        let integrated_drift_sec = (h / 3.0) * s * dt_sec;
+        let integrated_drift_sec = (h / f!(3.0)) * s * dt_sec;
 
         let r_tx = self.position.norm();
         let r_rx = rx.position.norm();
@@ -584,12 +584,16 @@ impl ObserverState {
     ///
     /// This is an internal helper used by the public delay functions. It implements the
     /// standard logarithmic formula used in solar-system navigation and pulsar timing.
-    fn shapiro_one_way_delay(context: LightContext, r_tx: f64, r_rx: f64, r_sep: f64) -> Delta {
-        if context.two_grav_param_over_c3 == 0.0 || r_tx <= 0.0 || r_rx <= 0.0 || r_sep <= 0.0 {
+    fn shapiro_one_way_delay(context: LightContext, r_tx: Real, r_rx: Real, r_sep: Real) -> Delta {
+        if context.two_grav_param_over_c3 == f!(0.0)
+            || r_tx <= f!(0.0)
+            || r_rx <= f!(0.0)
+            || r_sep <= f!(0.0)
+        {
             return Delta::ZERO;
         }
 
-        let arg = (r_tx + r_rx + r_sep) / (r_tx + r_rx - r_sep).max(1.0);
+        let arg = (r_tx + r_rx + r_sep) / (r_tx + r_rx - r_sep).max(f!(1.0));
         let delay_sec = context.two_grav_param_over_c3 * libm::log(arg);
 
         Delta::from_sec_f(delay_sec)
@@ -620,7 +624,7 @@ mod relativistic_tests {
 
     #[test]
     fn zero_relativity_gives_zero_correction() {
-        let origin = Position::zero();
+        let origin = Position::ZERO;
         let zero_vel = Velocity::from_speed(0.0);
         let tx = make_state(0, origin, zero_vel, 0.0, 0.0);
         let rx = make_state(0, origin, zero_vel, 0.0, 0.0);

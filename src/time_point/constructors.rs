@@ -320,7 +320,7 @@ impl TimePoint {
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
     #[inline]
     pub fn now(target: ClockType) -> Self {
-        // `Date.now()` returns milliseconds since Unix epoch as f64.
+        // `Date.now()` returns milliseconds since Unix epoch as float.
         // We cast early and use integer math (perfectly safe for current timestamps).
         let millis = js_sys::Date::now() as i128;
         let secs = millis / 1000;

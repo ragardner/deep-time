@@ -10,7 +10,6 @@ macro_rules! f {
         $x as Real
     };
 }
-pub(crate) use f;
 
 mod clock_drift;
 mod clock_model;

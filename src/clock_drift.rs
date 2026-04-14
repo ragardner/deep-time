@@ -97,7 +97,7 @@ This formulation is production-ready for spacecraft navigation pipelines, black-
 */
 
 use crate::{
-    C_SQUARED, Delta, DtBig, MQS, PLANCK_LENGTH_4, Velocity, alpha_from_weak_field_potential,
+    C_SQUARED, Delta, DtBig, MQS, PLANCK_LENGTH_4, Real, Velocity, alpha_from_weak_field_potential,
     kretschmann_from_potential_and_scale,
 };
 
@@ -111,10 +111,10 @@ use crate::{
 pub struct LocalSpacetime {
     /// Gravitational lapse (redshift) factor α.  
     /// This is the factor by which clocks run slower in a gravitational potential.
-    pub alpha: f64,
+    pub alpha: Real,
 
     /// Local three-velocity β = v/c measured in the coordinate rest frame.
-    pub beta: f64,
+    pub beta: Real,
 
     /// Kretschmann scalar (a scalar measure of spacetime curvature).  
     /// In the weak-field regime — where |Φ|/c² ≪ 1 and the gravitational field varies
@@ -131,12 +131,12 @@ pub struct LocalSpacetime {
     /// In these regimes a realistic non-zero value (estimated from the local potential
     /// and a characteristic length scale) activates the library’s intrinsic Planck-scale
     /// saturation term.
-    pub kretschmann: f64,
+    pub kretschmann: Real,
 }
 
 impl LocalSpacetime {
     #[inline(always)]
-    pub const fn new(alpha: f64, beta: f64, kretschmann: f64) -> Self {
+    pub const fn new(alpha: Real, beta: Real, kretschmann: Real) -> Self {
         Self {
             alpha,
             beta,
@@ -146,7 +146,7 @@ impl LocalSpacetime {
 
     /// Convenience for direct gravimeter / sensor paths.
     #[inline(always)]
-    pub fn from_gravitic_and_velocity(alpha: f64, velocity: Velocity, kretschmann: f64) -> Self {
+    pub fn from_gravitic_and_velocity(alpha: Real, velocity: Velocity, kretschmann: Real) -> Self {
         Self::new(alpha, velocity.beta(), kretschmann)
     }
 
@@ -194,12 +194,12 @@ impl LocalSpacetime {
     ///   intrinsic Planck-scale saturation term when curvature becomes extreme.
     #[inline(always)]
     pub fn from_potential_velocity_and_scale(
-        grav_potential_over_c2: f64, // Φ/c² (total local potential)
+        grav_potential_over_c2: Real, // Φ/c² (total local potential)
         velocity: Velocity,
-        characteristic_length_scale: f64,
+        characteristic_length_scale: Real,
     ) -> Self {
-        let alpha: f64 = alpha_from_weak_field_potential(grav_potential_over_c2);
-        let kretschmann: f64 = kretschmann_from_potential_and_scale(
+        let alpha: Real = alpha_from_weak_field_potential(grav_potential_over_c2);
+        let kretschmann: Real = kretschmann_from_potential_and_scale(
             grav_potential_over_c2,
             characteristic_length_scale,
         );
@@ -341,9 +341,9 @@ impl ClockDrift {
     ///   term when spacetime curvature becomes extreme.
     #[inline]
     pub fn from_velocity_potential_and_scale(
-        velocity_m_s: f64,
-        grav_potential_m2_s2: f64,
-        characteristic_length_scale: f64,
+        velocity_m_s: Real,
+        grav_potential_m2_s2: Real,
+        characteristic_length_scale: Real,
     ) -> Self {
         let phi = grav_potential_m2_s2 / C_SQUARED;
         let velocity = Velocity::from_speed(velocity_m_s);
@@ -368,17 +368,17 @@ impl ClockDrift {
     /// where δ = α²(1−β²) and x = ℓ_Pl⁴ 𝒦. The returned rate offset is then
     /// applied as a linear term in the `ClockDrift` polynomial.
     #[inline]
-    pub fn from_unified_proper_time_rate(u: f64, kretschmann: f64) -> Self {
-        let delta = u.max(0.0);
-        let x = PLANCK_LENGTH_4 * kretschmann.max(0.0);
+    pub fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Self {
+        let delta = u.max(f!(0.0));
+        let x = PLANCK_LENGTH_4 * kretschmann.max(f!(0.0));
 
         // powi(2) replaced by manual square — mathematically identical, no libm needed
-        let one_minus_delta = 1.0 - delta;
-        let num = delta * (1.0 + x) + x * (one_minus_delta * one_minus_delta);
-        let k_eff = num / (1.0 + x);
+        let one_minus_delta = f!(1.0) - delta;
+        let num = delta * (f!(1.0) + x) + x * (one_minus_delta * one_minus_delta);
+        let k_eff = num / (f!(1.0) + x);
 
-        let rate_factor = libm::sqrt(k_eff).max(0.0);
-        let rate_offset = rate_factor - 1.0;
+        let rate_factor = libm::sqrt(k_eff).max(f!(0.0));
+        let rate_offset = rate_factor - f!(1.0);
 
         Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(rate_offset))
     }
@@ -392,7 +392,7 @@ impl ClockDrift {
     /// polynomial ready for evaluation at any future time.
     #[inline]
     pub fn from_local_spacetime(spacetime: LocalSpacetime) -> Self {
-        let u = spacetime.alpha * spacetime.alpha * (1.0 - spacetime.beta * spacetime.beta);
+        let u = spacetime.alpha * spacetime.alpha * (f!(1.0) - spacetime.beta * spacetime.beta);
         Self::from_unified_proper_time_rate(u, spacetime.kretschmann)
     }
 }

@@ -170,19 +170,19 @@ impl TimePoint {
         const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
 
         // Whole seconds as f64 (limited by f64 integer precision above ~9e15 s)
-        let whole = tt.sec as f64;
+        let whole = tt.sec as Real;
 
         let q = tt.subsec / POW21; // integer < 10¹⁵, exact
-        let frac = (q as f64) / (POW15 as f64);
+        let frac = (q as Real) / (POW15 as Real);
 
         let seconds_since_j2000_tt = whole + frac;
 
         let t = seconds_since_j2000_tt / J2000_SECONDS_PER_CENTURY;
 
-        let g = 2.0 * core::f64::consts::PI * (357.528 + 35_999.050 * t) / 360.0;
-        let sin_g = sin_approx(g + 0.0167 * sin_approx(g));
-        let sin_2g = sin_approx(2.0 * g);
-        let correction = 0.001658 * sin_g + 0.000022 * sin_2g;
+        let g = f!(2.0) * core::f64::consts::PI * (f!(357.528) + f!(35_999.050) * t) / f!(360.0);
+        let sin_g = sin_approx(g + f!(0.0167) * sin_approx(g));
+        let sin_2g = sin_approx(f!(2.0) * g);
+        let correction = f!(0.001658) * sin_g + f!(0.000022) * sin_2g;
 
         Delta::from_sec_f(correction)
     }
@@ -234,7 +234,7 @@ impl TimePoint {
     const fn tt_to_tcg(tt: Self) -> Self {
         let jd_tt = tt.to_jd_tt();
         let days = jd_tt - TCG_TCB_REF_JD;
-        let delta_s = days * 86_400.0 * LG;
+        let delta_s = days * f!(86_400.0) * LG;
         tt.add(Delta::from_sec_f(delta_s))
             .with_clock_type(ClockType::TCG)
     }
@@ -242,7 +242,7 @@ impl TimePoint {
     const fn tcg_to_tt(tcg: Self) -> Self {
         let jd_tcg = tcg.to_jd_tt();
         let days = jd_tcg - TCG_TCB_REF_JD;
-        let delta_s = days * 86_400.0 * LG;
+        let delta_s = days * f!(86_400.0) * LG;
         tcg.sub(Delta::from_sec_f(delta_s))
             .with_clock_type(ClockType::TT)
     }
@@ -251,7 +251,7 @@ impl TimePoint {
     const fn tdb_to_tcb(tdb: Self) -> Self {
         let jd_tdb = tdb.to_jd_tt();
         let days = jd_tdb - TCG_TCB_REF_JD;
-        let delta_s = days * 86_400.0 * LB;
+        let delta_s = days * f!(86_400.0) * LB;
         tdb.add(Delta::from_sec_f(delta_s))
             .add(TDB0) // TDB0 is already part of the defining relation
             .with_clock_type(ClockType::TCB)
@@ -260,7 +260,7 @@ impl TimePoint {
     const fn tcb_to_tdb(tcb: Self) -> Self {
         let jd_tcb = tcb.to_jd_tt();
         let days = jd_tcb - TCG_TCB_REF_JD;
-        let delta_s = days * 86_400.0 * LB;
+        let delta_s = days * f!(86_400.0) * LB;
         tcb.sub(Delta::from_sec_f(delta_s))
             .sub(TDB0)
             .with_clock_type(ClockType::TDB)
@@ -277,19 +277,19 @@ impl TimePoint {
     /// **Lossy by design** — uses the best possible `float` conversion of the exact
     /// fractional day. For full precision use `to_jd_tt_exact()` (returns `(i128, Delta)`).
     #[inline]
-    pub const fn to_jd_tt(self) -> f64 {
+    pub const fn to_jd_tt(self) -> Real {
         let (jd_days, frac) = self.to_jd_tt_exact();
-        let days_f = jd_days as f64;
-        let frac_days = frac.as_sec_f() / 86_400.0; // 86400.0 is exact in f64
+        let days_f = jd_days as Real;
+        let frac_days = frac.as_sec_f() / f!(86_400.0);
         days_f + frac_days
     }
 
-    /// Returns the standard Modified Julian Date in Terrestrial Time (TT) as `f64`.
+    /// Returns the standard Modified Julian Date in Terrestrial Time (TT) as `float`.
     ///
     /// J2000.0 TT corresponds to MJD 51544.5 exactly.
     #[inline]
-    pub const fn to_mjd_tt(self) -> f64 {
-        self.to_jd_tt() - 2_400_000.5
+    pub const fn to_mjd_tt(self) -> Real {
+        self.to_jd_tt() - f!(2_400_000.5)
     }
 
     /// Returns an **exact** Julian Date in TT with full library precision.
@@ -326,15 +326,15 @@ impl TimePoint {
         Self::from_jd_tt_exact(mjd_days + 2_400_000, frac)
     }
 
-    /// Convenience method: Julian Date in UTC (TT-based, f64 only).
+    /// Convenience method: Julian Date in UTC (TT-based).
     #[inline]
-    pub const fn to_jd_utc(self) -> f64 {
+    pub const fn to_jd_utc(self) -> Real {
         self.to_clock_type(ClockType::UTC).to_jd_tt()
     }
 
-    /// Convenience method: Modified Julian Date in UTC (TT-based, f64 only).
+    /// Convenience method: Modified Julian Date in UTC (TT-based).
     #[inline]
-    pub const fn to_mjd_utc(self) -> f64 {
+    pub const fn to_mjd_utc(self) -> Real {
         self.to_clock_type(ClockType::UTC).to_mjd_tt()
     }
 

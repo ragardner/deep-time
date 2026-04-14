@@ -96,8 +96,8 @@ impl Delta {
     #[inline(always)]
     pub const fn as_sec_f(self) -> Real {
         // Extract the top 15 decimal digits exactly (POW15 is fully representable in float mantissa)
-        let q = (self.subsec / POW21) as Real; // integer division, exact
-        let frac = q / (POW15 as Real);
+        let q = (self.subsec / POW21) as Real;
+        let frac = q / f!(POW15);
         self.sec as Real + frac
     }
 

@@ -2,22 +2,22 @@ use crate::Real;
 
 /// Private helper: `sin` that works in `const fn` (range reduction + Taylor).
 /// Accuracy is far better than needed for TDB-TT.
-pub(crate) const fn sin_approx(x: f64) -> f64 {
-    const PI: f64 = core::f64::consts::PI;
-    const TWO_PI: f64 = 2.0 * PI;
+pub(crate) const fn sin_approx(x: Real) -> Real {
+    const PI: Real = f!(core::f64::consts::PI);
+    const TWO_PI: Real = f!(2.0) * PI;
 
     let mut x = x % TWO_PI;
-    if x < 0.0 {
+    if x < f!(0.0) {
         x += TWO_PI;
     }
     if x > PI {
         x -= TWO_PI;
     }
 
-    let sign = if x < 0.0 { -1.0 } else { 1.0 };
+    let sign = if x < f!(0.0) { f!(-1.0) } else { f!(1.0) };
     let x = x.abs();
 
-    let x = if x > PI / 2.0 { PI - x } else { x };
+    let x = if x > PI / f!(2.0) { PI - x } else { x };
 
     let x2 = x * x;
     let x3 = x2 * x;
@@ -26,10 +26,11 @@ pub(crate) const fn sin_approx(x: f64) -> f64 {
     let x9 = x7 * x2;
     let x11 = x9 * x2;
 
-    sign * (x - x3 / 6.0 + x5 / 120.0 - x7 / 5040.0 + x9 / 362880.0 - x11 / 39916800.0)
+    sign * (x - x3 / f!(6.0) + x5 / f!(120.0) - x7 / f!(5040.0) + x9 / f!(362880.0)
+        - x11 / f!(39916800.0))
 }
 
-/// Hand-rolled `const fn` implementation of floor for `float`.
+/// Hand-rolled `const fn` implementation of floor for `Real`.
 ///
 /// This is **bit-for-bit identical** to `std::f64::floor` (including signed-zero
 /// preservation) while remaining fully `const fn` on stable Rust with `#![no_std]`.
@@ -37,15 +38,15 @@ pub(crate) const fn sin_approx(x: f64) -> f64 {
 pub(crate) const fn floor_f(x: Real) -> Real {
     if x.is_nan() || x.is_infinite() {
         x
-    } else if x == 0.0 {
+    } else if x == f!(0.0) {
         x // preserves +0.0 or -0.0
     } else {
         let i = x as i64;
         let truncated = i as Real;
-        if x >= 0.0 || truncated == x {
+        if x >= f!(0.0) || truncated == x {
             truncated
         } else {
-            truncated - 1.0
+            truncated - f!(1.0)
         }
     }
 }
@@ -79,9 +80,9 @@ pub(crate) const fn floor_f(x: Real) -> Real {
 /// strong-field treatment (including curvature information passed to `LocalSpacetime`)
 /// is required.
 #[inline(always)]
-pub fn alpha_from_weak_field_potential(grav_potential_over_c2: f64) -> f64 {
+pub fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
     // gravitational_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
-    libm::sqrt((1.0 + 2.0 * grav_potential_over_c2).max(0.0))
+    libm::sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
 }
 
 /// Kretschmann scalar from the total relativity experienced locally
@@ -106,14 +107,14 @@ pub fn alpha_from_weak_field_potential(grav_potential_over_c2: f64) -> f64 {
 /// curvature.
 #[inline]
 pub fn kretschmann_from_potential_and_scale(
-    grav_potential_over_c2: f64,
-    characteristic_length_scale: f64,
-) -> f64 {
-    if characteristic_length_scale <= 0.0 || grav_potential_over_c2 <= 0.0 {
-        return 0.0;
+    grav_potential_over_c2: Real,
+    characteristic_length_scale: Real,
+) -> Real {
+    if characteristic_length_scale <= f!(0.0) || grav_potential_over_c2 <= f!(0.0) {
+        return f!(0.0);
     }
     // Exact weak-field limit: K ≈ 48 φ² / L⁴
-    let curvature_scale =
-        2.0 * grav_potential_over_c2 / (characteristic_length_scale * characteristic_length_scale);
-    12.0 * (curvature_scale * curvature_scale)
+    let curvature_scale = f!(2.0) * grav_potential_over_c2
+        / (characteristic_length_scale * characteristic_length_scale);
+    f!(12.0) * (curvature_scale * curvature_scale)
 }

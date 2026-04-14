@@ -1,4 +1,4 @@
-use crate::{ClockDrift, Delta, ObserverState, TimePoint};
+use crate::{ClockDrift, Delta, ObserverState, Real, TimePoint};
 
 // ──────────────────────────────────────────────────────────────
 // RelativisticTrajectory trait
@@ -28,14 +28,14 @@ pub trait RelativisticTrajectory {
     /// Returns a value ≈ 1.0 in weak fields. In strong gravity or high velocity
     /// it can be noticeably lower (and never reaches zero thanks to the built-in
     /// Planck-scale core).
-    fn proper_time_rate_at(&self, t: TimePoint) -> f64 {
+    fn proper_time_rate_at(&self, t: TimePoint) -> Real {
         let state = self.relativistic_state_at(t);
         let drift = ClockDrift::from_velocity_potential_and_scale(
             state.velocity.speed(),
             state.grav_potential_m2_s2,
             state.characteristic_length_scale,
         );
-        1.0 + drift.evaluate(Delta::ZERO).as_sec_f()
+        f!(1.0) + drift.evaluate(Delta::ZERO).as_sec_f()
     }
 
     /// Computes the proper-time interval Δτ between two coordinate times.
@@ -50,8 +50,8 @@ pub trait RelativisticTrajectory {
         }
 
         // Forward interval for quadrature; sign restored at the end
-        let sign = if dt.sec < 0 { -1.0 } else { 1.0 };
-        if sign < 0.0 {
+        let sign = if dt.sec < 0 { f!(-1.0) } else { f!(1.0) };
+        if sign < f!(0.0) {
             dt = dt.neg();
         }
 
@@ -61,31 +61,31 @@ pub trait RelativisticTrajectory {
             // Fast trapezoidal path
             let rate0 = self.proper_time_rate_at(start);
             let rate1 = self.proper_time_rate_at(end);
-            let integral = 0.5 * (rate0 + rate1 - 2.0) * dt_sec;
+            let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt_sec;
             return Delta::from_sec_f(sign * (dt_sec + integral));
         }
 
         // Simpson’s rule quadrature (high-order accuracy)
-        let n = num_samples as f64;
+        let n = num_samples as Real;
         let h = dt_sec / n;
-        let mut s = 0.0;
+        let mut s = f!(0.0);
 
         for i in 0..=num_samples {
-            let lambda = (i as f64) / n;
+            let lambda = (i as Real) / n;
             let t_i = start.add(Delta::from_sec_f(lambda * dt_sec));
             let rate = self.proper_time_rate_at(t_i);
 
             let coeff = if i == 0 || i == num_samples {
-                1.0
+                f!(1.0)
             } else if i % 2 == 0 {
-                2.0
+                f!(2.0)
             } else {
-                4.0
+                f!(4.0)
             };
-            s += coeff * (rate - 1.0); // only integrate the relativistic deviation
+            s += coeff * (rate - f!(1.0)); // only integrate the relativistic deviation
         }
 
-        let integral = (h / 3.0) * s;
+        let integral = (h / f!(3.0)) * s;
         Delta::from_sec_f(sign * (dt_sec + integral))
     }
 

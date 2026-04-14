@@ -1,22 +1,22 @@
-use crate::{Delta, DtBig};
+use crate::{Delta, DtBig, Real};
 
 /// Solar gravitational parameter GM☉ in m³ s⁻²  
 /// (exact nominal value from IAU 2015 Resolution B3)
-pub const GM_SUN: f64 = 1.3271244e20;
+pub const GM_SUN: Real = 1.3271244e20;
 
 /// Speed of light in m/s (exact SI definition)
-pub const C: f64 = 299792458.0;
+pub const C: Real = 299792458.0;
 
 /// Speed of light squared (c²) in m² s⁻².  
 /// Computed at compile time from the exact SI value of `C` — guarantees perfect consistency
 /// for weak-field relativistic calculations (e.g. Schwarzschild radius, post-Newtonian terms).
-pub const C_SQUARED: f64 = C * C;
+pub const C_SQUARED: Real = C * C;
 
 /// GM☉ / c³ in seconds (exact from `GM_SUN` and `C` — used in Shapiro delay)
-pub const GM_SUN_OVER_C3: f64 = GM_SUN / (C * C_SQUARED);
+pub const GM_SUN_OVER_C3: Real = GM_SUN / (C * C_SQUARED);
 
 /// 2GM☉ / c³ — the standard prefactor in the one-way Shapiro delay formula
-pub const TWO_GM_SUN_OVER_C3: f64 = 2.0 * GM_SUN_OVER_C3;
+pub const TWO_GM_SUN_OVER_C3: Real = 2.0 * GM_SUN_OVER_C3;
 
 /// Microquectoseconds per second.
 pub const MICROQUECTOS_PER_SEC: u128 = 10u128.pow(36);
@@ -58,14 +58,14 @@ pub(crate) const POW15: u128 = 1_000_000_000_000_000;
 pub(crate) const POW21: u128 = MICROQUECTOS_PER_SEC / POW15; // exactly 10²¹
 
 /// L_G = 6.969290134 × 10^{-10} (exact IAU defining constant for TCG ↔ TT)
-pub(crate) const LG: f64 = 6.969290134e-10;
+pub(crate) const LG: Real = 6.969290134e-10;
 /// L_B = 1.550519768 × 10^{-8} (exact IAU defining constant for TCB ↔ TDB)
-pub(crate) const LB: f64 = 1.550519768e-8;
+pub(crate) const LB: Real = 1.550519768e-8;
 /// Reference epoch T₀ = 2443144.5003725 JD (1977 Jan 1.0 TAI at geocenter)
-pub(crate) const TCG_TCB_REF_JD: f64 = 2443144.5003725;
+pub(crate) const TCG_TCB_REF_JD: Real = 2443144.5003725;
 /// TDB₀ = −65.5 µs (exact IAU 2006 constant)
 pub(crate) const TDB0: Delta = Delta::from_sec_f(-0.0000655);
 
-pub(crate) const PLANCK_LENGTH: f64 = 1.616255e-35; // meters (standard value)
-pub(crate) const PLANCK_LENGTH_4: f64 =
+pub(crate) const PLANCK_LENGTH: Real = 1.616255e-35; // meters (standard value)
+pub(crate) const PLANCK_LENGTH_4: Real =
     PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;
