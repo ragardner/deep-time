@@ -1,4 +1,4 @@
-use crate::{Delta, MICROQUECTOS_PER_SEC, TimePoint};
+use crate::{ClockDrift, Delta, LocalSpacetime, MICROQUECTOS_PER_SEC, TimePoint};
 
 impl TimePoint {
     /// Overflowing add. The result keeps the original [`ClockType`].
@@ -133,6 +133,18 @@ impl TimePoint {
         } else {
             subsec
         };
+    }
+
+    /// Advances this `TimePoint` by the location time step `elapsed`,
+    /// applying the relativistic proper-time rate from `local_spacetime`.
+    ///
+    /// Intended for simulating **remote clocks** (Earth time as seen from the
+    /// spacecraft, another probe’s clock, etc.). Your own spacecraft’s
+    /// hardware proper-time clock should just use `.add(dt)` directly.
+    #[inline(always)]
+    pub fn advance(&mut self, elapsed: Delta, local_spacetime: LocalSpacetime) {
+        let dtau = elapsed.add(ClockDrift::from_local_spacetime(local_spacetime).evaluate(elapsed));
+        *self = self.add(dtau);
     }
 
     /// Returns the signed duration between two instants  

@@ -296,6 +296,7 @@ impl ClockDrift {
     /// time and coordinate time after the interval `delta` has passed. All
     /// arithmetic is performed with full 36-digit precision, ensuring no loss of
     /// accuracy even for multi-year integrations.
+    #[inline]
     pub const fn evaluate(&self, delta: Delta) -> Delta {
         let dt_big: DtBig = delta.to_big();
         let mqs: DtBig = MQS;
