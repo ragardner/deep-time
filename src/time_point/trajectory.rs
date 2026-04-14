@@ -32,10 +32,10 @@ pub trait RelativisticTrajectory {
         let state = self.relativistic_state_at(t);
         let drift = ClockDrift::from_velocity_potential_and_scale(
             state.velocity.speed(),
-            state.gravitational_potential_m2_s2,
+            state.grav_potential_m2_s2,
             state.characteristic_length_scale,
         );
-        1.0 + drift.evaluate(Delta::ZERO).as_sec_f64()
+        1.0 + drift.evaluate(Delta::ZERO).as_sec_f()
     }
 
     /// Computes the proper-time interval Δτ between two coordinate times.
@@ -55,14 +55,14 @@ pub trait RelativisticTrajectory {
             dt = dt.neg();
         }
 
-        let dt_sec = dt.as_sec_f64();
+        let dt_sec = dt.as_sec_f();
 
         if num_samples <= 2 {
             // Fast trapezoidal path
             let rate0 = self.proper_time_rate_at(start);
             let rate1 = self.proper_time_rate_at(end);
             let integral = 0.5 * (rate0 + rate1 - 2.0) * dt_sec;
-            return Delta::from_sec_f64(sign * (dt_sec + integral));
+            return Delta::from_sec_f(sign * (dt_sec + integral));
         }
 
         // Simpson’s rule quadrature (high-order accuracy)
@@ -72,7 +72,7 @@ pub trait RelativisticTrajectory {
 
         for i in 0..=num_samples {
             let lambda = (i as f64) / n;
-            let t_i = start.add(Delta::from_sec_f64(lambda * dt_sec));
+            let t_i = start.add(Delta::from_sec_f(lambda * dt_sec));
             let rate = self.proper_time_rate_at(t_i);
 
             let coeff = if i == 0 || i == num_samples {
@@ -86,7 +86,7 @@ pub trait RelativisticTrajectory {
         }
 
         let integral = (h / 3.0) * s;
-        Delta::from_sec_f64(sign * (dt_sec + integral))
+        Delta::from_sec_f(sign * (dt_sec + integral))
     }
 
     /// Relativistic correction: how much the onboard clock has gained or lost

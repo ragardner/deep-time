@@ -1,3 +1,5 @@
+use crate::Real;
+
 /// Private helper: `sin` that works in `const fn` (range reduction + Taylor).
 /// Accuracy is far better than needed for TDB-TT.
 pub(crate) const fn sin_approx(x: f64) -> f64 {
@@ -27,19 +29,19 @@ pub(crate) const fn sin_approx(x: f64) -> f64 {
     sign * (x - x3 / 6.0 + x5 / 120.0 - x7 / 5040.0 + x9 / 362880.0 - x11 / 39916800.0)
 }
 
-/// Hand-rolled `const fn` implementation of floor for `f64`.
+/// Hand-rolled `const fn` implementation of floor for `float`.
 ///
 /// This is **bit-for-bit identical** to `std::f64::floor` (including signed-zero
 /// preservation) while remaining fully `const fn` on stable Rust with `#![no_std]`.
 #[inline(always)]
-pub(crate) const fn floor_f64(x: f64) -> f64 {
+pub(crate) const fn floor_f(x: Real) -> Real {
     if x.is_nan() || x.is_infinite() {
         x
     } else if x == 0.0 {
         x // preserves +0.0 or -0.0
     } else {
         let i = x as i64;
-        let truncated = i as f64;
+        let truncated = i as Real;
         if x >= 0.0 || truncated == x {
             truncated
         } else {
@@ -77,9 +79,9 @@ pub(crate) const fn floor_f64(x: f64) -> f64 {
 /// strong-field treatment (including curvature information passed to `LocalSpacetime`)
 /// is required.
 #[inline(always)]
-pub fn alpha_from_weak_field_potential(gravitational_potential_over_c2: f64) -> f64 {
+pub fn alpha_from_weak_field_potential(grav_potential_over_c2: f64) -> f64 {
     // gravitational_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
-    libm::sqrt((1.0 + 2.0 * gravitational_potential_over_c2).max(0.0))
+    libm::sqrt((1.0 + 2.0 * grav_potential_over_c2).max(0.0))
 }
 
 /// Kretschmann scalar from the total relativity experienced locally
@@ -104,14 +106,14 @@ pub fn alpha_from_weak_field_potential(gravitational_potential_over_c2: f64) -> 
 /// curvature.
 #[inline]
 pub fn kretschmann_from_potential_and_scale(
-    gravitational_potential_over_c2: f64,
+    grav_potential_over_c2: f64,
     characteristic_length_scale: f64,
 ) -> f64 {
-    if characteristic_length_scale <= 0.0 || gravitational_potential_over_c2 <= 0.0 {
+    if characteristic_length_scale <= 0.0 || grav_potential_over_c2 <= 0.0 {
         return 0.0;
     }
     // Exact weak-field limit: K ≈ 48 φ² / L⁴
-    let curvature_scale = 2.0 * gravitational_potential_over_c2
-        / (characteristic_length_scale * characteristic_length_scale);
+    let curvature_scale =
+        2.0 * grav_potential_over_c2 / (characteristic_length_scale * characteristic_length_scale);
     12.0 * (curvature_scale * curvature_scale)
 }

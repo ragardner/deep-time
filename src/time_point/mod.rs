@@ -3,7 +3,6 @@ mod constructors;
 mod conversions;
 mod formatting;
 mod ops;
-mod relativity;
 pub mod trajectory;
 mod unix;
 
@@ -43,5 +42,11 @@ impl TimePoint {
     #[inline(always)]
     pub const fn clock_type(&self) -> ClockType {
         self.clock_type
+    }
+}
+
+impl Default for TimePoint {
+    fn default() -> Self {
+        Self::ZERO
     }
 }

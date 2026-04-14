@@ -1,6 +1,6 @@
 use crate::leap_seconds::leap_seconds_before;
 use crate::{
-    ClockDrift, ClockModel, ClockType, Delta, LB, LG, POW15, POW21, TCG_TCB_REF_JD, TDB0,
+    ClockDrift, ClockModel, ClockType, Delta, LB, LG, POW15, POW21, Real, TCG_TCB_REF_JD, TDB0,
     TT_TAI_OFFSET_DELTA, TimePoint, sin_approx,
 };
 
@@ -167,7 +167,7 @@ impl TimePoint {
 
     const fn tdb_minus_tt(tt: Self) -> Delta {
         // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
-        const J2000_SECONDS_PER_CENTURY: f64 = 3_155_760_000.0;
+        const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
 
         // Whole seconds as f64 (limited by f64 integer precision above ~9e15 s)
         let whole = tt.sec as f64;
@@ -184,7 +184,7 @@ impl TimePoint {
         let sin_2g = sin_approx(2.0 * g);
         let correction = 0.001658 * sin_g + 0.000022 * sin_2g;
 
-        Delta::from_sec_f64(correction)
+        Delta::from_sec_f(correction)
     }
 
     const fn tai_to_tdb(tai: Self) -> Self {
@@ -235,7 +235,7 @@ impl TimePoint {
         let jd_tt = tt.to_jd_tt();
         let days = jd_tt - TCG_TCB_REF_JD;
         let delta_s = days * 86_400.0 * LG;
-        tt.add(Delta::from_sec_f64(delta_s))
+        tt.add(Delta::from_sec_f(delta_s))
             .with_clock_type(ClockType::TCG)
     }
 
@@ -243,7 +243,7 @@ impl TimePoint {
         let jd_tcg = tcg.to_jd_tt();
         let days = jd_tcg - TCG_TCB_REF_JD;
         let delta_s = days * 86_400.0 * LG;
-        tcg.sub(Delta::from_sec_f64(delta_s))
+        tcg.sub(Delta::from_sec_f(delta_s))
             .with_clock_type(ClockType::TT)
     }
 
@@ -252,7 +252,7 @@ impl TimePoint {
         let jd_tdb = tdb.to_jd_tt();
         let days = jd_tdb - TCG_TCB_REF_JD;
         let delta_s = days * 86_400.0 * LB;
-        tdb.add(Delta::from_sec_f64(delta_s))
+        tdb.add(Delta::from_sec_f(delta_s))
             .add(TDB0) // TDB0 is already part of the defining relation
             .with_clock_type(ClockType::TCB)
     }
@@ -261,7 +261,7 @@ impl TimePoint {
         let jd_tcb = tcb.to_jd_tt();
         let days = jd_tcb - TCG_TCB_REF_JD;
         let delta_s = days * 86_400.0 * LB;
-        tcb.sub(Delta::from_sec_f64(delta_s))
+        tcb.sub(Delta::from_sec_f(delta_s))
             .sub(TDB0)
             .with_clock_type(ClockType::TDB)
     }
@@ -270,17 +270,17 @@ impl TimePoint {
     // Julian Date & Modified Julian Date (TT scale)
     // ──────────────────────────────────────────────────────────────
 
-    /// Returns the standard Julian Date in Terrestrial Time (TT) as `f64`.
+    /// Returns the standard Julian Date in Terrestrial Time (TT) as `float`.
     ///
     /// J2000.0 TT corresponds to JD 2451545.0 exactly (Astropy/SPICE/NASA convention).
     ///
-    /// **Lossy by design** — uses the best possible `f64` conversion of the exact
+    /// **Lossy by design** — uses the best possible `float` conversion of the exact
     /// fractional day. For full precision use `to_jd_tt_exact()` (returns `(i128, Delta)`).
     #[inline]
     pub const fn to_jd_tt(self) -> f64 {
         let (jd_days, frac) = self.to_jd_tt_exact();
         let days_f = jd_days as f64;
-        let frac_days = frac.as_sec_f64() / 86_400.0; // 86400.0 is exact in f64
+        let frac_days = frac.as_sec_f() / 86_400.0; // 86400.0 is exact in f64
         days_f + frac_days
     }
 
@@ -341,17 +341,17 @@ impl TimePoint {
     /// Returns the numerical difference in seconds between two `TimePoint`s (ignores `ClockType`).
     ///
     /// **Lossy by design** (for testing only). Use `duration_since` for the exact `Delta`.
-    pub const fn numerical_seconds_since(&self, other: &Self) -> f64 {
+    pub const fn numerical_seconds_since(&self, other: &Self) -> Real {
         Delta {
             sec: self.sec,
             subsec: self.subsec,
         }
-        .as_sec_f64()
+        .as_sec_f()
             - Delta {
                 sec: other.sec,
                 subsec: other.subsec,
             }
-            .as_sec_f64()
+            .as_sec_f()
     }
 }
 
@@ -378,13 +378,13 @@ mod tdb_tests {
             let tdb = tai.to_clock_type(ClockType::TDB);
             eprintln!("\nTAI sec={}, subsec={}", tai.sec, tai.subsec);
             eprintln!("TDB sec={}, subsec={}", tdb.sec, tdb.subsec);
-            eprintln!("diff_s = {}", tdb.duration_since(tai).as_sec_f64());
+            eprintln!("diff_s = {}", tdb.duration_since(tai).as_sec_f());
         }
         for &p in &test_points {
             let tdb = p.to_clock_type(ClockType::TDB);
             let back = tdb.to_clock_type(ClockType::TAI);
 
-            let diff = back.duration_since(p).as_sec_f64().abs();
+            let diff = back.duration_since(p).as_sec_f().abs();
             assert!(
                 diff < 1e-6,
                 "TDB round-trip error too large: {} s at {:?}",
@@ -481,14 +481,14 @@ mod drift_tests {
     #[test]
     fn constant_offset_only() {
         let reference = TimePoint::from_tai_sec(0);
-        let drift = ClockDrift::from_constant(Delta::from_sec_f64(32.184));
+        let drift = ClockDrift::from_constant(Delta::from_sec_f(32.184));
         let model = ClockModel::proper(reference, drift);
 
         let onboard = TimePoint::create_from_model(model).add(Delta::from_sec(100));
         let tt = onboard.convert_using_model(model);
 
         let expected = onboard
-            .add(Delta::from_sec_f64(32.184))
+            .add(Delta::from_sec_f(32.184))
             .with_clock_type(ClockType::Proper);
         assert_eq!(tt, expected);
     }

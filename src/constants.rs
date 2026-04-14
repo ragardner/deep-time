@@ -64,7 +64,7 @@ pub(crate) const LB: f64 = 1.550519768e-8;
 /// Reference epoch T₀ = 2443144.5003725 JD (1977 Jan 1.0 TAI at geocenter)
 pub(crate) const TCG_TCB_REF_JD: f64 = 2443144.5003725;
 /// TDB₀ = −65.5 µs (exact IAU 2006 constant)
-pub(crate) const TDB0: Delta = Delta::from_sec_f64(-0.0000655);
+pub(crate) const TDB0: Delta = Delta::from_sec_f(-0.0000655);
 
 pub(crate) const PLANCK_LENGTH: f64 = 1.616255e-35; // meters (standard value)
 pub(crate) const PLANCK_LENGTH_4: f64 =

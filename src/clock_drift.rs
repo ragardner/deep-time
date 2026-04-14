@@ -22,7 +22,7 @@ K_{\rm eff} \equiv \frac{ \delta (1 + x) + x (1 - \delta)^2 }{1 + x} > 0
 \[
 \delta \equiv \alpha^{2}(1-\beta^{2}), \qquad x \equiv \ell_{\rm Pl}^4 \mathcal{K},
 \]
-\(\mu \in \{0,1\}\) (\(\mu=1\) for massive probes, \(\mu=0\) for null rays), and the background quantities \(\alpha(t,\mathbf{x})\) (local lapse/redshift factor) and \(\beta(t,\mathbf{x},\dot{\mathbf{x}})\) (local 3-velocity magnitude relative to the chrono-rest frame) are supplied by the modular **LocalMetric** interface for any metric \(g_{\mu\nu}\). The Kretschmann scalar \(\mathcal{K} = R_{\alpha\beta\gamma\delta} R^{\alpha\beta\gamma\delta}\) is also supplied by LocalMetric.
+\(\mu \in \{0,1\}\) (\(\mu=1\) for massive probes, \(\mu=0\) for null rays), and the background quantities \(\alpha(t,\mathbf{x})\) (local lapse/redshift factor) and \(\beta(t,\mathbf{x},\dot{\mathbf{x}})\) (local 3-velocity magnitude relative to the chrono-rest frame) are supplied by the modular **LocalSpacetime** interface for any metric \(g_{\mu\nu}\). The Kretschmann scalar \(\mathcal{K} = R_{\alpha\beta\gamma\delta} R^{\alpha\beta\gamma\delta}\) is also supplied by LocalSpacetime.
 
 This closed-form rational expression is the exact algebraic substitution of the minimal Padé regulator into the original structure. It is **inherently non-singular**: even if the background curvature \(\mathcal{K} \to \infty\) (i.e., \(x \to \infty\)), \(K_{\rm eff} \to \delta^2 - \delta + 1 \geq 3/4 > 0\). The main Lagrangian equation therefore never predicts a divergence or vanishing proper-time measure.
 
@@ -63,7 +63,7 @@ K_{\rm eff} \to \delta^2 - \delta + 1, \qquad \frac{d\tau}{dt} \to \sqrt{\delta^
 \]
 Proper time never stops; a smooth Planck-scale core replaces any would-be GR singularity.
 
-### Background-Generalization Modules (LocalMetric Interface)
+### Background-Generalization Modules (LocalSpacetime Interface)
 The same interface is implemented for every spacetime (FLRW, multi-body PN, Kerr ZAMO, NR grids). In every case the low-curvature limit (\(x \ll 1\)) is exact GR; the intrinsic saturation activates algebraically only when \(\mathcal{K}^{1/4} \gtrsim 1/\ell_{\rm Pl}\).
 
 ### Numerical Implementation and Code Integration
@@ -194,13 +194,15 @@ impl LocalSpacetime {
     ///   intrinsic Planck-scale saturation term when curvature becomes extreme.
     #[inline(always)]
     pub fn from_potential_velocity_and_scale(
-        phi_over_c2: f64, // Φ/c² (total local potential)
+        grav_potential_over_c2: f64, // Φ/c² (total local potential)
         velocity: Velocity,
         characteristic_length_scale: f64,
     ) -> Self {
-        let alpha = alpha_from_weak_field_potential(phi_over_c2);
-        let kretschmann =
-            kretschmann_from_potential_and_scale(phi_over_c2, characteristic_length_scale);
+        let alpha: f64 = alpha_from_weak_field_potential(grav_potential_over_c2);
+        let kretschmann: f64 = kretschmann_from_potential_and_scale(
+            grav_potential_over_c2,
+            characteristic_length_scale,
+        );
         Self::from_gravitic_and_velocity(alpha, velocity, kretschmann)
     }
 }
@@ -288,10 +290,10 @@ impl ClockDrift {
         }
     }
 
-    /// Evaluates the polynomial at the given elapsed coordinate time `dt`.  
+    /// Evaluates the polynomial at the given elapsed coordinate time `delta`.  
     ///
     /// Returns the exact accumulated time difference (in seconds) between proper
-    /// time and coordinate time after the interval `dt` has passed. All
+    /// time and coordinate time after the interval `delta` has passed. All
     /// arithmetic is performed with full 36-digit precision, ensuring no loss of
     /// accuracy even for multi-year integrations.
     pub const fn evaluate(&self, delta: Delta) -> Delta {
@@ -340,10 +342,10 @@ impl ClockDrift {
     #[inline]
     pub fn from_velocity_potential_and_scale(
         velocity_m_s: f64,
-        gravitational_potential_m2_s2: f64,
+        grav_potential_m2_s2: f64,
         characteristic_length_scale: f64,
     ) -> Self {
-        let phi = gravitational_potential_m2_s2 / C_SQUARED;
+        let phi = grav_potential_m2_s2 / C_SQUARED;
         let velocity = Velocity::from_speed(velocity_m_s);
         let spacetime = LocalSpacetime::from_potential_velocity_and_scale(
             phi,
@@ -378,7 +380,7 @@ impl ClockDrift {
         let rate_factor = libm::sqrt(k_eff).max(0.0);
         let rate_offset = rate_factor - 1.0;
 
-        Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(rate_offset))
+        Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(rate_offset))
     }
 
     /// Creates a `ClockDrift` from a fully resolved `LocalSpacetime` snapshot.  
@@ -409,16 +411,16 @@ mod tests {
 
     #[test]
     fn evaluate_constant_only() {
-        let drift = ClockDrift::from_constant(Delta::from_sec_f64(0.5));
+        let drift = ClockDrift::from_constant(Delta::from_sec_f(0.5));
         let dt = Delta::from_sec(1_000);
-        assert_eq!(drift.evaluate(dt), Delta::from_sec_f64(0.5));
+        assert_eq!(drift.evaluate(dt), Delta::from_sec_f(0.5));
     }
 
     #[test]
     fn evaluate_rate_only() {
-        let drift = ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(1e-9)); // 1 ns/s
+        let drift = ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(1e-9)); // 1 ns/s
         let dt = Delta::from_sec(1_000_000); // 1 million seconds
-        assert_eq!(drift.evaluate(dt), Delta::from_sec_f64(0.001)); // 1 µs
+        assert_eq!(drift.evaluate(dt), Delta::from_sec_f(0.001)); // 1 µs
     }
 
     #[test]
@@ -430,7 +432,7 @@ mod tests {
         );
         let dt = Delta::from_sec(1_000_000);
         // 2 + (1e-9 * 1e6) + (2e-18 * 1e12) = 2.001002 exactly
-        assert_eq!(drift.evaluate(dt), Delta::from_sec_f64(2.001002));
+        assert_eq!(drift.evaluate(dt), Delta::from_sec_f(2.001002));
     }
 
     #[test]
@@ -453,9 +455,9 @@ mod tests {
 
     #[test]
     fn evaluate_large_dt_exact() {
-        let drift = ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(1e-12));
+        let drift = ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(1e-12));
         let dt = Delta::from_sec(1_000_000_000); // ~31.7 years
-        assert_eq!(drift.evaluate(dt), Delta::from_sec_f64(0.001));
+        assert_eq!(drift.evaluate(dt), Delta::from_sec_f(0.001));
     }
 
     // ========================================================================
@@ -479,7 +481,7 @@ mod tests {
             let drift = ClockDrift::from_unified_proper_time_rate(u, k);
             let expected_offset = expected_rate - 1.0;
             let expected_drift =
-                ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(expected_offset));
+                ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(expected_offset));
             assert_eq!(
                 drift, expected_drift,
                 "Low-curvature GR recovery failed for u={}, k={}",
@@ -505,7 +507,7 @@ mod tests {
             let expected_offset = expected_rate - 1.0;
 
             let expected_drift =
-                ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(expected_offset));
+                ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(expected_offset));
             assert_eq!(
                 drift, expected_drift,
                 "High-curvature saturation failed for δ = {}",
@@ -519,12 +521,12 @@ mod tests {
         // Negative inputs must be clamped (u.max(0), kretschmann.max(0))
         let drift_neg_u = ClockDrift::from_unified_proper_time_rate(-0.5, 0.0);
 
-        // Semantic check using .as_sec_f64() — this is the robust way.
-        // (Delta::from_sec_f64(-1.0) currently produces a non-canonical internal
+        // Semantic check using .as_sec_f() — this is the robust way.
+        // (Delta::from_sec_f(-1.0) currently produces a non-canonical internal
         // representation while the unified function produces the canonical one.
         // The two Deltas are mathematically identical but not ==.)
         assert_eq!(
-            drift_neg_u.rate.as_sec_f64(),
+            drift_neg_u.rate.as_sec_f(),
             -1.0,
             "Negative u should clamp to dτ/dt = 0.0 → rate_offset = -1.0"
         );
@@ -555,7 +557,7 @@ mod tests {
         let k_eff = x / (1.0 + x);
         let expected_null_rate: f64 = k_eff.sqrt() - 1.0;
         let expected_null =
-            ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(expected_null_rate));
+            ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(expected_null_rate));
 
         assert_eq!(drift_null, expected_null);
     }
@@ -584,7 +586,7 @@ mod tests {
         let k_values = [0.0, 1e5, 1e15, 1e30];
         for &k in &k_values {
             let drift = ClockDrift::from_unified_proper_time_rate(u, k);
-            let rate_factor = 1.0 + drift.rate.as_sec_f64(); // internal f64 value
+            let rate_factor = 1.0 + drift.rate.as_sec_f(); // internal f64 value
             assert!(rate_factor > 0.0, "proper-time rate became non-positive");
             // monotonicity / bound check
             assert!(

@@ -71,7 +71,7 @@ impl TimePoint {
         self
     }
 
-    /// Creates a new custom clock scale (e.g. for a new solar system, planet,
+    /// Creates a new custom clock model (e.g. for a new solar system, planet,
     /// or any user-defined time standard) using **this exact instant** as
     /// the reference epoch.
     ///
@@ -84,10 +84,7 @@ impl TimePoint {
 
     /// Convenience one-liner for creating a new local clock with zero drift.
     ///
-    /// Use this when the observer arrives at a new solar system or planet and
-    /// declares "this moment is time zero for our local time standard".
-    /// The reference epoch is frozen forever; only the drift can be updated
-    /// later if relativistic or gravitational effects are discovered.
+    /// The drift can be updated later if relativistic effects are discovered.
     #[inline]
     pub const fn new_local_clock(self) -> ClockModel {
         self.new_custom_clock(ClockDrift::ZERO)
