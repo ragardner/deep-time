@@ -22,12 +22,12 @@ pub(crate) use constants::*;
 pub(crate) use dt_big::DtBig;
 pub(crate) use utils::*;
 
-pub use clock_drift::{ClockDrift, ResolvedMetric};
+pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
 pub use delta::Delta;
 pub use delta::time_units::TimeUnits;
-pub use position::{Position, RelativisticState, Velocity};
+pub use position::{ObserverState, Position, Velocity};
 pub use time_range::TimeRange;
 pub use timestamp::Timestamp;
 pub use timestamp::traits::{

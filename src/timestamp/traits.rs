@@ -11,7 +11,7 @@
 //! let p4 = 1_234_567_890_i128.gps_seconds();
 //! ```
 
-use crate::{ClockDrift, ClockType, Delta, RelativisticState, Timestamp};
+use crate::{ClockDrift, ClockType, Delta, ObserverState, Timestamp};
 
 // ──────────────────────────────────────────────────────────────
 // Traits
@@ -350,7 +350,7 @@ pub trait RelativisticTrajectory {
     /// This is the only method you must implement.
     /// Everything else (proper-time rate, interval, correction) has high-quality
     /// default implementations that use the unified Lagrangian.
-    fn relativistic_state_at(&self, t: Timestamp) -> RelativisticState;
+    fn relativistic_state_at(&self, t: Timestamp) -> ObserverState;
 
     /// Instantaneous proper-time rate `dτ/dt` at time `t`.
     ///

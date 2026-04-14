@@ -1,4 +1,4 @@
-use crate::Delta;
+use crate::{Delta, DtBig};
 
 /// Solar gravitational parameter GM☉ in m³ s⁻²  
 /// (exact nominal value from IAU 2015 Resolution B3)
@@ -20,6 +20,8 @@ pub const TWO_GM_SUN_OVER_C3: f64 = 2.0 * GM_SUN_OVER_C3;
 
 /// Microquectoseconds per second.
 pub const MICROQUECTOS_PER_SEC: u128 = 10u128.pow(36);
+pub(crate) const MQS: DtBig = DtBig::from_u128(MICROQUECTOS_PER_SEC);
+
 /// Microquectoseconds per millisecond (10⁻³ s).
 pub const MICROQUECTOS_PER_MILLISEC: u128 = 10u128.pow(33);
 /// Microquectoseconds per microsecond (10⁻⁶ s).

@@ -116,7 +116,7 @@ impl Velocity {
     }
 
     /// Dimensionless 3-velocity β = v/c relative to the local chrono-rest frame.
-    /// This is exactly what the master Lagrangian and `ResolvedMetric` expect.
+    /// This is exactly what the master Lagrangian and `LocalSpacetime` expect.
     #[inline]
     pub fn beta(self) -> f64 {
         (self.norm_squared() / C_SQUARED).sqrt()
@@ -132,7 +132,7 @@ impl Velocity {
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
-pub struct RelativisticState {
+pub struct ObserverState {
     /// Timestamp of this state (any [`ClockType`] is accepted).
     pub time: Timestamp,
     /// Position in meters (typically barycentric or heliocentric).
@@ -148,7 +148,7 @@ pub struct RelativisticState {
     pub characteristic_length_scale: f64,
 }
 
-impl RelativisticState {
+impl ObserverState {
     /// Creates a new state for typical solar-system or GNSS use.
     #[inline]
     pub const fn new(

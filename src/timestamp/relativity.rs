@@ -1,4 +1,4 @@
-use crate::{C, ClockDrift, Delta, RelativisticState, TWO_GM_SUN_OVER_C3, Timestamp};
+use crate::{C, ClockDrift, Delta, ObserverState, TWO_GM_SUN_OVER_C3, Timestamp};
 
 impl Timestamp {
     /// Computes the total relativistic correction (differential clock-rate drift + Shapiro delay)
@@ -19,7 +19,7 @@ impl Timestamp {
     ///
     /// # Returns
     /// A [`Delta`] (in seconds) to be added to the Newtonian light time.
-    pub fn one_way_relativistic_delay(tx: RelativisticState, rx: RelativisticState) -> Delta {
+    pub fn one_way_relativistic_delay(tx: ObserverState, rx: ObserverState) -> Delta {
         let dt = rx.time.duration_since(tx.time);
 
         let tx_drift = ClockDrift::from_velocity_potential_and_scale(
@@ -55,7 +55,7 @@ impl Timestamp {
     /// # Parameters
     /// - `tx` – relativistic state of the transmitter (fixed)
     /// - `rx_provider` – closure that, given a guessed receive time, returns
-    ///   the full [`RelativisticState`] of the receiver at that time
+    ///   the full [`ObserverState`] of the receiver at that time
     /// - `tolerance` – maximum allowed change in receive time between iterations
     /// - `max_iter` – safety limit on the number of iterations (recommended 8–12)
     ///
@@ -63,13 +63,13 @@ impl Timestamp {
     /// A tuple `(correction, final_rx_time)` where `correction` is the relativistic
     /// delay and `final_rx_time` is the converged receive timestamp.
     pub fn iterative_one_way_relativistic_delay<F>(
-        tx: RelativisticState,
+        tx: ObserverState,
         mut rx_provider: F,
         tolerance: Delta,
         max_iter: usize,
     ) -> (Delta, Timestamp)
     where
-        F: FnMut(Timestamp) -> RelativisticState,
+        F: FnMut(Timestamp) -> ObserverState,
     {
         let mut rx = rx_provider(tx.time); // initial guess
         let mut rel_correction = Delta::ZERO;
@@ -113,8 +113,8 @@ impl Timestamp {
     ///   and returns the **relative** clock-rate offset `δ(λ) = (dτ_rx/d t − dτ_tx/d t)`
     ///   at that point along the straight-line path
     pub fn one_way_relativistic_delay_integrated<F>(
-        tx: RelativisticState,
-        rx: RelativisticState,
+        tx: ObserverState,
+        rx: ObserverState,
         num_samples: usize,
         path_sampler: F,
     ) -> Delta
@@ -161,12 +161,12 @@ impl Timestamp {
     /// - `round_trip_measured` – the raw measured round-trip duration
     /// - `rx` – relativistic state of the receiver (its time field is ignored)
     pub fn round_trip_relativistic_correction(
-        tx: RelativisticState,
+        tx: ObserverState,
         round_trip_measured: Delta,
-        rx: RelativisticState,
+        rx: ObserverState,
     ) -> Delta {
         let one_way_approx = round_trip_measured.div_by_2();
-        let rx_approx = RelativisticState {
+        let rx_approx = ObserverState {
             time: tx.time.add(one_way_approx),
             ..rx
         };
@@ -192,17 +192,17 @@ impl Timestamp {
 #[cfg(test)]
 mod relativistic_tests {
     use super::*;
-    use crate::{Delta, Position, RelativisticState, Timestamp, Velocity};
+    use crate::{Delta, Position, ObserverState, Timestamp, Velocity};
 
-    /// Small helper to build a `RelativisticState` quickly.
+    /// Small helper to build a `ObserverState` quickly.
     fn make_state(
         tai_sec: i128,
         pos: Position,
         vel: Velocity,
         phi_m2_s2: f64,
         char_scale: f64,
-    ) -> RelativisticState {
-        RelativisticState {
+    ) -> ObserverState {
+        ObserverState {
             time: Timestamp::from_tai_sec(tai_sec),
             position: pos,
             velocity: vel,

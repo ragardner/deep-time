@@ -30,9 +30,31 @@ pub(crate) const fn sin_approx(x: f64) -> f64 {
 /// Converts the Newtonian gravitational potential Φ/c² (where Φ < 0 for bound orbits)
 /// into the relativistic lapse factor α = √(1 + 2Φ/c²).
 ///
-/// This is the standard weak-field approximation used by JPL, ESA, GNSS, and
-/// all modern solar-system navigation codes. It matches the physical convention
-/// used everywhere else in the library (`RelativisticState` stores Φ < 0).
+/// This function implements the standard weak-field approximation used in general
+/// relativity. It is valid when the dimensionless gravitational potential satisfies
+/// |Φ|/c² ≪ 1. In this regime spacetime is nearly flat, gravitational time dilation
+/// is a small perturbation, and higher-order curvature effects can safely be neglected.
+/// The resulting α gives the factor by which clocks tick more slowly in a gravitational
+/// well relative to a distant reference clock.
+///
+/// This approximation is excellent for solar-system navigation, GNSS satellites,
+/// most spacecraft operations, and any environment where |Φ|/c² remains much smaller
+/// than ~0.01. It is exported from `deep_time_core::alpha_from_weak_field_potential`
+/// and is the recommended way to obtain the lapse factor when you have the local
+/// Newtonian potential.
+///
+/// The weak-field regime breaks down in strong-gravity environments where
+/// |Φ|/c² approaches or exceeds ~0.1. Such conditions occur near:
+///
+/// - the surface or immediate vicinity of neutron stars (where |Φ|/c² ≈ 0.15–0.25);
+/// - regions near a black-hole event horizon (e.g. the photon rings imaged by the
+///   Event Horizon Telescope around M87* or Sgr A*);
+/// - the final inspiral and merger phases of binary neutron-star or black-hole
+///   systems (as observed by LIGO/Virgo in events such as GW170817 or GW150914).
+///
+/// In those extreme regimes this function alone is no longer sufficient; a full
+/// strong-field treatment (including curvature information passed to `LocalSpacetime`)
+/// is required.
 #[inline(always)]
 pub fn alpha_from_weak_field_potential(gravitational_potential_over_c2: f64) -> f64 {
     // gravitational_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)

@@ -97,25 +97,44 @@ This formulation is production-ready for spacecraft navigation pipelines, black-
 */
 
 use crate::{
-    C_SQUARED, Delta, DtBig, MICROQUECTOS_PER_SEC, PLANCK_LENGTH_4, Velocity,
-    alpha_from_weak_field_potential, kretschmann_from_potential_and_scale,
+    C_SQUARED, Delta, DtBig, MQS, PLANCK_LENGTH_4, Velocity, alpha_from_weak_field_potential,
+    kretschmann_from_potential_and_scale,
 };
 
-/// Pre-resolved local spacetime metric quantities supplied by the caller.
+/// The three local spacetime quantities that fully determine how fast an observer’s
+/// proper time advances relative to coordinate time.
 ///
-/// - `alpha` comes from `alpha_from_weak_field_potential` (e.g. solar system use)
-///   or from a full metric / onboard gravimeter.
-/// - `beta` comes from `observer_velocity.beta()`.
-/// - `kretschmann` is 0.0 in the solar system today (future gravimetric
-///   hardware will supply the real value).
+/// This structure holds the gravitational lapse factor, the observer’s local velocity,
+/// and the curvature information needed for the library’s unified proper-time model.
+/// It is the low-level input that `ClockDrift` uses internally.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct ResolvedMetric {
+pub struct LocalSpacetime {
+    /// Gravitational lapse (redshift) factor α.  
+    /// This is the factor by which clocks run slower in a gravitational potential.
     pub alpha: f64,
+
+    /// Local three-velocity β = v/c measured in the coordinate rest frame.
     pub beta: f64,
+
+    /// Kretschmann scalar (a scalar measure of spacetime curvature).  
+    /// In the weak-field regime — where |Φ|/c² ≪ 1 and the gravitational field varies
+    /// over macroscopic distances — this value is effectively zero and can safely be
+    /// left at its default. It only becomes numerically relevant in strong-field
+    /// environments such as:
+    ///
+    /// - the surface or immediate vicinity of neutron stars (where |Φ|/c² ≈ 0.15–0.25);
+    /// - regions near a black-hole event horizon (e.g. the photon rings imaged by the
+    ///   Event Horizon Telescope around M87* or Sgr A*);
+    /// - the final inspiral and merger phases of binary neutron-star or black-hole
+    ///   systems (as observed by LIGO/Virgo in events such as GW170817 or GW150914).
+    ///
+    /// In these regimes a realistic non-zero value (estimated from the local potential
+    /// and a characteristic length scale) activates the library’s intrinsic Planck-scale
+    /// saturation term.
     pub kretschmann: f64,
 }
 
-impl ResolvedMetric {
+impl LocalSpacetime {
     #[inline(always)]
     pub const fn new(alpha: f64, beta: f64, kretschmann: f64) -> Self {
         Self {
@@ -127,20 +146,52 @@ impl ResolvedMetric {
 
     /// Convenience for direct gravimeter / sensor paths.
     #[inline(always)]
-    pub fn from_gravitic_and_velocity(alpha: f64, kretschmann: f64, velocity: Velocity) -> Self {
+    pub fn from_gravitic_and_velocity(alpha: f64, velocity: Velocity, kretschmann: f64) -> Self {
         Self::new(alpha, velocity.beta(), kretschmann)
     }
 
     /// Recommended constructor for most users.
     ///
-    /// Computes both the gravitational lapse `α` **and** the Kretschmann scalar
-    /// from the total local potential and the characteristic length scale.
+    /// Computes both the gravitational lapse factor `α` and an estimate of the
+    /// Kretschmann scalar from the dimensionless gravitational potential Φ/c²
+    /// and a characteristic length scale.
     ///
-    /// - Solar-system / GNSS users: pass `characteristic_length_scale = 0.0`
-    ///   (returns exactly the same rate as the old weak-field path).
-    /// - Strong-field users: `characteristic_length_scale`
-    ///     — the typical length scale (in meters) over which the
-    ///       gravitational field varies at the observer’s location.
+    /// The lapse factor α is computed using `alpha_from_weak_field_potential`,
+    /// which is the standard weak-field expression α = √(1 + 2Φ/c²). It is valid
+    /// when the dimensionless gravitational potential satisfies |Φ|/c² ≪ 1. In
+    /// this regime spacetime is nearly flat, gravitational time dilation is a
+    /// small perturbation, and higher-order curvature effects can safely be
+    /// neglected. The resulting α gives the factor by which clocks tick more
+    /// slowly in a gravitational well relative to a distant reference clock.
+    ///
+    /// This approximation is excellent for solar-system navigation, GNSS
+    /// satellites, most spacecraft operations, and any environment where
+    /// |Φ|/c² remains much smaller than ~0.01. It is exported from
+    /// `deep_time_core::alpha_from_weak_field_potential` and is the recommended
+    /// way to obtain the lapse factor when you have the local Newtonian potential.
+    ///
+    /// The weak-field regime breaks down in strong-gravity environments where
+    /// |Φ|/c² approaches or exceeds ~0.1. Such conditions occur near:
+    ///
+    /// - the surface or immediate vicinity of neutron stars (where |Φ|/c² ≈ 0.15–0.25);
+    /// - regions near a black-hole event horizon (e.g. the photon rings imaged by the
+    ///   Event Horizon Telescope around M87* or Sgr A*);
+    /// - the final inspiral and merger phases of binary neutron-star or black-hole
+    ///   systems (as observed by LIGO/Virgo in events such as GW170817 or GW150914).
+    ///
+    /// In those extreme regimes this function alone is no longer sufficient; a full
+    /// strong-field treatment (including curvature information passed to `LocalSpacetime`)
+    /// is required.
+    ///
+    /// For the `characteristic_length_scale` parameter:
+    /// - In weak-field conditions, pass `0.0`. This returns exactly the same clock
+    ///   rate as the classic relativistic formulation and sets the Kretschmann scalar
+    ///   to zero (its default value for all ordinary navigation, GNSS, or solar-system
+    ///   work).
+    /// - In strong-field conditions, supply the typical length scale (in meters) over
+    ///   which the gravitational field varies significantly at the observer’s location.
+    ///   This allows the library to estimate the Kretschmann scalar and activate the
+    ///   intrinsic Planck-scale saturation term when curvature becomes extreme.
     #[inline(always)]
     pub fn from_potential_velocity_and_scale(
         phi_over_c2: f64, // Φ/c² (total local potential)
@@ -150,31 +201,48 @@ impl ResolvedMetric {
         let alpha = alpha_from_weak_field_potential(phi_over_c2);
         let kretschmann =
             kretschmann_from_potential_and_scale(phi_over_c2, characteristic_length_scale);
-        Self::from_gravitic_and_velocity(alpha, kretschmann, velocity)
+        Self::from_gravitic_and_velocity(alpha, velocity, kretschmann)
     }
 }
 
-/// Quadratic polynomial: `constant + rate·dt + accel·dt²`
+/// Quadratic polynomial that describes the accumulated difference between an
+/// observer’s proper time (the time measured by a real clock moving through
+/// spacetime) and a chosen coordinate time such as TT, TAI, or any other
+/// `ClockType`.
 ///
-/// - `constant` – fixed offset (seconds)
-/// - `rate`     – linear drift (s/s, dimensionless when multiplied by `dt`)
-/// - `accel`    – quadratic drift (s/s²)
+/// The polynomial follows the classic form  
+/// Δt = constant + rate·Δt + accel·(Δt)²  
+/// where the three coefficients capture any fixed offset, constant drift, and
+/// quadratic acceleration of the clock. This structure is used throughout
+/// spacecraft navigation, GNSS systems, and relativistic timing pipelines to
+/// steer clocks, predict time offsets, and maintain synchronization over long
+/// durations.
 ///
-/// All fields are `Delta` so the entire expression stays exact to 10⁻³⁶ s.
+/// All three coefficients are stored using the exact `Delta` type, which
+/// guarantees 36-digit precision with no floating-point rounding errors even
+/// over centuries of integration.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct ClockDrift {
-    /// Constant term a₀ (seconds)
+    /// Constant term a₀ expressed in seconds.  
+    /// This represents any fixed time offset between the observer’s proper time
+    /// and the chosen coordinate time.
     pub constant: Delta,
-    /// Linear rate term a₁ (seconds per second)
+
+    /// Linear drift rate a₁ expressed in seconds per second.  
+    /// This term captures a steady fractional rate difference (for example, a
+    /// clock that runs consistently fast or slow).
     pub rate: Delta,
-    /// Quadratic acceleration term a₂ (seconds per second²)
+
+    /// Quadratic acceleration term a₂ expressed in seconds per second squared.  
+    /// This term accounts for any changing drift rate, such as the gradual
+    /// acceleration caused by relativistic effects or hardware aging.
     pub accel: Delta,
 }
 
 impl ClockDrift {
-    /// Creates a new polynomial with all three coefficients.
+    /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
     #[inline]
     pub const fn new(constant: Delta, rate: Delta, accel: Delta) -> Self {
         Self {
@@ -184,14 +252,19 @@ impl ClockDrift {
         }
     }
 
-    /// Zero polynomial (no correction).
+    /// The zero polynomial representing no correction at all.  
+    /// Use this when the observer’s clock is already perfectly synchronized with
+    /// the chosen coordinate time.
     pub const ZERO: Self = Self {
         constant: Delta::ZERO,
         rate: Delta::ZERO,
         accel: Delta::ZERO,
     };
 
-    /// Pure constant offset (most common for static bias).
+    /// Creates a `ClockDrift` consisting of a pure constant offset.  
+    /// This is the most common constructor when only a fixed time bias is known
+    /// (for example, after a one-time clock synchronization or leap-second
+    /// adjustment).
     #[inline]
     pub const fn from_constant(c: Delta) -> Self {
         Self {
@@ -201,7 +274,11 @@ impl ClockDrift {
         }
     }
 
-    /// Constant offset + constant drift rate (very common for GNSS and observer clock steering).
+    /// Creates a `ClockDrift` consisting of a constant offset together with a
+    /// constant linear drift rate.  
+    /// This form is very common for GNSS receivers and spacecraft clock steering,
+    /// where a steady fractional frequency offset must be corrected in addition
+    /// to any fixed bias.
     #[inline]
     pub const fn from_offset_and_rate(offset: Delta, rate: Delta) -> Self {
         Self {
@@ -211,12 +288,15 @@ impl ClockDrift {
         }
     }
 
-    /// Evaluates the polynomial at elapsed time `dt` (exact, using `DtBig`).
+    /// Evaluates the polynomial at the given elapsed coordinate time `dt`.  
     ///
-    /// All arithmetic is performed with full 36-digit precision.
-    pub const fn evaluate(&self, dt: Delta) -> Delta {
-        let dt_big = dt.to_big();
-        let mqs = DtBig::from_u128(MICROQUECTOS_PER_SEC);
+    /// Returns the exact accumulated time difference (in seconds) between proper
+    /// time and coordinate time after the interval `dt` has passed. All
+    /// arithmetic is performed with full 36-digit precision, ensuring no loss of
+    /// accuracy even for multi-year integrations.
+    pub const fn evaluate(&self, delta: Delta) -> Delta {
+        let dt_big: DtBig = delta.to_big();
+        let mqs: DtBig = MQS;
         let mut total = self.constant.to_big();
 
         if !self.rate.is_zero() || !self.accel.is_zero() {
@@ -237,12 +317,26 @@ impl ClockDrift {
         Delta::from_big(total)
     }
 
-    /// Creates a `ClockDrift` from the observer's velocity and the total local gravitational potential
-    /// using the unified master-Lagrangian proper-time rate.
+    /// Creates a `ClockDrift` directly from an observer’s velocity and total
+    /// local gravitational potential using the library’s unified master-Lagrangian
+    /// proper-time rate.  
     ///
-    /// This is the recommended high-level constructor for all users.
-    /// - Solar-system / GNSS: pass `characteristic_length_scale = 0.0` (exactly recovers GR).
-    /// - Strong-field / gravimeter: supply a non-zero scale to activate the intrinsic Planck-core saturation.
+    /// This is the recommended high-level constructor for nearly all users. It
+    /// automatically computes the relativistic clock rate that includes both
+    /// special-relativistic velocity effects and gravitational time dilation,
+    /// then returns a `ClockDrift` that can be evaluated at any future time.
+    ///
+    /// The `characteristic_length_scale` parameter controls whether the
+    /// weak-field or strong-field formulation is used:
+    ///
+    /// - In the weak-field regime (where |Φ|/c² ≪ 1), simply pass
+    ///   `characteristic_length_scale = 0.0`. This returns exactly the same
+    ///   relativistic clock rate used by JPL, ESA, GNSS systems, and all modern
+    ///   solar-system navigation pipelines.
+    /// - In strong-field conditions, supply a non-zero length scale (in meters)
+    ///   over which the gravitational potential changes at the observer’s
+    ///   location. This activates the library’s intrinsic Planck-scale saturation
+    ///   term when spacetime curvature becomes extreme.
     #[inline]
     pub fn from_velocity_potential_and_scale(
         velocity_m_s: f64,
@@ -251,19 +345,26 @@ impl ClockDrift {
     ) -> Self {
         let phi = gravitational_potential_m2_s2 / C_SQUARED;
         let velocity = Velocity::from_speed(velocity_m_s);
-        let resolved = ResolvedMetric::from_potential_velocity_and_scale(
+        let spacetime = LocalSpacetime::from_potential_velocity_and_scale(
             phi,
             velocity,
             characteristic_length_scale,
         );
-        Self::from_resolved_metric(resolved)
+        Self::from_local_spacetime(spacetime)
     }
 
-    /// Canonical low-level constructor — the single source of truth.
+    /// Canonical low-level constructor that implements the exact intrinsic
+    /// expression from the master Lagrangian.  
     ///
-    /// Uses the exact intrinsic master-Lagrangian expression:
-    /// K_eff = [δ(1 + x) + x(1−δ)²] / (1 + x)
-    /// where δ = α²(1−β²), x = ℓ_Pl⁴ 𝒦
+    /// This function is the single source of truth for the proper-time rate
+    /// calculation used throughout the library. Most users will never call it
+    /// directly; the high-level constructors `from_velocity_potential_and_scale`
+    /// and `from_local_spacetime` are the intended entry points.
+    ///
+    /// The internal expression is  
+    /// K_eff = [δ(1 + x) + x(1−δ)²] / (1 + x)  
+    /// where δ = α²(1−β²) and x = ℓ_Pl⁴ 𝒦. The returned rate offset is then
+    /// applied as a linear term in the `ClockDrift` polynomial.
     #[inline]
     pub fn from_unified_proper_time_rate(u: f64, kretschmann: f64) -> Self {
         let delta = u.max(0.0);
@@ -278,11 +379,17 @@ impl ClockDrift {
         Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f64(rate_offset))
     }
 
-    /// High-level entry point — the main function users will call.
+    /// Creates a `ClockDrift` from a fully resolved `LocalSpacetime` snapshot.  
+    ///
+    /// This is the canonical high-level entry point when you already hold a
+    /// `LocalSpacetime` object containing the gravitational lapse factor α, the
+    /// local velocity β, and the Kretschmann scalar. It internally computes the
+    /// unified proper-time rate and packages the result as a `ClockDrift`
+    /// polynomial ready for evaluation at any future time.
     #[inline]
-    pub fn from_resolved_metric(resolved: ResolvedMetric) -> Self {
-        let u = resolved.alpha * resolved.alpha * (1.0 - resolved.beta * resolved.beta);
-        Self::from_unified_proper_time_rate(u, resolved.kretschmann)
+    pub fn from_local_spacetime(spacetime: LocalSpacetime) -> Self {
+        let u = spacetime.alpha * spacetime.alpha * (1.0 - spacetime.beta * spacetime.beta);
+        Self::from_unified_proper_time_rate(u, spacetime.kretschmann)
     }
 }
 
@@ -452,10 +559,10 @@ mod tests {
     }
 
     #[test]
-    fn resolved_metric_to_unified_proper_time_rate() {
-        // from_resolved_metric must correctly compute δ = α²(1 − β²) and delegate to the unified path
-        let resolved = ResolvedMetric::new(0.9, 0.6, 0.0); // realistic values
-        let drift = ClockDrift::from_resolved_metric(resolved);
+    fn local_spacetime_to_unified_proper_time_rate() {
+        // from_local_spacetime must correctly compute δ = α²(1 − β²) and delegate to the unified path
+        let spacetime = LocalSpacetime::new(0.9, 0.6, 0.0); // realistic values
+        let drift = ClockDrift::from_local_spacetime(spacetime);
 
         // Manual verification of the exact same path
         let u = 0.9 * 0.9 * (1.0 - 0.6 * 0.6);
@@ -463,7 +570,7 @@ mod tests {
 
         assert_eq!(
             drift, expected_drift,
-            "ResolvedMetric → unified path mismatch"
+            "LocalSpacetime → unified path mismatch"
         );
     }
 
