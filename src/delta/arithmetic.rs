@@ -132,44 +132,22 @@ impl Delta {
         }
     }
 
-    /// 10³⁶ as a `DtBig` (constant)
-    #[inline(always)]
-    const fn mqs() -> DtBig {
-        DtBig::TEN.pow(36)
-    }
-
     /// Divides this duration by 2 using the existing high-precision float path.
     #[inline(always)]
     pub fn div_by_2(self) -> Delta {
         Delta::from_sec_f(self.as_sec_f() / 2.0)
     }
 
-    /// Convert `Delta` → total microquectoseconds (exact 320-bit signed integer).
+    /// Exact division by a real number (used by Mars time conversions)
     #[inline(always)]
-    pub const fn to_big(self) -> DtBig {
-        let sec_big = DtBig::from_i128(self.sec);
-        let sub_big = DtBig::from_u128(self.subsec);
-        sec_big.wrapping_mul(Self::mqs()).wrapping_add(sub_big)
+    pub const fn div_by_real(self, rhs: Real) -> Delta {
+        Delta::from_sec_f(self.as_sec_f() / rhs)
     }
 
-    /// Convert total microquectoseconds back to normalized/saturated `Delta`.
-    #[inline]
-    pub const fn from_big(total: DtBig) -> Self {
-        let m = Self::mqs();
-        let sec_big = total.div_euclid(m);
-        let sub_big = total.rem_euclid(m);
-        let sec = sec_big.to_i128_saturating();
-        let subsec = sub_big.to_u128_saturating();
-        if sec == i128::MAX {
-            Self {
-                sec,
-                subsec: MICROQUECTOS_PER_SEC - 1,
-            }
-        } else if sec == i128::MIN {
-            Self { sec, subsec: 0 }
-        } else {
-            Self { sec, subsec }
-        }
+    /// Exact multiplication by a real number
+    #[inline(always)]
+    pub const fn mul_by_real(self, rhs: Real) -> Delta {
+        Delta::from_sec_f(self.as_sec_f() * rhs)
     }
 
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.

@@ -65,6 +65,23 @@ pub const TT_TAI_OFFSET_DELTA: Delta = Delta::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFS
 // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
 pub(crate) const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
 
+/// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
+///
+/// By international convention (IAU), J2000.0 is defined as the instant
+/// 2000 January 1.5 TT, which corresponds exactly to Julian Date 2451545.0 TT.
+/// This integer value is the fixed reference point from which all absolute
+/// Julian Dates returned by `to_jd_tt_exact` are measured; it is subtracted
+/// when converting back from an absolute JD into library-internal seconds
+/// since the J2000 epoch.
+pub(crate) const J2000_JD_TT: i128 = 2_451_545;
+
+/// Exact mean length of one Martian sol in Earth seconds (NASA GISS / AM2000)
+pub const MARS_SOL_LENGTH_SEC: Real = 88775.244;
+/// Reference constant for the MSD formula (JD_TT basis, NASA GISS Mars24)
+pub(crate) const MARS_MSD_JD_REF: Real = 2405522.0028779;
+/// Mean number of Earth days in one Martian sol (for the division)
+pub(crate) const MARS_SOL_IN_EARTH_DAYS: Real = 1.0274912517;
+
 // 10¹⁵ is exactly representable in f64 (within 53-bit mantissa).
 // 10²¹ completes the 36-digit scale exactly in u128.
 pub(crate) const POW15: u128 = 1_000_000_000_000_000;

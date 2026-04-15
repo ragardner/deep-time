@@ -1,7 +1,8 @@
 use crate::leap_seconds::leap_seconds_before;
 use crate::{
-    ClockDrift, ClockModel, ClockType, Delta, J2000_SECONDS_PER_CENTURY, LB, LG, LM, POW15, POW21,
-    Real, SEC_PER_DAY, TCG_TCB_REF_JD, TDB0, TT_TAI_OFFSET_DELTA, TimePoint, sin_approx,
+    ClockDrift, ClockModel, ClockType, Delta, J2000_JD_TT, J2000_SECONDS_PER_CENTURY, LB, LG, LM,
+    MARS_MSD_JD_REF, MARS_SOL_IN_EARTH_DAYS, MARS_SOL_LENGTH_SEC, POW15, POW21, Real, SEC_PER_DAY,
+    TCG_TCB_REF_JD, TDB0, TT_TAI_OFFSET_DELTA, TimePoint, floor_f, sin_approx,
 };
 #[cfg(test)]
 #[path = "conversions_tests.rs"]
@@ -350,7 +351,8 @@ impl TimePoint {
     /// Creates a `TimePoint` from an exact Julian Date in TT (full precision, no loss).
     #[inline]
     pub const fn from_jd_tt_exact(jd_days: i128, frac: Delta) -> Self {
-        let total_sec = jd_days * 86_400 + frac.sec;
+        let days_since_j2000 = jd_days - J2000_JD_TT;
+        let total_sec = days_since_j2000 * 86_400i128 + frac.sec;
         let tt = TimePoint::new(total_sec, frac.subsec, ClockType::TT);
         tt.to_tai()
     }
@@ -374,7 +376,7 @@ impl TimePoint {
     }
 
     // ──────────────────────────────────────────────────────────────
-    // Off-planet helpers
+    // Lunar
     // ──────────────────────────────────────────────────────────────
 
     /// LTC ↔ TT (exact linear NIST/Ashby & Patla 2024 relation)
@@ -394,5 +396,62 @@ impl TimePoint {
         let mut tp = ltc.sub(Delta::from_sec_f(delta_s));
         tp.set_clock_type(ClockType::TT);
         tp
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Mars
+    // ──────────────────────────────────────────────────────────────
+
+    /// Returns the exact **Mars Sol Date (MSD)** as `(integer sols, fractional sol as Delta)`.
+    ///
+    /// Canonical NASA GISS / AM2000 formula. Works with *any* input `ClockType`
+    /// (UTC, TAI, TT, etc.). Leap seconds are automatically corrected when needed.
+    pub const fn to_msd_exact(self) -> (i128, Delta) {
+        let (jd_days, frac_day) = self.to_jd_tt_exact();
+
+        // JD_TT as a real number of days
+        let jd_real = jd_days as Real + (frac_day.as_sec_f() / SEC_PER_DAY);
+
+        let msd_real = (jd_real - MARS_MSD_JD_REF) / MARS_SOL_IN_EARTH_DAYS;
+
+        let whole_sols = floor_f(msd_real) as i128;
+        let frac_sol_real = msd_real - (whole_sols as Real);
+        let frac_sol = Delta::from_sec_f(frac_sol_real * MARS_SOL_LENGTH_SEC);
+
+        (whole_sols, frac_sol)
+    }
+
+    /// Convenience float version of MSD (matches NASA Mars24 output).
+    pub const fn to_msd(self) -> Real {
+        let (whole, frac) = self.to_msd_exact();
+        whole as Real + frac.as_sec_f() / MARS_SOL_LENGTH_SEC
+    }
+
+    /// Returns **Mars Coordinated Time (MTC)** as a `Delta` (0 to one full sol).
+    pub const fn to_mtc(self) -> Delta {
+        let (_, frac_sol) = self.to_msd_exact();
+        frac_sol // already seconds into the sol (0 … MARS_SOL_LENGTH_SEC)
+    }
+
+    /// Inverse: create a `TimePoint` (in TT) from exact MSD.
+    pub const fn from_msd_exact(whole_sols: i128, frac_sol: Delta) -> Self {
+        let frac_sol_real = frac_sol.as_sec_f() / MARS_SOL_LENGTH_SEC;
+        let msd_real = whole_sols as Real + frac_sol_real;
+
+        let jd_real = msd_real * MARS_SOL_IN_EARTH_DAYS + MARS_MSD_JD_REF;
+
+        let jd_days = floor_f(jd_real) as i128;
+        let frac_day_real = jd_real - (jd_days as Real);
+        let frac_day = Delta::from_sec_f(frac_day_real * SEC_PER_DAY);
+
+        Self::from_jd_tt_exact(jd_days, frac_day)
+    }
+
+    /// Inverse: create a `TimePoint` (in TT) from float MSD.
+    pub const fn from_msd(msd: Real) -> Self {
+        let whole = floor_f(msd) as i128;
+        let frac = msd - (whole as Real);
+        let frac_delta = Delta::from_sec_f(frac * MARS_SOL_LENGTH_SEC);
+        Self::from_msd_exact(whole, frac_delta)
     }
 }

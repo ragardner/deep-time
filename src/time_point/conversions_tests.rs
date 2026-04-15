@@ -270,3 +270,106 @@ mod ltc_tests {
         }
     }
 }
+
+mod mars_tests {
+    use super::*;
+    use crate::MARS_SOL_LENGTH_SEC;
+
+    #[test]
+    fn msd_exact_roundtrip_is_accurate() {
+        let test_points = [
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365),
+            TimePoint::from_tai_sec(-86_400 * 365 * 10),
+            TimePoint::from_tai_sec(1_000_000_000),
+            TimePoint::from_tai_sec(-2_208_945_600),
+        ];
+
+        for &p in &test_points {
+            let (whole, frac) = p.to_msd_exact();
+            let back = TimePoint::from_msd_exact(whole, frac);
+
+            let diff = back.duration_since(p).as_sec_f().abs();
+            assert!(
+                diff < 5e-5, // ← relaxed for f64 JD precision (max observed error ≈ 13.7 µs)
+                "MSD round-trip error too large: {} s at {:?}",
+                diff,
+                p
+            );
+        }
+    }
+
+    #[test]
+    fn msd_float_roundtrip_is_accurate() {
+        let test_points = [
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365 * 100),
+            TimePoint::from_tai_sec(1_000_000_000),
+        ];
+
+        for &p in &test_points {
+            let msd_float = p.to_msd();
+            let back = TimePoint::from_msd(msd_float);
+
+            let diff = back.duration_since(p).as_sec_f().abs();
+            assert!(
+                diff < 5e-5, // ← relaxed for f64 MSD path (max observed error ≈ 13.7 µs)
+                "MSD float round-trip error too large: {} s at {:?}",
+                diff,
+                p
+            );
+        }
+    }
+
+    #[test]
+    fn mtc_is_in_valid_range() {
+        let test_points = [
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365),
+            TimePoint::from_tai_sec(1_000_000_000),
+        ];
+
+        for &p in &test_points {
+            let mtc = p.to_mtc();
+            let mtc_sec = mtc.as_sec_f();
+            assert!(
+                mtc_sec >= 0.0 && mtc_sec < MARS_SOL_LENGTH_SEC,
+                "MTC out of range: {} s at {:?}",
+                mtc_sec,
+                p
+            );
+        }
+    }
+
+    #[test]
+    fn msd_at_j2000_is_correct() {
+        let tai = TimePoint::ZERO;
+        let (whole, frac) = tai.to_msd_exact();
+
+        assert_eq!(whole, 44791, "Integer part of MSD at J2000 should be 44791");
+
+        let frac_sols = frac.as_sec_f() / MARS_SOL_LENGTH_SEC;
+        assert!(
+            (frac_sols - 0.61980061).abs() < 1e-8,
+            "Fractional part of MSD at J2000 (TAI) was {} sols (expected ~0.61980061)",
+            frac_sols
+        );
+    }
+
+    #[test]
+    fn utc_leap_seconds_are_handled_in_mars_time() {
+        // One second before vs after a leap second insertion
+        let utc_pre = TimePoint::from_utc_sec(1_485_779_199);
+        let utc_post = TimePoint::from_utc_sec(1_485_779_200);
+
+        let msd_pre = utc_pre.to_msd();
+        let msd_post = utc_post.to_msd();
+
+        let diff_sols = (msd_post - msd_pre).abs();
+        assert!(
+            diff_sols > 1e-6 && diff_sols < 2e-5,
+            "MSD difference across leap second was {} sols (expected ~1.126e-5)",
+            diff_sols
+        );
+    }
+}

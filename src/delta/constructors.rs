@@ -1,5 +1,5 @@
 use crate::{
-    Delta, MICROQUECTOS_PER_ATTOSEC, MICROQUECTOS_PER_FEMTOSEC, MICROQUECTOS_PER_MICROSEC,
+    Delta, DtBig, MICROQUECTOS_PER_ATTOSEC, MICROQUECTOS_PER_FEMTOSEC, MICROQUECTOS_PER_MICROSEC,
     MICROQUECTOS_PER_MILLISEC, MICROQUECTOS_PER_NANOSEC, MICROQUECTOS_PER_PICOSEC,
     MICROQUECTOS_PER_QUECTOSEC, MICROQUECTOS_PER_RONTOSEC, MICROQUECTOS_PER_SEC,
     MICROQUECTOS_PER_YOCTOSEC, MICROQUECTOS_PER_ZEPTOSEC,
@@ -180,6 +180,40 @@ impl Delta {
                 sec: -self.sec - 1,
                 subsec: MICROQUECTOS_PER_SEC - self.subsec,
             }
+        }
+    }
+
+    /// 10³⁶ as a `DtBig` (constant)
+    #[inline(always)]
+    const fn mqs() -> DtBig {
+        DtBig::TEN.pow(36)
+    }
+
+    /// Convert `Delta` → total microquectoseconds (exact 320-bit signed integer).
+    #[inline(always)]
+    pub const fn to_big(self) -> DtBig {
+        let sec_big = DtBig::from_i128(self.sec);
+        let sub_big = DtBig::from_u128(self.subsec);
+        sec_big.wrapping_mul(Self::mqs()).wrapping_add(sub_big)
+    }
+
+    /// Convert total microquectoseconds back to normalized/saturated `Delta`.
+    #[inline]
+    pub const fn from_big(total: DtBig) -> Self {
+        let m = Self::mqs();
+        let sec_big = total.div_euclid(m);
+        let sub_big = total.rem_euclid(m);
+        let sec = sec_big.to_i128_saturating();
+        let subsec = sub_big.to_u128_saturating();
+        if sec == i128::MAX {
+            Self {
+                sec,
+                subsec: MICROQUECTOS_PER_SEC - 1,
+            }
+        } else if sec == i128::MIN {
+            Self { sec, subsec: 0 }
+        } else {
+            Self { sec, subsec }
         }
     }
 }
