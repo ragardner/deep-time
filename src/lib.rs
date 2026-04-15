@@ -17,6 +17,7 @@ mod clock_type;
 mod common;
 mod delta;
 mod light_time;
+mod parse_date;
 mod position;
 mod time_point;
 mod utils;
@@ -36,6 +37,11 @@ pub use clock_type::ClockType;
 pub use delta::Delta;
 pub use delta::time_units::TimeUnits;
 pub use light_time::{LightContext, ObserverState};
+#[cfg(feature = "chrono")]
+pub use parse_date::chrono;
+#[cfg(feature = "jiff")]
+pub use parse_date::jiff;
+pub use parse_date::parser;
 pub use position::{Position, Velocity};
 pub use time_point::TimePoint;
 pub use time_range::TimeRange;

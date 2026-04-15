@@ -17,6 +17,8 @@ serde = { version = "1.0", optional = true, default-features = false, features =
 tsify = { version = "=0.5.5", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
 js-sys = { version = "0.3", optional = true }
+jiff = { version = "=0.2.23", optional = true, default-features = false }
+chrono = { version = "0.4", optional = true, default-features = false }  # ← NEW
 
 [features]
 # ──────────────────────────────────────────────────────────────
@@ -24,25 +26,33 @@ js-sys = { version = "0.3", optional = true }
 # ──────────────────────────────────────────────────────────────
 default = []          # Do not enable std by accident
 
-alloc = []            # Enables `alloc`
-std = ["alloc"]       # Enables the full std library + alloc
+alloc = ["jiff?/alloc", "chrono?/alloc"]            # Enables `alloc`
+std = ["alloc", "jiff?/std", "chrono?/std"]       # Enables the full std library + alloc
 
 # ──────────────────────────────────────────────────────────────
 # SERIALIZATION
 # ──────────────────────────────────────────────────────────────
-serde = ["dep:serde"] # Enables `Serialize`/`Deserialize`
+serde = ["dep:serde", "jiff?/serde", "chrono?/serde"] # Enables `Serialize`/`Deserialize` for both
+
+# ──────────────────────────────────────────────────────────────
+# DATETIME INTEROP
+# ──────────────────────────────────────────────────────────────
+jiff = ["dep:jiff"]                  # Enables Jiff interop (types, traits, etc.)
+chrono = ["dep:chrono"]              # ← NEW: Enables Chrono interop
 
 # ──────────────────────────────────────────────────────────────
 # WEB / WASM / TYPESCRIPT INTEROP
 # ──────────────────────────────────────────────────────────────
 # Enables full JS/WASM + TypeScript definitions support.
-# Pulls in `std`, `serde`, `tsify`, and `wasm-bindgen`.
+# Pulls in `std`, `serde`, `tsify`, `wasm-bindgen`, `js-sys`, and forwards
+# the matching features to Jiff + Chrono.
 js = [
     "std",
     "serde",
     "dep:tsify",
     "dep:wasm-bindgen",
     "dep:js-sys",
+    "jiff?/js",
 ]
 
 [lib]

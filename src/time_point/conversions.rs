@@ -1,4 +1,5 @@
 use crate::leap_seconds::leap_seconds_before;
+use crate::parser::Weekday;
 use crate::{
     ClockDrift, ClockModel, ClockType, Delta, J2000_JD_TT, J2000_SECONDS_PER_CENTURY, LB, LG, LM,
     MARS_MSD_JD_REF, MARS_SOL_IN_EARTH_DAYS, MARS_SOL_LENGTH_SEC, POW15, POW21, Real, SEC_PER_DAY,
@@ -453,5 +454,76 @@ impl TimePoint {
         let frac = msd - (whole as Real);
         let frac_delta = Delta::from_sec_f(frac * MARS_SOL_LENGTH_SEC);
         Self::from_msd_exact(whole, frac_delta)
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // Calendar
+    // ──────────────────────────────────────────────────────────────
+
+    /// Computes the Julian Day Number (JDN) for a proleptic Gregorian calendar date
+    /// at noon UT. `gregorian_jdn(2000, 1, 1) == 2451545` (matches the library’s J2000 reference).
+    #[inline(always)]
+    pub const fn gregorian_jdn(year: i128, month: u8, day: u8) -> i128 {
+        let a = (14 - month as i128) / 12;
+        let y = year + 4800 - a;
+        let m = month as i128 + 12 * a - 3;
+        day as i128 + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
+    }
+
+    /// Returns `true` if the given year is a Gregorian leap year.
+    #[inline(always)]
+    pub const fn is_leap_year(year: i128) -> bool {
+        year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+    }
+
+    /// Ordinal date (year + day-of-year) → JDN.
+    /// `day_of_year` must be 1-366 (caller validates leap-year rules).
+    #[inline(always)]
+    pub const fn gregorian_jdn_from_ordinal(year: i128, day_of_year: u16) -> i128 {
+        let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
+        jdn_jan1 + (day_of_year as i128 - 1)
+    }
+
+    /// Helper: JDN → weekday number (0 = Sunday, 1 = Monday, …, 6 = Saturday).
+    #[inline(always)]
+    pub const fn jdn_to_weekday(jdn: i128) -> u8 {
+        // Matches the JDN convention used by `gregorian_jdn`.
+        ((jdn + 1) % 7) as u8
+    }
+
+    /// ISO week date → JDN (Monday-based week).
+    /// `weekday` is the parser’s `Weekday` enum (Monday = first day of week).
+    #[inline(always)]
+    pub const fn gregorian_jdn_from_iso_week(
+        iso_year: i128,
+        iso_week: u8,
+        weekday: Weekday,
+    ) -> i128 {
+        // 1. January 4 is guaranteed to be in ISO week 1 of the year.
+        let jan4_jdn = Self::gregorian_jdn(iso_year, 1, 4);
+
+        // 2. Weekday of Jan 4 (0=Sun … 6=Sat)
+        let wd_jan4 = Self::jdn_to_weekday(jan4_jdn);
+
+        // 3. Monday of the ISO week that contains Jan 4
+        //    (subtract the right number of days to land on Monday)
+        let days_to_monday = (wd_jan4 + 6) % 7; // 0 for Mon, 1 for Tue, …, 6 for Sun
+        let monday_week1 = jan4_jdn - (days_to_monday as i128);
+
+        // 4. Monday of the requested week
+        let monday_requested = monday_week1 + (iso_week as i128 - 1) * 7;
+
+        // 5. Add offset for the requested weekday (Mon=0 … Sun=6)
+        let wd_offset = match weekday {
+            Weekday::Monday => 0,
+            Weekday::Tuesday => 1,
+            Weekday::Wednesday => 2,
+            Weekday::Thursday => 3,
+            Weekday::Friday => 4,
+            Weekday::Saturday => 5,
+            Weekday::Sunday => 6,
+        };
+
+        monday_requested + (wd_offset as i128)
     }
 }
