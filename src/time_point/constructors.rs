@@ -302,6 +302,24 @@ impl TimePoint {
         }
     }
 
+    /// Creates a `TimePoint` from a fully self-describing [`ClockModel`].
+    ///
+    /// This is the recommended way for spacecraft to represent
+    /// onboard proper time that already carries its own relativistic model.
+    #[inline]
+    pub const fn create_from_model(model: ClockModel) -> Self {
+        model.reference.with_clock_type(model.base)
+    }
+
+    /// Replaces the current clock type with the base clock_type of a fully self-describing model.
+    ///
+    /// This is the most common operation on a spacecraft: you have a raw `Proper`
+    /// reading and you just received a new polynomial update from ground.
+    #[inline]
+    pub const fn apply_new_model(self, model: ClockModel) -> Self {
+        self.with_clock_type(model.base)
+    }
+
     /// Returns the current system time in the requested `ClockType`.
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     #[inline]

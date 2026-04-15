@@ -6,10 +6,10 @@ use core::ops::{
 };
 use core::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[repr(transparent)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct DtBig {
     /// Raw 320-bit two's-complement integer stored as 5 little-endian `u64` parts.
     /// The sign bit is the highest bit (bit 63) of `num[4]`.

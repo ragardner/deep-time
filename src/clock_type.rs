@@ -64,6 +64,17 @@ pub enum ClockType {
     /// **Barycentric Coordinate Time (TCB)** – relativistic coordinate time in the
     /// Barycentric Celestial Reference System (BCRS).
     TCB,
+    /// **Coordinated Lunar Time (LTC)** – NASA’s official lunar coordinate time scale
+    /// (analogous to TCG). Defined from the NIST/Ashby & Patla (2024) relativistic
+    /// framework adopted for Artemis and cislunar operations.
+    ///
+    /// Lunar clocks on the selenoid run faster than terrestrial clocks by a
+    /// constant secular rate of **+56.02 µs per Earth day** (L_M = 6.48378 × 10^{-10}).
+    /// A small additional periodic variation exists due to lunar orbital eccentricity
+    /// (±0.108 µs/day in instantaneous rate, ~±0.75 µs accumulated over one orbit).
+    /// The periodic term is **not** part of the defining LTC conversion; it is
+    /// handled via `ClockModel` / `ClockDrift` when utmost precision is required.
+    LTC,
     /// **Proper Time (τ)** – the relativistic proper time experienced by a moving
     /// observer (spacecraft, etc.).  
     /// Onboard clocks run this type. Use `convert_using_drift(ClockType::TT, …)`  
@@ -106,6 +117,7 @@ impl ClockType {
             Self::GST => "GST",
             Self::BDT => "BDT",
             Self::QZSST => "QZSST",
+            Self::LTC => "LTC",
             Self::Proper => "Proper",
             Self::Custom => "Custom",
         }

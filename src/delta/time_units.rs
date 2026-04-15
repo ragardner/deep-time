@@ -7,7 +7,7 @@
 //! let stamp = 3.d().ago(ClockType::UTC);
 //! ```
 
-use crate::{ClockType, Delta, TimePoint};
+use crate::{ClockType, Delta, SEC_PER_DAY, TimePoint};
 
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
@@ -112,7 +112,7 @@ impl TimeUnits for f64 {
 
     #[inline]
     fn d(self) -> Delta {
-        (self * 86_400.0).sec()
+        (self * SEC_PER_DAY).sec()
     }
 
     #[inline]

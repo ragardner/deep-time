@@ -1,5 +1,16 @@
 use crate::{Delta, DtBig, Real};
 
+/// Exactly 86,400 seconds in one standard Earth day  
+/// (24 hours × 60 minutes × 60 seconds).
+///
+/// This is the fixed length of a **mean solar day** used everywhere in the
+/// library for converting between total seconds and fractional Julian Dates
+/// (JD) on TT-based scales (TCG, TCB, LTC, etc.).  
+///
+/// It is **not** leap-second aware — leap seconds are handled only in the
+/// UTC ↔ TAI conversion path.
+pub(crate) const SEC_PER_DAY: Real = 86_400.0;
+
 /// Solar gravitational parameter GM☉ in m³ s⁻²  
 /// (exact nominal value from IAU 2015 Resolution B3)
 pub const GM_SUN: Real = 1.3271244e20;
@@ -59,6 +70,11 @@ pub(crate) const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
 pub(crate) const POW15: u128 = 1_000_000_000_000_000;
 pub(crate) const POW21: u128 = MICROQUECTOS_PER_SEC / POW15; // exactly 10²¹
 
+/// L_M = 6.48378 × 10^{-10} (exact secular rate from Ashby & Patla 2024 NIST
+/// for LTC ↔ TT). Corresponds to +56.02 µs per Earth day on the lunar selenoid.
+/// Eccentricity periodic term (±0.108 µs/day in rate) is not included in the core
+/// definition and is added via `ClockModel` when needed.
+pub(crate) const LM: Real = 6.48378e-10;
 /// L_G = 6.969290134 × 10^{-10} (exact IAU defining constant for TCG ↔ TT)
 pub(crate) const LG: Real = 6.969290134e-10;
 /// L_B = 1.550519768 × 10^{-8} (exact IAU defining constant for TCB ↔ TDB)

@@ -1,8 +1,11 @@
 use crate::leap_seconds::leap_seconds_before;
 use crate::{
-    ClockDrift, ClockModel, ClockType, Delta, J2000_SECONDS_PER_CENTURY, LB, LG, POW15, POW21,
-    Real, TCG_TCB_REF_JD, TDB0, TT_TAI_OFFSET_DELTA, TimePoint, sin_approx,
+    ClockDrift, ClockModel, ClockType, Delta, J2000_SECONDS_PER_CENTURY, LB, LG, LM, POW15, POW21,
+    Real, SEC_PER_DAY, TCG_TCB_REF_JD, TDB0, TT_TAI_OFFSET_DELTA, TimePoint, sin_approx,
 };
+#[cfg(test)]
+#[path = "conversions_tests.rs"]
+mod tests;
 
 impl TimePoint {
     /// Converts this instant to any other [`ClockType`], representing the exact same physical moment.
@@ -26,21 +29,51 @@ impl TimePoint {
         }
     }
 
+    /// Sets the [`ClockType`] of this `TimePoint` **in place**, while keeping the
+    /// exact same numerical seconds and subseconds value.
+    ///
+    /// This is the mutable counterpart to [`with_clock_type`]. It is zero-cost
+    /// (just a single field assignment) and is also `const fn`.
+    #[inline]
+    pub const fn set_clock_type(&mut self, clock_type: ClockType) {
+        self.clock_type = clock_type;
+    }
+
     /// Converts this `TimePoint` (in any clock type) to TAI — the library’s internal canonical time clock type.
     pub const fn to_tai(self) -> Self {
         match self.clock_type {
             ClockType::TAI => self,
-            ClockType::TT | ClockType::ET => self
-                .sub_ref(&TT_TAI_OFFSET_DELTA)
-                .with_clock_type(ClockType::TAI),
-            ClockType::UTC => Self::utc_to_tai(self),
-            ClockType::GPST | ClockType::QZSST | ClockType::GST => {
-                self.add_ref(&Delta::SEC_19).with_clock_type(ClockType::TAI)
+
+            ClockType::TT | ClockType::ET => {
+                let mut tp = self.sub_ref(&TT_TAI_OFFSET_DELTA);
+                tp.set_clock_type(ClockType::TAI);
+                tp
             }
-            ClockType::BDT => self.add_ref(&Delta::SEC_33).with_clock_type(ClockType::TAI),
+
+            ClockType::UTC => Self::utc_to_tai(self),
+
+            ClockType::GPST | ClockType::QZSST | ClockType::GST => {
+                let mut tp = self.add_ref(&Delta::SEC_19);
+                tp.set_clock_type(ClockType::TAI);
+                tp
+            }
+
+            ClockType::BDT => {
+                let mut tp = self.add_ref(&Delta::SEC_33);
+                tp.set_clock_type(ClockType::TAI);
+                tp
+            }
+
             ClockType::TDB => Self::tdb_to_tai(self),
             ClockType::TCG => Self::tcg_to_tai(self),
             ClockType::TCB => Self::tcb_to_tai(self),
+
+            ClockType::LTC => {
+                // Still goes through the helper because it needs TT first,
+                // but the helper itself already uses the low-copy style.
+                Self::ltc_to_tt(self).to_tai()
+            }
+
             ClockType::Proper | ClockType::Custom => self,
         }
     }
@@ -49,18 +82,44 @@ impl TimePoint {
     pub const fn from_tai(self, target: ClockType) -> Self {
         match target {
             ClockType::TAI => self,
+
             ClockType::TT | ClockType::ET => {
-                self.add_ref(&TT_TAI_OFFSET_DELTA).with_clock_type(target)
+                let mut tp = self.add_ref(&TT_TAI_OFFSET_DELTA);
+                tp.set_clock_type(target);
+                tp
             }
+
             ClockType::UTC => Self::tai_to_utc(self),
+
             ClockType::GPST | ClockType::QZSST | ClockType::GST => {
-                self.sub_ref(&Delta::SEC_19).with_clock_type(target)
+                let mut tp = self.sub_ref(&Delta::SEC_19);
+                tp.set_clock_type(target);
+                tp
             }
-            ClockType::BDT => self.sub_ref(&Delta::SEC_33).with_clock_type(target),
+
+            ClockType::BDT => {
+                let mut tp = self.sub_ref(&Delta::SEC_33);
+                tp.set_clock_type(target);
+                tp
+            }
+
             ClockType::TDB => Self::tai_to_tdb(self),
             ClockType::TCG => Self::tai_to_tcg(self),
             ClockType::TCB => Self::tai_to_tcb(self),
-            ClockType::Proper | ClockType::Custom => self.with_clock_type(target),
+
+            ClockType::LTC => {
+                // We first convert TAI → TT (low-copy), then TT → LTC (low-copy)
+                let tp = self.from_tai(ClockType::TT);
+                // The LTC conversion is now also written in the low-copy style
+                // inside tt_to_ltc / ltc_to_tt, so no extra temporary here.
+                Self::tt_to_ltc(tp)
+            }
+
+            ClockType::Proper | ClockType::Custom => {
+                let mut tp = self;
+                tp.set_clock_type(target);
+                tp
+            }
         }
     }
 
@@ -119,24 +178,6 @@ impl TimePoint {
     #[inline]
     pub const fn convert_back_using_model(self, model: ClockModel) -> Self {
         self.convert_back_using_drift(model.base, model.reference, model.drift)
-    }
-
-    /// Creates a `TimePoint` from a fully self-describing [`ClockModel`].
-    ///
-    /// This is the recommended way for spacecraft to represent
-    /// onboard proper time that already carries its own relativistic model.
-    #[inline]
-    pub const fn create_from_model(model: ClockModel) -> Self {
-        model.reference.with_clock_type(model.base)
-    }
-
-    /// Replaces the current clock type with the base clock_type of a fully self-describing model.
-    ///
-    /// This is the most common operation on a spacecraft: you have a raw `Proper`
-    /// reading and you just received a new polynomial update from ground.
-    #[inline]
-    pub const fn apply_new_model(self, model: ClockModel) -> Self {
-        self.with_clock_type(model.base)
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -228,7 +269,7 @@ impl TimePoint {
     const fn tt_to_tcg(tt: Self) -> Self {
         let jd_tt = tt.to_jd_tt();
         let days = jd_tt - TCG_TCB_REF_JD;
-        let delta_s = days * f!(86_400.0) * LG;
+        let delta_s = days * SEC_PER_DAY * LG;
         tt.add(Delta::from_sec_f(delta_s))
             .with_clock_type(ClockType::TCG)
     }
@@ -236,7 +277,7 @@ impl TimePoint {
     const fn tcg_to_tt(tcg: Self) -> Self {
         let jd_tcg = tcg.to_jd_tt();
         let days = jd_tcg - TCG_TCB_REF_JD;
-        let delta_s = days * f!(86_400.0) * LG;
+        let delta_s = days * SEC_PER_DAY * LG;
         tcg.sub(Delta::from_sec_f(delta_s))
             .with_clock_type(ClockType::TT)
     }
@@ -245,7 +286,7 @@ impl TimePoint {
     const fn tdb_to_tcb(tdb: Self) -> Self {
         let jd_tdb = tdb.to_jd_tt();
         let days = jd_tdb - TCG_TCB_REF_JD;
-        let delta_s = days * f!(86_400.0) * LB;
+        let delta_s = days * SEC_PER_DAY * LB;
         tdb.add(Delta::from_sec_f(delta_s))
             .add_ref(&TDB0) // TDB0 is already part of the defining relation
             .with_clock_type(ClockType::TCB)
@@ -254,7 +295,7 @@ impl TimePoint {
     const fn tcb_to_tdb(tcb: Self) -> Self {
         let jd_tcb = tcb.to_jd_tt();
         let days = jd_tcb - TCG_TCB_REF_JD;
-        let delta_s = days * f!(86_400.0) * LB;
+        let delta_s = days * SEC_PER_DAY * LB;
         tcb.sub(Delta::from_sec_f(delta_s))
             .sub_ref(&TDB0)
             .with_clock_type(ClockType::TDB)
@@ -274,7 +315,7 @@ impl TimePoint {
     pub const fn to_jd_tt(self) -> Real {
         let (jd_days, frac) = self.to_jd_tt_exact();
         let days_f = jd_days as Real;
-        let frac_days = frac.as_sec_f() / f!(86_400.0);
+        let frac_days = frac.as_sec_f() / SEC_PER_DAY;
         days_f + frac_days
     }
 
@@ -332,193 +373,26 @@ impl TimePoint {
         self.to_clock_type(ClockType::UTC).to_mjd_tt()
     }
 
-    /// Returns the numerical difference in seconds between two `TimePoint`s (ignores `ClockType`).
-    ///
-    /// **Lossy by design** (for testing only). Use `duration_since` for the exact `Delta`.
-    pub const fn numerical_seconds_since(&self, other: &Self) -> Real {
-        Delta {
-            sec: self.sec,
-            subsec: self.subsec,
-        }
-        .as_sec_f()
-            - Delta {
-                sec: other.sec,
-                subsec: other.subsec,
-            }
-            .as_sec_f()
-    }
-}
+    // ──────────────────────────────────────────────────────────────
+    // Off-planet helpers
+    // ──────────────────────────────────────────────────────────────
 
-#[cfg(test)]
-mod tdb_tests {
-    use super::*;
-    use crate::ClockType;
-
-    /// Round-trip accuracy test (TAI → TDB → TAI)
-    #[test]
-    fn tdb_tai_roundtrip_is_accurate() {
-        let test_points = [
-            TimePoint::from_tai_sec(0),                  // J2000 TAI
-            TimePoint::from_tai_sec(86_400 * 365),       // ~1 year later
-            TimePoint::from_tai_sec(-86_400 * 365 * 10), // 10 years before
-            TimePoint::from_tai_sec(1_000_000_000),      // ~31.7 years later
-            TimePoint::from_tai_sec(-2_208_945_600),     // J1900 epoch
-        ];
-
-        #[cfg(feature = "std")]
-        {
-            use std::eprintln;
-            let tai = TimePoint::ZERO;
-            let tdb = tai.to_clock_type(ClockType::TDB);
-            eprintln!("\nTAI sec={}, subsec={}", tai.sec, tai.subsec);
-            eprintln!("TDB sec={}, subsec={}", tdb.sec, tdb.subsec);
-            eprintln!("diff_s = {}", tdb.duration_since(tai).as_sec_f());
-        }
-        for &p in &test_points {
-            let tdb = p.to_clock_type(ClockType::TDB);
-            let back = tdb.to_clock_type(ClockType::TAI);
-
-            let diff = back.duration_since(p).as_sec_f().abs();
-            assert!(
-                diff < 1e-6,
-                "TDB round-trip error too large: {} s at {:?}",
-                diff,
-                p
-            );
-        }
+    /// LTC ↔ TT (exact linear NIST/Ashby & Patla 2024 relation)
+    /// Uses the `with_clock_type` trick on the LTC side to avoid any recursion
+    /// when `to_jd_tt()` internally calls `to_clock_type(ClockType::TT)`.
+    const fn tt_to_ltc(tt: Self) -> Self {
+        let days = tt.to_jd_tt() - TCG_TCB_REF_JD;
+        let delta_s = days * SEC_PER_DAY * LM;
+        let mut tp = tt.add(Delta::from_sec_f(delta_s));
+        tp.set_clock_type(ClockType::LTC);
+        tp
     }
 
-    /// At J2000 the TDB–TAI difference should be ~32.183925 s
-    /// (TT = TAI + 32.184 s and TDB − TT ≈ −74.6 µs with this formula)
-    #[test]
-    fn tdb_minus_tt_at_j2000() {
-        let tai = TimePoint::ZERO;
-        let tdb = tai.to_clock_type(ClockType::TDB);
-
-        let diff_s = tdb.numerical_seconds_since(&tai); // see helper below
-
-        assert!(
-            (diff_s - 32.183925).abs() < 0.00001,
-            "TDB-TAI difference at J2000 was {} s (expected ~32.183925 s)",
-            diff_s
-        );
-    }
-
-    #[test]
-    fn tdb_minus_tt_at_j2000_2() {
-        let tai = TimePoint::ZERO;
-        let tdb = tai.to_clock_type(ClockType::TDB);
-        let diff_s = tdb.numerical_seconds_since(&tai);
-        assert!((diff_s - 32.183925).abs() < 1e-6, "got {}", diff_s);
-    }
-
-    /// Check that the *periodic correction* (TDB − TT) stays within sensible bounds
-    #[test]
-    fn tdb_correction_stays_within_bounds() {
-        let points = [
-            TimePoint::from_tai_sec(0),
-            TimePoint::from_tai_sec(86_400 * 365 * 100),
-            TimePoint::from_tai_sec(-86_400 * 365 * 50),
-        ];
-
-        for &p in &points {
-            let tt = p.to_clock_type(ClockType::TT);
-            let tdb = p.to_clock_type(ClockType::TDB);
-
-            // TDB - TT (periodic term only)
-            let corr_s = tdb.numerical_seconds_since(&tt);
-
-            assert!(
-                corr_s.abs() < 0.002,
-                "TDB-TT correction should be < 2 ms (got {} s)",
-                corr_s
-            );
-        }
-    }
-}
-
-#[cfg(test)]
-mod drift_tests {
-    use super::*;
-    use crate::{ClockDrift, ClockModel, ClockType, Delta};
-
-    #[test]
-    fn proper_to_tt_with_drift_roundtrip() {
-        let reference = TimePoint::from_tai_sec(0);
-        let drift = ClockDrift::new(
-            Delta::from_ms(100), // exactly 0.1 s
-            Delta::from_ns(1),   // exactly 1 ns/s = 1e-9 s/s
-            Delta::ZERO,
-        );
-        let model = ClockModel::proper(reference, drift);
-
-        let onboard_proper = TimePoint::create_from_model(model).add(Delta::from_sec(1_000_000));
-
-        let tt = onboard_proper.convert_using_model(model);
-        let back = tt.convert_back_using_model(model);
-
-        assert_eq!(back, onboard_proper);
-    }
-
-    #[test]
-    fn zero_drift_is_identity() {
-        let reference = TimePoint::from_tai_sec(0);
-        let drift = ClockDrift::ZERO;
-        let model = ClockModel::proper(reference, drift);
-
-        let p = TimePoint::from_tai_sec(1_234_567);
-        let converted = p.convert_using_model(model);
-
-        assert_eq!(converted, p.with_clock_type(ClockType::Proper));
-    }
-
-    #[test]
-    fn constant_offset_only() {
-        let reference = TimePoint::from_tai_sec(0);
-        let drift = ClockDrift::from_constant(Delta::from_sec_f(32.184));
-        let model = ClockModel::proper(reference, drift);
-
-        let onboard = TimePoint::create_from_model(model).add(Delta::from_sec(100));
-        let tt = onboard.convert_using_model(model);
-
-        let expected = onboard
-            .add(Delta::from_sec_f(32.184))
-            .with_clock_type(ClockType::Proper);
-        assert_eq!(tt, expected);
-    }
-
-    #[test]
-    fn convert_back_using_model_inverse() {
-        let reference = TimePoint::from_tai_sec(0);
-        let drift = ClockDrift::new(
-            Delta::from_ms(500), // exactly 0.5 s
-            Delta::from_ns(2),   // exactly 2 ns/s = 2e-9 s/s
-            Delta::ZERO,
-        );
-        let model = ClockModel::proper(reference, drift);
-
-        // Start from onboard Proper time (the natural input for this API)
-        let proper = TimePoint::create_from_model(model).add(Delta::from_sec(1_000_000));
-
-        let tt = proper.convert_using_model(model); // Proper → TT
-        let back = tt.convert_back_using_model(model); // TT → Proper
-
-        assert_eq!(back, proper);
-    }
-
-    #[test]
-    fn apply_new_model_and_create_from_model() {
-        let reference = TimePoint::from_tai_sec(0);
-        let drift = ClockDrift::ZERO;
-        let model = ClockModel::proper(reference, drift);
-
-        let raw = TimePoint::from_tai_sec(123);
-        let tagged = raw.apply_new_model(model);
-
-        assert_eq!(tagged.clock_type(), ClockType::Proper);
-        assert_eq!(
-            TimePoint::create_from_model(model),
-            reference.with_clock_type(ClockType::Proper)
-        );
+    const fn ltc_to_tt(ltc: Self) -> Self {
+        let days = ltc.with_clock_type(ClockType::TT).to_jd_tt() - TCG_TCB_REF_JD;
+        let delta_s = days * SEC_PER_DAY * LM;
+        let mut tp = ltc.sub(Delta::from_sec_f(delta_s));
+        tp.set_clock_type(ClockType::TT);
+        tp
     }
 }

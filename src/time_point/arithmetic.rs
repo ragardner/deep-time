@@ -1,4 +1,4 @@
-use crate::{ClockDrift, Delta, LocalSpacetime, MICROQUECTOS_PER_SEC, TimePoint};
+use crate::{ClockDrift, Delta, LocalSpacetime, MICROQUECTOS_PER_SEC, Real, TimePoint};
 
 impl TimePoint {
     /// Overflowing add. The result keeps the original [`ClockType`].
@@ -250,7 +250,7 @@ impl TimePoint {
     /// spacecraft, another probe’s clock, etc.). Your own spacecraft’s
     /// hardware proper-time clock should just use `.add(dt)` directly.
     #[inline(always)]
-    pub fn adjusted_advance_drift(&mut self, elapsed: &Delta, drift: &ClockDrift) {
+    pub fn adjusted_advance_using_drift(&mut self, elapsed: &Delta, drift: &ClockDrift) {
         let dtau = elapsed.add(drift.time_diff_after(elapsed));
         *self = self.add(dtau);
     }
@@ -327,5 +327,21 @@ impl TimePoint {
         let mut ts = origin.add(self.duration_since_ref(&origin).round(unit));
         ts.clock_type = self.clock_type;
         ts
+    }
+
+    /// Returns the numerical difference in seconds between two `TimePoint`s (ignores `ClockType`).
+    ///
+    /// **Lossy by design** (for testing only). Use `duration_since` for the exact `Delta`.
+    pub const fn numerical_seconds_since(&self, other: &Self) -> Real {
+        Delta {
+            sec: self.sec,
+            subsec: self.subsec,
+        }
+        .as_sec_f()
+            - Delta {
+                sec: other.sec,
+                subsec: other.subsec,
+            }
+            .as_sec_f()
     }
 }
