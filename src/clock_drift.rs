@@ -144,6 +144,15 @@ impl LocalSpacetime {
         }
     }
 
+    /// Returns the instantaneous proper-time rate `dτ/dt` from this snapshot.
+    ///
+    /// Convenience method that internally uses the same unified calculation as
+    /// `ClockDrift::proper_time_rate`.
+    #[inline(always)]
+    pub fn proper_time_rate(self) -> Real {
+        ClockDrift::from_local_spacetime(&self).proper_time_rate()
+    }
+
     /// Convenience for direct gravimeter / sensor paths.
     #[inline(always)]
     pub fn from_gravitic_and_velocity(alpha: Real, velocity: Velocity, kretschmann: Real) -> Self {
@@ -341,6 +350,20 @@ impl ClockDrift {
     #[inline]
     pub const fn with_accel(self, accel: Delta) -> Self {
         Self::with_big(self.constant, self.rate, accel)
+    }
+
+    /// Returns the instantaneous proper-time rate `dτ/dt` (dimensionless).
+    ///
+    /// This value tells you how fast a real physical clock (such as a spacecraft
+    /// onboard clock) is advancing compared to coordinate time. A value of exactly
+    /// `1.0` means the clock runs at the normal rate. Values slightly below `1.0`
+    /// are typical when the clock is moving or sitting in a gravitational well.
+    ///
+    /// The rate includes special-relativistic velocity effects, gravitational
+    /// time dilation, and the library’s built-in Planck-scale saturation term.
+    #[inline(always)]
+    pub const fn proper_time_rate(&self) -> Real {
+        f!(1.0) + self.rate.as_sec_f()
     }
 
     /// Evaluates the polynomial at the given elapsed coordinate time `delta`.  

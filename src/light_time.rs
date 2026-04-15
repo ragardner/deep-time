@@ -127,6 +127,82 @@ impl ObserverState {
         }
     }
 
+    /// Returns the instantaneous proper-time rate `dτ/dt` for this observer.
+    ///
+    /// This is the exact rate at which a real clock at the given position,
+    /// velocity, and gravitational environment would advance compared to
+    /// coordinate time. It is used internally by the library for proper-time
+    /// integration, light-time corrections, and Doppler calculations.
+    #[inline]
+    pub fn proper_time_rate(&self) -> Real {
+        let ls = LocalSpacetime::from_potential_velocity_and_scale(
+            self.grav_potential_m2_s2 / C_SQUARED,
+            self.velocity,
+            self.characteristic_length_scale,
+        );
+        ls.proper_time_rate()
+    }
+
+    /// Returns the relativistic clock-rate Doppler factor for a one-way signal
+    /// sent from this transmitter to the given receiver.
+    ///
+    /// The factor is the ratio of the receiver’s proper-time rate to the
+    /// transmitter’s proper-time rate. It accounts for the fact that clocks
+    /// at the two locations run at slightly different speeds due to motion
+    /// and gravity.
+    ///
+    /// To obtain the full observed frequency shift, multiply this factor by
+    /// the classical kinematic Doppler term `(1 - v_radial / C)`, where
+    /// `v_radial` is the line-of-sight component of the relative velocity
+    /// (positive when the transmitter and receiver are moving apart).
+    ///
+    /// This value is used for deep-space tracking, GNSS range-rate measurements,
+    /// and pulsar timing.
+    ///
+    /// # Parameters
+    /// - `self` – transmitter state (position, velocity, gravitational potential,
+    ///   and length scale at the moment the signal is sent)
+    /// - `rx`   – receiver state (same information, evaluated at the approximate
+    ///   arrival time)
+    ///
+    /// # Example
+    /// ```rust
+    /// use deep_time_core::{ObserverState, Position, Velocity, TimePoint};
+    /// use deep_time_core::constants::C;
+    ///
+    /// # let tx_time = TimePoint::default();
+    /// # let rx_time = TimePoint::default();
+    /// # let tx_pos = Position::ZERO;
+    /// # let rx_pos = Position::ZERO;
+    /// # let tx_vel = Velocity::ZERO;
+    /// # let rx_vel = Velocity::ZERO;
+    /// # let phi = 0.0_f64; // gravitational potential
+    ///
+    /// let tx = ObserverState::new(tx_time, tx_pos, tx_vel, phi);
+    /// let rx = ObserverState::new(rx_time, rx_pos, rx_vel, phi);
+    ///
+    /// let factor = tx.relativistic_clock_doppler_factor(rx);
+    ///
+    /// // Full observed frequency shift (example only)
+    /// let v_radial = 0.0; // m/s, positive if receding
+    /// let classical_doppler = 1.0 - v_radial / C;
+    /// let total_frequency_shift = 1.0 * factor * classical_doppler;
+    /// ```
+    pub fn relativistic_clock_doppler_factor(&self, rx: ObserverState) -> Real {
+        rx.proper_time_rate() / self.proper_time_rate()
+    }
+
+    /// Returns the two-way relativistic clock-rate Doppler factor for round-trip
+    /// ranging (transmit → receive → immediate transponder reply).
+    ///
+    /// This is the product of the one-way factors for the complete round trip
+    /// and is the value needed by deep-space networks when correcting measured
+    /// range-rate data.
+    pub fn two_way_relativistic_doppler_factor(&self, rx: ObserverState) -> Real {
+        let one_way = self.relativistic_clock_doppler_factor(rx);
+        one_way * one_way
+    }
+
     /// Computes the total relativistic correction that must be added to the Newtonian
     /// geometric light time (`|r_rx − r_tx| / c`) for a one-way signal.
     ///
