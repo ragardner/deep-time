@@ -85,7 +85,7 @@ pub fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
     libm::sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
 }
 
-/// Kretschmann scalar from the total relativity experienced locally
+/// Kretschmann scalar from total relativity
 /// Computes the Kretschmann scalar \(\mathcal{K}\) from the total gravitational
 /// relativity experienced by a local observer at the observer’s spacetime point.
 ///

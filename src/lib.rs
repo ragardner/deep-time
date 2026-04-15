@@ -38,6 +38,5 @@ pub use delta::time_units::TimeUnits;
 pub use light_time::{LightContext, ObserverState};
 pub use position::{Position, Velocity};
 pub use time_point::TimePoint;
-pub use time_point::trajectory::RelativisticTrajectory;
 pub use time_range::TimeRange;
 pub use utils::{alpha_from_weak_field_potential, kretschmann_from_potential_and_scale};
