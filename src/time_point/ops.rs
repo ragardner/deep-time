@@ -13,7 +13,7 @@ impl Add<Delta> for TimePoint {
 impl AddAssign<Delta> for TimePoint {
     #[inline(always)]
     fn add_assign(&mut self, rhs: Delta) {
-        self.mut_add(rhs);
+        self.mut_add(&rhs);
     }
 }
 
@@ -29,7 +29,7 @@ impl Sub<Delta> for TimePoint {
 impl SubAssign<Delta> for TimePoint {
     #[inline(always)]
     fn sub_assign(&mut self, rhs: Delta) {
-        self.mut_sub(rhs);
+        self.mut_sub(&rhs);
     }
 }
 

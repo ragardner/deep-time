@@ -223,57 +223,66 @@ impl LocalSpacetime {
 /// All three coefficients are stored using the exact `Delta` type, which
 /// guarantees 36-digit precision with no floating-point rounding errors even
 /// over centuries of integration.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ClockDrift {
     /// Constant term a₀ expressed in seconds.  
     /// This represents any fixed time offset between the observer’s proper time
     /// and the chosen coordinate time.
-    pub constant: Delta,
+    constant: Delta,
 
     /// Linear drift rate a₁ expressed in seconds per second.  
     /// This term captures a steady fractional rate difference (for example, a
     /// clock that runs consistently fast or slow).
-    pub rate: Delta,
+    rate: Delta,
 
     /// Quadratic acceleration term a₂ expressed in seconds per second squared.  
     /// This term accounts for any changing drift rate, such as the gradual
     /// acceleration caused by relativistic effects or hardware aging.
-    pub accel: Delta,
+    accel: Delta,
+
+    /// Pre-computed `rate.to_big()` – used for the linear term in `evaluate`.
+    #[cfg_attr(feature = "serde", serde(skip))]
+    rate_big: DtBig,
+
+    /// Pre-computed `accel.to_big()` – used for the quadratic term in `evaluate`.
+    #[cfg_attr(feature = "serde", serde(skip))]
+    accel_big: DtBig,
 }
 
 impl ClockDrift {
-    /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
-    #[inline]
-    pub const fn new(constant: Delta, rate: Delta, accel: Delta) -> Self {
+    /// Private helper that constructs the struct **and** pre-computes the
+    /// `DtBig` values in one step. All public constructors route through here.
+    #[inline(always)]
+    const fn with_big(constant: Delta, rate: Delta, accel: Delta) -> Self {
         Self {
             constant,
             rate,
             accel,
+            rate_big: rate.to_big(),
+            accel_big: accel.to_big(),
         }
+    }
+
+    /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
+    #[inline(always)]
+    pub const fn new(constant: Delta, rate: Delta, accel: Delta) -> Self {
+        Self::with_big(constant, rate, accel)
     }
 
     /// The zero polynomial representing no correction at all.  
     /// Use this when the observer’s clock is already perfectly synchronized with
     /// the chosen coordinate time.
-    pub const ZERO: Self = Self {
-        constant: Delta::ZERO,
-        rate: Delta::ZERO,
-        accel: Delta::ZERO,
-    };
+    pub const ZERO: Self = Self::with_big(Delta::ZERO, Delta::ZERO, Delta::ZERO);
 
     /// Creates a `ClockDrift` consisting of a pure constant offset.  
     /// This is the most common constructor when only a fixed time bias is known
     /// (for example, after a one-time clock synchronization or leap-second
     /// adjustment).
-    #[inline]
+    #[inline(always)]
     pub const fn from_constant(c: Delta) -> Self {
-        Self {
-            constant: c,
-            rate: Delta::ZERO,
-            accel: Delta::ZERO,
-        }
+        Self::with_big(c, Delta::ZERO, Delta::ZERO)
     }
 
     /// Creates a `ClockDrift` consisting of a constant offset together with a
@@ -281,13 +290,57 @@ impl ClockDrift {
     /// This form is very common for GNSS receivers and spacecraft clock steering,
     /// where a steady fractional frequency offset must be corrected in addition
     /// to any fixed bias.
-    #[inline]
+    #[inline(always)]
     pub const fn from_offset_and_rate(offset: Delta, rate: Delta) -> Self {
-        Self {
-            constant: offset,
-            rate,
-            accel: Delta::ZERO,
-        }
+        Self::with_big(offset, rate, Delta::ZERO)
+    }
+
+    #[inline(always)]
+    pub const fn constant(&self) -> &Delta {
+        &self.constant
+    }
+
+    #[inline(always)]
+    pub const fn rate(&self) -> &Delta {
+        &self.rate
+    }
+
+    #[inline(always)]
+    pub const fn accel(&self) -> &Delta {
+        &self.accel
+    }
+
+    #[inline]
+    pub fn set_constant(&mut self, constant: Delta) {
+        self.constant = constant;
+        // constant never affects the pre-computed big fields
+    }
+
+    #[inline]
+    pub fn set_rate(&mut self, rate: Delta) {
+        self.rate = rate;
+        self.rate_big = rate.to_big();
+    }
+
+    #[inline]
+    pub fn set_accel(&mut self, accel: Delta) {
+        self.accel = accel;
+        self.accel_big = accel.to_big();
+    }
+
+    #[inline]
+    pub const fn with_constant(self, constant: Delta) -> Self {
+        Self::with_big(constant, self.rate, self.accel)
+    }
+
+    #[inline]
+    pub const fn with_rate(self, rate: Delta) -> Self {
+        Self::with_big(self.constant, rate, self.accel)
+    }
+
+    #[inline]
+    pub const fn with_accel(self, accel: Delta) -> Self {
+        Self::with_big(self.constant, self.rate, accel)
     }
 
     /// Evaluates the polynomial at the given elapsed coordinate time `delta`.  
@@ -297,21 +350,19 @@ impl ClockDrift {
     /// arithmetic is performed with full 36-digit precision, ensuring no loss of
     /// accuracy even for multi-year integrations.
     #[inline]
-    pub const fn evaluate(&self, delta: Delta) -> Delta {
-        let dt_big: DtBig = delta.to_big();
-        let mqs: DtBig = MQS;
+    pub const fn time_diff_after(&self, delta: &Delta) -> Delta {
+        let dt_big = delta.to_big();
         let mut total = self.constant.to_big();
 
         if !self.rate.is_zero() || !self.accel.is_zero() {
-            let rate_big = self.rate.to_big();
-            let accel_big = self.accel.to_big();
+            let mqs: DtBig = MQS;
 
-            // Linear term: rate * dt / 10³⁶
-            let rate_term = rate_big.wrapping_mul(dt_big).div_euclid(mqs);
+            // Linear term: rate * dt / 10³⁶  (now using pre-computed value)
+            let rate_term = self.rate_big.wrapping_mul(dt_big).div_euclid(mqs);
 
             // Quadratic term: accel * dt² / 10⁷²
             // Computed in two safe steps to keep every intermediate inside 320 bits.
-            let accel_dt = accel_big.wrapping_mul(dt_big).div_euclid(mqs);
+            let accel_dt = self.accel_big.wrapping_mul(dt_big).div_euclid(mqs);
             let accel_term = accel_dt.wrapping_mul(dt_big).div_euclid(mqs);
 
             total = total.wrapping_add(rate_term).wrapping_add(accel_term);
@@ -353,7 +404,7 @@ impl ClockDrift {
             velocity,
             characteristic_length_scale,
         );
-        Self::from_local_spacetime(spacetime)
+        Self::from_local_spacetime(&spacetime)
     }
 
     /// Canonical low-level constructor that implements the exact intrinsic
@@ -392,7 +443,7 @@ impl ClockDrift {
     /// unified proper-time rate and packages the result as a `ClockDrift`
     /// polynomial ready for evaluation at any future time.
     #[inline]
-    pub fn from_local_spacetime(spacetime: LocalSpacetime) -> Self {
+    pub fn from_local_spacetime(spacetime: &LocalSpacetime) -> Self {
         let u = spacetime.alpha * spacetime.alpha * (f!(1.0) - spacetime.beta * spacetime.beta);
         Self::from_unified_proper_time_rate(u, spacetime.kretschmann)
     }
@@ -407,21 +458,21 @@ mod tests {
     fn evaluate_zero_drift() {
         let drift = ClockDrift::ZERO;
         let dt = Delta::from_sec(1_234_567);
-        assert_eq!(drift.evaluate(dt), Delta::ZERO);
+        assert_eq!(drift.time_diff_after(&dt), Delta::ZERO);
     }
 
     #[test]
     fn evaluate_constant_only() {
         let drift = ClockDrift::from_constant(Delta::from_sec_f(0.5));
         let dt = Delta::from_sec(1_000);
-        assert_eq!(drift.evaluate(dt), Delta::from_sec_f(0.5));
+        assert_eq!(drift.time_diff_after(&dt), Delta::from_sec_f(0.5));
     }
 
     #[test]
     fn evaluate_rate_only() {
         let drift = ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(1e-9)); // 1 ns/s
         let dt = Delta::from_sec(1_000_000); // 1 million seconds
-        assert_eq!(drift.evaluate(dt), Delta::from_sec_f(0.001)); // 1 µs
+        assert_eq!(drift.time_diff_after(&dt), Delta::from_sec_f(0.001)); // 1 µs
     }
 
     #[test]
@@ -433,7 +484,7 @@ mod tests {
         );
         let dt = Delta::from_sec(1_000_000);
         // 2 + (1e-9 * 1e6) + (2e-18 * 1e12) = 2.001002 exactly
-        assert_eq!(drift.evaluate(dt), Delta::from_sec_f(2.001002));
+        assert_eq!(drift.time_diff_after(&dt), Delta::from_sec_f(2.001002));
     }
 
     #[test]
@@ -451,14 +502,14 @@ mod tests {
             .add(Delta::from_us(500))
             .add(Delta::from_ns(250));
 
-        assert_eq!(drift.evaluate(dt), expected);
+        assert_eq!(drift.time_diff_after(&dt), expected);
     }
 
     #[test]
     fn evaluate_large_dt_exact() {
         let drift = ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(1e-12));
         let dt = Delta::from_sec(1_000_000_000); // ~31.7 years
-        assert_eq!(drift.evaluate(dt), Delta::from_sec_f(0.001));
+        assert_eq!(drift.time_diff_after(&dt), Delta::from_sec_f(0.001));
     }
 
     // ========================================================================
@@ -567,7 +618,7 @@ mod tests {
     fn local_spacetime_to_unified_proper_time_rate() {
         // from_local_spacetime must correctly compute δ = α²(1 − β²) and delegate to the unified path
         let spacetime = LocalSpacetime::new(0.9, 0.6, 0.0); // realistic values
-        let drift = ClockDrift::from_local_spacetime(spacetime);
+        let drift = ClockDrift::from_local_spacetime(&spacetime);
 
         // Manual verification of the exact same path
         let u = 0.9 * 0.9 * (1.0 - 0.6 * 0.6);

@@ -1,7 +1,7 @@
 use crate::leap_seconds::leap_seconds_before;
 use crate::{
-    ClockDrift, ClockModel, ClockType, Delta, LB, LG, POW15, POW21, Real, TCG_TCB_REF_JD, TDB0,
-    TT_TAI_OFFSET_DELTA, TimePoint, sin_approx,
+    ClockDrift, ClockModel, ClockType, Delta, J2000_SECONDS_PER_CENTURY, LB, LG, POW15, POW21,
+    Real, TCG_TCB_REF_JD, TDB0, TT_TAI_OFFSET_DELTA, TimePoint, sin_approx,
 };
 
 impl TimePoint {
@@ -31,15 +31,13 @@ impl TimePoint {
         match self.clock_type {
             ClockType::TAI => self,
             ClockType::TT | ClockType::ET => self
-                .sub(TT_TAI_OFFSET_DELTA)
+                .sub_ref(&TT_TAI_OFFSET_DELTA)
                 .with_clock_type(ClockType::TAI),
             ClockType::UTC => Self::utc_to_tai(self),
-            ClockType::GPST | ClockType::QZSST | ClockType::GST => self
-                .add(Delta::from_sec(19))
-                .with_clock_type(ClockType::TAI),
-            ClockType::BDT => self
-                .add(Delta::from_sec(33))
-                .with_clock_type(ClockType::TAI),
+            ClockType::GPST | ClockType::QZSST | ClockType::GST => {
+                self.add_ref(&Delta::SEC_19).with_clock_type(ClockType::TAI)
+            }
+            ClockType::BDT => self.add_ref(&Delta::SEC_33).with_clock_type(ClockType::TAI),
             ClockType::TDB => Self::tdb_to_tai(self),
             ClockType::TCG => Self::tcg_to_tai(self),
             ClockType::TCB => Self::tcb_to_tai(self),
@@ -51,12 +49,14 @@ impl TimePoint {
     pub const fn from_tai(self, target: ClockType) -> Self {
         match target {
             ClockType::TAI => self,
-            ClockType::TT | ClockType::ET => self.add(TT_TAI_OFFSET_DELTA).with_clock_type(target),
+            ClockType::TT | ClockType::ET => {
+                self.add_ref(&TT_TAI_OFFSET_DELTA).with_clock_type(target)
+            }
             ClockType::UTC => Self::tai_to_utc(self),
             ClockType::GPST | ClockType::QZSST | ClockType::GST => {
-                self.sub(Delta::from_sec(19)).with_clock_type(target)
+                self.sub_ref(&Delta::SEC_19).with_clock_type(target)
             }
-            ClockType::BDT => self.sub(Delta::from_sec(33)).with_clock_type(target),
+            ClockType::BDT => self.sub_ref(&Delta::SEC_33).with_clock_type(target),
             ClockType::TDB => Self::tai_to_tdb(self),
             ClockType::TCG => Self::tai_to_tcg(self),
             ClockType::TCB => Self::tai_to_tcb(self),
@@ -66,10 +66,6 @@ impl TimePoint {
 
     /// Converts this instant to any other [`ClockType`] while applying an exact quadratic
     /// relativistic / clock-drift correction via a [`ClockDrift`].
-    ///
-    /// Primary use for spacecraft:
-    /// - `self` is normally `ClockType::Proper` (onboard clock reading).
-    /// - The polynomial models **target = reference + poly(dt)**.
     #[inline]
     pub const fn convert_using_drift(
         self,
@@ -77,8 +73,8 @@ impl TimePoint {
         reference: Self,
         drift: ClockDrift,
     ) -> Self {
-        let dt = self.duration_since(reference);
-        let correction = drift.evaluate(dt);
+        let delta = self.duration_since(reference);
+        let correction = drift.time_diff_after(&delta);
         self.add(correction).with_clock_type(target)
     }
 
@@ -95,16 +91,15 @@ impl TimePoint {
         drift: ClockDrift,
     ) -> Self {
         // Fast path for the extremely common pure-constant case
-        if drift.rate.is_zero() && drift.accel.is_zero() {
-            return self.sub(drift.constant).with_clock_type(source);
+        if drift.rate().is_zero() && drift.accel().is_zero() {
+            return self.sub_ref(&drift.constant()).with_clock_type(source);
         }
 
         let mut guess = self;
         let mut i = 0u32;
         while i < 16 {
-            // ← changed from 8
-            let dt = guess.duration_since(reference);
-            let correction = drift.evaluate(dt);
+            let delta = guess.duration_since(reference);
+            let correction = drift.time_diff_after(&delta);
             guess = self.sub(correction); // target - drift(guess - ref)
             i += 1;
         }
@@ -114,7 +109,7 @@ impl TimePoint {
     /// Converts using a self-describing [`ClockModel`].
     ///
     /// Onboard `Proper`/`Custom` → whatever `ClockModel.base` is (TT, TDB, Custom/Mars time, etc.).
-    /// This is the recommended one-line conversion and is now fully flexible.
+    /// This is the recommended one-line conversion.
     #[inline]
     pub const fn convert_using_model(self, model: ClockModel) -> Self {
         self.convert_using_drift(model.base, model.reference, model.drift)
@@ -149,7 +144,7 @@ impl TimePoint {
     // ──────────────────────────────────────────────────────────────
 
     const fn utc_to_tai(utc: Self) -> Self {
-        let approx_tai_for_lookup = utc.add(Delta::from_sec(37));
+        let approx_tai_for_lookup = utc.add_ref(&Delta::SEC_37);
         let leaps = leap_seconds_before(approx_tai_for_lookup);
         utc.add(Delta::from_sec(leaps))
             .with_clock_type(ClockType::TAI)
@@ -166,9 +161,6 @@ impl TimePoint {
     // ──────────────────────────────────────────────────────────────
 
     const fn tdb_minus_tt(tt: Self) -> Delta {
-        // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
-        const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
-
         // Whole seconds as f64 (limited by f64 integer precision above ~9e15 s)
         let whole = tt.sec as Real;
 
@@ -176,7 +168,6 @@ impl TimePoint {
         let frac = (q as Real) / (POW15 as Real);
 
         let seconds_since_j2000_tt = whole + frac;
-
         let t = seconds_since_j2000_tt / J2000_SECONDS_PER_CENTURY;
 
         let g = f!(2.0) * core::f64::consts::PI * (f!(357.528) + f!(35_999.050) * t) / f!(360.0);
@@ -188,7 +179,9 @@ impl TimePoint {
     }
 
     const fn tai_to_tdb(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_DELTA).with_clock_type(ClockType::TT);
+        let tt = tai
+            .add_ref(&TT_TAI_OFFSET_DELTA)
+            .with_clock_type(ClockType::TT);
         let delta = Self::tdb_minus_tt(tt);
         tt.add(delta).with_clock_type(ClockType::TDB)
     }
@@ -203,7 +196,8 @@ impl TimePoint {
             i += 1;
         }
 
-        tt.sub(TT_TAI_OFFSET_DELTA).with_clock_type(ClockType::TAI)
+        tt.sub_ref(&TT_TAI_OFFSET_DELTA)
+            .with_clock_type(ClockType::TAI)
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -253,7 +247,7 @@ impl TimePoint {
         let days = jd_tdb - TCG_TCB_REF_JD;
         let delta_s = days * f!(86_400.0) * LB;
         tdb.add(Delta::from_sec_f(delta_s))
-            .add(TDB0) // TDB0 is already part of the defining relation
+            .add_ref(&TDB0) // TDB0 is already part of the defining relation
             .with_clock_type(ClockType::TCB)
     }
 
@@ -262,7 +256,7 @@ impl TimePoint {
         let days = jd_tcb - TCG_TCB_REF_JD;
         let delta_s = days * f!(86_400.0) * LB;
         tcb.sub(Delta::from_sec_f(delta_s))
-            .sub(TDB0)
+            .sub_ref(&TDB0)
             .with_clock_type(ClockType::TDB)
     }
 

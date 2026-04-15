@@ -35,7 +35,7 @@ pub trait RelativisticTrajectory {
             state.grav_potential_m2_s2,
             state.characteristic_length_scale,
         );
-        f!(1.0) + drift.evaluate(Delta::ZERO).as_sec_f()
+        f!(1.0) + drift.time_diff_after(&Delta::ZERO).as_sec_f()
     }
 
     /// Computes the proper-time interval Δτ between two coordinate times.

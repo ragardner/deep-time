@@ -21,6 +21,10 @@ impl Delta {
         subsec: 0,
     };
 
+    pub const SEC_19: Self = Self::from_sec(19);
+    pub const SEC_33: Self = Self::from_sec(33);
+    pub const SEC_37: Self = Self::from_sec(37);
+
     /// Creates a new `Delta` from whole seconds and a subsecond part.
     ///
     /// The result is automatically normalized so `subsec` lies in `[0, 10³⁶)`.

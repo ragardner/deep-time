@@ -14,12 +14,30 @@ pub mod time_units;
 ///
 /// - Precision: 10⁻³⁶ s
 /// - Range: ±~5 × 10³⁰ years (identical to `TimePoint`).
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Delta {
     /// Signed whole seconds.
     pub(crate) sec: i128,
     /// Fractional part in microquectoseconds (`0 ≤ microquectos < 10³⁶`).
     pub(crate) subsec: u128,
+}
+
+impl Delta {
+    #[inline(always)]
+    pub const fn sec(&self) -> i128 {
+        self.sec
+    }
+
+    #[inline(always)]
+    pub const fn subsec(&self) -> u128 {
+        self.subsec
+    }
+}
+
+impl Default for Delta {
+    fn default() -> Self {
+        Self::ZERO
+    }
 }

@@ -51,6 +51,8 @@ pub(crate) const TT_TAI_OFFSET_SUBSEC: u128 = 184 * 10u128.pow(33); // 0.184 × 
 
 /// Helper that returns the exact TT–TAI offset as a `Delta`.
 pub const TT_TAI_OFFSET_DELTA: Delta = Delta::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
+// J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
+pub(crate) const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
 
 // 10¹⁵ is exactly representable in f64 (within 53-bit mantissa).
 // 10²¹ completes the 36-digit scale exactly in u128.

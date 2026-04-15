@@ -215,7 +215,7 @@ impl ObserverState {
     /// (using the helper `shapiro_one_way_for_body` if you add it) and manually combine
     /// them with the result of this function.
     pub fn one_way_relativistic_delay_to(&self, rx: ObserverState, context: LightContext) -> Delta {
-        let dt = rx.time.duration_since(self.time);
+        let delta = rx.time.duration_since_ref(&self.time);
 
         let tx_drift = ClockDrift::from_velocity_potential_and_scale(
             self.velocity.speed(),
@@ -228,7 +228,9 @@ impl ObserverState {
             rx.characteristic_length_scale,
         );
 
-        let drift_correction = rx_drift.evaluate(dt).sub(tx_drift.evaluate(dt));
+        let drift_correction = rx_drift
+            .time_diff_after(&delta)
+            .sub(tx_drift.time_diff_after(&delta));
 
         let r_tx = self.position.norm();
         let r_rx = rx.position.norm();
@@ -327,7 +329,7 @@ impl ObserverState {
             let full_delay = geometric.add(rel_correction);
 
             let new_rx_time = self.time.add(full_delay);
-            let change = new_rx_time.duration_since(rx.time);
+            let change = new_rx_time.duration_since_ref(&rx.time);
 
             rx = rx_provider(new_rx_time);
             rx.time = new_rx_time;
@@ -461,7 +463,7 @@ impl ObserverState {
             return self.one_way_relativistic_delay_to(rx, context);
         }
 
-        let dt_sec = rx.time.duration_since(self.time).as_sec_f();
+        let dt_sec = rx.time.duration_since_ref(&self.time).as_sec_f();
 
         let num_samples = samples.len();
         let n = num_samples as Real;
@@ -470,8 +472,8 @@ impl ObserverState {
 
         for i in 0..num_samples {
             let local = samples[i];
-            let drift = ClockDrift::from_local_spacetime(local);
-            let rate_offset = drift.rate.as_sec_f();
+            let drift = ClockDrift::from_local_spacetime(&local);
+            let rate_offset = drift.rate().as_sec_f();
 
             let coeff = if i == 0 || i == num_samples - 1 {
                 f!(1.0)
@@ -703,7 +705,7 @@ mod relativistic_tests {
         assert!(correction.as_sec_f().abs() < 1e-5);
 
         let geometric_sec = tx_pos.distance_to(rx_pos) / C;
-        let total_sec = final_rx_time.duration_since(tx.time).as_sec_f();
+        let total_sec = final_rx_time.duration_since_ref(&tx.time).as_sec_f();
         assert!(
             (total_sec - geometric_sec).abs() < 1e-4,
             "Converged receive time deviates from geometric light time by {:.6} s",
