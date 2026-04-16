@@ -98,6 +98,8 @@ pub enum ParseErr {
     TimePointJdnIsNone,
     TimePointHourOutOfRange,
     TimePointInvalidDate,
+    // output, formatter
+    FormatterErr,
 }
 
 #[derive(Debug)]

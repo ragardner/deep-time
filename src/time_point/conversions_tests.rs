@@ -15,15 +15,6 @@ mod tdb_tests {
             TimePoint::from_tai_sec(-2_208_945_600),     // J1900 epoch
         ];
 
-        #[cfg(feature = "std")]
-        {
-            use std::eprintln;
-            let tai = TimePoint::ZERO;
-            let tdb = tai.to_clock_type(ClockType::TDB);
-            eprintln!("\nTAI sec={}, subsec={}", tai.sec, tai.subsec);
-            eprintln!("TDB sec={}, subsec={}", tdb.sec, tdb.subsec);
-            eprintln!("diff_s = {}", tdb.duration_since(tai).as_sec_f());
-        }
         for &p in &test_points {
             let tdb = p.to_clock_type(ClockType::TDB);
             let back = tdb.to_clock_type(ClockType::TAI);

@@ -155,10 +155,6 @@ impl ParsedDate {
     ///   the TZ gives you the wall-clock representation of that instant.
     /// - If no `%s` is present, the normal civil path is taken: the date/time components are
     ///   interpreted as local time *in the parsed timezone*.
-    ///
-    /// This design matches the semantics used by high-performance parsers (e.g. Jiff) and
-    /// gives Unix timestamps the highest possible priority. Mixed formats that contain both
-    /// `%s` and civil fields are explicitly allowed, but `%s` always wins for the instant.
     pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, Error> {
         let to_err = || Error::simple(ParseErr::ChronoDateTime);
 

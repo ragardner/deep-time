@@ -1,6 +1,20 @@
-use crate::{ClockDrift, Delta, LocalSpacetime, MICROQUECTOS_PER_SEC, Real, TimePoint};
+use crate::{
+    ClockDrift, Delta, LocalSpacetime, MICROQUECTOS_PER_SEC, POW15, POW21, Real, TimePoint,
+};
 
 impl TimePoint {
+    /// Converts to a floating-point number of seconds.
+    ///
+    /// **Lossy by design** — returns the best possible `float` representation
+    /// (≈15.95 decimal digits).
+    #[inline(always)]
+    pub const fn as_sec_f(self) -> Real {
+        // Extract the top 15 decimal digits exactly (POW15 is fully representable in float mantissa)
+        let q = (self.subsec / POW21) as Real;
+        let frac = q / f!(POW15);
+        self.sec as Real + frac
+    }
+
     /// Overflowing add. The result keeps the original [`ClockType`].
     pub const fn add(self, delta: Delta) -> Self {
         let mut sec = self.sec + delta.sec;

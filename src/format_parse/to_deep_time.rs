@@ -43,7 +43,7 @@ impl ParsedDate {
     /// - `TimePointDayOfYearOutOfRange`
     /// - `TimePointIsoWeekOutOfRange` (reused for `%U`/`%W` > 53)
     /// - `TimePointJdnIsNone`
-    /// - `HourOutOfRange`
+    /// - `TimePointHourOutOfRange`
     /// - `TimePointInvalidDate` (new – add this variant to `ParseErr` if missing)
     pub fn to_time_point(&self) -> Result<TimePoint, Error> {
         if self.iana_name.is_some_and(|n| n.iter().any(|&b| b != 0)) {
@@ -89,7 +89,7 @@ impl ParsedDate {
         };
 
         // ──────────────────────────────────────────────────────────────
-        // Civil date path – all five formats supported + validation
+        // Civil date path
         // ──────────────────────────────────────────────────────────────
         if self.year.is_none() && self.iso_week_year.is_none() {
             return Err(Error::simple(ParseErr::TimePointYearIncompleteDate));
@@ -147,14 +147,10 @@ impl ParsedDate {
         let Some(jdn) = jdn else {
             return Err(Error::simple(ParseErr::TimePointJdnIsNone));
         };
-
         let days_since_j2000 = jdn - 2_451_545i128;
-
         let seconds_from_noon_utc =
             (hour as i128 - 12) * 3600 + (minute as i128) * 60 + (second as i128);
-
         let sec_utc = days_since_j2000 * 86_400 + seconds_from_noon_utc;
-
         let utc_tp = TimePoint::new(sec_utc, subsec, ClockType::UTC);
 
         Ok(match self.timescale {
