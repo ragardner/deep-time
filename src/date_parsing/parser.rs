@@ -96,6 +96,8 @@ pub enum ParseErr {
     TimePointDayOfYearOutOfRange,
     TimePointIsoWeekOutOfRange,
     TimePointJdnIsNone,
+    TimePointHourOutOfRange,
+    TimePointInvalidDate,
 }
 
 #[derive(Debug)]

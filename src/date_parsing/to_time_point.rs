@@ -1,20 +1,50 @@
 use crate::{
     ClockType, TimePoint,
-    parser::{Error, ParseErr, ParsedDate, ParsedTimeScale, TimeZone, Weekday},
+    parser::{Error, Meridiem, ParseErr, ParsedDate, ParsedTimeScale, TimeZone, Weekday},
 };
 
 impl ParsedDate {
-    /// Same method as before, now with full support for:
-    /// • YMD (existing)
-    /// • Ordinal date (`%j` / `day_of_year`)
-    /// • ISO week date (`%G` / `%V` + `weekday`)
+    /// Converts parsed date/time components into a high-precision [`TimePoint`].
     ///
-    /// Priority order (exactly like Jiff/Chrono):
-    /// 1. Unix timestamp (if present)
-    /// 2. YMD
-    /// 3. Ordinal (year + day_of_year)
-    /// 4. ISO week date (iso_week_year + iso_week + weekday)
-    /// 5. Error `IncompleteDate`
+    /// This is the core conversion routine used by the date-time parser. It supports
+    /// **all five** standard date representations (in strict precedence order):
+    ///
+    /// 1. Classic Gregorian YMD (`year` + `month` + `day`)
+    /// 2. Ordinal date (`year` + `day_of_year`)
+    /// 3. ISO 8601 week date (`iso_week_year` + `iso_week`)
+    /// 4. Sunday-based week-of-year (`week_sun` – `%U`)
+    /// 5. Monday-based week-of-year (`week_mon` – `%W`)
+    ///
+    /// All civil times are interpreted **in UTC**. The resulting `TimePoint` is
+    /// automatically converted to the requested [`ParsedTimeScale`].
+    ///
+    /// # 12-hour time + meridiem support
+    ///
+    /// When both `hour` and `meridiem` are present, `hour` is treated as 1–12
+    /// and automatically converted to 24-hour format (12 AM → 00, 12 PM → 12, etc.).
+    ///
+    /// # Leap-second support
+    ///
+    /// `second == 60` is fully supported and produces the correct physical instant.
+    /// The `is_leap_second` flag (set by [`finish()`]) is preserved for future use
+    /// but does not affect the conversion math.
+    ///
+    /// # Calendar validation (new)
+    ///
+    /// - Full month/day validation (rejects Feb 30, Apr 31, invalid Feb 29, etc.).
+    /// - Strict ISO week 53 validation (only years that actually have week 53 are accepted).
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::simple`] with one of:
+    ///
+    /// - `TimePointIana`, `TimePointTimeZone`
+    /// - `TimePointYearIncompleteDate`
+    /// - `TimePointDayOfYearOutOfRange`
+    /// - `TimePointIsoWeekOutOfRange` (reused for `%U`/`%W` > 53)
+    /// - `TimePointJdnIsNone`
+    /// - `HourOutOfRange`
+    /// - `TimePointInvalidDate` (new – add this variant to `ParseErr` if missing)
     pub fn to_time_point(&self) -> Result<TimePoint, Error> {
         if self.iana_name.is_some_and(|n| n.iter().any(|&b| b != 0)) {
             return Err(Error::simple(ParseErr::TimePointIana));
@@ -40,13 +70,31 @@ impl ParsedDate {
         }
 
         // ──────────────────────────────────────────────────────────────
-        // Civil date path (now supports all three calendar styles)
+        // Resolve 12-hour time + meridiem (AM/PM) to 24-hour hour
         // ──────────────────────────────────────────────────────────────
+        let hour = match (self.hour, self.meridiem) {
+            (Some(h), Some(m)) => {
+                if !(1..=12).contains(&h) {
+                    return Err(Error::simple(ParseErr::TimePointHourOutOfRange));
+                }
+                match (h, m) {
+                    (12, Meridiem::AM) => 0,
+                    (12, Meridiem::PM) => 12,
+                    (h, Meridiem::AM) => h,
+                    (h, Meridiem::PM) => h + 12,
+                }
+            }
+            (Some(h), None) => h,
+            (None, _) => 0,
+        };
 
+        // ──────────────────────────────────────────────────────────────
+        // Civil date path – all five formats supported + validation
+        // ──────────────────────────────────────────────────────────────
         if self.year.is_none() && self.iso_week_year.is_none() {
             return Err(Error::simple(ParseErr::TimePointYearIncompleteDate));
         }
-        let hour = self.hour.unwrap_or(0);
+
         let minute = self.minute.unwrap_or(0);
         let second = self.second.unwrap_or(0);
         let subsec = self.microquectos.unwrap_or(0);
@@ -54,10 +102,13 @@ impl ParsedDate {
 
         if let Some(year) = self.year {
             if let (Some(m), Some(d)) = (self.month, self.day) {
-                // Classic YMD (highest priority)
+                // Classic YMD – highest priority + full validation
+                if !TimePoint::is_valid_gregorian_date(year, m, d) {
+                    return Err(Error::simple(ParseErr::TimePointInvalidDate));
+                }
                 jdn = Some(TimePoint::gregorian_jdn(year, m, d));
             } else if let Some(doy) = self.day_of_year {
-                // Ordinal date (%j)
+                // Ordinal date (%j) – already validated
                 if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
                     return Err(Error::simple(ParseErr::TimePointDayOfYearOutOfRange));
                 }
@@ -71,8 +122,25 @@ impl ParsedDate {
                 if iso_w == 0 || iso_w > 53 {
                     return Err(Error::simple(ParseErr::TimePointIsoWeekOutOfRange));
                 }
+                if iso_w == 53 && !TimePoint::has_iso_week_53(iso_y) {
+                    return Err(Error::simple(ParseErr::TimePointInvalidDate));
+                }
                 let wd = self.weekday.unwrap_or(Weekday::Monday);
                 jdn = Some(TimePoint::gregorian_jdn_from_iso_week(iso_y, iso_w, wd));
+            } else if let (Some(y), Some(w)) = (self.year, self.week_sun) {
+                // Sunday-based week (%U)
+                if w > 53 {
+                    return Err(Error::simple(ParseErr::TimePointIsoWeekOutOfRange));
+                }
+                let wd = self.weekday.unwrap_or(Weekday::Sunday);
+                jdn = Some(TimePoint::gregorian_jdn_from_week_sun(y, w, wd));
+            } else if let (Some(y), Some(w)) = (self.year, self.week_mon) {
+                // Monday-based week (%W)
+                if w > 53 {
+                    return Err(Error::simple(ParseErr::TimePointIsoWeekOutOfRange));
+                }
+                let wd = self.weekday.unwrap_or(Weekday::Monday);
+                jdn = Some(TimePoint::gregorian_jdn_from_week_mon(y, w, wd));
             }
         }
 
