@@ -26,7 +26,7 @@ chrono = { version = "0.4", optional = true, default-features = false }  # ← N
 # ──────────────────────────────────────────────────────────────
 default = []          # Do not enable std by accident
 
-alloc = ["jiff?/alloc", "chrono?/alloc"]            # Enables `alloc`
+alloc = ["jiff?/alloc", "chrono?/alloc"]          # Enables `alloc`
 std = ["alloc", "jiff?/std", "chrono?/std"]       # Enables the full std library + alloc
 
 # ──────────────────────────────────────────────────────────────
@@ -37,7 +37,7 @@ serde = ["dep:serde", "jiff?/serde", "chrono?/serde"] # Enables `Serialize`/`Des
 # ──────────────────────────────────────────────────────────────
 # DATETIME INTEROP
 # ──────────────────────────────────────────────────────────────
-jiff = ["dep:jiff"]                  # Enables Jiff interop (types, traits, etc.)
+jiff = ["dep:jiff", "std", "jiff/tzdb-bundle-always"]         # Enables Jiff interop (types, traits, etc.) + requires `alloc`
 chrono = ["dep:chrono"]              # ← NEW: Enables Chrono interop
 
 # ──────────────────────────────────────────────────────────────

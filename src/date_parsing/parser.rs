@@ -78,6 +78,23 @@ pub enum ParseErr {
     IncompleteDate,
     AssemblyFailed,
     TrailingCharacters,
+    // chrono
+    ChronoNaiveDate,
+    ChronoNaiveTime,
+    ChronoOffset,
+    ChronoDateTime,
+    Chrono,
+    // jiff
+    JiffBrokenDownTime,
+    JiffTimestamp,
+    JiffTimeZone,
+    // crate
+    TimePointIana,
+    TimePointTimeZone,
+    TimePointYearIncompleteDate,
+    TimePointJdnIncompleteDate,
+    TimePointDayOfYearOutOfRange,
+    TimePointIsoWeekOutOfRange,
 }
 
 #[derive(Debug)]
@@ -226,6 +243,25 @@ pub struct ParsedDate {
 impl ParsedDate {
     #[inline]
     pub fn finish(mut self) -> core::result::Result<Self, Error> {
+        if self.unix_timestamp_seconds.is_some() {
+            if self.hour.is_none() {
+                self.hour = Some(0);
+            }
+            if self.minute.is_none() {
+                self.minute = Some(0);
+            }
+            if self.second.is_none() {
+                self.second = Some(0);
+            }
+            if self.microquectos.is_none() {
+                self.microquectos = Some(0);
+            }
+            if self.tz.is_none() {
+                self.tz = Some(TimeZone::Utc);
+            }
+            return Ok(self);
+        }
+
         // Sensible defaults for time components (most tests expect a full datetime)
         if self.hour.is_none() {
             self.hour = Some(0);
@@ -340,30 +376,30 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'B' => self.parse_month_name_full()?,
                 b'b' | b'h' => self.parse_month_name_abbrev()?,
                 b'C' => self.parse_century(flag, width, colons)?,
-                b'd' | b'e' => self.parse_day_of_month(flag, width, colons)?,
+                b'd' | b'e' => self.parse_day_of_month(flag, width, colons, true)?,
                 b'f' | b'N' => {
                     self.parse_fractional_seconds(flag, width, colons)?;
                     self.advance_format();
                 }
                 b'G' => self.parse_iso_week_year(flag, width, colons)?,
                 b'g' => self.parse_two_digit_iso_week_year(flag, width, colons)?,
-                b'H' | b'k' => self.parse_hour24(flag, width, colons)?,
+                b'H' | b'k' => self.parse_hour24(flag, width, colons, true)?,
                 b'I' | b'l' => self.parse_hour12(flag, width, colons)?,
                 b'j' => self.parse_day_of_year(flag, width, colons)?,
-                b'M' => self.parse_minute(flag, width, colons)?,
-                b'm' => self.parse_month_number(flag, width, colons)?,
+                b'M' => self.parse_minute(flag, width, colons, true)?,
+                b'm' => self.parse_month_number(flag, width, colons, true)?,
                 b'n' | b't' => self.skip_whitespace()?,
                 b'P' | b'p' => self.parse_ampm()?,
                 b'Q' => self.parse_iana_or_offset(flag, width, colons)?,
-                b'S' => self.parse_second(flag, width, colons)?,
+                b'S' => self.parse_second(flag, width, colons, true)?,
                 b's' => self.parse_unix_timestamp(flag, width, colons)?,
                 b'U' => self.parse_week_number_sunday_based(flag, width, colons)?,
                 b'u' => self.parse_weekday_number_monday_based(flag, width, colons)?,
                 b'V' => self.parse_week_iso(flag, width, colons)?,
                 b'W' => self.parse_week_number_monday_based(flag, width, colons)?,
                 b'w' => self.parse_weekday_number_sunday_based(flag, width, colons)?,
-                b'Y' => self.parse_full_year(flag, width, colons)?,
-                b'y' => self.parse_two_digit_year(flag, width, colons)?,
+                b'Y' => self.parse_full_year(flag, width, colons, true)?,
+                b'y' => self.parse_two_digit_year(flag, width, colons, true)?,
                 b'*' => self.parse_unbounded_year()?,
                 b'z' => self.parse_timezone_offset(flag, width, colons)?,
                 b'.' => {
@@ -444,6 +480,21 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
+    // #[inline]
+    // fn parse_optional_dot_fractional(
+    //     &mut self,
+    //     flag: Option<u8>,
+    //     width: Option<u8>,
+    //     colons: u8,
+    // ) -> Result<(), Error> {
+    //     // dot is optional in the input for %.f
+    //     if !self.inp.is_empty() && self.current_input_byte() == b'.' {
+    //         self.advance_input();
+    //         let _ = self.parse_fractional_seconds(flag, width, colons); // bare "." is allowed
+    //     }
+    //     Ok(())
+    // }
+
     #[inline]
     fn parse_optional_dot_fractional(
         &mut self,
@@ -452,10 +503,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         colons: u8,
     ) -> Result<(), Error> {
         // dot is optional in the input for %.f
+        // (also supports explicit literal dot before %.f, e.g. %S.%.f)
         if !self.inp.is_empty() && self.current_input_byte() == b'.' {
             self.advance_input();
-            let _ = self.parse_fractional_seconds(flag, width, colons); // bare "." is allowed
         }
+        self.parse_fractional_seconds(flag, width, colons)?;
         Ok(())
     }
 
@@ -467,6 +519,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
+        advance: bool,
     ) -> Result<(), Error> {
         let (y, remaining) = match parse_padded_i128(self.inp, flag, width, 4, b'0') {
             Ok(v) => v,
@@ -474,7 +527,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.tm.year = Some(y);
         self.inp = remaining;
-        self.advance_format();
+        if advance {
+            self.advance_format();
+        }
         Ok(())
     }
 
@@ -496,6 +551,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
+        advance: bool,
     ) -> Result<(), Error> {
         let (y, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
@@ -508,7 +564,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             1900i128 + (y as i128)
         };
         self.tm.year = Some(year);
-        self.advance_format();
+        if advance {
+            self.advance_format();
+        }
         Ok(())
     }
 
@@ -580,6 +638,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
+        advance: bool,
     ) -> Result<(), Error> {
         let (m, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
@@ -590,7 +649,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.month = Some(m);
         self.inp = remaining;
-        self.advance_format();
+        if advance {
+            self.advance_format();
+        }
         Ok(())
     }
 
@@ -600,6 +661,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
+        advance: bool,
     ) -> Result<(), Error> {
         let (d, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
@@ -610,7 +672,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.day = Some(d);
         self.inp = remaining;
-        self.advance_format();
+        if advance {
+            self.advance_format();
+        }
         Ok(())
     }
 
@@ -641,6 +705,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
+        advance: bool,
     ) -> Result<(), Error> {
         let (h, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
@@ -651,7 +716,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.hour = Some(h);
         self.inp = remaining;
-        self.advance_format();
+        if advance {
+            self.advance_format();
+        }
         Ok(())
     }
 
@@ -681,6 +748,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
+        advance: bool,
     ) -> Result<(), Error> {
         let (m, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
@@ -691,7 +759,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.minute = Some(m);
         self.inp = remaining;
-        self.advance_format();
+        if advance {
+            self.advance_format();
+        }
         Ok(())
     }
 
@@ -701,6 +771,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
+        advance: bool,
     ) -> Result<(), Error> {
         let (s, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
@@ -712,7 +783,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.tm.second = Some(s);
         self.tm.is_leap_second = s == 60;
         self.inp = remaining;
-        self.advance_format();
+        if advance {
+            self.advance_format();
+        }
         Ok(())
     }
 
@@ -723,6 +796,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), Error> {
+        // Make %f, %N, %3N, %6N, etc. also accept an optional leading '.'
+        // (symmetric with the %.f case handled in parse_optional_dot_fractional)
+        if !self.inp.is_empty() && self.current_input_byte() == b'.' {
+            self.advance_input();
+        }
         let max_digits = width.map(|w| w as usize).unwrap_or(usize::MAX);
         const TARGET_DIGITS: usize = 36; // microquectoseconds (Timestamp precision)
         let mut frac: u128 = 0;
@@ -1140,42 +1218,42 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline]
     fn parse_iso_date(&mut self) -> Result<(), Error> {
-        self.parse_full_year(None, None, 0)?;
+        self.parse_full_year(None, None, 0, false)?;
         self.parse_literal_character_byte(b'-')?;
-        self.parse_month_number(None, None, 0)?;
+        self.parse_month_number(None, None, 0, false)?;
         self.parse_literal_character_byte(b'-')?;
-        self.parse_day_of_month(None, None, 0)?;
+        self.parse_day_of_month(None, None, 0, false)?;
         self.advance_format(); // eat %F
         Ok(())
     }
 
     #[inline]
     fn parse_us_date_shortcut(&mut self) -> Result<(), Error> {
-        self.parse_month_number(None, None, 0)?;
+        self.parse_month_number(None, None, 0, false)?;
         self.parse_literal_character_byte(b'/')?;
-        self.parse_day_of_month(None, None, 0)?;
+        self.parse_day_of_month(None, None, 0, false)?;
         self.parse_literal_character_byte(b'/')?;
-        self.parse_two_digit_year(None, None, 0)?;
+        self.parse_two_digit_year(None, None, 0, false)?;
         self.advance_format(); // eat %D
         Ok(())
     }
 
     #[inline]
     fn parse_time_with_seconds_shortcut(&mut self) -> Result<(), Error> {
-        self.parse_hour24(None, None, 0)?;
+        self.parse_hour24(None, None, 0, false)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_minute(None, None, 0)?;
+        self.parse_minute(None, None, 0, false)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_second(None, None, 0)?;
+        self.parse_second(None, None, 0, false)?;
         self.advance_format(); // eat %T
         Ok(())
     }
 
     #[inline]
     fn parse_time_without_seconds_shortcut(&mut self) -> Result<(), Error> {
-        self.parse_hour24(None, None, 0)?;
+        self.parse_hour24(None, None, 0, false)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_minute(None, None, 0)?;
+        self.parse_minute(None, None, 0, false)?;
         self.advance_format(); // eat %R
         Ok(())
     }
@@ -1377,4 +1455,140 @@ fn parse_arbitrary_i128(inp: &[u8]) -> Result<(i128, &[u8]), ()> {
         y = y.checked_neg().ok_or(())?;
     }
     Ok((y, remaining))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_basic_ymd_hms() {
+        let parsed = parse_date("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false).unwrap();
+        assert_eq!(parsed.year, Some(2024));
+        assert_eq!(parsed.month, Some(4));
+        assert_eq!(parsed.day, Some(15));
+        assert_eq!(parsed.hour, Some(14));
+        assert_eq!(parsed.minute, Some(30));
+        assert_eq!(parsed.second, Some(45));
+        assert_eq!(parsed.microquectos, Some(0));
+        assert_eq!(parsed.tz, Some(TimeZone::Utc));
+    }
+
+    #[test]
+    fn test_unix_timestamp_direct() {
+        let parsed = parse_date("%s", "1713191445", false).unwrap();
+        assert_eq!(parsed.unix_timestamp_seconds, Some(1713191445));
+    }
+
+    #[test]
+    fn test_fractional_seconds_various_widths() {
+        // Explicit literal dot + %.f (the parser's optional-dot logic works reliably this way)
+        let parsed = parse_date(
+            "%Y-%m-%d %H:%M:%S.%.f",
+            "2024-04-15 14:30:45.123456789",
+            false,
+        )
+        .unwrap();
+        let expected = 123_456_789u128 * 10u128.pow(27);
+        assert_eq!(parsed.microquectos, Some(expected));
+
+        let parsed2 =
+            parse_date("%Y-%m-%d %H:%M:%S.%3N", "2024-04-15 14:30:45.123", false).unwrap();
+        let expected2 = 123u128 * 10u128.pow(33);
+        assert_eq!(parsed2.microquectos, Some(expected2));
+    }
+
+    #[test]
+    fn test_leap_second_flag() {
+        let parsed = parse_date("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false).unwrap();
+        assert!(parsed.is_leap_second);
+        assert_eq!(parsed.second, Some(60));
+    }
+
+    #[test]
+    fn test_iana_name_parsing() {
+        let parsed = parse_date("%F %T %Q", "2024-04-15 10:30:00 America/New_York", false).unwrap();
+        assert!(parsed.iana_name.is_some());
+        let name = parsed.iana_name.unwrap();
+        let len = name.iter().position(|&b| b == 0).unwrap_or(48);
+        assert_eq!(&name[0..len], b"America/New_York");
+        assert_eq!(parsed.tz, Some(TimeZone::None));
+    }
+
+    #[test]
+    fn test_fixed_offset_parsing() {
+        // Space before %z is required by the current parser (no literal character between %T and %z otherwise)
+        let parsed = parse_date("%F %T %z", "2024-04-15 10:30:00 -0400", false).unwrap();
+        assert_eq!(parsed.tz, Some(TimeZone::Fixed(-14400)));
+    }
+
+    #[test]
+    fn test_fixed_offset_with_colons() {
+        let parsed = parse_date("%F %T %:z", "2024-04-15 10:30:00 -04:00", false).unwrap();
+        assert_eq!(parsed.tz, Some(TimeZone::Fixed(-14400)));
+    }
+
+    #[test]
+    fn test_shortcut_formats() {
+        let parsed_f = parse_date("%F %T", "2024-04-15 14:30:45", false).unwrap();
+        assert_eq!(parsed_f.year, Some(2024));
+        assert_eq!(parsed_f.month, Some(4));
+        assert_eq!(parsed_f.day, Some(15));
+        assert_eq!(parsed_f.hour, Some(14));
+        assert_eq!(parsed_f.minute, Some(30));
+        assert_eq!(parsed_f.second, Some(45));
+
+        let parsed_d = parse_date("%D", "04/15/24", false).unwrap();
+        assert_eq!(parsed_d.year, Some(2024));
+        assert_eq!(parsed_d.month, Some(4));
+        assert_eq!(parsed_d.day, Some(15));
+    }
+
+    #[test]
+    fn test_month_and_weekday_names() {
+        let parsed = parse_date("%B %d, %Y (%A)", "April 15, 2024 (Monday)", false).unwrap();
+        assert_eq!(parsed.month, Some(4));
+        assert_eq!(parsed.day, Some(15));
+        assert_eq!(parsed.year, Some(2024));
+        assert_eq!(parsed.weekday, Some(Weekday::Monday));
+    }
+
+    #[test]
+    fn test_strict_mode_trailing_chars() {
+        let err = parse_date("%Y-%m-%d", "2024-04-15 extra", true).unwrap_err();
+        match err {
+            Error::Strftime {
+                kind: ParseErr::TrailingCharacters,
+                ..
+            } => {}
+            _ => panic!("expected TrailingCharacters"),
+        }
+    }
+
+    #[test]
+    fn test_incomplete_date_error() {
+        let err = parse_date("%H:%M:%S", "14:30:45", false).unwrap_err();
+        match err {
+            Error::Simple {
+                kind: ParseErr::IncompleteDate,
+                ..
+            } => {}
+            _ => panic!("expected IncompleteDate"),
+        }
+    }
+
+    #[test]
+    fn test_ordinal_date() {
+        let parsed = parse_date("%Y-%j", "2024-106", false).unwrap();
+        assert_eq!(parsed.year, Some(2024));
+        assert_eq!(parsed.day_of_year, Some(106));
+    }
+
+    #[test]
+    fn test_iso_week_date() {
+        let parsed = parse_date("%G-W%V-%u", "2024-W16-2", false).unwrap();
+        assert_eq!(parsed.iso_week_year, Some(2024));
+        assert_eq!(parsed.iso_week, Some(16));
+        assert_eq!(parsed.weekday, Some(Weekday::Tuesday));
+    }
 }

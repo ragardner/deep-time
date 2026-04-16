@@ -18,10 +18,10 @@ impl ParsedDate {
     pub fn to_time_point(&self) -> Result<TimePoint, Error> {
         // Still bail exactly as you originally requested
         if self.iana_name.is_some_and(|n| n.iter().any(|&b| b != 0)) {
-            return Err(Error::simple(ParseErr::AssemblyFailed));
+            return Err(Error::simple(ParseErr::TimePointIana));
         }
         if matches!(self.tz, Some(TimeZone::Fixed(_))) {
-            return Err(Error::simple(ParseErr::AssemblyFailed));
+            return Err(Error::simple(ParseErr::TimePointTimeZone));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@ impl ParsedDate {
         // ──────────────────────────────────────────────────────────────
         let year = self
             .year
-            .ok_or_else(|| Error::simple(ParseErr::IncompleteDate))?;
+            .ok_or_else(|| Error::simple(ParseErr::TimePointYearIncompleteDate))?;
         let hour = self.hour.unwrap_or(0);
         let minute = self.minute.unwrap_or(0);
         let second = self.second.unwrap_or(0);
@@ -57,18 +57,18 @@ impl ParsedDate {
         } else if let Some(doy) = self.day_of_year {
             // Ordinal date (%j)
             if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
-                return Err(Error::simple(ParseErr::DayOfYearOutOfRange));
+                return Err(Error::simple(ParseErr::TimePointDayOfYearOutOfRange));
             }
             TimePoint::gregorian_jdn_from_ordinal(year, doy)
         } else if let (Some(iso_y), Some(w)) = (self.iso_week_year, self.iso_week) {
             // ISO week date (%G/%V)
             if w == 0 || w > 53 {
-                return Err(Error::simple(ParseErr::IsoWeekOutOfRange));
+                return Err(Error::simple(ParseErr::TimePointIsoWeekOutOfRange));
             }
             let wd = self.weekday.unwrap_or(Weekday::Monday);
             TimePoint::gregorian_jdn_from_iso_week(iso_y, w, wd)
         } else {
-            return Err(Error::simple(ParseErr::IncompleteDate));
+            return Err(Error::simple(ParseErr::TimePointJdnIncompleteDate));
         };
 
         let days_since_j2000 = jdn - 2_451_545i128;
