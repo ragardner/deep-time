@@ -329,6 +329,19 @@ impl TimePoint {
         self.to_jd_tt() - f!(2_400_000.5)
     }
 
+    // /// Returns an **exact** Julian Date in TT with full library precision.
+    // ///
+    // /// The returned tuple is `(jd_integer_days, fractional_day)` where the fractional part
+    // /// is a [`Delta`] representing the part of a day (always < 1 day).
+    // #[inline]
+    // pub const fn to_jd_tt_exact(self) -> (i128, Delta) {
+    //     let tt = self.to_clock_type(ClockType::TT);
+    //     let days = tt.sec / 86_400;
+    //     let remaining_sec = tt.sec % 86_400;
+    //     let frac = Delta::new(remaining_sec, tt.subsec);
+    //     (2451545 + days, frac)
+    // }
+
     /// Returns an **exact** Julian Date in TT with full library precision.
     ///
     /// The returned tuple is `(jd_integer_days, fractional_day)` where the fractional part
@@ -336,10 +349,14 @@ impl TimePoint {
     #[inline]
     pub const fn to_jd_tt_exact(self) -> (i128, Delta) {
         let tt = self.to_clock_type(ClockType::TT);
-        let days = tt.sec / 86_400;
-        let remaining_sec = tt.sec % 86_400;
+
+        // Euclidean division is required because `tt.sec` can be negative
+        // for any date before J2000.0 noon (Rust's `%` keeps the sign of the dividend).
+        let days_since_j2000 = tt.sec.div_euclid(86_400);
+        let remaining_sec = tt.sec.rem_euclid(86_400);
+
         let frac = Delta::new(remaining_sec, tt.subsec);
-        (2451545 + days, frac)
+        (J2000_JD_TT + days_since_j2000, frac)
     }
 
     /// Returns an **exact** Modified Julian Date in TT with full library precision.
