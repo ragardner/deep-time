@@ -1,12 +1,11 @@
 #[cfg(feature = "chrono")]
 use crate::{
-    MICROQUECTOS_PER_NANOSEC,
-    parser::{Error, ParseErr, ParsedDate, TimeZone, Weekday},
+    MICROQUECTOS_PER_NANOSEC, TimePoint,
+    parser::{Error, Meridiem, ParseErr, ParsedDate, TimeZone, Weekday},
 };
 #[cfg(feature = "chrono")]
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
-    Weekday as ChronoWeekday,
 };
 
 #[cfg(feature = "chrono")]
@@ -34,49 +33,80 @@ impl ParsedDate {
             return NaiveDate::from_yo_opt(year_i32, doy as u32).ok_or_else(to_err);
         }
 
+        // Small helper: JDN → chrono NaiveDate
+        // (JDN 1721426 == proleptic Gregorian 0001-01-01; chrono counts days since then)
+        let jdn_to_naive_date = |jdn: i128| -> Result<NaiveDate, Error> {
+            let days_from_ce: i32 = (jdn - 1721425).try_into().map_err(|_| to_err())?;
+            NaiveDate::from_num_days_from_ce_opt(days_from_ce).ok_or_else(to_err)
+        };
+
         // ISO week date (%G/%V + weekday)
         if let (Some(iso_y), Some(w)) = (self.iso_week_year, self.iso_week) {
-            let iso_y_i32: i32 = iso_y.try_into().map_err(|_| to_err())?;
-            let wd = self.weekday.unwrap_or(Weekday::Monday); // fallback reasonable for ISO
-            let chrono_wd = match wd {
-                Weekday::Monday => ChronoWeekday::Mon,
-                Weekday::Tuesday => ChronoWeekday::Tue,
-                Weekday::Wednesday => ChronoWeekday::Wed,
-                Weekday::Thursday => ChronoWeekday::Thu,
-                Weekday::Friday => ChronoWeekday::Fri,
-                Weekday::Saturday => ChronoWeekday::Sat,
-                Weekday::Sunday => ChronoWeekday::Sun,
-            };
-            return NaiveDate::from_isoywd_opt(iso_y_i32, w as u32, chrono_wd).ok_or_else(to_err);
+            let wd = self.weekday.unwrap_or(Weekday::Monday); // ISO weeks start on Monday
+            let jdn = TimePoint::gregorian_jdn_from_iso_week(iso_y, w, wd);
+            return jdn_to_naive_date(jdn);
         }
 
-        // Sunday/Monday week numbers (%U/%W) not directly supported by chrono constructors.
-        // (They would require extra calendar math – left as future extension or use Jiff.)
+        // Sunday-based week number (%U)
+        if let (Some(y), Some(w)) = (self.year, self.week_sun) {
+            let wd = self.weekday.unwrap_or(Weekday::Sunday); // %U weeks start on Sunday
+            let jdn = TimePoint::gregorian_jdn_from_week_sun(y, w, wd);
+            return jdn_to_naive_date(jdn);
+        }
+
+        // Monday-based week number (%W)
+        if let (Some(y), Some(w)) = (self.year, self.week_mon) {
+            let wd = self.weekday.unwrap_or(Weekday::Monday); // %W weeks start on Monday
+            let jdn = TimePoint::gregorian_jdn_from_week_mon(y, w, wd);
+            return jdn_to_naive_date(jdn);
+        }
+
+        // No supported date format
         Err(to_err())
     }
 
     fn build_naive_time(&self) -> Result<NaiveTime, Error> {
         let to_err = || Error::simple(ParseErr::ChronoNaiveTime);
 
-        let hour = self.hour.unwrap_or(0) as u32;
+        let mut hour = self.hour.unwrap_or(0) as u32;
         let minute = self.minute.unwrap_or(0) as u32;
         let mut second = self.second.unwrap_or(0) as u32;
 
-        let mut subsec_nano: u32 = if let Some(mqs) = self.microquectos {
-            let ns_u128 = mqs / MICROQUECTOS_PER_NANOSEC;
-            if ns_u128 > 1_999_999_999 {
-                1_999_999_999
-            } else {
-                ns_u128 as u32
+        // AM/PM (12-hour → 24-hour) normalization
+        if let Some(meridiem) = self.meridiem {
+            match (hour, meridiem) {
+                (12, Meridiem::AM) => hour = 0,
+                (12, Meridiem::PM) => {}
+                (h, Meridiem::PM) if h < 12 => hour = h + 12,
+                _ => {}
             }
+        }
+
+        // Raw subsecond conversion (microquectos → nanoseconds)
+        let raw_ns_u128 = if let Some(mqs) = self.microquectos {
+            mqs / MICROQUECTOS_PER_NANOSEC
         } else {
             0
         };
 
+        // Determine leap-second case once (used for both clamping and transformation)
+        let is_leap = second == 60 || self.is_leap_second;
+        //   • Non-leap seconds → strictly < 1 s (error if exceeded)
+        //   • Leap seconds      → allow up to ~2 s (chrono’s internal representation)
+        if !is_leap && raw_ns_u128 > 999_999_999 {
+            return Err(to_err());
+        }
+
+        let mut subsec_nano: u32 = if raw_ns_u128 > 1_999_999_999 {
+            1_999_999_999
+        } else {
+            raw_ns_u128 as u32
+        };
+
         // Chrono leap-second convention: second = 59 + nano >= 1_000_000_000
-        if second == 60 || self.is_leap_second {
+        if is_leap {
             second = 59;
-            subsec_nano += 1_000_000_000;
+            subsec_nano = subsec_nano.saturating_add(1_000_000_000);
             if subsec_nano > 1_999_999_999 {
                 subsec_nano = 1_999_999_999;
             }
@@ -99,14 +129,11 @@ impl ParsedDate {
                 return Err(to_err()); // "IANA timezones not supported in chrono feature"
             }
         }
-
         match self.tz {
             Some(TimeZone::Fixed(secs)) => {
-                if secs >= 0 {
-                    FixedOffset::east_opt(secs).ok_or_else(to_err)
-                } else {
-                    FixedOffset::west_opt(secs.wrapping_neg()).ok_or_else(to_err)
-                }
+                // east_opt already handles negative values correctly:
+                // positive = east of UTC, negative = west of UTC.
+                FixedOffset::east_opt(secs).ok_or_else(to_err)
             }
             Some(TimeZone::Utc) | Some(TimeZone::None) | None => {
                 Ok(FixedOffset::east_opt(0).unwrap())
@@ -114,16 +141,35 @@ impl ParsedDate {
         }
     }
 
-    /// Converts `ParsedDate` → absolute `DateTime<FixedOffset>` (civil time interpreted in the parsed TZ).
+    /// Converts `ParsedDate` → absolute `DateTime<FixedOffset>`.
+    ///
+    /// If `unix_timestamp_seconds` is present, it is treated as the
+    /// **absolute source of truth** for the instant (UTC seconds since the Unix epoch).
+    ///
+    /// ### Precedence rules (this is deliberate and final):
+    /// - When `%s` (or equivalent) was parsed → **ignore all civil fields** (`year`, `month`,
+    ///   `day`, `hour`, `minute`, `second`, `microquectos`, `weekday`, `day_of_year`, etc.).
+    ///   The timestamp defines the exact physical moment.
+    /// - The parsed timezone/offset (if any) is used **only** to choose the *displayed* civil
+    ///   time on the returned `DateTime<FixedOffset>`. In other words, `%s` gives you the instant;
+    ///   the TZ gives you the wall-clock representation of that instant.
+    /// - If no `%s` is present, the normal civil path is taken: the date/time components are
+    ///   interpreted as local time *in the parsed timezone*.
+    ///
+    /// This design matches the semantics used by high-performance parsers (e.g. Jiff) and
+    /// gives Unix timestamps the highest possible priority. Mixed formats that contain both
+    /// `%s` and civil fields are explicitly allowed, but `%s` always wins for the instant.
     pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, Error> {
         let to_err = || Error::simple(ParseErr::ChronoDateTime);
 
         let offset = self.to_chrono_offset()?;
 
-        // Fast path: explicit Unix timestamp (absolute, highest priority)
+        // Fast path: %s is gospel — absolute UTC instant (civil fields are ignored)
         if let Some(secs) = self.unix_timestamp_seconds {
             let subsec_nano = if let Some(mqs) = self.microquectos {
                 let ns_u128 = mqs / MICROQUECTOS_PER_NANOSEC;
+                // Unix/POSIX timestamps are continuous (no leap-second representation).
+                // We clamp strictly to the range chrono::DateTime::from_timestamp accepts.
                 if ns_u128 > 999_999_999 {
                     999_999_999
                 } else {
@@ -132,6 +178,9 @@ impl ParsedDate {
             } else {
                 0
             };
+
+            // Note: is_leap_second is ignored here (and cannot be set when unix_timestamp_seconds
+            // is present, per ParsedDate::finish()).
             let utc_dt = DateTime::from_timestamp(secs, subsec_nano).ok_or_else(to_err)?;
             return Ok(utc_dt.with_timezone(&offset));
         }
@@ -150,7 +199,6 @@ impl ParsedDate {
         if let Some(secs) = self.unix_timestamp_seconds {
             return Ok(secs);
         }
-
         let dt = self.to_chrono_datetime()?;
         Ok(dt.timestamp())
     }
@@ -187,6 +235,8 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_iso_week_date() {
+        use chrono::Weekday as ChronoWeekday;
+
         let parsed = parse_date("%G-W%V-%u %H:%M:%S", "2024-W16-2 14:30:45", false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
