@@ -17,8 +17,8 @@ mod clock_model;
 mod clock_type;
 mod common;
 mod delta;
-mod format_parse;
 mod light_time;
+mod parse_and_format;
 mod position;
 mod time_point;
 mod time_range;
@@ -35,12 +35,12 @@ pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
 pub use delta::Delta;
 pub use delta::time_units::TimeUnits;
-pub use format_parse::parser;
-#[cfg(feature = "chrono")]
-pub use format_parse::to_chrono;
-#[cfg(feature = "jiff")]
-pub use format_parse::to_jiff;
 pub use light_time::{LightContext, ObserverState};
+#[cfg(feature = "chrono")]
+pub use parse_and_format::to_chrono;
+#[cfg(feature = "jiff")]
+pub use parse_and_format::to_jiff;
+pub use parse_and_format::{ccsds_bin, ccsds_str, formatter, parser};
 pub use position::{Position, Velocity};
 pub use time_point::TimePoint;
 pub use time_range::{Every, TimeRange};

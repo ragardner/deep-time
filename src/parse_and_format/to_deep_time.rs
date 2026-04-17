@@ -164,7 +164,7 @@ impl ParsedDate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{Error, ParseErr, ParsedDate, parse_date};
+    use crate::parser::{Error, ParseErr, ParsedDate, strptime};
 
     /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_tt()`).
     fn jd_tt(tp: &TimePoint) -> f64 {
@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_unix_epoch_1970() {
-        let parsed = parse_date("%s", "0", false).unwrap();
+        let parsed = strptime("%s", "0", false).unwrap();
         let tp = parsed.to_time_point().unwrap();
 
         let jd = jd_tt(&tp);
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_j2000_noon_via_unix_timestamp() {
-        let parsed = parse_date("%s", "946728000", false).unwrap();
+        let parsed = strptime("%s", "946728000", false).unwrap();
         let tp = parsed.to_time_point().unwrap();
 
         let jd = jd_tt(&tp);
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn test_ymd_and_ordinal_produce_identical_time_point() {
         // YMD and ordinal (%j) paths both set `.year` and produce the exact same instant.
-        let ymd = parse_date(
+        let ymd = strptime(
             "%Y-%m-%d %H:%M:%S.%.f",
             "2024-04-15 14:30:45.123456789",
             false,
@@ -212,7 +212,7 @@ mod tests {
         .to_time_point()
         .unwrap();
 
-        let ordinal = parse_date("%Y-%j %H:%M:%S.%.f", "2024-106 14:30:45.123456789", false)
+        let ordinal = strptime("%Y-%j %H:%M:%S.%.f", "2024-106 14:30:45.123456789", false)
             .unwrap()
             .to_time_point()
             .unwrap();
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn test_fractional_seconds_are_preserved() {
-        let parsed = parse_date(
+        let parsed = strptime(
             "%Y-%m-%d %H:%M:%S.%9N",
             "2024-04-15 00:00:00.123456789",
             false,
@@ -238,7 +238,7 @@ mod tests {
 
     #[test]
     fn test_jd_tt_fractional_seconds_preserved() {
-        let parsed = parse_date(
+        let parsed = strptime(
             "%Y-%m-%d %H:%M:%S.%9N",
             "2024-04-15 00:00:00.123456789",
             false,
@@ -269,7 +269,7 @@ mod tests {
 
     #[test]
     fn test_rejects_iana_name() {
-        let parsed = parse_date("%F %T %Q", "2024-04-15 12:00:00 America/New_York", false).unwrap();
+        let parsed = strptime("%F %T %Q", "2024-04-15 12:00:00 America/New_York", false).unwrap();
         let err = parsed.to_time_point().unwrap_err();
         assert!(matches!(
             err,
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn test_rejects_fixed_timezone_offset() {
-        let parsed = parse_date("%F %T %z", "2024-04-15 12:00:00 -0400", false).unwrap();
+        let parsed = strptime("%F %T %z", "2024-04-15 12:00:00 -0400", false).unwrap();
         let err = parsed.to_time_point().unwrap_err();
         assert!(matches!(
             err,
@@ -348,11 +348,11 @@ mod tests {
     fn test_pure_iso_week_date() {
         // Pure ISO week date (%G/%V/%u) is now fully supported in to_time_point
         // via the iso_week_year + iso_week + weekday path (no regular .year required).
-        let parsed = parse_date("%G-W%V-%u", "2024-W16-1", false).unwrap();
+        let parsed = strptime("%G-W%V-%u", "2024-W16-1", false).unwrap();
         let tp_iso = parsed.to_time_point().unwrap();
 
         // 2024-W16-1 is Monday, April 15, 2024
-        let ymd = parse_date("%Y-%m-%d", "2024-04-15", false)
+        let ymd = strptime("%Y-%m-%d", "2024-04-15", false)
             .unwrap()
             .to_time_point()
             .unwrap();

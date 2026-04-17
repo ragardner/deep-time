@@ -2,7 +2,7 @@ use core::panic::Location;
 use core::result::Result;
 use core::str;
 
-pub fn parse_date(fmt: &str, input: &str, strict: bool) -> Result<ParsedDate, Error> {
+pub fn strptime(fmt: &str, input: &str, strict: bool) -> Result<ParsedDate, Error> {
     let mut tm = ParsedDate::default();
     let mut parser = Parser::new(fmt.as_bytes(), input.as_bytes(), &mut tm, strict);
 
@@ -1449,7 +1449,7 @@ mod tests {
 
     #[test]
     fn test_basic_ymd_hms() {
-        let parsed = parse_date("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false).unwrap();
+        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false).unwrap();
         assert_eq!(parsed.year, Some(2024));
         assert_eq!(parsed.month, Some(4));
         assert_eq!(parsed.day, Some(15));
@@ -1462,14 +1462,14 @@ mod tests {
 
     #[test]
     fn test_unix_timestamp_direct() {
-        let parsed = parse_date("%s", "1713191445", false).unwrap();
+        let parsed = strptime("%s", "1713191445", false).unwrap();
         assert_eq!(parsed.unix_timestamp_seconds, Some(1713191445));
     }
 
     #[test]
     fn test_fractional_seconds_various_widths() {
         // Explicit literal dot + %.f (the parser's optional-dot logic works reliably this way)
-        let parsed = parse_date(
+        let parsed = strptime(
             "%Y-%m-%d %H:%M:%S.%.f",
             "2024-04-15 14:30:45.123456789",
             false,
@@ -1478,22 +1478,21 @@ mod tests {
         let expected = 123_456_789u64 * 10u64.pow(9);
         assert_eq!(parsed.attos, Some(expected));
 
-        let parsed2 =
-            parse_date("%Y-%m-%d %H:%M:%S.%3N", "2024-04-15 14:30:45.123", false).unwrap();
+        let parsed2 = strptime("%Y-%m-%d %H:%M:%S.%3N", "2024-04-15 14:30:45.123", false).unwrap();
         let expected2 = 123u64 * 10u64.pow(15);
         assert_eq!(parsed2.attos, Some(expected2));
     }
 
     #[test]
     fn test_leap_second_flag() {
-        let parsed = parse_date("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false).unwrap();
+        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false).unwrap();
         assert!(parsed.is_leap_second);
         assert_eq!(parsed.second, Some(60));
     }
 
     #[test]
     fn test_iana_name_parsing() {
-        let parsed = parse_date("%F %T %Q", "2024-04-15 10:30:00 America/New_York", false).unwrap();
+        let parsed = strptime("%F %T %Q", "2024-04-15 10:30:00 America/New_York", false).unwrap();
         assert!(parsed.iana_name.is_some());
         let name = parsed.iana_name.unwrap();
         let len = name.iter().position(|&b| b == 0).unwrap_or(48);
@@ -1504,19 +1503,19 @@ mod tests {
     #[test]
     fn test_fixed_offset_parsing() {
         // Space before %z is required by the current parser (no literal character between %T and %z otherwise)
-        let parsed = parse_date("%F %T %z", "2024-04-15 10:30:00 -0400", false).unwrap();
+        let parsed = strptime("%F %T %z", "2024-04-15 10:30:00 -0400", false).unwrap();
         assert_eq!(parsed.tz, Some(TimeZone::Fixed(-14400)));
     }
 
     #[test]
     fn test_fixed_offset_with_colons() {
-        let parsed = parse_date("%F %T %:z", "2024-04-15 10:30:00 -04:00", false).unwrap();
+        let parsed = strptime("%F %T %:z", "2024-04-15 10:30:00 -04:00", false).unwrap();
         assert_eq!(parsed.tz, Some(TimeZone::Fixed(-14400)));
     }
 
     #[test]
     fn test_shortcut_formats() {
-        let parsed_f = parse_date("%F %T", "2024-04-15 14:30:45", false).unwrap();
+        let parsed_f = strptime("%F %T", "2024-04-15 14:30:45", false).unwrap();
         assert_eq!(parsed_f.year, Some(2024));
         assert_eq!(parsed_f.month, Some(4));
         assert_eq!(parsed_f.day, Some(15));
@@ -1524,7 +1523,7 @@ mod tests {
         assert_eq!(parsed_f.minute, Some(30));
         assert_eq!(parsed_f.second, Some(45));
 
-        let parsed_d = parse_date("%D", "04/15/24", false).unwrap();
+        let parsed_d = strptime("%D", "04/15/24", false).unwrap();
         assert_eq!(parsed_d.year, Some(2024));
         assert_eq!(parsed_d.month, Some(4));
         assert_eq!(parsed_d.day, Some(15));
@@ -1532,7 +1531,7 @@ mod tests {
 
     #[test]
     fn test_month_and_weekday_names() {
-        let parsed = parse_date("%B %d, %Y (%A)", "April 15, 2024 (Monday)", false).unwrap();
+        let parsed = strptime("%B %d, %Y (%A)", "April 15, 2024 (Monday)", false).unwrap();
         assert_eq!(parsed.month, Some(4));
         assert_eq!(parsed.day, Some(15));
         assert_eq!(parsed.year, Some(2024));
@@ -1541,7 +1540,7 @@ mod tests {
 
     #[test]
     fn test_strict_mode_trailing_chars() {
-        let err = parse_date("%Y-%m-%d", "2024-04-15 extra", true).unwrap_err();
+        let err = strptime("%Y-%m-%d", "2024-04-15 extra", true).unwrap_err();
         match err {
             Error::Strftime {
                 kind: ParseErr::TrailingCharacters,
@@ -1553,7 +1552,7 @@ mod tests {
 
     #[test]
     fn test_incomplete_date_error() {
-        let err = parse_date("%H:%M:%S", "14:30:45", false).unwrap_err();
+        let err = strptime("%H:%M:%S", "14:30:45", false).unwrap_err();
         match err {
             Error::Simple {
                 kind: ParseErr::IncompleteDate,
@@ -1565,14 +1564,14 @@ mod tests {
 
     #[test]
     fn test_ordinal_date() {
-        let parsed = parse_date("%Y-%j", "2024-106", false).unwrap();
+        let parsed = strptime("%Y-%j", "2024-106", false).unwrap();
         assert_eq!(parsed.year, Some(2024));
         assert_eq!(parsed.day_of_year, Some(106));
     }
 
     #[test]
     fn test_iso_week_date() {
-        let parsed = parse_date("%G-W%V-%u", "2024-W16-2", false).unwrap();
+        let parsed = strptime("%G-W%V-%u", "2024-W16-2", false).unwrap();
         assert_eq!(parsed.iso_week_year, Some(2024));
         assert_eq!(parsed.iso_week, Some(16));
         assert_eq!(parsed.weekday, Some(Weekday::Tuesday));

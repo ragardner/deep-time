@@ -206,13 +206,13 @@ impl ParsedDate {
 
 #[cfg(all(test, feature = "jiff"))]
 mod tests {
-    use crate::parser::parse_date;
+    use crate::parser::strptime;
 
     use super::*;
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, Error> {
-        let parsed = parse_date(fmt, input, strict)?;
+        let parsed = strptime(fmt, input, strict)?;
         parsed.to_jiff_timestamp()
     }
 
@@ -242,7 +242,7 @@ mod tests {
 
     #[test]
     fn test_iana_timezone() {
-        let parsed = parse_date("%F %T %Q", "2024-04-15 10:30:00 America/New_York", false).unwrap();
+        let parsed = strptime("%F %T %Q", "2024-04-15 10:30:00 America/New_York", false).unwrap();
         assert!(parsed.iana_name.is_some());
 
         let ts = parsed.to_jiff_timestamp().unwrap();
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     fn test_leap_second_rejected_by_jiff() {
-        let parsed = parse_date("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false).unwrap();
+        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false).unwrap();
         assert!(parsed.is_leap_second);
 
         assert!(parsed.to_jiff_broken_down_time().is_err());
@@ -306,8 +306,7 @@ mod tests {
 
     #[test]
     fn test_broken_down_time_assembly() {
-        let parsed =
-            parse_date("%Y-%m-%d %H:%M:%S %z", "2024-04-15 14:30:45 +0200", false).unwrap();
+        let parsed = strptime("%Y-%m-%d %H:%M:%S %z", "2024-04-15 14:30:45 +0200", false).unwrap();
         let bdt = parsed.to_jiff_broken_down_time().unwrap();
 
         assert_eq!(bdt.year(), Some(2024));
