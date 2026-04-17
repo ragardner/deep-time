@@ -339,10 +339,11 @@ mod mars_tests {
 
         assert_eq!(whole, 44791, "Integer part of MSD at J2000 should be 44791");
 
+        // New exact value (no magic number)
         let frac_sols = frac.as_sec_f() / MARS_SOL_LENGTH_SEC;
         assert!(
-            (frac_sols - 0.61980061).abs() < 1e-8,
-            "Fractional part of MSD at J2000 (TAI) was {} sols (expected ~0.61980061)",
+            (frac_sols - 0.61987471912).abs() < 1e-11, // or use a Delta comparison
+            "Fractional part of MSD at J2000 (TAI) was {} sols",
             frac_sols
         );
     }
@@ -362,5 +363,213 @@ mod mars_tests {
             "MSD difference across leap second was {} sols (expected ~1.126e-5)",
             diff_sols
         );
+    }
+}
+
+mod tt_tests {
+    use super::*;
+    use crate::ClockType;
+
+    /// TT is exactly TAI + 32.184 s (and ET is an alias for TT).
+    #[test]
+    fn tt_tai_offset_exact() {
+        let tai = TimePoint::ZERO;
+        let tt = tai.to_clock_type(ClockType::TT);
+        let diff_s = tt.numerical_seconds_since(&tai);
+        assert!(
+            (diff_s - 32.184).abs() < 1e-12,
+            "TT-TAI at J2000 was {} s (expected exactly 32.184)",
+            diff_s
+        );
+    }
+
+    #[test]
+    fn et_alias_tt() {
+        let p = TimePoint::from_tai_sec(1_234_567);
+        let et = p.to_clock_type(ClockType::ET);
+        let tt = p.to_clock_type(ClockType::TT);
+
+        // Same physical instant (identical TAI value), only the tag differs.
+        assert_eq!(et.to_tai(), tt.to_tai());
+        assert_eq!(et.clock_type(), ClockType::ET);
+        assert_eq!(tt.clock_type(), ClockType::TT);
+    }
+}
+
+mod gnss_tests {
+    use super::*;
+    use crate::ClockType;
+
+    /// All GNSS scales have fixed integer-second offsets from TAI.
+    #[test]
+    fn gnss_offsets_are_correct() {
+        let tai = TimePoint::ZERO;
+
+        let gpst = tai.to_clock_type(ClockType::GPST);
+        assert!((gpst.numerical_seconds_since(&tai) + 19.0).abs() < 1e-12);
+
+        let qzsst = tai.to_clock_type(ClockType::QZSST);
+        assert!((qzsst.numerical_seconds_since(&tai) + 19.0).abs() < 1e-12);
+
+        let gst = tai.to_clock_type(ClockType::GST);
+        assert!((gst.numerical_seconds_since(&tai) + 19.0).abs() < 1e-12);
+
+        let bdt = tai.to_clock_type(ClockType::BDT);
+        assert!((bdt.numerical_seconds_since(&tai) + 33.0).abs() < 1e-12);
+    }
+}
+
+mod tcg_tcb_tests {
+    use super::*;
+    use crate::ClockType;
+
+    /// TCG ↔ TAI round-trip (pure linear rate – should be exact within f64 noise).
+    #[test]
+    fn tcg_tai_roundtrip_is_accurate() {
+        let test_points = [
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365),
+            TimePoint::from_tai_sec(-86_400 * 365 * 10),
+            TimePoint::from_tai_sec(1_000_000_000),
+            TimePoint::from_tai_sec(-2_208_945_600),
+        ];
+
+        for &p in &test_points {
+            let tcg = p.to_clock_type(ClockType::TCG);
+            let back = tcg.to_clock_type(ClockType::TAI);
+            let diff = back.duration_since(p).as_sec_f().abs();
+            assert!(
+                diff < 1e-9,
+                "TCG round-trip error too large: {} s at {:?}",
+                diff,
+                p
+            );
+        }
+    }
+
+    /// TCB ↔ TAI round-trip (linear + constant TDB0 term).
+    #[test]
+    fn tcb_tai_roundtrip_is_accurate() {
+        let test_points = [
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365),
+            TimePoint::from_tai_sec(-86_400 * 365 * 10),
+            TimePoint::from_tai_sec(1_000_000_000),
+            TimePoint::from_tai_sec(-2_208_945_600),
+        ];
+
+        for &p in &test_points {
+            let tcb = p.to_clock_type(ClockType::TCB);
+            let back = tcb.to_clock_type(ClockType::TAI);
+            let diff = back.duration_since(p).as_sec_f().abs();
+            assert!(
+                diff < 1e-9,
+                "TCB round-trip error too large: {} s at {:?}",
+                diff,
+                p
+            );
+        }
+    }
+}
+
+mod utc_tests {
+    use super::*;
+    use crate::ClockType;
+
+    /// UTC ↔ TAI round-trip must be exact (leap-second table is bijective).
+    #[test]
+    fn utc_tai_roundtrip_is_accurate() {
+        let test_points = [
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365),
+            TimePoint::from_tai_sec(-86_400 * 365 * 10),
+            TimePoint::from_tai_sec(1_000_000_000),
+            TimePoint::from_tai_sec(-2_208_945_600),
+            TimePoint::from_tai_sec(1_485_779_200), // around 2017-01-01 leap second
+        ];
+
+        for &p in &test_points {
+            let utc = p.to_clock_type(ClockType::UTC);
+            let back = utc.to_clock_type(ClockType::TAI);
+            assert_eq!(back, p, "UTC round-trip failed at {:?}", p);
+        }
+    }
+}
+
+mod jd_mjd_tests {
+    use crate::Delta;
+
+    use super::*;
+
+    /// J2000.0 TT = 2000-01-01 12:00:00 TT exactly (JD 2451545.0).
+    /// The library’s exact MJD convention is JD − 2_400_000 (MJD 51545.0, frac = 0).
+    #[test]
+    fn j2000_tt_is_jd_2451545() {
+        let j2000_tt = TimePoint::from_jd_tt_exact(2451545, Delta::ZERO);
+
+        let (jd, frac) = j2000_tt.to_jd_tt_exact();
+        assert_eq!(jd, 2451545, "JD integer part wrong");
+        assert!(frac.is_zero(), "JD fractional part must be zero");
+
+        let (mjd, mjd_frac) = j2000_tt.to_mjd_tt_exact();
+        assert_eq!(mjd, 51545, "MJD integer part wrong (library convention)");
+        assert!(mjd_frac.is_zero(), "MJD fractional part must be zero");
+    }
+
+    /// Exact JD ↔ TimePoint round-trip (full attosecond precision).
+    #[test]
+    fn jd_tt_exact_roundtrip() {
+        let test_points = [
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365),
+            TimePoint::from_tai_sec(1_000_000_000),
+            TimePoint::from_tai_sec(-2_208_945_600),
+        ];
+
+        for &p in &test_points {
+            let (jd, frac) = p.to_jd_tt_exact();
+            let back = TimePoint::from_jd_tt_exact(jd, frac);
+            let diff = back.duration_since(p).as_sec_f().abs();
+            assert!(diff < 1e-10, "JD round-trip error {} s at {:?}", diff, p);
+        }
+    }
+
+    /// Exact MJD ↔ TimePoint round-trip.
+    #[test]
+    fn mjd_tt_exact_roundtrip() {
+        let test_points = [
+            TimePoint::from_tai_sec(0),
+            TimePoint::from_tai_sec(86_400 * 365 * 100),
+        ];
+
+        for &p in &test_points {
+            let (mjd, frac) = p.to_mjd_tt_exact();
+            let back = TimePoint::from_mjd_tt_exact(mjd, frac);
+            let diff = back.duration_since(p).as_sec_f().abs();
+            assert!(diff < 1e-10, "MJD round-trip error {} s at {:?}", diff, p);
+        }
+    }
+}
+
+mod calendar_tests {
+    use super::*;
+
+    #[test]
+    fn gregorian_jdn_j2000() {
+        assert_eq!(TimePoint::gregorian_jdn(2000, 1, 1), 2451545);
+    }
+
+    #[test]
+    fn gregorian_jdn_leap_year_handling() {
+        assert_eq!(TimePoint::gregorian_jdn(2000, 2, 29), 2451604); // leap day
+        assert_eq!(TimePoint::gregorian_jdn(1900, 2, 28), 2415079); // non-leap
+    }
+
+    #[test]
+    fn is_leap_year_and_valid_date() {
+        assert!(TimePoint::is_leap_year(2000));
+        assert!(!TimePoint::is_leap_year(1900));
+        assert!(TimePoint::is_valid_gregorian_date(2024, 2, 29));
+        assert!(!TimePoint::is_valid_gregorian_date(2023, 2, 29));
     }
 }

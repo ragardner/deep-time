@@ -1,23 +1,21 @@
 use crate::{
-    Delta, DtBig, MICROQUECTOS_PER_ATTOSEC, MICROQUECTOS_PER_FEMTOSEC, MICROQUECTOS_PER_MICROSEC,
-    MICROQUECTOS_PER_MILLISEC, MICROQUECTOS_PER_NANOSEC, MICROQUECTOS_PER_PICOSEC,
-    MICROQUECTOS_PER_QUECTOSEC, MICROQUECTOS_PER_RONTOSEC, MICROQUECTOS_PER_SEC,
-    MICROQUECTOS_PER_YOCTOSEC, MICROQUECTOS_PER_ZEPTOSEC,
+    ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
+    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, Delta,
 };
 
 impl Delta {
     /// Zero duration (`0 s`).
     pub const ZERO: Self = Self { sec: 0, subsec: 0 };
 
-    /// Maximum representable duration (`i128::MAX` seconds + 999... subseconds).
+    /// Maximum representable duration (`i64::MAX` seconds + 999... attoseconds).
     pub const MAX: Self = Self {
-        sec: i128::MAX,
-        subsec: MICROQUECTOS_PER_SEC - 1,
+        sec: i64::MAX,
+        subsec: ATTOSEC_PER_SEC - 1,
     };
 
-    /// Minimum (most negative) representable duration (`i128::MIN` seconds).
+    /// Minimum (most negative) representable duration (`i64::MIN` seconds).
     pub const MIN: Self = Self {
-        sec: i128::MIN,
+        sec: i64::MIN,
         subsec: 0,
     };
 
@@ -27,141 +25,117 @@ impl Delta {
 
     /// Creates a new `Delta` from whole seconds and a subsecond part.
     ///
-    /// The result is automatically normalized so `subsec` lies in `[0, 10³⁶)`.
+    /// The result is automatically normalized so `subsec` lies in `[0, 10¹⁸)`.
     #[inline]
-    pub const fn new(sec: i128, subsec: u128) -> Self {
+    pub const fn new(sec: i64, subsec: u64) -> Self {
         Self { sec, subsec }.normalize()
     }
 
-    /// Normalizes the representation so `subsec` stays in `[0, 10³⁶)`.
+    /// Normalizes the representation so `subsec` stays in `[0, ATTOSEC_PER_SEC)`.
     const fn normalize(mut self) -> Self {
-        if self.subsec >= MICROQUECTOS_PER_SEC {
-            let carry = (self.subsec / MICROQUECTOS_PER_SEC) as i128;
+        if self.subsec >= ATTOSEC_PER_SEC {
+            let carry = (self.subsec / ATTOSEC_PER_SEC) as i64;
             self.sec += carry;
-            self.subsec %= MICROQUECTOS_PER_SEC;
+            self.subsec %= ATTOSEC_PER_SEC;
         }
         self
     }
 
     #[inline]
-    const fn from_subunits(count: i128, microquectos_per_unit: u128) -> Self {
+    const fn from_subunits(count: i64, attos_per_unit: u64) -> Self {
         let abs_count = count.unsigned_abs();
-        let units_per_second = MICROQUECTOS_PER_SEC / microquectos_per_unit;
+        let units_per_second = ATTOSEC_PER_SEC / attos_per_unit;
 
-        let extra_secs = (abs_count / units_per_second) as i128;
+        let extra_secs = (abs_count / units_per_second) as i64;
         let remaining = abs_count % units_per_second;
-        let frac = remaining * microquectos_per_unit;
+        let frac = remaining * attos_per_unit;
 
         if count >= 0 {
             Self::new(extra_secs, frac)
         } else if frac == 0 {
             Self::new(-extra_secs, 0)
         } else {
-            Self::new(-extra_secs - 1, MICROQUECTOS_PER_SEC - frac)
+            Self::new(-extra_secs - 1, ATTOSEC_PER_SEC - frac)
         }
     }
 
     /// Creates a `Delta` representing `s` seconds.
     #[inline]
-    pub const fn from_sec(s: i128) -> Self {
+    pub const fn from_sec(s: i64) -> Self {
         Self::new(s, 0)
     }
 
     /// Creates a `Delta` representing `ms` milliseconds.
     #[inline]
-    pub const fn from_ms(ms: i128) -> Self {
-        Self::from_subunits(ms, MICROQUECTOS_PER_MILLISEC)
+    pub const fn from_ms(ms: i64) -> Self {
+        Self::from_subunits(ms, ATTOSEC_PER_MILLISEC)
     }
 
     /// Creates a `Delta` representing `us` microseconds.
     #[inline]
-    pub const fn from_us(us: i128) -> Self {
-        Self::from_subunits(us, MICROQUECTOS_PER_MICROSEC)
+    pub const fn from_us(us: i64) -> Self {
+        Self::from_subunits(us, ATTOSEC_PER_MICROSEC)
     }
 
     /// Creates a `Delta` representing `ns` nanoseconds.
     #[inline]
-    pub const fn from_ns(ns: i128) -> Self {
-        Self::from_subunits(ns, MICROQUECTOS_PER_NANOSEC)
+    pub const fn from_ns(ns: i64) -> Self {
+        Self::from_subunits(ns, ATTOSEC_PER_NANOSEC)
     }
 
     /// Creates a `Delta` representing `ps` picoseconds.
     #[inline]
-    pub const fn from_ps(ps: i128) -> Self {
-        Self::from_subunits(ps, MICROQUECTOS_PER_PICOSEC)
+    pub const fn from_ps(ps: i64) -> Self {
+        Self::from_subunits(ps, ATTOSEC_PER_PICOSEC)
     }
 
     /// Creates a `Delta` representing `fs` femtoseconds.
     #[inline]
-    pub const fn from_fs(fs: i128) -> Self {
-        Self::from_subunits(fs, MICROQUECTOS_PER_FEMTOSEC)
+    pub const fn from_fs(fs: i64) -> Self {
+        Self::from_subunits(fs, ATTOSEC_PER_FEMTOSEC)
     }
 
     /// Creates a `Delta` representing `as` attoseconds.
     #[inline]
-    pub const fn from_as(as_: i128) -> Self {
-        Self::from_subunits(as_, MICROQUECTOS_PER_ATTOSEC)
-    }
-
-    /// Creates a `Delta` representing `zs` zeptoseconds.
-    #[inline]
-    pub const fn from_zs(zs: i128) -> Self {
-        Self::from_subunits(zs, MICROQUECTOS_PER_ZEPTOSEC)
-    }
-
-    /// Creates a `Delta` representing `ys` yoctoseconds.
-    #[inline]
-    pub const fn from_ys(ys: i128) -> Self {
-        Self::from_subunits(ys, MICROQUECTOS_PER_YOCTOSEC)
-    }
-
-    /// Creates a `Delta` representing `rs` rontoseconds.
-    #[inline]
-    pub const fn from_rs(rs: i128) -> Self {
-        Self::from_subunits(rs, MICROQUECTOS_PER_RONTOSEC)
-    }
-
-    /// Creates a `Delta` representing `qs` quectoseconds.
-    #[inline]
-    pub const fn from_qs(qs: i128) -> Self {
-        Self::from_subunits(qs, MICROQUECTOS_PER_QUECTOSEC)
+    pub const fn from_as(as_: i64) -> Self {
+        Self::from_subunits(as_, ATTOSEC_PER_ATTOSEC)
     }
 
     /// Creates a `Delta` representing `m` minutes.
     #[inline]
-    pub const fn from_min(m: i128) -> Self {
+    pub const fn from_min(m: i64) -> Self {
         Self::from_sec(m * 60)
     }
 
     /// Creates a `Delta` representing `h` hours.
     #[inline]
-    pub const fn from_hr(h: i128) -> Self {
+    pub const fn from_hr(h: i64) -> Self {
         Self::from_sec(h * 3600)
     }
 
     /// Creates a `Delta` from hours, minutes, seconds, milliseconds,
     /// microseconds, and nanoseconds.
     #[inline]
-    pub const fn from_hms(hr: i128, min: i128, sec: i128, ms: i128, us: i128, ns: i128) -> Self {
-        let total_secs = hr * 3600i128 + min * 60i128 + sec;
+    pub const fn from_hms(hr: i64, min: i64, sec: i64, ms: i64, us: i64, ns: i64) -> Self {
+        let total_secs = hr * 3600i64 + min * 60i64 + sec;
 
-        let sub_ns = ms * 1_000_000i128 + us * 1_000i128 + ns;
+        let sub_ns = ms * 1_000_000i64 + us * 1_000i64 + ns;
 
         if sub_ns == 0 {
             return Self::new(total_secs, 0);
         }
 
         let abs_ns = sub_ns.unsigned_abs();
-        let extra_secs = (abs_ns / 1_000_000_000u128) as i128;
-        let rem_ns = abs_ns % 1_000_000_000u128;
-        let frac = rem_ns * MICROQUECTOS_PER_NANOSEC;
+        let extra_secs = (abs_ns / 1_000_000_000u64) as i64;
+        let rem_ns = abs_ns % 1_000_000_000u64;
+        let frac = rem_ns * ATTOSEC_PER_NANOSEC;
 
         let (final_secs, final_frac) = if sub_ns >= 0 {
             (total_secs + extra_secs, frac)
         } else if frac == 0 {
             (total_secs - extra_secs, 0)
         } else {
-            (total_secs - extra_secs - 1, MICROQUECTOS_PER_SEC - frac)
+            (total_secs - extra_secs - 1, ATTOSEC_PER_SEC - frac)
         };
 
         Self::new(final_secs, final_frac)
@@ -178,42 +152,8 @@ impl Delta {
         } else {
             Self {
                 sec: -self.sec - 1,
-                subsec: MICROQUECTOS_PER_SEC - self.subsec,
+                subsec: ATTOSEC_PER_SEC - self.subsec,
             }
-        }
-    }
-
-    /// 10³⁶ as a `DtBig` (constant)
-    #[inline(always)]
-    const fn mqs() -> DtBig {
-        DtBig::TEN.pow(36)
-    }
-
-    /// Convert `Delta` → total microquectoseconds (exact 320-bit signed integer).
-    #[inline(always)]
-    pub const fn to_big(self) -> DtBig {
-        let sec_big = DtBig::from_i128(self.sec);
-        let sub_big = DtBig::from_u128(self.subsec);
-        sec_big.wrapping_mul(Self::mqs()).wrapping_add(sub_big)
-    }
-
-    /// Convert total microquectoseconds back to normalized/saturated `Delta`.
-    #[inline]
-    pub const fn from_big(total: DtBig) -> Self {
-        let m = Self::mqs();
-        let sec_big = total.div_euclid(m);
-        let sub_big = total.rem_euclid(m);
-        let sec = sec_big.to_i128_saturating();
-        let subsec = sub_big.to_u128_saturating();
-        if sec == i128::MAX {
-            Self {
-                sec,
-                subsec: MICROQUECTOS_PER_SEC - 1,
-            }
-        } else if sec == i128::MIN {
-            Self { sec, subsec: 0 }
-        } else {
-            Self { sec, subsec }
         }
     }
 }

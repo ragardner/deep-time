@@ -97,8 +97,8 @@ This formulation is production-ready for spacecraft navigation pipelines, black-
 */
 
 use crate::{
-    C_SQUARED, Delta, DtBig, MQS, PLANCK_LENGTH_4, Real, Velocity, alpha_from_weak_field_potential,
-    kretschmann_from_potential_and_scale,
+    ATTOSEC_PER_SEC_I128, C_SQUARED, Delta, PLANCK_LENGTH_4, Real, Velocity,
+    alpha_from_weak_field_potential, kretschmann_from_potential_and_scale,
 };
 
 /// The three local spacetime quantities that fully determine how fast an observer’s
@@ -250,27 +250,16 @@ pub struct ClockDrift {
     /// This term accounts for any changing drift rate, such as the gradual
     /// acceleration caused by relativistic effects or hardware aging.
     accel: Delta,
-
-    /// Pre-computed `rate.to_big()` – used for the linear term in `evaluate`.
-    #[cfg_attr(feature = "serde", serde(skip))]
-    rate_big: DtBig,
-
-    /// Pre-computed `accel.to_big()` – used for the quadratic term in `evaluate`.
-    #[cfg_attr(feature = "serde", serde(skip))]
-    accel_big: DtBig,
 }
 
 impl ClockDrift {
-    /// Private helper that constructs the struct **and** pre-computes the
-    /// `DtBig` values in one step. All public constructors route through here.
+    /// Private helper that constructs the struct.
     #[inline(always)]
     const fn with_big(constant: Delta, rate: Delta, accel: Delta) -> Self {
         Self {
             constant,
             rate,
             accel,
-            rate_big: rate.to_big(),
-            accel_big: accel.to_big(),
         }
     }
 
@@ -304,17 +293,17 @@ impl ClockDrift {
         Self::with_big(offset, rate, Delta::ZERO)
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn constant(&self) -> &Delta {
         &self.constant
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn rate(&self) -> &Delta {
         &self.rate
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn accel(&self) -> &Delta {
         &self.accel
     }
@@ -328,13 +317,11 @@ impl ClockDrift {
     #[inline]
     pub fn set_rate(&mut self, rate: Delta) {
         self.rate = rate;
-        self.rate_big = rate.to_big();
     }
 
     #[inline]
     pub fn set_accel(&mut self, accel: Delta) {
         self.accel = accel;
-        self.accel_big = accel.to_big();
     }
 
     #[inline]
@@ -374,24 +361,23 @@ impl ClockDrift {
     /// accuracy even for multi-year integrations.
     #[inline]
     pub const fn time_diff_after(&self, delta: &Delta) -> Delta {
-        let dt_big = delta.to_big();
-        let mut total = self.constant.to_big();
+        let dt_attos = delta.total_attos();
+        let mut total_attos = self.constant.total_attos();
 
         if !self.rate.is_zero() || !self.accel.is_zero() {
-            let mqs: DtBig = MQS;
+            // Linear term: rate * dt
+            let rate_attos = self.rate.total_attos();
+            let rate_term = rate_attos.wrapping_mul(dt_attos) / ATTOSEC_PER_SEC_I128;
+            total_attos = total_attos.wrapping_add(rate_term);
 
-            // Linear term: rate * dt / 10³⁶  (now using pre-computed value)
-            let rate_term = self.rate_big.wrapping_mul(dt_big).div_euclid(mqs);
-
-            // Quadratic term: accel * dt² / 10⁷²
-            // Computed in two safe steps to keep every intermediate inside 320 bits.
-            let accel_dt = self.accel_big.wrapping_mul(dt_big).div_euclid(mqs);
-            let accel_term = accel_dt.wrapping_mul(dt_big).div_euclid(mqs);
-
-            total = total.wrapping_add(rate_term).wrapping_add(accel_term);
+            // Quadratic term: accel * dt²
+            let accel_attos = self.accel.total_attos();
+            let accel_dt = accel_attos.wrapping_mul(dt_attos) / ATTOSEC_PER_SEC_I128;
+            let accel_term = accel_dt.wrapping_mul(dt_attos) / ATTOSEC_PER_SEC_I128;
+            total_attos = total_attos.saturating_add(accel_term);
         }
 
-        Delta::from_big(total)
+        Delta::from_total_attos(total_attos)
     }
 
     /// Creates a `ClockDrift` directly from an observer’s velocity and total
@@ -506,8 +492,14 @@ mod tests {
             Delta::from_as(2), // exactly 2e-18 s/s²
         );
         let dt = Delta::from_sec(1_000_000);
-        // 2 + (1e-9 * 1e6) + (2e-18 * 1e12) = 2.001002 exactly
-        assert_eq!(drift.time_diff_after(&dt), Delta::from_sec_f(2.001002));
+
+        // Exact mathematical result:
+        // 2 + (1e-9 * 1_000_000) + (2e-18 * 1_000_000²) = 2 + 0.001 + 0.000002
+        // = 2.001002 s = 2 s + 1_002_000_000_000_000 attoseconds
+        assert_eq!(
+            drift.time_diff_after(&dt),
+            Delta::new(2, 1_002_000_000_000_000)
+        );
     }
 
     #[test]

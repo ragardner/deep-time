@@ -121,7 +121,7 @@ mod proper_time_samples_tests {
     use super::*;
     use crate::{Delta, LocalSpacetime};
 
-    fn make_state(tai_sec: i128) -> TimePoint {
+    fn make_state(tai_sec: i64) -> TimePoint {
         TimePoint::from_tai_sec(tai_sec)
     }
 

@@ -685,7 +685,7 @@ mod relativistic_tests {
 
     /// Small helper to build a `ObserverState` quickly.
     fn make_state(
-        tai_sec: i128,
+        tai_sec: i64,
         pos: Position,
         vel: Velocity,
         phi_m2_s2: f64,

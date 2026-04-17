@@ -9,7 +9,7 @@ use crate::TimePoint;
 /// (NTP timestamp of the leap second insertion, cumulative leap seconds *after* this insertion)
 ///
 /// NTP timestamp = seconds since 1900-01-01 00:00:00 (the format used by the official file).
-const LEAP_SECONDS: &[(i128, i128)] = &[
+const LEAP_SECONDS: &[(i64, i64)] = &[
     (2272060800, 10), // 1 Jan 1972
     (2287785600, 11), // 1 Jul 1972
     (2303683200, 12), // 1 Jan 1973
@@ -41,15 +41,15 @@ const LEAP_SECONDS: &[(i128, i128)] = &[
 ];
 
 /// Returns leap seconds inserted **before** this TAI instant (TAI = UTC + result).
-pub const fn leap_seconds_before(tai: TimePoint) -> i128 {
-    let mut offset = 0i128;
+pub const fn leap_seconds_before(tai: TimePoint) -> i64 {
+    let mut offset = 0i64;
     let mut i = 0usize;
 
     while i < LEAP_SECONDS.len() {
         let leap_ntp = LEAP_SECONDS[i].0;
 
         // J2000 noon (TAI zero) → NTP timestamp
-        const J2000_NTP_OFFSET: i128 = 3_155_328_000 + 43_200;
+        const J2000_NTP_OFFSET: i64 = 3_155_328_000 + 43_200;
 
         let tai_ntp = tai.sec() + J2000_NTP_OFFSET;
 

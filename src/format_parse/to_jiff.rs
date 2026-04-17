@@ -1,6 +1,6 @@
 #[cfg(feature = "jiff")]
 use crate::{
-    MICROQUECTOS_PER_NANOSEC,
+    ATTOSEC_PER_NANOSEC,
     parser::{Error, Meridiem, ParseErr, ParsedDate, TimeZone, Weekday},
 };
 #[cfg(feature = "jiff")]
@@ -70,13 +70,13 @@ impl ParsedDate {
             bdt.set_second(Some(s as i8)).map_err(|_| to_err())?;
         }
 
-        // === Subsecond precision (microquectos → nanoseconds) ===
-        if let Some(mqs) = self.microquectos {
-            let ns_u128 = mqs / MICROQUECTOS_PER_NANOSEC;
-            let ns: i32 = if ns_u128 >= 1_000_000_000 {
+        // === Subsecond precision (attoseconds → nanoseconds) ===
+        if let Some(attos) = self.attos {
+            let ns_u64 = attos / ATTOSEC_PER_NANOSEC;
+            let ns: i32 = if ns_u64 >= 1_000_000_000 {
                 999_999_999
             } else {
-                ns_u128 as i32
+                ns_u64 as i32
             };
             bdt.set_subsec_nanosecond(Some(ns)).map_err(|_| to_err())?;
         }
@@ -153,12 +153,12 @@ impl ParsedDate {
             let minute = self.minute.unwrap_or(0) as i8;
             let second = self.second.unwrap_or(0) as i8;
 
-            let subsec_nanosecond: i32 = if let Some(mqs) = self.microquectos {
-                let ns_u128 = mqs / MICROQUECTOS_PER_NANOSEC;
-                if ns_u128 > 999_999_999 {
+            let subsec_nanosecond: i32 = if let Some(attos) = self.attos {
+                let ns_u64 = attos / ATTOSEC_PER_NANOSEC;
+                if ns_u64 > 999_999_999 {
                     999_999_999
                 } else {
-                    ns_u128 as i32
+                    ns_u64 as i32
                 }
             } else {
                 0

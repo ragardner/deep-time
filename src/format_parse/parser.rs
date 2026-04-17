@@ -224,23 +224,23 @@ pub enum ParsedTimeScale {
 
 #[derive(Debug, Clone, Default)]
 pub struct ParsedDate {
-    pub year: Option<i128>,         // kept as i128 per your request
-    pub month: Option<u8>,          // 1-12
-    pub day: Option<u8>,            // 1-31
-    pub hour: Option<u8>,           // 0-23
-    pub minute: Option<u8>,         // 0-59
-    pub second: Option<u8>,         // 0-60
-    pub microquectos: Option<u128>, // 0 ≤ value < 10³⁶
+    pub year: Option<i64>,
+    pub month: Option<u8>,  // 1-12
+    pub day: Option<u8>,    // 1-31
+    pub hour: Option<u8>,   // 0-23
+    pub minute: Option<u8>, // 0-59
+    pub second: Option<u8>, // 0-60
+    pub attos: Option<u64>, // 0 ≤ value < 10¹⁸
     pub tz: Option<TimeZone>,
     pub iana_name: Option<[u8; 48]>,
     pub is_leap_second: bool,
     pub timescale: ParsedTimeScale,
     pub weekday: Option<Weekday>,
-    pub day_of_year: Option<u16>,    // 1-366 (%j)
-    pub iso_week_year: Option<i128>, // %G / %g
-    pub iso_week: Option<u8>,        // 1-53 (%V)
-    pub week_sun: Option<u8>,        // 0-53 (%U)
-    pub week_mon: Option<u8>,        // 0-53 (%W)
+    pub day_of_year: Option<u16>,   // 1-366 (%j)
+    pub iso_week_year: Option<i64>, // %G / %g
+    pub iso_week: Option<u8>,       // 1-53 (%V)
+    pub week_sun: Option<u8>,       // 0-53 (%U)
+    pub week_mon: Option<u8>,       // 0-53 (%W)
     pub meridiem: Option<Meridiem>,
     pub unix_timestamp_seconds: Option<i64>, // %s
 }
@@ -258,8 +258,8 @@ impl ParsedDate {
             if self.second.is_none() {
                 self.second = Some(0);
             }
-            if self.microquectos.is_none() {
-                self.microquectos = Some(0);
+            if self.attos.is_none() {
+                self.attos = Some(0);
             }
             if self.tz.is_none() {
                 self.tz = Some(TimeZone::Utc);
@@ -277,8 +277,8 @@ impl ParsedDate {
         if self.second.is_none() {
             self.second = Some(0);
         }
-        if self.microquectos.is_none() {
-            self.microquectos = Some(0);
+        if self.attos.is_none() {
+            self.attos = Some(0);
         }
         if self.tz.is_none() {
             self.tz = Some(TimeZone::Utc);
@@ -485,21 +485,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    // #[inline]
-    // fn parse_optional_dot_fractional(
-    //     &mut self,
-    //     flag: Option<u8>,
-    //     width: Option<u8>,
-    //     colons: u8,
-    // ) -> Result<(), Error> {
-    //     // dot is optional in the input for %.f
-    //     if !self.inp.is_empty() && self.current_input_byte() == b'.' {
-    //         self.advance_input();
-    //         let _ = self.parse_fractional_seconds(flag, width, colons); // bare "." is allowed
-    //     }
-    //     Ok(())
-    // }
-
     #[inline]
     fn parse_optional_dot_fractional(
         &mut self,
@@ -516,8 +501,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    //
-
     #[inline]
     fn parse_full_year(
         &mut self,
@@ -526,7 +509,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), Error> {
-        let (y, remaining) = match parse_padded_i128(self.inp, flag, width, 4, b'0') {
+        let (y, remaining) = match parse_padded_i64(self.inp, flag, width, 4, b'0') {
             Ok(v) => v,
             Err(_) => return Err(self.make_error(ParseErr::ExpectedYearPaddedDigits)),
         };
@@ -540,7 +523,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline]
     fn parse_unbounded_year(&mut self) -> Result<(), Error> {
-        let (y, remaining) = match parse_arbitrary_i128(self.inp) {
+        let (y, remaining) = match parse_arbitrary_i64(self.inp) {
             Ok(v) => v,
             Err(_) => return Err(self.make_error(ParseErr::ExpectedArbitraryYearDigit)),
         };
@@ -564,9 +547,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = remaining;
         let year = if y <= 68 {
-            2000i128 + (y as i128)
+            2000i64 + (y as i64)
         } else {
-            1900i128 + (y as i128)
+            1900i64 + (y as i64)
         };
         self.tm.year = Some(year);
         if advance {
@@ -583,7 +566,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
     ) -> Result<(), Error> {
         let (sign, after_sign) = parse_optional_sign(self.inp);
-        let (c, remaining) = match parse_padded_i128(after_sign, flag, width, 2, b'_') {
+        let (c, remaining) = match parse_padded_i64(after_sign, flag, width, 2, b'_') {
             Ok(v) => v,
             Err(_) => return Err(self.make_error(ParseErr::ExpectedCenturyPaddedDigits)),
         };
@@ -601,7 +584,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), Error> {
-        let (y, remaining) = match parse_padded_i128(self.inp, flag, width, 4, b'0') {
+        let (y, remaining) = match parse_padded_i64(self.inp, flag, width, 4, b'0') {
             Ok(v) => v,
             Err(_) => return Err(self.make_error(ParseErr::ExpectedIsoWeekYearPaddedDigits)),
         };
@@ -626,16 +609,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = remaining;
         let year = if y <= 68 {
-            2000i128 + (y as i128)
+            2000i64 + (y as i64)
         } else {
-            1900i128 + (y as i128)
+            1900i64 + (y as i64)
         };
         self.tm.iso_week_year = Some(year);
         self.advance_format();
         Ok(())
     }
-
-    //
 
     #[inline]
     fn parse_month_number(
@@ -807,15 +788,15 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             self.advance_input();
         }
         let max_digits = width.map(|w| w as usize).unwrap_or(usize::MAX);
-        const TARGET_DIGITS: usize = 36; // microquectoseconds (Timestamp precision)
-        let mut frac: u128 = 0;
+        const TARGET_DIGITS: usize = 18; // attoseconds
+        let mut frac: u64 = 0;
         let mut digits_read = 0usize;
         while !self.inp.is_empty()
             && self.current_input_byte().is_ascii_digit()
             && digits_read < max_digits
         {
             if digits_read < TARGET_DIGITS {
-                let d = (self.current_input_byte() - b'0') as u128;
+                let d = (self.current_input_byte() - b'0') as u64;
                 frac = frac * 10 + d;
             }
             self.advance_input();
@@ -824,13 +805,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if digits_read == 0 {
             return Err(self.make_error(ParseErr::ExpectedFractionalSecondsDigit));
         }
-        let microquectos = if digits_read >= TARGET_DIGITS {
+        let attos = if digits_read >= TARGET_DIGITS {
             frac
         } else {
-            let multiplier = 10u128.pow((TARGET_DIGITS - digits_read) as u32);
+            let multiplier = 10u64.pow((TARGET_DIGITS - digits_read) as u32);
             frac * multiplier
         };
-        self.tm.microquectos = Some(microquectos);
+        self.tm.attos = Some(attos);
         Ok(())
     }
 
@@ -1427,17 +1408,17 @@ fn parse_iana<'a>(inp: &'a [u8]) -> Result<(&'a str, &'a [u8]), ()> {
 }
 
 #[inline]
-fn parse_padded_i128(
+fn parse_padded_i64(
     inp: &[u8],
     flag: Option<u8>,
     width: Option<u8>,
     default_pad_width: usize,
     default_flag: u8,
-) -> Result<(i128, &[u8]), ()> {
+) -> Result<(i64, &[u8]), ()> {
     let (sign, after_sign) = parse_optional_sign(inp);
     let (n, remaining) =
         parse_padded_number(after_sign, flag, width, default_pad_width, default_flag)?;
-    let mut y = n as i128;
+    let mut y = n as i64;
     if sign < 0 {
         y = -y;
     }
@@ -1445,15 +1426,15 @@ fn parse_padded_i128(
 }
 
 #[inline]
-fn parse_arbitrary_i128(inp: &[u8]) -> Result<(i128, &[u8]), ()> {
+fn parse_arbitrary_i64(inp: &[u8]) -> Result<(i64, &[u8]), ()> {
     let (sign, after_sign) = parse_optional_sign(inp);
     let (digits, remaining) = parse_digits(after_sign);
     if digits.is_empty() {
         return Err(());
     }
-    let mut y: i128 = 0;
+    let mut y: i64 = 0;
     for &byte in digits {
-        let d = (byte - b'0') as i128;
+        let d = (byte - b'0') as i64;
         y = y.checked_mul(10).and_then(|x| x.checked_add(d)).ok_or(())?;
     }
     if sign < 0 {
@@ -1475,7 +1456,7 @@ mod tests {
         assert_eq!(parsed.hour, Some(14));
         assert_eq!(parsed.minute, Some(30));
         assert_eq!(parsed.second, Some(45));
-        assert_eq!(parsed.microquectos, Some(0));
+        assert_eq!(parsed.attos, Some(0));
         assert_eq!(parsed.tz, Some(TimeZone::Utc));
     }
 
@@ -1494,13 +1475,13 @@ mod tests {
             false,
         )
         .unwrap();
-        let expected = 123_456_789u128 * 10u128.pow(27);
-        assert_eq!(parsed.microquectos, Some(expected));
+        let expected = 123_456_789u64 * 10u64.pow(9);
+        assert_eq!(parsed.attos, Some(expected));
 
         let parsed2 =
             parse_date("%Y-%m-%d %H:%M:%S.%3N", "2024-04-15 14:30:45.123", false).unwrap();
-        let expected2 = 123u128 * 10u128.pow(33);
-        assert_eq!(parsed2.microquectos, Some(expected2));
+        let expected2 = 123u64 * 10u64.pow(15);
+        assert_eq!(parsed2.attos, Some(expected2));
     }
 
     #[test]

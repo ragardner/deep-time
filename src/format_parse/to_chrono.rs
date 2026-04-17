@@ -1,6 +1,6 @@
 #[cfg(feature = "chrono")]
 use crate::{
-    MICROQUECTOS_PER_NANOSEC, TimePoint,
+    ATTOSEC_PER_NANOSEC, TimePoint,
     parser::{Error, Meridiem, ParseErr, ParsedDate, TimeZone, Weekday},
 };
 #[cfg(feature = "chrono")]
@@ -35,7 +35,7 @@ impl ParsedDate {
 
         // Small helper: JDN → chrono NaiveDate
         // (JDN 1721426 == proleptic Gregorian 0001-01-01; chrono counts days since then)
-        let jdn_to_naive_date = |jdn: i128| -> Result<NaiveDate, Error> {
+        let jdn_to_naive_date = |jdn: i64| -> Result<NaiveDate, Error> {
             let days_from_ce: i32 = (jdn - 1721425).try_into().map_err(|_| to_err())?;
             NaiveDate::from_num_days_from_ce_opt(days_from_ce).ok_or_else(to_err)
         };
@@ -82,9 +82,9 @@ impl ParsedDate {
             }
         }
 
-        // Raw subsecond conversion (microquectos → nanoseconds)
-        let raw_ns_u128 = if let Some(mqs) = self.microquectos {
-            mqs / MICROQUECTOS_PER_NANOSEC
+        // Raw subsecond conversion (attoseconds → nanoseconds)
+        let raw_ns_u64 = if let Some(attos) = self.attos {
+            attos / ATTOSEC_PER_NANOSEC
         } else {
             0
         };
@@ -93,14 +93,14 @@ impl ParsedDate {
         let is_leap = second == 60 || self.is_leap_second;
         //   • Non-leap seconds → strictly < 1 s (error if exceeded)
         //   • Leap seconds      → allow up to ~2 s (chrono’s internal representation)
-        if !is_leap && raw_ns_u128 > 999_999_999 {
+        if !is_leap && raw_ns_u64 > 999_999_999 {
             return Err(to_err());
         }
 
-        let mut subsec_nano: u32 = if raw_ns_u128 > 1_999_999_999 {
+        let mut subsec_nano: u32 = if raw_ns_u64 > 1_999_999_999 {
             1_999_999_999
         } else {
-            raw_ns_u128 as u32
+            raw_ns_u64 as u32
         };
 
         // Chrono leap-second convention: second = 59 + nano >= 1_000_000_000
@@ -148,7 +148,7 @@ impl ParsedDate {
     ///
     /// ### Precedence rules (this is deliberate and final):
     /// - When `%s` (or equivalent) was parsed → **ignore all civil fields** (`year`, `month`,
-    ///   `day`, `hour`, `minute`, `second`, `microquectos`, `weekday`, `day_of_year`, etc.).
+    ///   `day`, `hour`, `minute`, `second`, `attos`, `weekday`, `day_of_year`, etc.).
     ///   The timestamp defines the exact physical moment.
     /// - The parsed timezone/offset (if any) is used **only** to choose the *displayed* civil
     ///   time on the returned `DateTime<FixedOffset>`. In other words, `%s` gives you the instant;
@@ -162,14 +162,14 @@ impl ParsedDate {
 
         // Fast path: %s is gospel — absolute UTC instant (civil fields are ignored)
         if let Some(secs) = self.unix_timestamp_seconds {
-            let subsec_nano = if let Some(mqs) = self.microquectos {
-                let ns_u128 = mqs / MICROQUECTOS_PER_NANOSEC;
+            let subsec_nano = if let Some(attos) = self.attos {
+                let ns_u64 = attos / ATTOSEC_PER_NANOSEC;
                 // Unix/POSIX timestamps are continuous (no leap-second representation).
                 // We clamp strictly to the range chrono::DateTime::from_timestamp accepts.
-                if ns_u128 > 999_999_999 {
+                if ns_u64 > 999_999_999 {
                     999_999_999
                 } else {
-                    ns_u128 as u32
+                    ns_u64 as u32
                 }
             } else {
                 0

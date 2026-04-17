@@ -57,9 +57,9 @@ impl ParsedDate {
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
-            const UNIX_EPOCH_TO_J2000_NOON_UTC: i128 = 946_728_000;
-            let sec = (unix_secs as i128) - UNIX_EPOCH_TO_J2000_NOON_UTC;
-            let subsec = self.microquectos.unwrap_or(0);
+            const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;
+            let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
+            let subsec = self.attos.unwrap_or(0);
             let utc_tp = TimePoint::new(sec, subsec, ClockType::UTC);
 
             return Ok(match self.timescale {
@@ -97,8 +97,8 @@ impl ParsedDate {
 
         let minute = self.minute.unwrap_or(0);
         let second = self.second.unwrap_or(0);
-        let subsec = self.microquectos.unwrap_or(0);
-        let mut jdn: Option<i128> = None;
+        let subsec = self.attos.unwrap_or(0);
+        let mut jdn: Option<i64> = None;
 
         if let Some(year) = self.year {
             if let (Some(m), Some(d)) = (self.month, self.day) {
@@ -147,9 +147,9 @@ impl ParsedDate {
         let Some(jdn) = jdn else {
             return Err(Error::simple(ParseErr::TimePointJdnIsNone));
         };
-        let days_since_j2000 = jdn - 2_451_545i128;
+        let days_since_j2000 = jdn - 2_451_545i64;
         let seconds_from_noon_utc =
-            (hour as i128 - 12) * 3600 + (minute as i128) * 60 + (second as i128);
+            (hour as i64 - 12) * 3600 + (minute as i64) * 60 + (second as i64);
         let sec_utc = days_since_j2000 * 86_400 + seconds_from_noon_utc;
         let utc_tp = TimePoint::new(sec_utc, subsec, ClockType::UTC);
 
@@ -231,8 +231,8 @@ mod tests {
         .unwrap();
         let tp = parsed.to_time_point().unwrap();
 
-        // 0.123456789 s = 123456789 × 10²⁷ in microquecto-second units
-        let expected = 123_456_789u128 * 10u128.pow(27);
+        // 0.123456789 s = 123456789 × 10¹⁸ attoseconds
+        let expected = 123_456_789u64 * 1_000_000_000;
         assert_eq!(tp.subsec, expected, "fractional seconds were not preserved");
     }
 

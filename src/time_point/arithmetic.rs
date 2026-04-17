@@ -1,28 +1,25 @@
-use crate::{
-    ClockDrift, Delta, LocalSpacetime, MICROQUECTOS_PER_SEC, POW15, POW21, Real, TimePoint,
-};
+use crate::{ATTOSEC_PER_SEC, ClockDrift, Delta, LocalSpacetime, Real, TimePoint};
 
 impl TimePoint {
-    /// Converts to a floating-point number of seconds.
+    /// Converts this `TimePoint` to a floating-point number of seconds since the reference epoch of its associated clock type.
     ///
-    /// **Lossy by design** — returns the best possible `float` representation
-    /// (≈15.95 decimal digits).
+    /// The conversion is lossy by design, as `f64` (`Real`) provides approximately 15.95 decimal digits of precision.
+    /// For full exactness, use the integer components `sec` and `subsec` directly or higher-precision arithmetic when available.
     #[inline(always)]
     pub const fn as_sec_f(self) -> Real {
-        // Extract the top 15 decimal digits exactly (POW15 is fully representable in float mantissa)
-        let q = (self.subsec / POW21) as Real;
-        let frac = q / f!(POW15);
-        self.sec as Real + frac
+        self.sec as Real + (self.subsec as Real) / (ATTOSEC_PER_SEC as Real)
     }
 
-    /// Overflowing add. The result keeps the original [`ClockType`].
+    /// Performs an overflowing addition of the given `Delta` to this `TimePoint`.
+    ///
+    /// The resulting `TimePoint` retains the original [`ClockType`] of `self`. Overflow wraps around according to two's-complement rules for the seconds component.
     pub const fn add(self, delta: Delta) -> Self {
         let mut sec = self.sec + delta.sec;
         let mut subsec = self.subsec + delta.subsec;
 
-        if subsec >= MICROQUECTOS_PER_SEC {
+        if subsec >= ATTOSEC_PER_SEC {
             sec += 1;
-            subsec -= MICROQUECTOS_PER_SEC;
+            subsec -= ATTOSEC_PER_SEC;
         }
 
         Self {
@@ -32,14 +29,16 @@ impl TimePoint {
         }
     }
 
-    /// Overflowing add by reference.
+    /// Performs an overflowing addition of the given `Delta` (by reference) to this `TimePoint`.
+    ///
+    /// The resulting `TimePoint` retains the original [`ClockType`] of `self`.
     pub const fn add_ref(self, delta: &Delta) -> Self {
         let mut sec = self.sec + delta.sec;
         let mut subsec = self.subsec + delta.subsec;
 
-        if subsec >= MICROQUECTOS_PER_SEC {
+        if subsec >= ATTOSEC_PER_SEC {
             sec += 1;
-            subsec -= MICROQUECTOS_PER_SEC;
+            subsec -= ATTOSEC_PER_SEC;
         }
 
         Self {
@@ -49,7 +48,9 @@ impl TimePoint {
         }
     }
 
-    /// Overflowing sub. The result keeps the original [`ClockType`].
+    /// Performs an overflowing subtraction of the given `Delta` from this `TimePoint`.
+    ///
+    /// The resulting `TimePoint` retains the original [`ClockType`] of `self`.
     pub const fn sub(self, delta: Delta) -> Self {
         let mut sec = self.sec - delta.sec;
         let mut subsec = self.subsec;
@@ -58,7 +59,7 @@ impl TimePoint {
             subsec -= delta.subsec;
         } else {
             sec -= 1;
-            subsec += MICROQUECTOS_PER_SEC - delta.subsec;
+            subsec += ATTOSEC_PER_SEC - delta.subsec;
         }
 
         Self {
@@ -68,7 +69,9 @@ impl TimePoint {
         }
     }
 
-    /// Overflowing sub by reference.
+    /// Performs an overflowing subtraction of the given `Delta` (by reference) from this `TimePoint`.
+    ///
+    /// The resulting `TimePoint` retains the original [`ClockType`] of `self`.
     pub const fn sub_ref(self, delta: &Delta) -> Self {
         let mut sec = self.sec - delta.sec;
         let mut subsec = self.subsec;
@@ -77,7 +80,7 @@ impl TimePoint {
             subsec -= delta.subsec;
         } else {
             sec -= 1;
-            subsec += MICROQUECTOS_PER_SEC - delta.subsec;
+            subsec += ATTOSEC_PER_SEC - delta.subsec;
         }
 
         Self {
@@ -87,20 +90,22 @@ impl TimePoint {
         }
     }
 
-    /// Saturating add. The result keeps the original [`ClockType`].
+    /// Performs a saturating addition of the given `Delta` to this `TimePoint`.
+    ///
+    /// The resulting `TimePoint` retains the original [`ClockType`] of `self` and saturates at the representable extremes rather than wrapping.
     pub const fn saturating_add(self, delta: Delta) -> Self {
         let mut subsec = self.subsec + delta.subsec;
-        let mut carry = 0i128;
-        if subsec >= MICROQUECTOS_PER_SEC {
-            subsec -= MICROQUECTOS_PER_SEC;
+        let mut carry = 0i64;
+        if subsec >= ATTOSEC_PER_SEC {
+            subsec -= ATTOSEC_PER_SEC;
             carry = 1;
         }
 
         let sec = self.sec.saturating_add(delta.sec).saturating_add(carry);
 
-        let subsec = if sec == i128::MAX {
-            MICROQUECTOS_PER_SEC - 1
-        } else if sec == i128::MIN {
+        let subsec = if sec == i64::MAX {
+            ATTOSEC_PER_SEC - 1
+        } else if sec == i64::MIN {
             0
         } else {
             subsec
@@ -113,20 +118,22 @@ impl TimePoint {
         }
     }
 
-    /// Saturating add by reference.
+    /// Performs a saturating addition of the given `Delta` (by reference) to this `TimePoint`.
+    ///
+    /// The resulting `TimePoint` retains the original [`ClockType`] of `self` and saturates at the representable extremes rather than wrapping.
     pub const fn saturating_add_ref(self, delta: &Delta) -> Self {
         let mut subsec = self.subsec + delta.subsec;
-        let mut carry = 0i128;
-        if subsec >= MICROQUECTOS_PER_SEC {
-            subsec -= MICROQUECTOS_PER_SEC;
+        let mut carry = 0i64;
+        if subsec >= ATTOSEC_PER_SEC {
+            subsec -= ATTOSEC_PER_SEC;
             carry = 1;
         }
 
         let sec = self.sec.saturating_add(delta.sec).saturating_add(carry);
 
-        let subsec = if sec == i128::MAX {
-            MICROQUECTOS_PER_SEC - 1
-        } else if sec == i128::MIN {
+        let subsec = if sec == i64::MAX {
+            ATTOSEC_PER_SEC - 1
+        } else if sec == i64::MIN {
             0
         } else {
             subsec
@@ -139,22 +146,24 @@ impl TimePoint {
         }
     }
 
-    /// Saturating sub. The result keeps the original [`ClockType`].
+    /// Performs a saturating subtraction of the given `Delta` from this `TimePoint`.
+    ///
+    /// The resulting `TimePoint` retains the original [`ClockType`] of `self` and saturates at the representable extremes rather than wrapping.
     pub const fn saturating_sub(self, delta: Delta) -> Self {
         let mut subsec = self.subsec;
-        let mut borrow = 0i128;
+        let mut borrow = 0i64;
         if subsec >= delta.subsec {
             subsec -= delta.subsec;
         } else {
-            subsec += MICROQUECTOS_PER_SEC - delta.subsec;
+            subsec += ATTOSEC_PER_SEC - delta.subsec;
             borrow = 1;
         }
 
         let sec = self.sec.saturating_sub(delta.sec).saturating_sub(borrow);
 
-        let subsec = if sec == i128::MAX {
-            MICROQUECTOS_PER_SEC - 1
-        } else if sec == i128::MIN {
+        let subsec = if sec == i64::MAX {
+            ATTOSEC_PER_SEC - 1
+        } else if sec == i64::MIN {
             0
         } else {
             subsec
@@ -167,22 +176,24 @@ impl TimePoint {
         }
     }
 
-    /// Saturating sub by reference.
+    /// Performs a saturating subtraction of the given `Delta` (by reference) from this `TimePoint`.
+    ///
+    /// The resulting `TimePoint` retains the original [`ClockType`] of `self` and saturates at the representable extremes rather than wrapping.
     pub const fn saturating_sub_ref(self, delta: &Delta) -> Self {
         let mut subsec = self.subsec;
-        let mut borrow = 0i128;
+        let mut borrow = 0i64;
         if subsec >= delta.subsec {
             subsec -= delta.subsec;
         } else {
-            subsec += MICROQUECTOS_PER_SEC - delta.subsec;
+            subsec += ATTOSEC_PER_SEC - delta.subsec;
             borrow = 1;
         }
 
         let sec = self.sec.saturating_sub(delta.sec).saturating_sub(borrow);
 
-        let subsec = if sec == i128::MAX {
-            MICROQUECTOS_PER_SEC - 1
-        } else if sec == i128::MIN {
+        let subsec = if sec == i64::MAX {
+            ATTOSEC_PER_SEC - 1
+        } else if sec == i64::MIN {
             0
         } else {
             subsec
@@ -195,56 +206,59 @@ impl TimePoint {
         }
     }
 
-    /// Saturating mut add.
+    /// Mutably adds the given `Delta` to this `TimePoint` using saturating arithmetic.
+    ///
+    /// The `clock_type` is left unchanged. The operation saturates at the representable extremes.
     pub fn mut_add(&mut self, delta: &Delta) {
         let mut subsec = self.subsec + delta.subsec;
-        let mut carry = 0i128;
-        if subsec >= MICROQUECTOS_PER_SEC {
-            subsec -= MICROQUECTOS_PER_SEC;
+        let mut carry = 0i64;
+        if subsec >= ATTOSEC_PER_SEC {
+            subsec -= ATTOSEC_PER_SEC;
             carry = 1;
         }
 
         let sec = self.sec.saturating_add(delta.sec).saturating_add(carry);
 
         self.sec = sec;
-        self.subsec = if sec == i128::MAX {
-            MICROQUECTOS_PER_SEC - 1
-        } else if sec == i128::MIN {
+        self.subsec = if sec == i64::MAX {
+            ATTOSEC_PER_SEC - 1
+        } else if sec == i64::MIN {
             0
         } else {
             subsec
         };
     }
 
-    /// Saturating mut sub.
+    /// Mutably subtracts the given `Delta` from this `TimePoint` using saturating arithmetic.
+    ///
+    /// The `clock_type` is left unchanged. The operation saturates at the representable extremes.
     pub fn mut_sub(&mut self, delta: &Delta) {
         let mut subsec = self.subsec;
-        let mut borrow = 0i128;
+        let mut borrow = 0i64;
         if subsec >= delta.subsec {
             subsec -= delta.subsec;
         } else {
-            subsec += MICROQUECTOS_PER_SEC - delta.subsec;
+            subsec += ATTOSEC_PER_SEC - delta.subsec;
             borrow = 1;
         }
 
         let sec = self.sec.saturating_sub(delta.sec).saturating_sub(borrow);
 
         self.sec = sec;
-        self.subsec = if sec == i128::MAX {
-            MICROQUECTOS_PER_SEC - 1
-        } else if sec == i128::MIN {
+        self.subsec = if sec == i64::MAX {
+            ATTOSEC_PER_SEC - 1
+        } else if sec == i64::MIN {
             0
         } else {
             subsec
         };
     }
 
-    /// Advances this `TimePoint` by the location time step `elapsed`,
-    /// applying the relativistic proper-time rate from `local_spacetime`.
+    /// Advances this `TimePoint` by the given elapsed duration while applying the relativistic proper-time correction
+    /// derived from the supplied `LocalSpacetime` model.
     ///
-    /// Intended for simulating **remote clocks** (Earth time as seen from the
-    /// spacecraft, another probe’s clock, etc.). Your own spacecraft’s
-    /// hardware proper-time clock should just use `.add(dt)` directly.
+    /// This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
+    /// For the spacecraft's own hardware proper-time clock, use the plain `add` method instead.
     #[inline(always)]
     pub fn adjusted_advance(&mut self, elapsed: &Delta, local_spacetime: &LocalSpacetime) {
         let dtau =
@@ -252,26 +266,21 @@ impl TimePoint {
         *self = self.add(dtau);
     }
 
-    /// Advances this `TimePoint` by the location time step `elapsed`,
-    /// applying the relativistic proper-time rate from the pre-computed
-    /// `drift`.
+    /// Advances this `TimePoint` by the given elapsed duration while applying the relativistic proper-time correction
+    /// from a pre-computed `ClockDrift` value.
     ///
-    /// This is an optimized version of [`adjusted_advance`] for when
-    /// the caller already has a `ClockDrift` (e.g. cached from
-    /// `ClockDrift::from_local_spacetime`).
-    ///
-    /// Intended for simulating **remote clocks** (Earth time as seen from the
-    /// spacecraft, another probe’s clock, etc.). Your own spacecraft’s
-    /// hardware proper-time clock should just use `.add(dt)` directly.
+    /// This is an optimized variant of `adjusted_advance` for callers that already hold a `ClockDrift` instance.
+    /// It is intended for simulation of remote clocks; the spacecraft's own hardware clock should use the plain `add` method.
     #[inline(always)]
     pub fn adjusted_advance_using_drift(&mut self, elapsed: &Delta, drift: &ClockDrift) {
         let dtau = elapsed.add(drift.time_diff_after(elapsed));
         *self = self.add(dtau);
     }
 
-    /// Returns the signed duration between two instants  
-    /// (always computed in TAI internally so the result is correct  
-    /// even if the two `TimePoint`s have different clock types).
+    /// Computes the signed duration between this `TimePoint` and an earlier instant.
+    ///
+    /// The duration is always calculated after converting both instants to the TAI timescale internally,
+    /// ensuring correctness even when the two `TimePoint`s belong to different clock types.
     pub const fn duration_since(self, earlier: Self) -> Delta {
         let self_tai = self.to_tai();
         let earlier_tai = earlier.to_tai();
@@ -283,15 +292,16 @@ impl TimePoint {
             subsec -= earlier_tai.subsec;
         } else {
             sec -= 1;
-            subsec += MICROQUECTOS_PER_SEC - earlier_tai.subsec;
+            subsec += ATTOSEC_PER_SEC - earlier_tai.subsec;
         }
 
         Delta { sec, subsec }
     }
 
-    /// Returns the signed duration between two instants (by reference).  
-    /// (always computed in TAI internally so the result is correct  
-    /// even if the two `TimePoint`s have different clock types).
+    /// Computes the signed duration between this `TimePoint` and an earlier instant (by reference).
+    ///
+    /// The duration is always calculated after converting both instants to the TAI timescale internally,
+    /// ensuring correctness even when the two `TimePoint`s belong to different clock types.
     pub const fn duration_since_ref(self, earlier: &Self) -> Delta {
         let self_tai = self.to_tai();
         let earlier_tai = earlier.to_tai();
@@ -303,49 +313,16 @@ impl TimePoint {
             subsec -= earlier_tai.subsec;
         } else {
             sec -= 1;
-            subsec += MICROQUECTOS_PER_SEC - earlier_tai.subsec;
+            subsec += ATTOSEC_PER_SEC - earlier_tai.subsec;
         }
 
         Delta { sec, subsec }
     }
 
-    /// Floors this instant down to the largest multiple of `unit` that is ≤ `self`.
+    /// Returns the numerical difference in seconds between this `TimePoint` and another (ignores `ClockType`).
     ///
-    /// The result keeps the original [`ClockType`].
-    #[inline]
-    pub const fn floor(self, unit: Delta) -> Self {
-        let origin = Self::ZERO;
-        let mut ts = origin.add(self.duration_since_ref(&origin).floor(unit));
-        ts.clock_type = self.clock_type;
-        ts
-    }
-
-    /// Ceils this instant up to the smallest multiple of `unit` that is ≥ `self`.
-    ///
-    /// The result keeps the original [`ClockType`].
-    #[inline]
-    pub const fn ceil(self, unit: Delta) -> Self {
-        let origin = Self::ZERO;
-        let mut ts = origin.add(self.duration_since_ref(&origin).ceil(unit));
-        ts.clock_type = self.clock_type;
-        ts
-    }
-
-    /// Rounds this instant to the nearest multiple of `unit`.
-    /// (Halfway cases round away from zero, same semantics as `Delta::round`.)
-    ///
-    /// The result keeps the original [`ClockType`].
-    #[inline]
-    pub const fn round(self, unit: Delta) -> Self {
-        let origin = Self::ZERO;
-        let mut ts = origin.add(self.duration_since_ref(&origin).round(unit));
-        ts.clock_type = self.clock_type;
-        ts
-    }
-
-    /// Returns the numerical difference in seconds between two `TimePoint`s (ignores `ClockType`).
-    ///
-    /// **Lossy by design** (for testing only). Use `duration_since` for the exact `Delta`.
+    /// This method is lossy by design and is provided for testing and debugging purposes only.
+    /// For the exact duration, use `duration_since` or `duration_since_ref`.
     pub const fn numerical_seconds_since(&self, other: &Self) -> Real {
         Delta {
             sec: self.sec,

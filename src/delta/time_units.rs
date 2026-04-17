@@ -36,31 +36,31 @@ macro_rules! impl_time_units_int {
         $(
             impl TimeUnits for $ty {
                 #[inline(always)]
-                fn ns(self) -> Delta { Delta::from_ns(self as i128) }
+                fn ns(self) -> Delta { Delta::from_ns(self as i64) }
 
                 #[inline(always)]
-                fn us(self) -> Delta { Delta::from_us(self as i128) }
+                fn us(self) -> Delta { Delta::from_us(self as i64) }
 
                 #[inline(always)]
-                fn ms(self) -> Delta { Delta::from_ms(self as i128) }
+                fn ms(self) -> Delta { Delta::from_ms(self as i64) }
 
                 #[inline(always)]
-                fn sec(self) -> Delta { Delta::from_sec(self as i128) }
+                fn sec(self) -> Delta { Delta::from_sec(self as i64) }
 
                 #[inline(always)]
-                fn min(self) -> Delta { Delta::from_min(self as i128) }
+                fn min(self) -> Delta { Delta::from_min(self as i64) }
 
                 #[inline(always)]
-                fn hr(self) -> Delta { Delta::from_hr(self as i128) }
+                fn hr(self) -> Delta { Delta::from_hr(self as i64) }
 
                 #[inline(always)]
-                fn d(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(86_400)) }
+                fn d(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(86_400)) }
 
                 #[inline(always)]
-                fn wk(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(604_800)) }
+                fn wk(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(604_800)) }
 
                 #[inline(always)]
-                fn yr(self) -> Delta { Delta::from_sec((self as i128).saturating_mul(31_557_600)) }
+                fn yr(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(31_557_600)) }
 
                 #[inline(always)]
                 fn ago(self, clock_type: ClockType) -> TimePoint {
@@ -82,22 +82,22 @@ impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
 impl TimeUnits for f64 {
     #[inline]
     fn ns(self) -> Delta {
-        Delta::from_ns(self as i128)
+        Delta::from_ns(self as i64)
     }
 
     #[inline]
     fn us(self) -> Delta {
-        Delta::from_us(self as i128)
+        Delta::from_us(self as i64)
     }
 
     #[inline]
     fn ms(self) -> Delta {
-        Delta::from_ms(self as i128)
+        Delta::from_ms(self as i64)
     }
 
     #[inline]
     fn sec(self) -> Delta {
-        Delta::from_sec(self as i128)
+        Delta::from_sec(self as i64)
     }
 
     #[inline]
@@ -139,22 +139,22 @@ impl TimeUnits for f64 {
 impl TimeUnits for f32 {
     #[inline]
     fn ns(self) -> Delta {
-        Delta::from_ns(self as i128)
+        Delta::from_ns(self as i64)
     }
 
     #[inline]
     fn us(self) -> Delta {
-        Delta::from_us(self as i128)
+        Delta::from_us(self as i64)
     }
 
     #[inline]
     fn ms(self) -> Delta {
-        Delta::from_ms(self as i128)
+        Delta::from_ms(self as i64)
     }
 
     #[inline]
     fn sec(self) -> Delta {
-        Delta::from_sec(self as i128)
+        Delta::from_sec(self as i64)
     }
 
     #[inline]

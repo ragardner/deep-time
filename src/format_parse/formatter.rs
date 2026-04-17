@@ -180,7 +180,7 @@ impl TimePoint {
 
                 if matches!(next, b'f' | b'N') {
                     // FIXED: Only print the dot for %f when width > 0
-                    let width_val = frac_width.unwrap_or(9);
+                    let width_val = frac_width.unwrap_or(18);
                     let add_dot = (next == b'f') && (width_val > 0);
 
                     if add_dot {
@@ -274,8 +274,10 @@ impl TimePoint {
     // Extraction helpers (exact, const where possible)
     // ──────────────────────────────────────────────────────────────
     #[inline]
-    pub const fn jdn_to_gregorian(jdn: i128) -> (i128, u8, u8) {
-        let a = jdn + 32044;
+    pub const fn jdn_to_gregorian(jdn: i64) -> (i64, u8, u8) {
+        // Use i128 internally to avoid overflow on full i64 JDN range
+        let j = jdn as i128;
+        let a = j + 32044;
         let b = (4 * a + 3) / 146097;
         let c = a - (b * 146097) / 4;
         let d = (4 * c + 3) / 1461;
@@ -284,11 +286,11 @@ impl TimePoint {
         let day = (e - (153 * m + 2) / 5 + 1) as u8;
         let month = (m + 3 - 12 * (m / 10)) as u8;
         let year = b * 100 + d - 4800 + (m / 10);
-        (year, month, day)
+        (year as i64, month, day)
     }
 
     #[inline]
-    pub const fn to_gregorian_date(self) -> (i128, u8, u8) {
+    pub const fn to_gregorian_date(self) -> (i64, u8, u8) {
         let (jd_days, frac) = self.to_jd_tt_exact();
         let jdn = if frac.sec >= 43200 {
             jd_days + 1
@@ -310,7 +312,7 @@ impl TimePoint {
     }
 
     #[inline]
-    pub const fn to_hms_subsec(self) -> (u8, u8, u8, u128) {
+    pub const fn to_hms_subsec(self) -> (u8, u8, u8, u64) {
         let tt = self.to_clock_type(ClockType::TT);
         let (_, frac) = tt.to_jd_tt_exact();
         let seconds_since_midnight = if frac.sec >= 43200 {
@@ -332,7 +334,7 @@ impl TimePoint {
         (jdn - jdn_jan1 + 1) as u16
     }
 
-    pub const fn to_iso_week_date(self) -> (i128, u8, Weekday) {
+    pub const fn to_iso_week_date(self) -> (i64, u8, Weekday) {
         let (year, month, day) = self.to_gregorian_date();
         let jdn = Self::gregorian_jdn(year, month, day);
         let wd = Self::jdn_to_weekday(jdn);
@@ -341,7 +343,7 @@ impl TimePoint {
         let jan4_jdn = Self::gregorian_jdn(year, 1, 4);
         let wd_jan4 = Self::jdn_to_weekday(jan4_jdn);
         let days_to_monday = (wd_jan4 + 6) % 7;
-        let monday_week1 = jan4_jdn - (days_to_monday as i128);
+        let monday_week1 = jan4_jdn - (days_to_monday as i64);
 
         let days_since = jdn - monday_week1;
 
@@ -462,22 +464,24 @@ impl TimePoint {
     }
 
     #[allow(unused_mut)]
-    fn write_i128(mut buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize, mut value: i128) {
+    fn write_i64(mut buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize, value: i64) {
         if value == 0 {
             Self::write_bytes(buf, pos, b"0");
             return;
         }
 
         let negative = value < 0;
-        if negative {
-            value = -value;
-        }
+        let mut v = if negative {
+            value.wrapping_neg()
+        } else {
+            value
+        };
 
-        let mut digits = [0u8; 40];
+        let mut digits = [0u8; 20];
         let mut i = 0usize;
-        while value > 0 {
-            digits[i] = b'0' + (value % 10) as u8;
-            value /= 10;
+        while v > 0 {
+            digits[i] = b'0' + (v % 10) as u8;
+            v /= 10;
             i += 1;
         }
 
@@ -498,10 +502,10 @@ impl TimePoint {
         }
     }
 
-    fn write_i128_padded(
+    fn write_i64_padded(
         buf: &mut [u8; Self::BUFFER_SIZE],
         pos: &mut usize,
-        value: i128,
+        value: i64,
         flag: u8,
         width: Option<u8>,
         default_pad: u8,
@@ -509,9 +513,13 @@ impl TimePoint {
         let w = width.unwrap_or(4) as usize; // %Y and %G default to 4 digits
 
         let negative = value < 0;
-        let abs_val = if negative { -value } else { value };
+        let abs_val = if negative {
+            value.wrapping_neg()
+        } else {
+            value
+        };
 
-        let mut digits = [0u8; 40];
+        let mut digits = [0u8; 20];
         let mut i = 0usize;
 
         let mut v = abs_val;
@@ -565,17 +573,17 @@ impl TimePoint {
     fn write_fractional(
         buf: &mut [u8; Self::BUFFER_SIZE],
         pos: &mut usize,
-        subsec: u128,
+        subsec: u64,
         width: Option<u8>,
     ) {
-        let w = width.unwrap_or(9).min(9) as usize;
+        let w = width.unwrap_or(18).min(18) as usize;
         if w == 0 {
             return;
         }
 
         let mut n = subsec;
-        let mut digits = [b'0'; 9];
-        for i in (0..9).rev() {
+        let mut digits = [b'0'; 18];
+        for i in (0..18).rev() {
             digits[i] = b'0' + (n % 10) as u8;
             n /= 10;
         }
@@ -623,7 +631,7 @@ impl TimePoint {
         let (year, _, _) = self.to_gregorian_date();
         // Floor division → -123 becomes -2 (exactly matches parse_century)
         let century = year.div_euclid(100);
-        Self::write_i128(buf, pos, century);
+        Self::write_i64(buf, pos, century);
     }
 
     pub(crate) fn write_day_of_month(
@@ -661,7 +669,7 @@ impl TimePoint {
         _colons: u8,
     ) {
         let (iso_year, _, _) = self.to_iso_week_date();
-        Self::write_i128_padded(buf, pos, iso_year, flag, width, b'0');
+        Self::write_i64_padded(buf, pos, iso_year, flag, width, b'0');
     }
 
     pub(crate) fn write_two_digit_iso_week_year(
@@ -819,9 +827,9 @@ impl TimePoint {
     ) {
         let utc = self.to_clock_type(ClockType::UTC);
         let (jd_days, frac) = utc.to_jd_tt_exact();
-        let unix_days = jd_days - 2440587i128;
-        let seconds = unix_days * 86400 + frac.sec - 43200;
-        Self::write_i128(buf, pos, seconds);
+        let unix_days = jd_days - 2440587i64;
+        let seconds = unix_days * 86400i64 + (frac.sec as i64) - 43200i64;
+        Self::write_i64(buf, pos, seconds);
     }
 
     pub(crate) fn write_week_number_sunday_based(
@@ -836,7 +844,7 @@ impl TimePoint {
         let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jdn_jan1);
         let days_to_first_sunday = (7 - wd_jan1) % 7;
-        let first_sunday_jdn = jdn_jan1 + days_to_first_sunday as i128;
+        let first_sunday_jdn = jdn_jan1 + days_to_first_sunday as i64;
         let current_jdn =
             Self::gregorian_jdn(year, self.to_gregorian_date().1, self.to_gregorian_date().2);
         let days_since = current_jdn - first_sunday_jdn;
@@ -884,7 +892,7 @@ impl TimePoint {
         let (year, _, _) = self.to_gregorian_date();
         let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jdn_jan1);
-        let days_to_first_monday = (1i128 - wd_jan1 as i128).rem_euclid(7);
+        let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
         let first_monday_jdn = jdn_jan1 + days_to_first_monday;
         let current_jdn =
             Self::gregorian_jdn(year, self.to_gregorian_date().1, self.to_gregorian_date().2);
@@ -919,7 +927,7 @@ impl TimePoint {
         _pad: bool,
     ) {
         let (year, _, _) = self.to_gregorian_date();
-        Self::write_i128_padded(buf, pos, year, flag, width, b'0');
+        Self::write_i64_padded(buf, pos, year, flag, width, b'0');
     }
 
     pub(crate) fn write_two_digit_year(
@@ -945,7 +953,7 @@ impl TimePoint {
         _colons: u8,
     ) {
         let (year, _, _) = self.to_gregorian_date();
-        Self::write_i128_padded(buf, pos, year, flag, width, b'0');
+        Self::write_i64_padded(buf, pos, year, flag, width, b'0');
     }
 
     pub(crate) fn write_timezone_offset(
@@ -1005,7 +1013,8 @@ impl TimePoint {
 
     pub(crate) fn write_iso_date(&self, buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize) {
         let (y, m, d) = self.to_gregorian_date();
-        Self::write_u32_padded(buf, pos, y.abs() as u32, b'0', Some(4), b'0');
+        // Improved: now uses write_i64_padded so negative years are correctly signed and padded
+        Self::write_i64_padded(buf, pos, y, b'0', Some(4), b'0');
         Self::write_bytes(buf, pos, b"-");
         Self::write_u32_padded(buf, pos, m as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b"-");
@@ -1062,26 +1071,26 @@ mod format_tests {
     // Helper to create a TimePoint at the requested civil time (TT scale).
     // The library uses standard astronomical JD (day changes at *noon*).
     // This helper now correctly converts civil (midnight-based) time to that representation.
-    fn tp(y: i128, m: u8, d: u8, h: u8, min: u8, s: u8, nanos: u128) -> TimePoint {
+    fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
         let jd_noon = TimePoint::gregorian_jdn(y, m, d);
-        let seconds_from_noon = (h as i128 - 12) * 3600 + (min as i128) * 60 + (s as i128);
+        let seconds_from_noon = (h as i64 - 12) * 3600 + (min as i64) * 60 + (s as i64);
         let (jd_days, delta_sec) = if seconds_from_noon >= 0 {
             (jd_noon, seconds_from_noon)
         } else {
             (jd_noon - 1, seconds_from_noon + 86400)
         };
-        TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, nanos))
+        TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos))
     }
 
     #[test]
     fn test_basic_formatting() {
-        let t = tp(2025, 4, 16, 14, 30, 45, 123_456_789);
+        let t = tp(2025, 4, 16, 14, 30, 45, 123_456_789_000_000_000);
 
         let mut buf = [0u8; 512];
 
-        // ISO date + time + fractional
+        // ISO date + time + fractional (now full attosecond precision)
         let n = t.format_u8("%Y-%m-%d %H:%M:%S.%f", &mut buf).unwrap();
-        assert_eq!(&buf[0..n], b"2025-04-16 14:30:45.123456789");
+        assert_eq!(&buf[0..n], b"2025-04-16 14:30:45.123456789000000000");
 
         // Shortcuts
         let n = t.format_u8("%F", &mut buf).unwrap();
@@ -1096,16 +1105,16 @@ mod format_tests {
 
     #[test]
     fn test_fractional_seconds_fix() {
-        let t = tp(2025, 4, 16, 0, 0, 0, 123_456_789);
+        let t = tp(2025, 4, 16, 0, 0, 0, 123_456_789_000_000_000);
 
         let mut buf = [0u8; 512];
 
-        // %f and %N should now output correct digits (was broken before)
+        // %f and %N now default to 18 attosecond digits
         let n = t.format_u8("%f", &mut buf).unwrap();
-        assert_eq!(&buf[0..n], b"123456789");
+        assert_eq!(&buf[0..n], b"123456789000000000");
 
         let n = t.format_u8("%N", &mut buf).unwrap();
-        assert_eq!(&buf[0..n], b"123456789");
+        assert_eq!(&buf[0..n], b"123456789000000000");
 
         // Custom width
         let n = t.format_u8("%.3f", &mut buf).unwrap();
@@ -1272,7 +1281,7 @@ mod format_tests {
         assert_eq!(&buf[0..n], b"000000000");
 
         let n = t_frac.format_u8("%S.%f", &mut buf).unwrap();
-        assert_eq!(&buf[0..n], b"00.000000000");
+        assert_eq!(&buf[0..n], b"00.000000000000000000");
 
         // ── Timezone offsets with seconds & different colon counts ─────
         let ny = UtcOffset::from_hms(-5, 0, 0);

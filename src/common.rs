@@ -1,13 +1,9 @@
-use crate::{Delta, TimePoint};
+//! Time increment and decrement methods for `TimePoint` and `Delta`.
+use crate::{
+    ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
+    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, Delta, TimePoint,
+};
 
-/// Macro that implements time increment and decrement methods for time-related types.
-///
-/// This macro is applied to both `TimePoint` and `Delta` types, providing a consistent
-/// API for adding and subtracting various time units.
-///
-/// All operations use **saturating arithmetic** to prevent overflow and underflow,
-/// ensuring the time values stay within the valid `i128` range for seconds and
-/// `u128` range for the subsecond (microquectosecond) component.
 macro_rules! impl_time_inc {
     ($($ty:ty),* $(,)?) => {
         $(
@@ -39,7 +35,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a carry into the seconds field.
                 #[inline(always)]
                 pub fn add_1ms(&mut self) {
-                    self._add_subsec(crate::MICROQUECTOS_PER_MILLISEC);
+                    self._add_subsec(ATTOSEC_PER_MILLISEC);
                 }
 
                 /// Adds exactly 1 microsecond to this time value.
@@ -47,7 +43,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a carry into the seconds field.
                 #[inline(always)]
                 pub fn add_1us(&mut self) {
-                    self._add_subsec(crate::MICROQUECTOS_PER_MICROSEC);
+                    self._add_subsec(ATTOSEC_PER_MICROSEC);
                 }
 
                 /// Adds exactly 1 nanosecond to this time value.
@@ -55,7 +51,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a carry into the seconds field.
                 #[inline(always)]
                 pub fn add_1ns(&mut self) {
-                    self._add_subsec(crate::MICROQUECTOS_PER_NANOSEC);
+                    self._add_subsec(ATTOSEC_PER_NANOSEC);
                 }
 
                 // =====================================================================
@@ -64,19 +60,19 @@ macro_rules! impl_time_inc {
 
                 /// Adds the specified number of seconds to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_sec(&mut self, n: i128) {
+                pub fn add_sec(&mut self, n: i64) {
                     self.sec = self.sec.saturating_add(n);
                 }
 
                 /// Adds the specified number of minutes to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_min(&mut self, n: i128) {
+                pub fn add_min(&mut self, n: i64) {
                     self.sec = self.sec.saturating_add(n.saturating_mul(60));
                 }
 
                 /// Adds the specified number of hours to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_hr(&mut self, n: i128) {
+                pub fn add_hr(&mut self, n: i64) {
                     self.sec = self.sec.saturating_add(n.saturating_mul(3600));
                 }
 
@@ -84,89 +80,57 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_ms(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_MILLISEC);
+                pub fn add_ms(&mut self, n: i64) {
+                    self.add_subsec_delta(n, ATTOSEC_PER_MILLISEC);
                 }
 
                 /// Adds the specified number of microseconds to this time value.
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_us(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_MICROSEC);
+                pub fn add_us(&mut self, n: i64) {
+                    self.add_subsec_delta(n, ATTOSEC_PER_MICROSEC);
                 }
 
                 /// Adds the specified number of nanoseconds to this time value.
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_ns(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_NANOSEC);
+                pub fn add_ns(&mut self, n: i64) {
+                    self.add_subsec_delta(n, ATTOSEC_PER_NANOSEC);
                 }
 
                 /// Adds the specified number of picoseconds to this time value.
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_ps(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_PICOSEC);
+                pub fn add_ps(&mut self, n: i64) {
+                    self.add_subsec_delta(n, ATTOSEC_PER_PICOSEC);
                 }
 
                 /// Adds the specified number of femtoseconds to this time value.
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_fs(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_FEMTOSEC);
+                pub fn add_fs(&mut self, n: i64) {
+                    self.add_subsec_delta(n, ATTOSEC_PER_FEMTOSEC);
                 }
 
                 /// Adds the specified number of attoseconds to this time value.
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_as(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_ATTOSEC);
+                pub fn add_as(&mut self, n: i64) {
+                    self.add_subsec_delta(n, ATTOSEC_PER_ATTOSEC);
                 }
 
-                /// Adds the specified number of zeptoseconds to this time value.
-                ///
-                /// Handles carry into the seconds field using saturating logic.
-                #[inline(always)]
-                pub fn add_zs(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_ZEPTOSEC);
-                }
-
-                /// Adds the specified number of yoctoseconds to this time value.
-                ///
-                /// Handles carry into the seconds field using saturating logic.
-                #[inline(always)]
-                pub fn add_ys(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_YOCTOSEC);
-                }
-
-                /// Adds the specified number of rontoseconds to this time value.
-                ///
-                /// Handles carry into the seconds field using saturating logic.
-                #[inline(always)]
-                pub fn add_rs(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_RONTOSEC);
-                }
-
-                /// Adds the specified number of quectoseconds to this time value.
-                ///
-                /// Handles carry into the seconds field using saturating logic.
-                #[inline(always)]
-                pub fn add_qs(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_QUECTOSEC);
-                }
-
-                /// Adds the specified number of microquectoseconds (the internal subsecond unit)
+                /// Adds the specified number of attoseconds (the internal subsecond unit)
                 /// to this time value.
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_subsec(&mut self, n: i128) {
-                    self.add_subsec_delta(n, crate::MICROQUECTOS_PER_MICROQUECTOSEC);
+                pub fn add_subsec(&mut self, n: i64) {
+                    self.add_subsec_delta(n, ATTOSEC_PER_ATTOSEC);
                 }
 
                 // =====================================================================
@@ -196,7 +160,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
                 pub fn sub_1ms(&mut self) {
-                    self.add_subsec_delta(-1, crate::MICROQUECTOS_PER_MILLISEC);
+                    self.add_subsec_delta(-1, ATTOSEC_PER_MILLISEC);
                 }
 
                 /// Subtracts exactly 1 microsecond from this time value.
@@ -204,7 +168,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
                 pub fn sub_1us(&mut self) {
-                    self.add_subsec_delta(-1, crate::MICROQUECTOS_PER_MICROSEC);
+                    self.add_subsec_delta(-1, ATTOSEC_PER_MICROSEC);
                 }
 
                 /// Subtracts exactly 1 nanosecond from this time value.
@@ -212,7 +176,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
                 pub fn sub_1ns(&mut self) {
-                    self.add_subsec_delta(-1, crate::MICROQUECTOS_PER_NANOSEC);
+                    self.add_subsec_delta(-1, ATTOSEC_PER_NANOSEC);
                 }
 
                 // =====================================================================
@@ -221,19 +185,19 @@ macro_rules! impl_time_inc {
 
                 /// Subtracts the specified number of seconds from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_sec(&mut self, n: i128) {
+                pub fn sub_sec(&mut self, n: i64) {
                     self.sec = self.sec.saturating_sub(n);
                 }
 
                 /// Subtracts the specified number of minutes from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_min(&mut self, n: i128) {
+                pub fn sub_min(&mut self, n: i64) {
                     self.sec = self.sec.saturating_sub(n.saturating_mul(60));
                 }
 
                 /// Subtracts the specified number of hours from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_hr(&mut self, n: i128) {
+                pub fn sub_hr(&mut self, n: i64) {
                     self.sec = self.sec.saturating_sub(n.saturating_mul(3600));
                 }
 
@@ -241,89 +205,57 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_ms(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_MILLISEC);
+                pub fn sub_ms(&mut self, n: i64) {
+                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_MILLISEC);
                 }
 
                 /// Subtracts the specified number of microseconds from this time value.
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_us(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_MICROSEC);
+                pub fn sub_us(&mut self, n: i64) {
+                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_MICROSEC);
                 }
 
                 /// Subtracts the specified number of nanoseconds from this time value.
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_ns(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_NANOSEC);
+                pub fn sub_ns(&mut self, n: i64) {
+                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_NANOSEC);
                 }
 
                 /// Subtracts the specified number of picoseconds from this time value.
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_ps(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_PICOSEC);
+                pub fn sub_ps(&mut self, n: i64) {
+                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_PICOSEC);
                 }
 
                 /// Subtracts the specified number of femtoseconds from this time value.
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_fs(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_FEMTOSEC);
+                pub fn sub_fs(&mut self, n: i64) {
+                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_FEMTOSEC);
                 }
 
                 /// Subtracts the specified number of attoseconds from this time value.
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_as(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_ATTOSEC);
+                pub fn sub_as(&mut self, n: i64) {
+                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
                 }
 
-                /// Subtracts the specified number of zeptoseconds from this time value.
-                ///
-                /// Handles borrow from the seconds field using saturating logic.
-                #[inline(always)]
-                pub fn sub_zs(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_ZEPTOSEC);
-                }
-
-                /// Subtracts the specified number of yoctoseconds from this time value.
-                ///
-                /// Handles borrow from the seconds field using saturating logic.
-                #[inline(always)]
-                pub fn sub_ys(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_YOCTOSEC);
-                }
-
-                /// Subtracts the specified number of rontoseconds from this time value.
-                ///
-                /// Handles borrow from the seconds field using saturating logic.
-                #[inline(always)]
-                pub fn sub_rs(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_RONTOSEC);
-                }
-
-                /// Subtracts the specified number of quectoseconds from this time value.
-                ///
-                /// Handles borrow from the seconds field using saturating logic.
-                #[inline(always)]
-                pub fn sub_qs(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_QUECTOSEC);
-                }
-
-                /// Subtracts the specified number of microquectoseconds (the internal subsecond unit)
+                /// Subtracts the specified number of attoseconds (the internal subsecond unit)
                 /// from this time value.
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_subsec(&mut self, n: i128) {
-                    self.add_subsec_delta(n.saturating_neg(), crate::MICROQUECTOS_PER_MICROQUECTOSEC);
+                pub fn sub_subsec(&mut self, n: i64) {
+                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
                 }
 
                 // =====================================================================
@@ -336,49 +268,32 @@ macro_rules! impl_time_inc {
                 /// operations. It properly handles carry and borrow between the fractional
                 /// part (`subsec`) and the whole seconds (`sec`), using saturating arithmetic
                 /// throughout.
-                ///
-                /// # Arguments
-                ///
-                /// * `n` - The number of units to add (positive) or subtract (negative).
-                /// * `unit` - The size of one unit expressed in microquectoseconds.
                 #[doc(hidden)]
                 #[inline]
-                fn add_subsec_delta(&mut self, n: i128, unit: u128) {
+                fn add_subsec_delta(&mut self, n: i64, unit: u64) {
                     if n == 0 {
                         return;
                     }
 
-                    let mps = crate::MICROQUECTOS_PER_SEC;
+                    let mps = ATTOSEC_PER_SEC;
 
                     if n >= 0 {
                         // Positive direction
-                        let amount = (n as u128).saturating_mul(unit);
+                        let amount = (n as u64).saturating_mul(unit);
                         let total = self.subsec.saturating_add(amount);
 
                         let carry = total / mps;
                         let new_frac = total % mps;
 
-                        let carry_i128 = if carry > i128::MAX as u128 {
-                            i128::MAX
-                        } else {
-                            carry as i128
-                        };
-
-                        self.sec = self.sec.saturating_add(carry_i128);
+                        self.sec = self.sec.saturating_add(carry as i64);
                         self.subsec = new_frac;
                     } else {
-                        // Negative direction — safe even for i128::MIN
+                        // Negative direction
                         let amount = n.unsigned_abs().saturating_mul(unit);
                         let borrow_sec = amount / mps;
                         let borrow_frac = amount % mps;
 
-                        let borrow_i128 = if borrow_sec > i128::MAX as u128 {
-                            i128::MAX
-                        } else {
-                            borrow_sec as i128
-                        };
-
-                        self.sec = self.sec.saturating_sub(borrow_i128);
+                        self.sec = self.sec.saturating_sub(borrow_sec as i64);
 
                         if self.subsec >= borrow_frac {
                             self.subsec -= borrow_frac;
@@ -389,9 +304,9 @@ macro_rules! impl_time_inc {
                     }
 
                     // Final saturation clamp to maintain invariants at extreme values
-                    if self.sec == i128::MAX {
+                    if self.sec == i64::MAX {
                         self.subsec = mps - 1;
-                    } else if self.sec == i128::MIN {
+                    } else if self.sec == i64::MIN {
                         self.subsec = 0;
                     }
                 }
@@ -403,11 +318,11 @@ macro_rules! impl_time_inc {
                 /// when the delta is known to be positive and small.
                 #[doc(hidden)]
                 #[inline]
-                fn _add_subsec(&mut self, amount: u128) {
+                fn _add_subsec(&mut self, amount: u64) {
                     let total = self.subsec + amount;
-                    let carry_sec = total / crate::MICROQUECTOS_PER_SEC;
-                    self.subsec = total % crate::MICROQUECTOS_PER_SEC;
-                    self.sec += carry_sec as i128;
+                    let carry_sec = total / ATTOSEC_PER_SEC;
+                    self.subsec = total % ATTOSEC_PER_SEC;
+                    self.sec = self.sec.saturating_add(carry_sec as i64);
                 }
             }
         )*
