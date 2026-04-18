@@ -3,12 +3,33 @@ use crate::{
     parser::{Error, ParseErr, ParsedDate, ParsedTimeScale, TimeZone},
 };
 
-/// Parses a **CCSDS C (CUC)** binary time code directly into `ParsedDate`.
+/// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
+/// directly into [`ParsedDate`].
 ///
-/// - Supports **both** 1-byte and 2-byte P-field (extension bit).
-/// - Level 1 only (1958-01-01 TAI epoch).
-/// - n_coarse = 1–4 bytes, n_frac = 0–3 bytes (as defined in the first P-field byte).
-/// - Returns `timescale = TAI`.
+/// This function implements CCSDS 301.0-B-4 §3.2 (Level 1 only).
+///
+/// # Supported formats
+/// - 1-byte or 2-byte P-field (extension bit is supported but the second byte is ignored for Level 1).
+/// - Code ID must be `001` (1958-01-01 TAI epoch).
+/// - `n_coarse`: 1–4 bytes for the coarse time field.
+/// - `n_frac`:   0–3 bytes for the fractional field.
+///
+/// # Precision
+/// Fractional seconds are converted to attoseconds with exact integer scaling.
+/// The maximum quantization error depends on `n_frac`:
+/// - 1 byte:  ~3.9 ms
+/// - 2 bytes: ~15.3 µs
+/// - 3 bytes: ~59.6 ns
+///
+/// # Returns
+/// A [`ParsedDate`] with `timescale = TAI` and `tz = Utc`.
+///
+/// # Errors
+/// - [`ParseErr::ExpectedUnixTimestamp`] if the input is too short.
+/// - [`ParseErr::UnsupportedDirective`] for non-Level-1 packets or invalid P-field.
+///
+/// This function is designed for perfect round-tripping with [`TimePoint::ccsds_c_to_binary`]
+/// when the same `n_coarse`/`n_frac` values are used.
 pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, Error> {
     if input.is_empty() {
         return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
@@ -89,9 +110,31 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, Error> {
     pd.finish()
 }
 
-/// Parses a **CCSDS D (CDS)** binary time code directly into `ParsedDate`.
+/// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
+/// directly into [`ParsedDate`].
 ///
-/// Fully compliant with CCSDS 301.0-B-4 §3.3 (CDS Level 1 only).
+/// This function implements CCSDS 301.0-B-4 §3.3 (Level 1 only).
+///
+/// # Supported formats
+/// - 1-byte or 2-byte P-field.
+/// - Code ID must be `100` and Epoch bit must be `0` (1958-01-01 UTC epoch).
+/// - `n_day`: 2 or 3 bytes for the day count.
+/// - Middle field is always 4 bytes of **milliseconds since midnight**.
+/// - Sub-millisecond field (bits 6-7 of P-field):
+///   - `00`: no fractional field
+///   - `01`: 2 bytes (microseconds of the millisecond, 0–65535)
+///   - `10`: 4 bytes (picoseconds of the millisecond)
+///
+/// # Precision
+/// - The millisecond field is rounded to the nearest millisecond.
+/// - With 2-byte sub-ms: maximum error ≈ ±7.6 ns.
+/// - With 4-byte sub-ms: maximum error ≈ ±0.116 ps.
+///
+/// # Returns
+/// A [`ParsedDate`] with `timescale = Utc` and `tz = Utc`.
+///
+/// # Errors
+/// Same as [`parse_ccsds_c`], plus rejection of Level-2 packets.
 pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, Error> {
     if input.is_empty() {
         return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
@@ -196,7 +239,10 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, Error> {
     pd.finish()
 }
 
-/// Auto-detects C (CUC) vs D (CDS) based on the Code ID in the first P-field byte.
+/// Auto-detects and parses either a CCSDS C (CUC) or D (CDS) binary time code
+/// based on the Code ID in the first P-field byte.
+///
+/// Convenience wrapper around [`parse_ccsds_c`] and [`parse_ccsds_d`].
 pub fn parse_ccsds_binary(input: &[u8]) -> Result<ParsedDate, Error> {
     if input.is_empty() {
         return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
@@ -213,7 +259,24 @@ impl TimePoint {
     /// Maximum size needed for a CCSDS C (CUC) binary packet.
     const CCSDS_C_MAX_SIZE: usize = 32;
 
-    /// Formats this `TimePoint` as a **CCSDS C (CUC)** binary time code.
+    /// Formats this [`TimePoint`] as a **CCSDS C (CUC)** binary time code.
+    ///
+    /// Fully configurable for round-tripping with [`parse_ccsds_c`].
+    ///
+    /// # Parameters
+    /// - `n_coarse`: 1–4 bytes for the coarse (integer seconds) field.
+    /// - `n_frac`:   0–3 bytes for the fractional field.
+    /// - `extension`: if `true`, a 2-byte P-field is emitted (second byte is always 0 for Level 1).
+    ///
+    /// # Precision
+    /// Fractional seconds are rounded to the nearest representable value for the chosen `n_frac`.
+    /// The maximum quantization error is half the step size of the selected resolution.
+    ///
+    /// # Returns
+    /// A fixed-size buffer containing the binary packet and the number of bytes written.
+    ///
+    /// # Errors
+    /// [`ParseErr::UnsupportedDirective`] if `n_coarse` or `n_frac` are out of range.
     pub fn ccsds_c_to_binary(
         &self,
         n_coarse: u8,
@@ -275,7 +338,26 @@ impl TimePoint {
     /// Maximum size needed for a CCSDS D (CDS) binary packet.
     const CCSDS_D_MAX_SIZE: usize = 32;
 
-    /// Formats this `TimePoint` as a **CCSDS D (CDS)** binary time code.
+    /// Formats this [`TimePoint`] as a **CCSDS D (CDS)** binary time code.
+    ///
+    /// Fully configurable for round-tripping with [`parse_ccsds_d`].
+    ///
+    /// # Parameters
+    /// - `n_day`: 2 or 3 bytes for the day count field.
+    /// - `sub_ms_code`:
+    ///   - `0`: no sub-millisecond field
+    ///   - `1`: 2 bytes (microseconds of the millisecond)
+    ///   - `2`: 4 bytes (picoseconds of the millisecond)
+    /// - `extension`: if `true`, a 2-byte P-field is emitted.
+    ///
+    /// # Precision
+    /// - Milliseconds-of-day are rounded to the nearest millisecond.
+    /// - The sub-millisecond field is rounded to the nearest representable value.
+    /// - With `sub_ms_code = 1`: max error ≈ ±7.6 ns
+    /// - With `sub_ms_code = 2`: max error ≈ ±0.116 ps
+    ///
+    /// # Returns
+    /// Same as [`ccsds_c_to_binary`].
     pub fn ccsds_d_to_binary(
         &self,
         n_day: u8,

@@ -21,7 +21,7 @@ pub fn strptime(fmt: &str, input: &str, strict: bool) -> Result<ParsedDate, Erro
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseErr {
-    // strftime parser errors
+    // strptime parser errors
     UnexpectedEndAfterPercent,
     InputExhaustedInStrictMode,
     UnexpectedEndAfterDot,
@@ -100,6 +100,16 @@ pub enum ParseErr {
     TimePointInvalidDate,
     // output, formatter
     FormatterErr,
+    //
+    StrCCSDSNoYear,
+    StrCCSDSInvalidDate,
+    StrCCSDSFromUtf8Err,
+    StrCCSDSInvalidMonth,
+    StrCCSDSInvalidDay,
+    StrCCSDSInvalidHour,
+    StrCCSDSInvalidMinute,
+    StrCCSDSInvalidSecond,
+    StrCCSDSInvalidRequiredTimeSeparator,
 }
 
 #[derive(Debug)]
@@ -671,11 +681,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), Error> {
-        let (d, remaining) = match parse_u8_padded(self.inp, flag, width, 3, b'0') {
+        let (n, remaining) = match parse_padded_number(self.inp, flag, width, 3, b'0') {
             Ok(v) => v,
             Err(_) => return Err(self.make_error(ParseErr::ExpectedDayOfYearPaddedDigits)),
         };
-        let day = d as u16;
+        let day = n as u16;
         if day < 1 || day > 366 {
             return Err(self.make_error(ParseErr::DayOfYearOutOfRange));
         }
