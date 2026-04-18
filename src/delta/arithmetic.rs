@@ -241,7 +241,7 @@ impl Delta {
     /// - Integer part of `rhs` is multiplied **exactly** (pure i128 arithmetic).
     /// - Fractional part (|frac| < 1) uses the 10¹⁵ scaling.
     #[inline]
-    pub const fn mul_by_real(self, rhs: Real) -> Self {
+    pub const fn mul_by_f(self, rhs: Real) -> Self {
         if rhs.is_nan() {
             return Self::ZERO;
         }
@@ -276,18 +276,18 @@ impl Delta {
         int_result.saturating_add(frac_result)
     }
 
-    /// Divides by a real number (routes through the high-precision `mul_by_real`).
+    /// Divides by a real number (routes through the high-precision `mul_by_f`).
     #[inline]
-    pub const fn div_by_real(self, rhs: Real) -> Self {
+    pub const fn div_by_f(self, rhs: Real) -> Self {
         if rhs == 0.0 || rhs.is_nan() {
             return if self.sec >= 0 { Self::MAX } else { Self::MIN };
         }
-        self.mul_by_real(1.0 / rhs)
+        self.mul_by_f(1.0 / rhs)
     }
 
     /// Divides this duration by 2 (convenience wrapper).
     #[inline(always)]
     pub fn div_by_2(self) -> Delta {
-        self.div_by_real(2.0)
+        self.div_by_f(2.0)
     }
 }
