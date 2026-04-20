@@ -1,10 +1,9 @@
-use crate::parser::{ParsedDate, strptime};
-use crate::{DtErrKind, DtError};
+use crate::{DateComponents, DtErrKind, DtError, strptime};
 
 /// Generalized CCSDS ASCII Time Code parser (A or B variant).
 /// Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
 /// All time components after the date portion are optional.
-pub fn parse_ccsds(input: &str) -> Result<ParsedDate, DtError> {
+pub fn parse_ccsds(input: &str) -> Result<DateComponents, DtError> {
     let cleaned = input.trim_end_matches(|c: char| c.to_ascii_uppercase() == 'Z');
     let bytes = cleaned.as_bytes();
     let len_ = bytes.len();
@@ -157,7 +156,7 @@ mod tests {
     use super::*;
 
     /// Small helper for tests (strptime already calls .finish() internally on full consumption)
-    fn parse(s: &str) -> ParsedDate {
+    fn parse(s: &str) -> DateComponents {
         let x = parse_ccsds(s);
         match x {
             Ok(x) => {

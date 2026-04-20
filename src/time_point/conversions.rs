@@ -1,5 +1,4 @@
 use crate::leap_seconds::leap_seconds_before;
-use crate::parser::Weekday;
 use crate::{
     ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockDrift, ClockModel, ClockType, Delta, J2000_JD_TT,
     J2000_SECONDS_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, LM_DEN, LM_NUM, MARS_MSD_REF_JD_INT,
@@ -7,6 +6,7 @@ use crate::{
     MARS_SOL_LENGTH_SEC, Real, SEC_PER_DAY, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC,
     TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS, TT_TAI_OFFSET_DELTA, TimePoint, floor_f, sin_approx,
 };
+
 #[cfg(test)]
 #[path = "conversions_tests.rs"]
 mod tests;
@@ -441,136 +441,6 @@ impl TimePoint {
     #[inline]
     pub const fn from_mjd_tt_exact(mjd_days: i64, frac: Delta) -> Self {
         Self::from_jd_tt_exact(mjd_days + 2_400_000, frac)
-    }
-}
-
-impl TimePoint {
-    /// Computes the Julian Day Number (JDN) for a proleptic Gregorian calendar date at noon UT.
-    ///
-    /// The algorithm matches the standard astronomical convention used throughout the library
-    /// (`gregorian_jdn(2000, 1, 1) == 2451545`).
-    #[inline]
-    pub const fn gregorian_jdn(year: i64, month: u8, day: u8) -> i64 {
-        let a = (14 - month as i64) / 12;
-        let y = year + 4800 - a;
-        let m = month as i64 + 12 * a - 3;
-        day as i64 + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
-    }
-
-    /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.
-    #[inline(always)]
-    pub const fn is_leap_year(year: i64) -> bool {
-        year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
-    }
-
-    /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
-    #[inline(always)]
-    pub const fn gregorian_jdn_from_ordinal(year: i64, day_of_year: u16) -> i64 {
-        let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
-        jdn_jan1 + (day_of_year as i64 - 1)
-    }
-
-    /// Converts a Julian Day Number to the corresponding weekday number (0 = Sunday … 6 = Saturday).
-    #[inline(always)]
-    pub const fn jdn_to_weekday(jdn: i64) -> u8 {
-        ((jdn + 1) % 7) as u8
-    }
-
-    /// Computes the Julian Day Number from an ISO week date (Monday-based week).
-    #[inline]
-    pub const fn gregorian_jdn_from_iso_week(iso_year: i64, iso_week: u8, weekday: Weekday) -> i64 {
-        let jan4_jdn = Self::gregorian_jdn(iso_year, 1, 4);
-        let wd_jan4 = Self::jdn_to_weekday(jan4_jdn);
-        let days_to_monday = (wd_jan4 + 6) % 7;
-        let monday_week1 = jan4_jdn - (days_to_monday as i64);
-        let monday_requested = monday_week1 + (iso_week as i64 - 1) * 7;
-
-        let wd_offset = match weekday {
-            Weekday::Monday => 0,
-            Weekday::Tuesday => 1,
-            Weekday::Wednesday => 2,
-            Weekday::Thursday => 3,
-            Weekday::Friday => 4,
-            Weekday::Saturday => 5,
-            Weekday::Sunday => 6,
-        };
-
-        monday_requested + (wd_offset as i64)
-    }
-
-    /// Computes the Julian Day Number from a Sunday-based week-of-year (`%U`).
-    #[inline]
-    pub const fn gregorian_jdn_from_week_sun(year: i64, week: u8, weekday: Weekday) -> i64 {
-        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
-        let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
-
-        let days_to_first_sunday = ((7u8 - wd_jan1) % 7u8) as i64;
-        let first_sunday_jdn = jan1_jdn + days_to_first_sunday;
-
-        let sunday_of_week = first_sunday_jdn + (week as i64 - 1) * 7;
-
-        let wd_offset = match weekday {
-            Weekday::Sunday => 0,
-            Weekday::Monday => 1,
-            Weekday::Tuesday => 2,
-            Weekday::Wednesday => 3,
-            Weekday::Thursday => 4,
-            Weekday::Friday => 5,
-            Weekday::Saturday => 6,
-        };
-        sunday_of_week + (wd_offset as i64)
-    }
-
-    /// Computes the Julian Day Number from a Monday-based week-of-year (`%W`).
-    #[inline]
-    pub const fn gregorian_jdn_from_week_mon(year: i64, week: u8, weekday: Weekday) -> i64 {
-        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
-        let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
-
-        let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
-        let first_monday_jdn = jan1_jdn + days_to_first_monday;
-
-        let monday_of_week = first_monday_jdn + (week as i64 - 1) * 7;
-
-        let wd_offset = match weekday {
-            Weekday::Monday => 0,
-            Weekday::Tuesday => 1,
-            Weekday::Wednesday => 2,
-            Weekday::Thursday => 3,
-            Weekday::Friday => 4,
-            Weekday::Saturday => 5,
-            Weekday::Sunday => 6,
-        };
-        monday_of_week + (wd_offset as i64)
-    }
-
-    /// Returns `true` if the supplied values form a valid proleptic Gregorian calendar date.
-    #[inline]
-    pub const fn is_valid_gregorian_date(year: i64, month: u8, day: u8) -> bool {
-        if month < 1 || month > 12 || day < 1 {
-            return false;
-        }
-        let days = match month {
-            1 | 3 | 5 | 7 | 8 | 10 | 12 => 31u8,
-            4 | 6 | 9 | 11 => 30u8,
-            2 => {
-                if Self::is_leap_year(year) {
-                    29
-                } else {
-                    28
-                }
-            }
-            _ => return false,
-        };
-        day <= days
-    }
-
-    /// Returns `true` if the given Gregorian year contains an ISO week 53.
-    #[inline(always)]
-    pub const fn has_iso_week_53(year: i64) -> bool {
-        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
-        let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
-        wd_jan1 == 4 || (Self::is_leap_year(year) && wd_jan1 == 3)
     }
 }
 

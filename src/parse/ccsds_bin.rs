@@ -1,10 +1,7 @@
-use crate::{
-    DtErrKind, DtError, TimePoint,
-    parser::{ParsedDate, ParsedTimeScale, TimeZone},
-};
+use crate::{ClockType, DateComponents, DtErrKind, DtError, TimePoint, TimeZone};
 
 /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
-/// directly into [`ParsedDate`].
+/// directly into [`DateComponents`].
 ///
 /// This function implements CCSDS 301.0-B-4 §3.2 (Level 1 only).
 ///
@@ -22,7 +19,7 @@ use crate::{
 /// - 3 bytes: ~59.6 ns
 ///
 /// # Returns
-/// A [`ParsedDate`] with `timescale = TAI` and `tz = Utc`.
+/// A [`DateComponents`] with `timescale = TAI` and `tz = Utc`.
 ///
 /// # Errors
 /// - [`DtErrKind::ExpectedUnixTimestamp`] if the input is too short.
@@ -30,7 +27,7 @@ use crate::{
 ///
 /// This function is designed for perfect round-tripping with [`TimePoint::ccsds_c_to_binary`]
 /// when the same `n_coarse`/`n_frac` values are used.
-pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, DtError> {
+pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
     if input.is_empty() {
         return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
@@ -93,8 +90,8 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, DtError> {
     let minute = ((sec_of_day % 3600) / 60) as u8;
     let second = (sec_of_day % 60) as u8;
 
-    // ── Build ParsedDate ──────────────────────────────────────────────
-    let pd = ParsedDate {
+    // ── Build DateComponents ──────────────────────────────────────────────
+    let pd = DateComponents {
         year: Some(year),
         month: Some(month),
         day: Some(day),
@@ -102,16 +99,16 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, DtError> {
         minute: Some(minute),
         second: Some(second),
         attos: Some(frac_attos),
-        timescale: ParsedTimeScale::Tai,
+        clock_type: ClockType::TAI,
         tz: Some(TimeZone::Utc),
-        ..ParsedDate::default()
+        ..DateComponents::default()
     };
 
     pd.finish()
 }
 
 /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
-/// directly into [`ParsedDate`].
+/// directly into [`DateComponents`].
 ///
 /// This function implements CCSDS 301.0-B-4 §3.3 (Level 1 only).
 ///
@@ -131,11 +128,11 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, DtError> {
 /// - With 4-byte sub-ms: maximum error ≈ ±0.116 ps.
 ///
 /// # Returns
-/// A [`ParsedDate`] with `timescale = Utc` and `tz = Utc`.
+/// A [`DateComponents`] with `timescale = Utc` and `tz = Utc`.
 ///
 /// # Errors
 /// Same as [`parse_ccsds_c`], plus rejection of Level-2 packets.
-pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, DtError> {
+pub fn parse_ccsds_d(input: &[u8]) -> Result<DateComponents, DtError> {
     if input.is_empty() {
         return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
@@ -223,7 +220,7 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, DtError> {
     let minute = ((sec_of_day % 3600) / 60) as u8;
     let second = (sec_of_day % 60) as u8;
 
-    let pd = ParsedDate {
+    let pd = DateComponents {
         year: Some(year),
         month: Some(month),
         day: Some(day),
@@ -231,9 +228,9 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, DtError> {
         minute: Some(minute),
         second: Some(second),
         attos: Some(frac_attos as u64),
-        timescale: ParsedTimeScale::Utc,
+        clock_type: ClockType::UTC,
         tz: Some(TimeZone::Utc),
-        ..ParsedDate::default()
+        ..DateComponents::default()
     };
 
     pd.finish()
@@ -243,7 +240,7 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, DtError> {
 /// based on the Code ID in the first P-field byte.
 ///
 /// Convenience wrapper around [`parse_ccsds_c`] and [`parse_ccsds_d`].
-pub fn parse_ccsds_binary(input: &[u8]) -> Result<ParsedDate, DtError> {
+pub fn parse_ccsds_binary(input: &[u8]) -> Result<DateComponents, DtError> {
     if input.is_empty() {
         return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
@@ -457,7 +454,7 @@ fn test_ccsds_c_direct_frac() {
     assert_eq!(parsed.minute, Some(0));
     assert_eq!(parsed.second, Some(1));
     assert!(parsed.attos.unwrap() > 499_000_000_000_000_000); // ~0.5 s
-    assert_eq!(parsed.timescale, ParsedTimeScale::Tai);
+    assert_eq!(parsed.clock_type, ClockType::TAI);
 }
 
 #[test]
@@ -492,7 +489,7 @@ fn test_ccsds_d_direct() {
     assert_eq!(parsed.minute, Some(0));
     assert_eq!(parsed.second, Some(0));
     assert_eq!(parsed.attos, Some(1_000_000_000_000)); // 1 ms
-    assert_eq!(parsed.timescale, ParsedTimeScale::Utc);
+    assert_eq!(parsed.clock_type, ClockType::UTC);
 }
 
 #[test]
@@ -539,7 +536,7 @@ fn test_ccsds_c_roundtrip() {
     assert_eq!(parsed.hour, Some(14));
     assert_eq!(parsed.minute, Some(30));
     assert_eq!(parsed.second, Some(45));
-    assert_eq!(parsed.timescale, ParsedTimeScale::Tai);
+    assert_eq!(parsed.clock_type, ClockType::TAI);
 
     // Allow up to ~60 ns error (correct quantization bound for n_frac=3)
     let diff = (parsed.attos.unwrap() as i64 - 123_456_789_000_000_000i64).abs();
@@ -577,7 +574,7 @@ fn test_ccsds_d_roundtrip() {
     assert_eq!(parsed.hour, Some(14));
     assert_eq!(parsed.minute, Some(30));
     assert_eq!(parsed.second, Some(45));
-    assert_eq!(parsed.timescale, ParsedTimeScale::Utc);
+    assert_eq!(parsed.clock_type, ClockType::UTC);
 
     let diff = (parsed.attos.unwrap() as i64 - 400_000_000_000i64).abs();
     assert!(

@@ -1,8 +1,7 @@
 use {
     crate::error::{DtErrKind, DtError},
     crate::{
-        ATTOSEC_PER_NANOSEC,
-        parser::{Meridiem, ParsedDate, TimeZone, Weekday},
+        ATTOSEC_PER_NANOSEC, {DateComponents, Meridiem, TimeZone, Weekday},
     },
     alloc::string::String,
     core::result::Result,
@@ -14,8 +13,8 @@ use {
     },
 };
 
-impl ParsedDate {
-    /// Converts `ParsedDate` → Jiff’s `BrokenDownTime`.
+impl DateComponents {
+    /// Converts `DateComponents` → Jiff’s `BrokenDownTime`.
     pub fn to_jiff_broken_down_time(&self) -> Result<BrokenDownTime, DtError> {
         let to_err = || DtError::new(DtErrKind::JiffBrokenDownTime);
 
@@ -106,7 +105,7 @@ impl ParsedDate {
             bdt.set_timestamp(Some(ts));
         }
 
-        // === Time zone handling (new ParsedDate fields) ===
+        // === Time zone handling (new DateComponents fields) ===
         // Prefer IANA name if present; otherwise fall back to the custom TimeZone enum.
         if let Some(name_bytes) = &self.iana_name {
             let len = name_bytes.iter().position(|&b| b == 0).unwrap_or(48);
@@ -154,7 +153,7 @@ impl ParsedDate {
         return Err(DtError::new(DtErrKind::JiffToZoned));
     }
 
-    /// Converts `ParsedDate` → absolute `Timestamp` on the SI scale.
+    /// Converts `DateComponents` → absolute `Timestamp` on the SI scale.
     ///
     /// Fast path for the common cases (unix seconds or full YMD date).
     /// Falls back to `BrokenDownTime` for everything else (ordinal date, ISO week, etc.).

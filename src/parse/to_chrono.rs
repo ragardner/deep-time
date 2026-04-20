@@ -1,14 +1,14 @@
 use crate::{
     ATTOSEC_PER_NANOSEC, TimePoint,
     error::{DtErrKind, DtError},
-    parser::{Meridiem, ParsedDate, TimeZone, Weekday},
+    {DateComponents, Meridiem, TimeZone, Weekday},
 };
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
 };
 
-impl ParsedDate {
-    /// Converts `ParsedDate` → Chrono’s `NaiveDateTime` (civil time, no TZ).
+impl DateComponents {
+    /// Converts `DateComponents` → Chrono’s `NaiveDateTime` (civil time, no TZ).
     pub fn to_chrono_naive_datetime(&self) -> Result<NaiveDateTime, DtError> {
         let date = self.build_naive_date()?;
         let time = self.build_naive_time()?;
@@ -115,7 +115,7 @@ impl ParsedDate {
         NaiveTime::from_hms_nano_opt(hour, minute, second, subsec_nano).ok_or_else(to_err)
     }
 
-    /// Helper: resolve the ParsedDate TZ to a Chrono `FixedOffset`.
+    /// Helper: resolve the DateComponents TZ to a Chrono `FixedOffset`.
     /// IANA names are **not supported** in core chrono (they require the `chrono-tz` crate).
     fn to_chrono_offset(&self) -> Result<FixedOffset, DtError> {
         let to_err = || DtError::new(DtErrKind::ChronoOffset);
@@ -139,7 +139,7 @@ impl ParsedDate {
         }
     }
 
-    /// Converts `ParsedDate` → absolute `DateTime<FixedOffset>`.
+    /// Converts `DateComponents` → absolute `DateTime<FixedOffset>`.
     ///
     /// If `unix_timestamp_seconds` is present, it is treated as the
     /// **absolute source of truth** for the instant (UTC seconds since the Unix epoch).
@@ -174,7 +174,7 @@ impl ParsedDate {
             };
 
             // Note: is_leap_second is ignored here (and cannot be set when unix_timestamp_seconds
-            // is present, per ParsedDate::finish()).
+            // is present, per DateComponents::finish()).
             let utc_dt = DateTime::from_timestamp(secs, subsec_nano).ok_or_else(to_err)?;
             return Ok(utc_dt.with_timezone(&offset));
         }
@@ -187,7 +187,7 @@ impl ParsedDate {
             .ok_or_else(to_err)
     }
 
-    /// Converts `ParsedDate` → absolute Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).
+    /// Converts `DateComponents` → absolute Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).
     /// Fast path for unix seconds or full YMD; falls back to civil + TZ conversion.
     pub fn to_chrono_timestamp(&self) -> Result<i64, DtError> {
         if let Some(secs) = self.unix_timestamp_seconds {

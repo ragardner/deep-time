@@ -2,11 +2,11 @@ use crate::tzdb::offset_at;
 use crate::{
     ClockType, TimePoint,
     error::{DtErrKind, DtError},
-    parser::{Meridiem, ParsedDate, ParsedTimeScale, TimeZone, Weekday},
+    {DateComponents, Meridiem, TimeZone, Weekday},
 };
 use crate::{J2000_JD_TT, UNIX_EPOCH_TO_J2000_NOON_UTC};
 
-impl ParsedDate {
+impl DateComponents {
     /// Converts parsed date/time components into a high-precision [`TimePoint`].
     ///
     /// This is the core conversion routine used by the date-time parser. It supports
@@ -52,20 +52,14 @@ impl ParsedDate {
     /// - `TimePointJdnIsNone`
     /// - `TimePointHourOutOfRange`
     /// - `TimePointInvalidDate`
-    pub fn to_time_point(&self) -> Result<TimePoint, DtError> {
+    pub fn to_time_point(&self, clock_type: ClockType) -> Result<TimePoint, DtError> {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
             let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
             let subsec = self.attos.unwrap_or(0);
-            let utc_tp = TimePoint::new(sec, subsec, ClockType::UTC);
-
-            return Ok(match self.timescale {
-                ParsedTimeScale::Utc => utc_tp,
-                ParsedTimeScale::Tai | ParsedTimeScale::SiContinuous => utc_tp.to_tai(),
-                ParsedTimeScale::Tt => utc_tp.to_clock_type(ClockType::TT),
-            });
+            return Ok(TimePoint::new(sec, subsec, ClockType::UTC).to_clock_type(clock_type));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -170,23 +164,15 @@ impl ParsedDate {
         } else if let Some(TimeZone::Fixed(offset)) = self.tz {
             sec_utc -= offset as i64; // local civil time → true UTC instant
         }
-        // TimeZone::Utc and TimeZone::None do nothing (already UTC)
-
-        let utc_tp = TimePoint::new(sec_utc, subsec, ClockType::UTC);
-
-        Ok(match self.timescale {
-            ParsedTimeScale::Utc => utc_tp,
-            ParsedTimeScale::Tai | ParsedTimeScale::SiContinuous => utc_tp.to_tai(),
-            ParsedTimeScale::Tt => utc_tp.to_clock_type(ClockType::TT),
-        })
+        Ok(TimePoint::new(sec_utc, subsec, ClockType::UTC).to_clock_type(clock_type))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::{DtErrKind, DtError};
-    use crate::parser::{ParsedDate, strptime};
+    use crate::error::DtErrKind;
+    use crate::{DateComponents, strptime};
 
     /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_tt()`).
     fn jd_tt(tp: &TimePoint) -> f64 {
@@ -196,7 +182,7 @@ mod tests {
     #[test]
     fn test_unix_epoch_1970() {
         let parsed = strptime("%s", "0", false).unwrap();
-        let tp = parsed.to_time_point().unwrap();
+        let tp = parsed.to_time_point(ClockType::TAI).unwrap();
 
         let jd = jd_tt(&tp);
         // Unix epoch (1970-01-01 00:00:00 UTC) in TT scale:
@@ -211,7 +197,7 @@ mod tests {
     #[test]
     fn test_j2000_noon_via_unix_timestamp() {
         let parsed = strptime("%s", "946728000", false).unwrap();
-        let tp = parsed.to_time_point().unwrap();
+        let tp = parsed.to_time_point(ClockType::TAI).unwrap();
 
         let jd = jd_tt(&tp);
         // J2000.0 = JD 2451545.0 in TT. Tiny deviation expected due to leap seconds + TAI→TT.
@@ -231,12 +217,12 @@ mod tests {
             false,
         )
         .unwrap()
-        .to_time_point()
+        .to_time_point(ClockType::TAI)
         .unwrap();
 
         let ordinal = strptime("%Y-%j %H:%M:%S.%.f", "2024-106 14:30:45.123456789", false)
             .unwrap()
-            .to_time_point()
+            .to_time_point(ClockType::TAI)
             .unwrap();
 
         assert_eq!(jd_tt(&ymd), jd_tt(&ordinal));
@@ -251,7 +237,7 @@ mod tests {
             false,
         )
         .unwrap();
-        let tp = parsed.to_time_point().unwrap();
+        let tp = parsed.to_time_point(ClockType::TAI).unwrap();
 
         // 0.123456789 s = 123456789 × 10¹⁸ attoseconds
         let expected = 123_456_789u64 * 1_000_000_000;
@@ -266,7 +252,7 @@ mod tests {
             false,
         )
         .unwrap();
-        let tp = parsed.to_time_point().unwrap();
+        let tp = parsed.to_time_point(ClockType::TAI).unwrap();
 
         let (_, frac) = tp.to_jd_tt_exact();
         let seconds_in_day = frac.as_sec_f();
@@ -291,32 +277,32 @@ mod tests {
 
     #[test]
     fn test_incomplete_date_error() {
-        // Default ParsedDate has no year → early failure in to_time_point.
-        let pd = ParsedDate::default();
-        let err = pd.to_time_point().unwrap_err();
+        // Default DateComponents has no year → early failure in to_time_point.
+        let pd = DateComponents::default();
+        let err = pd.to_time_point(ClockType::TAI).unwrap_err();
         assert!(matches!(err.kind, DtErrKind::TimePointYearIncompleteDate));
     }
 
     #[test]
     fn test_day_of_year_out_of_range_non_leap_year() {
-        // 2023 is not a leap year. We build a ParsedDate manually because the parser
+        // 2023 is not a leap year. We build a DateComponents manually because the parser
         // rejects day 366 (u8 limit in parse_u8_padded), so we never reach to_time_point
         // with a parser-constructed value. This test directly exercises the leap-year check.
-        let mut pd = ParsedDate::default();
+        let mut pd = DateComponents::default();
         pd.year = Some(2023);
         pd.day_of_year = Some(366);
-        let err = pd.to_time_point().unwrap_err();
+        let err = pd.to_time_point(ClockType::TAI).unwrap_err();
         assert!(matches!(err.kind, DtErrKind::TimePointDayOfYearOutOfRange));
     }
 
     #[test]
     fn test_iso_week_out_of_range() {
         // Parser rejects week 54, so we build manually to hit the to_time_point check.
-        let mut pd = ParsedDate::default();
+        let mut pd = DateComponents::default();
         pd.iso_week_year = Some(2024);
         pd.iso_week = Some(54);
         pd.weekday = Some(Weekday::Monday); // required for the ISO path
-        let err = pd.to_time_point().unwrap_err();
+        let err = pd.to_time_point(ClockType::TAI).unwrap_err();
         assert!(matches!(err.kind, DtErrKind::TimePointIsoWeekOutOfRange));
     }
 
@@ -325,12 +311,12 @@ mod tests {
         // Pure ISO week date (%G/%V/%u) is now fully supported in to_time_point
         // via the iso_week_year + iso_week + weekday path (no regular .year required).
         let parsed = strptime("%G-W%V-%u", "2024-W16-1", false).unwrap();
-        let tp_iso = parsed.to_time_point().unwrap();
+        let tp_iso = parsed.to_time_point(ClockType::TAI).unwrap();
 
         // 2024-W16-1 is Monday, April 15, 2024
         let ymd = strptime("%Y-%m-%d", "2024-04-15", false)
             .unwrap()
-            .to_time_point()
+            .to_time_point(ClockType::TAI)
             .unwrap();
 
         assert_eq!(jd_tt(&tp_iso), jd_tt(&ymd));

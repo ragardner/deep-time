@@ -15,10 +15,7 @@ pub(crate) fn parse_yyddd(s: &str) -> Option<TimePoint> {
             return None;
         }
     }
-    parsed
-        .to_time_point()
-        .ok()
-        .map(|tp| tp.to_clock_type(ClockType::UTC))
+    parsed.to_time_point(ClockType::UTC).ok()
 }
 
 /// 7-digit legacy ordinal: YYYYDDD (only accepted inside LEGACY_ORDINAL_YEAR_RANGE)
@@ -30,8 +27,5 @@ pub(crate) fn parse_yyyyjjj(s: &str) -> Option<TimePoint> {
             return None;
         }
     }
-    parsed
-        .to_time_point()
-        .ok()
-        .map(|tp| tp.to_clock_type(ClockType::UTC))
+    parsed.to_time_point(ClockType::UTC).ok()
 }

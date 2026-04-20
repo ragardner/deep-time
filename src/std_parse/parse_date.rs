@@ -1,11 +1,12 @@
 use crate::parser::strptime;
 use crate::{
-    ClassifiedDate, DEFAULT_DATE_PARSE_OPTIONS, DateClassification, DateOrder, DateParseMode,
-    DetectedDateOrder, DtStdError, MAX_DATE_STRING_LEN, ParseCfg, TimePoint, classify_date,
-    generate_ambiguous_day_first_candidates, generate_ambiguous_month_first_candidates,
-    generate_ambiguous_year_first_candidates, generate_unambiguous_candidates,
-    is_week_date_missing_weekday, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
-    parse_week_date_no_weekday, parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
+    ClassifiedDate, ClockType, DEFAULT_DATE_PARSE_OPTIONS, DateClassification, DateOrder,
+    DateParseMode, DetectedDateOrder, DtStdError, MAX_DATE_STRING_LEN, ParseCfg, TimePoint,
+    classify_date, generate_ambiguous_day_first_candidates,
+    generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
+    generate_unambiguous_candidates, is_week_date_missing_weekday,
+    parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
+    parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
 };
 use std::borrow::Cow;
 use std::string::{String, ToString};
@@ -243,7 +244,7 @@ pub fn parse_date_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
 fn parse_fmt(s: &str, fmt: &str) -> Option<TimePoint> {
     strptime(fmt, s, true)
         .ok()
-        .and_then(|p| p.to_time_point().ok())
+        .and_then(|p| p.to_time_point(ClockType::UTC).ok())
 }
 
 /// Core zero-allocation helper (updated to match the new `&str` signature).

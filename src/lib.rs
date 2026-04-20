@@ -37,6 +37,7 @@ mod utils;
 // PUB MOD
 // _________________________________________
 pub mod constants;
+pub mod date_components;
 pub mod error;
 pub mod error_std;
 pub mod leap_seconds;
@@ -77,13 +78,12 @@ pub use std_parse::{
 pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
+pub use date_components::{DateComponents, Meridiem, TimeZone, Weekday};
 pub use delta::Delta;
 pub use delta::time_units::TimeUnits;
 pub use light_time::{LightContext, ObserverState};
-pub use parse::{
-    ccsds_bin, ccsds_str, formatter, parser,
-    parser::{ParsedDate, strptime},
-};
+pub use parse::parser::strptime;
+pub use parse::{ccsds_bin, ccsds_str, formatter, parser};
 pub use position::{Position, Velocity};
 pub use time_point::TimePoint;
 pub use time_range::{Every, TimeRange};

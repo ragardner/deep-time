@@ -5,10 +5,7 @@ use crate::{ClockType, J2000_JD_TT, TimePoint};
 #[inline(always)]
 pub(crate) fn parse_yymmdd(input: &str) -> Option<TimePoint> {
     let parsed = strptime("%y%m%d", input, true).ok()?;
-    parsed
-        .to_time_point()
-        .ok()
-        .map(|tp| tp.to_clock_type(ClockType::UTC))
+    parsed.to_time_point(ClockType::UTC).ok()
 }
 
 /// Parses year-month formats with flexible separators and optional sign:
@@ -98,10 +95,7 @@ pub(crate) fn parse_yyyymm(s: &str) -> Option<TimePoint> {
         }
         if (1..=12).contains(&m) && (crate::MIN_YEAR..=crate::MAX_YEAR).contains(&y) {
             let parsed = strptime("%Y%m", s.trim_start_matches('-'), true).ok()?;
-            return parsed
-                .to_time_point()
-                .ok()
-                .map(|tp| tp.to_clock_type(ClockType::UTC));
+            return parsed.to_time_point(ClockType::UTC).ok();
         }
     }
     None

@@ -94,3 +94,32 @@ pub(crate) const MARS_SOL_ATTOS: i128 = 88_775_244_000_000_000_000_000;
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
 pub(crate) const MARS_REF_SEC: i64 = -3_976_386_952;
 pub(crate) const MARS_REF_SUBSEC: u64 = 650_560_000_000_000_000;
+
+pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
+    b"Sunday",
+    b"Monday",
+    b"Tuesday",
+    b"Wednesday",
+    b"Thursday",
+    b"Friday",
+    b"Saturday",
+];
+pub(crate) const WEEKDAYS_ABBR: [&[u8]; 7] =
+    [b"Sun", b"Mon", b"Tue", b"Wed", b"Thu", b"Fri", b"Sat"];
+pub(crate) const MONTHS_FULL: [&[u8]; 12] = [
+    b"January",
+    b"February",
+    b"March",
+    b"April",
+    b"May",
+    b"June",
+    b"July",
+    b"August",
+    b"September",
+    b"October",
+    b"November",
+    b"December",
+];
+pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
+    b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec",
+];
