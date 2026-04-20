@@ -1,25 +1,23 @@
-#[cfg(feature = "jiff")]
-use crate::{
-    ATTOSEC_PER_NANOSEC,
-    parser::{Error, Meridiem, ParseErr, ParsedDate, TimeZone, Weekday},
-};
-#[cfg(feature = "jiff")]
-use alloc::string::String;
-#[cfg(feature = "jiff")]
-use core::result::Result;
-#[cfg(feature = "jiff")]
-use jiff::{
-    Timestamp,
-    civil::{Date, Time},
-    fmt::strtime::{BrokenDownTime, Meridiem as JiffMeridiem},
-    tz::{Offset, TimeZone as JiffTimeZone},
+use {
+    crate::error::{DtErrKind, DtError},
+    crate::{
+        ATTOSEC_PER_NANOSEC,
+        parser::{Meridiem, ParsedDate, TimeZone, Weekday},
+    },
+    alloc::string::String,
+    core::result::Result,
+    jiff::{
+        Timestamp, Zoned,
+        civil::{Date, Time},
+        fmt::strtime::{BrokenDownTime, Meridiem as JiffMeridiem},
+        tz::{Offset, TimeZone as JiffTimeZone},
+    },
 };
 
-#[cfg(feature = "jiff")]
 impl ParsedDate {
     /// Converts `ParsedDate` → Jiff’s `BrokenDownTime`.
-    pub fn to_jiff_broken_down_time(&self) -> Result<BrokenDownTime, Error> {
-        let to_err = || Error::simple(ParseErr::JiffBrokenDownTime);
+    pub fn to_jiff_broken_down_time(&self) -> Result<BrokenDownTime, DtError> {
+        let to_err = || DtError::new(DtErrKind::JiffBrokenDownTime);
 
         let mut bdt = BrokenDownTime::default();
 
@@ -133,12 +131,35 @@ impl ParsedDate {
         Ok(bdt)
     }
 
+    pub fn to_jiff_zoned(&self) -> Result<Zoned, DtError> {
+        let bdt = self.to_jiff_broken_down_time()?;
+        if let Ok(zoned) = bdt.to_zoned() {
+            return Ok(zoned);
+        }
+        if let Ok(ts) = bdt.to_timestamp() {
+            if let Ok(zoned) = ts.in_tz("UTC") {
+                return Ok(zoned);
+            }
+        }
+        if let Ok(dt) = bdt.to_datetime() {
+            if let Ok(zoned) = dt.in_tz("UTC") {
+                return Ok(zoned);
+            }
+        }
+        if let Ok(date) = bdt.to_date() {
+            if let Ok(dt) = date.at(0, 0, 0, 0).in_tz("UTC") {
+                return Ok(dt);
+            }
+        }
+        return Err(DtError::new(DtErrKind::JiffToZoned));
+    }
+
     /// Converts `ParsedDate` → absolute `Timestamp` on the SI scale.
     ///
     /// Fast path for the common cases (unix seconds or full YMD date).
     /// Falls back to `BrokenDownTime` for everything else (ordinal date, ISO week, etc.).
-    pub fn to_jiff_timestamp(&self) -> Result<Timestamp, Error> {
-        let to_err = || Error::simple(ParseErr::JiffTimestamp);
+    pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtError> {
+        let to_err = || DtError::new(DtErrKind::JiffTimestamp);
 
         if let Some(secs) = self.unix_timestamp_seconds {
             return Timestamp::from_second(secs).map_err(|_| to_err());
@@ -181,8 +202,8 @@ impl ParsedDate {
 
     // Helper used by to_timestamp
     #[inline]
-    fn to_jiff_time_zone(&self) -> core::result::Result<JiffTimeZone, Error> {
-        let to_err = || Error::simple(ParseErr::JiffTimeZone);
+    fn to_jiff_time_zone(&self) -> core::result::Result<JiffTimeZone, DtError> {
+        let to_err = || DtError::new(DtErrKind::JiffTimeZone);
 
         // IANA name takes precedence
         if let Some(name_bytes) = &self.iana_name {
@@ -211,7 +232,7 @@ mod tests {
     use super::*;
     use jiff::{SignedDuration, Timestamp};
 
-    fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, Error> {
+    fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtError> {
         let parsed = strptime(fmt, input, strict)?;
         parsed.to_jiff_timestamp()
     }

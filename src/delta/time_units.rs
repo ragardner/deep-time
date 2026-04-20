@@ -4,7 +4,7 @@
 //! use deep_time_core::{ClockType, TimeUnits};
 //!
 //! let delta = 5.sec() + 250.ms() + 123_456.ns();
-//! let stamp = 3.d().ago(ClockType::UTC);
+//! let stamp = 3.days().ago(ClockType::UTC);
 //! ```
 
 use crate::{ClockType, Delta, SEC_PER_DAY, TimePoint};
@@ -21,7 +21,7 @@ pub trait TimeUnits: Copy + Sized {
     fn sec(self) -> Delta;
     fn min(self) -> Delta;
     fn hr(self) -> Delta;
-    fn d(self) -> Delta; // 86400 s (civil day, not leap-second aware)
+    fn days(self) -> Delta; // 86400 s (civil day, not leap-second aware)
     fn wk(self) -> Delta;
     fn yr(self) -> Delta; // 365.25 days (standard approximation)
 
@@ -54,7 +54,7 @@ macro_rules! impl_time_units_int {
                 fn hr(self) -> Delta { Delta::from_hr(self as i64) }
 
                 #[inline(always)]
-                fn d(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(86_400)) }
+                fn days(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(86_400)) }
 
                 #[inline(always)]
                 fn wk(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(604_800)) }
@@ -111,7 +111,7 @@ impl TimeUnits for f64 {
     }
 
     #[inline]
-    fn d(self) -> Delta {
+    fn days(self) -> Delta {
         (self * SEC_PER_DAY).sec()
     }
 
@@ -168,7 +168,7 @@ impl TimeUnits for f32 {
     }
 
     #[inline]
-    fn d(self) -> Delta {
+    fn days(self) -> Delta {
         (self * 86_400.0f32).sec()
     }
 

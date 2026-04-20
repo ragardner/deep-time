@@ -89,12 +89,6 @@ impl Delta {
         self.sec == 0 && self.subsec == 0
     }
 
-    /// Total attoseconds (exact i128 representation within the representable range).
-    #[inline(always)]
-    pub const fn total_attos(self) -> i128 {
-        (self.sec as i128) * ATTOSEC_PER_SEC_I128 + (self.subsec as i128)
-    }
-
     /// Reconstruct `Delta` from total attoseconds (exact, handles negative values correctly).
     #[inline]
     pub const fn from_total_attos(mut attos: i128) -> Self {

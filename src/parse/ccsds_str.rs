@@ -1,9 +1,10 @@
-use crate::parser::{Error, ParseErr, ParsedDate, strptime};
+use crate::parser::{ParsedDate, strptime};
+use crate::{DtErrKind, DtError};
 
 /// Generalized CCSDS ASCII Time Code parser (A or B variant).
 /// Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
 /// All time components after the date portion are optional.
-pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
+pub fn parse_ccsds(input: &str) -> Result<ParsedDate, DtError> {
     let cleaned = input.trim_end_matches(|c: char| c.to_ascii_uppercase() == 'Z');
     let bytes = cleaned.as_bytes();
     let len_ = bytes.len();
@@ -14,7 +15,7 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
 
     // Year (exactly 4 digits)
     if pos + 4 > len_ || !bytes[pos..pos + 4].iter().all(|&b| b.is_ascii_digit()) {
-        return Err(Error::strftime(ParseErr::StrCCSDSNoYear));
+        return Err(DtError::new(DtErrKind::StrCCSDSNoYear));
     }
     fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%Y");
     fmt_len += 2;
@@ -42,7 +43,7 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
 
         // %m
         if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-            return Err(Error::strftime(ParseErr::StrCCSDSInvalidMonth));
+            return Err(DtError::new(DtErrKind::StrCCSDSInvalidMonth));
         }
         fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%m");
         fmt_len += 2;
@@ -57,7 +58,7 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
 
         // %d
         if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-            return Err(Error::strftime(ParseErr::StrCCSDSInvalidDay));
+            return Err(DtError::new(DtErrKind::StrCCSDSInvalidDay));
         }
         fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%d");
         fmt_len += 2;
@@ -74,8 +75,8 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
             fmt_len += 1;
             pos += 1;
         } else {
-            return Err(Error::strftime(
-                ParseErr::StrCCSDSInvalidRequiredTimeSeparator,
+            return Err(DtError::new(
+                DtErrKind::StrCCSDSInvalidRequiredTimeSeparator,
             ));
         }
     }
@@ -85,7 +86,7 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
     // %H
     if pos + 2 <= len_ {
         if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-            return Err(Error::strftime(ParseErr::StrCCSDSInvalidHour));
+            return Err(DtError::new(DtErrKind::StrCCSDSInvalidHour));
         }
         fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%H");
         fmt_len += 2;
@@ -102,7 +103,7 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
     // %M
     if pos + 2 <= len_ {
         if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-            return Err(Error::strftime(ParseErr::StrCCSDSInvalidMinute));
+            return Err(DtError::new(DtErrKind::StrCCSDSInvalidMinute));
         }
         fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%M");
         fmt_len += 2;
@@ -119,7 +120,7 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
     // %S
     if pos + 2 <= len_ {
         if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-            return Err(Error::strftime(ParseErr::StrCCSDSInvalidSecond));
+            return Err(DtError::new(DtErrKind::StrCCSDSInvalidSecond));
         }
         fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%S");
         fmt_len += 2;
@@ -145,7 +146,7 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
 
     let format = match core::str::from_utf8(&fmt_buf[0..fmt_len]) {
         Ok(f) => f,
-        Err(_) => return Err(Error::strftime(ParseErr::StrCCSDSFromUtf8Err)),
+        Err(_) => return Err(DtError::new(DtErrKind::StrCCSDSFromUtf8Err)),
     };
 
     strptime(format, cleaned, false)
@@ -154,8 +155,6 @@ pub fn parse_ccsds(input: &str) -> Result<ParsedDate, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    // Adjust the import path if your Error / ParsedDate live elsewhere in the crate
-    // use crate::parser::{Error, ParsedDate};
 
     /// Small helper for tests (strptime already calls .finish() internally on full consumption)
     fn parse(s: &str) -> ParsedDate {

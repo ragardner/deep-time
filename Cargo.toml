@@ -1,59 +1,120 @@
 [package]
-name         = "deep-time-core"
-version      = "0.1.0"
-edition      = "2024"
+name = "deep-time-core"
+version = "0.1.0"
+edition = "2024"
+description = "Core high-precision time types, clocks, and flexible date/duration parser"
+license = "Apache-2.0"
+repository = "https://github.com/ragardner/deep-time-core"
+keywords = ["time", "date", "duration", "parser", "clock", "astronomy", "astrodynamics", "no-std"]
+categories = ["date-and-time", "no-std", "science"]
+readme = "README.md"
 rust-version = "1.90"
-description  = "Core high-precision time types and clocks"
-license      = "Apache-2.0"
-repository   = "https://github.com/ragardner/deep-time-core"
-keywords     = ["time", "date", "clock", "astronomy", "astrodynamics", "no-std"]
-categories   = ["date-and-time", "no-std", "science"]
 
 [dependencies]
-libm         = "0.2"
+libm = "0.2"
+
+# Parser dependencies (gated behind std)
+jiff = { version = "0.2.23", optional = true, default-features = false }
+aho-corasick = { version = "1.1.4", optional = true }
 
 # Optional dependencies
-serde        = { version = "1.0", optional = true, default-features = false, features = ["derive"] }
-tsify        = { version = "=0.5.5", optional = true }
+serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "rc"] }
+tsify = { version = "=0.5.5", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
-js-sys       = { version = "0.3", optional = true }
-jiff         = { version = "=0.2.23", optional = true, default-features = false }
-chrono       = { version = "0.4", optional = true, default-features = false }
+js-sys = { version = "0.3", optional = true }
+sys-locale = { version = "0.3", optional = true }
+chrono = { version = "0.4", optional = true, default-features = false }
 
 [features]
 # ──────────────────────────────────────────────────────────────
-# STD / ALLOC
+# STD / ALLOC (core priority)
 # ──────────────────────────────────────────────────────────────
-default  = [] # Do not enable std by accident
+default = []
 
-alloc  = ["jiff?/alloc", "chrono?/alloc"]
-std    = ["alloc", "jiff?/std", "chrono?/std"]
+alloc = [
+    "jiff?/alloc",
+]
+
+std = [
+    "alloc",
+    "dep:jiff",                    # parser needs jiff
+    "dep:aho-corasick",            # parser needs aho-corasick (with its default features for speed)
+    "jiff/std",
+    "jiff/tzdb-bundle-always",     # required by the deep-time parser
+]
+
+# ──────────────────────────────────────────────────────────────
+# LANGUAGE / PARSER FEATURES (all require std)
+# ──────────────────────────────────────────────────────────────
+fr = ["std"]
+euro = ["std", "fr"]
+lang = ["std", "euro"]
+
+# ──────────────────────────────────────────────────────────────
+# LOCALE
+# ──────────────────────────────────────────────────────────────
+locale = ["std", "dep:sys-locale"]
 
 # ──────────────────────────────────────────────────────────────
 # SERIALIZATION
 # ──────────────────────────────────────────────────────────────
-serde  = ["dep:serde", "jiff?/serde", "chrono?/serde"]
+serde = [
+    "dep:serde",
+    "jiff?/serde",
+    "chrono?/serde",
+]
 
 # ──────────────────────────────────────────────────────────────
 # DATETIME INTEROP
 # ──────────────────────────────────────────────────────────────
-jiff   = ["dep:jiff", "std", "jiff/tzdb-bundle-always"]
-chrono = ["dep:chrono"]
+jiff = [
+    "std",
+    "dep:jiff",
+    "jiff/tzdb-bundle-always",
+]
+chrono = [
+    "std",
+    "dep:chrono",
+    "chrono/std",
+]
 
 # ──────────────────────────────────────────────────────────────
-# WEB / WASM / TYPESCRIPT INTEROP
+# WEB / WASM / TYPESCRIPT
 # ──────────────────────────────────────────────────────────────
-# Enables full JS/WASM + TypeScript definitions support.
-# Pulls in `std`, `serde`, `tsify`, `wasm-bindgen`, `js-sys`, and forwards
-# the matching features to Jiff + Chrono.
 js = [
     "std",
     "serde",
     "dep:tsify",
     "dep:wasm-bindgen",
     "dep:js-sys",
-    "jiff?/js",
+    "jiff/js",
+    "chrono?/wasmbind",
+    "sys-locale?/js",
+]
+
+tsify = [
+    "serde",
+    "dep:tsify",
+    "dep:wasm-bindgen",
+    "js",
+]
+
+# ──────────────────────────────────────────────────────────────
+# OTHER
+# ──────────────────────────────────────────────────────────────
+perf = []
+
+# ──────────────────────────────────────────────────────────────
+# ALL
+# ──────────────────────────────────────────────────────────────
+all = [
+    "lang",
+    "locale",
+    "js",
+    "chrono",
+    "jiff",
+    "serde",
 ]
 
 [lib]
-crate-type = ["rlib"]
+crate-type = ["cdylib", "rlib"]

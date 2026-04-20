@@ -1,7 +1,10 @@
+use crate::tzdb::offset_at;
 use crate::{
     ClockType, TimePoint,
-    parser::{Error, Meridiem, ParseErr, ParsedDate, ParsedTimeScale, TimeZone, Weekday},
+    error::{DtErrKind, DtError},
+    parser::{Meridiem, ParsedDate, ParsedTimeScale, TimeZone, Weekday},
 };
+use crate::{J2000_JD_TT, UNIX_EPOCH_TO_J2000_NOON_UTC};
 
 impl ParsedDate {
     /// Converts parsed date/time components into a high-precision [`TimePoint`].
@@ -15,8 +18,12 @@ impl ParsedDate {
     /// 4. Sunday-based week-of-year (`week_sun` – `%U`)
     /// 5. Monday-based week-of-year (`week_mon` – `%W`)
     ///
-    /// All civil times are interpreted **in UTC**. The resulting `TimePoint` is
-    /// automatically converted to the requested [`ParsedTimeScale`].
+    /// When a timezone is present (either `iana_name` or `TimeZone::Fixed`),
+    /// the civil time is interpreted in that zone and automatically converted
+    /// to the correct UTC instant. `TimeZone::Utc` and `None` are treated as UTC.
+    ///
+    /// The resulting `TimePoint` is automatically converted to the requested
+    /// [`ParsedTimeScale`].
     ///
     /// # 12-hour time + meridiem support
     ///
@@ -29,35 +36,27 @@ impl ParsedDate {
     /// The `is_leap_second` flag (set by [`finish()`]) is preserved for future use
     /// but does not affect the conversion math.
     ///
-    /// # Calendar validation (new)
+    /// # Calendar validation
     ///
     /// - Full month/day validation (rejects Feb 30, Apr 31, invalid Feb 29, etc.).
     /// - Strict ISO week 53 validation (only years that actually have week 53 are accepted).
     ///
     /// # Errors
     ///
-    /// Returns [`Error::simple`] with one of:
+    /// Returns [`DtError::new`] with one of:
     ///
-    /// - `TimePointIana`, `TimePointTimeZone`
+    /// - `TimePointIana`, `TimePointTimeZone` (only for truly unsupported cases)
     /// - `TimePointYearIncompleteDate`
     /// - `TimePointDayOfYearOutOfRange`
     /// - `TimePointIsoWeekOutOfRange` (reused for `%U`/`%W` > 53)
     /// - `TimePointJdnIsNone`
     /// - `TimePointHourOutOfRange`
-    /// - `TimePointInvalidDate` (new – add this variant to `ParseErr` if missing)
-    pub fn to_time_point(&self) -> Result<TimePoint, Error> {
-        if self.iana_name.is_some_and(|n| n.iter().any(|&b| b != 0)) {
-            return Err(Error::simple(ParseErr::TimePointIana));
-        }
-        if matches!(self.tz, Some(TimeZone::Fixed(_))) {
-            return Err(Error::simple(ParseErr::TimePointTimeZone));
-        }
-
+    /// - `TimePointInvalidDate`
+    pub fn to_time_point(&self) -> Result<TimePoint, DtError> {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
-            const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;
             let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
             let subsec = self.attos.unwrap_or(0);
             let utc_tp = TimePoint::new(sec, subsec, ClockType::UTC);
@@ -75,7 +74,7 @@ impl ParsedDate {
         let hour = match (self.hour, self.meridiem) {
             (Some(h), Some(m)) => {
                 if !(1..=12).contains(&h) {
-                    return Err(Error::simple(ParseErr::TimePointHourOutOfRange));
+                    return Err(DtError::new(DtErrKind::TimePointHourOutOfRange));
                 }
                 match (h, m) {
                     (12, Meridiem::AM) => 0,
@@ -92,7 +91,7 @@ impl ParsedDate {
         // Civil date path
         // ──────────────────────────────────────────────────────────────
         if self.year.is_none() && self.iso_week_year.is_none() {
-            return Err(Error::simple(ParseErr::TimePointYearIncompleteDate));
+            return Err(DtError::new(DtErrKind::TimePointYearIncompleteDate));
         }
 
         let minute = self.minute.unwrap_or(0);
@@ -104,13 +103,13 @@ impl ParsedDate {
             if let (Some(m), Some(d)) = (self.month, self.day) {
                 // Classic YMD – highest priority + full validation
                 if !TimePoint::is_valid_gregorian_date(year, m, d) {
-                    return Err(Error::simple(ParseErr::TimePointInvalidDate));
+                    return Err(DtError::new(DtErrKind::TimePointInvalidDate));
                 }
                 jdn = Some(TimePoint::gregorian_jdn(year, m, d));
             } else if let Some(doy) = self.day_of_year {
                 // Ordinal date (%j) – already validated
                 if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
-                    return Err(Error::simple(ParseErr::TimePointDayOfYearOutOfRange));
+                    return Err(DtError::new(DtErrKind::TimePointDayOfYearOutOfRange));
                 }
                 jdn = Some(TimePoint::gregorian_jdn_from_ordinal(year, doy));
             }
@@ -120,24 +119,24 @@ impl ParsedDate {
             if let (Some(iso_y), Some(iso_w)) = (self.iso_week_year, self.iso_week) {
                 // ISO week date (%G/%V)
                 if iso_w == 0 || iso_w > 53 {
-                    return Err(Error::simple(ParseErr::TimePointIsoWeekOutOfRange));
+                    return Err(DtError::new(DtErrKind::TimePointIsoWeekOutOfRange));
                 }
                 if iso_w == 53 && !TimePoint::has_iso_week_53(iso_y) {
-                    return Err(Error::simple(ParseErr::TimePointInvalidDate));
+                    return Err(DtError::new(DtErrKind::TimePointInvalidDate));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Monday);
                 jdn = Some(TimePoint::gregorian_jdn_from_iso_week(iso_y, iso_w, wd));
             } else if let (Some(y), Some(w)) = (self.year, self.week_sun) {
                 // Sunday-based week (%U)
                 if w > 53 {
-                    return Err(Error::simple(ParseErr::TimePointIsoWeekOutOfRange));
+                    return Err(DtError::new(DtErrKind::TimePointIsoWeekOutOfRange));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Sunday);
                 jdn = Some(TimePoint::gregorian_jdn_from_week_sun(y, w, wd));
             } else if let (Some(y), Some(w)) = (self.year, self.week_mon) {
                 // Monday-based week (%W)
                 if w > 53 {
-                    return Err(Error::simple(ParseErr::TimePointIsoWeekOutOfRange));
+                    return Err(DtError::new(DtErrKind::TimePointIsoWeekOutOfRange));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Monday);
                 jdn = Some(TimePoint::gregorian_jdn_from_week_mon(y, w, wd));
@@ -145,12 +144,34 @@ impl ParsedDate {
         }
 
         let Some(jdn) = jdn else {
-            return Err(Error::simple(ParseErr::TimePointJdnIsNone));
+            return Err(DtError::new(DtErrKind::TimePointJdnIsNone));
         };
-        let days_since_j2000 = jdn - 2_451_545i64;
+        let days_since_j2000 = jdn - J2000_JD_TT;
         let seconds_from_noon_utc =
             (hour as i64 - 12) * 3600 + (minute as i64) * 60 + (second as i64);
-        let sec_utc = days_since_j2000 * 86_400 + seconds_from_noon_utc;
+        let mut sec_utc = days_since_j2000 * 86_400 + seconds_from_noon_utc;
+
+        // ──────────────────────────────────────────────────────────────
+        // Apply timezone correction (IANA or Fixed offset)
+        // ──────────────────────────────────────────────────────────────
+        if let Some(bytes) = self.iana_name {
+            let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
+            if len > 0 {
+                if let Ok(name) = std::str::from_utf8(&bytes[..len]) {
+                    let provisional_unix = sec_utc + UNIX_EPOCH_TO_J2000_NOON_UTC;
+                    match offset_at(name, provisional_unix) {
+                        Some(offset) => sec_utc -= offset as i64,
+                        None => return Err(DtError::new(DtErrKind::TimePointIana)),
+                    }
+                } else {
+                    return Err(DtError::new(DtErrKind::TimePointIana));
+                }
+            }
+        } else if let Some(TimeZone::Fixed(offset)) = self.tz {
+            sec_utc -= offset as i64; // local civil time → true UTC instant
+        }
+        // TimeZone::Utc and TimeZone::None do nothing (already UTC)
+
         let utc_tp = TimePoint::new(sec_utc, subsec, ClockType::UTC);
 
         Ok(match self.timescale {
@@ -164,7 +185,8 @@ impl ParsedDate {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::{Error, ParseErr, ParsedDate, strptime};
+    use crate::error::{DtErrKind, DtError};
+    use crate::parser::{ParsedDate, strptime};
 
     /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_tt()`).
     fn jd_tt(tp: &TimePoint) -> f64 {
@@ -268,43 +290,11 @@ mod tests {
     }
 
     #[test]
-    fn test_rejects_iana_name() {
-        let parsed = strptime("%F %T %Q", "2024-04-15 12:00:00 America/New_York", false).unwrap();
-        let err = parsed.to_time_point().unwrap_err();
-        assert!(matches!(
-            err,
-            Error::Simple {
-                kind: ParseErr::TimePointIana,
-                ..
-            }
-        ));
-    }
-
-    #[test]
-    fn test_rejects_fixed_timezone_offset() {
-        let parsed = strptime("%F %T %z", "2024-04-15 12:00:00 -0400", false).unwrap();
-        let err = parsed.to_time_point().unwrap_err();
-        assert!(matches!(
-            err,
-            Error::Simple {
-                kind: ParseErr::TimePointTimeZone,
-                ..
-            }
-        ));
-    }
-
-    #[test]
     fn test_incomplete_date_error() {
         // Default ParsedDate has no year → early failure in to_time_point.
         let pd = ParsedDate::default();
         let err = pd.to_time_point().unwrap_err();
-        assert!(matches!(
-            err,
-            Error::Simple {
-                kind: ParseErr::TimePointYearIncompleteDate,
-                ..
-            }
-        ));
+        assert!(matches!(err.kind, DtErrKind::TimePointYearIncompleteDate));
     }
 
     #[test]
@@ -315,15 +305,8 @@ mod tests {
         let mut pd = ParsedDate::default();
         pd.year = Some(2023);
         pd.day_of_year = Some(366);
-
         let err = pd.to_time_point().unwrap_err();
-        assert!(matches!(
-            err,
-            Error::Simple {
-                kind: ParseErr::TimePointDayOfYearOutOfRange,
-                ..
-            }
-        ));
+        assert!(matches!(err.kind, DtErrKind::TimePointDayOfYearOutOfRange));
     }
 
     #[test]
@@ -333,15 +316,8 @@ mod tests {
         pd.iso_week_year = Some(2024);
         pd.iso_week = Some(54);
         pd.weekday = Some(Weekday::Monday); // required for the ISO path
-
         let err = pd.to_time_point().unwrap_err();
-        assert!(matches!(
-            err,
-            Error::Simple {
-                kind: ParseErr::TimePointIsoWeekOutOfRange,
-                ..
-            }
-        ));
+        assert!(matches!(err.kind, DtErrKind::TimePointIsoWeekOutOfRange));
     }
 
     #[test]

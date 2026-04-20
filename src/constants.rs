@@ -49,6 +49,9 @@ pub(crate) const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
 
 /// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
 pub(crate) const J2000_JD_TT: i64 = 2_451_545;
+/// Seconds from the Unix epoch (1970-01-01 00:00:00 UTC) to J2000.0 noon
+/// (2000-01-01 12:00:00 UTC).
+pub(crate) const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;
 
 /// Exact mean length of one Martian sol in Earth seconds (NASA GISS / AM2000)
 pub const MARS_SOL_LENGTH_SEC: Real = 88775.244;

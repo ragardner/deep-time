@@ -52,16 +52,6 @@ impl TimePoint {
         .carry_over()
     }
 
-    /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOSEC_PER_SEC)`.
-    const fn carry_over(mut self) -> Self {
-        if self.subsec >= ATTOSEC_PER_SEC {
-            let carry = (self.subsec / ATTOSEC_PER_SEC) as i64;
-            self.sec += carry;
-            self.subsec %= ATTOSEC_PER_SEC;
-        }
-        self
-    }
-
     /// Returns an exact copy of this `TimePoint`.
     ///
     /// This is a zero-cost, always-inlined convenience method.

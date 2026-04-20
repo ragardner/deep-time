@@ -1,6 +1,6 @@
 use crate::{
-    TimePoint,
-    parser::{Error, ParseErr, ParsedDate, ParsedTimeScale, TimeZone},
+    DtErrKind, DtError, TimePoint,
+    parser::{ParsedDate, ParsedTimeScale, TimeZone},
 };
 
 /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
@@ -25,14 +25,14 @@ use crate::{
 /// A [`ParsedDate`] with `timescale = TAI` and `tz = Utc`.
 ///
 /// # Errors
-/// - [`ParseErr::ExpectedUnixTimestamp`] if the input is too short.
-/// - [`ParseErr::UnsupportedDirective`] for non-Level-1 packets or invalid P-field.
+/// - [`DtErrKind::ExpectedUnixTimestamp`] if the input is too short.
+/// - [`DtErrKind::UnsupportedDirective`] for non-Level-1 packets or invalid P-field.
 ///
 /// This function is designed for perfect round-tripping with [`TimePoint::ccsds_c_to_binary`]
 /// when the same `n_coarse`/`n_frac` values are used.
-pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, Error> {
+pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, DtError> {
     if input.is_empty() {
-        return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
+        return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
 
     let p1 = input[0];
@@ -42,7 +42,7 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, Error> {
     let extension = (p1 & 0b1000_0000) != 0;
     if extension {
         if input.len() < 2 {
-            return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
+            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
         }
         idx += 1; // consume the second P-field byte (we ignore its contents for now)
     }
@@ -50,14 +50,14 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, Error> {
     let code_id = (p1 >> 4) & 0b0111;
     if code_id != 0b001 {
         // Only Level 1 (1958-01-01 TAI) is supported
-        return Err(Error::simple(ParseErr::UnsupportedDirective));
+        return Err(DtError::new(DtErrKind::UnsupportedDirective));
     }
 
     let n_coarse = ((p1 >> 2) & 0b0011) as usize + 1; // bits 3-2
     let n_frac = (p1 & 0b0011) as usize; // bits 1-0
 
     if input.len() < idx + n_coarse + n_frac {
-        return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
+        return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
 
     // ── Read T-field (big-endian) ─────────────────────────────────────
@@ -135,9 +135,9 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<ParsedDate, Error> {
 ///
 /// # Errors
 /// Same as [`parse_ccsds_c`], plus rejection of Level-2 packets.
-pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, Error> {
+pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, DtError> {
     if input.is_empty() {
-        return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
+        return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
 
     let p1 = input[0];
@@ -147,7 +147,7 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, Error> {
     let extension = (p1 & 0b1000_0000) != 0;
     if extension {
         if input.len() < 2 {
-            return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
+            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
         }
         idx += 1;
     }
@@ -155,12 +155,12 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, Error> {
     // Code ID must be 100
     let code_id = (p1 >> 4) & 0b0111;
     if code_id != 0b100 {
-        return Err(Error::simple(ParseErr::UnsupportedDirective));
+        return Err(DtError::new(DtErrKind::UnsupportedDirective));
     }
 
     // Epoch bit (bit 4) must be 0 for Level 1
     if (p1 & 0b0000_1000) != 0 {
-        return Err(Error::simple(ParseErr::UnsupportedDirective));
+        return Err(DtError::new(DtErrKind::UnsupportedDirective));
     }
 
     // Day segment length (bit 5)
@@ -172,11 +172,11 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, Error> {
         0b00 => 0,
         0b01 => 2,
         0b10 => 4,
-        _ => return Err(Error::simple(ParseErr::UnsupportedDirective)),
+        _ => return Err(DtError::new(DtErrKind::UnsupportedDirective)),
     };
 
     if input.len() < idx + n_day + 4 + n_subsec {
-        return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
+        return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
 
     // ── Read T-field ─────────────────────────────────────
@@ -243,15 +243,15 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<ParsedDate, Error> {
 /// based on the Code ID in the first P-field byte.
 ///
 /// Convenience wrapper around [`parse_ccsds_c`] and [`parse_ccsds_d`].
-pub fn parse_ccsds_binary(input: &[u8]) -> Result<ParsedDate, Error> {
+pub fn parse_ccsds_binary(input: &[u8]) -> Result<ParsedDate, DtError> {
     if input.is_empty() {
-        return Err(Error::simple(ParseErr::ExpectedUnixTimestamp));
+        return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
     let code_id = (input[0] >> 4) & 0b0111;
     match code_id {
         0b001 => parse_ccsds_c(input),
         0b100 => parse_ccsds_d(input),
-        _ => Err(Error::simple(ParseErr::UnsupportedDirective)),
+        _ => Err(DtError::new(DtErrKind::UnsupportedDirective)),
     }
 }
 
@@ -276,15 +276,15 @@ impl TimePoint {
     /// A fixed-size buffer containing the binary packet and the number of bytes written.
     ///
     /// # Errors
-    /// [`ParseErr::UnsupportedDirective`] if `n_coarse` or `n_frac` are out of range.
+    /// [`DtErrKind::UnsupportedDirective`] if `n_coarse` or `n_frac` are out of range.
     pub fn ccsds_c_to_binary(
         &self,
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
-    ) -> Result<([u8; Self::CCSDS_C_MAX_SIZE], usize), ParseErr> {
+    ) -> Result<([u8; Self::CCSDS_C_MAX_SIZE], usize), DtErrKind> {
         if !(1..=4).contains(&n_coarse) || n_frac > 3 {
-            return Err(ParseErr::UnsupportedDirective);
+            return Err(DtErrKind::UnsupportedDirective);
         }
 
         let base_jdn = Self::gregorian_jdn(1958, 1, 1);
@@ -363,9 +363,9 @@ impl TimePoint {
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
-    ) -> Result<([u8; Self::CCSDS_D_MAX_SIZE], usize), ParseErr> {
+    ) -> Result<([u8; Self::CCSDS_D_MAX_SIZE], usize), DtErrKind> {
         if !matches!(n_day, 2 | 3) || !matches!(sub_ms_code, 0 | 1 | 2) {
-            return Err(ParseErr::UnsupportedDirective);
+            return Err(DtErrKind::UnsupportedDirective);
         }
 
         let (hour, minute, second, subsec_attos) = self.to_hms_subsec();

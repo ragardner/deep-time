@@ -3,8 +3,19 @@ mod constructors;
 mod conversions;
 mod formatting;
 mod ops;
-pub mod trajectory;
 mod unix;
+
+pub mod trajectory;
+
+#[cfg(feature = "chrono")]
+pub mod from_chrono;
+#[cfg(feature = "chrono")]
+pub mod to_chrono;
+
+#[cfg(feature = "std")]
+pub mod from_jiff;
+#[cfg(feature = "std")]
+pub mod to_jiff;
 
 use crate::ClockType;
 
@@ -16,7 +27,7 @@ use crate::ClockType;
 ///
 /// - Precision: 10⁻¹⁸ s
 /// - Range: ±~292 billion years (i64 seconds limit).
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct TimePoint {

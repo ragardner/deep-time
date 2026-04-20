@@ -1,7 +1,4 @@
-use crate::{
-    ClockType, TimePoint,
-    parser::{ParseErr, Weekday},
-};
+use crate::{ClockType, TimePoint, error::DtErrKind, parser::Weekday};
 
 /// Fixed UTC offset in seconds (positive = east of UTC).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -43,7 +40,7 @@ impl TimePoint {
         fmt: &str,
         dest: &mut [u8],
         offset: UtcOffset,
-    ) -> Result<usize, ParseErr> {
+    ) -> Result<usize, DtErrKind> {
         let mut internal_buf = [0u8; Self::BUFFER_SIZE];
         let mut pos = 0usize;
 
@@ -59,14 +56,14 @@ impl TimePoint {
 
     /// Convenience version that assumes UTC.
     #[inline(always)]
-    pub fn format_u8(&self, fmt: &str, dest: &mut [u8]) -> Result<usize, ParseErr> {
+    pub fn format_u8(&self, fmt: &str, dest: &mut [u8]) -> Result<usize, DtErrKind> {
         self.format_u8_with_offset(fmt, dest, UtcOffset::UTC)
     }
 
     /// High-level alloc version (defaults to UTC).
     #[cfg(feature = "alloc")]
     #[inline(always)]
-    pub fn format(&self, fmt: &str) -> Result<alloc::string::String, ParseErr> {
+    pub fn format(&self, fmt: &str) -> Result<alloc::string::String, DtErrKind> {
         self.format_with_offset(fmt, UtcOffset::UTC)
     }
 
@@ -77,7 +74,7 @@ impl TimePoint {
         &self,
         fmt: &str,
         offset: UtcOffset,
-    ) -> Result<alloc::string::String, ParseErr> {
+    ) -> Result<alloc::string::String, DtErrKind> {
         let mut internal_buf = [0u8; Self::BUFFER_SIZE];
         let n = self.format_u8_with_offset(fmt, &mut internal_buf, offset)?;
 
@@ -91,7 +88,7 @@ impl TimePoint {
         buf: &mut [u8; Self::BUFFER_SIZE],
         pos: &mut usize,
         offset: UtcOffset,
-    ) -> Result<(), ParseErr> {
+    ) -> Result<(), DtErrKind> {
         let mut i = 0usize;
 
         while i < fmt.len() {
@@ -106,7 +103,7 @@ impl TimePoint {
             i += 1; // skip '%'
 
             if i >= fmt.len() {
-                return Err(ParseErr::UnexpectedEndAfterPercent);
+                return Err(DtErrKind::UnexpectedEndAfterPercent);
             }
 
             // %% → literal percent
@@ -150,7 +147,7 @@ impl TimePoint {
             }
 
             if i >= fmt.len() {
-                return Err(ParseErr::UnexpectedEndAfterPercent);
+                return Err(DtErrKind::UnexpectedEndAfterPercent);
             }
 
             let directive = fmt[i];
@@ -172,7 +169,7 @@ impl TimePoint {
                 }
 
                 if i >= fmt.len() {
-                    return Err(ParseErr::ExpectedFOrNAfterDot);
+                    return Err(DtErrKind::ExpectedFOrNAfterDot);
                 }
 
                 let next = fmt[i];
@@ -189,7 +186,7 @@ impl TimePoint {
                     self.write_fractional_seconds(buf, pos, flag, frac_width, colons);
                     continue;
                 } else {
-                    return Err(ParseErr::ExpectedFOrNAfterDot);
+                    return Err(DtErrKind::ExpectedFOrNAfterDot);
                 }
             }
 
@@ -231,7 +228,7 @@ impl TimePoint {
                 b'R' => self.write_time_without_seconds_shortcut(buf, pos),
 
                 b'c' | b'r' | b'X' | b'x' | b'Z' => self.write_unsupported(buf, pos),
-                _ => return Err(ParseErr::UnknownFormatDirective),
+                _ => return Err(DtErrKind::UnknownFormatDirective),
             }
         }
 

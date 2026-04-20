@@ -1,8 +1,19 @@
 mod arithmetic;
 mod constructors;
+mod conversions;
 mod formatting;
 mod ops;
 pub mod time_units;
+
+#[cfg(feature = "chrono")]
+pub mod from_chrono;
+#[cfg(feature = "chrono")]
+pub mod to_chrono;
+
+#[cfg(feature = "std")]
+pub mod from_jiff;
+#[cfg(feature = "std")]
+pub mod to_jiff;
 
 /// A high-precision **duration** (time delta) expressed as **seconds + attoseconds**
 /// (where 1 attosecond = 10⁻¹⁸ s).

@@ -1,8 +1,8 @@
-use core::panic::Location;
+use crate::error::{DtErrKind, DtError};
 use core::result::Result;
 use core::str;
 
-pub fn strptime(fmt: &str, input: &str, strict: bool) -> Result<ParsedDate, Error> {
+pub fn strptime(fmt: &str, input: &str, strict: bool) -> Result<ParsedDate, DtError> {
     let mut tm = ParsedDate::default();
     let mut parser = Parser::new(fmt.as_bytes(), input.as_bytes(), &mut tm, strict);
 
@@ -15,155 +15,9 @@ pub fn strptime(fmt: &str, input: &str, strict: bool) -> Result<ParsedDate, Erro
         tm.finish()
     } else {
         // Trailing characters remain
-        Err(Error::strftime(ParseErr::TrailingCharacters))
+        Err(DtError::new(DtErrKind::TrailingCharacters))
     }
 }
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ParseErr {
-    // strptime parser errors
-    UnexpectedEndAfterPercent,
-    InputExhaustedInStrictMode,
-    UnexpectedEndAfterDot,
-    ExpectedFOrNAfterDot,
-    UnsupportedDirective,
-    UnknownFormatDirective,
-    ExpectedLiteralCharacter,
-    ExpectedLiteralPercent,
-    ExpectedYearPaddedDigits,
-    ExpectedArbitraryYearDigit,
-    ExpectedTwoDigitYear,
-    ExpectedCenturyPaddedDigits,
-    ExpectedIsoWeekYearPaddedDigits,
-    ExpectedTwoDigitIsoWeekYearPaddedDigits,
-    ExpectedMonthNumberPaddedDigits,
-    MonthOutOfRange,
-    ExpectedDayNumberPaddedDigits,
-    DayOutOfRange,
-    ExpectedDayOfYearPaddedDigits,
-    DayOfYearOutOfRange,
-    ExpectedHourNumberPaddedDigits,
-    HourOutOfRange24,
-    HourOutOfRange12,
-    ExpectedMinuteNumberPaddedDigits,
-    MinuteOutOfRange,
-    ExpectedSecondNumberPaddedDigits,
-    SecondOutOfRange,
-    ExpectedFractionalSecondsDigit,
-    ExpectedUnixTimestamp,
-    NegativeTimestampTooLarge,
-    ExpectedAbbrevMonthName,
-    ExpectedFullMonthName,
-    ExpectedAbbrevWeekdayName,
-    ExpectedFullWeekdayName,
-    ExpectedWeekdayMondayBased,
-    WeekdayOutOfRangeMondayBased,
-    ExpectedWeekdaySundayBased,
-    WeekdayOutOfRangeSundayBased,
-    ExpectedAmpmIndicator,
-    ExpectedWeekNumberSundayBased,
-    ExpectedIsoWeekNumber,
-    IsoWeekOutOfRange,
-    TimezoneOffsetMustStartWithPlusOrMinus,
-    ExpectedTwoDigitMinutesInOffset,
-    ExpectedTwoDigitMinutesAfterColon,
-    ExpectedTwoDigitSecondsAfterSecondColon,
-    ExpectedColonMinutesForColonZ,
-    ExpectedAtLeastOneDigitForOffsetHours,
-    TimezoneOffsetHourOutOfRange,
-    ExpectedTwoDigitsForMinutesOrSecondsInOffset,
-    InvalidMinutesSecondsValue,
-    ExpectedIanaOrOffset,
-    InternalUnexpectedColonCount,
-    IncompleteDate,
-    AssemblyFailed,
-    TrailingCharacters,
-    // chrono
-    ChronoNaiveDate,
-    ChronoNaiveTime,
-    ChronoOffset,
-    ChronoDateTime,
-    Chrono,
-    // jiff
-    JiffBrokenDownTime,
-    JiffTimestamp,
-    JiffTimeZone,
-    // crate
-    TimePointIana,
-    TimePointTimeZone,
-    TimePointYearIncompleteDate,
-    TimePointJdnIncompleteDate,
-    TimePointDayOfYearOutOfRange,
-    TimePointIsoWeekOutOfRange,
-    TimePointJdnIsNone,
-    TimePointHourOutOfRange,
-    TimePointInvalidDate,
-    // output, formatter
-    FormatterErr,
-    //
-    StrCCSDSNoYear,
-    StrCCSDSInvalidDate,
-    StrCCSDSFromUtf8Err,
-    StrCCSDSInvalidMonth,
-    StrCCSDSInvalidDay,
-    StrCCSDSInvalidHour,
-    StrCCSDSInvalidMinute,
-    StrCCSDSInvalidSecond,
-    StrCCSDSInvalidRequiredTimeSeparator,
-}
-
-#[derive(Debug)]
-pub enum Error {
-    /// Failed to parse according to a strftime-style format string
-    /// (used by the low-level Parser).
-    Strftime {
-        kind: ParseErr,
-        location: &'static Location<'static>,
-    },
-
-    /// Simple general-purpose error
-    /// (used by DateComponents::finish and other high-level code).
-    Simple {
-        kind: ParseErr,
-        location: &'static Location<'static>,
-    },
-}
-
-impl Error {
-    #[inline]
-    #[track_caller]
-    pub fn strftime(kind: ParseErr) -> Self {
-        Self::Strftime {
-            kind,
-            location: Location::caller(),
-        }
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn simple(kind: ParseErr) -> Self {
-        Self::Simple {
-            kind,
-            location: Location::caller(),
-        }
-    }
-}
-
-impl core::fmt::Display for Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let (kind, location) = match self {
-            Error::Strftime { kind, location } => (kind, location),
-            Error::Simple { kind, location } => (kind, location),
-        };
-
-        writeln!(f, "--")?;
-        writeln!(f, "Could not parse")?;
-        writeln!(f, "• Reason   : {:?}", kind)?;
-        writeln!(f, "    at {}:{}", location.file(), location.line())
-    }
-}
-
-impl core::error::Error for Error {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Meridiem {
@@ -257,7 +111,7 @@ pub struct ParsedDate {
 
 impl ParsedDate {
     #[inline]
-    pub fn finish(mut self) -> core::result::Result<Self, Error> {
+    pub fn finish(mut self) -> core::result::Result<Self, DtError> {
         if self.unix_timestamp_seconds.is_some() {
             if self.hour.is_none() {
                 self.hour = Some(0);
@@ -299,12 +153,12 @@ impl ParsedDate {
         let has_iso_week_date = self.iso_week_year.is_some() && self.iso_week.is_some();
 
         if !has_calendar_date && !has_ordinal_date && !has_iso_week_date {
-            return Err(Error::simple(ParseErr::IncompleteDate));
+            return Err(DtError::new(DtErrKind::IncompleteDate));
         }
 
         let sec = self.second.unwrap();
         if sec > 60 {
-            return Err(Error::simple(ParseErr::SecondOutOfRange));
+            return Err(DtError::new(DtErrKind::SecondOutOfRange));
         }
         if sec == 60 {
             self.is_leap_second = true;
@@ -353,20 +207,20 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         !self.inp.is_empty()
     }
 
-    #[inline]
+    #[inline(always)]
     #[track_caller]
-    fn make_error(&self, kind: ParseErr) -> Error {
-        Error::strftime(kind)
+    fn make_error(&self, kind: DtErrKind) -> DtError {
+        DtError::new(kind)
     }
 
-    pub(crate) fn parse(&mut self) -> Result<(), Error> {
+    pub(crate) fn parse(&mut self) -> Result<(), DtError> {
         while !self.fmt.is_empty() {
             if self.current_format_byte() != b'%' {
                 self.parse_literal_character()?;
                 continue;
             }
             if !self.advance_format() {
-                return Err(self.make_error(ParseErr::UnexpectedEndAfterPercent));
+                return Err(self.make_error(DtErrKind::UnexpectedEndAfterPercent));
             }
 
             let (flag, width, colons, new_fmt) = parse_format_extensions(self.fmt, 0);
@@ -377,7 +231,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             if self.inp.is_empty() {
                 if self.strict {
                     if !matches!(directive, b'.' | b'f' | b'N') {
-                        return Err(self.make_error(ParseErr::InputExhaustedInStrictMode));
+                        return Err(self.make_error(DtErrKind::InputExhaustedInStrictMode));
                     }
                 } else {
                     return Ok(());
@@ -419,7 +273,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'z' => self.parse_timezone_offset(flag, width, colons)?,
                 b'.' => {
                     if !self.advance_format() {
-                        return Err(self.make_error(ParseErr::UnexpectedEndAfterDot));
+                        return Err(self.make_error(DtErrKind::UnexpectedEndAfterDot));
                     }
 
                     let width = if !self.fmt.is_empty()
@@ -438,7 +292,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
                     let next = self.fmt.get(0).copied().unwrap_or(0);
                     if !matches!(next, b'f' | b'N') {
-                        return Err(self.make_error(ParseErr::ExpectedFOrNAfterDot));
+                        return Err(self.make_error(DtErrKind::ExpectedFOrNAfterDot));
                     }
                     self.advance_format();
 
@@ -451,24 +305,24 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'R' => self.parse_time_without_seconds_shortcut()?,
 
                 b'c' | b'r' | b'X' | b'x' | b'Z' => {
-                    return Err(self.make_error(ParseErr::UnsupportedDirective));
+                    return Err(self.make_error(DtErrKind::UnsupportedDirective));
                 }
                 _ => {
-                    return Err(self.make_error(ParseErr::UnknownFormatDirective));
+                    return Err(self.make_error(DtErrKind::UnknownFormatDirective));
                 }
             }
         }
         Ok(())
     }
 
-    fn parse_literal_character(&mut self) -> Result<(), Error> {
+    fn parse_literal_character(&mut self) -> Result<(), DtError> {
         let c = self.current_format_byte();
         if c.is_ascii_whitespace() {
             while !self.inp.is_empty() && self.current_input_byte().is_ascii_whitespace() {
                 self.advance_input();
             }
         } else if self.inp.is_empty() || self.current_input_byte() != c {
-            return Err(self.make_error(ParseErr::ExpectedLiteralCharacter));
+            return Err(self.make_error(DtErrKind::ExpectedLiteralCharacter));
         } else {
             self.advance_input();
         }
@@ -477,7 +331,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn skip_whitespace(&mut self) -> Result<(), Error> {
+    fn skip_whitespace(&mut self) -> Result<(), DtError> {
         while !self.inp.is_empty() && self.current_input_byte().is_ascii_whitespace() {
             self.advance_input();
         }
@@ -486,9 +340,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_percent_sign(&mut self) -> Result<(), Error> {
+    fn parse_percent_sign(&mut self) -> Result<(), DtError> {
         if self.inp.is_empty() || self.current_input_byte() != b'%' {
-            return Err(self.make_error(ParseErr::ExpectedLiteralPercent));
+            return Err(self.make_error(DtErrKind::ExpectedLiteralPercent));
         }
         self.advance_input();
         self.advance_format();
@@ -501,7 +355,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         // dot is optional in the input for %.f
         // (also supports explicit literal dot before %.f, e.g. %S.%.f)
         if !self.inp.is_empty() && self.current_input_byte() == b'.' {
@@ -518,10 +372,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
         advance: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (y, remaining) = match parse_padded_i64(self.inp, flag, width, 4, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedYearPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedYearPaddedDigits)),
         };
         self.tm.year = Some(y);
         self.inp = remaining;
@@ -532,10 +386,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_unbounded_year(&mut self) -> Result<(), Error> {
+    fn parse_unbounded_year(&mut self) -> Result<(), DtError> {
         let (y, remaining) = match parse_arbitrary_i64(self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedArbitraryYearDigit)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedArbitraryYearDigit)),
         };
         self.tm.year = Some(y);
         self.inp = remaining;
@@ -550,10 +404,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
         advance: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (y, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedTwoDigitYear)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedTwoDigitYear)),
         };
         self.inp = remaining;
         let year = if y <= 68 {
@@ -574,11 +428,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (sign, after_sign) = parse_optional_sign(self.inp);
         let (c, remaining) = match parse_padded_i64(after_sign, flag, width, 2, b'_') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedCenturyPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedCenturyPaddedDigits)),
         };
         self.inp = remaining;
         let year = if sign < 0 { -c * 100 } else { c * 100 };
@@ -593,10 +447,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (y, remaining) = match parse_padded_i64(self.inp, flag, width, 4, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedIsoWeekYearPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedIsoWeekYearPaddedDigits)),
         };
         self.tm.iso_week_year = Some(y);
         self.inp = remaining;
@@ -610,11 +464,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (y, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => {
-                return Err(self.make_error(ParseErr::ExpectedTwoDigitIsoWeekYearPaddedDigits));
+                return Err(self.make_error(DtErrKind::ExpectedTwoDigitIsoWeekYearPaddedDigits));
             }
         };
         self.inp = remaining;
@@ -635,13 +489,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
         advance: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (m, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedMonthNumberPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedMonthNumberPaddedDigits)),
         };
         if !(1..=12).contains(&m) {
-            return Err(self.make_error(ParseErr::MonthOutOfRange));
+            return Err(self.make_error(DtErrKind::MonthOutOfRange));
         }
         self.tm.month = Some(m);
         self.inp = remaining;
@@ -658,13 +512,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
         advance: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (d, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedDayNumberPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedDayNumberPaddedDigits)),
         };
         if !(1..=31).contains(&d) {
-            return Err(self.make_error(ParseErr::DayOutOfRange));
+            return Err(self.make_error(DtErrKind::DayOutOfRange));
         }
         self.tm.day = Some(d);
         self.inp = remaining;
@@ -680,14 +534,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (n, remaining) = match parse_padded_number(self.inp, flag, width, 3, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedDayOfYearPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedDayOfYearPaddedDigits)),
         };
         let day = n as u16;
         if day < 1 || day > 366 {
-            return Err(self.make_error(ParseErr::DayOfYearOutOfRange));
+            return Err(self.make_error(DtErrKind::DayOfYearOutOfRange));
         }
         self.tm.day_of_year = Some(day);
         self.inp = remaining;
@@ -702,13 +556,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
         advance: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (h, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedHourNumberPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedHourNumberPaddedDigits)),
         };
         if h > 23 {
-            return Err(self.make_error(ParseErr::HourOutOfRange24));
+            return Err(self.make_error(DtErrKind::HourOutOfRange24));
         }
         self.tm.hour = Some(h);
         self.inp = remaining;
@@ -724,13 +578,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (h, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedHourNumberPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedHourNumberPaddedDigits)),
         };
         if !(1..=12).contains(&h) {
-            return Err(self.make_error(ParseErr::HourOutOfRange12));
+            return Err(self.make_error(DtErrKind::HourOutOfRange12));
         }
         self.tm.hour = Some(h);
         self.inp = remaining;
@@ -745,13 +599,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
         advance: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (m, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedMinuteNumberPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedMinuteNumberPaddedDigits)),
         };
         if m > 59 {
-            return Err(self.make_error(ParseErr::MinuteOutOfRange));
+            return Err(self.make_error(DtErrKind::MinuteOutOfRange));
         }
         self.tm.minute = Some(m);
         self.inp = remaining;
@@ -768,13 +622,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
         advance: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (s, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedSecondNumberPaddedDigits)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedSecondNumberPaddedDigits)),
         };
         if s > 60 {
-            return Err(self.make_error(ParseErr::SecondOutOfRange));
+            return Err(self.make_error(DtErrKind::SecondOutOfRange));
         }
         self.tm.second = Some(s);
         self.tm.is_leap_second = s == 60;
@@ -791,7 +645,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         // Make %f, %N, %3N, %6N, etc. also accept an optional leading '.'
         // (symmetric with the %.f case handled in parse_optional_dot_fractional)
         if !self.inp.is_empty() && self.current_input_byte() == b'.' {
@@ -813,7 +667,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             digits_read += 1;
         }
         if digits_read == 0 {
-            return Err(self.make_error(ParseErr::ExpectedFractionalSecondsDigit));
+            return Err(self.make_error(DtErrKind::ExpectedFractionalSecondsDigit));
         }
         let attos = if digits_read >= TARGET_DIGITS {
             frac
@@ -831,16 +685,16 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (sign, after_sign) = parse_optional_sign(self.inp);
         let (n, remaining) = match parse_padded_number(after_sign, flag, width, 19, b' ') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedUnixTimestamp)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedUnixTimestamp)),
         };
         let timestamp = if sign < 0 {
             match n.checked_neg() {
                 Some(ts) => ts,
-                None => return Err(self.make_error(ParseErr::NegativeTimestampTooLarge)),
+                None => return Err(self.make_error(DtErrKind::NegativeTimestampTooLarge)),
             }
         } else {
             n
@@ -852,9 +706,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_month_name_abbrev(&mut self) -> Result<(), Error> {
+    fn parse_month_name_abbrev(&mut self) -> Result<(), DtError> {
         if self.inp.len() < 3 {
-            return Err(self.make_error(ParseErr::ExpectedAbbrevMonthName));
+            return Err(self.make_error(DtErrKind::ExpectedAbbrevMonthName));
         }
         let x = &self.inp[..3];
         let candidate = [
@@ -876,7 +730,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             b"nov" => 10,
             b"dec" => 11,
             _ => {
-                return Err(self.make_error(ParseErr::ExpectedAbbrevMonthName));
+                return Err(self.make_error(DtErrKind::ExpectedAbbrevMonthName));
             }
         };
         self.inp = &self.inp[3..];
@@ -886,7 +740,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_month_name_full(&mut self) -> Result<(), Error> {
+    fn parse_month_name_full(&mut self) -> Result<(), DtError> {
         static CHOICES: &[&[u8]] = &[
             b"January",
             b"February",
@@ -903,7 +757,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         ];
         let (index, remaining) = match match_from_choice_list(self.inp, CHOICES) {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedFullMonthName)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedFullMonthName)),
         };
         self.inp = remaining;
         self.tm.month = Some(index + 1);
@@ -912,9 +766,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_weekday_abbrev(&mut self) -> Result<(), Error> {
+    fn parse_weekday_abbrev(&mut self) -> Result<(), DtError> {
         if self.inp.len() < 3 {
-            return Err(self.make_error(ParseErr::ExpectedAbbrevWeekdayName));
+            return Err(self.make_error(DtErrKind::ExpectedAbbrevWeekdayName));
         }
         let x = &self.inp[..3];
         let candidate = [
@@ -931,20 +785,20 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             b"fri" => 5,
             b"sat" => 6,
             _ => {
-                return Err(self.make_error(ParseErr::ExpectedAbbrevWeekdayName));
+                return Err(self.make_error(DtErrKind::ExpectedAbbrevWeekdayName));
             }
         };
         self.inp = &self.inp[3..];
         self.tm.weekday = Some(
             Weekday::from_sunday_zero_offset(index as i8)
-                .map_err(|_| self.make_error(ParseErr::ExpectedAbbrevWeekdayName))?,
+                .map_err(|_| self.make_error(DtErrKind::ExpectedAbbrevWeekdayName))?,
         );
         self.advance_format();
         Ok(())
     }
 
     #[inline]
-    fn parse_weekday_full(&mut self) -> Result<(), Error> {
+    fn parse_weekday_full(&mut self) -> Result<(), DtError> {
         static CHOICES: &[&[u8]] = &[
             b"Sunday",
             b"Monday",
@@ -956,12 +810,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         ];
         let (index, remaining) = match match_from_choice_list(self.inp, CHOICES) {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedFullWeekdayName)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedFullWeekdayName)),
         };
         self.inp = remaining;
         self.tm.weekday = Some(
             Weekday::from_sunday_zero_offset(index as i8)
-                .map_err(|_| self.make_error(ParseErr::ExpectedFullWeekdayName))?,
+                .map_err(|_| self.make_error(DtErrKind::ExpectedFullWeekdayName))?,
         );
         self.advance_format();
         Ok(())
@@ -973,13 +827,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 1, b'_') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedWeekdayMondayBased)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedWeekdayMondayBased)),
         };
         let wd = Weekday::from_monday_one_offset(w as i8)
-            .map_err(|_| self.make_error(ParseErr::WeekdayOutOfRangeMondayBased))?;
+            .map_err(|_| self.make_error(DtErrKind::WeekdayOutOfRangeMondayBased))?;
         self.tm.weekday = Some(wd);
         self.inp = remaining;
         self.advance_format();
@@ -992,13 +846,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 1, b'_') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedWeekdaySundayBased)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedWeekdaySundayBased)),
         };
         let wd = Weekday::from_sunday_zero_offset(w as i8)
-            .map_err(|_| self.make_error(ParseErr::WeekdayOutOfRangeSundayBased))?;
+            .map_err(|_| self.make_error(DtErrKind::WeekdayOutOfRangeSundayBased))?;
         self.tm.weekday = Some(wd);
         self.inp = remaining;
         self.advance_format();
@@ -1006,9 +860,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_ampm(&mut self) -> Result<(), Error> {
+    fn parse_ampm(&mut self) -> Result<(), DtError> {
         if self.inp.len() < 2 {
-            return Err(self.make_error(ParseErr::ExpectedAmpmIndicator));
+            return Err(self.make_error(DtErrKind::ExpectedAmpmIndicator));
         }
         let slice = &self.inp[..2];
         self.tm.meridiem = Some(if slice.eq_ignore_ascii_case(b"am") {
@@ -1016,7 +870,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         } else if slice.eq_ignore_ascii_case(b"pm") {
             Meridiem::PM
         } else {
-            return Err(self.make_error(ParseErr::ExpectedAmpmIndicator));
+            return Err(self.make_error(DtErrKind::ExpectedAmpmIndicator));
         });
         self.inp = &self.inp[2..];
         self.advance_format();
@@ -1029,10 +883,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedWeekNumberSundayBased)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedWeekNumberSundayBased)),
         };
         self.tm.week_sun = Some(w);
         self.inp = remaining;
@@ -1046,13 +900,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedIsoWeekNumber)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedIsoWeekNumber)),
         };
         if !(1..=53).contains(&w) {
-            return Err(self.make_error(ParseErr::IsoWeekOutOfRange));
+            return Err(self.make_error(DtErrKind::IsoWeekOutOfRange));
         }
         self.tm.iso_week = Some(w);
         self.inp = remaining;
@@ -1066,10 +920,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         flag: Option<u8>,
         width: Option<u8>,
         _colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedWeekNumberSundayBased)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedWeekNumberSundayBased)),
         };
         self.tm.week_mon = Some(w);
         self.inp = remaining;
@@ -1083,11 +937,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _flag: Option<u8>,
         _width: Option<u8>,
         colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         let sign = match self.inp.get(0) {
             Some(b'+') => 1i32,
             Some(b'-') => -1i32,
-            _ => return Err(self.make_error(ParseErr::TimezoneOffsetMustStartWithPlusOrMinus)),
+            _ => return Err(self.make_error(DtErrKind::TimezoneOffsetMustStartWithPlusOrMinus)),
         };
         self.advance_input();
 
@@ -1098,7 +952,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 let minutes = match self.parse_offset_mm_ss() {
                     Ok(m) => m,
                     Err(_) => {
-                        return Err(self.make_error(ParseErr::ExpectedTwoDigitMinutesInOffset));
+                        return Err(self.make_error(DtErrKind::ExpectedTwoDigitMinutesInOffset));
                     }
                 };
                 total_seconds += minutes * 60;
@@ -1116,7 +970,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                         Ok(m) => m,
                         Err(_) => {
                             return Err(
-                                self.make_error(ParseErr::ExpectedTwoDigitMinutesAfterColon)
+                                self.make_error(DtErrKind::ExpectedTwoDigitMinutesAfterColon)
                             );
                         }
                     };
@@ -1127,20 +981,20 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                             Ok(s) => s,
                             Err(_) => {
                                 return Err(self.make_error(
-                                    ParseErr::ExpectedTwoDigitSecondsAfterSecondColon,
+                                    DtErrKind::ExpectedTwoDigitSecondsAfterSecondColon,
                                 ));
                             }
                         };
                         total_seconds += seconds;
                     } else if colons == 2 {
-                        return Err(self.make_error(ParseErr::ExpectedColonMinutesForColonZ));
+                        return Err(self.make_error(DtErrKind::ExpectedColonMinutesForColonZ));
                     }
                 } else if minutes_required {
-                    return Err(self.make_error(ParseErr::ExpectedColonMinutesForColonZ));
+                    return Err(self.make_error(DtErrKind::ExpectedColonMinutesForColonZ));
                 }
             }
             _ => {
-                return Err(self.make_error(ParseErr::InternalUnexpectedColonCount));
+                return Err(self.make_error(DtErrKind::InternalUnexpectedColonCount));
             }
         }
 
@@ -1151,7 +1005,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_offset_hours(&mut self) -> Result<i32, Error> {
+    fn parse_offset_hours(&mut self) -> Result<i32, DtError> {
         let mut n = 0i32;
         let mut digits = 0;
         while digits < 2 && !self.inp.is_empty() && self.current_input_byte().is_ascii_digit() {
@@ -1160,18 +1014,18 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             digits += 1;
         }
         if digits == 0 {
-            return Err(self.make_error(ParseErr::ExpectedAtLeastOneDigitForOffsetHours));
+            return Err(self.make_error(DtErrKind::ExpectedAtLeastOneDigitForOffsetHours));
         }
         if n > 23 {
-            return Err(self.make_error(ParseErr::TimezoneOffsetHourOutOfRange));
+            return Err(self.make_error(DtErrKind::TimezoneOffsetHourOutOfRange));
         }
         Ok(n)
     }
 
     #[inline]
-    fn parse_offset_mm_ss(&mut self) -> Result<i32, Error> {
+    fn parse_offset_mm_ss(&mut self) -> Result<i32, DtError> {
         if self.inp.len() < 2 {
-            return Err(self.make_error(ParseErr::ExpectedTwoDigitsForMinutesOrSecondsInOffset));
+            return Err(self.make_error(DtErrKind::ExpectedTwoDigitsForMinutesOrSecondsInOffset));
         }
         let slice = &self.inp[..2];
         let n = match core::str::from_utf8(slice)
@@ -1180,7 +1034,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             .filter(|&n| (0..=59).contains(&n))
         {
             Some(n) => n,
-            None => return Err(self.make_error(ParseErr::InvalidMinutesSecondsValue)),
+            None => return Err(self.make_error(DtErrKind::InvalidMinutesSecondsValue)),
         };
         self.inp = &self.inp[2..];
         Ok(n)
@@ -1192,13 +1046,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _flag: Option<u8>,
         _width: Option<u8>,
         colons: u8,
-    ) -> Result<(), Error> {
+    ) -> Result<(), DtError> {
         if !self.inp.is_empty() && matches!(self.current_input_byte(), b'+' | b'-') {
             return self.parse_timezone_offset(_flag, _width, colons);
         }
         let (iana_str, remaining) = match parse_iana(self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(self.make_error(ParseErr::ExpectedIanaOrOffset)),
+            Err(_) => return Err(self.make_error(DtErrKind::ExpectedIanaOrOffset)),
         };
         // Copy the IANA name into the fixed-size array (truncate if longer than 48 bytes)
         let bytes = iana_str.as_bytes();
@@ -1213,7 +1067,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_iso_date(&mut self) -> Result<(), Error> {
+    fn parse_iso_date(&mut self) -> Result<(), DtError> {
         self.parse_full_year(None, None, 0, false)?;
         self.parse_literal_character_byte(b'-')?;
         self.parse_month_number(None, None, 0, false)?;
@@ -1224,7 +1078,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_us_date_shortcut(&mut self) -> Result<(), Error> {
+    fn parse_us_date_shortcut(&mut self) -> Result<(), DtError> {
         self.parse_month_number(None, None, 0, false)?;
         self.parse_literal_character_byte(b'/')?;
         self.parse_day_of_month(None, None, 0, false)?;
@@ -1235,7 +1089,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_time_with_seconds_shortcut(&mut self) -> Result<(), Error> {
+    fn parse_time_with_seconds_shortcut(&mut self) -> Result<(), DtError> {
         self.parse_hour24(None, None, 0, false)?;
         self.parse_literal_character_byte(b':')?;
         self.parse_minute(None, None, 0, false)?;
@@ -1246,7 +1100,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_time_without_seconds_shortcut(&mut self) -> Result<(), Error> {
+    fn parse_time_without_seconds_shortcut(&mut self) -> Result<(), DtError> {
         self.parse_hour24(None, None, 0, false)?;
         self.parse_literal_character_byte(b':')?;
         self.parse_minute(None, None, 0, false)?;
@@ -1255,9 +1109,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_literal_character_byte(&mut self, expected: u8) -> Result<(), Error> {
+    fn parse_literal_character_byte(&mut self, expected: u8) -> Result<(), DtError> {
         if self.inp.is_empty() || self.current_input_byte() != expected {
-            return Err(self.make_error(ParseErr::ExpectedLiteralCharacter));
+            return Err(self.make_error(DtErrKind::ExpectedLiteralCharacter));
         }
         self.advance_input();
         Ok(())
@@ -1551,25 +1405,13 @@ mod tests {
     #[test]
     fn test_strict_mode_trailing_chars() {
         let err = strptime("%Y-%m-%d", "2024-04-15 extra", true).unwrap_err();
-        match err {
-            Error::Strftime {
-                kind: ParseErr::TrailingCharacters,
-                ..
-            } => {}
-            _ => panic!("expected TrailingCharacters"),
-        }
+        assert!(matches!(err.kind, DtErrKind::TrailingCharacters));
     }
 
     #[test]
     fn test_incomplete_date_error() {
         let err = strptime("%H:%M:%S", "14:30:45", false).unwrap_err();
-        match err {
-            Error::Simple {
-                kind: ParseErr::IncompleteDate,
-                ..
-            } => {}
-            _ => panic!("expected IncompleteDate"),
-        }
+        assert!(matches!(err.kind, DtErrKind::IncompleteDate));
     }
 
     #[test]

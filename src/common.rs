@@ -1,32 +1,44 @@
 //! Time increment and decrement methods for `TimePoint` and `Delta`.
 use crate::{
     ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
-    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, Delta, TimePoint,
+    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, Delta,
+    TimePoint,
 };
 
 macro_rules! impl_time_inc {
     ($($ty:ty),* $(,)?) => {
         $(
             impl $ty {
+
+                /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOSEC_PER_SEC)`.
+                pub const fn carry_over(mut self) -> Self {
+                    if self.subsec >= ATTOSEC_PER_SEC {
+                        let carry = (self.subsec / ATTOSEC_PER_SEC) as i64;
+                        self.sec += carry;
+                        self.subsec %= ATTOSEC_PER_SEC;
+                    }
+                    self
+                }
+
                 // =====================================================================
                 // Single-unit addition methods (convenience methods for +1)
                 // =====================================================================
 
                 /// Adds exactly 1 second to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_1sec(&mut self) {
+                pub const fn add_1sec(&mut self) {
                     self.sec = self.sec.saturating_add(1);
                 }
 
                 /// Adds exactly 1 minute (60 seconds) to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_1min(&mut self) {
+                pub const fn add_1min(&mut self) {
                     self.sec = self.sec.saturating_add(60);
                 }
 
                 /// Adds exactly 1 hour (3600 seconds) to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_1hr(&mut self) {
+                pub const fn add_1hr(&mut self) {
                     self.sec = self.sec.saturating_add(3600);
                 }
 
@@ -34,7 +46,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// This affects the subsecond component and may cause a carry into the seconds field.
                 #[inline(always)]
-                pub fn add_1ms(&mut self) {
+                pub const fn add_1ms(&mut self) {
                     self._add_subsec(ATTOSEC_PER_MILLISEC);
                 }
 
@@ -42,7 +54,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// This affects the subsecond component and may cause a carry into the seconds field.
                 #[inline(always)]
-                pub fn add_1us(&mut self) {
+                pub const fn add_1us(&mut self) {
                     self._add_subsec(ATTOSEC_PER_MICROSEC);
                 }
 
@@ -50,7 +62,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// This affects the subsecond component and may cause a carry into the seconds field.
                 #[inline(always)]
-                pub fn add_1ns(&mut self) {
+                pub const fn add_1ns(&mut self) {
                     self._add_subsec(ATTOSEC_PER_NANOSEC);
                 }
 
@@ -60,19 +72,19 @@ macro_rules! impl_time_inc {
 
                 /// Adds the specified number of seconds to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_sec(&mut self, n: i64) {
+                pub const fn add_sec(&mut self, n: i64) {
                     self.sec = self.sec.saturating_add(n);
                 }
 
                 /// Adds the specified number of minutes to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_min(&mut self, n: i64) {
+                pub const fn add_min(&mut self, n: i64) {
                     self.sec = self.sec.saturating_add(n.saturating_mul(60));
                 }
 
                 /// Adds the specified number of hours to this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn add_hr(&mut self, n: i64) {
+                pub const fn add_hr(&mut self, n: i64) {
                     self.sec = self.sec.saturating_add(n.saturating_mul(3600));
                 }
 
@@ -80,7 +92,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_ms(&mut self, n: i64) {
+                pub const fn add_ms(&mut self, n: i64) {
                     self.add_subsec_delta(n, ATTOSEC_PER_MILLISEC);
                 }
 
@@ -88,7 +100,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_us(&mut self, n: i64) {
+                pub const fn add_us(&mut self, n: i64) {
                     self.add_subsec_delta(n, ATTOSEC_PER_MICROSEC);
                 }
 
@@ -96,7 +108,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_ns(&mut self, n: i64) {
+                pub const fn add_ns(&mut self, n: i64) {
                     self.add_subsec_delta(n, ATTOSEC_PER_NANOSEC);
                 }
 
@@ -104,7 +116,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_ps(&mut self, n: i64) {
+                pub const fn add_ps(&mut self, n: i64) {
                     self.add_subsec_delta(n, ATTOSEC_PER_PICOSEC);
                 }
 
@@ -112,7 +124,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_fs(&mut self, n: i64) {
+                pub const fn add_fs(&mut self, n: i64) {
                     self.add_subsec_delta(n, ATTOSEC_PER_FEMTOSEC);
                 }
 
@@ -120,7 +132,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_as(&mut self, n: i64) {
+                pub const fn add_as(&mut self, n: i64) {
                     self.add_subsec_delta(n, ATTOSEC_PER_ATTOSEC);
                 }
 
@@ -129,7 +141,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn add_subsec(&mut self, n: i64) {
+                pub const fn add_subsec(&mut self, n: i64) {
                     self.add_subsec_delta(n, ATTOSEC_PER_ATTOSEC);
                 }
 
@@ -139,19 +151,19 @@ macro_rules! impl_time_inc {
 
                 /// Subtracts exactly 1 hour (3600 seconds) from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_1hr(&mut self) {
+                pub const fn sub_1hr(&mut self) {
                     self.sec = self.sec.saturating_sub(3600);
                 }
 
                 /// Subtracts exactly 1 minute (60 seconds) from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_1min(&mut self) {
+                pub const fn sub_1min(&mut self) {
                     self.sec = self.sec.saturating_sub(60);
                 }
 
                 /// Subtracts exactly 1 second from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_1sec(&mut self) {
+                pub const fn sub_1sec(&mut self) {
                     self.sec = self.sec.saturating_sub(1);
                 }
 
@@ -159,7 +171,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
-                pub fn sub_1ms(&mut self) {
+                pub const fn sub_1ms(&mut self) {
                     self.add_subsec_delta(-1, ATTOSEC_PER_MILLISEC);
                 }
 
@@ -167,7 +179,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
-                pub fn sub_1us(&mut self) {
+                pub const fn sub_1us(&mut self) {
                     self.add_subsec_delta(-1, ATTOSEC_PER_MICROSEC);
                 }
 
@@ -175,7 +187,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
-                pub fn sub_1ns(&mut self) {
+                pub const fn sub_1ns(&mut self) {
                     self.add_subsec_delta(-1, ATTOSEC_PER_NANOSEC);
                 }
 
@@ -185,19 +197,19 @@ macro_rules! impl_time_inc {
 
                 /// Subtracts the specified number of seconds from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_sec(&mut self, n: i64) {
+                pub const fn sub_sec(&mut self, n: i64) {
                     self.sec = self.sec.saturating_sub(n);
                 }
 
                 /// Subtracts the specified number of minutes from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_min(&mut self, n: i64) {
+                pub const fn sub_min(&mut self, n: i64) {
                     self.sec = self.sec.saturating_sub(n.saturating_mul(60));
                 }
 
                 /// Subtracts the specified number of hours from this time value using saturating arithmetic.
                 #[inline(always)]
-                pub fn sub_hr(&mut self, n: i64) {
+                pub const fn sub_hr(&mut self, n: i64) {
                     self.sec = self.sec.saturating_sub(n.saturating_mul(3600));
                 }
 
@@ -205,7 +217,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_ms(&mut self, n: i64) {
+                pub const fn sub_ms(&mut self, n: i64) {
                     self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_MILLISEC);
                 }
 
@@ -213,7 +225,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_us(&mut self, n: i64) {
+                pub const fn sub_us(&mut self, n: i64) {
                     self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_MICROSEC);
                 }
 
@@ -221,7 +233,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_ns(&mut self, n: i64) {
+                pub const fn sub_ns(&mut self, n: i64) {
                     self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_NANOSEC);
                 }
 
@@ -229,7 +241,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_ps(&mut self, n: i64) {
+                pub const fn sub_ps(&mut self, n: i64) {
                     self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_PICOSEC);
                 }
 
@@ -237,7 +249,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_fs(&mut self, n: i64) {
+                pub const fn sub_fs(&mut self, n: i64) {
                     self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_FEMTOSEC);
                 }
 
@@ -245,7 +257,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_as(&mut self, n: i64) {
+                pub const fn sub_as(&mut self, n: i64) {
                     self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
                 }
 
@@ -254,7 +266,7 @@ macro_rules! impl_time_inc {
                 ///
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
-                pub fn sub_subsec(&mut self, n: i64) {
+                pub const fn sub_subsec(&mut self, n: i64) {
                     self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
                 }
 
@@ -270,7 +282,7 @@ macro_rules! impl_time_inc {
                 /// throughout.
                 #[doc(hidden)]
                 #[inline]
-                fn add_subsec_delta(&mut self, n: i64, unit: u64) {
+                const fn add_subsec_delta(&mut self, n: i64, unit: u64) {
                     if n == 0 {
                         return;
                     }
@@ -318,11 +330,54 @@ macro_rules! impl_time_inc {
                 /// when the delta is known to be positive and small.
                 #[doc(hidden)]
                 #[inline]
-                fn _add_subsec(&mut self, amount: u64) {
+                const fn _add_subsec(&mut self, amount: u64) {
                     let total = self.subsec + amount;
                     let carry_sec = total / ATTOSEC_PER_SEC;
                     self.subsec = total % ATTOSEC_PER_SEC;
                     self.sec = self.sec.saturating_add(carry_sec as i64);
+                }
+
+                /// Total attoseconds (exact i128 representation within the representable range).
+                #[inline(always)]
+                pub const fn total_attos(self) -> i128 {
+                    (self.sec as i128) * ATTOSEC_PER_SEC_I128 + (self.subsec as i128)
+                }
+
+                /// Returns the total duration in milliseconds (exact, using full attosecond precision).
+                #[inline(always)]
+                pub const fn as_ms(self) -> i128 {
+                    self.total_attos() / (ATTOSEC_PER_MILLISEC as i128)
+                }
+
+                /// Returns the total duration in microseconds (exact).
+                #[inline(always)]
+                pub const fn as_us(self) -> i128 {
+                    self.total_attos() / (ATTOSEC_PER_MICROSEC as i128)
+                }
+
+                /// Returns the total duration in nanoseconds (exact).
+                #[inline(always)]
+                pub const fn as_ns(self) -> i128 {
+                    self.total_attos() / (ATTOSEC_PER_NANOSEC as i128)
+                }
+
+                /// Returns the total duration in picoseconds (exact).
+                #[inline(always)]
+                pub const fn as_ps(self) -> i128 {
+                    self.total_attos() / (ATTOSEC_PER_PICOSEC as i128)
+                }
+
+                /// Returns the total duration in femtoseconds (exact).
+                #[inline(always)]
+                pub const fn as_fs(self) -> i128 {
+                    self.total_attos() / (ATTOSEC_PER_FEMTOSEC as i128)
+                }
+
+                /// Returns the total duration in attoseconds (exact).
+                /// This is an alias for [`Self::total_attos`].
+                #[inline(always)]
+                pub const fn as_as(self) -> i128 {
+                    self.total_attos()
                 }
             }
         )*

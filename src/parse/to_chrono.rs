@@ -1,25 +1,23 @@
-#[cfg(feature = "chrono")]
 use crate::{
     ATTOSEC_PER_NANOSEC, TimePoint,
-    parser::{Error, Meridiem, ParseErr, ParsedDate, TimeZone, Weekday},
+    error::{DtErrKind, DtError},
+    parser::{Meridiem, ParsedDate, TimeZone, Weekday},
 };
-#[cfg(feature = "chrono")]
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
 };
 
-#[cfg(feature = "chrono")]
 impl ParsedDate {
     /// Converts `ParsedDate` → Chrono’s `NaiveDateTime` (civil time, no TZ).
-    pub fn to_chrono_naive_datetime(&self) -> Result<NaiveDateTime, Error> {
+    pub fn to_chrono_naive_datetime(&self) -> Result<NaiveDateTime, DtError> {
         let date = self.build_naive_date()?;
         let time = self.build_naive_time()?;
 
         Ok(date.and_time(time))
     }
 
-    fn build_naive_date(&self) -> Result<NaiveDate, Error> {
-        let to_err = || Error::simple(ParseErr::ChronoNaiveDate);
+    fn build_naive_date(&self) -> Result<NaiveDate, DtError> {
+        let to_err = || DtError::new(DtErrKind::ChronoNaiveDate);
 
         // YMD (highest priority, matches Jiff fast-path)
         if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
@@ -35,7 +33,7 @@ impl ParsedDate {
 
         // Small helper: JDN → chrono NaiveDate
         // (JDN 1721426 == proleptic Gregorian 0001-01-01; chrono counts days since then)
-        let jdn_to_naive_date = |jdn: i64| -> Result<NaiveDate, Error> {
+        let jdn_to_naive_date = |jdn: i64| -> Result<NaiveDate, DtError> {
             let days_from_ce: i32 = (jdn - 1721425).try_into().map_err(|_| to_err())?;
             NaiveDate::from_num_days_from_ce_opt(days_from_ce).ok_or_else(to_err)
         };
@@ -65,8 +63,8 @@ impl ParsedDate {
         Err(to_err())
     }
 
-    fn build_naive_time(&self) -> Result<NaiveTime, Error> {
-        let to_err = || Error::simple(ParseErr::ChronoNaiveTime);
+    fn build_naive_time(&self) -> Result<NaiveTime, DtError> {
+        let to_err = || DtError::new(DtErrKind::ChronoNaiveTime);
 
         let mut hour = self.hour.unwrap_or(0) as u32;
         let minute = self.minute.unwrap_or(0) as u32;
@@ -119,8 +117,8 @@ impl ParsedDate {
 
     /// Helper: resolve the ParsedDate TZ to a Chrono `FixedOffset`.
     /// IANA names are **not supported** in core chrono (they require the `chrono-tz` crate).
-    fn to_chrono_offset(&self) -> Result<FixedOffset, Error> {
-        let to_err = || Error::simple(ParseErr::ChronoOffset);
+    fn to_chrono_offset(&self) -> Result<FixedOffset, DtError> {
+        let to_err = || DtError::new(DtErrKind::ChronoOffset);
 
         // IANA name present → explicit error (vanilla chrono cannot resolve it)
         if let Some(name_bytes) = &self.iana_name {
@@ -155,8 +153,8 @@ impl ParsedDate {
     ///   the TZ gives you the wall-clock representation of that instant.
     /// - If no `%s` is present, the normal civil path is taken: the date/time components are
     ///   interpreted as local time *in the parsed timezone*.
-    pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, Error> {
-        let to_err = || Error::simple(ParseErr::ChronoDateTime);
+    pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, DtError> {
+        let to_err = || DtError::new(DtErrKind::ChronoDateTime);
 
         let offset = self.to_chrono_offset()?;
 
@@ -191,7 +189,7 @@ impl ParsedDate {
 
     /// Converts `ParsedDate` → absolute Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).
     /// Fast path for unix seconds or full YMD; falls back to civil + TZ conversion.
-    pub fn to_chrono_timestamp(&self) -> Result<i64, Error> {
+    pub fn to_chrono_timestamp(&self) -> Result<i64, DtError> {
         if let Some(secs) = self.unix_timestamp_seconds {
             return Ok(secs);
         }
@@ -363,15 +361,8 @@ mod tests {
     fn test_to_chrono_datetime_iana_name_errors() {
         let parsed = strptime("%F %T %Q", "2024-04-15 10:30:00 America/New_York", false).unwrap();
         let err = parsed.to_chrono_datetime().unwrap_err();
-
         // IANA is rejected in to_chrono_offset (vanilla chrono cannot resolve it)
-        match err {
-            Error::Simple {
-                kind: ParseErr::ChronoOffset, // ← changed
-                ..
-            } => {}
-            _ => panic!("expected ChronoOffset for IANA name (chrono-tz not supported)"),
-        }
+        assert!(matches!(err.kind, DtErrKind::ChronoOffset));
     }
 
     #[test]
