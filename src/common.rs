@@ -11,10 +11,10 @@ macro_rules! impl_time_inc {
             impl $ty {
 
                 /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOSEC_PER_SEC)`.
+                #[inline]
                 pub const fn carry_over(mut self) -> Self {
                     if self.subsec >= ATTOSEC_PER_SEC {
-                        let carry = (self.subsec / ATTOSEC_PER_SEC) as i64;
-                        self.sec += carry;
+                        self.sec += (self.subsec / ATTOSEC_PER_SEC) as i64;
                         self.subsec %= ATTOSEC_PER_SEC;
                     }
                     self
@@ -281,7 +281,6 @@ macro_rules! impl_time_inc {
                 /// part (`subsec`) and the whole seconds (`sec`), using saturating arithmetic
                 /// throughout.
                 #[doc(hidden)]
-                #[inline]
                 const fn add_subsec_delta(&mut self, n: i64, unit: u64) {
                     if n == 0 {
                         return;

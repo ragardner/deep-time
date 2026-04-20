@@ -21,6 +21,46 @@ pub fn get_tz_data(name: &str) -> Option<(&str, &'static [Transition], Option<us
     } else { None }
 }
 
+/// Returns the UTC offset (in seconds) for the given IANA timezone
+/// at the specified Unix timestamp. Returns `None` if the zone is unknown.
+pub fn offset_at(name: &str, unix_timestamp: i64) -> Option<i32> {
+    let (_, transitions, repeating_tail_start) = get_tz_data(name)?;
+    let idx = transitions.partition_point(|t| t.timestamp <= unix_timestamp);
+    if idx < transitions.len() {
+        if idx == 0 {
+            Some(transitions[0].offset)
+        } else {
+            Some(transitions[idx - 1].offset)
+        }
+    } else {
+        // Far future: extend using repeating cycle if available
+        resolve_far_future(transitions, repeating_tail_start, unix_timestamp)
+            .map(|info| info.offset)
+    }
+}
+
+/// Returns detailed offset information for the given IANA timezone
+/// at the specified Unix timestamp.
+pub fn offset_info_at(name: &str, unix_timestamp: i64) -> Option<OffsetInfo> {
+    let (_, transitions, repeating_tail_start) = get_tz_data(name)?;
+    let idx = transitions.partition_point(|t| t.timestamp <= unix_timestamp);
+    if idx < transitions.len() {
+        let t = if idx == 0 {
+            &transitions[0]
+        } else {
+            &transitions[idx - 1]
+        };
+        Some(OffsetInfo {
+            offset: t.offset,
+            is_dst: t.is_dst,
+            abbrev: t.abbrev,
+        })
+    } else {
+        // Far future: extend using repeating cycle if available
+        resolve_far_future(transitions, repeating_tail_start, unix_timestamp)
+    }
+}
+
 #[inline]
 fn resolve_far_future(
     transitions: &[Transition],
@@ -77,45 +117,7 @@ fn last_transition(transitions: &[Transition]) -> Option<OffsetInfo> {
     })
 }
 
-/// Returns the UTC offset (in seconds) for the given IANA timezone
-/// at the specified Unix timestamp. Returns `None` if the zone is unknown.
-pub fn offset_at(name: &str, unix_timestamp: i64) -> Option<i32> {
-    let (_, transitions, repeating_tail_start) = get_tz_data(name)?;
-    let idx = transitions.partition_point(|t| t.timestamp <= unix_timestamp);
-    if idx < transitions.len() {
-        if idx == 0 {
-            Some(transitions[0].offset)
-        } else {
-            Some(transitions[idx - 1].offset)
-        }
-    } else {
-        // Far future: extend using repeating cycle if available
-        resolve_far_future(transitions, repeating_tail_start, unix_timestamp)
-            .map(|info| info.offset)
-    }
-}
 
-/// Returns detailed offset information for the given IANA timezone
-/// at the specified Unix timestamp.
-pub fn offset_info_at(name: &str, unix_timestamp: i64) -> Option<OffsetInfo> {
-    let (_, transitions, repeating_tail_start) = get_tz_data(name)?;
-    let idx = transitions.partition_point(|t| t.timestamp <= unix_timestamp);
-    if idx < transitions.len() {
-        let t = if idx == 0 {
-            &transitions[0]
-        } else {
-            &transitions[idx - 1]
-        };
-        Some(OffsetInfo {
-            offset: t.offset,
-            is_dst: t.is_dst,
-            abbrev: t.abbrev,
-        })
-    } else {
-        // Far future: extend using repeating cycle if available
-        resolve_far_future(transitions, repeating_tail_start, unix_timestamp)
-    }
-}
 
 static DATA_69: &[Transition] = &[
     Transition { timestamp: -9223372036854775808, offset: 0, is_dst: false, abbrev: "-00" },

@@ -1,8 +1,8 @@
 use crate::ParseCfg;
-use {std::sync::LazyLock, std::sync::OnceLock};
+use std::sync::LazyLock;
 
 #[cfg(feature = "locale")]
-use sys_locale;
+use {std::sync::OnceLock, sys_locale};
 
 #[cfg(feature = "locale")]
 static LOCALE_PREFERS_DAY_FIRST: OnceLock<bool> = OnceLock::new();

@@ -1,12 +1,10 @@
 use crate::Lang;
-use std::boxed::Box;
-use std::string::{String, ToString};
+use std::string::String;
 use std::vec::Vec;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(from_wasm_abi))]
 pub enum DateOrder {
     /// **Default & recommended** — Smart modern heuristic (best of all worlds):
     /// - Tries **Year-first** formats first (modern/tech bias: JSON, logs, APIs, databases)
@@ -24,9 +22,8 @@ pub enum DateOrder {
     MonthFirst,
 }
 
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(from_wasm_abi))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 /// Only relevant for purely numeric dates.
 pub enum DateParseMode {
@@ -49,9 +46,8 @@ pub enum DateParseMode {
     Scientific,
 }
 
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(from_wasm_abi))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParseCfg {
     /// Explicit list of formats to try **in the exact order given**.

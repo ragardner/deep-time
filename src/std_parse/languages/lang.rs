@@ -1,7 +1,5 @@
 use crate::DateToken;
 use aho_corasick::AhoCorasick;
-use std::boxed::Box;
-use std::string::ToString;
 use std::{collections::HashMap, sync::LazyLock};
 
 #[derive(Debug, Clone, Copy)]
@@ -17,9 +15,8 @@ pub(crate) struct LangData {
 /// Language codes following ISO 639-1 standard (two-letter codes)
 /// Default is En (English)
 #[allow(dead_code)]
-#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[cfg_attr(feature = "tsify", tsify(from_wasm_abi))]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum Lang {
     /// English (default)

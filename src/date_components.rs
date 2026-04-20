@@ -58,7 +58,7 @@ pub enum TimeZone {
     Fixed(i32),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub struct DateComponents {
     pub year: Option<i64>,
     pub month: Option<u8>,  // 1-12

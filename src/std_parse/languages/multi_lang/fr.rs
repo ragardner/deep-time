@@ -1,13 +1,12 @@
 use crate::{
     DateToken, EN_DAYS, EN_DURATIONS, EN_MONTHS, EN_RELATIVES, EN_SPECIAL, LangData, TZ_ENTRIES,
+    TZ_LOWERED_KEYS,
 };
 use aho_corasick::{AhoCorasick, MatchKind};
-use std::boxed::Box;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::vec::Vec;
 
-#[allow(dead_code)]
 pub(crate) const FR_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("et", "and", DateToken::Plus),
     ("plus", "plus", DateToken::Plus),
@@ -68,7 +67,6 @@ pub(crate) const FR_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
 ];
 
 /// Any missing short and long units from RELATIVES
-#[allow(dead_code)]
 pub(crate) const FR_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("y", "y", DateToken::Year),
     ("w", "w", DateToken::Week),
@@ -149,7 +147,6 @@ pub(crate) const FR_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("qs", "qs", DateToken::Quectosecond),
 ];
 
-#[allow(dead_code)]
 pub(crate) const FR_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     // Short months (French abbreviations) → English short form
     ("janv", "Jan", DateToken::MonthShort),
@@ -179,7 +176,6 @@ pub(crate) const FR_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     ("décembre", "December", DateToken::MonthLong),
 ];
 
-#[allow(dead_code)]
 pub(crate) const FR_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     // Short days (French) → English short form
     ("lun", "Mon", DateToken::DayShort),
@@ -199,11 +195,9 @@ pub(crate) const FR_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     ("dimanche", "Sunday", DateToken::DayLong),
 ];
 
-#[allow(dead_code)]
 pub(crate) const FR_SPECIAL: &[(&'static str, &'static str, DateToken)] =
     &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
-#[allow(dead_code)]
 static FR_DATE_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
     let mut terms: Vec<&'static str> = Vec::with_capacity(
         FR_RELATIVES.len() + FR_MONTHS.len() + FR_DAYS.len() + FR_SPECIAL.len() + TZ_ENTRIES.len(),
@@ -216,18 +210,13 @@ static FR_DATE_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
     terms.extend(FR_MONTHS.iter().map(|&(k, _, _)| k));
     terms.extend(FR_DAYS.iter().map(|&(k, _, _)| k));
     terms.extend(FR_SPECIAL.iter().map(|&(k, _, _)| k));
-    for (name, _, _) in TZ_ENTRIES.iter() {
-        let lowered = name.to_lowercase();
-        let leaked: &'static str = Box::leak(lowered.into_boxed_str());
-        terms.push(leaked);
-    }
+    terms.extend(TZ_LOWERED_KEYS.iter());
     AhoCorasick::builder()
         .match_kind(MatchKind::LeftmostLongest)
         .build(&terms)
         .expect("invalid Aho-Corasick patterns for FR date terms")
 });
 
-#[allow(dead_code)]
 static FR_DURATION_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
     let mut terms: Vec<&'static str> = Vec::with_capacity(FR_RELATIVES.len() + FR_DURATIONS.len());
     terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
@@ -240,7 +229,6 @@ static FR_DURATION_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
         .expect("invalid Aho-Corasick patterns for FR duration terms")
 });
 
-#[allow(dead_code)]
 pub(crate) static FR: LazyLock<HashMap<&'static str, (&'static str, DateToken)>> =
     LazyLock::new(|| {
         let mut m = HashMap::new();
@@ -274,15 +262,13 @@ pub(crate) static FR: LazyLock<HashMap<&'static str, (&'static str, DateToken)>>
         for &(k, v, token) in FR_SPECIAL {
             m.insert(k, (v, token));
         }
-        for (name, _, _) in TZ_ENTRIES.iter() {
-            let lowered = name.to_lowercase();
-            let key: &'static str = Box::leak(lowered.into_boxed_str());
-            m.insert(key, (name, DateToken::Iana));
+        for (&lowered_key, &(original_name, _, _)) in TZ_LOWERED_KEYS.iter().zip(TZ_ENTRIES.iter())
+        {
+            m.insert(lowered_key, (original_name, DateToken::Iana));
         }
         m
     });
 
-#[allow(dead_code)]
 pub(crate) static FR_LANG_DATA: LangData = LangData {
     map: &FR,
     date_ac: &FR_DATE_AC,

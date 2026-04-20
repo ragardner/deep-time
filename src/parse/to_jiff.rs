@@ -1,7 +1,9 @@
 use {
-    crate::error::{DtErrKind, DtError},
     crate::{
-        ATTOSEC_PER_NANOSEC, {DateComponents, Meridiem, TimeZone, Weekday},
+        ATTOSEC_PER_NANOSEC, DateComponents, Meridiem, TimeZone, Weekday,
+        error::{DtErrKind, DtError},
+        tzdb::offset_at,
+        ymdhms_to_unix_timestamp,
     },
     alloc::string::String,
     core::result::Result,
@@ -158,16 +160,18 @@ impl DateComponents {
     /// Fast path for the common cases (unix seconds or full YMD date).
     /// Falls back to `BrokenDownTime` for everything else (ordinal date, ISO week, etc.).
     pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtError> {
-        let to_err = || DtError::new(DtErrKind::JiffTimestamp);
-
         if let Some(secs) = self.unix_timestamp_seconds {
-            return Timestamp::from_second(secs).map_err(|_| to_err());
+            return Timestamp::from_second(secs)
+                .map_err(|_| DtError::new(DtErrKind::JiffTimestamp));
         }
 
         if let (Some(year), Some(month), Some(day)) = (self.year, self.month, self.day) {
-            let year_i16: i16 = year.try_into().map_err(|_| to_err())?;
+            let year_i16: i16 = year
+                .try_into()
+                .map_err(|_| DtError::new(DtErrKind::JiffTimestamp))?;
 
-            let date = Date::new(year_i16, month as i8, day as i8).map_err(|_| to_err())?;
+            let date = Date::new(year_i16, month as i8, day as i8)
+                .map_err(|_| DtError::new(DtErrKind::JiffTimestamp))?;
 
             let hour = self.hour.unwrap_or(0) as i8;
             let minute = self.minute.unwrap_or(0) as i8;
@@ -184,36 +188,61 @@ impl DateComponents {
                 0
             };
 
-            let time = Time::new(hour, minute, second, subsec_nanosecond).map_err(|_| to_err())?;
+            let time = Time::new(hour, minute, second, subsec_nanosecond)
+                .map_err(|_| DtError::new(DtErrKind::JiffTimestamp))?;
 
             let civil_dt = date.to_datetime(time);
 
             let tz = self.to_jiff_time_zone()?;
-            let zoned = tz.to_zoned(civil_dt).map_err(|_| to_err())?;
+            let zoned = tz
+                .to_zoned(civil_dt)
+                .map_err(|_| DtError::new(DtErrKind::JiffTimestamp))?;
             return Ok(zoned.timestamp());
         }
 
         // FALLBACK: ordinal date, ISO week date, partial fields, etc.
         let bdt = self.clone().to_jiff_broken_down_time()?;
 
-        bdt.to_timestamp().map_err(|_| to_err())
+        bdt.to_timestamp()
+            .map_err(|_| DtError::new(DtErrKind::JiffTimestamp))
     }
 
     // Helper used by to_timestamp
-    #[inline]
     fn to_jiff_time_zone(&self) -> core::result::Result<JiffTimeZone, DtError> {
         let to_err = || DtError::new(DtErrKind::JiffTimeZone);
 
-        // IANA name takes precedence
+        // IANA name takes precedence — use OUR own tz database only
         if let Some(name_bytes) = &self.iana_name {
             let len = name_bytes.iter().position(|&b| b == 0).unwrap_or(48);
             if len > 0 {
                 let name = core::str::from_utf8(&name_bytes[0..len]).map_err(|_| to_err())?;
-                return JiffTimeZone::get(name).map_err(|_| to_err());
+
+                // Use the exact timestamp if we have it; otherwise compute one from YMDHMS
+                let probe_ts = if let Some(ts) = self.unix_timestamp_seconds {
+                    ts
+                } else if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
+                    ymdhms_to_unix_timestamp(
+                        y,
+                        m,
+                        d,
+                        self.hour.unwrap_or(0),
+                        self.minute.unwrap_or(0),
+                        self.second.unwrap_or(0),
+                    )
+                } else {
+                    0
+                };
+
+                if let Some(offset) = offset_at(name, probe_ts) {
+                    let jiff_offset = Offset::from_seconds(offset).map_err(|_| to_err())?;
+                    return Ok(JiffTimeZone::fixed(jiff_offset));
+                } else {
+                    return Err(to_err());
+                }
             }
         }
 
-        // Fallback to the custom TimeZone enum
+        // Fallback to the custom TimeZone enum (unchanged)
         match self.tz {
             Some(TimeZone::Fixed(secs)) => {
                 let offset = Offset::from_seconds(secs).map_err(|_| to_err())?;
@@ -264,7 +293,6 @@ mod tests {
     fn test_iana_timezone() {
         let parsed = strptime("%F %T %Q", "2024-04-15 10:30:00 America/New_York", false).unwrap();
         assert!(parsed.iana_name.is_some());
-
         let ts = parsed.to_jiff_timestamp().unwrap();
         assert_eq!(ts, Timestamp::from_second(1713191400).unwrap());
     }

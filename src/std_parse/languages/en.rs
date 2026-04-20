@@ -5,7 +5,14 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::vec::Vec;
 
-#[allow(dead_code)]
+pub(crate) static TZ_LOWERED_KEYS: LazyLock<&'static [&'static str]> = LazyLock::new(|| {
+    let keys: Vec<&'static str> = TZ_ENTRIES
+        .iter()
+        .map(|&(name, _, _)| Box::leak(name.to_lowercase().into_boxed_str()) as &'static str)
+        .collect();
+    Box::leak(keys.into_boxed_slice())
+});
+
 pub(crate) const EN_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("and", "and", DateToken::Plus),
     ("plus", "plus", DateToken::Plus),
@@ -65,7 +72,6 @@ pub(crate) const EN_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
 ];
 
 /// Any missing short and long units from RELATIVES
-#[allow(dead_code)]
 pub(crate) const EN_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("y", "y", DateToken::Year),
     ("w", "w", DateToken::Week),
@@ -145,7 +151,6 @@ pub(crate) const EN_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("qs", "qs", DateToken::Quectosecond),
 ];
 
-#[allow(dead_code)]
 pub(crate) const EN_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     // Short months
     ("jan", "Jan", DateToken::MonthShort),
@@ -175,7 +180,6 @@ pub(crate) const EN_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     ("december", "December", DateToken::MonthLong),
 ];
 
-#[allow(dead_code)]
 pub(crate) const EN_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     // Short days
     ("mon", "Mon", DateToken::DayShort),
@@ -195,11 +199,9 @@ pub(crate) const EN_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     ("sunday", "Sunday", DateToken::DayLong),
 ];
 
-#[allow(dead_code)]
 pub(crate) const EN_SPECIAL: &[(&'static str, &'static str, DateToken)] =
     &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
-#[allow(dead_code)]
 static EN_DATE_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
     let mut terms: Vec<&'static str> = Vec::with_capacity(
         EN_RELATIVES.len() + EN_MONTHS.len() + EN_DAYS.len() + EN_SPECIAL.len() + TZ_ENTRIES.len(),
@@ -208,18 +210,13 @@ static EN_DATE_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
     terms.extend(EN_MONTHS.iter().map(|&(k, _, _)| k));
     terms.extend(EN_DAYS.iter().map(|&(k, _, _)| k));
     terms.extend(EN_SPECIAL.iter().map(|&(k, _, _)| k));
-    for (name, _, _) in TZ_ENTRIES.iter() {
-        let lowered = name.to_lowercase();
-        let leaked: &'static str = Box::leak(lowered.into_boxed_str());
-        terms.push(leaked);
-    }
+    terms.extend(TZ_LOWERED_KEYS.iter());
     AhoCorasick::builder()
         .match_kind(MatchKind::LeftmostLongest)
         .build(&terms)
         .expect("invalid Aho-Corasick patterns for EN date terms")
 });
 
-#[allow(dead_code)]
 static EN_DURATION_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
     let mut terms: Vec<&'static str> = Vec::with_capacity(EN_RELATIVES.len() + EN_DURATIONS.len());
     terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
@@ -230,7 +227,6 @@ static EN_DURATION_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
         .expect("invalid Aho-Corasick patterns for EN duration terms")
 });
 
-#[allow(dead_code)]
 pub(crate) static EN: LazyLock<HashMap<&'static str, (&'static str, DateToken)>> =
     LazyLock::new(|| {
         let mut m = HashMap::new();
@@ -249,15 +245,13 @@ pub(crate) static EN: LazyLock<HashMap<&'static str, (&'static str, DateToken)>>
         for &(k, v, token) in EN_SPECIAL {
             m.insert(k, (v, token));
         }
-        for (name, _, _) in TZ_ENTRIES.iter() {
-            let lowered = name.to_lowercase();
-            let key: &'static str = Box::leak(lowered.into_boxed_str());
-            m.insert(key, (name, DateToken::Iana));
+        for (&lowered_key, &(original_name, _, _)) in TZ_LOWERED_KEYS.iter().zip(TZ_ENTRIES.iter())
+        {
+            m.insert(lowered_key, (original_name, DateToken::Iana));
         }
         m
     });
 
-#[allow(dead_code)]
 pub(crate) static EN_LANG_DATA: LangData = LangData {
     map: &EN,
     date_ac: &EN_DATE_AC,

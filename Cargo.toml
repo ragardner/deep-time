@@ -13,17 +13,14 @@ rust-version = "1.90"
 [dependencies]
 libm = "0.2"
 
-# Parser dependencies (gated behind std)
-jiff = { version = "0.2.23", optional = true, default-features = false }
 aho-corasick = { version = "1.1.4", optional = true }
-
-# Optional dependencies
+jiff = { version = "0.2.23", optional = true, default-features = false }
+chrono = { version = "0.4", optional = true, default-features = false }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "rc"] }
 tsify = { version = "=0.5.5", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
 js-sys = { version = "0.3", optional = true }
 sys-locale = { version = "0.3", optional = true }
-chrono = { version = "0.4", optional = true, default-features = false }
 
 [features]
 # ──────────────────────────────────────────────────────────────
@@ -37,10 +34,8 @@ alloc = [
 
 std = [
     "alloc",
-    "dep:jiff",                    # parser needs jiff
-    "dep:aho-corasick",            # parser needs aho-corasick (with its default features for speed)
-    "jiff/std",
-    "jiff/tzdb-bundle-always",     # required by the deep-time parser
+    "dep:aho-corasick",
+    "jiff?/std",
 ]
 
 # ──────────────────────────────────────────────────────────────
@@ -70,8 +65,8 @@ serde = [
 jiff = [
     "std",
     "dep:jiff",
-    "jiff/tzdb-bundle-always",
 ]
+
 chrono = [
     "std",
     "dep:chrono",
@@ -87,7 +82,7 @@ js = [
     "dep:tsify",
     "dep:wasm-bindgen",
     "dep:js-sys",
-    "jiff/js",
+    "jiff?/js",
     "chrono?/wasmbind",
     "sys-locale?/js",
 ]
