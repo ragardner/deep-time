@@ -1,5 +1,78 @@
-use crate::TimePoint;
+use crate::{ClockType, TimePoint};
 use core::fmt;
+
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+
+impl TimePoint {
+    /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp in **UTC**
+    /// with the `Z` suffix.
+    ///
+    /// - Always uses UTC (`Z` = Zulu = UTC).
+    /// - Default = 9 digits (nanoseconds) but **automatically trims trailing zeros**.
+    /// - If fractional part is zero → no decimal point at all (e.g. `...45Z`).
+    /// - Example: `"2024-03-14T15:30:45.123Z"`
+    pub fn to_rfc3339(&self) -> String {
+        self.to_rfc3339_precision(9)
+    }
+
+    /// Same as [`to_rfc3339`] but with a configurable maximum number of fractional digits
+    /// (0–18). Trailing zeros are always trimmed.
+    pub fn to_rfc3339_precision(&self, max_precision: usize) -> String {
+        let utc = self.to_clock_type(ClockType::UTC);
+
+        let (year, month, day) = utc.to_gregorian_date();
+        let (hour, minute, second, subsec_attos) = utc.to_hms_subsec();
+
+        let mut prec = max_precision.min(18);
+
+        if prec == 0 {
+            return alloc::format!(
+                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second
+            );
+        }
+
+        let scale = 10u64.pow(18 - prec as u32);
+        let mut frac_value = subsec_attos / scale;
+
+        // Trim trailing zeros (no string ops)
+        while prec > 0 && frac_value % 10 == 0 {
+            frac_value /= 10;
+            prec -= 1;
+        }
+
+        if prec == 0 {
+            // fraction was exactly zero
+            alloc::format!(
+                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second
+            )
+        } else {
+            alloc::format!(
+                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:0>width$}Z",
+                year,
+                month,
+                day,
+                hour,
+                minute,
+                second,
+                frac_value,
+                width = prec
+            )
+        }
+    }
+}
 
 /// Writes the fractional part of a second when `subsec` is in **attoseconds** (10⁻¹⁸ s).
 ///

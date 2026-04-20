@@ -111,5 +111,8 @@ all = [
     "serde",
 ]
 
+# Internal tests
+perf_tests = []
+
 [lib]
 crate-type = ["cdylib", "rlib"]
