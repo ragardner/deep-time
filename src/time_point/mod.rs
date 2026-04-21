@@ -23,11 +23,22 @@ use crate::ClockType;
 /// A high-precision point in time expressed in a specific [`ClockType`].
 ///
 /// `TimePoint` represents an instant in time as **seconds + attoseconds**
-/// (where 1 attosecond = 10⁻¹⁸ s) since the reference epoch of the
-/// associated ClockType.
+/// (where 1 attosecond = 10⁻¹⁸ s) **since the reference epoch** of the
+/// associated [`ClockType`].
 ///
-/// - Precision: 10⁻¹⁸ s
-/// - Range: ±~292 billion years (i64 seconds limit).
+/// Every clock type has its own zero point — the exact physical moment when
+/// its internal counter reads `sec = 0, subsec = 0`. This library anchors
+/// almost everything to **J2000.0 TT** (`2000-01-01 12:00:00 TT`, JD 2451545.0)
+/// so that numbers stay small, math stays fast, and relativistic corrections
+/// remain perfectly exact.
+///
+/// The full explanation of every clock type’s reference epoch — including
+/// why we chose J2000-centric zeros, the exact offsets and IAU/NIST rates
+/// (`L_G`, `L_B`, `L_M`), leap-second handling, and how Proper/Custom work —
+/// is in the module-level documentation of the [`ClockType`] enum.
+///
+/// - Precision: 10⁻¹⁸ s (attosecond)
+/// - Range: ±~292 billion years (i64 seconds limit)
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]

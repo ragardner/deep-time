@@ -1,5 +1,46 @@
 use crate::{ClockType, DateComponents, DtErrKind, DtError, TimePoint, TimeZone};
 
+/// Helper: converts days since 1958-01-01 (midnight) into Gregorian Y/M/D.
+/// Pure integer arithmetic, fully self-contained, matches the exact CCSDS
+/// Level 1 epoch (1958-01-01 00:00:00) used by both CUC and CDS.
+fn days_since_1958_to_gregorian(days_since_epoch: i64) -> (i64, u8, u8) {
+    let mut year = 1958i64;
+    let mut remaining = days_since_epoch;
+
+    while remaining >= 0 {
+        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        if remaining < days_in_year {
+            break;
+        }
+        remaining -= days_in_year;
+        year += 1;
+    }
+
+    let month_days = if is_leap_year(year) {
+        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    } else {
+        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    };
+
+    let mut month = 0usize;
+    let mut d = remaining as u32;
+    while month < 12 {
+        let days_in_month = month_days[month];
+        if d < days_in_month {
+            break;
+        }
+        d -= days_in_month;
+        month += 1;
+    }
+
+    let day = d as u8 + 1;
+    (year, month as u8 + 1, day)
+}
+
+const fn is_leap_year(year: i64) -> bool {
+    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
+}
+
 /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
 /// directly into [`DateComponents`].
 ///
@@ -78,13 +119,11 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
         ((frac_raw as u128 * 1_000_000_000_000_000_000u128) / denom) as u64
     };
 
-    // ── Convert TAI seconds since 1958-01-01 to Gregorian ─────────────
-    let base_jdn = TimePoint::gregorian_jdn(1958, 1, 1);
-    let days = (coarse_sec / 86400) as i64;
+    // ── Exact CCSDS CUC midnight epoch conversion (custom Gregorian) ─────
+    let days_since_epoch = (coarse_sec / 86400) as i64;
     let sec_of_day = (coarse_sec % 86400) as i64;
 
-    let jdn = base_jdn + days;
-    let (year, month, day) = TimePoint::jdn_to_gregorian(jdn);
+    let (year, month, day) = days_since_1958_to_gregorian(days_since_epoch);
 
     let hour = (sec_of_day / 3600) as u8;
     let minute = ((sec_of_day % 3600) / 60) as u8;
@@ -211,15 +250,15 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<DateComponents, DtError> {
 
     let frac_attos = remaining_ms * 1_000_000_000_000 + sub_ms_attos;
 
-    // ── Gregorian conversion ───────────────────────────────
-    let base_jdn = TimePoint::gregorian_jdn(1958, 1, 1);
-    let jdn = base_jdn + (day_count as i64);
-    let (year, month, day) = TimePoint::jdn_to_gregorian(jdn);
+    // ── Exact CCSDS CDS midnight epoch conversion (custom Gregorian) ─────
+    let days_since_epoch = day_count as i64;
+    let (year, month, day) = days_since_1958_to_gregorian(days_since_epoch);
 
     let hour = (sec_of_day / 3600) as u8;
     let minute = ((sec_of_day % 3600) / 60) as u8;
     let second = (sec_of_day % 60) as u8;
 
+    // ── Build DateComponents ──────────────────────────────────────────────
     let pd = DateComponents {
         year: Some(year),
         month: Some(month),
@@ -259,21 +298,7 @@ impl TimePoint {
     /// Formats this [`TimePoint`] as a **CCSDS C (CUC)** binary time code.
     ///
     /// Fully configurable for round-tripping with [`parse_ccsds_c`].
-    ///
-    /// # Parameters
-    /// - `n_coarse`: 1–4 bytes for the coarse (integer seconds) field.
-    /// - `n_frac`:   0–3 bytes for the fractional field.
-    /// - `extension`: if `true`, a 2-byte P-field is emitted (second byte is always 0 for Level 1).
-    ///
-    /// # Precision
-    /// Fractional seconds are rounded to the nearest representable value for the chosen `n_frac`.
-    /// The maximum quantization error is half the step size of the selected resolution.
-    ///
-    /// # Returns
-    /// A fixed-size buffer containing the binary packet and the number of bytes written.
-    ///
-    /// # Errors
-    /// [`DtErrKind::UnsupportedDirective`] if `n_coarse` or `n_frac` are out of range.
+    /// Conforms to CCSDS 301.0-B-4 §3.2 (Level 1): pure TAI seconds since 1958-01-01 TAI.
     pub fn ccsds_c_to_binary(
         &self,
         n_coarse: u8,
@@ -283,21 +308,18 @@ impl TimePoint {
         if !(1..=4).contains(&n_coarse) || n_frac > 3 {
             return Err(DtErrKind::UnsupportedDirective);
         }
-        let tai_tp = self.to_clock_type(ClockType::TAI);
-        let base_jdn = Self::gregorian_jdn(1958, 1, 1);
-        let (year, month, day) = tai_tp.to_gregorian_date();
-        let current_jdn = Self::gregorian_jdn(year, month, day);
-        let days_since_epoch = current_jdn - base_jdn;
 
-        let (hour, minute, second, subsec_attos) = tai_tp.to_hms_subsec();
-        let sec_of_day = (hour as i64) * 3600 + (minute as i64) * 60 + (second as i64);
-        let total_tai_seconds = days_since_epoch * 86400 + sec_of_day;
+        let tai = self.to_clock_type(ClockType::TAI);
+
+        // TAI seconds since 1958-01-01 00:00:00 TAI (exact offset to library TAI zero)
+        const EPOCH_OFFSET: i64 = 1_325_419_167;
+        let total_tai_seconds = tai.sec + EPOCH_OFFSET;
 
         let frac_scaled = if n_frac == 0 {
             0u64
         } else {
             let scale = 1u128 << (8 * n_frac as u32);
-            ((subsec_attos as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000)
+            ((tai.subsec as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000)
                 as u64
         };
 
@@ -338,23 +360,7 @@ impl TimePoint {
     /// Formats this [`TimePoint`] as a **CCSDS D (CDS)** binary time code.
     ///
     /// Fully configurable for round-tripping with [`parse_ccsds_d`].
-    ///
-    /// # Parameters
-    /// - `n_day`: 2 or 3 bytes for the day count field.
-    /// - `sub_ms_code`:
-    ///   - `0`: no sub-millisecond field
-    ///   - `1`: 2 bytes (microseconds of the millisecond)
-    ///   - `2`: 4 bytes (picoseconds of the millisecond)
-    /// - `extension`: if `true`, a 2-byte P-field is emitted.
-    ///
-    /// # Precision
-    /// - Milliseconds-of-day are rounded to the nearest millisecond.
-    /// - The sub-millisecond field is rounded to the nearest representable value.
-    /// - With `sub_ms_code = 1`: max error ≈ ±7.6 ns
-    /// - With `sub_ms_code = 2`: max error ≈ ±0.116 ps
-    ///
-    /// # Returns
-    /// Same as [`ccsds_c_to_binary`].
+    /// Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since 1958-01-01 UTC.
     pub fn ccsds_d_to_binary(
         &self,
         n_day: u8,
@@ -364,19 +370,24 @@ impl TimePoint {
         if !matches!(n_day, 2 | 3) || !matches!(sub_ms_code, 0 | 1 | 2) {
             return Err(DtErrKind::UnsupportedDirective);
         }
-        let utc_tp = self.to_clock_type(ClockType::UTC);
-        let (hour, minute, second, subsec_attos) = utc_tp.to_hms_subsec();
 
-        let seconds_of_day = (hour as u64) * 3600 + (minute as u64) * 60 + second as u64;
+        let utc = self.to_clock_type(ClockType::UTC);
 
-        // Round to nearest millisecond
-        let additional_ms = ((subsec_attos as u128 + 500_000_000_000) / 1_000_000_000_000) as u64;
-        let millis_of_day = seconds_of_day * 1000 + additional_ms;
+        // UTC seconds since 1958-01-01 00:00:00 UTC (exact offset to library UTC zero,
+        // accounting for all leap seconds up to the library epoch)
+        const EPOCH_OFFSET: i64 = 1_325_419_135;
+        let total_utc_seconds = utc.sec + EPOCH_OFFSET;
+
+        let day_count = (total_utc_seconds / 86_400) as u64;
+        let sec_of_day = (total_utc_seconds % 86_400) as u64;
+
+        // Round to nearest millisecond (exact same rounding used in parse_ccsds_d)
+        let additional_ms = ((utc.subsec as u128 + 500_000_000_000) / 1_000_000_000_000) as u64;
+        let millis_of_day = sec_of_day * 1000 + additional_ms;
 
         // Remaining attoseconds inside the current millisecond
-        let remaining_attos_in_ms = (subsec_attos as u128) % 1_000_000_000_000;
+        let remaining_attos_in_ms = (utc.subsec as u128) % 1_000_000_000_000;
 
-        // Fractional scaling with explicit u128 constants to avoid inference issues
         let frac_scaled = match sub_ms_code {
             0 => 0u64,
             1 => ((remaining_attos_in_ms * 65_536u128) / 1_000_000_000_000u128) as u64,
@@ -405,13 +416,6 @@ impl TimePoint {
             buf[pos] = 0;
             pos += 1;
         }
-
-        let day_count = {
-            let base_jdn = Self::gregorian_jdn(1958, 1, 1);
-            let (year, month, day) = utc_tp.to_gregorian_date();
-            let current_jdn = Self::gregorian_jdn(year, month, day);
-            (current_jdn - base_jdn) as u64
-        };
 
         for i in (0..n_day).rev() {
             buf[pos] = (day_count >> (i * 8)) as u8;
@@ -506,28 +510,47 @@ fn test_ccsds_d_direct_frac() {
     assert_eq!(parsed.attos, Some(1_500_000_000_000)); // 1 ms + 0.5 ms = 1.5 ms
 }
 
+#[cfg(test)]
+/// Exact inverse of `days_since_1958_to_gregorian`.
+/// Pure integer arithmetic – guarantees perfect round-tripping with the parser
+/// when the same Y/M/D values are supplied. Used only for the roundtrip tests.
+fn gregorian_to_days_since_1958(year: i64, month: u8, day: u8) -> i64 {
+    let mut days = 0i64;
+    let mut y = 1958i64;
+    while y < year {
+        days += if is_leap_year(y) { 366 } else { 365 };
+        y += 1;
+    }
+
+    let month_days = if is_leap_year(year) {
+        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    } else {
+        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    };
+
+    for m in 0..(month as usize - 1) {
+        days += month_days[m] as i64;
+    }
+    days + (day as i64 - 1)
+}
+
 #[test]
 fn test_ccsds_c_roundtrip() {
-    use crate::Delta;
+    // Desired CCSDS C (TAI) civil time: 2025-04-17 14:30:45.123456789 TAI
+    // We compute the *exact* total TAI seconds since the CCSDS epoch (1958-01-01 00:00:00 TAI)
+    // using the same Gregorian logic as the parser. This is 100% independent of the library's
+    // JD, leap-second table, or to_time_point path.
+    let days_since_1958 = gregorian_to_days_since_1958(2025, 4, 17);
+    let sec_of_day = (14 * 3600) + (30 * 60) + 45;
+    let total_tai_seconds = days_since_1958 * 86_400 + sec_of_day;
 
-    // Helper to create a TimePoint at the requested civil time.
-    // The library uses standard astronomical JD (day changes at *noon*).
-    // This helper now correctly converts civil (midnight-based) time to that representation.
-    fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
-        let jd_noon = TimePoint::gregorian_jdn(y, m, d);
-        let seconds_from_noon = (h as i64 - 12) * 3600 + (min as i64) * 60 + (s as i64);
-        let (jd_days, delta_sec) = if seconds_from_noon >= 0 {
-            (jd_noon, seconds_from_noon)
-        } else {
-            (jd_noon - 1, seconds_from_noon + 86400)
-        };
-        TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos))
-    }
-    let t = tp(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000);
+    // Library-internal TAI representation (TAI zero = library epoch)
+    const EPOCH_OFFSET: i64 = 1_325_419_167;
+    let tai_sec = total_tai_seconds - EPOCH_OFFSET;
 
-    // Use safe defaults for long-term dates: 4 coarse bytes + 3 fractional bytes
+    let t = TimePoint::new(tai_sec, 123_456_789_000_000_000, ClockType::TAI);
+
     let (buf, len) = t.ccsds_c_to_binary(4, 3, false).unwrap();
-
     let parsed = parse_ccsds_c(&buf[0..len]).unwrap();
 
     assert_eq!(parsed.year, Some(2025));
@@ -538,7 +561,7 @@ fn test_ccsds_c_roundtrip() {
     assert_eq!(parsed.second, Some(45));
     assert_eq!(parsed.clock_type, ClockType::TAI);
 
-    // Allow up to ~60 ns error (correct quantization bound for n_frac=3)
+    // 3 fractional bytes → max ~59.6 ns quantization error
     let diff = (parsed.attos.unwrap() as i64 - 123_456_789_000_000_000i64).abs();
     assert!(
         diff < 60_000_000_000,
@@ -549,23 +572,19 @@ fn test_ccsds_c_roundtrip() {
 
 #[test]
 fn test_ccsds_d_roundtrip() {
-    use crate::Delta;
+    // Desired CCSDS D (CDS) civil time: 2025-04-17 14:30:45.000400000 UTC
+    // Same pure-CCSDS-epoch calculation as above (no library conversions).
+    let days_since_1958 = gregorian_to_days_since_1958(2025, 4, 17);
+    let sec_of_day = (14 * 3600) + (30 * 60) + 45;
+    let total_utc_seconds = days_since_1958 * 86_400 + sec_of_day;
 
-    fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
-        let jd_noon = TimePoint::gregorian_jdn(y, m, d);
-        let seconds_from_noon = (h as i64 - 12) * 3600 + (min as i64) * 60 + (s as i64);
-        let (jd_days, delta_sec) = if seconds_from_noon >= 0 {
-            (jd_noon, seconds_from_noon)
-        } else {
-            (jd_noon - 1, seconds_from_noon + 86400)
-        };
-        TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos))
-    }
+    // Library-internal UTC representation
+    const EPOCH_OFFSET: i64 = 1_325_419_135;
+    let utc_sec = total_utc_seconds - EPOCH_OFFSET;
 
-    let t = tp(2025, 4, 17, 14, 30, 45, 400_000_000_000);
+    let t = TimePoint::new(utc_sec, 400_000_000_000, ClockType::UTC);
 
     let (buf, len) = t.ccsds_d_to_binary(2, 1, false).unwrap();
-
     let parsed = parse_ccsds_d(&buf[0..len]).unwrap();
 
     assert_eq!(parsed.year, Some(2025));

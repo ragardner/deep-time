@@ -445,6 +445,7 @@ impl TimePoint {
 }
 
 impl TimePoint {
+    /// TODO: SHOULDN'T USE TT?
     /// Returns the Julian Date in UTC (computed on the TT scale and then expressed in UTC).
     /// Non-exact Real.
     #[inline]
@@ -452,6 +453,7 @@ impl TimePoint {
         self.to_clock_type(ClockType::UTC).to_jd_tt()
     }
 
+    /// TODO: SHOULDN'T USE TT?
     /// Returns the Modified Julian Date in UTC (computed on the TT scale and then expressed in UTC).
     /// Non-exact Real.
     #[inline]
