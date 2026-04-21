@@ -20,25 +20,43 @@ pub mod to_jiff;
 
 use crate::ClockType;
 
-/// A high-precision point in time expressed in a specific [`ClockType`].
+/// A high-precision instant in time, **typed by its time scale** ([`ClockType`]).
 ///
-/// `TimePoint` represents an instant in time as **seconds + attoseconds**
-/// (where 1 attosecond = 10⁻¹⁸ s) **since the reference epoch** of the
-/// associated [`ClockType`].
+/// `TimePoint` stores a physical moment as **seconds + attoseconds (10⁻¹⁸ s)**
+/// measured from the **reference epoch of its own `ClockType`**.
 ///
-/// Every clock type has its own zero point — the exact physical moment when
-/// its internal counter reads `sec = 0, subsec = 0`. This library anchors
-/// almost everything to **J2000.0 TT** (`2000-01-01 12:00:00 TT`, JD 2451545.0)
-/// so that numbers stay small, math stays fast, and relativistic corrections
-/// remain perfectly exact.
+/// ### The single most important fact
 ///
-/// The full explanation of every clock type’s reference epoch — including
-/// why we chose J2000-centric zeros, the exact offsets and IAU/NIST rates
-/// (`L_G`, `L_B`, `L_M`), leap-second handling, and how Proper/Custom work —
-/// is in the module-level documentation of the [`ClockType`] enum.
+/// For **every built-in clock type except `Proper` and `Custom`**,
+/// `TimePoint::new(0, 0, ClockType::XXX)` represents the **exact same physical
+/// instant** — the moment that corresponds to **J2000.0 Terrestrial Time**
+/// (2000-01-01 12:00:00 TT, JD 2451545.0) when converted to TT.
 ///
-/// - Precision: 10⁻¹⁸ s (attosecond)
-/// - Range: ±~292 billion years (i64 seconds limit)
+/// Examples:
+/// - `new(0, 0, ClockType::TT)` → directly J2000.0 TT
+/// - `new(0, 0, ClockType::TAI)` → 32.184 s before J2000 TT
+/// - `new(0, 0, ClockType::UTC)` → the UTC instant corresponding to the TAI zero
+/// - `new(0, 0, ClockType::GPST)` → 19 s after the TAI zero
+/// - `new(0, 0, ClockType::TCG)` → the TCG instant whose rate-corrected value
+///   equals J2000 TT (rate integrated from the IAU 1977 reference epoch)
+///
+/// Only `Proper` and `Custom` have **user-chosen** reference epochs (via
+/// `ClockModel`).
+///
+/// This design gives exact round-tripping and relativistic corrections while
+/// keeping numbers small for modern dates. All high-level methods
+/// (`to_gregorian_date`, `to_rfc3339*`, formatting, JD/MSD, etc.) convert
+/// internally to TT. You almost never need to look at raw `.sec()` unless
+/// doing low-level work.
+///
+/// See the [`ClockType`] module documentation for the exact zero point of
+/// every scale.
+///
+/// - **Precision**: 10⁻¹⁸ s (attosecond)
+/// - **Range**: ±~292 billion years (i64 seconds)
+/// - **Correctness**: All conversions preserve the exact physical instant
+///   using TAI as the canonical hub + proper leap-second and IAU relativistic
+///   handling.
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
