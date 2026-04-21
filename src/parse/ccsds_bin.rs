@@ -160,7 +160,7 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
         ..DateComponents::default()
     };
 
-    pd.finish()
+    pd.finish(false)
 }
 
 /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
@@ -289,7 +289,7 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<DateComponents, DtError> {
         ..DateComponents::default()
     };
 
-    pd.finish()
+    pd.finish(false)
 }
 
 /// Auto-detects and parses either a CCSDS C (CUC) or D (CDS) binary time code

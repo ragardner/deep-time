@@ -83,7 +83,7 @@ pub struct DateComponents {
 
 impl DateComponents {
     #[inline]
-    pub fn finish(mut self) -> core::result::Result<Self, DtError> {
+    pub fn finish(mut self, allow_partial: bool) -> core::result::Result<Self, DtError> {
         if self.unix_timestamp_seconds.is_some() {
             if self.hour.is_none() {
                 self.hour = Some(0);
@@ -120,7 +120,17 @@ impl DateComponents {
             self.tz = Some(TimeZone::Utc);
         }
 
-        let has_calendar_date = self.year.is_some() && self.month.is_some() && self.day.is_some();
+        let has_calendar_date = if allow_partial {
+            if self.day.is_none() {
+                self.day = Some(1);
+            }
+            if self.month.is_none() {
+                self.month = Some(1);
+            }
+            self.year.is_some()
+        } else {
+            self.year.is_some() && self.month.is_some() && self.day.is_some()
+        };
         let has_ordinal_date = self.year.is_some() && self.day_of_year.is_some();
         let has_iso_week_date = self.iso_week_year.is_some() && self.iso_week.is_some();
 

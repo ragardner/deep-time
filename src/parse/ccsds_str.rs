@@ -148,7 +148,7 @@ pub fn parse_ccsds(input: &str) -> Result<DateComponents, DtError> {
         Err(_) => return Err(DtError::new(DtErrKind::StrCCSDSFromUtf8Err)),
     };
 
-    strptime(format, cleaned, false)
+    strptime(format, cleaned, false, false)
 }
 
 #[cfg(test)]

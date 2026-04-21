@@ -181,7 +181,7 @@ mod tests {
 
     #[test]
     fn test_unix_epoch_1970() {
-        let parsed = strptime("%s", "0", false).unwrap();
+        let parsed = strptime("%s", "0", false, false).unwrap();
         let tp = parsed.to_time_point(ClockType::TAI).unwrap();
 
         let jd = jd_tt(&tp);
@@ -196,7 +196,7 @@ mod tests {
 
     #[test]
     fn test_j2000_noon_via_unix_timestamp() {
-        let parsed = strptime("%s", "946728000", false).unwrap();
+        let parsed = strptime("%s", "946728000", false, false).unwrap();
         let tp = parsed.to_time_point(ClockType::TAI).unwrap();
 
         let jd = jd_tt(&tp);
@@ -215,15 +215,21 @@ mod tests {
             "%Y-%m-%d %H:%M:%S.%.f",
             "2024-04-15 14:30:45.123456789",
             false,
+            false,
         )
         .unwrap()
         .to_time_point(ClockType::TAI)
         .unwrap();
 
-        let ordinal = strptime("%Y-%j %H:%M:%S.%.f", "2024-106 14:30:45.123456789", false)
-            .unwrap()
-            .to_time_point(ClockType::TAI)
-            .unwrap();
+        let ordinal = strptime(
+            "%Y-%j %H:%M:%S.%.f",
+            "2024-106 14:30:45.123456789",
+            false,
+            false,
+        )
+        .unwrap()
+        .to_time_point(ClockType::TAI)
+        .unwrap();
 
         assert_eq!(jd_tt(&ymd), jd_tt(&ordinal));
         assert_eq!(ymd.to_jd_tt_exact(), ordinal.to_jd_tt_exact());
@@ -234,6 +240,7 @@ mod tests {
         let parsed = strptime(
             "%Y-%m-%d %H:%M:%S.%9N",
             "2024-04-15 00:00:00.123456789",
+            false,
             false,
         )
         .unwrap();
@@ -249,6 +256,7 @@ mod tests {
         let parsed = strptime(
             "%Y-%m-%d %H:%M:%S.%9N",
             "2024-04-15 00:00:00.123456789",
+            false,
             false,
         )
         .unwrap();
@@ -310,11 +318,11 @@ mod tests {
     fn test_pure_iso_week_date() {
         // Pure ISO week date (%G/%V/%u) is now fully supported in to_time_point
         // via the iso_week_year + iso_week + weekday path (no regular .year required).
-        let parsed = strptime("%G-W%V-%u", "2024-W16-1", false).unwrap();
+        let parsed = strptime("%G-W%V-%u", "2024-W16-1", false, false).unwrap();
         let tp_iso = parsed.to_time_point(ClockType::TAI).unwrap();
 
         // 2024-W16-1 is Monday, April 15, 2024
-        let ymd = strptime("%Y-%m-%d", "2024-04-15", false)
+        let ymd = strptime("%Y-%m-%d", "2024-04-15", false, false)
             .unwrap()
             .to_time_point(ClockType::TAI)
             .unwrap();

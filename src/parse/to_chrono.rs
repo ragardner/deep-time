@@ -205,7 +205,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_basic_ymd_hms() {
-        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false).unwrap();
+        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         let expected_date = NaiveDate::from_ymd_opt(2024, 4, 15).unwrap();
@@ -217,7 +217,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_ordinal_date() {
-        let parsed = strptime("%Y-%j %H:%M:%S", "2024-106 14:30:45", false).unwrap();
+        let parsed = strptime("%Y-%j %H:%M:%S", "2024-106 14:30:45", false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         let expected_date = NaiveDate::from_yo_opt(2024, 106).unwrap();
@@ -231,7 +231,7 @@ mod tests {
     fn test_to_chrono_naive_datetime_iso_week_date() {
         use chrono::Weekday as ChronoWeekday;
 
-        let parsed = strptime("%G-W%V-%u %H:%M:%S", "2024-W16-2 14:30:45", false).unwrap();
+        let parsed = strptime("%G-W%V-%u %H:%M:%S", "2024-W16-2 14:30:45", false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         // 2024-W16-2 = Tuesday 2024-04-16
@@ -248,6 +248,7 @@ mod tests {
             "%Y-%m-%d %H:%M:%S.%N",
             "2024-04-15 14:30:45.123456789012345678901234567890",
             false,
+            false,
         )
         .unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
@@ -261,7 +262,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_leap_second() {
-        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false).unwrap();
+        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         // Chrono represents leap second as 23:59:59 + 1_000_000_000 ns
@@ -274,7 +275,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_fixed_offset() {
-        let parsed = strptime("%F %T %z", "2024-04-15 14:30:45 -0400", false).unwrap();
+        let parsed = strptime("%F %T %z", "2024-04-15 14:30:45 -0400", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_naive = NaiveDateTime::new(
@@ -293,7 +294,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_colon_z_offset() {
-        let parsed = strptime("%F %T %:z", "2024-04-15 14:30:45 -04:00", false).unwrap();
+        let parsed = strptime("%F %T %:z", "2024-04-15 14:30:45 -04:00", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_naive = NaiveDateTime::new(
@@ -311,7 +312,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_direct() {
-        let parsed = strptime("%s", "1713191445", false).unwrap();
+        let parsed = strptime("%s", "1713191445", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         // 1713191445 = 2024-04-15 14:30:45 UTC
@@ -325,7 +326,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_with_fraction() {
-        let parsed = strptime("%s.%N", "1713191445.123456789", false).unwrap();
+        let parsed = strptime("%s.%N", "1713191445.123456789", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_utc = DateTime::from_timestamp(1713191445, 123_456_789).unwrap();
@@ -337,21 +338,21 @@ mod tests {
 
     #[test]
     fn test_to_chrono_timestamp_basic() {
-        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false).unwrap();
+        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false).unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         assert_eq!(ts, 1713191445);
     }
 
     #[test]
     fn test_to_chrono_timestamp_unix_direct() {
-        let parsed = strptime("%s", "1713191445", false).unwrap();
+        let parsed = strptime("%s", "1713191445", false, false).unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         assert_eq!(ts, 1713191445);
     }
 
     #[test]
     fn test_to_chrono_timestamp_with_offset() {
-        let parsed = strptime("%F %T %z", "2024-04-15 10:30:45 -0400", false).unwrap();
+        let parsed = strptime("%F %T %z", "2024-04-15 10:30:45 -0400", false, false).unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         // 10:30:45 EDT = 14:30:45 UTC → same as above
         assert_eq!(ts, 1713191445);
@@ -359,7 +360,13 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_iana_name_errors() {
-        let parsed = strptime("%F %T %Q", "2024-04-15 10:30:00 America/New_York", false).unwrap();
+        let parsed = strptime(
+            "%F %T %Q",
+            "2024-04-15 10:30:00 America/New_York",
+            false,
+            false,
+        )
+        .unwrap();
         let err = parsed.to_chrono_datetime().unwrap_err();
         // IANA is rejected in to_chrono_offset (vanilla chrono cannot resolve it)
         assert!(matches!(err.kind, DtErrKind::ChronoOffset));
@@ -368,13 +375,13 @@ mod tests {
     #[test]
     fn test_to_chrono_naive_datetime_incomplete_date_fails_in_finish_but_assembly_fails_here() {
         // Parser already rejects incomplete date in finish(), but we test the assembly path too
-        let parsed = strptime("%H:%M:%S", "14:30:45", false);
+        let parsed = strptime("%H:%M:%S", "14:30:45", false, false);
         assert!(parsed.is_err()); // finish() already fails with IncompleteDate
     }
 
     #[test]
     fn test_to_chrono_datetime_utc_explicit() {
-        let parsed = strptime("%F %T %z", "2024-04-15 14:30:45 +0000", false).unwrap();
+        let parsed = strptime("%F %T %z", "2024-04-15 14:30:45 +0000", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected = DateTime::from_timestamp(1713191445, 0)
