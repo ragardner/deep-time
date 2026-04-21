@@ -44,30 +44,34 @@ const fn is_leap_year(year: i64) -> bool {
 /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
 /// directly into [`DateComponents`].
 ///
-/// This function implements CCSDS 301.0-B-4 §3.2 (Level 1 only).
+/// This function implements **CCSDS 301.0-B-4 §3.2** (Level 1 only) **with full support
+/// for the extended P-field** (second octet) as defined in the standard.
 ///
-/// # Supported formats
-/// - 1-byte or 2-byte P-field (extension bit is supported but the second byte is ignored for Level 1).
+/// # Supported formats (Level 1 only)
+/// - 1-byte or 2-byte P-field (further extension beyond 2 bytes is rejected).
 /// - Code ID must be `001` (1958-01-01 TAI epoch).
-/// - `n_coarse`: 1–4 bytes for the coarse time field.
-/// - `n_frac`:   0–3 bytes for the fractional field.
+/// - Coarse time: 1–7 octets (base 1–4 from Octet 1 + up to 3 additional from Octet 2).
+/// - Fractional time: 0–10 octets (base 0–3 from Octet 1 + up to 7 additional from Octet 2).
+///
+/// # P-field decoding (when Bit 0 of Octet 1 = 1)
+/// - **Octet 2**:
+///   - Bit 0:     Further-extension flag (must be 0; we reject 3+-byte P-fields).
+///   - Bits 1-2:  Additional coarse octets (0–3).
+///   - Bits 3-5:  Additional fractional octets (0–7).
+///   - Bits 6-7:  Reserved for mission definition (ignored).
 ///
 /// # Precision
-/// Fractional seconds are converted to attoseconds with exact integer scaling.
-/// The maximum quantization error depends on `n_frac`:
-/// - 1 byte:  ~3.9 ms
-/// - 2 bytes: ~15.3 µs
-/// - 3 bytes: ~59.6 ns
+/// Fractional seconds are converted to attoseconds with **exact** integer scaling
+/// (`value / 2^(8·n_frac)`). Larger `n_frac` gives higher resolution (down to ~2⁻⁸⁰ s
+/// with 10 fractional bytes).
 ///
 /// # Returns
-/// A [`DateComponents`] with `timescale = TAI` and `tz = Utc`.
+/// A [`DateComponents`] with `clock_type = TAI` and `tz = Utc`.
 ///
 /// # Errors
-/// - [`DtErrKind::ExpectedUnixTimestamp`] if the input is too short.
-/// - [`DtErrKind::UnsupportedDirective`] for non-Level-1 packets or invalid P-field.
-///
-/// This function is designed for perfect round-tripping with [`TimePoint::ccsds_c_to_binary`]
-/// when the same `n_coarse`/`n_frac` values are used.
+/// - [`DtErrKind::ExpectedUnixTimestamp`] if the input is too short or malformed.
+/// - [`DtErrKind::UnsupportedDirective`] for non-Level-1 packets, invalid Code ID,
+///   further P-field extension, or out-of-range field sizes.
 pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
     if input.is_empty() {
         return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
@@ -76,38 +80,51 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
     let p1 = input[0];
     let mut idx = 1usize;
 
-    // ── Handle 1-byte vs 2-byte P-field ─────────────────────────────
+    // ── Octet 1 ─────────────────────────────
     let extension = (p1 & 0b1000_0000) != 0;
-    if extension {
-        if input.len() < 2 {
-            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
-        }
-        idx += 1; // consume the second P-field byte (we ignore its contents for now)
-    }
-
     let code_id = (p1 >> 4) & 0b0111;
     if code_id != 0b001 {
-        // Only Level 1 (1958-01-01 TAI) is supported
         return Err(DtError::new(DtErrKind::UnsupportedDirective));
     }
 
-    let n_coarse = ((p1 >> 2) & 0b0011) as usize + 1; // bits 3-2
-    let n_frac = (p1 & 0b0011) as usize; // bits 1-0
+    let base_coarse = (((p1 >> 2) & 0b0011) as usize) + 1;
+    let base_frac = (p1 & 0b0011) as usize;
 
-    if input.len() < idx + n_coarse + n_frac {
+    // ── Octet 2 (if present) ─────────────────────────────
+    let (n_coarse, n_frac) = if extension {
+        if input.len() < 2 {
+            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
+        }
+        let p2 = input[1];
+        idx += 1;
+
+        // Further extension (3+ byte P-field) is not supported
+        if (p2 & 0b1000_0000) != 0 {
+            return Err(DtError::new(DtErrKind::UnsupportedDirective));
+        }
+
+        let add_coarse = ((p2 >> 5) & 0b0000_0011) as usize; // spec Bits 1-2 → u8 bits 6-5
+        let add_frac = ((p2 >> 2) & 0b0000_0111) as usize; // spec Bits 3-5 → u8 bits 4-2
+
+        (base_coarse + add_coarse, base_frac + add_frac)
+    } else {
+        (base_coarse, base_frac)
+    };
+
+    if n_coarse == 0 || input.len() < idx + n_coarse + n_frac {
         return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
     }
 
     // ── Read T-field (big-endian) ─────────────────────────────────────
-    let mut coarse_sec: u64 = 0;
+    let mut coarse_sec: u64 = 0; // 7 bytes = 56 bits → fits in u64
     for _ in 0..n_coarse {
         coarse_sec = (coarse_sec << 8) | u64::from(input[idx]);
         idx += 1;
     }
 
-    let mut frac_raw: u64 = 0;
+    let mut frac_raw: u128 = 0; // up to 10 bytes = 80 bits
     for _ in 0..n_frac {
-        frac_raw = (frac_raw << 8) | u64::from(input[idx]);
+        frac_raw = (frac_raw << 8) | u128::from(input[idx]);
         idx += 1;
     }
 
@@ -115,11 +132,11 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
     let frac_attos = if n_frac == 0 {
         0
     } else {
-        let denom = 1u128 << (8 * n_frac);
-        ((frac_raw as u128 * 1_000_000_000_000_000_000u128) / denom) as u64
+        let denom = 1u128 << (8 * n_frac as u32);
+        ((frac_raw * 1_000_000_000_000_000_000u128) / denom) as u64
     };
 
-    // ── Exact CCSDS CUC midnight epoch conversion (custom Gregorian) ─────
+    // ── Exact CCSDS CUC midnight epoch conversion ─────────────────────
     let days_since_epoch = (coarse_sec / 86400) as i64;
     let sec_of_day = (coarse_sec % 86400) as i64;
 
@@ -292,62 +309,85 @@ pub fn parse_ccsds_binary(input: &[u8]) -> Result<DateComponents, DtError> {
 }
 
 impl TimePoint {
-    /// Maximum size needed for a CCSDS C (CUC) binary packet.
+    /// Maximum size needed for a CCSDS C (CUC) binary packet (with extended P-field).
     const CCSDS_C_MAX_SIZE: usize = 32;
 
     /// Formats this [`TimePoint`] as a **CCSDS C (CUC)** binary time code.
     ///
     /// Fully configurable for round-tripping with [`parse_ccsds_c`].
-    /// Conforms to CCSDS 301.0-B-4 §3.2 (Level 1): pure TAI seconds since 1958-01-01 TAI.
+    /// Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support for the
+    /// extended P-field (second octet) when `n_coarse > 4` or `n_frac > 3`.
+    ///
+    /// # Parameters
+    /// - `n_coarse`: 1–7 (number of coarse-time octets)
+    /// - `n_frac`:   0–10 (number of fractional octets)
+    /// - `extension`: advisory flag (ignored when larger sizes force the second octet)
     pub fn ccsds_c_to_binary(
         &self,
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
     ) -> Result<([u8; Self::CCSDS_C_MAX_SIZE], usize), DtErrKind> {
-        if !(1..=4).contains(&n_coarse) || n_frac > 3 {
+        if !(1..=7).contains(&n_coarse) || n_frac > 10 {
             return Err(DtErrKind::UnsupportedDirective);
         }
 
         let tai = self.to_clock_type(ClockType::TAI);
 
-        // TAI seconds since 1958-01-01 00:00:00 TAI (exact offset to library TAI zero)
         const EPOCH_OFFSET: i64 = 1_325_419_167;
         let total_tai_seconds = tai.sec + EPOCH_OFFSET;
 
         let frac_scaled = if n_frac == 0 {
-            0u64
+            0u128
         } else {
             let scale = 1u128 << (8 * n_frac as u32);
-            ((tai.subsec as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000)
-                as u64
+            (tai.subsec as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
         };
 
         let mut buf = [0u8; Self::CCSDS_C_MAX_SIZE];
         let mut pos = 0usize;
 
-        let mut p1 = 0b0001_0000u8;
-        p1 |= (n_coarse - 1) << 2;
-        p1 |= n_frac;
-        if extension {
+        // Decide whether extension byte is needed
+        let needs_extension = n_coarse > 4 || n_frac > 3 || extension;
+
+        // Base values for Octet 1
+        let base_coarse = if n_coarse <= 4 { n_coarse - 1 } else { 3 };
+        let base_frac = if n_frac <= 3 { n_frac } else { 3 };
+
+        // ── Build P-field Octet 1 ─────────────────────────────
+        let mut p1 = 0b0001_0000u8; // Code ID = 001
+        p1 |= (base_coarse << 2) & 0b0000_1100;
+        p1 |= base_frac & 0b0000_0011;
+        if needs_extension {
             p1 |= 0b1000_0000;
         }
         buf[pos] = p1;
         pos += 1;
 
-        if extension {
-            buf[pos] = 0;
+        if needs_extension {
+            // ── Build P-field Octet 2 ─────────────────────────────
+            let add_coarse = n_coarse.saturating_sub(4); // 0–3
+            let add_frac = n_frac.saturating_sub(3); // 0–7
+
+            let mut p2 = 0u8;
+            p2 |= (add_coarse & 0b11) << 5; // spec Bits 1-2 → u8 bits 6-5
+            p2 |= (add_frac & 0b111) << 2; // spec Bits 3-5 → u8 bits 4-2
+            // Bit 0 (further extension) = 0
+            // Bits 6-7 reserved = 0
+            buf[pos] = p2;
             pos += 1;
         }
 
+        // ── Coarse time (big-endian) ─────────────────────────────
         let coarse = total_tai_seconds as u64;
         for i in (0..n_coarse).rev() {
-            buf[pos] = (coarse >> (i * 8)) as u8;
+            buf[pos] = (coarse >> (i as u32 * 8)) as u8;
             pos += 1;
         }
 
+        // ── Fractional time (big-endian) ─────────────────────────────
         for i in (0..n_frac).rev() {
-            buf[pos] = (frac_scaled >> (i * 8)) as u8;
+            buf[pos] = (frac_scaled >> (i as u32 * 8)) as u8;
             pos += 1;
         }
 
