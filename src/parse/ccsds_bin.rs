@@ -159,12 +159,12 @@ pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
 /// - Sub-millisecond field (bits 6-7 of P-field):
 ///   - `00`: no fractional field
 ///   - `01`: 2 bytes (microseconds of the millisecond, 0–65535)
-///   - `10`: 4 bytes (picoseconds of the millisecond)
+///   - `10`: 4 bytes (2⁻³² of the millisecond)
 ///
 /// # Precision
-/// - The millisecond field is rounded to the nearest millisecond.
-/// - With 2-byte sub-ms: maximum error ≈ ±7.6 ns.
-/// - With 4-byte sub-ms: maximum error ≈ ±0.116 ps.
+/// - The millisecond field is rounded to the nearest millisecond (in the encoder).
+/// - With 2-byte sub-ms: maximum quantization error ≈ ±7.63 ns.
+/// - With 4-byte sub-ms: maximum quantization error ≈ ±0.116 ps.
 ///
 /// # Returns
 /// A [`DateComponents`] with `timescale = Utc` and `tz = Utc`.
@@ -234,21 +234,21 @@ pub fn parse_ccsds_d(input: &[u8]) -> Result<DateComponents, DtError> {
         idx += 1;
     }
 
-    // ── Convert to attoseconds (correct scaling) ─────────────
+    // ── Convert to attoseconds (CORRECT 10^15 scaling) ─────────────
     let sec_of_day = millis_of_day / 1000;
     let remaining_ms = (millis_of_day % 1000) as u128;
 
     let sub_ms_attos = if n_subsec == 0 {
         0
     } else if sub_ms_code == 0b01 {
-        // 2 bytes → fraction of 1 ms in microseconds (0..65535)
-        (frac_raw as u128 * 1_000_000_000_000) / 65_536
+        // 2 bytes → fraction of 1 ms (units of 1/65536)
+        (frac_raw as u128 * 1_000_000_000_000_000) / 65_536
     } else {
-        // 4 bytes → fraction of 1 ms in picoseconds
-        (frac_raw as u128 * 1_000_000_000_000) / (1u128 << 32)
+        // 4 bytes → fraction of 1 ms (units of 2^-32)
+        (frac_raw as u128 * 1_000_000_000_000_000) / (1u128 << 32)
     };
 
-    let frac_attos = remaining_ms * 1_000_000_000_000 + sub_ms_attos;
+    let frac_attos = remaining_ms * 1_000_000_000_000_000 + sub_ms_attos;
 
     // ── Exact CCSDS CDS midnight epoch conversion (custom Gregorian) ─────
     let days_since_epoch = day_count as i64;
@@ -381,19 +381,20 @@ impl TimePoint {
         let day_count = (total_utc_seconds / 86_400) as u64;
         let sec_of_day = (total_utc_seconds % 86_400) as u64;
 
-        // Round to nearest millisecond (exact same rounding used in parse_ccsds_d)
-        let additional_ms = ((utc.subsec as u128 + 500_000_000_000) / 1_000_000_000_000) as u64;
+        // Round to nearest millisecond (CORRECT 10^15 scaling)
+        let additional_ms =
+            ((utc.subsec as u128 + 500_000_000_000_000) / 1_000_000_000_000_000) as u64;
         let millis_of_day = sec_of_day * 1000 + additional_ms;
 
         // Remaining attoseconds inside the current millisecond
-        let remaining_attos_in_ms = (utc.subsec as u128) % 1_000_000_000_000;
+        let remaining_attos_in_ms = (utc.subsec as u128) % 1_000_000_000_000_000;
 
         let frac_scaled = match sub_ms_code {
             0 => 0u64,
-            1 => ((remaining_attos_in_ms * 65_536u128) / 1_000_000_000_000u128) as u64,
+            1 => ((remaining_attos_in_ms * 65_536u128) / 1_000_000_000_000_000u128) as u64,
             2 => {
                 const PS_SCALE: u128 = 1u128 << 32;
-                ((remaining_attos_in_ms * PS_SCALE) / 1_000_000_000_000u128) as u64
+                ((remaining_attos_in_ms * PS_SCALE) / 1_000_000_000_000_000u128) as u64
             }
             _ => unreachable!(),
         };
@@ -492,7 +493,7 @@ fn test_ccsds_d_direct() {
     assert_eq!(parsed.hour, Some(0));
     assert_eq!(parsed.minute, Some(0));
     assert_eq!(parsed.second, Some(0));
-    assert_eq!(parsed.attos, Some(1_000_000_000_000)); // 1 ms
+    assert_eq!(parsed.attos, Some(1_000_000_000_000_000)); // 1 ms
     assert_eq!(parsed.clock_type, ClockType::UTC);
 }
 
@@ -507,7 +508,7 @@ fn test_ccsds_d_direct_frac() {
     let parsed = parse_ccsds_d(d_bytes).unwrap();
 
     assert_eq!(parsed.second, Some(0));
-    assert_eq!(parsed.attos, Some(1_500_000_000_000)); // 1 ms + 0.5 ms = 1.5 ms
+    assert_eq!(parsed.attos, Some(1_500_000_000_000_000)); // 1.5 ms
 }
 
 /// Exact inverse of `days_since_1958_to_gregorian`.
@@ -597,7 +598,7 @@ fn test_ccsds_d_roundtrip() {
 
     let diff = (parsed.attos.unwrap() as i64 - 400_000_000_000i64).abs();
     assert!(
-        diff < 10_000_000,
+        diff < 16_000_000_000, // ~16 ns tolerance (2-byte sub-ms resolution)
         "Fractional error too large: {} attos",
         diff
     );
