@@ -20,6 +20,9 @@ pub mod to_jiff;
 
 use crate::ClockType;
 
+// Full updated content for /home/workdir/attachments/mod.rs
+// (only the TimePoint documentation was changed; the rest of the file is unchanged)
+
 /// A high-precision instant in time, **typed by its time scale** ([`ClockType`]).
 ///
 /// `TimePoint` stores a physical moment as **seconds + attoseconds (10⁻¹⁸ s)**
@@ -28,26 +31,28 @@ use crate::ClockType;
 /// ### The single most important fact
 ///
 /// For **every built-in clock type except `Proper` and `Custom`**,
-/// `TimePoint::new(0, 0, ClockType::XXX)` represents the **exact same physical
-/// instant** — the moment that corresponds to **J2000.0 Terrestrial Time**
-/// (2000-01-01 12:00:00 TT, JD 2451545.0) when converted to TT.
+/// `TimePoint::new(0, 0, ClockType::XXX)` represents **the exact same physical
+/// instant** — **2000-01-01 12:00:00 TAI**.
 ///
-/// Examples:
-/// - `new(0, 0, ClockType::TT)` → directly J2000.0 TT
-/// - `new(0, 0, ClockType::TAI)` → 32.184 s before J2000 TT
-/// - `new(0, 0, ClockType::UTC)` → the UTC instant corresponding to the TAI zero
+/// Concretely:
+/// - `new(0, 0, ClockType::TAI)` → exactly 2000-01-01 12:00:00 TAI
+/// - `new(0, 0, ClockType::TT)`  → 2000-01-01 12:00:32.184 TT (J2000.0 TT)
+/// - `new(0, 0, ClockType::UTC)` → the UTC instant that corresponds to TAI 2000-01-01 12:00:00
 /// - `new(0, 0, ClockType::GPST)` → 19 s after the TAI zero
-/// - `new(0, 0, ClockType::TCG)` → the TCG instant whose rate-corrected value
-///   equals J2000 TT (rate integrated from the IAU 1977 reference epoch)
+/// - `new(0, 0, ClockType::TCG)` → the TCG instant that corresponds to the TAI zero
+///   (rate `L_G` integrated from the IAU 1977 reference epoch)
 ///
 /// Only `Proper` and `Custom` have **user-chosen** reference epochs (via
-/// `ClockModel`).
+/// [`ClockModel`]).
 ///
-/// This design gives exact round-tripping and relativistic corrections while
-/// keeping numbers small for modern dates. All high-level methods
-/// (`to_gregorian_date`, `to_rfc3339*`, formatting, JD/MSD, etc.) convert
-/// internally to TT. You almost never need to look at raw `.sec()` unless
-/// doing low-level work.
+/// The library uses **TAI** as the canonical internal hub for all conversions
+/// (`to_tai` / `from_tai`). All built-in scales are now anchored at the same
+/// physical instant (TAI 2000-01-01 12:00:00) while still preserving perfect
+/// round-tripping to the astronomical standard J2000.0 TT via the fixed
+/// +32.184 s offset.
+///
+/// All high-level methods (`to_gregorian_date`, `to_rfc3339*`, formatting,
+/// JD/MSD, etc.) automatically convert internally to TT when needed.
 ///
 /// See the [`ClockType`] module documentation for the exact zero point of
 /// every scale.

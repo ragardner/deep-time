@@ -1,3 +1,5 @@
+// Full updated content for /home/workdir/attachments/clock_type.rs
+
 //! # Time scales and reference epochs — the heart of the library
 //!
 //! This crate provides a **single `TimePoint` type** that can represent an
@@ -7,58 +9,50 @@
 //! ## The single most important fact
 //!
 //! For **every built-in clock type except `Proper` and `Custom`**,
-//! `TimePoint::new(0, 0, ClockType::XXX)` represents the **exact same physical
-//! instant** — the moment that corresponds to **J2000.0 Terrestrial Time**
-//! (2000-01-01 12:00:00 TT, JD 2451545.0) when converted to TT.
+//! `TimePoint::new(0, 0, ClockType::XXX)` represents **the exact same physical
+//! instant** — **2000-01-01 12:00:00 TAI**.
 //!
-//! - `new(0, 0, ClockType::TT)` → directly J2000.0 TT
-//! - `new(0, 0, ClockType::TAI)` → 32.184 s before J2000 TT
-//! - `new(0, 0, ClockType::UTC)` → the UTC instant corresponding to the TAI zero
+//! - `new(0, 0, ClockType::TAI)` → exactly 2000-01-01 12:00:00 TAI
+//! - `new(0, 0, ClockType::TT)`  → 2000-01-01 12:00:32.184 TT (J2000.0 TT)
+//! - `new(0, 0, ClockType::UTC)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00
 //! - `new(0, 0, ClockType::GPST)` → 19 s after the TAI zero
-//! - `new(0, 0, ClockType::TCG)` → the TCG instant whose rate-corrected value
-//!   equals J2000 TT (the rate `L_G` is integrated from the IAU 1977 reference epoch)
-//! - `new(0, 0, ClockType::TCB)` → the TCB instant whose rate-corrected value
-//!   equals J2000 TT (the rate `L_B` + `TDB0` is integrated from 1977)
-//! - `new(0, 0, ClockType::LTC)` → the LTC instant whose rate-corrected value
-//!   equals J2000 TT (the rate `L_M` is integrated from 1977)
-//! - `new(0, 0, ClockType::TDB)` → the TDB instant that corresponds to J2000 TT
-//!   after the annual sinusoidal correction
+//! - `new(0, 0, ClockType::TCG)` → the TCG instant that corresponds to the TAI zero
+//!   (rate `L_G` integrated from 1977)
+//! - `new(0, 0, ClockType::TCB)` → the TCB instant that corresponds to the TAI zero
+//!   (rate `L_B` + `TDB0` integrated from 1977)
+//! - `new(0, 0, ClockType::LTC)` → the LTC instant that corresponds to the TAI zero
+//!   (rate `L_M` integrated from 1977)
 //!
 //! Only `Proper` and `Custom` have **user-chosen** reference epochs (via
 //! `ClockModel`).
 //!
-//! This is the design that makes perfect round-tripping and exact relativistic
-//! math possible while keeping numbers small for modern dates.
+//! ## Why TAI 2000-01-01 12:00:00 as the common anchor?
 //!
-//! ## Why J2000.0 TT?
+//! TAI is the canonical internal hub used by all `to_tai`/`from_tai` conversions.
+//! Anchoring every built-in scale at this exact TAI instant makes the zero point
+//! simple and intuitive for engineering, GNSS, and most practical use cases
+//! while still giving perfect round-tripping to the astronomical standard
+//! J2000.0 TT (via the fixed +32.184 s TT–TAI offset).
 //!
-//! J2000.0 TT is the modern standard epoch in astronomy and planetary science
-//! (used by virtually all ephemerides, SPICE, DE440, etc.). By anchoring every
-//! built-in scale so that its zero maps to J2000 TT, the library achieves:
-//! - Small `sec` values for dates in the 21st century
-//! - Exact integer `const fn` arithmetic everywhere
-//! - Consistent behavior across all time scales
-//!
-//! The relativistic scales (TCG, TCB, LTC) use the IAU 1977 reference epoch
-//! **only** as the starting point for integrating their linear rate (`L_G`,
-//! `L_B`, `L_M`). Their actual zero point (i.e. what `new(0,0, ...)` means)
-//! is still the instant that corresponds to J2000 TT after the rate correction.
+//! The relativistic scales (TCG, TCB, LTC) still integrate their linear rates
+//! from the IAU 1977 reference epoch internally — only the storage zero point
+//! is now aligned to TAI 2000-01-01 12:00:00.
 //!
 //! ## Exact zero points for every clock type
 //!
-//! | ClockType | Zero point of `new(0, 0, ClockType::X)` |
-//! |-----------|-----------------------------------------|
-//! | TT / ET   | 2000-01-01 12:00:00 TT (JD 2451545.0) |
-//! | TAI       | 2000-01-01 11:59:27.816 TAI (J2000 TT − 32.184 s) |
-//! | UTC       | ~2000-01-01 11:58:55 UTC (via leap-second table) |
-//! | GPST/QZSST/GST | 2000-01-01 11:59:46.816 (TAI zero + 19 s) |
-//! | BDT       | 2000-01-01 12:00:00.816 (TAI zero + 33 s) |
-//! | TDB       | The TDB instant corresponding to J2000 TT |
-//! | TCG       | The TCG instant corresponding to J2000 TT (L_G integrated from 1977) |
-//! | TCB       | The TCB instant corresponding to J2000 TT (L_B + TDB0 from 1977) |
-//! | LTC       | The LTC instant corresponding to J2000 TT (L_M integrated from 1977) |
-//! | Proper    | User-chosen (via `ClockModel`) |
-//! | Custom    | User-chosen (via `ClockModel`) |
+//! | ClockType          | Zero point of `new(0, 0, ClockType::X)`                                      |
+//! |--------------------|----------------------------------------------------------------------------------|
+//! | TAI                | 2000-01-01 12:00:00 TAI                                                          |
+//! | TT / ET            | 2000-01-01 12:00:32.184 TT (J2000.0 TT)                                         |
+//! | UTC                | UTC instant corresponding to TAI 2000-01-01 12:00:00                             |
+//! | GPST/QZSST/GST     | 2000-01-01 12:00:19 TAI (TAI zero + 19 s)                                       |
+//! | BDT                | 2000-01-01 12:00:33 TAI (TAI zero + 33 s)                                       |
+//! | TDB                | The TDB instant corresponding to the TAI zero                                    |
+//! | TCG                | The TCG instant corresponding to the TAI zero (L_G integrated from 1977)        |
+//! | TCB                | The TCB instant corresponding to the TAI zero (L_B + TDB0 integrated from 1977) |
+//! | LTC                | The LTC instant corresponding to the TAI zero (L_M integrated from 1977)        |
+//! | Proper             | User-chosen (via `ClockModel`)                                                   |
+//! | Custom             | User-chosen (via `ClockModel`)                                                   |
 //!
 //! See `conversions.rs` for the exact implementation of each mapping.
 

@@ -1,22 +1,28 @@
 use crate::{
     ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
     ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ClockDrift, ClockModel, ClockType,
-    Delta, TimePoint,
+    Delta, TT_TAI_OFFSET_DELTA, TimePoint,
 };
 
 impl TimePoint {
-    /// The zero instant on the TAI timescale (the most common default for the library).
+    /// The library’s reference zero instant: exactly **2000-01-01 12:00:00 TAI**.
+    ///
+    /// This is the common zero point for **all built-in clock types** (except `Proper`/`Custom`).
+    /// `TimePoint::new(0, 0, ClockType::XXX)` now represents this exact physical instant
+    /// on every built-in scale.
     pub const ZERO: Self = Self {
         sec: 0,
         subsec: 0,
         clock_type: ClockType::TAI,
     };
 
-    /// The J2000.0 epoch expressed in TAI.
+    /// The TAI instant that corresponds to the conventional **J2000.0 epoch**
+    /// (2000-01-01 12:00:00 **TT**, JD 2451545.0 TT).
     ///
-    /// This is the library’s internal reference zero point and corresponds exactly to the
-    /// conventional J2000.0 instant (2000-01-01 12:00:00 TT).
-    pub const J2000_TAI: Self = Self::ZERO;
+    /// Because TT = TAI + 32.184 s, this is exactly 32.184 seconds *before* `ZERO`.
+    /// This constant is provided for convenience when working with astronomical
+    /// ephemerides that are natively referenced to J2000 TT.
+    pub const J2000_TAI: Self = Self::ZERO.sub_ref(&TT_TAI_OFFSET_DELTA);
 
     /// The J1900.0 epoch expressed in TAI (1900-01-01 12:00:00 TAI).
     pub const J1900_TAI: Self = Self::from_tai_sec(-3_155_760_000);
