@@ -90,9 +90,12 @@ pub(crate) fn classify_date(s: &str, lang: Lang) -> Result<ClassifiedDate, Strin
                 DateToken::Iana => {
                     if currently != IndexIn::PreDate {
                         if currently == IndexIn::Bracket {
-                            iana_offset = OffsetType::InBracketIana
+                            iana_offset = OffsetType::InBracketIana;
                         } else {
-                            iana_offset = OffsetType::Iana
+                            iana_offset = OffsetType::Iana;
+                            if date_norm.ends_with_space() {
+                                space_before_offset = true;
+                            }
                         }
                         date_norm.push_str(*norm_part);
                     }

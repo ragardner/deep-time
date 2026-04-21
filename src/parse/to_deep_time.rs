@@ -1,3 +1,5 @@
+use std::eprintln;
+
 use crate::tzdb::offset_at;
 use crate::{
     ClockType, TimePoint,
@@ -153,12 +155,13 @@ impl DateComponents {
             if len > 0 {
                 if let Ok(name) = std::str::from_utf8(&bytes[..len]) {
                     let provisional_unix = sec_utc + UNIX_EPOCH_TO_J2000_NOON_UTC;
+                    eprintln!("{}, {}", name, name.len());
                     match offset_at(name, provisional_unix) {
                         Some(offset) => sec_utc -= offset as i64,
                         None => return Err(DtError::new(DtErrKind::TimePointIana)),
                     }
                 } else {
-                    return Err(DtError::new(DtErrKind::TimePointIana));
+                    return Err(DtError::new(DtErrKind::TimePointIanaFromBytes));
                 }
             }
         } else if let Some(TimeZone::Fixed(offset)) = self.tz {

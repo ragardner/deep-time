@@ -72,6 +72,7 @@ pub enum DtErrKind {
     JiffToZoned,
     // crate
     TimePointIana,
+    TimePointIanaFromBytes,
     TimePointTimeZone,
     TimePointYearIncompleteDate,
     TimePointJdnIncompleteDate,
