@@ -8,7 +8,11 @@ fn days_since_1958_to_gregorian(days_since_epoch: i64) -> (i64, u8, u8) {
     let mut remaining = days_since_epoch;
 
     while remaining >= 0 {
-        let days_in_year = if is_leap_year(year) { 366 } else { 365 };
+        let days_in_year = if TimePoint::is_leap_year(year) {
+            366
+        } else {
+            365
+        };
         if remaining < days_in_year {
             break;
         }
@@ -16,7 +20,7 @@ fn days_since_1958_to_gregorian(days_since_epoch: i64) -> (i64, u8, u8) {
         year += 1;
     }
 
-    let month_days = if is_leap_year(year) {
+    let month_days = if TimePoint::is_leap_year(year) {
         [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     } else {
         [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -35,10 +39,6 @@ fn days_since_1958_to_gregorian(days_since_epoch: i64) -> (i64, u8, u8) {
 
     let day = d as u8 + 1;
     (year, month as u8 + 1, day)
-}
-
-const fn is_leap_year(year: i64) -> bool {
-    year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
 }
 
 /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
@@ -559,11 +559,11 @@ fn gregorian_to_days_since_1958(year: i64, month: u8, day: u8) -> i64 {
     let mut days = 0i64;
     let mut y = 1958i64;
     while y < year {
-        days += if is_leap_year(y) { 366 } else { 365 };
+        days += if TimePoint::is_leap_year(y) { 366 } else { 365 };
         y += 1;
     }
 
-    let month_days = if is_leap_year(year) {
+    let month_days = if TimePoint::is_leap_year(year) {
         [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
     } else {
         [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
