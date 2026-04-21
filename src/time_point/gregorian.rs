@@ -1,45 +1,22 @@
 use crate::{
-    ATTOSEC_PER_SEC_I128, ClockType, Delta, SEC_PER_DAYI128, TT_TAI_OFFSET_DELTA, TimePoint,
-    Weekday, leap_seconds::leap_seconds_before,
+    ATTOSEC_PER_SEC_I128, ClockType, SEC_PER_DAYI128, TT_TAI_OFFSET_DELTA, TimePoint, Weekday,
+    leap_seconds::leap_seconds_before,
 };
 
 impl TimePoint {
     #[inline]
     pub const fn to_gregorian_date(self) -> (i64, u8, u8) {
-        match self.clock_type {
-            ClockType::UTC => {
-                let tai = self.to_tai();
-                let leaps = leap_seconds_before(tai);
-                let offset_attos =
-                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_DELTA.total_attos();
-                let (jd_days, frac) = self.to_jd_tt_exact();
-                let frac_attos = frac.total_attos() - offset_attos;
-                let (jd_utc, frac_attos) = if frac_attos < 0 {
-                    (
-                        jd_days - 1,
-                        frac_attos + SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128,
-                    )
-                } else {
-                    (jd_days, frac_attos)
-                };
-                let frac_utc = Delta::from_total_attos(frac_attos);
-                let jdn = if frac_utc.sec >= 43200 {
-                    jd_utc + 1
-                } else {
-                    jd_utc
-                };
-                Self::jdn_to_gregorian(jdn)
-            }
-            _ => {
-                let (jd_days, frac) = self.to_jd_tt_exact();
-                let jdn = if frac.sec >= 43200 {
-                    jd_days + 1
-                } else {
-                    jd_days
-                };
-                Self::jdn_to_gregorian(jdn)
-            }
-        }
+        // Gregorian civil date is always computed on the TT scale.
+        // Leap seconds never affect the calendar date — only the time-of-day.
+        // This single path works correctly for *every* ClockType, including UTC.
+        let tt = self.to_clock_type(ClockType::TT);
+        let (jd_days, frac) = tt.to_jd_tt_exact();
+        let jdn = if frac.sec >= 43200 {
+            jd_days + 1
+        } else {
+            jd_days
+        };
+        Self::jdn_to_gregorian(jdn)
     }
 
     #[inline]
@@ -50,25 +27,41 @@ impl TimePoint {
                 let leaps = leap_seconds_before(tai);
                 let offset_attos =
                     (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_DELTA.total_attos();
+
                 let (_, frac) = self.to_jd_tt_exact();
-                let frac_attos = frac.total_attos() - offset_attos;
-                let frac_attos = if frac_attos < 0 {
-                    frac_attos + SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128
+                let mut utc_frac_attos = frac.total_attos() as i128 - offset_attos;
+
+                // Normalize to [0, one day) — this is still "seconds since noon"
+                let day_attos = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+                if utc_frac_attos < 0 {
+                    utc_frac_attos += day_attos;
+                } else if utc_frac_attos >= day_attos {
+                    utc_frac_attos -= day_attos;
+                }
+
+                let seconds_since_noon = (utc_frac_attos / ATTOSEC_PER_SEC_I128) as i64;
+                let subsec = (utc_frac_attos % ATTOSEC_PER_SEC_I128) as u64;
+
+                // Convert "seconds since noon" → "seconds since midnight" (same logic as non-UTC path)
+                let seconds_since_midnight = if seconds_since_noon >= 43200 {
+                    seconds_since_noon - 43200
                 } else {
-                    frac_attos
+                    seconds_since_noon + 43200
                 };
-                let frac_utc = Delta::from_total_attos(frac_attos);
-                let seconds_since_midnight = if frac_utc.sec >= 43200 {
-                    frac_utc.sec - 43200
+
+                if seconds_since_midnight == 86400 {
+                    // Leap second case
+                    (23, 59, 60, subsec)
                 } else {
-                    frac_utc.sec + 43200
-                };
-                let hour = (seconds_since_midnight / 3600) as u8;
-                let minute = ((seconds_since_midnight % 3600) / 60) as u8;
-                let second = (seconds_since_midnight % 60) as u8;
-                (hour, minute, second, frac_utc.subsec)
+                    let hour = (seconds_since_midnight / 3600) as u8;
+                    let minute = ((seconds_since_midnight % 3600) / 60) as u8;
+                    let second = (seconds_since_midnight % 60) as u8;
+                    (hour, minute, second, subsec)
+                }
             }
             _ => {
+                // All other scales (including TT, TAI, TDB, TCG, etc.) use the standard
+                // TT-based JD machinery for time-of-day.
                 let tt = self.to_clock_type(ClockType::TT);
                 let (_, frac) = tt.to_jd_tt_exact();
                 let seconds_since_midnight = if frac.sec >= 43200 {
