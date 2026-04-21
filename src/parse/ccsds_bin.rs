@@ -510,7 +510,7 @@ fn test_ccsds_d_direct_frac() {
 fn test_ccsds_c_roundtrip() {
     use crate::Delta;
 
-    // Helper to create a TimePoint at the requested civil time (TT scale).
+    // Helper to create a TimePoint at the requested civil time.
     // The library uses standard astronomical JD (day changes at *noon*).
     // This helper now correctly converts civil (midnight-based) time to that representation.
     fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
@@ -522,7 +522,6 @@ fn test_ccsds_c_roundtrip() {
             (jd_noon - 1, seconds_from_noon + 86400)
         };
         TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos))
-            .to_clock_type(ClockType::TAI)
     }
     let t = tp(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000);
 
@@ -560,8 +559,7 @@ fn test_ccsds_d_roundtrip() {
         } else {
             (jd_noon - 1, seconds_from_noon + 86400)
         };
-        let x = TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos));
-        x.to_clock_type(ClockType::UTC)
+        TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos))
     }
 
     let t = tp(2025, 4, 17, 14, 30, 45, 400_000_000_000);

@@ -1,6 +1,48 @@
 use crate::{ClockType, TimePoint, Weekday};
 
 impl TimePoint {
+    #[inline]
+    pub const fn to_gregorian_date(self) -> (i64, u8, u8) {
+        let (jd_days, frac) = self.to_jd_tt_exact();
+        let jdn = if frac.sec >= 43200 {
+            jd_days + 1
+        } else {
+            jd_days
+        };
+        Self::jdn_to_gregorian(jdn)
+    }
+
+    #[inline]
+    pub const fn to_hms_subsec(self) -> (u8, u8, u8, u64) {
+        let tt = self.to_clock_type(ClockType::TT);
+        let (_, frac) = tt.to_jd_tt_exact();
+        let seconds_since_midnight = if frac.sec >= 43200 {
+            frac.sec - 43200
+        } else {
+            frac.sec + 43200
+        };
+        let hour = (seconds_since_midnight / 3600) as u8;
+        let minute = ((seconds_since_midnight % 3600) / 60) as u8;
+        let second = (seconds_since_midnight % 60) as u8;
+        (hour, minute, second, frac.subsec)
+    }
+
+    #[inline]
+    pub const fn jdn_to_gregorian(jdn: i64) -> (i64, u8, u8) {
+        // Use i128 internally to avoid overflow on full i64 JDN range
+        let j = jdn as i128;
+        let a = j + 32044;
+        let b = (4 * a + 3) / 146097;
+        let c = a - (b * 146097) / 4;
+        let d = (4 * c + 3) / 1461;
+        let e = c - (1461 * d) / 4;
+        let m = (5 * e + 2) / 153;
+        let day = (e - (153 * m + 2) / 5 + 1) as u8;
+        let month = (m + 3 - 12 * (m / 10)) as u8;
+        let year = b * 100 + d - 4800 + (m / 10);
+        (year as i64, month, day)
+    }
+
     /// Computes the Julian Day Number (JDN) for a proleptic Gregorian calendar date at noon UT.
     ///
     /// The algorithm matches the standard astronomical convention used throughout the library
@@ -130,33 +172,6 @@ impl TimePoint {
     }
 
     #[inline]
-    pub const fn jdn_to_gregorian(jdn: i64) -> (i64, u8, u8) {
-        // Use i128 internally to avoid overflow on full i64 JDN range
-        let j = jdn as i128;
-        let a = j + 32044;
-        let b = (4 * a + 3) / 146097;
-        let c = a - (b * 146097) / 4;
-        let d = (4 * c + 3) / 1461;
-        let e = c - (1461 * d) / 4;
-        let m = (5 * e + 2) / 153;
-        let day = (e - (153 * m + 2) / 5 + 1) as u8;
-        let month = (m + 3 - 12 * (m / 10)) as u8;
-        let year = b * 100 + d - 4800 + (m / 10);
-        (year as i64, month, day)
-    }
-
-    #[inline]
-    pub const fn to_gregorian_date(self) -> (i64, u8, u8) {
-        let (jd_days, frac) = self.to_jd_tt_exact();
-        let jdn = if frac.sec >= 43200 {
-            jd_days + 1
-        } else {
-            jd_days
-        };
-        Self::jdn_to_gregorian(jdn)
-    }
-
-    #[inline]
     pub const fn weekday(self) -> u8 {
         let (jd_days, frac) = self.to_jd_tt_exact();
         let jdn = if frac.sec >= 43200 {
@@ -165,21 +180,6 @@ impl TimePoint {
             jd_days
         };
         Self::jdn_to_weekday(jdn)
-    }
-
-    #[inline]
-    pub const fn to_hms_subsec(self) -> (u8, u8, u8, u64) {
-        let tt = self.to_clock_type(ClockType::TT);
-        let (_, frac) = tt.to_jd_tt_exact();
-        let seconds_since_midnight = if frac.sec >= 43200 {
-            frac.sec - 43200
-        } else {
-            frac.sec + 43200
-        };
-        let hour = (seconds_since_midnight / 3600) as u8;
-        let minute = ((seconds_since_midnight % 3600) / 60) as u8;
-        let second = (seconds_since_midnight % 60) as u8;
-        (hour, minute, second, frac.subsec)
     }
 
     #[inline]
