@@ -4,6 +4,7 @@ use core::fmt;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
+#[cfg(feature = "alloc")]
 impl TimePoint {
     /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp in **UTC**
     /// with the `Z` suffix.
@@ -24,12 +25,24 @@ impl TimePoint {
         let (year, month, day) = utc.to_gregorian_date();
         let (hour, minute, second, subsec_attos) = utc.to_hms_subsec();
 
+        // RFC 3339 / ISO 8601 requires exactly 4 digits for years |year| <= 9999.
+        // Larger years use full width (no padding). Negative years always have the sign.
+        let year_str = if year.abs() < 10_000 {
+            if year < 0 {
+                alloc::format!("-{:04}", -year)
+            } else {
+                alloc::format!("{:04}", year)
+            }
+        } else {
+            alloc::format!("{}", year)
+        };
+
         let mut prec = max_precision.min(18);
 
         if prec == 0 {
             return alloc::format!(
-                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-                year,
+                "{}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+                year_str,
                 month,
                 day,
                 hour,
@@ -48,10 +61,9 @@ impl TimePoint {
         }
 
         if prec == 0 {
-            // fraction was exactly zero
             alloc::format!(
-                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-                year,
+                "{}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
+                year_str,
                 month,
                 day,
                 hour,
@@ -60,8 +72,8 @@ impl TimePoint {
             )
         } else {
             alloc::format!(
-                "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:0>width$}Z",
-                year,
+                "{}-{:02}-{:02}T{:02}:{:02}:{:02}.{:0>width$}Z",
+                year_str,
                 month,
                 day,
                 hour,

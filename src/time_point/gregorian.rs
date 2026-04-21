@@ -6,16 +6,43 @@ use crate::{
 impl TimePoint {
     #[inline]
     pub const fn to_gregorian_date(self) -> (i64, u8, u8) {
-        // Gregorian civil date is always computed on the TT scale.
-        // Leap seconds never affect the calendar date — only the time-of-day.
-        // This single path works correctly for *every* ClockType, including UTC.
-        let tt = self.to_clock_type(ClockType::TT);
-        let (jd_days, frac) = tt.to_jd_tt_exact();
-        let jdn = if frac.sec >= 43200 {
-            jd_days + 1
-        } else {
-            jd_days
+        let (jd_days, frac) = self.to_jd_tt_exact();
+
+        let jdn = match self.clock_type {
+            ClockType::UTC => {
+                let tai = self.to_tai();
+                let leaps = leap_seconds_before(tai);
+                let offset_attos =
+                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_DELTA.total_attos();
+
+                let mut utc_frac_attos = frac.total_attos() as i128 - offset_attos;
+                let day_attos = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+                let mut utc_jd_days = jd_days;
+
+                if utc_frac_attos < 0 {
+                    utc_frac_attos += day_attos;
+                    utc_jd_days -= 1;
+                } else if utc_frac_attos >= day_attos {
+                    utc_frac_attos -= day_attos;
+                    utc_jd_days += 1;
+                }
+
+                let seconds_since_noon = (utc_frac_attos / ATTOSEC_PER_SEC_I128) as i64;
+                if seconds_since_noon >= 43200 {
+                    utc_jd_days + 1
+                } else {
+                    utc_jd_days
+                }
+            }
+            _ => {
+                if frac.sec >= 43200 {
+                    jd_days + 1
+                } else {
+                    jd_days
+                }
+            }
         };
+
         Self::jdn_to_gregorian(jdn)
     }
 

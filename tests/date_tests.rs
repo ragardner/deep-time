@@ -296,7 +296,7 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
         ("2024".to_string(), "2024-01-01T00:00:00Z".to_string(), None),
         (
             "-2024-03-14".to_string(),
-            "-002024-03-14T00:00:00Z".to_string(),
+            "-2024-03-14T00:00:00Z".to_string(),
             None,
         ),
         (
@@ -861,9 +861,9 @@ fn date_parser_comprehensive() {
         ("24", "2024-01-01T00:00:00Z", None),
         ("2024.074", "2024-03-14T00:00:00Z", None),
         // Negative years — Jiff pads negative years to 6 digits (Temporal/ISO rule)
-        ("-2024-03-14", "-002024-03-14T00:00:00Z", None),
-        ("-2025/01/01", "-002025-01-01T00:00:00Z", None),
-        ("-0001-01-01", "-000001-01-01T00:00:00Z", None),
+        ("-2024-03-14", "-2024-03-14T00:00:00Z", None),
+        ("-2025/01/01", "-2025-01-01T00:00:00Z", None),
+        ("-0001-01-01", "-0001-01-01T00:00:00Z", None),
         // Syslog no-year
         ("Dec 31 23:59:59", "2025-12-31T23:59:59Z", None),
         // Explicit format

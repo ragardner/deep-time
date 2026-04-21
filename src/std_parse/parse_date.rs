@@ -75,7 +75,7 @@ pub fn parse_date(
         (opts.mode, opts.order)
     };
 
-    std::eprintln!("INPUT CLS: {:?}", classification);
+    // std::eprintln!("INPUT CLS: {:?}", classification);
 
     if classification.is_pure_numeric {
         match mode {
@@ -95,7 +95,7 @@ pub fn parse_date(
                     classification.is_decimal,
                     mode,
                 ) {
-                    std::eprintln!("NUMERIC INPUT SUCCESS: {:?}", s);
+                    // std::eprintln!("NUMERIC INPUT SUCCESS: {:?}", s);
                     return Ok(dt);
                 }
             }
@@ -107,7 +107,7 @@ pub fn parse_date(
         }
     }
     if is_week_date_missing_weekday(&classification) {
-        std::eprintln!("IS WEEK DATE MISSING WEEKDAY: {:?}", s);
+        // std::eprintln!("IS WEEK DATE MISSING WEEKDAY: {:?}", s);
         if let Some(dt) = parse_week_date_no_weekday(&classification.date, lang) {
             return Ok(dt);
         }
@@ -115,7 +115,7 @@ pub fn parse_date(
     if let Some(dt) = try_unambiguous(&normalized, &classification) {
         return Ok(dt);
     }
-    std::eprintln!("done trying unambiguous");
+    // std::eprintln!("done trying unambiguous");
     if let Some(dt) = match date_order {
         DateOrder::Smart => {
             let order = smart_detect_date_order(&normalized, &classification);
@@ -127,14 +127,14 @@ pub fn parse_date(
                         &normalized,
                         generate_ambiguous_day_first_candidates(&classification),
                     );
-                    std::eprintln!("done trying day first: {:?}", result);
+                    // std::eprintln!("done trying day first: {:?}", result);
 
                     if result.is_none() {
                         result = try_compatible_formats(
                             &normalized,
                             generate_ambiguous_month_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying month first: {:?}", result);
+                        // std::eprintln!("done trying month first: {:?}", result);
                     }
 
                     if result.is_none() {
@@ -142,7 +142,7 @@ pub fn parse_date(
                             &normalized,
                             generate_ambiguous_year_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying year first: {:?}", result);
+                        // std::eprintln!("done trying year first: {:?}", result);
                     }
                 }
                 DetectedDateOrder::MonthFirst => {
@@ -150,14 +150,14 @@ pub fn parse_date(
                         &normalized,
                         generate_ambiguous_month_first_candidates(&classification),
                     );
-                    std::eprintln!("done trying month first: {:?}", result);
+                    // std::eprintln!("done trying month first: {:?}", result);
 
                     if result.is_none() {
                         result = try_compatible_formats(
                             &normalized,
                             generate_ambiguous_day_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying day first: {:?}", result);
+                        // std::eprintln!("done trying day first: {:?}", result);
                     }
 
                     if result.is_none() {
@@ -165,7 +165,7 @@ pub fn parse_date(
                             &normalized,
                             generate_ambiguous_year_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying year first: {:?}", result);
+                        // std::eprintln!("done trying year first: {:?}", result);
                     }
                 }
                 DetectedDateOrder::YearFirst => {
@@ -173,14 +173,14 @@ pub fn parse_date(
                         &normalized,
                         generate_ambiguous_year_first_candidates(&classification),
                     );
-                    std::eprintln!("done trying year first: {:?}", result);
+                    // std::eprintln!("done trying year first: {:?}", result);
 
                     if result.is_none() {
                         result = try_compatible_formats(
                             &normalized,
                             generate_ambiguous_day_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying day first: {:?}", result);
+                        // std::eprintln!("done trying day first: {:?}", result);
                     }
 
                     if result.is_none() {
@@ -188,7 +188,7 @@ pub fn parse_date(
                             &normalized,
                             generate_ambiguous_month_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying month first: {:?}", result);
+                        // std::eprintln!("done trying month first: {:?}", result);
                     }
                 }
             }
@@ -210,7 +210,7 @@ pub fn parse_date(
     } {
         return Ok(dt);
     }
-    std::eprintln!("NOW trying numeric timestamp");
+    // std::eprintln!("NOW trying numeric timestamp");
     if classification.is_pure_numeric && mode != DateParseMode::UnixTimestamp {
         if let Some(dt) = parse_pure_numeric_unix_timestamp(
             &normalized,
