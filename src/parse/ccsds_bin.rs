@@ -283,13 +283,13 @@ impl TimePoint {
         if !(1..=4).contains(&n_coarse) || n_frac > 3 {
             return Err(DtErrKind::UnsupportedDirective);
         }
-
+        let tai_tp = self.to_clock_type(ClockType::TAI);
         let base_jdn = Self::gregorian_jdn(1958, 1, 1);
-        let (year, month, day) = self.to_gregorian_date();
+        let (year, month, day) = tai_tp.to_gregorian_date();
         let current_jdn = Self::gregorian_jdn(year, month, day);
         let days_since_epoch = current_jdn - base_jdn;
 
-        let (hour, minute, second, subsec_attos) = self.to_hms_subsec();
+        let (hour, minute, second, subsec_attos) = tai_tp.to_hms_subsec();
         let sec_of_day = (hour as i64) * 3600 + (minute as i64) * 60 + (second as i64);
         let total_tai_seconds = days_since_epoch * 86400 + sec_of_day;
 
@@ -364,8 +364,8 @@ impl TimePoint {
         if !matches!(n_day, 2 | 3) || !matches!(sub_ms_code, 0 | 1 | 2) {
             return Err(DtErrKind::UnsupportedDirective);
         }
-
-        let (hour, minute, second, subsec_attos) = self.to_hms_subsec();
+        let utc_tp = self.to_clock_type(ClockType::UTC);
+        let (hour, minute, second, subsec_attos) = utc_tp.to_hms_subsec();
 
         let seconds_of_day = (hour as u64) * 3600 + (minute as u64) * 60 + second as u64;
 
@@ -408,7 +408,7 @@ impl TimePoint {
 
         let day_count = {
             let base_jdn = Self::gregorian_jdn(1958, 1, 1);
-            let (year, month, day) = self.to_gregorian_date();
+            let (year, month, day) = utc_tp.to_gregorian_date();
             let current_jdn = Self::gregorian_jdn(year, month, day);
             (current_jdn - base_jdn) as u64
         };
@@ -522,6 +522,7 @@ fn test_ccsds_c_roundtrip() {
             (jd_noon - 1, seconds_from_noon + 86400)
         };
         TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos))
+            .to_clock_type(ClockType::TAI)
     }
     let t = tp(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000);
 
@@ -559,7 +560,8 @@ fn test_ccsds_d_roundtrip() {
         } else {
             (jd_noon - 1, seconds_from_noon + 86400)
         };
-        TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos))
+        let x = TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos));
+        x.to_clock_type(ClockType::UTC)
     }
 
     let t = tp(2025, 4, 17, 14, 30, 45, 400_000_000_000);
