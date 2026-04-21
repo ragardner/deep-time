@@ -1,9 +1,8 @@
 use {
     crate::{
-        ATTOSEC_PER_NANOSEC, DateComponents, Meridiem, TimeZone, Weekday,
+        ATTOSEC_PER_NANOSEC, DateComponents, Meridiem, TimePoint, TimeZone, Weekday,
         error::{DtErrKind, DtError},
         tzdb::offset_at,
-        ymdhms_to_unix_timestamp,
     },
     alloc::string::String,
     core::result::Result,
@@ -221,7 +220,7 @@ impl DateComponents {
                 let probe_ts = if let Some(ts) = self.unix_timestamp_seconds {
                     ts
                 } else if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
-                    ymdhms_to_unix_timestamp(
+                    TimePoint::ymdhms_to_unix_timestamp(
                         y,
                         m,
                         d,

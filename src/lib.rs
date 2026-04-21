@@ -87,6 +87,3 @@ pub use parse::{ccsds_bin, ccsds_str, formatter, parser};
 pub use position::{Position, Velocity};
 pub use time_point::TimePoint;
 pub use time_range::{Every, TimeRange};
-pub use utils::{
-    alpha_from_weak_field_potential, kretschmann_from_potential_and_scale, ymdhms_to_unix_timestamp,
-};

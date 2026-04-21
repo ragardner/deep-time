@@ -1,4 +1,4 @@
-use crate::{ClockType, DateComponents, DtErrKind, DtError, TimePoint, TimeZone};
+use crate::{ClockType, DateComponents, DtErrKind, DtError, SEC_PER_DAYI64, TimePoint, TimeZone};
 
 /// Helper: converts days since 1958-01-01 (midnight) into Gregorian Y/M/D.
 /// Pure integer arithmetic, fully self-contained, matches the exact CCSDS
@@ -418,8 +418,8 @@ impl TimePoint {
         const EPOCH_OFFSET: i64 = 1_325_419_135;
         let total_utc_seconds = utc.sec + EPOCH_OFFSET;
 
-        let day_count = (total_utc_seconds / 86_400) as u64;
-        let sec_of_day = (total_utc_seconds % 86_400) as u64;
+        let day_count = (total_utc_seconds / SEC_PER_DAYI64) as u64;
+        let sec_of_day = (total_utc_seconds % SEC_PER_DAYI64) as u64;
 
         // Round to nearest millisecond (CORRECT 10^15 scaling)
         let additional_ms =
@@ -583,7 +583,7 @@ fn test_ccsds_c_roundtrip() {
     // JD, leap-second table, or to_time_point path.
     let days_since_1958 = gregorian_to_days_since_1958(2025, 4, 17);
     let sec_of_day = (14 * 3600) + (30 * 60) + 45;
-    let total_tai_seconds = days_since_1958 * 86_400 + sec_of_day;
+    let total_tai_seconds = days_since_1958 * SEC_PER_DAYI64 + sec_of_day;
 
     // Library-internal TAI representation (TAI zero = library epoch)
     const EPOCH_OFFSET: i64 = 1_325_419_167;
@@ -617,7 +617,7 @@ fn test_ccsds_d_roundtrip() {
     // Same pure-CCSDS-epoch calculation as above (no library conversions).
     let days_since_1958 = gregorian_to_days_since_1958(2025, 4, 17);
     let sec_of_day = (14 * 3600) + (30 * 60) + 45;
-    let total_utc_seconds = days_since_1958 * 86_400 + sec_of_day;
+    let total_utc_seconds = days_since_1958 * SEC_PER_DAYI64 + sec_of_day;
 
     // Library-internal UTC representation
     const EPOCH_OFFSET: i64 = 1_325_419_135;

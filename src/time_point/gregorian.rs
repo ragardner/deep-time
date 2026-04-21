@@ -1,30 +1,87 @@
-use crate::{ClockType, TimePoint, Weekday};
+use crate::{
+    ATTOSEC_PER_SEC_I128, ClockType, Delta, SEC_PER_DAYI128, TT_TAI_OFFSET_DELTA, TimePoint,
+    Weekday, leap_seconds::leap_seconds_before,
+};
 
 impl TimePoint {
     #[inline]
     pub const fn to_gregorian_date(self) -> (i64, u8, u8) {
-        let (jd_days, frac) = self.to_jd_tt_exact();
-        let jdn = if frac.sec >= 43200 {
-            jd_days + 1
-        } else {
-            jd_days
-        };
-        Self::jdn_to_gregorian(jdn)
+        match self.clock_type {
+            ClockType::UTC => {
+                let tai = self.to_tai();
+                let leaps = leap_seconds_before(tai);
+                let offset_attos =
+                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_DELTA.total_attos();
+                let (jd_days, frac) = self.to_jd_tt_exact();
+                let frac_attos = frac.total_attos() - offset_attos;
+                let (jd_utc, frac_attos) = if frac_attos < 0 {
+                    (
+                        jd_days - 1,
+                        frac_attos + SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128,
+                    )
+                } else {
+                    (jd_days, frac_attos)
+                };
+                let frac_utc = Delta::from_total_attos(frac_attos);
+                let jdn = if frac_utc.sec >= 43200 {
+                    jd_utc + 1
+                } else {
+                    jd_utc
+                };
+                Self::jdn_to_gregorian(jdn)
+            }
+            _ => {
+                let (jd_days, frac) = self.to_jd_tt_exact();
+                let jdn = if frac.sec >= 43200 {
+                    jd_days + 1
+                } else {
+                    jd_days
+                };
+                Self::jdn_to_gregorian(jdn)
+            }
+        }
     }
 
     #[inline]
     pub const fn to_hms_subsec(self) -> (u8, u8, u8, u64) {
-        let tt = self.to_clock_type(ClockType::TT);
-        let (_, frac) = tt.to_jd_tt_exact();
-        let seconds_since_midnight = if frac.sec >= 43200 {
-            frac.sec - 43200
-        } else {
-            frac.sec + 43200
-        };
-        let hour = (seconds_since_midnight / 3600) as u8;
-        let minute = ((seconds_since_midnight % 3600) / 60) as u8;
-        let second = (seconds_since_midnight % 60) as u8;
-        (hour, minute, second, frac.subsec)
+        match self.clock_type {
+            ClockType::UTC => {
+                let tai = self.to_tai();
+                let leaps = leap_seconds_before(tai);
+                let offset_attos =
+                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_DELTA.total_attos();
+                let (_, frac) = self.to_jd_tt_exact();
+                let frac_attos = frac.total_attos() - offset_attos;
+                let frac_attos = if frac_attos < 0 {
+                    frac_attos + SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128
+                } else {
+                    frac_attos
+                };
+                let frac_utc = Delta::from_total_attos(frac_attos);
+                let seconds_since_midnight = if frac_utc.sec >= 43200 {
+                    frac_utc.sec - 43200
+                } else {
+                    frac_utc.sec + 43200
+                };
+                let hour = (seconds_since_midnight / 3600) as u8;
+                let minute = ((seconds_since_midnight % 3600) / 60) as u8;
+                let second = (seconds_since_midnight % 60) as u8;
+                (hour, minute, second, frac_utc.subsec)
+            }
+            _ => {
+                let tt = self.to_clock_type(ClockType::TT);
+                let (_, frac) = tt.to_jd_tt_exact();
+                let seconds_since_midnight = if frac.sec >= 43200 {
+                    frac.sec - 43200
+                } else {
+                    frac.sec + 43200
+                };
+                let hour = (seconds_since_midnight / 3600) as u8;
+                let minute = ((seconds_since_midnight % 3600) / 60) as u8;
+                let second = (seconds_since_midnight % 60) as u8;
+                (hour, minute, second, frac.subsec)
+            }
+        }
     }
 
     #[inline]

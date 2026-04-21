@@ -3,8 +3,9 @@ use crate::{
     ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockDrift, ClockModel, ClockType, Delta, J2000_JD_TT,
     J2000_SECONDS_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, LM_DEN, LM_NUM, MARS_MSD_REF_JD_INT,
     MARS_MSD_REF_TOD_SEC, MARS_MSD_REF_TOD_SUBSEC, MARS_REF_SEC, MARS_REF_SUBSEC, MARS_SOL_ATTOS,
-    MARS_SOL_LENGTH_SEC, Real, SEC_PER_DAY, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC,
-    TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS, TT_TAI_OFFSET_DELTA, TimePoint, floor_f, sin_approx,
+    MARS_SOL_LENGTH_SEC, Real, SEC_PER_DAY, SEC_PER_DAYI64, SEC_PER_DAYI128, TCG_TCB_REF_JD_INT,
+    TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS, TT_TAI_OFFSET_DELTA, TimePoint,
+    floor_f, sin_approx,
 };
 
 #[cfg(test)]
@@ -257,14 +258,14 @@ impl TimePoint {
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
     /// using only the numerical `sec`/`subsec` of the supplied `TimePoint` (clock_type is ignored).
     const fn elapsed_attos_since_ref(numerical: Self) -> i128 {
-        let days_since_j2000 = numerical.sec.div_euclid(86_400);
-        let tod_sec = numerical.sec.rem_euclid(86_400);
+        let days_since_j2000 = numerical.sec.div_euclid(SEC_PER_DAYI64);
+        let tod_sec = numerical.sec.rem_euclid(SEC_PER_DAYI64);
 
         let jd_days = J2000_JD_TT + days_since_j2000;
         let days_diff = jd_days - TCG_TCB_REF_JD_INT;
 
         let mut sec_diff =
-            (days_diff as i128) * 86_400i128 + (tod_sec as i128 - TCG_TCB_REF_TOD_SEC as i128);
+            (days_diff as i128) * SEC_PER_DAYI128 + (tod_sec as i128 - TCG_TCB_REF_TOD_SEC as i128);
         let mut attos_diff = (numerical.subsec as i128) - (TCG_TCB_REF_TOD_SUBSEC as i128);
 
         if attos_diff < 0 {
@@ -348,14 +349,14 @@ impl TimePoint {
 
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
     const fn elapsed_attos_since_mars_ref(numerical_tt: Self) -> i128 {
-        let days_since_j2000 = numerical_tt.sec.div_euclid(86_400);
-        let tod_sec = numerical_tt.sec.rem_euclid(86_400);
+        let days_since_j2000 = numerical_tt.sec.div_euclid(SEC_PER_DAYI64);
+        let tod_sec = numerical_tt.sec.rem_euclid(SEC_PER_DAYI64);
 
         let jd_days = J2000_JD_TT + days_since_j2000;
         let days_diff = jd_days - MARS_MSD_REF_JD_INT;
 
-        let mut sec_diff =
-            (days_diff as i128) * 86_400i128 + (tod_sec as i128 - MARS_MSD_REF_TOD_SEC as i128);
+        let mut sec_diff = (days_diff as i128) * SEC_PER_DAYI128
+            + (tod_sec as i128 - MARS_MSD_REF_TOD_SEC as i128);
         let mut attos_diff = (numerical_tt.subsec as i128) - (MARS_MSD_REF_TOD_SUBSEC as i128);
 
         if attos_diff < 0 {
@@ -413,8 +414,8 @@ impl TimePoint {
     pub const fn to_jd_tt_exact(self) -> (i64, Delta) {
         let tt = self.to_clock_type(ClockType::TT);
 
-        let days_since_j2000 = tt.sec.div_euclid(86_400);
-        let remaining_sec = tt.sec.rem_euclid(86_400);
+        let days_since_j2000 = tt.sec.div_euclid(SEC_PER_DAYI64);
+        let remaining_sec = tt.sec.rem_euclid(SEC_PER_DAYI64);
 
         let frac = Delta::new(remaining_sec, tt.subsec);
         (J2000_JD_TT + days_since_j2000, frac)
@@ -431,7 +432,7 @@ impl TimePoint {
     #[inline]
     pub const fn from_jd_tt_exact(jd_days: i64, frac: Delta) -> Self {
         let days_since_j2000 = jd_days - J2000_JD_TT;
-        let total_sec = days_since_j2000 * 86_400i64 + frac.sec;
+        let total_sec = days_since_j2000 * SEC_PER_DAYI64 + frac.sec;
         let tt = TimePoint::new(total_sec, frac.subsec, ClockType::TT);
         tt.to_tai()
     }

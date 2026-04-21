@@ -1,5 +1,5 @@
 use crate::parser::strptime;
-use crate::{ClockType, J2000_JD_TT, TimePoint};
+use crate::{ClockType, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimePoint};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline(always)]
@@ -70,7 +70,7 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<TimePoint> {
     // Build TimePoint at day 1, 00:00:00 UTC using the same J2000 logic
     let jdn = TimePoint::gregorian_jdn(year as i64, month as u8, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
-    let sec = days_since_j2000 * 86_400 - 43_200; // midnight = -12h from noon
+    let sec = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // midnight = -12h from noon
 
     Some(TimePoint::new(sec, 0, ClockType::UTC))
 }

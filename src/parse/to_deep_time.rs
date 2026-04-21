@@ -4,7 +4,7 @@ use crate::{
     error::{DtErrKind, DtError},
     {DateComponents, Meridiem, TimeZone, Weekday},
 };
-use crate::{J2000_JD_TT, UNIX_EPOCH_TO_J2000_NOON_UTC};
+use crate::{J2000_JD_TT, SEC_PER_DAYI64, UNIX_EPOCH_TO_J2000_NOON_UTC};
 
 impl DateComponents {
     /// Converts parsed date/time components into a high-precision [`TimePoint`].
@@ -143,7 +143,7 @@ impl DateComponents {
         let days_since_j2000 = jdn - J2000_JD_TT;
         let seconds_from_noon_utc =
             (hour as i64 - 12) * 3600 + (minute as i64) * 60 + (second as i64);
-        let mut sec_utc = days_since_j2000 * 86_400 + seconds_from_noon_utc;
+        let mut sec_utc = days_since_j2000 * SEC_PER_DAYI64 + seconds_from_noon_utc;
 
         // ──────────────────────────────────────────────────────────────
         // Apply timezone correction (IANA or Fixed offset)

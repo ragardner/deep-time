@@ -3,7 +3,9 @@
 //! These are thin wrappers around existing UTC ↔ TAI conversion logic
 //! so they automatically handle leap seconds correctly.
 
-use crate::{ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ClockType, Delta, TimePoint};
+use crate::{
+    ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ClockType, Delta, SEC_PER_DAYI64, TimePoint,
+};
 
 impl TimePoint {
     /// Creates a `TimePoint` from a classic Unix timestamp **in seconds**
@@ -101,6 +103,6 @@ impl TimePoint {
         // Seconds in the day
         let time_of_day = (hour as i64) * 3600 + (minute as i64) * 60 + (second as i64);
 
-        days * 86_400 + time_of_day
+        days * SEC_PER_DAYI64 + time_of_day
     }
 }

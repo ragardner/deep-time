@@ -7,7 +7,7 @@
 //! let stamp = 3.days().ago(ClockType::UTC);
 //! ```
 
-use crate::{ClockType, Delta, SEC_PER_DAY, TimePoint};
+use crate::{ClockType, Delta, SEC_PER_DAY, SEC_PER_DAYI64, TimePoint};
 
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
@@ -54,7 +54,7 @@ macro_rules! impl_time_units_int {
                 fn hr(self) -> Delta { Delta::from_hr(self as i64) }
 
                 #[inline(always)]
-                fn days(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(86_400)) }
+                fn days(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(SEC_PER_DAYI64)) }
 
                 #[inline(always)]
                 fn wk(self) -> Delta { Delta::from_sec((self as i64).saturating_mul(604_800)) }
@@ -169,7 +169,7 @@ impl TimeUnits for f32 {
 
     #[inline]
     fn days(self) -> Delta {
-        (self * 86_400.0f32).sec()
+        (self * SEC_PER_DAY as f32).sec()
     }
 
     #[inline]

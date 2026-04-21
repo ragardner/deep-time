@@ -1,6 +1,6 @@
-use crate::{ClockType, J2000_JD_TT, TimePoint};
 use crate::{
-    DateParseMode, MAX_YEAR, MIN_YEAR, NS_PER_DAY, PLAUSIBLE_YYYYMM_YEAR_RANGE, parse_jd,
+    ClockType, DateParseMode, J2000_JD_TT, MAX_YEAR, MIN_YEAR, NS_PER_DAY,
+    PLAUSIBLE_YYYYMM_YEAR_RANGE, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimePoint, parse_jd,
     parse_mjd, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
 };
 
@@ -14,7 +14,7 @@ pub(crate) fn parse_i32_year(input: &str) -> Option<TimePoint> {
 
     let jdn = TimePoint::gregorian_jdn(year_i64, 1, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
-    let sec_utc = days_since_j2000 * 86_400 - 43_200; // Jan 1 00:00 = JDN noon - 12 h
+    let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
     Some(TimePoint::new(sec_utc, 0, ClockType::UTC))
 }
@@ -30,7 +30,7 @@ pub(crate) fn parse_two_digit_year(input: &str) -> Option<TimePoint> {
 
     let jdn = TimePoint::gregorian_jdn(year_i64, 1, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
-    let sec_utc = days_since_j2000 * 86_400 - 43_200; // Jan 1 00:00 = JDN noon - 12 h
+    let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
     Some(TimePoint::new(sec_utc, 0, ClockType::UTC))
 }
