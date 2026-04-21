@@ -510,10 +510,10 @@ fn test_ccsds_d_direct_frac() {
     assert_eq!(parsed.attos, Some(1_500_000_000_000)); // 1 ms + 0.5 ms = 1.5 ms
 }
 
-#[cfg(test)]
 /// Exact inverse of `days_since_1958_to_gregorian`.
 /// Pure integer arithmetic – guarantees perfect round-tripping with the parser
 /// when the same Y/M/D values are supplied. Used only for the roundtrip tests.
+#[cfg(test)]
 fn gregorian_to_days_since_1958(year: i64, month: u8, day: u8) -> i64 {
     let mut days = 0i64;
     let mut y = 1958i64;
