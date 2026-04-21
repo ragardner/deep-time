@@ -40,20 +40,31 @@ const LEAP_SECONDS: &[(i64, i64)] = &[
     (3692217600, 37), // 1 Jan 2017
 ];
 
-/// Returns leap seconds inserted **before** this TAI instant (TAI = UTC + result).
+/// Returns the cumulative leap seconds (TAI − UTC offset in whole seconds)
+/// that are valid **at or after** the given TAI instant.
+///
+/// `TAI = UTC + result`
+///
+/// This is the value used internally by [`TimePoint::to_tai`] and
+/// [`TimePoint::from_tai`] when converting to/from `ClockType::UTC`.
+///
+/// The library’s canonical epoch (`TimePoint::new(0, 0, ClockType::TAI)`)
+/// is exactly 2000-01-01 12:00:00 TAI, at which this function returns `32`.
+///
+/// The table is taken from the official IANA `leap-seconds.list` and is
+/// current through April 2026 (no further leaps are expected before the
+/// table expires on 28 December 2026).
 pub const fn leap_seconds_before(tai: TimePoint) -> i64 {
+    // Convert library TAI seconds (since 2000-01-01 12:00:00 TAI)
+    // into an NTP timestamp (seconds since 1900-01-01 00:00:00).
+    const J2000_NTP_OFFSET: i64 = 3_155_328_000 + SEC_PER_HALF_DAYI64;
+    let tai_ntp = tai.sec() + J2000_NTP_OFFSET;
+
     let mut offset = 0i64;
     let mut i = 0usize;
 
     while i < LEAP_SECONDS.len() {
-        let leap_ntp = LEAP_SECONDS[i].0;
-
-        // J2000 noon (TAI zero) → NTP timestamp
-        const J2000_NTP_OFFSET: i64 = 3_155_328_000 + SEC_PER_HALF_DAYI64;
-
-        let tai_ntp = tai.sec() + J2000_NTP_OFFSET;
-
-        if tai_ntp >= leap_ntp {
+        if tai_ntp >= LEAP_SECONDS[i].0 {
             offset = LEAP_SECONDS[i].1;
         } else {
             break;
