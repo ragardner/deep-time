@@ -1,14 +1,14 @@
 use crate::{
     ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
     ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ClockDrift, ClockModel, ClockType,
-    Delta, TT_TAI_OFFSET_DELTA, TimePoint,
+    TT_TAI_OFFSET_DELTA, TimePoint,
 };
 
 impl TimePoint {
     /// The library’s reference zero instant: exactly **2000-01-01 12:00:00 TAI**.
     ///
     /// This is the common zero point for **all built-in clock types** (except `Proper`/`Custom`).
-    /// `TimePoint::new(0, 0, ClockType::XXX)` now represents this exact physical instant
+    /// `TimePoint::new(0, 0, ClockType::XXX)` represents this exact same physical instant
     /// on every built-in scale.
     pub const ZERO: Self = Self {
         sec: 0,
@@ -27,24 +27,58 @@ impl TimePoint {
     /// The J1900.0 epoch expressed in TAI (1900-01-01 12:00:00 TAI).
     pub const J1900_TAI: Self = Self::from_tai_sec(-3_155_760_000);
 
-    /// The UNIX epoch expressed in TAI (1970-01-01 00:00:00 TAI).
+    /// The library’s common reference zero instant expressed in GPS Time (GPST).
+    ///
+    /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI),
+    /// but represented on the GPST scale.
+    ///
+    /// **Note**: This is *not* the traditional GPS reference epoch (1980-01-06 00:00:00 GPST).
+    pub const GPS_EPOCH: Self = Self::new(0, 0, ClockType::GPST);
+
+    /// The library’s common reference zero instant expressed in Galileo Time (GST).
+    ///
+    /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI),
+    /// but represented on the GST scale.
+    ///
+    /// **Note**: This is *not* the traditional Galileo reference epoch (1999-08-22 00:00:00 GST).
+    pub const GALILEO_EPOCH: Self = Self::new(0, 0, ClockType::GST);
+
+    /// The library’s common reference zero instant expressed in BeiDou Time (BDT).
+    ///
+    /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI),
+    /// but represented on the BDT scale.
+    ///
+    /// **Note**: This is *not* the traditional BeiDou reference epoch (2006-01-01 00:00:00 BDT).
+    pub const BEIDOU_EPOCH: Self = Self::new(0, 0, ClockType::BDT);
+
+    /// The library’s common reference zero instant expressed in QZSS Time (QZSST).
+    ///
+    /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI)
+    /// and is identical to [`Self::GPS_EPOCH`] (QZSS uses the same timescale as GPS).
+    pub const QZSS_EPOCH: Self = Self::new(0, 0, ClockType::QZSST);
+
+    /// The TAI instant corresponding to the POSIX Unix epoch
+    /// (1970-01-01 00:00:00 UTC).
     pub const UNIX_EPOCH_TAI: Self = Self {
-        sec: -946_728_000,
-        subsec: ATTOSEC_PER_SEC - 184_000_000_000_000_000,
+        sec: -946_727_963,
+        subsec: 0,
         clock_type: ClockType::TAI,
     };
 
-    /// The GPS Time (GPST) reference epoch (1980-01-06 00:00:00 GPST).
-    pub const GPS_EPOCH: Self = Self::new(0, 0, ClockType::GPST);
+    /// UTC representation of the POSIX Unix epoch (1970-01-01 00:00:00 UTC).
+    pub const UNIX_EPOCH_UTC: Self = Self::UNIX_EPOCH_TAI.to_clock_type(ClockType::UTC);
 
-    /// The Galileo Time (GST) reference epoch (1999-08-22 00:00:00 GST).
-    pub const GALILEO_EPOCH: Self = Self::new(0, 0, ClockType::GST);
+    /// Traditional GPS / QZSS reference epoch: **1980-01-06 00:00:00 GPST**
+    ///
+    /// This is the epoch that GNSS receivers, navigation software, RINEX files,
+    /// and the vast majority of the world expect when working with GPST/QZSST.
+    pub const TRADITIONAL_GPS_EPOCH: Self = Self::new(-630_763_200, 0, ClockType::GPST);
 
-    /// The BeiDou Time (BDT) reference epoch (2006-01-01 00:00:00 BDT).
-    pub const BEIDOU_EPOCH: Self = Self::new(0, 0, ClockType::BDT);
+    /// Traditional Galileo reference epoch: **1999-08-22 00:00:00 GST**
+    pub const TRADITIONAL_GALILEO_EPOCH: Self = Self::new(-11_448_000, 0, ClockType::GST);
 
-    /// The QZSS Time (QZSST) reference epoch (identical to GPST).
-    pub const QZSS_EPOCH: Self = Self::new(0, 0, ClockType::QZSST);
+    /// Traditional BeiDou reference epoch: **2006-01-01 00:00:00 BDT**
+    pub const TRADITIONAL_BEIDOU_EPOCH: Self = Self::new(189_345_600, 0, ClockType::BDT);
 
     /// Creates a new `TimePoint` from whole seconds, a subsecond part in attoseconds,
     /// and a clock type, automatically normalizing the representation.
@@ -90,32 +124,32 @@ impl TimePoint {
     }
 
     #[inline]
-    pub const fn from_ms(ms: i64, clock_type: ClockType) -> Self {
+    pub const fn from_ms(ms: i128, clock_type: ClockType) -> Self {
         Self::from_subunits(ms, ATTOSEC_PER_MILLISEC, clock_type)
     }
 
     #[inline]
-    pub const fn from_us(us: i64, clock_type: ClockType) -> Self {
+    pub const fn from_us(us: i128, clock_type: ClockType) -> Self {
         Self::from_subunits(us, ATTOSEC_PER_MICROSEC, clock_type)
     }
 
     #[inline]
-    pub const fn from_ns(ns: i64, clock_type: ClockType) -> Self {
+    pub const fn from_ns(ns: i128, clock_type: ClockType) -> Self {
         Self::from_subunits(ns, ATTOSEC_PER_NANOSEC, clock_type)
     }
 
     #[inline]
-    pub const fn from_ps(ps: i64, clock_type: ClockType) -> Self {
+    pub const fn from_ps(ps: i128, clock_type: ClockType) -> Self {
         Self::from_subunits(ps, ATTOSEC_PER_PICOSEC, clock_type)
     }
 
     #[inline]
-    pub const fn from_fs(fs: i64, clock_type: ClockType) -> Self {
+    pub const fn from_fs(fs: i128, clock_type: ClockType) -> Self {
         Self::from_subunits(fs, ATTOSEC_PER_FEMTOSEC, clock_type)
     }
 
     #[inline]
-    pub const fn from_as(as_: i64, clock_type: ClockType) -> Self {
+    pub const fn from_as(as_: i128, clock_type: ClockType) -> Self {
         Self::from_subunits(as_, ATTOSEC_PER_ATTOSEC, clock_type)
     }
 
@@ -135,23 +169,23 @@ impl TimePoint {
         hr: i64,
         min: i64,
         sec: i64,
-        ms: i64,
-        us: i64,
-        ns: i64,
+        ms: i128,
+        us: i128,
+        ns: i128,
         clock_type: ClockType,
     ) -> Self {
         let total_sec = hr * 3600i64 + min * 60i64 + sec;
 
-        let sub_ns = ms * 1_000_000i64 + us * 1_000i64 + ns;
+        let sub_ns = ms * 1_000_000i128 + us * 1_000i128 + ns;
 
         if sub_ns == 0 {
             return Self::new(total_sec, 0, clock_type);
         }
 
         let abs_ns = sub_ns.unsigned_abs();
-        let extra_sec = (abs_ns / 1_000_000_000u64) as i64;
-        let rem_ns = abs_ns % 1_000_000_000u64;
-        let frac = rem_ns * ATTOSEC_PER_NANOSEC;
+        let extra_sec = (abs_ns / 1_000_000_000u128) as i64;
+        let rem_ns = abs_ns % 1_000_000_000u128;
+        let frac = (rem_ns as u64) * ATTOSEC_PER_NANOSEC;
 
         let (final_sec, final_frac) = if sub_ns >= 0 {
             (total_sec + extra_sec, frac)
@@ -170,102 +204,32 @@ impl TimePoint {
     }
 
     #[inline]
-    pub const fn new_utc(sec: i64, subsec: u64) -> Self {
-        Self::new(sec, subsec, ClockType::UTC)
-    }
-
-    #[inline]
     pub const fn from_tai_sec(s: i64) -> Self {
         Self::from_sec(s, ClockType::TAI)
     }
 
     #[inline]
-    pub const fn from_tai_ms(ms: i64) -> Self {
+    pub const fn from_tai_ms(ms: i128) -> Self {
         Self::from_ms(ms, ClockType::TAI)
     }
 
     #[inline]
-    pub const fn from_tai_us(us: i64) -> Self {
+    pub const fn from_tai_us(us: i128) -> Self {
         Self::from_us(us, ClockType::TAI)
     }
 
     #[inline]
-    pub const fn from_tai_ns(ns: i64) -> Self {
+    pub const fn from_tai_ns(ns: i128) -> Self {
         Self::from_ns(ns, ClockType::TAI)
     }
 
-    #[inline]
-    pub const fn from_utc_sec(s: i64) -> Self {
-        Self::from_sec(s, ClockType::UTC)
-    }
-
-    #[inline]
-    pub const fn from_utc_ms(ms: i64) -> Self {
-        Self::from_ms(ms, ClockType::UTC)
-    }
-
-    #[inline]
-    pub const fn from_utc_us(us: i64) -> Self {
-        Self::from_us(us, ClockType::UTC)
-    }
-
-    #[inline]
-    pub const fn from_utc_ns(ns: i64) -> Self {
-        Self::from_ns(ns, ClockType::UTC)
-    }
-
-    #[inline]
-    pub const fn from_unix_sec(s: i64) -> Self {
-        Self::new(
-            Self::UNIX_EPOCH_TAI.sec + s,
-            Self::UNIX_EPOCH_TAI.subsec,
-            ClockType::TAI,
-        )
-    }
-
-    #[inline]
-    pub const fn from_unix_ms(ms: i64) -> Self {
-        Self::from_unix_sec(0).add(Delta::from_ms(ms))
-    }
-
-    #[inline]
-    pub const fn from_unix_us(us: i64) -> Self {
-        Self::from_unix_sec(0).add(Delta::from_us(us))
-    }
-
-    #[inline]
-    pub const fn from_unix_ns(ns: i64) -> Self {
-        Self::from_unix_sec(0).add(Delta::from_ns(ns))
-    }
-
-    /// Creates a `TimePoint` in GPS Time from seconds since the GPS epoch.
-    #[inline]
-    pub const fn from_gps_sec(s: i64) -> Self {
-        Self::new(s, 0, ClockType::GPST)
-    }
-
-    #[inline]
-    pub const fn from_gps_ms(ms: i64) -> Self {
-        Self::from_ms(ms, ClockType::GPST)
-    }
-
-    #[inline]
-    pub const fn from_gps_us(us: i64) -> Self {
-        Self::from_us(us, ClockType::GPST)
-    }
-
-    #[inline]
-    pub const fn from_gps_ns(ns: i64) -> Self {
-        Self::from_ns(ns, ClockType::GPST)
-    }
-
-    const fn from_subunits(count: i64, attos_per_unit: u64, clock_type: ClockType) -> Self {
+    const fn from_subunits(count: i128, attos_per_unit: u64, clock_type: ClockType) -> Self {
         let abs_count = count.unsigned_abs();
         let units_per_second = ATTOSEC_PER_SEC / attos_per_unit;
 
-        let extra_sec = (abs_count / units_per_second) as i64;
-        let remaining = abs_count % units_per_second;
-        let frac = remaining * attos_per_unit;
+        let extra_sec = (abs_count / (units_per_second as u128)) as i64;
+        let remaining = abs_count % (units_per_second as u128);
+        let frac = (remaining as u64) * attos_per_unit;
 
         if count >= 0 {
             Self::new(extra_sec, frac, clock_type)

@@ -4,7 +4,7 @@ mod conversions;
 mod formatting;
 mod gregorian;
 mod ops;
-mod unix;
+mod to_canonical;
 
 pub mod trajectory;
 

@@ -237,6 +237,16 @@ pub fn parse_date_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
     parse_date(s, opts, false).ok().map(|tp| tp.as_ms())
 }
 
+/// Same parsing logic as `parse_date`, but returns milliseconds since
+/// the UNIX epoch: (1970-01-01 00:00:00 UTC).
+///
+/// Returns `Some(millis)` on success (negative for pre-2000 dates) or `None`
+/// on any parse error.
+#[inline]
+pub fn parse_date_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+    parse_date(s, opts, false).ok().map(|tp| tp.to_unix_ms())
+}
+
 /// Low-level parser that works around the known Zoned::strptime edge case
 /// with %j + %.f + literal Z (and any similar future quirks).
 #[inline(always)]

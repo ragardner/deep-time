@@ -67,7 +67,7 @@ pub(crate) use utils::*;
 #[cfg(feature = "std")]
 pub use std_parse::{
     lang::Lang,
-    parse_date::{parse_date, parse_date_ms},
+    parse_date::{parse_date, parse_date_ms, parse_date_unix_ms},
     parse_duration::{duration_to_iso, parse_duration},
     types::{DateOrder, DateParseMode, ParseCfg},
 };

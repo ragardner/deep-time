@@ -1,4 +1,4 @@
-use deep_time_core::{DateOrder, DateParseMode, Lang, ParseCfg, parse_date, parse_date_ms};
+use deep_time_core::{DateOrder, DateParseMode, Lang, ParseCfg, parse_date, parse_date_unix_ms};
 #[cfg(feature = "perf_tests")]
 use std::time::Instant;
 
@@ -14,8 +14,8 @@ fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
 }
 
 fn assert_millis(input: &str, expected_millis: i128, opts: Option<ParseCfg>) {
-    let millis =
-        parse_date_ms(input, &opts).unwrap_or_else(|| panic!("Failed millis parse: {}", input));
+    let millis = parse_date_unix_ms(input, &opts)
+        .unwrap_or_else(|| panic!("Failed millis parse: {}", input));
     assert_eq!(millis, expected_millis, "Input: {}", input);
 }
 
