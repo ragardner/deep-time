@@ -126,3 +126,5 @@ pub(crate) const MONTHS_FULL: [&[u8]; 12] = [
 pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
     b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec",
 ];
+
+pub(crate) const STRFTIME_SIZE: usize = 512;

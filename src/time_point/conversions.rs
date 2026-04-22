@@ -413,10 +413,8 @@ impl TimePoint {
     #[inline]
     pub const fn to_jd_tt_exact(self) -> (i64, Delta) {
         let tt = self.to_clock_type(ClockType::TT);
-
         let days_since_j2000 = tt.sec.div_euclid(SEC_PER_DAYI64);
         let remaining_sec = tt.sec.rem_euclid(SEC_PER_DAYI64);
-
         let frac = Delta::new(remaining_sec, tt.subsec);
         (J2000_JD_TT + days_since_j2000, frac)
     }

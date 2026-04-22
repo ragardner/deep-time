@@ -17,7 +17,7 @@ pub(crate) fn parse_syslog_no_year(
     lang: Lang,
 ) -> Option<TimePoint> {
     let now = reference_date.unwrap_or_else(|| TimePoint::now(ClockType::UTC));
-    let (this_year, _, _) = now.to_gregorian_date();
+    let (this_year, _, _) = now.to_gregorian_date(None);
 
     let try_with_year = |year: i64| -> Option<TimePoint> {
         // Prepend the year

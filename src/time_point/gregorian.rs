@@ -1,13 +1,204 @@
 use crate::{
-    ATTOSEC_PER_SEC_I128, ClockType, SEC_PER_DAYI128, TT_TAI_OFFSET_DELTA, TimePoint, Weekday,
-    leap_seconds::leap_seconds_before,
+    ATTOSEC_PER_SEC_I128, AsciiStr, ClockType, Delta, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_DAYI128,
+    TT_TAI_OFFSET_DELTA, TimePoint, Weekday, leap_seconds::leap_seconds_before,
 };
 
-impl TimePoint {
-    #[inline]
-    pub const fn to_gregorian_date(self) -> (i64, u8, u8) {
-        let (jd_days, frac) = self.to_jd_tt_exact();
+/// UTC Civil calendar and time-of-day components of a `TimePoint`.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct GregorianPoint {
+    /// Gregorian year (proleptic Gregorian calendar, supports negative years and year 0).
+    pub(crate) yr: i64,
+    /// Gregorian month in the range [1, 12].
+    pub(crate) mo: u8,
+    /// Gregorian day of the month in the range [1, 31].
+    pub(crate) day: u8,
+    /// Hour of the day in the range [0, 23].
+    pub(crate) hr: u8,
+    /// Minute in the range [0, 59].
+    pub(crate) min: u8,
+    /// Second in the range [0, 60] (60 only during UTC leap seconds).
+    pub(crate) sec: u8,
+    /// Fractional part of the second expressed in attoseconds (u64).
+    pub(crate) attos: u64,
+    /// ISO 8601 week year.
+    pub(crate) iso_yr: i64,
+    /// ISO 8601 week number in the range [1, 53].
+    pub(crate) iso_wk: u8,
+    /// ISO 8601 weekday enum e.g. Monday/Tuesday/...
+    pub(crate) iso_wkday: Weekday,
+    /// Ordinal day of the year (1-based).
+    pub(crate) day_of_yr: u16,
+    /// Weekday number (0 = Sunday … 6 = Saturday).
+    pub(crate) wkday: u8,
+    /// Output from jd_tt_exact() on TimePoint.
+    pub(crate) jd_tt_exact: (i64, Delta),
+    /// Sunday based week of year (Range: `0..=53`).
+    pub(crate) wk_of_yr_sun: u8,
+    /// Monday based week of year (Range: `0..=53`).
+    pub(crate) wk_of_yr_mon: u8,
+    /// A stored offset in seconds, used within the crate.
+    pub(crate) offset_sec: Option<i32>,
+    /// A stored IANA name, used within the crate, %Q.
+    pub(crate) tz: Option<AsciiStr<50>>,
+    /// UTC, EST, %Z
+    pub(crate) tz_abbrev: Option<AsciiStr<16>>,
+}
 
+impl GregorianPoint {
+    /// Gregorian year (proleptic Gregorian calendar, supports negative years and year 0).
+    #[inline(always)]
+    pub const fn yr(&self) -> i64 {
+        self.yr
+    }
+    /// Gregorian month in the range [1, 12].
+    #[inline(always)]
+    pub const fn mo(&self) -> u8 {
+        self.mo
+    }
+    /// Gregorian day of the month in the range [1, 31].
+    #[inline(always)]
+    pub const fn day(&self) -> u8 {
+        self.day
+    }
+    /// Hour of the day in the range [0, 23].
+    #[inline(always)]
+    pub const fn hr(&self) -> u8 {
+        self.hr
+    }
+    /// Minute in the range [0, 59].
+    #[inline(always)]
+    pub const fn min(&self) -> u8 {
+        self.min
+    }
+    /// Second in the range [0, 60] (60 only during UTC leap seconds).
+    #[inline(always)]
+    pub const fn sec(&self) -> u8 {
+        self.sec
+    }
+    /// Fractional part of the second expressed in attoseconds (`0 ≤ attos < 10¹⁸`).
+    #[inline(always)]
+    pub const fn attos(&self) -> u64 {
+        self.attos
+    }
+    /// ISO 8601 week year.
+    #[inline(always)]
+    pub const fn iso_yr(&self) -> i64 {
+        self.iso_yr
+    }
+    /// ISO 8601 week number in the range [1, 53].
+    #[inline(always)]
+    pub const fn iso_wk(&self) -> u8 {
+        self.iso_wk
+    }
+    /// ISO 8601 weekday (Monday-based [`Weekday`] enum).
+    #[inline(always)]
+    pub const fn iso_wkday(&self) -> Weekday {
+        self.iso_wkday
+    }
+    /// Ordinal day of the year (1-based).
+    #[inline(always)]
+    pub const fn day_of_yr(&self) -> u16 {
+        self.day_of_yr
+    }
+    /// Weekday number (0 = Sunday … 6 = Saturday).
+    #[inline(always)]
+    pub const fn wkday_sun(&self) -> u8 {
+        self.wkday
+    }
+    /// ISO 8601 weekday (0 = Monday ... 6 = Sunday).
+    #[inline(always)]
+    pub const fn wkday_mon(&self) -> u8 {
+        self.iso_wkday.wk_mon()
+    }
+    /// Sunday based week of year (Range: `0..=53`).
+    #[inline(always)]
+    pub const fn wk_of_yr_sun(&self) -> u8 {
+        self.wk_of_yr_sun
+    }
+    /// Monday based week of year (Range: `0..=53`).
+    #[inline(always)]
+    pub const fn wk_of_yr_mon(&self) -> u8 {
+        self.wk_of_yr_mon
+    }
+    #[inline(always)]
+    pub(crate) const fn offset_sec(&self) -> Option<i32> {
+        self.offset_sec
+    }
+    #[inline(always)]
+    pub(crate) const fn tz(&self) -> Option<&AsciiStr<50>> {
+        self.tz.as_ref()
+    }
+    #[inline(always)]
+    pub(crate) const fn tz_abbrev(&self) -> Option<&AsciiStr<16>> {
+        self.tz_abbrev.as_ref()
+    }
+    #[inline(always)]
+    pub(crate) fn set_offset(&mut self, offset_sec: Option<i32>) {
+        self.offset_sec = offset_sec;
+    }
+    #[inline(always)]
+    pub(crate) fn set_tz(&mut self, tz: Option<&str>) {
+        self.tz = tz.and_then(|s| AsciiStr::try_from_str(s).ok());
+    }
+    #[inline(always)]
+    pub(crate) fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) {
+        self.tz_abbrev = tz_abbrev.and_then(|s| AsciiStr::try_from_str(s).ok());
+    }
+
+    /// Reconstructs a [`TimePoint`] from these **UTC** civil components.
+    ///
+    /// Round-tripping with `TimePoint::to_gregorian_point`.
+    pub const fn to_time_point(self, clock_type: ClockType) -> TimePoint {
+        let jdn = TimePoint::gregorian_jdn(self.yr, self.mo, self.day);
+        let days_since_j2000 = jdn - J2000_JD_TT;
+        let seconds_from_noon =
+            (self.hr as i64 - 12) * 3600i64 + (self.min as i64) * 60i64 + (self.sec as i64);
+        let sec = days_since_j2000 * SEC_PER_DAYI64 + seconds_from_noon;
+        TimePoint::new(sec, self.attos, ClockType::UTC).to_clock_type(clock_type)
+    }
+}
+
+impl TimePoint {
+    pub const fn to_gregorian_point(self) -> GregorianPoint {
+        let utc = self.to_clock_type(ClockType::UTC);
+        let (jd_days, frac) = utc.to_jd_tt_exact();
+        let (yr, mo, day) = utc.to_gregorian_date(Some((jd_days, frac)));
+        let (hr, min, sec, attos) = utc.to_hms_subsec();
+        let (iso_yr, iso_wk, iso_wkday) = utc.to_iso_week_date(Some((yr, mo, day)));
+        let day_of_yr = utc.day_of_year(Some((yr, mo, day)));
+        let wkday = utc.weekday(Some((jd_days, frac)));
+        let wk_of_yr_sun = utc.wk_sun(Some((yr, mo, day)), Some(day_of_yr));
+        let wk_of_yr_mon = utc.wk_mon(Some((yr, mo, day)), Some(day_of_yr));
+        GregorianPoint {
+            yr,
+            mo,
+            day,
+            hr,
+            min,
+            sec,
+            attos,
+            iso_yr,
+            iso_wk,
+            iso_wkday,
+            day_of_yr,
+            wkday,
+            wk_of_yr_sun,
+            wk_of_yr_mon,
+            jd_tt_exact: (jd_days, frac),
+            offset_sec: None,
+            tz: None,
+            tz_abbrev: None,
+        }
+    }
+
+    pub const fn to_gregorian_date(self, jd_tt_exact: Option<(i64, Delta)>) -> (i64, u8, u8) {
+        let (jd_days, frac) = if let Some(jd_tt_exact) = jd_tt_exact {
+            jd_tt_exact
+        } else {
+            self.to_jd_tt_exact()
+        };
         let jdn = match self.clock_type {
             ClockType::UTC => {
                 let tai = self.to_tai();
@@ -46,7 +237,6 @@ impl TimePoint {
         Self::jdn_to_gregorian(jdn)
     }
 
-    #[inline]
     pub const fn to_hms_subsec(self) -> (u8, u8, u8, u64) {
         match self.clock_type {
             ClockType::UTC => {
@@ -104,7 +294,13 @@ impl TimePoint {
         }
     }
 
-    #[inline]
+    /// Converts a Julian Day Number (JDN) to a proleptic Gregorian calendar date.
+    ///
+    /// Returns `(year, month, day)` where `month` ∈ [1, 12] and `day` ∈ [1, 31]
+    /// (standard 1-based Gregorian values).
+    ///
+    /// This is the inverse of [`Self::gregorian_jdn`]. Supports the full `i64`
+    /// range, including negative years and year zero.
     pub const fn jdn_to_gregorian(jdn: i64) -> (i64, u8, u8) {
         // Use i128 internally to avoid overflow on full i64 JDN range
         let j = jdn as i128;
@@ -139,7 +335,7 @@ impl TimePoint {
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
-    #[inline(always)]
+    #[inline]
     pub const fn gregorian_jdn_from_ordinal(year: i64, day_of_year: u16) -> i64 {
         let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
         jdn_jan1 + (day_of_year as i64 - 1)
@@ -174,7 +370,6 @@ impl TimePoint {
     }
 
     /// Computes the Julian Day Number from a Sunday-based week-of-year (`%U`).
-    #[inline]
     pub const fn gregorian_jdn_from_week_sun(year: i64, week: u8, weekday: Weekday) -> i64 {
         let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
@@ -197,7 +392,6 @@ impl TimePoint {
     }
 
     /// Computes the Julian Day Number from a Monday-based week-of-year (`%W`).
-    #[inline]
     pub const fn gregorian_jdn_from_week_mon(year: i64, week: u8, weekday: Weekday) -> i64 {
         let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
@@ -220,7 +414,6 @@ impl TimePoint {
     }
 
     /// Returns `true` if the supplied values form a valid proleptic Gregorian calendar date.
-    #[inline]
     pub const fn is_valid_gregorian_date(year: i64, month: u8, day: u8) -> bool {
         if month < 1 || month > 12 || day < 1 {
             return false;
@@ -241,16 +434,23 @@ impl TimePoint {
     }
 
     /// Returns `true` if the given Gregorian year contains an ISO week 53.
-    #[inline(always)]
+    #[inline]
     pub const fn has_iso_week_53(year: i64) -> bool {
         let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
         wd_jan1 == 4 || (Self::is_leap_year(year) && wd_jan1 == 3)
     }
 
-    #[inline]
-    pub const fn weekday(self) -> u8 {
-        let (jd_days, frac) = self.to_jd_tt_exact();
+    /// Returns the weekday number: `0 = Sunday`, `1 = Monday`, …, `6 = Saturday`.
+    ///
+    /// The result is computed from the civil (proleptic Gregorian) date of this
+    /// `TimePoint`, matching the convention used by [`Self::jdn_to_weekday`].
+    pub const fn weekday(self, jd_tt_exact: Option<(i64, Delta)>) -> u8 {
+        let (jd_days, frac) = if let Some(jd_tt_exact) = jd_tt_exact {
+            jd_tt_exact
+        } else {
+            self.to_jd_tt_exact()
+        };
         let jdn = if frac.sec >= 43200 {
             jd_days + 1
         } else {
@@ -259,16 +459,105 @@ impl TimePoint {
         Self::jdn_to_weekday(jdn)
     }
 
+    /// Returns the ordinal day of the year (1-based).
+    ///
+    /// January 1 is day `1`; December 31 is day `365` or `366` (in leap years).
+    /// Uses the proleptic Gregorian calendar.
     #[inline]
-    pub const fn day_of_year(self) -> u16 {
-        let (year, month, day) = self.to_gregorian_date();
+    pub const fn day_of_year(self, ymd: Option<(i64, u8, u8)>) -> u16 {
+        let (year, month, day) = if let Some(ymd) = ymd {
+            ymd
+        } else {
+            self.to_gregorian_date(None)
+        };
         let jdn = Self::gregorian_jdn(year, month, day);
         let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
         (jdn - jdn_jan1 + 1) as u16
     }
 
-    pub const fn to_iso_week_date(self) -> (i64, u8, Weekday) {
-        let (year, month, day) = self.to_gregorian_date();
+    /// Sunday-based week number (`%U` in strftime).
+    ///
+    /// Range: `0..=53`.
+    /// - Week 0 contains the days *before* the first Sunday of the year.
+    /// - Week 1 begins on the first Sunday of the year.
+    ///
+    /// The optional `ymd` and `doy` arguments are performance optimisations
+    /// (same pattern used throughout the file for `day_of_year`, `to_iso_week_date`, etc.).
+    /// Pass whichever you already have; the function will use the fastest path.
+    pub const fn wk_sun(self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
+        let (year, _, _) = if let Some(ymd) = ymd {
+            ymd
+        } else {
+            self.to_gregorian_date(None)
+        };
+        let doy = if let Some(doy) = doy {
+            doy
+        } else {
+            self.day_of_year(ymd)
+        };
+        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
+        let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
+        let days_to_first_sunday = (7u8 - wd_jan1) % 7u8;
+        let first_sunday_doy = days_to_first_sunday as u16 + 1;
+        if doy < first_sunday_doy {
+            0
+        } else {
+            let days_since_first_sunday = doy - first_sunday_doy;
+            ((days_since_first_sunday / 7) + 1) as u8
+        }
+    }
+
+    /// Monday-based week number (`%W` in strftime).
+    ///
+    /// Range: `0..=53`.
+    /// - Week 0 contains the days *before* the first Monday of the year.
+    /// - Week 1 begins on the first Monday of the year.
+    ///
+    /// The optional `ymd` and `doy` arguments are performance optimisations
+    /// (same pattern as `wk_sun`, `day_of_year`, `to_iso_week_date`, etc.).
+    pub const fn wk_mon(self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
+        let (year, _, _) = if let Some(ymd) = ymd {
+            ymd
+        } else {
+            self.to_gregorian_date(None)
+        };
+        let doy = if let Some(doy) = doy {
+            doy
+        } else {
+            self.day_of_year(ymd)
+        };
+        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
+        let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
+        let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
+        let first_monday_doy = days_to_first_monday as u16 + 1;
+        if doy < first_monday_doy {
+            0
+        } else {
+            let days_since_first_monday = doy - first_monday_doy;
+            ((days_since_first_monday / 7) + 1) as u8
+        }
+    }
+
+    /// Returns the ISO 8601 week date for this `TimePoint`.
+    ///
+    /// Returns `(iso_year, iso_week, weekday)` where:
+    /// - `iso_year` is the ISO week year (may differ from the Gregorian year near
+    ///   year boundaries),
+    /// - `iso_week` is the week number in the range `1..=53`,
+    /// - `weekday` is a [`Weekday`] value (Monday-based week).
+    ///
+    /// Follows the ISO 8601 standard: weeks start on Monday and week 1 is the
+    /// week containing January 4.
+    ///
+    /// The optional `ymd` argument is a performance optimization. If provided,
+    /// it is used directly; otherwise [`to_gregorian_date`](Self::to_gregorian_date)
+    /// is called internally.
+    pub const fn to_iso_week_date(self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
+        let (year, month, day) = if let Some(ymd) = ymd {
+            ymd
+        } else {
+            self.to_gregorian_date(None)
+        };
         let jdn = Self::gregorian_jdn(year, month, day);
         let wd = Self::jdn_to_weekday(jdn);
         let wd_iso = if wd == 0 { 7 } else { wd };

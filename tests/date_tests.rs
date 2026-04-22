@@ -11,7 +11,6 @@ fn test_historical_iana_with_jiff() {
     // Historical / interesting IANA timezone cases.
     // Jiff is used as the ground-truth (full tzdb historical rules).
     // Your parser gets the exact same input string.
-    // Both results are printed side-by-side for easy manual review.
 
     let cases = vec![
         (
@@ -65,16 +64,15 @@ fn test_historical_iana_with_jiff() {
 
         let our_rfc = our_dt.to_rfc3339();
 
-        // ─── Review output ─────────────────────────────────────────────────────────
-        println!("\n=== IANA Historical Test: {} ===", description);
-        println!("Input string          : {}", our_input);
-        println!("Jiff (ground truth)   : {}", jiff_rfc);
-        println!("deep_time_core (yours): {}", our_rfc);
-        if jiff_rfc == our_rfc {
-            println!("✅ MATCH");
-        } else {
-            println!("❌ MISMATCH");
-        }
+        // ─── Assert (no more manual prints) ────────────────────────────────────────
+        assert_eq!(
+            our_rfc, jiff_rfc,
+            "\n=== IANA Historical Test FAILED: {} ===\n\
+             Input string          : {}\n\
+             Jiff (ground truth)   : {}\n\
+             deep_time_core (yours): {}\n",
+            description, our_input, jiff_rfc, our_rfc
+        );
     }
 }
 

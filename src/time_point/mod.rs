@@ -2,10 +2,11 @@ mod arithmetic;
 mod constructors;
 mod conversions;
 mod formatting;
-mod gregorian;
+
 mod ops;
 mod to_canonical;
 
+pub mod gregorian;
 pub mod trajectory;
 
 #[cfg(feature = "chrono")]
@@ -13,9 +14,9 @@ pub mod from_chrono;
 #[cfg(feature = "chrono")]
 pub mod to_chrono;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "jiff")]
 pub mod from_jiff;
-#[cfg(feature = "std")]
+#[cfg(feature = "jiff")]
 pub mod to_jiff;
 
 use crate::ClockType;

@@ -1,4 +1,4 @@
-use crate::{ClockType, DtErrKind, DtError};
+use crate::{AsciiStr, ClockType, DtErrKind, DtError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Meridiem {
@@ -7,6 +7,8 @@ pub enum Meridiem {
     PM,
 }
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Weekday {
     #[default]
@@ -47,6 +49,34 @@ impl Weekday {
             _ => Err("weekday number out of range (must be 1-7, Monday=1)"),
         }
     }
+
+    /// Sunday-based weekday number (0 = Sunday … 6 = Saturday).
+    #[inline(always)]
+    pub const fn wk_sun(self) -> u8 {
+        match self {
+            Weekday::Sunday => 0,
+            Weekday::Monday => 1,
+            Weekday::Tuesday => 2,
+            Weekday::Wednesday => 3,
+            Weekday::Thursday => 4,
+            Weekday::Friday => 5,
+            Weekday::Saturday => 6,
+        }
+    }
+
+    /// Monday-based weekday number (1 = Monday … 7 = Sunday).
+    #[inline(always)]
+    pub const fn wk_mon(self) -> u8 {
+        match self {
+            Weekday::Monday => 1,
+            Weekday::Tuesday => 2,
+            Weekday::Wednesday => 3,
+            Weekday::Thursday => 4,
+            Weekday::Friday => 5,
+            Weekday::Saturday => 6,
+            Weekday::Sunday => 7,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -68,7 +98,7 @@ pub struct DateComponents {
     pub second: Option<u8>, // 0-60
     pub attos: Option<u64>, // 0 ≤ value < 10¹⁸
     pub tz: Option<TimeZone>,
-    pub iana_name: Option<[u8; 48]>,
+    pub iana_name: Option<AsciiStr<50>>,
     pub is_leap_second: bool,
     pub clock_type: ClockType,
     pub weekday: Option<Weekday>,
@@ -147,5 +177,13 @@ impl DateComponents {
         }
 
         Ok(self)
+    }
+
+    /// Sets the IANA timezone name safely.
+    ///
+    /// Uses `AsciiStr::try_from_str` internally. If the name is non-ASCII
+    /// or longer than 50 bytes it is silently dropped (no panics).
+    pub fn set_iana_name(&mut self, name: Option<&str>) {
+        self.iana_name = name.and_then(|s| AsciiStr::try_from_str(s).ok());
     }
 }

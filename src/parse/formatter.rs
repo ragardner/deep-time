@@ -1,69 +1,161 @@
 use crate::{
-    ClockType, MONTHS_ABBR, MONTHS_FULL, TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL, error::DtErrKind,
+    AsciiStr, ClockType, Delta, GregorianPoint, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE, TimePoint,
+    WEEKDAYS_ABBR, WEEKDAYS_FULL, error::DtErrKind, tzdb::offset_info_at,
 };
 
-/// Fixed UTC offset in seconds (positive = east of UTC).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct UtcOffset(i32);
+// #[inline]
+// const fn sec_from_hms(hours: i32, minutes: i32, seconds: i32) -> i32 {
+//     hours * 3600 + minutes * 60 + seconds
+// }
 
-impl UtcOffset {
-    pub const ZERO: Self = Self(0);
-    pub const UTC: Self = Self(0);
-
-    #[inline]
-    pub const fn from_seconds(seconds: i32) -> Self {
-        Self(seconds)
-    }
-
-    #[inline]
-    pub const fn seconds(self) -> i32 {
-        self.0
-    }
-
-    #[inline]
-    pub const fn from_hms(hours: i32, minutes: i32, seconds: i32) -> Self {
-        Self(hours * 3600 + minutes * 60 + seconds)
-    }
-
-    /// Returns `(is_negative, hours, minutes)`.
-    #[inline]
-    pub const fn as_hhmm(self) -> (bool, u8, u8) {
-        let total = self.0.abs();
-        let hours = (total / 3600) as u8;
-        let minutes = ((total % 3600) / 60) as u8;
-        (self.0 < 0, hours, minutes)
-    }
+/// Returns `(is_negative, hours, minutes)`.
+#[inline]
+const fn sec_as_hhmm(seconds: i32) -> (bool, u8, u8) {
+    let total = seconds.abs();
+    let hours = (total / 3600) as u8;
+    let minutes = ((total % 3600) / 60) as u8;
+    (seconds < 0, hours, minutes)
 }
 
 impl TimePoint {
-    /// High-level alloc version (defaults to UTC).
+    /// High-level alloc version (defaults to UTC label-only formatting).
     #[cfg(feature = "alloc")]
     #[inline(always)]
-    pub fn format(&self, fmt: &str) -> Result<alloc::string::String, DtErrKind> {
-        self.format_with_offset(fmt, UtcOffset::UTC)
+    pub fn strftime(&self, fmt: &str) -> Result<alloc::string::String, DtErrKind> {
+        self.strftime_with_offset_label(fmt, 0)
     }
 
-    /// High-level alloc version with explicit offset.
+    /// High-level alloc version with explicit offset (label-only).
     #[cfg(feature = "alloc")]
     #[inline]
-    pub fn format_with_offset(
+    pub fn strftime_with_offset_label(
         &self,
         fmt: &str,
-        offset: UtcOffset,
+        label_in_secs: i32,
     ) -> Result<alloc::string::String, DtErrKind> {
-        let mut internal_buf = [0u8; Self::BUFFER_SIZE];
-        let n = self.format_u8_with_offset(fmt, &mut internal_buf, offset)?;
-
-        // Safe: everything emitted is valid ASCII/UTF-8
-        Ok(alloc::string::String::from_utf8_lossy(&internal_buf[0..n]).into_owned())
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let n = self.to_u8_with_offset_label(fmt, &mut buf, label_in_secs)?;
+        Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
+    /// High-level alloc version for full IANA timezone formatting (with civil-time adjustment).
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn strftime_adjusted_to_tz(
+        &self,
+        fmt: &str,
+        tz_name: &str,
+    ) -> Result<alloc::string::String, DtErrKind> {
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let n = self.to_u8_adjusted_to_tz(fmt, &mut buf, tz_name)?;
+        Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
+    }
+
+    /// Helper for strftime.
+    fn to_u8_with_offset_label(
+        &self,
+        fmt: &str,
+        dest: &mut [u8],
+        label_in_secs: i32,
+    ) -> Result<usize, DtErrKind> {
+        let mut gp = self.to_gregorian_point();
+        gp.set_offset(Some(label_in_secs));
+        gp.set_tz_abbrev(None);
+
+        let mut internal_buf = [0u8; STRFTIME_SIZE];
+        let mut pos = 0usize;
+        gp.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
+
+        let written = pos.min(dest.len());
+        if written > 0 {
+            dest[0..written].copy_from_slice(&internal_buf[0..written]);
+        }
+        Ok(written)
+    }
+
+    /// Helper for strftime.
+    fn to_u8_adjusted_to_tz(
+        &self,
+        fmt: &str,
+        dest: &mut [u8],
+        tz_name: &str,
+    ) -> Result<usize, DtErrKind> {
+        let gp = self.gregorian_point_adjusted_to_tz(tz_name);
+
+        let mut internal_buf = [0u8; STRFTIME_SIZE];
+        let mut pos = 0usize;
+        gp.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
+
+        let written = pos.min(dest.len());
+        if written > 0 {
+            dest[0..written].copy_from_slice(&internal_buf[0..written]);
+        }
+        Ok(written)
+    }
+
+    // ──────────────────────────────────────────────────────────────
+    // PUBLIC NO-ALLOC API (recommended for no_std / embedded)
+    // ──────────────────────────────────────────────────────────────
+
+    /// No-alloc label-only formatting.
+    pub fn to_ascii_str_with_offset_label(
+        &self,
+        fmt: &str,
+        label_in_secs: i32,
+    ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
+        let mut gp = self.to_gregorian_point();
+        gp.set_offset(Some(label_in_secs));
+        gp.set_tz_abbrev(None);
+
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let mut pos = 0usize;
+        gp.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
+
+        Ok(AsciiStr::from_filled_buffer(buf))
+    }
+
+    /// No-alloc full IANA adjusted formatting (civil time is adjusted to local wall time).
+    pub fn to_ascii_str_adjusted_to_tz(
+        &self,
+        fmt: &str,
+        tz_name: &str,
+    ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
+        let gp = self.gregorian_point_adjusted_to_tz(tz_name);
+
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let mut pos = 0usize;
+        gp.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
+
+        Ok(AsciiStr::from_filled_buffer(buf))
+    }
+
+    /// Helper for creating a timezone adjusted GregorianPoint.
+    fn gregorian_point_adjusted_to_tz(&self, tz_name: &str) -> GregorianPoint {
+        let unix_ts = self.to_unix_sec();
+
+        let (offset_secs, abbrev) = match offset_info_at(tz_name, unix_ts) {
+            Some(info) => (info.offset, Some(info.abbrev)),
+            None => (0, None),
+        };
+
+        let utc = self.to_clock_type(ClockType::UTC);
+        let delta = Delta::new(offset_secs as i64, 0);
+        let local_tp = utc + delta;
+
+        let mut gp = local_tp.to_gregorian_point();
+        gp.set_offset(Some(offset_secs));
+        gp.set_tz(Some(tz_name));
+        gp.set_tz_abbrev(abbrev);
+        gp
+    }
+}
+
+impl GregorianPoint {
     fn format_to_buffer(
         &self,
         fmt: &[u8],
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
-        offset: UtcOffset,
     ) -> Result<(), DtErrKind> {
         let mut i = 0usize;
 
@@ -186,7 +278,7 @@ impl TimePoint {
                 b't' => self.write_whitespace(buf, pos, b't'),
                 b'P' => self.write_ampm(buf, pos, false),
                 b'p' => self.write_ampm(buf, pos, true),
-                b'Q' => self.write_iana_or_offset(buf, pos, flag, width, colons, offset),
+                b'Q' => self.write_iana(buf, pos),
                 b'S' => self.write_second(buf, pos, flag, width, colons, true),
                 b's' => self.write_unix_timestamp(buf, pos, flag, width, colons),
                 b'U' => self.write_week_number_sunday_based(buf, pos, flag, width, colons),
@@ -197,13 +289,14 @@ impl TimePoint {
                 b'Y' => self.write_full_year(buf, pos, flag, width, colons, true),
                 b'y' => self.write_two_digit_year(buf, pos, flag, width, colons, true),
                 b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
-                b'z' => self.write_timezone_offset(buf, pos, flag, width, colons, offset),
+                b'z' => self.write_timezone_offset(buf, pos, flag, width, colons),
                 b'F' => self.write_iso_date(buf, pos),
                 b'D' => self.write_us_date_shortcut(buf, pos),
                 b'T' => self.write_time_with_seconds_shortcut(buf, pos),
                 b'R' => self.write_time_without_seconds_shortcut(buf, pos),
+                b'Z' => self.write_timezone_abbrev(buf, pos),
 
-                b'c' | b'r' | b'X' | b'x' | b'Z' => self.write_unsupported(buf, pos),
+                b'c' | b'r' | b'X' | b'x' => self.write_unsupported(buf, pos),
                 _ => return Err(DtErrKind::UnknownFormatDirective),
             }
         }
@@ -211,31 +304,10 @@ impl TimePoint {
         Ok(())
     }
 
-    fn format_u8_with_offset(
-        &self,
-        fmt: &str,
-        dest: &mut [u8],
-        offset: UtcOffset,
-    ) -> Result<usize, DtErrKind> {
-        let mut internal_buf = [0u8; Self::BUFFER_SIZE];
-        let mut pos = 0usize;
-
-        // Just forward the bytes – format_to_buffer stays exactly as-is
-        Self::format_to_buffer(self, fmt.as_bytes(), &mut internal_buf, &mut pos, offset)?;
-
-        let written = pos.min(dest.len());
-        if written > 0 {
-            dest[0..written].copy_from_slice(&internal_buf[0..written]);
-        }
-        Ok(written)
-    }
-
-    const BUFFER_SIZE: usize = 512;
-
     #[inline]
-    fn write_bytes(buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize, bytes: &[u8]) {
+    fn write_bytes(buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, bytes: &[u8]) {
         let len = bytes.len();
-        if *pos + len > Self::BUFFER_SIZE {
+        if *pos + len > STRFTIME_SIZE {
             return;
         }
         buf[*pos..*pos + len].copy_from_slice(bytes);
@@ -243,7 +315,7 @@ impl TimePoint {
     }
 
     fn write_u32_padded(
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         mut value: u32,
         flag: u8,
@@ -284,7 +356,7 @@ impl TimePoint {
             0
         };
 
-        if *pos + num_digits + pad_len > Self::BUFFER_SIZE {
+        if *pos + num_digits + pad_len > STRFTIME_SIZE {
             return;
         }
 
@@ -303,7 +375,7 @@ impl TimePoint {
     }
 
     #[allow(unused_mut)]
-    fn write_i64(mut buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize, value: i64) {
+    fn write_i64(mut buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, value: i64) {
         if value == 0 {
             Self::write_bytes(buf, pos, b"0");
             return;
@@ -325,14 +397,14 @@ impl TimePoint {
         }
 
         if negative {
-            if *pos >= Self::BUFFER_SIZE {
+            if *pos >= STRFTIME_SIZE {
                 return;
             }
             buf[*pos] = b'-';
             *pos += 1;
         }
 
-        if *pos + i > Self::BUFFER_SIZE {
+        if *pos + i > STRFTIME_SIZE {
             return;
         }
         for j in (0..i).rev() {
@@ -342,7 +414,7 @@ impl TimePoint {
     }
 
     fn write_i64_padded(
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         value: i64,
         flag: u8,
@@ -387,7 +459,7 @@ impl TimePoint {
             0
         };
 
-        if *pos + (if negative { 1 } else { 0 }) + num_digits + pad_len > Self::BUFFER_SIZE {
+        if *pos + (if negative { 1 } else { 0 }) + num_digits + pad_len > STRFTIME_SIZE {
             return;
         }
 
@@ -410,7 +482,7 @@ impl TimePoint {
     }
 
     fn write_fractional(
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         subsec: u64,
         width: Option<u8>,
@@ -433,120 +505,108 @@ impl TimePoint {
     // Individual write_ functions – one per parser directive
     // ──────────────────────────────────────────────────────────────
 
-    pub(crate) fn write_weekday_full(&self, buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize) {
-        let name = WEEKDAYS_FULL[self.weekday() as usize];
+    pub(crate) fn write_weekday_full(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        let name = WEEKDAYS_FULL[self.wkday as usize];
         Self::write_bytes(buf, pos, name);
     }
 
-    pub(crate) fn write_weekday_abbrev(&self, buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize) {
-        let name = WEEKDAYS_ABBR[self.weekday() as usize];
+    pub(crate) fn write_weekday_abbrev(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        let name = WEEKDAYS_ABBR[self.wkday as usize];
         Self::write_bytes(buf, pos, name);
     }
 
-    pub(crate) fn write_month_name_full(&self, buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize) {
-        let (_, month, _) = self.to_gregorian_date();
-        let name = MONTHS_FULL[(month as usize) - 1];
+    pub(crate) fn write_month_name_full(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        let name = MONTHS_FULL[self.mo as usize - 1];
         Self::write_bytes(buf, pos, name);
     }
 
-    pub(crate) fn write_month_name_abbrev(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-    ) {
-        let (_, month, _) = self.to_gregorian_date();
-        let name = MONTHS_ABBR[(month as usize) - 1];
+    pub(crate) fn write_month_name_abbrev(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        let name = MONTHS_ABBR[self.mo as usize - 1];
         Self::write_bytes(buf, pos, name);
     }
 
     pub(crate) fn write_century(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         _flag: u8,
         _width: Option<u8>,
         _colons: u8,
     ) {
-        let (year, _, _) = self.to_gregorian_date();
         // Floor division → -123 becomes -2 (exactly matches parse_century)
-        let century = year.div_euclid(100);
+        let century = self.yr.div_euclid(100);
         Self::write_i64(buf, pos, century);
     }
 
     pub(crate) fn write_day_of_month(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
         pad: bool,
     ) {
-        let (_, _, day) = self.to_gregorian_date();
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, day as u32, flag, width, default_pad);
+        Self::write_u32_padded(buf, pos, self.day as u32, flag, width, default_pad);
     }
 
     pub(crate) fn write_fractional_seconds(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         _flag: u8,
         width: Option<u8>,
         _colons: u8,
     ) {
-        let (_, _, _, subsec) = self.to_hms_subsec();
-        Self::write_fractional(buf, pos, subsec, width);
+        Self::write_fractional(buf, pos, self.attos, width);
     }
 
     pub(crate) fn write_iso_week_year(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
     ) {
-        let (iso_year, _, _) = self.to_iso_week_date();
-        Self::write_i64_padded(buf, pos, iso_year, flag, width, b'0');
+        Self::write_i64_padded(buf, pos, self.iso_yr, flag, width, b'0');
     }
 
     pub(crate) fn write_two_digit_iso_week_year(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
     ) {
-        let (iso_year, _, _) = self.to_iso_week_date();
-        let yy = (iso_year % 100).abs() as u32;
+        let yy = (self.iso_yr % 100).abs() as u32;
         Self::write_u32_padded(buf, pos, yy, flag, width.or(Some(2)), b'0');
     }
 
     pub(crate) fn write_hour24(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
         pad: bool,
     ) {
-        let (hour, _, _, _) = self.to_hms_subsec();
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, hour as u32, flag, width, default_pad);
+        Self::write_u32_padded(buf, pos, self.hr as u32, flag, width, default_pad);
     }
 
     pub(crate) fn write_hour12(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
     ) {
-        let (hour24, _, _, _) = self.to_hms_subsec();
+        let hour24 = self.hr;
         let hour12 = if hour24 == 0 {
             12
         } else if hour24 > 12 {
@@ -559,61 +619,55 @@ impl TimePoint {
 
     pub(crate) fn write_day_of_year(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
     ) {
-        let doy = self.day_of_year();
-        Self::write_u32_padded(buf, pos, doy as u32, flag, width.or(Some(3)), b'0');
+        Self::write_u32_padded(
+            buf,
+            pos,
+            self.day_of_yr as u32,
+            flag,
+            width.or(Some(3)),
+            b'0',
+        );
     }
 
     pub(crate) fn write_minute(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
         pad: bool,
     ) {
-        let (_, minute, _, _) = self.to_hms_subsec();
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, minute as u32, flag, width, default_pad);
+        Self::write_u32_padded(buf, pos, self.min as u32, flag, width, default_pad);
     }
 
     pub(crate) fn write_month_number(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
         pad: bool,
     ) {
-        let (_, month, _) = self.to_gregorian_date();
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, month as u32, flag, width, default_pad);
+        Self::write_u32_padded(buf, pos, self.mo as u32, flag, width, default_pad);
     }
 
-    pub(crate) fn write_whitespace(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-        ch: u8,
-    ) {
+    pub(crate) fn write_whitespace(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, ch: u8) {
         let bytes = if ch == b'n' { b"\n" } else { b"\t" };
         Self::write_bytes(buf, pos, bytes);
     }
 
-    pub(crate) fn write_ampm(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-        upper: bool,
-    ) {
-        let (hour, _, _, _) = self.to_hms_subsec();
+    pub(crate) fn write_ampm(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, upper: bool) {
+        let hour = self.hr;
         let bytes = if hour < 12 {
             if upper { b"AM" } else { b"am" }
         } else if upper {
@@ -624,191 +678,177 @@ impl TimePoint {
         Self::write_bytes(buf, pos, bytes);
     }
 
-    pub(crate) fn write_iana_or_offset(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-        flag: u8,
-        width: Option<u8>,
-        colons: u8,
-        offset: UtcOffset,
-    ) {
-        // For now we treat %Q as "UTC or numeric offset" (common pattern).
-        // When you add full IANA/tzdb support later, just replace the zero case.
-        if offset == UtcOffset::ZERO {
-            Self::write_bytes(buf, pos, b"UTC");
-        } else {
-            self.write_timezone_offset(buf, pos, flag, width, colons, offset);
-        }
-    }
-
     pub(crate) fn write_second(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
         pad: bool,
     ) {
-        let (_, _, second, _) = self.to_hms_subsec();
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, second as u32, flag, width, default_pad);
+        Self::write_u32_padded(buf, pos, self.sec as u32, flag, width, default_pad);
     }
 
     pub(crate) fn write_unix_timestamp(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         _flag: u8,
         _width: Option<u8>,
         _colons: u8,
     ) {
-        let utc = self.to_clock_type(ClockType::UTC);
-        let (jd_days, frac) = utc.to_jd_tt_exact();
-        let unix_days = jd_days - 2440587i64;
-        let seconds = unix_days * 86400i64 + (frac.sec as i64) - 43200i64;
+        let jdn = TimePoint::gregorian_jdn(self.yr, self.mo, self.day);
+        let jd1970 = TimePoint::gregorian_jdn(1970, 1, 1);
+        let days = jdn - jd1970;
+        let time_sec = (self.hr as i64) * 3600 + (self.min as i64) * 60 + (self.sec as i64);
+        let seconds = days * 86400i64 + time_sec;
         Self::write_i64(buf, pos, seconds);
-    }
-
-    pub(crate) fn write_week_number_sunday_based(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-        flag: u8,
-        width: Option<u8>,
-        _colons: u8,
-    ) {
-        let (year, _, _) = self.to_gregorian_date();
-        let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
-        let wd_jan1 = Self::jdn_to_weekday(jdn_jan1);
-        let days_to_first_sunday = (7 - wd_jan1) % 7;
-        let first_sunday_jdn = jdn_jan1 + days_to_first_sunday as i64;
-        let current_jdn =
-            Self::gregorian_jdn(year, self.to_gregorian_date().1, self.to_gregorian_date().2);
-        let days_since = current_jdn - first_sunday_jdn;
-        let week = if days_since < 0 {
-            0u8
-        } else {
-            ((days_since / 7) + 1) as u8
-        };
-        Self::write_u32_padded(buf, pos, week as u32, flag, width.or(Some(2)), b'0');
-    }
-
-    pub(crate) fn write_weekday_number_monday_based(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-        flag: u8,
-        width: Option<u8>,
-        _colons: u8,
-    ) {
-        let wd = self.weekday();
-        let monday_based = if wd == 0 { 7 } else { wd };
-        Self::write_u32_padded(buf, pos, monday_based as u32, flag, width.or(Some(1)), b'0');
-    }
-
-    pub(crate) fn write_week_iso(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-        flag: u8,
-        width: Option<u8>,
-        _colons: u8,
-    ) {
-        let (_, week, _) = self.to_iso_week_date();
-        Self::write_u32_padded(buf, pos, week as u32, flag, width.or(Some(2)), b'0');
-    }
-
-    pub(crate) fn write_week_number_monday_based(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-        flag: u8,
-        width: Option<u8>,
-        _colons: u8,
-    ) {
-        let (year, _, _) = self.to_gregorian_date();
-        let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
-        let wd_jan1 = Self::jdn_to_weekday(jdn_jan1);
-        let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
-        let first_monday_jdn = jdn_jan1 + days_to_first_monday;
-        let current_jdn =
-            Self::gregorian_jdn(year, self.to_gregorian_date().1, self.to_gregorian_date().2);
-        let days_since = current_jdn - first_monday_jdn;
-        let week = if days_since < 0 {
-            0u8
-        } else {
-            ((days_since / 7) + 1) as u8
-        };
-        Self::write_u32_padded(buf, pos, week as u32, flag, width.or(Some(2)), b'0');
     }
 
     pub(crate) fn write_weekday_number_sunday_based(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
     ) {
-        let wd = self.weekday();
-        Self::write_u32_padded(buf, pos, wd as u32, flag, width.or(Some(1)), b'0');
+        Self::write_u32_padded(
+            buf,
+            pos,
+            self.wkday_sun() as u32,
+            flag,
+            width.or(Some(1)),
+            b'0',
+        );
     }
 
+    pub(crate) fn write_weekday_number_monday_based(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        flag: u8,
+        width: Option<u8>,
+        _colons: u8,
+    ) {
+        Self::write_u32_padded(
+            buf,
+            pos,
+            self.wkday_mon() as u32,
+            flag,
+            width.or(Some(1)),
+            b'0',
+        );
+    }
+
+    pub(crate) fn write_week_iso(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        flag: u8,
+        width: Option<u8>,
+        _colons: u8,
+    ) {
+        Self::write_u32_padded(buf, pos, self.iso_wk as u32, flag, width.or(Some(2)), b'0');
+    }
+
+    pub(crate) fn write_week_number_sunday_based(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        flag: u8,
+        width: Option<u8>,
+        _colons: u8,
+    ) {
+        Self::write_u32_padded(
+            buf,
+            pos,
+            self.wk_of_yr_sun as u32,
+            flag,
+            width.or(Some(2)),
+            b'0',
+        );
+    }
+
+    pub(crate) fn write_week_number_monday_based(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        flag: u8,
+        width: Option<u8>,
+        _colons: u8,
+    ) {
+        Self::write_u32_padded(
+            buf,
+            pos,
+            self.wk_of_yr_mon as u32,
+            flag,
+            width.or(Some(2)),
+            b'0',
+        );
+    }
+
+    // TODO: limit to 4 digits?
     pub(crate) fn write_full_year(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
         _pad: bool,
     ) {
-        let (year, _, _) = self.to_gregorian_date();
-        Self::write_i64_padded(buf, pos, year, flag, width, b'0');
+        Self::write_i64_padded(buf, pos, self.yr, flag, width, b'0');
     }
 
     pub(crate) fn write_two_digit_year(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
         _pad: bool,
     ) {
-        let (year, _, _) = self.to_gregorian_date();
-        let yy = (year % 100).abs() as u32;
+        let yy = (self.yr % 100).abs() as u32;
         Self::write_u32_padded(buf, pos, yy, flag, width.or(Some(2)), b'0');
     }
 
     pub(crate) fn write_unbounded_year(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
         _colons: u8,
     ) {
-        let (year, _, _) = self.to_gregorian_date();
-        Self::write_i64_padded(buf, pos, year, flag, width, b'0');
+        Self::write_i64_padded(buf, pos, self.yr, flag, width, b'0');
+    }
+
+    pub(crate) fn write_iana(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        if let Some(iana) = self.tz() {
+            Self::write_bytes(buf, pos, iana.as_bytes());
+        }
     }
 
     pub(crate) fn write_timezone_offset(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         _flag: u8,
         _width: Option<u8>,
         colons: u8,
-        offset: UtcOffset,
     ) {
-        let (negative, hours, minutes) = offset.as_hhmm();
+        let Some(offset_sec) = self.offset_sec() else {
+            return;
+        };
+        let (negative, hours, minutes) = sec_as_hhmm(offset_sec);
         let sign = if negative { b'-' } else { b'+' };
 
         // seconds component — only used by %::z
-        let seconds = ((offset.seconds().abs() % 3600) % 60) as u8;
+        let seconds = ((offset_sec.abs() % 3600) % 60) as u8;
 
         match colons {
             0 => {
@@ -850,54 +890,53 @@ impl TimePoint {
         }
     }
 
-    pub(crate) fn write_iso_date(&self, buf: &mut [u8; Self::BUFFER_SIZE], pos: &mut usize) {
-        let (y, m, d) = self.to_gregorian_date();
-        // Improved: now uses write_i64_padded so negative years are correctly signed and padded
-        Self::write_i64_padded(buf, pos, y, b'0', Some(4), b'0');
-        Self::write_bytes(buf, pos, b"-");
-        Self::write_u32_padded(buf, pos, m as u32, b'0', Some(2), b'0');
-        Self::write_bytes(buf, pos, b"-");
-        Self::write_u32_padded(buf, pos, d as u32, b'0', Some(2), b'0');
+    pub(crate) fn write_timezone_abbrev(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        if let Some(abbrev) = self.tz_abbrev() {
+            Self::write_bytes(buf, pos, abbrev.as_bytes());
+        } else {
+            Self::write_bytes(buf, pos, b"UTC");
+        }
     }
 
-    pub(crate) fn write_us_date_shortcut(
-        &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
-        pos: &mut usize,
-    ) {
-        let (y, m, d) = self.to_gregorian_date();
-        Self::write_u32_padded(buf, pos, m as u32, b'0', Some(2), b'0');
+    pub(crate) fn write_iso_date(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        Self::write_i64_padded(buf, pos, self.yr, b'0', Some(4), b'0');
+        Self::write_bytes(buf, pos, b"-");
+        Self::write_u32_padded(buf, pos, self.mo as u32, b'0', Some(2), b'0');
+        Self::write_bytes(buf, pos, b"-");
+        Self::write_u32_padded(buf, pos, self.day as u32, b'0', Some(2), b'0');
+    }
+
+    pub(crate) fn write_us_date_shortcut(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        Self::write_u32_padded(buf, pos, self.mo as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b"/");
-        Self::write_u32_padded(buf, pos, d as u32, b'0', Some(2), b'0');
+        Self::write_u32_padded(buf, pos, self.day as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b"/");
-        Self::write_u32_padded(buf, pos, (y % 100).abs() as u32, b'0', Some(2), b'0');
+        Self::write_u32_padded(buf, pos, (self.yr % 100).abs() as u32, b'0', Some(2), b'0');
     }
 
     pub(crate) fn write_time_with_seconds_shortcut(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
     ) {
-        let (h, m, s, _) = self.to_hms_subsec();
-        Self::write_u32_padded(buf, pos, h as u32, b'0', Some(2), b'0');
+        Self::write_u32_padded(buf, pos, self.hr as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
-        Self::write_u32_padded(buf, pos, m as u32, b'0', Some(2), b'0');
+        Self::write_u32_padded(buf, pos, self.min as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
-        Self::write_u32_padded(buf, pos, s as u32, b'0', Some(2), b'0');
+        Self::write_u32_padded(buf, pos, self.sec as u32, b'0', Some(2), b'0');
     }
 
     pub(crate) fn write_time_without_seconds_shortcut(
         &self,
-        buf: &mut [u8; Self::BUFFER_SIZE],
+        buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
     ) {
-        let (h, m, _, _) = self.to_hms_subsec();
-        Self::write_u32_padded(buf, pos, h as u32, b'0', Some(2), b'0');
+        Self::write_u32_padded(buf, pos, self.hr as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
-        Self::write_u32_padded(buf, pos, m as u32, b'0', Some(2), b'0');
+        Self::write_u32_padded(buf, pos, self.min as u32, b'0', Some(2), b'0');
     }
 
-    pub(crate) fn write_unsupported(&self, _buf: &mut [u8; Self::BUFFER_SIZE], _pos: &mut usize) {
+    pub(crate) fn write_unsupported(&self, _buf: &mut [u8; STRFTIME_SIZE], _pos: &mut usize) {
         // no-op (parser already errors)
     }
 }
@@ -905,20 +944,15 @@ impl TimePoint {
 #[cfg(test)]
 mod format_tests {
     use super::*;
-    use crate::Delta;
 
-    // Helper to create a TimePoint at the requested civil time (TT scale).
-    // The library uses standard astronomical JD (day changes at *noon*).
-    // This helper now correctly converts civil (midnight-based) time to that representation.
+    // Helper to create a TimePoint at the requested civil UTC time.
+    // Now matches GregorianPoint::to_time_point exactly (UTC civil seconds).
     fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
-        let jd_noon = TimePoint::gregorian_jdn(y, m, d);
+        let jdn = TimePoint::gregorian_jdn(y, m, d);
+        let days_since_j2000 = jdn - 2451545i64; // J2000_JD_TT
         let seconds_from_noon = (h as i64 - 12) * 3600 + (min as i64) * 60 + (s as i64);
-        let (jd_days, delta_sec) = if seconds_from_noon >= 0 {
-            (jd_noon, seconds_from_noon)
-        } else {
-            (jd_noon - 1, seconds_from_noon + 86400)
-        };
-        TimePoint::from_jd_tt_exact(jd_days, Delta::new(delta_sec, attos))
+        let sec = days_since_j2000 * 86400i64 + seconds_from_noon;
+        TimePoint::new(sec, attos, ClockType::UTC)
     }
 
     #[test]
@@ -929,24 +963,18 @@ mod format_tests {
 
         // ISO date + time + fractional (now full attosecond precision)
         let n = t
-            .format_u8_with_offset("%Y-%m-%d %H:%M:%S.%f", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%Y-%m-%d %H:%M:%S.%f", &mut buf, 0) // 0 = UTC
             .unwrap();
         assert_eq!(&buf[0..n], b"2025-04-16 14:30:45.123456789000000000");
 
         // Shortcuts
-        let n = t
-            .format_u8_with_offset("%F", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%F", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"2025-04-16");
 
-        let n = t
-            .format_u8_with_offset("%T", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%T", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"14:30:45");
 
-        let n = t
-            .format_u8_with_offset("%R", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%R", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"14:30");
     }
 
@@ -957,25 +985,17 @@ mod format_tests {
         let mut buf = [0u8; 512];
 
         // %f and %N now default to 18 attosecond digits
-        let n = t
-            .format_u8_with_offset("%f", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%f", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"123456789000000000");
 
-        let n = t
-            .format_u8_with_offset("%N", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%N", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"123456789000000000");
 
         // Custom width
-        let n = t
-            .format_u8_with_offset("%.3f", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%.3f", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b".123");
 
-        let n = t
-            .format_u8_with_offset("%.6N", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%.6N", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"123456");
     }
 
@@ -986,21 +1006,21 @@ mod format_tests {
         // 2000-01-01 was Saturday → belongs to 1999 week 52
         let t2000 = tp(2000, 1, 1, 12, 0, 0, 0);
         let n = t2000
-            .format_u8_with_offset("%G-W%V-%u", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%G-W%V-%u", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"1999-W52-6");
 
         // 2000-01-03 is Monday of week 1 of 2000
         let t2000_monday = tp(2000, 1, 3, 12, 0, 0, 0);
         let n = t2000_monday
-            .format_u8_with_offset("%G-W%V-%u", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%G-W%V-%u", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"2000-W01-1");
 
         // Year with 53 weeks (2015-12-28 is Monday of week 53 of 2015)
         let t_week53 = tp(2015, 12, 28, 12, 0, 0, 0);
         let n = t_week53
-            .format_u8_with_offset("%G-W%V", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%G-W%V", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"2015-W53");
     }
@@ -1010,29 +1030,32 @@ mod format_tests {
         let t = tp(2025, 4, 16, 14, 30, 45, 0);
         let mut buf = [0u8; 512];
 
-        let utc = UtcOffset::UTC;
-        let ny = UtcOffset::from_hms(-5, 0, 0); // New York
-        let la = UtcOffset::from_hms(-8, 0, 0); // Los Angeles
-        let positive = UtcOffset::from_hms(2, 30, 0);
-
         // %z with different colon counts
-        let n = t.format_u8_with_offset("%z", &mut buf, utc).unwrap();
+        let n = t.to_u8_with_offset_label("%z", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"+0000");
 
-        let n = t.format_u8_with_offset("%:z", &mut buf, ny).unwrap();
+        let n = t
+            .to_u8_with_offset_label("%:z", &mut buf, -5 * 3600)
+            .unwrap();
         assert_eq!(&buf[0..n], b"-05:00");
 
-        let n = t.format_u8_with_offset("%::z", &mut buf, la).unwrap();
+        let n = t
+            .to_u8_with_offset_label("%::z", &mut buf, -8 * 3600)
+            .unwrap();
         assert_eq!(&buf[0..n], b"-08:00:00");
 
-        let n = t.format_u8_with_offset("%z", &mut buf, positive).unwrap();
+        let n = t
+            .to_u8_with_offset_label("%z", &mut buf, 2 * 3600 + 30 * 60)
+            .unwrap();
         assert_eq!(&buf[0..n], b"+0230");
 
         // %Q
-        let n = t.format_u8_with_offset("%Q", &mut buf, utc).unwrap();
+        let n = t.to_u8_with_offset_label("%Q", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"UTC");
 
-        let n = t.format_u8_with_offset("%Q", &mut buf, ny).unwrap();
+        let n = t
+            .to_u8_with_offset_label("%Q", &mut buf, -5 * 3600)
+            .unwrap();
         assert_eq!(&buf[0..n], b"-0500");
     }
 
@@ -1043,26 +1066,20 @@ mod format_tests {
 
         // Default zero padding
         let n = t
-            .format_u8_with_offset("%d %H %M %S", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%d %H %M %S", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"05 03 09 07");
 
         // Space padding
-        let n = t
-            .format_u8_with_offset("%_d %_H", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%_d %_H", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b" 5  3");
 
         // No padding
-        let n = t
-            .format_u8_with_offset("%-d %-H", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%-d %-H", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"5 3");
 
         // Zero padding explicit
-        let n = t
-            .format_u8_with_offset("%0d %0H", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%0d %0H", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"05 03");
     }
 
@@ -1072,13 +1089,11 @@ mod format_tests {
         let mut buf = [0u8; 512];
 
         let n = t
-            .format_u8_with_offset("%A, %B %d, %Y", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%A, %B %d, %Y", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"Wednesday, April 16, 2025");
 
-        let n = t
-            .format_u8_with_offset("%a %b %d", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%a %b %d", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"Wed Apr 16");
     }
 
@@ -1087,14 +1102,10 @@ mod format_tests {
         let t = tp(1970, 1, 1, 0, 0, 0, 0); // Unix epoch
         let mut buf = [0u8; 512];
 
-        let n = t
-            .format_u8_with_offset("%s", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%s", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"0");
 
-        let n = t
-            .format_u8_with_offset("%j", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t.to_u8_with_offset_label("%j", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"001");
     }
 
@@ -1105,101 +1116,89 @@ mod format_tests {
         // ── Negative & zero years ─────────────────────────────────────
         let t_neg = tp(-123, 6, 15, 9, 30, 45, 0);
         let n = t_neg
-            .format_u8_with_offset("%Y-%m-%d", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%Y-%m-%d", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"-0123-06-15");
 
-        let n = t_neg
-            .format_u8_with_offset("%C", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t_neg.to_u8_with_offset_label("%C", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"-2"); // century
 
         let t_zero = tp(0, 1, 1, 0, 0, 0, 0);
-        let n = t_zero
-            .format_u8_with_offset("%Y", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t_zero.to_u8_with_offset_label("%Y", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"0000");
 
         // ── ISO week year-boundary cases (now fixed correctly) ───────
         // 2024-12-30 (Mon) → belongs to 2025 week 1
         let t_2024_dec30 = tp(2024, 12, 30, 12, 0, 0, 0);
         let n = t_2024_dec30
-            .format_u8_with_offset("%G-W%V-%u", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%G-W%V-%u", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"2025-W01-1");
 
         // 2024-12-31 (Tue) → still 2025-W01-2
         let t_2024_dec31 = tp(2024, 12, 31, 12, 0, 0, 0);
         let n = t_2024_dec31
-            .format_u8_with_offset("%G-W%V-%u", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%G-W%V-%u", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"2025-W01-2");
 
         // 2025-01-01 (Wed) → 2025-W01-3
         let t_2025_jan1 = tp(2025, 1, 1, 12, 0, 0, 0);
         let n = t_2025_jan1
-            .format_u8_with_offset("%G-W%V-%u", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%G-W%V-%u", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"2025-W01-3");
 
         // Year with 53 weeks
         let t_2015_dec28 = tp(2015, 12, 28, 12, 0, 0, 0);
         let n = t_2015_dec28
-            .format_u8_with_offset("%G-W%V", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%G-W%V", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"2015-W53");
 
         // ── Week numbers %U / %W edge cases ───────────────────────────
         // 2000-01-01 was Saturday → %U = 0 (first Sunday is Jan 2)
         let t2000 = tp(2000, 1, 1, 12, 0, 0, 0);
-        let n = t2000
-            .format_u8_with_offset("%U", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t2000.to_u8_with_offset_label("%U", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"00");
 
-        let n = t2000
-            .format_u8_with_offset("%W", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t2000.to_u8_with_offset_label("%W", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"00");
 
         // 2023-12-31 was Sunday → %U = 53
         let t_sun = tp(2023, 12, 31, 12, 0, 0, 0);
-        let n = t_sun
-            .format_u8_with_offset("%U", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t_sun.to_u8_with_offset_label("%U", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"53");
 
         // ── Fractional seconds extremes ───────────────────────────────
         let t_frac = tp(2025, 4, 16, 0, 0, 0, 0);
-        let n = t_frac
-            .format_u8_with_offset("%.0f", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t_frac.to_u8_with_offset_label("%.0f", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b""); // width 0 = nothing
 
-        let n = t_frac
-            .format_u8_with_offset("%.9N", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t_frac.to_u8_with_offset_label("%.9N", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"000000000");
 
         let n = t_frac
-            .format_u8_with_offset("%S.%f", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%S.%f", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"00.000000000000000000");
 
         // ── Timezone offsets with seconds & different colon counts ─────
-        let ny = UtcOffset::from_hms(-5, 0, 0);
-        let la = UtcOffset::from_hms(-8, 0, 0);
-        let weird = UtcOffset::from_hms(1, 23, 45);
+        let ny = -5 * 3600;
+        let la = -8 * 3600;
+        let weird = 1 * 3600 + 23 * 60 + 45;
 
-        let n = t_frac.format_u8_with_offset("%::z", &mut buf, ny).unwrap();
+        let n = t_frac
+            .to_u8_with_offset_label("%::z", &mut buf, ny)
+            .unwrap();
         assert_eq!(&buf[0..n], b"-05:00:00");
 
-        let n = t_frac.format_u8_with_offset("%:z", &mut buf, la).unwrap();
+        let n = t_frac.to_u8_with_offset_label("%:z", &mut buf, la).unwrap();
         assert_eq!(&buf[0..n], b"-08:00");
 
         // %::z with seconds component (tests full +HH:MM:SS support)
         let n = t_frac
-            .format_u8_with_offset("%::z", &mut buf, weird)
+            .to_u8_with_offset_label("%::z", &mut buf, weird)
             .unwrap();
         assert_eq!(&buf[0..n], b"+01:23:45");
 
@@ -1207,33 +1206,31 @@ mod format_tests {
         let t_small = tp(2025, 4, 5, 3, 9, 7, 0);
 
         let n = t_small
-            .format_u8_with_offset("%03d", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%03d", &mut buf, 0)
             .unwrap(); // explicit width 3, default zero
         assert_eq!(&buf[0..n], b"005");
 
         let n = t_small
-            .format_u8_with_offset("%-5H", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%-5H", &mut buf, 0)
             .unwrap(); // left-justify, width 5 → no pad
         assert_eq!(&buf[0..n], b"3");
 
         // space-pad to width 3 (correct behavior for flag '_')
         let n = t_small
-            .format_u8_with_offset("%_3M", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%_3M", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"  9"); // two spaces + '9'
 
         // ── Negative Unix timestamp ───────────────────────────────────
         let t_neg_unix = tp(1969, 12, 31, 23, 59, 59, 0);
         let n = t_neg_unix
-            .format_u8_with_offset("%s", &mut buf, UtcOffset::UTC)
+            .to_u8_with_offset_label("%s", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"-1");
 
         // Large positive (well within i64 for %s)
         let t_large = tp(2038, 1, 19, 3, 14, 7, 0);
-        let n = t_large
-            .format_u8_with_offset("%s", &mut buf, UtcOffset::UTC)
-            .unwrap();
+        let n = t_large.to_u8_with_offset_label("%s", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"2147483647");
     }
 }

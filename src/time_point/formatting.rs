@@ -22,7 +22,7 @@ impl TimePoint {
     pub fn to_rfc3339_precision(&self, max_precision: usize) -> String {
         let utc = self.to_clock_type(ClockType::UTC);
 
-        let (year, month, day) = utc.to_gregorian_date();
+        let (year, month, day) = utc.to_gregorian_date(None);
         let (hour, minute, second, subsec_attos) = utc.to_hms_subsec();
 
         // RFC 3339 / ISO 8601 requires exactly 4 digits for years |year| <= 9999.

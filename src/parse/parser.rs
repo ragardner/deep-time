@@ -916,12 +916,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Ok(v) => v,
             Err(_) => return Err(self.make_error(DtErrKind::ExpectedIanaOrOffset)),
         };
-        // Copy the IANA name into the fixed-size array (truncate if longer than 48 bytes)
-        let bytes = iana_str.as_bytes();
-        let len = bytes.len().min(48);
-        let mut name_array = [0u8; 48];
-        name_array[..len].copy_from_slice(&bytes[..len]);
-        self.tm.iana_name = Some(name_array);
+        let name_to_use = if iana_str.len() > 50 {
+            &iana_str[0..50]
+        } else {
+            iana_str
+        };
+        self.tm.set_iana_name(Some(name_to_use));
         self.tm.tz = Some(TimeZone::None);
         self.inp = remaining;
         self.advance_format();
@@ -1234,8 +1234,8 @@ mod tests {
         .unwrap();
         assert!(parsed.iana_name.is_some());
         let name = parsed.iana_name.unwrap();
-        let len = name.iter().position(|&b| b == 0).unwrap_or(48);
-        assert_eq!(&name[0..len], b"America/New_York");
+        let name_str = name.as_str().expect("IANA name should be valid ASCII");
+        assert_eq!(name_str, "America/New_York");
         assert_eq!(parsed.tz, Some(TimeZone::None));
     }
 

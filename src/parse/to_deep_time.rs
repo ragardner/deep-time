@@ -150,18 +150,18 @@ impl DateComponents {
         // ──────────────────────────────────────────────────────────────
         // Apply timezone correction (IANA or Fixed offset)
         // ──────────────────────────────────────────────────────────────
-        if let Some(bytes) = self.iana_name {
-            let len = bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len());
-            if len > 0 {
-                if let Ok(name) = std::str::from_utf8(&bytes[..len]) {
-                    let provisional_unix = sec_utc + UNIX_EPOCH_TO_J2000_NOON_UTC;
-                    eprintln!("{}, {}", name, name.len());
-                    match offset_at(name, provisional_unix) {
-                        Some(offset) => sec_utc -= offset as i64,
-                        None => return Err(DtError::new(DtErrKind::TimePointIana)),
-                    }
-                } else {
-                    return Err(DtError::new(DtErrKind::TimePointIanaFromBytes));
+        if let Some(name) = &self.iana_name {
+            let name_str = name
+                .as_str()
+                .map_err(|_| DtError::new(DtErrKind::TimePointIanaFromBytes))?;
+
+            if !name_str.is_empty() {
+                let provisional_unix = sec_utc + UNIX_EPOCH_TO_J2000_NOON_UTC;
+                eprintln!("{}, {}", name_str, name_str.len());
+
+                match offset_at(name_str, provisional_unix) {
+                    Some(offset) => sec_utc -= offset as i64,
+                    None => return Err(DtError::new(DtErrKind::TimePointIana)),
                 }
             }
         } else if let Some(TimeZone::Fixed(offset)) = self.tz {

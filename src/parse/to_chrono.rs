@@ -117,13 +117,13 @@ impl DateComponents {
 
     /// Helper: resolve the DateComponents TZ to a Chrono `FixedOffset`.
     /// IANA names are **not supported** in core chrono (they require the `chrono-tz` crate).
+    /// TODO: Add chrono-tz feature?
     fn to_chrono_offset(&self) -> Result<FixedOffset, DtError> {
         let to_err = || DtError::new(DtErrKind::ChronoOffset);
-
         // IANA name present → explicit error (vanilla chrono cannot resolve it)
-        if let Some(name_bytes) = &self.iana_name {
-            let len = name_bytes.iter().position(|&b| b == 0).unwrap_or(48);
-            if len > 0 {
+        if let Some(name) = &self.iana_name {
+            let name_str = name.as_str().map_err(|_| to_err())?;
+            if !name_str.is_empty() {
                 return Err(to_err()); // "IANA timezones not supported in chrono feature"
             }
         }

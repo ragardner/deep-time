@@ -10,9 +10,9 @@ pub mod from_chrono;
 #[cfg(feature = "chrono")]
 pub mod to_chrono;
 
-#[cfg(feature = "std")]
+#[cfg(feature = "jiff")]
 pub mod from_jiff;
-#[cfg(feature = "std")]
+#[cfg(feature = "jiff")]
 pub mod to_jiff;
 
 /// A high-precision **duration** (time delta) expressed as **seconds + attoseconds**

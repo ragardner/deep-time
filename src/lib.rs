@@ -21,6 +21,7 @@ mod std_parse;
 // _________________________________________
 // MOD
 // _________________________________________
+mod ascii_str;
 mod clock_drift;
 mod clock_model;
 mod clock_type;
@@ -55,6 +56,7 @@ pub(crate) use std_parse::{
 // _________________________________________
 // CRATE USE
 // _________________________________________
+pub(crate) use ascii_str::*;
 pub(crate) use constants::*;
 pub(crate) use error::{DtErrKind, DtError};
 pub(crate) use error_std::DtStdError;
@@ -75,6 +77,7 @@ pub use std_parse::{
 // _________________________________________
 // PUB USE
 // _________________________________________
+pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
@@ -86,4 +89,5 @@ pub use parse::parser::strptime;
 pub use parse::{ccsds_bin, ccsds_str, formatter, parser};
 pub use position::{Position, Velocity};
 pub use time_point::TimePoint;
+pub use time_point::gregorian::GregorianPoint;
 pub use time_range::{Every, TimeRange};

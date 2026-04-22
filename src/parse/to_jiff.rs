@@ -21,7 +21,7 @@ impl DateComponents {
 
         let mut bdt = BrokenDownTime::default();
 
-        // === Date fields ===
+        // Date fields
         if let Some(year) = self.year {
             let y: i16 = year.try_into().map_err(|_| to_err())?;
             bdt.set_year(Some(y)).map_err(|_| to_err())?;
@@ -33,7 +33,7 @@ impl DateComponents {
             bdt.set_day(Some(d as i8)).map_err(|_| to_err())?;
         }
 
-        // === Week / day-of-year fields ===
+        // Week / day-of-year fields
         if let Some(doy) = self.day_of_year {
             bdt.set_day_of_year(Some(doy as i16))
                 .map_err(|_| to_err())?;
@@ -54,7 +54,7 @@ impl DateComponents {
                 .map_err(|_| to_err())?;
         }
 
-        // === Time of day ===
+        // Time of day
         if let Some(h) = self.hour {
             bdt.set_hour(Some(h as i8)).map_err(|_| to_err())?;
         }
@@ -68,7 +68,7 @@ impl DateComponents {
             bdt.set_second(Some(s as i8)).map_err(|_| to_err())?;
         }
 
-        // === Subsecond precision (attoseconds → nanoseconds) ===
+        // Subsecond precision (attoseconds → nanoseconds)
         if let Some(attos) = self.attos {
             let ns_u64 = attos / ATTOSEC_PER_NANOSEC;
             let ns: i32 = if ns_u64 >= 1_000_000_000 {
@@ -79,7 +79,7 @@ impl DateComponents {
             bdt.set_subsec_nanosecond(Some(ns)).map_err(|_| to_err())?;
         }
 
-        // === Infallible setters ===
+        // Infallible setters
         if let Some(wd) = self.weekday {
             let jwd = match wd {
                 Weekday::Sunday => jiff::civil::Weekday::Sunday,
@@ -100,22 +100,20 @@ impl DateComponents {
             bdt.set_meridiem(Some(jmer));
         }
 
-        // === Explicit Unix timestamp (highest priority) ===
+        // Explicit Unix timestamp (highest priority)
         if let Some(secs) = self.unix_timestamp_seconds {
             let ts = Timestamp::from_second(secs).map_err(|_| to_err())?;
             bdt.set_timestamp(Some(ts));
         }
 
-        // === Time zone handling (new DateComponents fields) ===
         // Prefer IANA name if present; otherwise fall back to the custom TimeZone enum.
-        if let Some(name_bytes) = &self.iana_name {
-            let len = name_bytes.iter().position(|&b| b == 0).unwrap_or(48);
-            if len > 0 {
-                if let Ok(name) = core::str::from_utf8(&name_bytes[0..len]) {
-                    let _ = bdt.set_iana_time_zone(Some(String::from(name)));
-                } else {
-                    return Err(to_err()); // invalid UTF-8 IANA name
+        if let Some(name) = &self.iana_name {
+            match name.as_str() {
+                Ok(s) if !s.is_empty() => {
+                    let _ = bdt.set_iana_time_zone(Some(String::from(s)));
                 }
+                Ok(_) => {}                     // empty name — do nothing
+                Err(_) => return Err(to_err()), // invalid IANA name
             }
         } else if let Some(TimeZone::Fixed(secs)) = self.tz {
             if let Ok(offset) = Offset::from_seconds(secs) {
@@ -211,11 +209,10 @@ impl DateComponents {
         let to_err = || DtError::new(DtErrKind::JiffTimeZone);
 
         // IANA name takes precedence — use OUR own tz database only
-        if let Some(name_bytes) = &self.iana_name {
-            let len = name_bytes.iter().position(|&b| b == 0).unwrap_or(48);
-            if len > 0 {
-                let name = core::str::from_utf8(&name_bytes[0..len]).map_err(|_| to_err())?;
+        if let Some(name) = &self.iana_name {
+            let name_str = name.as_str().map_err(|_| to_err())?;
 
+            if !name_str.is_empty() {
                 // Use the exact timestamp if we have it; otherwise compute one from YMDHMS
                 let probe_ts = if let Some(ts) = self.unix_timestamp_seconds {
                     ts
@@ -232,7 +229,7 @@ impl DateComponents {
                     0
                 };
 
-                if let Some(offset) = offset_at(name, probe_ts) {
+                if let Some(offset) = offset_at(name_str, probe_ts) {
                     let jiff_offset = Offset::from_seconds(offset).map_err(|_| to_err())?;
                     return Ok(JiffTimeZone::fixed(jiff_offset));
                 } else {
