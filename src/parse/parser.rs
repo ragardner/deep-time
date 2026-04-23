@@ -1,5 +1,5 @@
 use crate::error::{DtErrKind, DtError};
-use crate::{DateComponents, Meridiem, TimeZone, Weekday};
+use crate::{ClockType, DateComponents, Meridiem, TimeZone, Weekday};
 use core::result::Result;
 use core::str;
 
@@ -131,7 +131,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'w' => self.parse_weekday_number_sunday_based(flag, width, colons)?,
                 b'Y' => self.parse_full_year(flag, width, colons, true)?,
                 b'y' => self.parse_two_digit_year(flag, width, colons, true)?,
-                b'*' => self.parse_unbounded_year()?,
                 b'z' => self.parse_timezone_offset(flag, width, colons)?,
                 b'.' => {
                     if !self.advance_format() {
@@ -160,11 +159,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
                     self.parse_optional_dot_fractional(flag, width, colons)?;
                 }
-
+                // shortcuts
                 b'F' => self.parse_iso_date()?,
                 b'D' => self.parse_us_date_shortcut()?,
                 b'T' => self.parse_time_with_seconds_shortcut()?,
                 b'R' => self.parse_time_without_seconds_shortcut()?,
+                // Library directives
+                b'*' => self.parse_unbounded_year()?,
+                b'L' => self.parse_clock_type()?,
 
                 b'c' | b'r' | b'X' | b'x' | b'Z' => {
                     return Err(self.make_error(DtErrKind::UnsupportedDirective));
@@ -926,6 +928,28 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.inp = remaining;
         self.advance_format();
         Ok(())
+    }
+
+    fn parse_clock_type(&mut self) -> Result<(), DtError> {
+        if self.inp.is_empty() || !self.inp[0].is_ascii_alphabetic() {
+            return Err(self.make_error(DtErrKind::InvalidClockType));
+        }
+        let start = self.inp;
+        let mut pos = 0usize;
+        // Use `start[pos]`, not `self.inp[pos]`
+        while pos < start.len() && pos < 8 && start[pos].is_ascii_alphanumeric() {
+            pos += 1;
+        }
+        let abbrev = core::str::from_utf8(&start[..pos])
+            .map_err(|_| self.make_error(DtErrKind::InvalidClockType))?;
+        self.inp = &start[pos..];
+        self.advance_format();
+        if let Some(ct) = ClockType::from_abbrev(abbrev) {
+            self.tm.clock_type = ct;
+            Ok(())
+        } else {
+            Err(self.make_error(DtErrKind::UnknownClockType))
+        }
     }
 
     #[inline]

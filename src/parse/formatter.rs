@@ -59,13 +59,10 @@ impl TimePoint {
         label_in_secs: i32,
     ) -> Result<usize, DtErrKind> {
         let mut gp = self.to_gregorian_point();
-        gp.set_offset(Some(label_in_secs));
-        gp.set_tz_abbrev(None);
-
+        gp.set_offset(Some(label_in_secs)).set_tz_abbrev(None);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gp.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
-
         let written = pos.min(dest.len());
         if written > 0 {
             dest[0..written].copy_from_slice(&internal_buf[0..written]);
@@ -81,16 +78,24 @@ impl TimePoint {
         tz_name: &str,
     ) -> Result<usize, DtErrKind> {
         let gp = self.gregorian_point_adjusted_to_tz(tz_name);
-
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gp.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
-
         let written = pos.min(dest.len());
         if written > 0 {
             dest[0..written].copy_from_slice(&internal_buf[0..written]);
         }
         Ok(written)
+    }
+
+    /// No-alloc label-only formatting.
+    pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
+        let mut gp = self.to_gregorian_point();
+        gp.set_offset(Some(0)).set_tz_abbrev(None);
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let mut pos = 0usize;
+        gp.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
+        Ok(AsciiStr::from_filled_buffer(buf))
     }
 
     /// No-alloc label-only formatting.
@@ -100,13 +105,10 @@ impl TimePoint {
         label_in_secs: i32,
     ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
         let mut gp = self.to_gregorian_point();
-        gp.set_offset(Some(label_in_secs));
-        gp.set_tz_abbrev(None);
-
+        gp.set_offset(Some(label_in_secs)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gp.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-
         Ok(AsciiStr::from_filled_buffer(buf))
     }
 
@@ -117,11 +119,9 @@ impl TimePoint {
         tz_name: &str,
     ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
         let gp = self.gregorian_point_adjusted_to_tz(tz_name);
-
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gp.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-
         Ok(AsciiStr::from_filled_buffer(buf))
     }
 
@@ -147,6 +147,24 @@ impl TimePoint {
 }
 
 impl GregorianPoint {
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub fn strftime(&self, fmt: &str) -> Result<alloc::string::String, DtErrKind> {
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let mut pos = 0usize;
+        self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
+        Ok(alloc::string::String::from_utf8_lossy(&buf[0..pos]).into_owned())
+    }
+
+    /// No-allocation formatting.
+    #[inline]
+    pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let mut pos = 0usize;
+        self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
+        Ok(AsciiStr::from_filled_buffer(buf))
+    }
+
     fn format_to_buffer(
         &self,
         fmt: &[u8],
@@ -284,13 +302,16 @@ impl GregorianPoint {
                 b'w' => self.write_weekday_number_sunday_based(buf, pos, flag, width, colons),
                 b'Y' => self.write_full_year(buf, pos, flag, width, colons, true),
                 b'y' => self.write_two_digit_year(buf, pos, flag, width, colons, true),
-                b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
                 b'z' => self.write_timezone_offset(buf, pos, flag, width, colons),
                 b'F' => self.write_iso_date(buf, pos),
                 b'D' => self.write_us_date_shortcut(buf, pos),
                 b'T' => self.write_time_with_seconds_shortcut(buf, pos),
                 b'R' => self.write_time_without_seconds_shortcut(buf, pos),
                 b'Z' => self.write_timezone_abbrev(buf, pos),
+
+                // Library directives
+                b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
+                b'L' => self.write_clock_type(buf, pos),
 
                 b'c' | b'r' | b'X' | b'x' => self.write_unsupported(buf, pos),
                 _ => return Err(DtErrKind::UnknownFormatDirective),
@@ -852,6 +873,11 @@ impl GregorianPoint {
         } else {
             Self::write_bytes(buf, pos, "UTC".as_bytes());
         }
+    }
+
+    #[inline]
+    pub(crate) fn write_clock_type(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        Self::write_bytes(buf, pos, self.clock_type().abbrev().as_bytes());
     }
 
     pub(crate) fn write_timezone_offset(

@@ -105,6 +105,8 @@ use crate::{ATTOSEC_PER_SEC_I128, C_SQUARED, Delta, PLANCK_LENGTH_4, Real, Veloc
 /// and the curvature information needed for the library’s unified proper-time model.
 /// It is the low-level input that `ClockDrift` uses internally.
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct LocalSpacetime {
     /// Gravitational lapse (redshift) factor α.  
     /// This is the factor by which clocks run slower in a gravitational potential.
@@ -374,19 +376,22 @@ impl ClockDrift {
     }
 
     #[inline]
-    pub fn set_constant(&mut self, constant: Delta) {
+    pub fn set_constant(&mut self, constant: Delta) -> &mut Self {
         self.constant = constant;
+        self
         // constant never affects the pre-computed big fields
     }
 
     #[inline]
-    pub fn set_rate(&mut self, rate: Delta) {
+    pub fn set_rate(&mut self, rate: Delta) -> &mut Self {
         self.rate = rate;
+        self
     }
 
     #[inline]
-    pub fn set_accel(&mut self, accel: Delta) {
+    pub fn set_accel(&mut self, accel: Delta) -> &mut Self {
         self.accel = accel;
+        self
     }
 
     #[inline]

@@ -59,6 +59,8 @@ pub enum DtErrKind {
     IncompleteDate,
     AssemblyFailed,
     TrailingCharacters,
+    InvalidClockType,
+    UnknownClockType,
     // chrono
     ChronoNaiveDate,
     ChronoNaiveTime,

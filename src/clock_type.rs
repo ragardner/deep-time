@@ -133,8 +133,51 @@ impl ClockType {
         matches!(self, Self::GPST | Self::GST | Self::BDT | Self::QZSST)
     }
 
+    /// Parse clock type from abbreviation.
+    /// Returns `None` for any non-ASCII input.
+    #[inline]
+    pub fn from_abbrev(s: &str) -> Option<Self> {
+        let bytes = s.as_bytes();
+        // Reject non-ASCII input immediately (clock abbreviations must be ASCII)
+        if !bytes.is_ascii() {
+            return None;
+        }
+        // Safe to uppercase now
+        let mut buf = [0u8; 8];
+        let mut len = 0;
+        for &byte in bytes {
+            if len >= 8 {
+                return None;
+            }
+            buf[len] = if byte.is_ascii_lowercase() {
+                byte - 32
+            } else {
+                byte
+            };
+            len += 1;
+        }
+        let upper = core::str::from_utf8(&buf[..len]).ok()?;
+        match upper {
+            "TAI" => Some(Self::TAI),
+            "TT" => Some(Self::TT),
+            "ET" => Some(Self::ET),
+            "TDB" => Some(Self::TDB),
+            "UTC" => Some(Self::UTC),
+            "GPST" => Some(Self::GPST),
+            "GST" => Some(Self::GST),
+            "BDT" => Some(Self::BDT),
+            "QZSST" => Some(Self::QZSST),
+            "TCG" => Some(Self::TCG),
+            "TCB" => Some(Self::TCB),
+            "LTC" => Some(Self::LTC),
+            "PROPER" => Some(Self::Proper),
+            "CUSTOM" => Some(Self::Custom),
+            _ => None,
+        }
+    }
+
     /// Short abbreviation used for formatting / display (e.g. "TAI", "UTC", "Proper").
-    pub const fn abbreviation(&self) -> &'static str {
+    pub const fn abbrev(&self) -> &'static str {
         match self {
             Self::TAI => "TAI",
             Self::TT => "TT",
@@ -162,6 +205,6 @@ impl ClockType {
 
 impl fmt::Display for ClockType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.abbreviation())
+        f.write_str(self.abbrev())
     }
 }

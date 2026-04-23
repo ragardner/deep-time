@@ -80,9 +80,33 @@ impl<const N: usize> AsciiStr<N> {
                 length: s.len(),
             });
         }
-
         let mut bytes = [0u8; N];
         bytes[..s.len()].copy_from_slice(s.as_bytes());
+        Ok(Self { bytes })
+    }
+
+    /// Attempts to create an `AsciiStr<N>` from a string slice, **uppercasing** the input.
+    ///
+    /// This is a convenience wrapper around [`try_from_str`](Self::try_from_str)
+    /// that converts the input to ASCII uppercase before storing it.
+    ///
+    /// # Errors
+    /// - [`AsciiStrError::InvalidAscii`] if the input is not ASCII.
+    /// - [`AsciiStrError::TooLong`] if the input exceeds capacity `N`.
+    pub fn try_from_str_upper(s: &str) -> Result<Self, AsciiStrError> {
+        if !s.is_ascii() {
+            return Err(AsciiStrError::InvalidAscii);
+        }
+        if s.len() > N {
+            return Err(AsciiStrError::TooLong {
+                capacity: N,
+                length: s.len(),
+            });
+        }
+        let mut bytes = [0u8; N];
+        let src = s.as_bytes();
+        bytes[..src.len()].copy_from_slice(src);
+        bytes[..src.len()].make_ascii_uppercase();
         Ok(Self { bytes })
     }
 
@@ -99,7 +123,6 @@ impl<const N: usize> AsciiStr<N> {
             .iter()
             .position(|&b| b == 0)
             .unwrap_or(self.bytes.len());
-
         str::from_utf8(&self.bytes[..len]).map_err(|_| AsciiStrError::CorruptedData)
     }
 
@@ -122,7 +145,7 @@ impl<const N: usize> AsciiStr<N> {
     }
 
     /// Returns `true` if the string is empty.
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.bytes[0] == 0
     }
 

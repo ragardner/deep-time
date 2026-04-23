@@ -40,12 +40,16 @@ pub struct GregorianPoint {
     pub(crate) wk_of_yr_sun: u8,
     /// Monday based week of year (Range: `0..=53`).
     pub(crate) wk_of_yr_mon: u8,
+    /// Used for formatting (strftime).
     /// A stored offset in seconds, used within the crate.
     pub(crate) offset_sec: Option<i32>,
     /// A stored IANA name, used within the crate, %Q.
     pub(crate) tz: Option<AsciiStr<50>>,
     /// UTC, EST, %Z
     pub(crate) tz_abbrev: Option<AsciiStr<16>>,
+    /// Used for formatting (strftime).
+    /// Clock type of the Time Point this UTC GregorianPoint came from.
+    pub(crate) clock_type: ClockType,
 }
 
 impl GregorianPoint {
@@ -143,30 +147,55 @@ impl GregorianPoint {
         self.wk_of_yr_mon
     }
     #[inline(always)]
-    pub(crate) const fn offset_sec(&self) -> Option<i32> {
+    pub const fn offset_sec(&self) -> Option<i32> {
         self.offset_sec
     }
     #[inline(always)]
-    pub(crate) const fn tz(&self) -> Option<&AsciiStr<50>> {
+    pub const fn tz(&self) -> Option<&AsciiStr<50>> {
         self.tz.as_ref()
     }
     #[inline(always)]
-    pub(crate) const fn tz_abbrev(&self) -> Option<&AsciiStr<16>> {
+    pub const fn tz_abbrev(&self) -> Option<&AsciiStr<16>> {
         self.tz_abbrev.as_ref()
     }
     #[inline(always)]
-    pub(crate) fn set_offset(&mut self, offset_sec: Option<i32>) {
+    pub const fn clock_type(&self) -> ClockType {
+        self.clock_type
+    }
+    #[inline(always)]
+    pub fn set_offset(&mut self, offset_sec: Option<i32>) -> &mut Self {
         self.offset_sec = offset_sec;
+        self
     }
     #[inline(always)]
-    pub(crate) fn set_tz(&mut self, tz: Option<&str>) {
+    pub fn set_tz(&mut self, tz: Option<&str>) -> &mut Self {
         self.tz = tz.and_then(|s| AsciiStr::try_from_str(s).ok());
+        self
     }
     #[inline(always)]
-    pub(crate) fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) {
+    pub fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) -> &mut Self {
         self.tz_abbrev = tz_abbrev.and_then(|s| AsciiStr::try_from_str(s).ok());
+        self
     }
-
+    /// Sets the clock type label that will be used when formatting with `%L`.
+    ///
+    /// This is useful when you want to reuse the same `GregorianPoint` multiple times
+    /// with different clock scale labels (e.g. once as `TAI`, once as `LTC`, once as `Proper`).
+    ///
+    /// # Example
+    /// ```ignore
+    /// let gp = time_point.to_gregorian_point();
+    ///
+    /// let s1 = gp.set_clock_type(ClockType::LTC)
+    ///            .strftime("%Y-%m-%d %H:%M:%S %L")?;
+    /// let s2 = gp.set_clock_type(ClockType::TAI)
+    ///            .strftime("%Y-%m-%d %H:%M:%S %L")?;
+    /// ```
+    #[inline(always)]
+    pub fn set_clock_type(&mut self, clock_type: ClockType) -> &mut Self {
+        self.clock_type = clock_type;
+        self
+    }
     /// Reconstructs a [`TimePoint`] from these **UTC** civil components.
     ///
     /// Round-tripping with `TimePoint::to_gregorian_point`.
@@ -182,6 +211,7 @@ impl GregorianPoint {
 
 impl TimePoint {
     pub const fn to_gregorian_point(self) -> GregorianPoint {
+        let clock_type = self.clock_type;
         let utc = self.to_clock_type(ClockType::UTC);
         let unix_attosec = self.to_canonical_attoseconds();
         let (jd_days, frac) = utc.to_jd_tt_exact();
@@ -212,6 +242,7 @@ impl TimePoint {
             offset_sec: None,
             tz: None,
             tz_abbrev: None,
+            clock_type: clock_type,
         }
     }
 

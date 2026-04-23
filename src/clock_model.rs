@@ -1,6 +1,6 @@
 use crate::{ClockDrift, ClockType, TimePoint};
 
-/// A fully self-describing relativistic time scale for spacecraft.
+/// A fully self-describing relativistic time scale.
 ///
 /// Bundles a base `ClockType` (normally `Proper` or `Custom`) with the quadratic
 /// polynomial and reference epoch needed for exact conversion to any other scale
@@ -10,6 +10,7 @@ use crate::{ClockDrift, ClockType, TimePoint};
 /// its own clock-drift / relativistic model.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct ClockModel {
     /// Base scale (usually `Proper` or `Custom`)
     pub base: ClockType,
