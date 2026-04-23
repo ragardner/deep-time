@@ -1,5 +1,5 @@
 use crate::Delta;
-use core::ops::{Add, AddAssign, Neg, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 impl Add<Delta> for Delta {
     type Output = Self;
@@ -39,5 +39,37 @@ impl Neg for Delta {
     #[inline(always)]
     fn neg(self) -> Self {
         self.neg()
+    }
+}
+
+impl Mul<i64> for Delta {
+    type Output = Self;
+
+    #[inline(always)]
+    fn mul(self, rhs: i64) -> Self {
+        self.mul(rhs)
+    }
+}
+
+impl MulAssign<i64> for Delta {
+    #[inline(always)]
+    fn mul_assign(&mut self, rhs: i64) {
+        *self = self.mul(rhs);
+    }
+}
+
+impl Div<i64> for Delta {
+    type Output = Self;
+
+    #[inline(always)]
+    fn div(self, rhs: i64) -> Self {
+        self.div(rhs)
+    }
+}
+
+impl DivAssign<i64> for Delta {
+    #[inline(always)]
+    fn div_assign(&mut self, rhs: i64) {
+        *self = self.div(rhs);
     }
 }

@@ -143,6 +143,48 @@ impl LocalSpacetime {
         }
     }
 
+    /// Size of the canonical wire representation in bytes (24 bytes).
+    pub const WIRE_SIZE: usize = 24;
+
+    /// Serializes this `LocalSpacetime` snapshot into a fixed 24-byte buffer.
+    ///
+    /// All fields are stored as little-endian IEEE 754 `f64`.
+    #[inline]
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0..8].copy_from_slice(&self.alpha.to_le_bytes());
+        buf[8..16].copy_from_slice(&self.beta.to_le_bytes());
+        buf[16..24].copy_from_slice(&self.kretschmann.to_le_bytes());
+        buf
+    }
+
+    /// Deserializes a `LocalSpacetime` from exactly 24 bytes.
+    ///
+    /// ## Security
+    ///
+    /// Accepts any `f64` bit pattern (including `NaN`/`Inf`) to match the
+    /// type’s own invariants. Fixed size makes it immune to length-based
+    /// attacks. Safe for untrusted input.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+        let alpha = f64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]);
+        let beta = f64::from_le_bytes([
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        ]);
+        let kretschmann = f64::from_le_bytes([
+            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
+        ]);
+        Some(Self {
+            alpha,
+            beta,
+            kretschmann,
+        })
+    }
+
     /// Returns the instantaneous proper-time rate `dτ/dt` from this snapshot.
     ///
     /// Convenience method that internally uses the same unified calculation as
@@ -320,9 +362,9 @@ pub struct ClockDrift {
 }
 
 impl ClockDrift {
-    /// Private helper that constructs the struct.
+    /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
     #[inline(always)]
-    const fn with_big(constant: Delta, rate: Delta, accel: Delta) -> Self {
+    pub const fn new(constant: Delta, rate: Delta, accel: Delta) -> Self {
         Self {
             constant,
             rate,
@@ -330,16 +372,57 @@ impl ClockDrift {
         }
     }
 
-    /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
-    #[inline(always)]
-    pub const fn new(constant: Delta, rate: Delta, accel: Delta) -> Self {
-        Self::with_big(constant, rate, accel)
+    /// Current wire format version.
+    pub const WIRE_VERSION: u8 = 1;
+
+    /// Size of the canonical wire representation in bytes.
+    pub const WIRE_SIZE: usize = 3 * Delta::WIRE_SIZE; // 3 × 17 = 51
+
+    /// Serializes this `ClockDrift` polynomial into a fixed buffer.
+    ///
+    /// The layout is the concatenation of the three `Delta` fields.
+    #[inline]
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        let c = self.constant.to_wire_bytes();
+        let r = self.rate.to_wire_bytes();
+        let a = self.accel.to_wire_bytes();
+
+        buf[0..Delta::WIRE_SIZE].copy_from_slice(&c);
+        buf[Delta::WIRE_SIZE..2 * Delta::WIRE_SIZE].copy_from_slice(&r);
+        buf[2 * Delta::WIRE_SIZE..].copy_from_slice(&a);
+        buf
+    }
+
+    /// Deserializes a `ClockDrift` from exactly `WIRE_SIZE` bytes of wire data.
+    ///
+    /// Returns `None` if any nested `Delta` fails validation or if the version
+    /// byte is unknown.
+    ///
+    /// ## Security
+    ///
+    /// Composes the safety guarantees of [`Delta::from_wire_bytes`].
+    /// Fixed size and layered validation make it safe for untrusted input.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+
+        if bytes[0] != Self::WIRE_VERSION {
+            return None;
+        }
+
+        let constant = Delta::from_wire_bytes(&bytes[0..Delta::WIRE_SIZE])?;
+        let rate = Delta::from_wire_bytes(&bytes[Delta::WIRE_SIZE..2 * Delta::WIRE_SIZE])?;
+        let accel = Delta::from_wire_bytes(&bytes[2 * Delta::WIRE_SIZE..])?;
+
+        Some(Self::new(constant, rate, accel))
     }
 
     /// The zero polynomial representing no correction at all.  
     /// Use this when the observer’s clock is already perfectly synchronized with
     /// the chosen coordinate time.
-    pub const ZERO: Self = Self::with_big(Delta::ZERO, Delta::ZERO, Delta::ZERO);
+    pub const ZERO: Self = Self::new(Delta::ZERO, Delta::ZERO, Delta::ZERO);
 
     /// Creates a `ClockDrift` consisting of a pure constant offset.  
     /// This is the most common constructor when only a fixed time bias is known
@@ -347,7 +430,7 @@ impl ClockDrift {
     /// adjustment).
     #[inline(always)]
     pub const fn from_constant(c: Delta) -> Self {
-        Self::with_big(c, Delta::ZERO, Delta::ZERO)
+        Self::new(c, Delta::ZERO, Delta::ZERO)
     }
 
     /// Creates a `ClockDrift` consisting of a constant offset together with a
@@ -357,7 +440,7 @@ impl ClockDrift {
     /// to any fixed bias.
     #[inline(always)]
     pub const fn from_offset_and_rate(offset: Delta, rate: Delta) -> Self {
-        Self::with_big(offset, rate, Delta::ZERO)
+        Self::new(offset, rate, Delta::ZERO)
     }
 
     #[inline]
@@ -396,17 +479,17 @@ impl ClockDrift {
 
     #[inline]
     pub const fn with_constant(self, constant: Delta) -> Self {
-        Self::with_big(constant, self.rate, self.accel)
+        Self::new(constant, self.rate, self.accel)
     }
 
     #[inline]
     pub const fn with_rate(self, rate: Delta) -> Self {
-        Self::with_big(self.constant, rate, self.accel)
+        Self::new(self.constant, rate, self.accel)
     }
 
     #[inline]
     pub const fn with_accel(self, accel: Delta) -> Self {
-        Self::with_big(self.constant, self.rate, accel)
+        Self::new(self.constant, self.rate, accel)
     }
 
     /// Returns the instantaneous proper-time rate `dτ/dt` (dimensionless).

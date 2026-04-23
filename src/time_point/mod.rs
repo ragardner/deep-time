@@ -7,6 +7,7 @@ mod to_canonical;
 mod to_ccsds_bin;
 
 pub mod gregorian;
+pub mod gregorian_point;
 pub mod trajectory;
 
 #[cfg(feature = "chrono")]
@@ -20,9 +21,6 @@ pub mod from_jiff;
 pub mod to_jiff;
 
 use crate::ClockType;
-
-// Full updated content for /home/workdir/attachments/mod.rs
-// (only the TimePoint documentation was changed; the rest of the file is unchanged)
 
 /// A high-precision instant in time, **typed by its time scale** ([`ClockType`]).
 ///
@@ -76,14 +74,64 @@ pub struct TimePoint {
 }
 
 impl TimePoint {
-    #[inline(always)]
-    pub const fn sec(&self) -> i64 {
-        self.sec
+    /// Current wire format version.
+    pub const WIRE_VERSION: u8 = 1;
+
+    /// Size of the canonical wire representation in bytes (18 bytes).
+    pub const WIRE_SIZE: usize = 18;
+
+    /// Serializes this `TimePoint` into a fixed 18-byte little-endian buffer.
+    ///
+    /// # Wire Format
+    ///
+    /// - Byte `0`: Version (`WIRE_VERSION`)
+    /// - Bytes `[1..9]`: `sec` as little-endian `i64`
+    /// - Bytes `[9..17]`: `subsec` as little-endian `u64`
+    /// - Byte `17`: `ClockType` as `u8`
+    ///
+    /// This format is stable, portable, and suitable for network transmission,
+    /// file storage, or FFI.
+    #[inline]
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0] = Self::WIRE_VERSION;
+        buf[1..9].copy_from_slice(&self.sec.to_le_bytes());
+        buf[9..17].copy_from_slice(&self.subsec.to_le_bytes());
+        buf[17] = self.clock_type as u8;
+        buf
     }
 
-    #[inline(always)]
-    pub const fn subsec(&self) -> u64 {
-        self.subsec
+    /// Deserializes a `TimePoint` from exactly 18 bytes of wire data.
+    ///
+    /// Returns `None` if the version byte is unknown.
+    /// Any `subsec` value ≥ 10¹⁸ is automatically normalized using
+    /// [`carry_over`](Self::carry_over) so the resulting `TimePoint`
+    /// is always in canonical form.
+    ///
+    /// ## Security
+    ///
+    /// Safe to call with completely untrusted input. Fixed-size format,
+    /// no allocation, no `unsafe`, and no possibility of code execution.
+    /// Malicious data simply produces a normalized (but still valid) `TimePoint`.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+
+        // Version check for future compatibility
+        if bytes[0] != Self::WIRE_VERSION {
+            return None;
+        }
+
+        let sec = i64::from_le_bytes([
+            bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
+        ]);
+        let subsec = u64::from_le_bytes([
+            bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15], bytes[16],
+        ]);
+        let clock_type = ClockType::from_u8(bytes[17])?;
+
+        Some(Self::new(sec, subsec, clock_type))
     }
 
     #[inline(always)]

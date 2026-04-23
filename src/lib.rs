@@ -88,5 +88,5 @@ pub use parse::parser::strptime;
 pub use parse::{formatter, parser};
 pub use position::{Position, Velocity};
 pub use time_point::TimePoint;
-pub use time_point::gregorian::GregorianPoint;
+pub use time_point::gregorian_point::GregorianPoint;
 pub use time_range::{Every, TimeRange};

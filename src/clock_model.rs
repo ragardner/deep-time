@@ -31,6 +31,68 @@ impl ClockModel {
         }
     }
 
+    /// Current wire format version.
+    pub const WIRE_VERSION: u8 = 1;
+
+    /// Size of the canonical wire representation in bytes.
+    pub const WIRE_SIZE: usize =
+        1 + ClockType::WIRE_SIZE + TimePoint::WIRE_SIZE + ClockDrift::WIRE_SIZE;
+
+    /// Serializes this self-describing `ClockModel` into a fixed buffer.
+    ///
+    /// # Wire Format
+    ///
+    /// - Byte `0`: Version (`WIRE_VERSION`)
+    /// - Byte `1`: `base` (`ClockType`)
+    /// - Bytes `2..20`: `reference` (`TimePoint`)
+    /// - Bytes `20..71`: `drift` (`ClockDrift`)
+    #[inline]
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0] = Self::WIRE_VERSION;
+        buf[1] = self.base as u8;
+
+        let tp = self.reference.to_wire_bytes();
+        buf[2..2 + TimePoint::WIRE_SIZE].copy_from_slice(&tp);
+
+        let cd = self.drift.to_wire_bytes();
+        buf[2 + TimePoint::WIRE_SIZE..].copy_from_slice(&cd);
+
+        buf
+    }
+
+    /// Deserializes a `ClockModel` from exactly `WIRE_SIZE` bytes of wire data.
+    ///
+    /// Returns `None` if the version byte is unknown or any nested component
+    /// fails validation.
+    ///
+    /// ## Security
+    ///
+    /// This function is safe to call with arbitrary untrusted data because:
+    /// - Fixed total size eliminates length-prefix vulnerabilities
+    /// - Validation is performed at every layer
+    /// - No allocation, no `unsafe`, no possibility of code execution
+    /// - Returns `None` on any invalid or malicious input
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+
+        if bytes[0] != Self::WIRE_VERSION {
+            return None;
+        }
+
+        let base = ClockType::from_u8(bytes[1])?;
+        let reference = TimePoint::from_wire_bytes(&bytes[2..2 + TimePoint::WIRE_SIZE])?;
+        let drift = ClockDrift::from_wire_bytes(&bytes[2 + TimePoint::WIRE_SIZE..])?;
+
+        Some(Self {
+            base,
+            reference,
+            drift,
+        })
+    }
+
     /// Convenience constructor for a pure Proper-time scale with relativistic correction.
     #[inline]
     pub const fn proper(reference: TimePoint, drift: ClockDrift) -> Self {

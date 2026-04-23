@@ -1,5 +1,4 @@
-use core::fmt;
-use core::str; // ← added for Display
+use core::{fmt, str};
 
 /// Fixed-capacity, stack-only ASCII string stored in a single `[u8; N]` array.
 ///
@@ -9,6 +8,29 @@ use core::str; // ← added for Display
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AsciiStr<const N: usize> {
     bytes: [u8; N],
+}
+
+#[cfg(feature = "serde")]
+impl<const N: usize> serde::Serialize for AsciiStr<N> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.as_str()
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, const N: usize> serde::Deserialize<'de> for AsciiStr<N> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s: &str = serde::Deserialize::deserialize(deserializer)?;
+        AsciiStr::try_from_str(s).map_err(serde::de::Error::custom)
+    }
 }
 
 /// Errors returned by [`AsciiStr`] operations.
@@ -54,6 +76,48 @@ impl<const N: usize> AsciiStr<N> {
     /// Creates a new empty `AsciiStr` (all bytes zero).
     pub const fn new() -> Self {
         Self { bytes: [0; N] }
+    }
+
+    /// Size of the wire representation in bytes (always equal to the capacity `N`).
+    pub const WIRE_SIZE: usize = N;
+
+    /// Serializes this `AsciiStr` into a fixed-size byte array.
+    ///
+    /// The entire internal buffer is written (including trailing zeros after
+    /// the logical string content). This preserves the exact representation.
+    #[inline]
+    pub fn to_wire_bytes(&self) -> [u8; N] {
+        self.bytes
+    }
+
+    /// Deserializes an `AsciiStr<N>` from exactly `N` bytes.
+    ///
+    /// The input must be valid ASCII. Any bytes after the first nul byte
+    /// must be zero (as required by the type invariant).
+    ///
+    /// Returns `None` if the input is not valid ASCII or violates the
+    /// internal representation rules.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != N {
+            return None;
+        }
+
+        // Check that it's valid ASCII
+        if !bytes.is_ascii() {
+            return None;
+        }
+
+        // Verify that everything after the first nul is zero
+        // (this maintains the type's invariant)
+        if let Some(first_nul) = bytes.iter().position(|&b| b == 0) {
+            if bytes[first_nul..].iter().any(|&b| b != 0) {
+                return None;
+            }
+        }
+
+        let mut arr = [0u8; N];
+        arr.copy_from_slice(bytes);
+        Some(Self { bytes: arr })
     }
 
     /// Internal constructor used by the `strftime` formatter.
@@ -160,28 +224,5 @@ impl<const N: usize> TryFrom<&str> for AsciiStr<N> {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         AsciiStr::try_from_str(s)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<const N: usize> serde::Serialize for AsciiStr<N> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        self.as_str()
-            .map_err(serde::ser::Error::custom)?
-            .serialize(serializer)
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de, const N: usize> serde::Deserialize<'de> for AsciiStr<N> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let s: &str = serde::Deserialize::deserialize(deserializer)?;
-        AsciiStr::try_from_str(s).map_err(serde::de::Error::custom)
     }
 }

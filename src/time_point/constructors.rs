@@ -84,12 +84,13 @@ impl TimePoint {
     /// and a clock type, automatically normalizing the representation.
     #[inline]
     pub const fn new(sec: i64, subsec: u64, clock_type: ClockType) -> Self {
-        Self {
+        let mut tp = Self {
             sec,
             subsec,
             clock_type,
-        }
-        .carry_over()
+        };
+        tp.carry_over();
+        tp
     }
 
     /// Returns an exact copy of this `TimePoint`.

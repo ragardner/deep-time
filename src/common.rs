@@ -10,9 +10,21 @@ macro_rules! impl_time_inc {
         $(
             impl $ty {
 
+                /// Seconds field getter.
+                #[inline(always)]
+                pub const fn sec(&self) -> i64 {
+                    self.sec
+                }
+
+                /// Subseconds field getter (attoseconds).
+                #[inline(always)]
+                pub const fn subsec(&self) -> u64 {
+                    self.subsec
+                }
+
                 /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOSEC_PER_SEC)`.
                 #[inline]
-                pub const fn carry_over(mut self) -> Self {
+                pub const fn carry_over(&mut self) -> &mut Self {
                     if self.subsec >= ATTOSEC_PER_SEC {
                         self.sec += (self.subsec / ATTOSEC_PER_SEC) as i64;
                         self.subsec %= ATTOSEC_PER_SEC;

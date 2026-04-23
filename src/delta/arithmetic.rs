@@ -151,6 +151,33 @@ impl Delta {
         Self::from_total_attos(total)
     }
 
+    /// Multiplies this duration by an integer scalar (exact).
+    ///
+    /// Uses 128-bit arithmetic internally.
+    #[inline]
+    pub const fn mul(self, rhs: i64) -> Self {
+        if rhs == 0 || self.is_zero() {
+            return Self::ZERO;
+        }
+        let total = self.total_attos() * (rhs as i128);
+        Self::from_total_attos(total)
+    }
+
+    /// Divides this duration by an integer scalar (exact floor division).
+    ///
+    /// Returns `ZERO` if `rhs == 0`.
+    /// Uses floor division (toward negative infinity) for consistency
+    /// with the existing `floor` method.
+    #[inline]
+    pub const fn div(self, rhs: i64) -> Self {
+        if rhs == 0 || self.is_zero() {
+            return Self::ZERO;
+        }
+        let total = self.total_attos();
+        let result = total.div_euclid(rhs as i128);
+        Self::from_total_attos(result)
+    }
+
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
     #[inline]

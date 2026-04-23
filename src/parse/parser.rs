@@ -655,7 +655,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.inp = &self.inp[3..];
         self.tm.weekday = Some(
             Weekday::from_sunday_zero_offset(index as i8)
-                .map_err(|_| self.make_error(DtErrKind::ExpectedAbbrevWeekdayName))?,
+                .ok_or_else(|| self.make_error(DtErrKind::ExpectedAbbrevWeekdayName))?,
         );
         self.advance_format();
         Ok(())
@@ -679,7 +679,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.inp = remaining;
         self.tm.weekday = Some(
             Weekday::from_sunday_zero_offset(index as i8)
-                .map_err(|_| self.make_error(DtErrKind::ExpectedFullWeekdayName))?,
+                .ok_or_else(|| self.make_error(DtErrKind::ExpectedFullWeekdayName))?,
         );
         self.advance_format();
         Ok(())
@@ -697,7 +697,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Err(_) => return Err(self.make_error(DtErrKind::ExpectedWeekdayMondayBased)),
         };
         let wd = Weekday::from_monday_one_offset(w as i8)
-            .map_err(|_| self.make_error(DtErrKind::WeekdayOutOfRangeMondayBased))?;
+            .ok_or_else(|| self.make_error(DtErrKind::WeekdayOutOfRangeMondayBased))?;
         self.tm.weekday = Some(wd);
         self.inp = remaining;
         self.advance_format();
@@ -716,7 +716,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Err(_) => return Err(self.make_error(DtErrKind::ExpectedWeekdaySundayBased)),
         };
         let wd = Weekday::from_sunday_zero_offset(w as i8)
-            .map_err(|_| self.make_error(DtErrKind::WeekdayOutOfRangeSundayBased))?;
+            .ok_or_else(|| self.make_error(DtErrKind::WeekdayOutOfRangeSundayBased))?;
         self.tm.weekday = Some(wd);
         self.inp = remaining;
         self.advance_format();

@@ -123,6 +123,43 @@ impl Default for ClockType {
 }
 
 impl ClockType {
+    /// Size of the canonical wire representation in bytes.
+    pub const WIRE_SIZE: usize = 1;
+
+    /// Returns the wire representation of this `ClockType` as a single byte.
+    ///
+    /// The returned byte is the `repr(u8)` discriminant of the enum.
+    /// This is the canonical on-wire form used by [`TimePoint`] and [`ClockModel`].
+    #[inline]
+    pub const fn to_wire_byte(self) -> u8 {
+        self as u8
+    }
+
+    /// Attempts to reconstruct a `ClockType` from its wire byte representation.
+    ///
+    /// Returns `None` for any value that does not correspond to a known variant.
+    /// This provides safe deserialization from untrusted sources.
+    #[inline]
+    pub const fn from_u8(v: u8) -> Option<Self> {
+        match v {
+            0 => Some(Self::TAI),
+            1 => Some(Self::TT),
+            2 => Some(Self::ET),
+            3 => Some(Self::TDB),
+            4 => Some(Self::UTC),
+            5 => Some(Self::GPST),
+            6 => Some(Self::GST),
+            7 => Some(Self::BDT),
+            8 => Some(Self::QZSST),
+            9 => Some(Self::TCG),
+            10 => Some(Self::TCB),
+            11 => Some(Self::LTC),
+            12 => Some(Self::Proper),
+            13 => Some(Self::Custom),
+            _ => None,
+        }
+    }
+
     /// Returns `true` if this clock type accounts for leap seconds.
     pub const fn uses_leap_sec(&self) -> bool {
         matches!(self, Self::UTC)

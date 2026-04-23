@@ -28,7 +28,9 @@ impl Delta {
     /// The result is automatically normalized so `subsec` lies in `[0, 10¹⁸)`.
     #[inline]
     pub const fn new(sec: i64, subsec: u64) -> Self {
-        Self { sec, subsec }.carry_over()
+        let mut dt = Self { sec, subsec };
+        dt.carry_over();
+        dt
     }
 
     #[inline]
