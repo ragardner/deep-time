@@ -26,6 +26,7 @@ mod clock_drift;
 mod clock_model;
 mod clock_type;
 mod common;
+mod date_components;
 mod delta;
 mod light_time;
 mod parse;
@@ -38,7 +39,6 @@ mod utils;
 // PUB MOD
 // _________________________________________
 pub mod constants;
-pub mod date_components;
 pub mod error;
 pub mod error_std;
 pub mod leap_seconds;

@@ -1,93 +1,15 @@
-use crate::{AsciiStr, ClockType, DtErrKind, DtError};
+pub mod to_deep_time;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Meridiem {
-    #[default]
-    AM,
-    PM,
-}
+#[cfg(feature = "chrono")]
+pub mod to_chrono;
+
+#[cfg(feature = "jiff")]
+pub mod to_jiff;
+
+use crate::{AsciiStr, ClockType, DtErrKind, DtError};
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Weekday {
-    #[default]
-    Sunday,
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-}
-
-impl Weekday {
-    #[inline]
-    pub fn from_sunday_zero_offset(n: i8) -> Result<Self, &'static str> {
-        match n {
-            0 => Ok(Weekday::Sunday),
-            1 => Ok(Weekday::Monday),
-            2 => Ok(Weekday::Tuesday),
-            3 => Ok(Weekday::Wednesday),
-            4 => Ok(Weekday::Thursday),
-            5 => Ok(Weekday::Friday),
-            6 => Ok(Weekday::Saturday),
-            _ => Err("weekday number out of range (must be 0-6, Sunday=0)"),
-        }
-    }
-
-    #[inline]
-    pub fn from_monday_one_offset(n: i8) -> Result<Self, &'static str> {
-        match n {
-            1 => Ok(Weekday::Monday),
-            2 => Ok(Weekday::Tuesday),
-            3 => Ok(Weekday::Wednesday),
-            4 => Ok(Weekday::Thursday),
-            5 => Ok(Weekday::Friday),
-            6 => Ok(Weekday::Saturday),
-            7 => Ok(Weekday::Sunday),
-            _ => Err("weekday number out of range (must be 1-7, Monday=1)"),
-        }
-    }
-
-    /// Sunday-based weekday number (0 = Sunday … 6 = Saturday).
-    #[inline(always)]
-    pub const fn wk_sun(self) -> u8 {
-        match self {
-            Weekday::Sunday => 0,
-            Weekday::Monday => 1,
-            Weekday::Tuesday => 2,
-            Weekday::Wednesday => 3,
-            Weekday::Thursday => 4,
-            Weekday::Friday => 5,
-            Weekday::Saturday => 6,
-        }
-    }
-
-    /// Monday-based weekday number (1 = Monday … 7 = Sunday).
-    #[inline(always)]
-    pub const fn wk_mon(self) -> u8 {
-        match self {
-            Weekday::Monday => 1,
-            Weekday::Tuesday => 2,
-            Weekday::Wednesday => 3,
-            Weekday::Thursday => 4,
-            Weekday::Friday => 5,
-            Weekday::Saturday => 6,
-            Weekday::Sunday => 7,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum TimeZone {
-    #[default]
-    Utc,
-    None,
-    /// Fixed offset from UTC in seconds
-    Fixed(i32),
-}
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct DateComponents {
     pub year: Option<i64>,
@@ -186,4 +108,96 @@ impl DateComponents {
     pub fn set_iana_name(&mut self, name: Option<&str>) {
         self.iana_name = name.and_then(|s| AsciiStr::try_from_str(s).ok());
     }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Meridiem {
+    #[default]
+    AM,
+    PM,
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Weekday {
+    #[default]
+    Sunday,
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+}
+
+impl Weekday {
+    #[inline]
+    pub fn from_sunday_zero_offset(n: i8) -> Result<Self, &'static str> {
+        match n {
+            0 => Ok(Weekday::Sunday),
+            1 => Ok(Weekday::Monday),
+            2 => Ok(Weekday::Tuesday),
+            3 => Ok(Weekday::Wednesday),
+            4 => Ok(Weekday::Thursday),
+            5 => Ok(Weekday::Friday),
+            6 => Ok(Weekday::Saturday),
+            _ => Err("weekday number out of range (must be 0-6, Sunday=0)"),
+        }
+    }
+
+    #[inline]
+    pub fn from_monday_one_offset(n: i8) -> Result<Self, &'static str> {
+        match n {
+            1 => Ok(Weekday::Monday),
+            2 => Ok(Weekday::Tuesday),
+            3 => Ok(Weekday::Wednesday),
+            4 => Ok(Weekday::Thursday),
+            5 => Ok(Weekday::Friday),
+            6 => Ok(Weekday::Saturday),
+            7 => Ok(Weekday::Sunday),
+            _ => Err("weekday number out of range (must be 1-7, Monday=1)"),
+        }
+    }
+
+    /// Sunday-based weekday number (0 = Sunday … 6 = Saturday).
+    #[inline(always)]
+    pub const fn wk_sun(self) -> u8 {
+        match self {
+            Weekday::Sunday => 0,
+            Weekday::Monday => 1,
+            Weekday::Tuesday => 2,
+            Weekday::Wednesday => 3,
+            Weekday::Thursday => 4,
+            Weekday::Friday => 5,
+            Weekday::Saturday => 6,
+        }
+    }
+
+    /// Monday-based weekday number (1 = Monday … 7 = Sunday).
+    #[inline(always)]
+    pub const fn wk_mon(self) -> u8 {
+        match self {
+            Weekday::Monday => 1,
+            Weekday::Tuesday => 2,
+            Weekday::Wednesday => 3,
+            Weekday::Thursday => 4,
+            Weekday::Friday => 5,
+            Weekday::Saturday => 6,
+            Weekday::Sunday => 7,
+        }
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum TimeZone {
+    #[default]
+    Utc,
+    None,
+    /// Fixed offset from UTC in seconds
+    Fixed(i32),
 }
