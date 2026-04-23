@@ -2,10 +2,10 @@ use deep_time_core::{DateOrder, DateParseMode, Lang, ParseCfg, parse_date, parse
 #[cfg(feature = "perf_tests")]
 use std::time::Instant;
 
-#[cfg(feature = "jiff-tests")]
+#[cfg(feature = "jiff-tz")]
 use jiff::{Zoned, civil::DateTime};
 
-#[cfg(feature = "jiff-tests")]
+#[cfg(feature = "jiff-tz")]
 #[test]
 fn test_historical_iana_with_jiff() {
     // Historical / interesting IANA timezone cases.
