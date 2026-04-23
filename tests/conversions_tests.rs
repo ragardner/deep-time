@@ -1,8 +1,8 @@
-use crate::TimePoint;
+use deep_time_core::TimePoint;
 
 mod tdb_tests {
     use super::*;
-    use crate::ClockType;
+    use deep_time_core::ClockType;
 
     /// Round-trip accuracy test (TAI → TDB → TAI)
     #[test]
@@ -80,7 +80,7 @@ mod tdb_tests {
 
 mod drift_tests {
     use super::*;
-    use crate::{ClockDrift, ClockModel, ClockType, Delta};
+    use deep_time_core::{ClockDrift, ClockModel, ClockType, Delta};
 
     #[test]
     fn proper_to_tt_with_drift_roundtrip() {
@@ -109,7 +109,7 @@ mod drift_tests {
         let p = TimePoint::from_tai_sec(1_234_567);
         let converted = p.convert_using_model(model);
 
-        assert_eq!(converted, p.with_clock_type(ClockType::Proper));
+        assert_eq!(converted, p.to_clock_type(ClockType::Proper));
     }
 
     #[test]
@@ -123,7 +123,7 @@ mod drift_tests {
 
         let expected = onboard
             .add(Delta::from_sec_f(32.184))
-            .with_clock_type(ClockType::Proper);
+            .to_clock_type(ClockType::Proper);
         assert_eq!(tt, expected);
     }
 
@@ -158,14 +158,14 @@ mod drift_tests {
         assert_eq!(tagged.clock_type(), ClockType::Proper);
         assert_eq!(
             TimePoint::create_from_model(model),
-            reference.with_clock_type(ClockType::Proper)
+            reference.to_clock_type(ClockType::Proper)
         );
     }
 }
 
 mod ltc_tests {
     use super::*;
-    use crate::ClockType;
+    use deep_time_core::ClockType;
 
     /// Round-trip accuracy test (TAI → LTC → TAI)
     ///
@@ -251,7 +251,7 @@ mod ltc_tests {
             );
 
             // At ~100 years the offset should be ~2.5 s (56 µs/day × 36525 days)
-            if p.sec > 86_400 * 365 * 50 {
+            if p.sec() > 86_400 * 365 * 50 {
                 assert!(
                     corr_s > 1.0 && corr_s < 4.0,
                     "LTC-TT correction at ~100y should be ~2–3 s (got {} s)",
@@ -264,7 +264,7 @@ mod ltc_tests {
 
 mod mars_tests {
     use super::*;
-    use crate::MARS_SOL_LENGTH_SEC;
+    use deep_time_core::constants::MARS_SOL_LENGTH_SEC;
 
     #[test]
     fn msd_exact_roundtrip_is_accurate() {
@@ -350,7 +350,7 @@ mod mars_tests {
 
     #[test]
     fn utc_leap_seconds_are_handled_in_mars_time() {
-        use crate::ClockType;
+        use deep_time_core::ClockType;
         // One second before vs after a leap second insertion
         let utc_pre = TimePoint::new(1_485_779_199, 0, ClockType::UTC);
         let utc_post = TimePoint::new(1_485_779_200, 0, ClockType::UTC);
@@ -369,7 +369,7 @@ mod mars_tests {
 
 mod tt_tests {
     use super::*;
-    use crate::ClockType;
+    use deep_time_core::ClockType;
 
     /// TT is exactly TAI + 32.184 s (and ET is an alias for TT).
     #[test]
@@ -399,7 +399,7 @@ mod tt_tests {
 
 mod gnss_tests {
     use super::*;
-    use crate::ClockType;
+    use deep_time_core::ClockType;
 
     /// All GNSS scales have fixed integer-second offsets from TAI.
     #[test]
@@ -422,7 +422,7 @@ mod gnss_tests {
 
 mod tcg_tcb_tests {
     use super::*;
-    use crate::ClockType;
+    use deep_time_core::ClockType;
 
     /// TCG ↔ TAI round-trip (pure linear rate – should be exact within f64 noise).
     #[test]
@@ -475,7 +475,7 @@ mod tcg_tcb_tests {
 
 mod utc_tests {
     use super::*;
-    use crate::ClockType;
+    use deep_time_core::ClockType;
 
     /// UTC ↔ TAI round-trip must be exact (leap-second table is bijective).
     #[test]
@@ -498,7 +498,7 @@ mod utc_tests {
 }
 
 mod jd_mjd_tests {
-    use crate::Delta;
+    use deep_time_core::Delta;
 
     use super::*;
 

@@ -42,7 +42,7 @@ pub fn parse_date(
         Ok(ClassifiedDate::Parsed(time_point)) => return Ok(time_point),
         Ok(ClassifiedDate::Cls(c)) => c,
         Err(e) => {
-            std::eprintln!("{}", e);
+            // std::eprintln!("{}", e);
             return Err(DtStdError::date(s.to_string(), e, &opts, verbose_err));
         }
     };
@@ -76,7 +76,7 @@ pub fn parse_date(
         (opts.mode, opts.order)
     };
 
-    std::eprintln!("INPUT CLS: {:?}", classification);
+    // std::eprintln!("INPUT CLS: {:?}", classification);
 
     if classification.is_pure_numeric {
         match mode {
@@ -96,7 +96,7 @@ pub fn parse_date(
                     classification.is_decimal,
                     mode,
                 ) {
-                    std::eprintln!("NUMERIC INPUT SUCCESS: {:?}", s);
+                    // std::eprintln!("NUMERIC INPUT SUCCESS: {:?}", s);
                     return Ok(dt);
                 }
             }
@@ -108,7 +108,7 @@ pub fn parse_date(
         }
     }
     if is_week_date_missing_weekday(&classification) {
-        std::eprintln!("IS WEEK DATE MISSING WEEKDAY: {:?}", s);
+        // std::eprintln!("IS WEEK DATE MISSING WEEKDAY: {:?}", s);
         if let Some(dt) = parse_week_date_no_weekday(&classification.date, lang) {
             return Ok(dt);
         }
@@ -116,7 +116,7 @@ pub fn parse_date(
     if let Some(dt) = try_unambiguous(&normalized, &classification) {
         return Ok(dt);
     }
-    std::eprintln!("done trying unambiguous");
+    // std::eprintln!("done trying unambiguous");
     if let Some(dt) = match date_order {
         DateOrder::Smart => {
             let order = smart_detect_date_order(&normalized, &classification);
@@ -128,14 +128,14 @@ pub fn parse_date(
                         &normalized,
                         generate_ambiguous_day_first_candidates(&classification),
                     );
-                    std::eprintln!("done trying day first: {:?}", result);
+                    // std::eprintln!("done trying day first: {:?}", result);
 
                     if result.is_none() {
                         result = try_compatible_formats(
                             &normalized,
                             generate_ambiguous_month_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying month first: {:?}", result);
+                        // std::eprintln!("done trying month first: {:?}", result);
                     }
 
                     if result.is_none() {
@@ -143,7 +143,7 @@ pub fn parse_date(
                             &normalized,
                             generate_ambiguous_year_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying year first: {:?}", result);
+                        // std::eprintln!("done trying year first: {:?}", result);
                     }
                 }
                 DetectedDateOrder::MonthFirst => {
@@ -151,14 +151,14 @@ pub fn parse_date(
                         &normalized,
                         generate_ambiguous_month_first_candidates(&classification),
                     );
-                    std::eprintln!("done trying month first: {:?}", result);
+                    // std::eprintln!("done trying month first: {:?}", result);
 
                     if result.is_none() {
                         result = try_compatible_formats(
                             &normalized,
                             generate_ambiguous_day_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying day first: {:?}", result);
+                        // std::eprintln!("done trying day first: {:?}", result);
                     }
 
                     if result.is_none() {
@@ -166,7 +166,7 @@ pub fn parse_date(
                             &normalized,
                             generate_ambiguous_year_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying year first: {:?}", result);
+                        // std::eprintln!("done trying year first: {:?}", result);
                     }
                 }
                 DetectedDateOrder::YearFirst => {
@@ -174,14 +174,14 @@ pub fn parse_date(
                         &normalized,
                         generate_ambiguous_year_first_candidates(&classification),
                     );
-                    std::eprintln!("done trying year first: {:?}", result);
+                    // std::eprintln!("done trying year first: {:?}", result);
 
                     if result.is_none() {
                         result = try_compatible_formats(
                             &normalized,
                             generate_ambiguous_day_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying day first: {:?}", result);
+                        // std::eprintln!("done trying day first: {:?}", result);
                     }
 
                     if result.is_none() {
@@ -189,7 +189,7 @@ pub fn parse_date(
                             &normalized,
                             generate_ambiguous_month_first_candidates(&classification),
                         );
-                        std::eprintln!("done trying month first: {:?}", result);
+                        // std::eprintln!("done trying month first: {:?}", result);
                     }
                 }
             }
@@ -211,7 +211,7 @@ pub fn parse_date(
     } {
         return Ok(dt);
     }
-    std::eprintln!("NOW trying numeric timestamp");
+    // std::eprintln!("NOW trying numeric timestamp");
     if classification.is_pure_numeric && mode != DateParseMode::UnixTimestamp {
         if let Some(dt) = parse_pure_numeric_unix_timestamp(
             &normalized,
@@ -252,19 +252,19 @@ pub fn parse_date_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
 /// with %j + %.f + literal Z (and any similar future quirks).
 #[inline(always)]
 fn parse_fmt(s: &str, fmt: &str) -> Option<TimePoint> {
-    std::eprintln!("TRYING: {}, FOR: {}", fmt, s);
+    // std::eprintln!("TRYING: {}, FOR: {}", fmt, s);
 
     let components: Result<crate::DateComponents, crate::DtError> = strptime(fmt, s, true, false);
 
-    std::eprintln!("RESULT STRPTIME: {:?}", components);
+    // std::eprintln!("RESULT STRPTIME: {:?}", components);
 
     // Convert Result<DateComponents, DtError> -> Result<TimePoint, DtError>
     let time_point_result: Result<TimePoint, DtError> =
         components.and_then(|p| p.to_time_point(ClockType::UTC));
 
     // Print the error if there is one (this is what you asked for)
-    if let Err(e) = &time_point_result {
-        std::eprintln!("ERROR in to_time_point: {:?}", e);
+    if let Err(_) = &time_point_result {
+        // std::eprintln!("ERROR in to_time_point: {:?}", e);
     }
 
     // Finally convert Result -> Option (as your function signature requires)

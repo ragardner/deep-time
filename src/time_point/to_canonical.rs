@@ -1,6 +1,6 @@
 use crate::{
     ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ATTOSEC_PER_NANOSEC, ATTOSEC_PER_SEC_I128,
-    ClockType, Delta, SEC_PER_DAYI64, TimePoint,
+    ClockType, Delta, SEC_PER_DAYI64, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 
 impl TimePoint {
@@ -17,10 +17,15 @@ impl TimePoint {
     pub const fn to_canonical_attoseconds(self) -> i128 {
         match self.clock_type {
             ClockType::UTC => {
-                let this_utc = self.to_clock_type(ClockType::UTC);
-                this_utc
-                    .duration_since_ref(&Self::UNIX_EPOCH_UTC)
-                    .total_attos()
+                // Unix timestamps represent civil seconds since the POSIX epoch
+                // (1970-01-01 00:00:00 UTC) on the Gregorian calendar. Leap seconds
+                // are not inserted into the count. The internal `sec` field of a
+                // UTC `TimePoint` already stores this civil count relative to
+                // J2000 noon. Therefore the canonical value is computed by direct
+                // offset rather than via `duration_since_ref`, which converts both
+                // instants to TAI and incorporates the accumulated leap seconds.
+                ((self.sec as i128) + (UNIX_EPOCH_TO_J2000_NOON_UTC as i128)) * ATTOSEC_PER_SEC_I128
+                    + (self.subsec as i128)
             }
             ClockType::GPST | ClockType::QZSST => self
                 .duration_since_ref(&Self::TRADITIONAL_GPS_EPOCH)

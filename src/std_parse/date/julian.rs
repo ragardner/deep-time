@@ -1,10 +1,7 @@
-use crate::{ClockType, TimePoint};
 use crate::{
-    JD_EPOCH_NANOS, JD_RANGE, MJD_EPOCH_NANOS, MJD_RANGE, NS_PER_DAY, NS_PER_HALF_DAY,
-    frac_to_nanos,
+    ClockType, JD_EPOCH_NANOS, JD_RANGE, MJD_EPOCH_NANOS, MJD_RANGE, NS_PER_DAY, NS_PER_HALF_DAY,
+    TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC, frac_to_nanos,
 };
-
-const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;
 
 /// Modified Julian Date (MJD) interpreted as UTC
 #[inline(always)]

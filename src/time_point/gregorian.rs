@@ -8,6 +8,8 @@ use crate::{
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct GregorianPoint {
+    /// UNIX attoseconds counting from 1970 epoch
+    pub(crate) unix_attosec: i128,
     /// Gregorian year (proleptic Gregorian calendar, supports negative years and year 0).
     pub(crate) yr: i64,
     /// Gregorian month in the range [1, 12].
@@ -47,6 +49,24 @@ pub struct GregorianPoint {
 }
 
 impl GregorianPoint {
+    /// UNIX attoseconds since 1970 epoch
+    #[inline(always)]
+    pub const fn unix_attosec(&self) -> i128 {
+        self.unix_attosec
+    }
+    /// Returns the Unix timestamp since 1970-01-01 00:00:00 UTC as a tuple of
+    /// `(whole_seconds, attoseconds)`.
+    ///
+    /// - `whole_seconds` can be negative (for dates before 1970).
+    /// - The fractional part (`attoseconds`) is always in the range `0..=999_999_999_999_999_999`.
+    #[inline]
+    pub const fn unix_timestamp(&self) -> (i64, u64) {
+        const ATTOSEC_PER_SEC_I128: i128 = 1_000_000_000_000_000_000;
+        let total = self.unix_attosec;
+        let secs = (total / ATTOSEC_PER_SEC_I128) as i64;
+        let frac = (total % ATTOSEC_PER_SEC_I128).unsigned_abs() as u64;
+        (secs, frac)
+    }
     /// Gregorian year (proleptic Gregorian calendar, supports negative years and year 0).
     #[inline(always)]
     pub const fn yr(&self) -> i64 {
@@ -163,6 +183,7 @@ impl GregorianPoint {
 impl TimePoint {
     pub const fn to_gregorian_point(self) -> GregorianPoint {
         let utc = self.to_clock_type(ClockType::UTC);
+        let unix_attosec = self.to_canonical_attoseconds();
         let (jd_days, frac) = utc.to_jd_tt_exact();
         let (yr, mo, day) = utc.to_gregorian_date(Some((jd_days, frac)));
         let (hr, min, sec, attos) = utc.to_hms_subsec();
@@ -172,6 +193,7 @@ impl TimePoint {
         let wk_of_yr_sun = utc.wk_sun(Some((yr, mo, day)), Some(day_of_yr));
         let wk_of_yr_mon = utc.wk_mon(Some((yr, mo, day)), Some(day_of_yr));
         GregorianPoint {
+            unix_attosec,
             yr,
             mo,
             day,

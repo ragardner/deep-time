@@ -1,5 +1,3 @@
-use std::eprintln;
-
 use crate::tzdb::offset_at;
 use crate::{
     ClockType, TimePoint,
@@ -157,8 +155,6 @@ impl DateComponents {
 
             if !name_str.is_empty() {
                 let provisional_unix = sec_utc + UNIX_EPOCH_TO_J2000_NOON_UTC;
-                eprintln!("{}, {}", name_str, name_str.len());
-
                 match offset_at(name_str, provisional_unix) {
                     Some(offset) => sec_utc -= offset as i64,
                     None => return Err(DtError::new(DtErrKind::TimePointIana)),

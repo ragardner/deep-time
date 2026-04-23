@@ -1,7 +1,7 @@
 use crate::{
     ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
     ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ClockDrift, ClockModel, ClockType,
-    TT_TAI_OFFSET_DELTA, TimePoint,
+    TT_TAI_OFFSET_DELTA, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 
 impl TimePoint {
@@ -60,7 +60,7 @@ impl TimePoint {
     /// The TAI instant corresponding to the POSIX Unix epoch
     /// (1970-01-01 00:00:00 UTC).
     pub const UNIX_EPOCH_TAI: Self = Self {
-        sec: -946_727_963,
+        sec: -UNIX_EPOCH_TO_J2000_NOON_UTC,
         subsec: 0,
         clock_type: ClockType::TAI,
     };

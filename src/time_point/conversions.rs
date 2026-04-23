@@ -8,10 +8,6 @@ use crate::{
     floor_f, sin_approx,
 };
 
-#[cfg(test)]
-#[path = "conversions_tests.rs"]
-mod tests;
-
 impl TimePoint {
     /// Converts this instant to any other [`ClockType`], representing the exact same physical moment in time.
     ///
@@ -187,8 +183,8 @@ impl TimePoint {
     }
 
     const fn utc_to_tai(utc: Self) -> Self {
-        let approx_tai_for_lookup = utc.add_ref(&Delta::SEC_37);
-        let leaps = leap_seconds_before(approx_tai_for_lookup);
+        // let approx_tai_for_lookup = utc.add_ref(&Delta::SEC_37);
+        let leaps = leap_seconds_before(utc);
         utc.add(Delta::from_sec(leaps))
             .with_clock_type(ClockType::TAI)
     }
