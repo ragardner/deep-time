@@ -1,3 +1,5 @@
+pub mod from_ccsds_bin;
+pub mod from_ccsds_str;
 pub mod to_deep_time;
 
 #[cfg(feature = "chrono")]

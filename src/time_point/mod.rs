@@ -2,9 +2,9 @@ mod arithmetic;
 mod constructors;
 mod conversions;
 mod formatting;
-
 mod ops;
 mod to_canonical;
+mod to_ccsds_bin;
 
 pub mod gregorian;
 pub mod trajectory;
