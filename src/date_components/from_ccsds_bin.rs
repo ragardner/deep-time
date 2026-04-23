@@ -1,5 +1,6 @@
 use crate::{ClockType, DateComponents, DtErrKind, DtError, TimePoint, TimeZone};
 
+// tests are in TimePoint to_ccsds_bin
 impl DateComponents {
     /// Helper: converts days since 1958-01-01 (midnight) into Gregorian Y/M/D.
     /// Pure integer arithmetic, matches the exact CCSDS Level 1 epoch
@@ -89,12 +90,15 @@ impl DateComponents {
     /// A [`DateComponents`] with `clock_type = TAI` and `tz = Utc`.
     ///
     /// # Errors
-    /// - [`DtErrKind::ExpectedUnixTimestamp`] if the input is too short or malformed.
-    /// - [`DtErrKind::UnsupportedDirective`] for non-Level-1 packets, invalid Code ID,
-    ///   further P-field extension, or out-of-range field sizes.
+    /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
+    /// - [`DtErrKind::CCSDSBinTooShort`] if the input is too short for the declared P-field / T-field sizes
+    ///   or otherwise malformed.
+    /// - [`DtErrKind::CCSDSBinInvalidCodeId`] if the Code ID is not `001`.
+    /// - [`DtErrKind::CCSDSBinInvalidPFieldExtension`] if the further-extension flag is set
+    ///   (3+ byte P-field, unsupported).
     pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
         if input.is_empty() {
-            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
+            return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }
 
         let p1 = input[0];
@@ -104,7 +108,7 @@ impl DateComponents {
         let extension = (p1 & 0b1000_0000) != 0;
         let code_id = (p1 >> 4) & 0b0111;
         if code_id != 0b001 {
-            return Err(DtError::new(DtErrKind::UnsupportedDirective));
+            return Err(DtError::new(DtErrKind::CCSDSBinInvalidCodeId));
         }
 
         let base_coarse = (((p1 >> 2) & 0b0011) as usize) + 1;
@@ -113,14 +117,14 @@ impl DateComponents {
         // ── Octet 2 (if present) ─────────────────────────────
         let (n_coarse, n_frac) = if extension {
             if input.len() < 2 {
-                return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
+                return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
             }
             let p2 = input[1];
             idx += 1;
 
             // Further extension (3+ byte P-field) is not supported
             if (p2 & 0b1000_0000) != 0 {
-                return Err(DtError::new(DtErrKind::UnsupportedDirective));
+                return Err(DtError::new(DtErrKind::CCSDSBinInvalidPFieldExtension));
             }
 
             let add_coarse = ((p2 >> 5) & 0b0000_0011) as usize; // spec Bits 1-2 → u8 bits 6-5
@@ -132,7 +136,7 @@ impl DateComponents {
         };
 
         if n_coarse == 0 || input.len() < idx + n_coarse + n_frac {
-            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
+            return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
         }
 
         // ── Read T-field (big-endian) ─────────────────────────────────────
@@ -207,10 +211,14 @@ impl DateComponents {
     /// A [`DateComponents`] with `timescale = Utc` and `tz = Utc`.
     ///
     /// # Errors
-    /// Same as [`parse_ccsds_c`], plus rejection of Level-2 packets.
+    /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
+    /// - [`DtErrKind::CCSDSBinTooShort`] if the input is too short for the declared field sizes.
+    /// - [`DtErrKind::CCSDSBinInvalidCodeId`] if the Code ID is not `100`.
+    /// - [`DtErrKind::CCSDSBinInvalidEpoch`] if the Epoch bit is set (non-Level-1 / non-1958 epoch).
+    /// - [`DtErrKind::CCSDSBinInvalidSubMillisecondCode`] if bits 6-7 encode an unsupported value (0b11).
     pub fn parse_ccsds_d(input: &[u8]) -> Result<DateComponents, DtError> {
         if input.is_empty() {
-            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
+            return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }
 
         let p1 = input[0];
@@ -220,7 +228,7 @@ impl DateComponents {
         let extension = (p1 & 0b1000_0000) != 0;
         if extension {
             if input.len() < 2 {
-                return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
+                return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
             }
             idx += 1;
         }
@@ -228,12 +236,12 @@ impl DateComponents {
         // Code ID must be 100
         let code_id = (p1 >> 4) & 0b0111;
         if code_id != 0b100 {
-            return Err(DtError::new(DtErrKind::UnsupportedDirective));
+            return Err(DtError::new(DtErrKind::CCSDSBinInvalidCodeId));
         }
 
         // Epoch bit (bit 4) must be 0 for Level 1
         if (p1 & 0b0000_1000) != 0 {
-            return Err(DtError::new(DtErrKind::UnsupportedDirective));
+            return Err(DtError::new(DtErrKind::CCSDSBinInvalidEpoch));
         }
 
         // Day segment length (bit 5)
@@ -245,11 +253,11 @@ impl DateComponents {
             0b00 => 0,
             0b01 => 2,
             0b10 => 4,
-            _ => return Err(DtError::new(DtErrKind::UnsupportedDirective)),
+            _ => return Err(DtError::new(DtErrKind::CCSDSBinInvalidSubMillisecondCode)),
         };
 
         if input.len() < idx + n_day + 4 + n_subsec {
-            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
+            return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
         }
 
         // ── Read T-field ─────────────────────────────────────
@@ -316,15 +324,19 @@ impl DateComponents {
     /// based on the Code ID in the first P-field byte.
     ///
     /// Convenience wrapper around [`parse_ccsds_c`] and [`parse_ccsds_d`].
+    ///
+    /// # Errors
+    /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
+    /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any Code ID other than `001` (CUC) or `100` (CDS).
     pub fn parse_ccsds_bin(input: &[u8]) -> Result<DateComponents, DtError> {
         if input.is_empty() {
-            return Err(DtError::new(DtErrKind::ExpectedUnixTimestamp));
+            return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }
         let code_id = (input[0] >> 4) & 0b0111;
         match code_id {
             0b001 => Self::parse_ccsds_c(input),
             0b100 => Self::parse_ccsds_d(input),
-            _ => Err(DtError::new(DtErrKind::UnsupportedDirective)),
+            _ => Err(DtError::new(DtErrKind::CCSDSBinInvalidCodeId)),
         }
     }
 }

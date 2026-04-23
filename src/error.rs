@@ -85,16 +85,33 @@ pub enum DtErrKind {
     TimePointInvalidDate,
     // output, formatter
     FormatterErr,
-    //
-    StrCCSDSNoYear,
-    StrCCSDSInvalidDate,
-    StrCCSDSFromUtf8Err,
-    StrCCSDSInvalidMonth,
-    StrCCSDSInvalidDay,
-    StrCCSDSInvalidHour,
-    StrCCSDSInvalidMinute,
-    StrCCSDSInvalidSecond,
-    StrCCSDSInvalidRequiredTimeSeparator,
+    // ccsds
+    CCSDSStrNoYear,
+    CCSDSStrInvalidDate,
+    CCSDSStrFromUtf8Err,
+    CCSDSStrInvalidMonth,
+    CCSDSStrInvalidDay,
+    CCSDSStrInvalidHour,
+    CCSDSStrInvalidMinute,
+    CCSDSStrInvalidSecond,
+    CCSDSStrInvalidRequiredTimeSeparator,
+    /// Input buffer was empty when a CCSDS CUC/CDS time code was expected.
+    CCSDSBinEmpty,
+    /// Input buffer was shorter than required by the P-field / T-field length fields
+    /// (covers both missing extension octet and insufficient T-field bytes).
+    CCSDSBinTooShort,
+    /// The 3-bit Code ID in the P-field was neither `001` (CUC) nor `100` (CDS),
+    /// or did not match the expected value for the specific parser.
+    CCSDSBinInvalidCodeId,
+    /// Bit 0 of the second P-field octet was set, indicating a 3+-byte P-field
+    /// (further extension). Only 1- or 2-byte P-fields are supported for Level 1.
+    CCSDSBinInvalidPFieldExtension,
+    /// The Epoch bit (bit 4 of first P-field octet) was set in a CDS packet.
+    /// Only Epoch=0 (1958-01-01 UTC) is supported for Level 1.
+    CCSDSBinInvalidEpoch,
+    /// Bits 6-7 of the first P-field octet in a CDS packet encoded 0b11,
+    /// which is reserved / unsupported.
+    CCSDSBinInvalidSubMillisecondCode,
 }
 
 #[derive(Debug)]

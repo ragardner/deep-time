@@ -15,7 +15,7 @@ impl DateComponents {
 
         // Year (exactly 4 digits)
         if pos + 4 > len_ || !bytes[pos..pos + 4].iter().all(|&b| b.is_ascii_digit()) {
-            return Err(DtError::new(DtErrKind::StrCCSDSNoYear));
+            return Err(DtError::new(DtErrKind::CCSDSStrNoYear));
         }
         fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%Y");
         fmt_len += 2;
@@ -43,7 +43,7 @@ impl DateComponents {
 
             // %m
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::StrCCSDSInvalidMonth));
+                return Err(DtError::new(DtErrKind::CCSDSStrInvalidMonth));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%m");
             fmt_len += 2;
@@ -58,7 +58,7 @@ impl DateComponents {
 
             // %d
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::StrCCSDSInvalidDay));
+                return Err(DtError::new(DtErrKind::CCSDSStrInvalidDay));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%d");
             fmt_len += 2;
@@ -76,7 +76,7 @@ impl DateComponents {
                 pos += 1;
             } else {
                 return Err(DtError::new(
-                    DtErrKind::StrCCSDSInvalidRequiredTimeSeparator,
+                    DtErrKind::CCSDSStrInvalidRequiredTimeSeparator,
                 ));
             }
         }
@@ -86,7 +86,7 @@ impl DateComponents {
         // %H
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::StrCCSDSInvalidHour));
+                return Err(DtError::new(DtErrKind::CCSDSStrInvalidHour));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%H");
             fmt_len += 2;
@@ -103,7 +103,7 @@ impl DateComponents {
         // %M
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::StrCCSDSInvalidMinute));
+                return Err(DtError::new(DtErrKind::CCSDSStrInvalidMinute));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%M");
             fmt_len += 2;
@@ -120,7 +120,7 @@ impl DateComponents {
         // %S
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::StrCCSDSInvalidSecond));
+                return Err(DtError::new(DtErrKind::CCSDSStrInvalidSecond));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%S");
             fmt_len += 2;
@@ -146,7 +146,7 @@ impl DateComponents {
 
         let format = match core::str::from_utf8(&fmt_buf[0..fmt_len]) {
             Ok(f) => f,
-            Err(_) => return Err(DtError::new(DtErrKind::StrCCSDSFromUtf8Err)),
+            Err(_) => return Err(DtError::new(DtErrKind::CCSDSStrFromUtf8Err)),
         };
 
         strptime(format, cleaned, false, false)
