@@ -2,7 +2,7 @@ use crate::{Delta, Real};
 
 /// Exactly 86,400 seconds in one standard Earth day  
 /// (24 hours × 60 minutes × 60 seconds).
-pub(crate) const SEC_PER_DAY: Real = 86_400.0;
+pub const SEC_PER_DAY: Real = 86_400.0;
 pub(crate) const SEC_PER_DAYI64: i64 = 86_400;
 pub(crate) const SEC_PER_DAYI128: i128 = 86_400;
 pub(crate) const SEC_PER_HALF_DAYI64: i64 = 43_200;
@@ -51,7 +51,7 @@ pub const TT_TAI_OFFSET_DELTA: Delta = Delta::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFS
 pub(crate) const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
 
 /// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
-pub(crate) const J2000_JD_TT: i64 = 2_451_545;
+pub const J2000_JD_TT: i64 = 2_451_545;
 /// Seconds from the Unix epoch (1970-01-01 00:00:00 UTC) to J2000.0 noon
 /// (2000-01-01 12:00:00 UTC).
 pub(crate) const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;
@@ -92,7 +92,7 @@ pub(crate) const MARS_MSD_REF_TOD_SEC: i64 = 248;
 pub(crate) const MARS_MSD_REF_TOD_SUBSEC: u64 = 650_560_000_000_000_000;
 
 /// Martian mean sol length in attoseconds (88775.244 s × 10¹⁸).
-pub(crate) const MARS_SOL_ATTOS: i128 = 88_775_244_000_000_000_000_000;
+pub const MARS_SOL_ATTOS: i128 = 88_775_244_000_000_000_000_000;
 
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
 pub(crate) const MARS_REF_SEC: i64 = -3_976_386_952;
