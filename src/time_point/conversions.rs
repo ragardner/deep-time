@@ -183,7 +183,6 @@ impl TimePoint {
     }
 
     const fn utc_to_tai(utc: Self) -> Self {
-        // let approx_tai_for_lookup = utc.add_ref(&Delta::SEC_37);
         let leaps = leap_seconds_before(utc);
         utc.add(Delta::from_sec(leaps))
             .with_clock_type(ClockType::TAI)

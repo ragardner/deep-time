@@ -56,7 +56,6 @@ pub(crate) use std_parse::{
 // _________________________________________
 // CRATE USE
 // _________________________________________
-pub(crate) use ascii_str::*;
 pub(crate) use constants::*;
 pub(crate) use error::{DtErrKind, DtError};
 pub(crate) use error_std::DtStdError;
