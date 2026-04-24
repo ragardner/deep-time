@@ -413,48 +413,21 @@ impl GregorianTime {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
         }
-
         if bytes[0] != Self::WIRE_VERSION {
             return None;
         }
 
         let mut offset = 1usize;
 
-        // unix_attosec
-        let unix_attosec = i128::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-            bytes[offset + 8],
-            bytes[offset + 9],
-            bytes[offset + 10],
-            bytes[offset + 11],
-            bytes[offset + 12],
-            bytes[offset + 13],
-            bytes[offset + 14],
-            bytes[offset + 15],
-        ]);
+        // unix_attosec (16 bytes)
+        let unix_attosec = i128::from_le_bytes(bytes[offset..offset + 16].try_into().ok()?);
         offset += 16;
 
-        // yr
-        let yr = i64::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-        ]);
+        // yr (8 bytes)
+        let yr = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         offset += 8;
 
-        // mo, day, hr, min, sec
+        // mo, day, hr, min, sec (5 bytes)
         let mo = bytes[offset];
         offset += 1;
         let day = bytes[offset];
@@ -466,81 +439,51 @@ impl GregorianTime {
         let sec = bytes[offset];
         offset += 1;
 
-        // attos
-        let attos = u64::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-        ]);
+        // attos (8 bytes)
+        let attos = u64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         offset += 8;
 
-        // iso_yr
-        let iso_yr = i64::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-        ]);
+        // iso_yr (8 bytes)
+        let iso_yr = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         offset += 8;
 
-        // iso_wk + iso_wkday
+        // iso_wk + iso_wkday (2 bytes)
         let iso_wk = bytes[offset];
         offset += 1;
         let iso_wkday = Weekday::from_wire_byte(bytes[offset])?;
         offset += 1;
 
-        // day_of_yr
-        let day_of_yr = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
+        // day_of_yr (2 bytes)
+        let day_of_yr = u16::from_le_bytes(bytes[offset..offset + 2].try_into().ok()?);
         offset += 2;
 
-        // wkday
+        // wkday (1 byte)
         let wkday = bytes[offset];
         offset += 1;
 
-        // jd_tt_exact
-        let jd0 = i64::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-        ]);
+        // jd_tt_exact (8 + 17 bytes)
+        let jd0 = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         offset += 8;
         let jd1 = TimeSpan::from_wire_bytes(&bytes[offset..offset + TimeSpan::WIRE_SIZE])?;
         offset += TimeSpan::WIRE_SIZE;
 
-        // wk_of_yr_sun + wk_of_yr_mon
+        // wk_of_yr_sun + wk_of_yr_mon (2 bytes)
         let wk_of_yr_sun = bytes[offset];
         offset += 1;
         let wk_of_yr_mon = bytes[offset];
         offset += 1;
 
-        // offset_sec
+        // offset_sec (Option<i32>) — 5 bytes
         let offset_sec = if bytes[offset] == 1 {
-            Some(i32::from_le_bytes([
-                bytes[offset + 1],
-                bytes[offset + 2],
-                bytes[offset + 3],
-                bytes[offset + 4],
-            ]))
+            Some(i32::from_le_bytes(
+                bytes[offset + 1..offset + 5].try_into().ok()?,
+            ))
         } else {
             None
         };
         offset += 5;
 
-        // tz
+        // tz (Option<AsciiStr<50>>) — 51 bytes
         let tz = if bytes[offset] == 1 {
             AsciiStr::<50>::from_wire_bytes(
                 &bytes[offset + 1..offset + 1 + AsciiStr::<50>::WIRE_SIZE],
@@ -550,7 +493,7 @@ impl GregorianTime {
         };
         offset += 1 + AsciiStr::<50>::WIRE_SIZE;
 
-        // tz_abbrev
+        // tz_abbrev (Option<AsciiStr<16>>)
         let tz_abbrev = if bytes[offset] == 1 {
             AsciiStr::<16>::from_wire_bytes(
                 &bytes[offset + 1..offset + 1 + AsciiStr::<16>::WIRE_SIZE],
@@ -560,7 +503,7 @@ impl GregorianTime {
         };
         offset += 1 + AsciiStr::<16>::WIRE_SIZE;
 
-        // clock_type
+        // clock_type (final byte)
         let clock_type = ClockType::from_u8(bytes[offset])?;
 
         Some(Self {

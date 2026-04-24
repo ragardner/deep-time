@@ -37,6 +37,7 @@ std = [
     "alloc",
     "dep:aho-corasick",
     "jiff?/std",
+    "chrono?/std",
     "hifitime?/std",
 ]
 

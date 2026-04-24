@@ -6,7 +6,7 @@ impl TimePoint {
 
     /// Formats this [`TimePoint`] as a **CCSDS C (CUC)** binary time code.
     ///
-    /// Fully configurable for round-tripping with [`parse_ccsds_c`].
+    /// Fully configurable for round-tripping with [`from_ccsds_c`].
     /// Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support for the
     /// extended P-field (second octet) when `n_coarse > 4` or `n_frac > 3`.
     ///
@@ -14,7 +14,7 @@ impl TimePoint {
     /// - `n_coarse`: 1–7 (number of coarse-time octets)
     /// - `n_frac`:   0–10 (number of fractional octets)
     /// - `extension`: advisory flag (ignored when larger sizes force the second octet)
-    pub fn to_ccsds_c_bin(
+    pub fn to_ccsds_c(
         &self,
         n_coarse: u8,
         n_frac: u8,
@@ -91,9 +91,9 @@ impl TimePoint {
 
     /// Formats this [`TimePoint`] as a **CCSDS D (CDS)** binary time code.
     ///
-    /// Fully configurable for round-tripping with [`parse_ccsds_d`].
+    /// Fully configurable for round-tripping with [`from_ccsds_d`].
     /// Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since 1958-01-01 UTC.
-    pub fn to_ccsds_d_bin(
+    pub fn to_ccsds_d(
         &self,
         n_day: u8,
         sub_ms_code: u8,
@@ -187,7 +187,7 @@ mod tests {
         // T-field = coarse 0x0001 (1 second) + frac 0x80 (0.5 seconds)
         let c_bytes = &[0x15u8, 0x00, 0x01, 0x80];
 
-        let parsed = TimeParts::parse_ccsds_c(c_bytes).unwrap();
+        let parsed = TimeParts::from_ccsds_c(c_bytes).unwrap();
 
         assert_eq!(parsed.year, Some(1958));
         assert_eq!(parsed.month, Some(1));
@@ -205,7 +205,7 @@ mod tests {
         // n_coarse=1, n_frac=0, T-field = 0x64 → 100 seconds
         let c_bytes = &[0x90u8, 0x00, 0x64];
 
-        let parsed = TimeParts::parse_ccsds_c(c_bytes).unwrap();
+        let parsed = TimeParts::from_ccsds_c(c_bytes).unwrap();
 
         assert_eq!(parsed.year, Some(1958));
         assert_eq!(parsed.month, Some(1));
@@ -222,7 +222,7 @@ mod tests {
         // Millis-of-day = 0x00000001 → 1 ms → 0 seconds + 1 ms
         let d_bytes = &[0x40u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01];
 
-        let parsed = TimeParts::parse_ccsds_d(d_bytes).unwrap();
+        let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
 
         assert_eq!(parsed.year, Some(1958));
         assert_eq!(parsed.month, Some(1));
@@ -242,7 +242,7 @@ mod tests {
         // Sub-ms = 0x8000 → exactly 0.5 ms
         let d_bytes = &[0x41u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00];
 
-        let parsed = TimeParts::parse_ccsds_d(d_bytes).unwrap();
+        let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
 
         assert_eq!(parsed.second, Some(0));
         assert_eq!(parsed.attos, Some(1_500_000_000_000_000)); // 1.5 ms
@@ -264,8 +264,8 @@ mod tests {
 
         let t = TimePoint::new(tai_sec, 123_456_789_000_000_000, ClockType::TAI);
 
-        let (buf, len) = t.to_ccsds_c_bin(4, 3, false).unwrap();
-        let parsed = TimeParts::parse_ccsds_c(&buf[0..len]).unwrap();
+        let (buf, len) = t.to_ccsds_c(4, 3, false).unwrap();
+        let parsed = TimeParts::from_ccsds_c(&buf[0..len]).unwrap();
 
         assert_eq!(parsed.year, Some(2025));
         assert_eq!(parsed.month, Some(4));
@@ -298,8 +298,8 @@ mod tests {
 
         let t = TimePoint::new(utc_sec, 400_000_000_000, ClockType::UTC);
 
-        let (buf, len) = t.to_ccsds_d_bin(2, 1, false).unwrap();
-        let parsed = TimeParts::parse_ccsds_d(&buf[0..len]).unwrap();
+        let (buf, len) = t.to_ccsds_d(2, 1, false).unwrap();
+        let parsed = TimeParts::from_ccsds_d(&buf[0..len]).unwrap();
 
         assert_eq!(parsed.year, Some(2025));
         assert_eq!(parsed.month, Some(4));

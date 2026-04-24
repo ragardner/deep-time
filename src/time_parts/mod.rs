@@ -49,15 +49,15 @@ impl TimeParts {
         }
         if parser.inp.is_empty() {
             // All input consumed → finalize
-            tm.finish(allow_partial)
+            tm.finish(allow_partial)?;
+            Ok(tm)
         } else {
             // Trailing characters remain
             Err(DtError::new(DtErrKind::TrailingCharacters))
         }
     }
 
-    #[inline]
-    pub fn finish(mut self, allow_partial: bool) -> core::result::Result<Self, DtError> {
+    pub fn finish(&mut self, allow_partial: bool) -> core::result::Result<&mut Self, DtError> {
         if self.unix_timestamp_seconds.is_some() {
             if self.hour.is_none() {
                 self.hour = Some(0);
@@ -127,8 +127,10 @@ impl TimeParts {
     ///
     /// Uses `AsciiStr::try_from_str` internally. If the name is non-ASCII
     /// or longer than 50 bytes it is silently dropped (no panics).
-    pub fn set_iana_name(&mut self, name: Option<&str>) {
+    #[inline]
+    pub fn set_iana_name(&mut self, name: Option<&str>) -> &mut Self {
         self.iana_name = name.and_then(|s| AsciiStr::try_from_str(s).ok());
+        self
     }
 
     /// Current wire format version.
@@ -242,7 +244,6 @@ impl TimeParts {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
         }
-
         if bytes[0] != Self::WIRE_VERSION {
             return None;
         }
@@ -251,16 +252,7 @@ impl TimeParts {
         let mut offset = 1usize;
 
         // year (8 bytes)
-        let year = i64::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-        ]);
+        let year = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         if year != i64::MIN {
             dc.year = Some(year);
         }
@@ -302,30 +294,19 @@ impl TimeParts {
         offset += 1;
 
         // attos (8 bytes)
-        let attos = u64::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-        ]);
+        let attos = u64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         if attos != u64::MAX {
             dc.attos = Some(attos);
         }
         offset += 8;
 
-        // tz (5 bytes)
+        // tz (5 bytes) — already nice
         if let Some(tz) = TimeZone::from_wire_bytes(&bytes[offset..offset + 5]) {
             dc.tz = Some(tz);
         }
         offset += 5;
 
-        // iana_name (50 bytes)
-        // Always present in wire (50 bytes); all-zero means absent (None).
-        // Valid IANA names are non-empty ASCII.
+        // iana_name (50 bytes) — already nice
         let iana_bytes = &bytes[offset..offset + 50];
         if let Some(name) = AsciiStr::<50>::from_wire_bytes(iana_bytes) {
             if !name.is_empty() {
@@ -354,23 +335,14 @@ impl TimeParts {
         offset += 1;
 
         // day_of_year (2 bytes)
-        let doy = u16::from_le_bytes([bytes[offset], bytes[offset + 1]]);
+        let doy = u16::from_le_bytes(bytes[offset..offset + 2].try_into().ok()?);
         if doy != u16::MAX {
             dc.day_of_year = Some(doy);
         }
         offset += 2;
 
         // iso_week_year (8 bytes)
-        let iso_y = i64::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-        ]);
+        let iso_y = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         if iso_y != i64::MIN {
             dc.iso_week_year = Some(iso_y);
         }
@@ -407,16 +379,7 @@ impl TimeParts {
         offset += 1;
 
         // unix_timestamp_seconds (8 bytes)
-        let unix = i64::from_le_bytes([
-            bytes[offset],
-            bytes[offset + 1],
-            bytes[offset + 2],
-            bytes[offset + 3],
-            bytes[offset + 4],
-            bytes[offset + 5],
-            bytes[offset + 6],
-            bytes[offset + 7],
-        ]);
+        let unix = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         if unix != i64::MIN {
             dc.unix_timestamp_seconds = Some(unix);
         }

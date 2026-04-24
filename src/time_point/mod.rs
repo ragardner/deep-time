@@ -2,6 +2,7 @@ mod arithmetic;
 mod constructors;
 mod conversions;
 mod formatting;
+mod from_ccsds;
 mod ops;
 mod to_canonical;
 mod to_ccsds_bin;

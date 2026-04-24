@@ -1,4 +1,4 @@
-use crate::{ClockType, TimeParts, DtErrKind, DtError, TimePoint, TimeZone};
+use crate::{ClockType, DtErrKind, DtError, TimeParts, TimePoint, TimeZone};
 
 // tests are in TimePoint to_ccsds_bin
 impl TimeParts {
@@ -96,7 +96,7 @@ impl TimeParts {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] if the Code ID is not `001`.
     /// - [`DtErrKind::CCSDSBinInvalidPFieldExtension`] if the further-extension flag is set
     ///   (3+ byte P-field, unsupported).
-    pub fn parse_ccsds_c(input: &[u8]) -> Result<TimeParts, DtError> {
+    pub fn from_ccsds_c(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
             return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }
@@ -171,7 +171,7 @@ impl TimeParts {
         let second = (sec_of_day % 60) as u8;
 
         // ── Build TimeParts ──────────────────────────────────────────────
-        let pd = TimeParts {
+        let mut pd = TimeParts {
             year: Some(year),
             month: Some(month),
             day: Some(day),
@@ -183,8 +183,8 @@ impl TimeParts {
             tz: Some(TimeZone::Utc),
             ..TimeParts::default()
         };
-
-        pd.finish(false)
+        pd.finish(false)?;
+        Ok(pd)
     }
 
     /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
@@ -216,7 +216,7 @@ impl TimeParts {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] if the Code ID is not `100`.
     /// - [`DtErrKind::CCSDSBinInvalidEpoch`] if the Epoch bit is set (non-Level-1 / non-1958 epoch).
     /// - [`DtErrKind::CCSDSBinInvalidSubMillisecondCode`] if bits 6-7 encode an unsupported value (0b11).
-    pub fn parse_ccsds_d(input: &[u8]) -> Result<TimeParts, DtError> {
+    pub fn from_ccsds_d(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
             return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }
@@ -304,7 +304,7 @@ impl TimeParts {
         let second = (sec_of_day % 60) as u8;
 
         // ── Build TimeParts ──────────────────────────────────────────────
-        let pd = TimeParts {
+        let mut pd = TimeParts {
             year: Some(year),
             month: Some(month),
             day: Some(day),
@@ -316,26 +316,26 @@ impl TimeParts {
             tz: Some(TimeZone::Utc),
             ..TimeParts::default()
         };
-
-        pd.finish(false)
+        pd.finish(false)?;
+        Ok(pd)
     }
 
     /// Auto-detects and parses either a CCSDS C (CUC) or D (CDS) binary time code
     /// based on the Code ID in the first P-field byte.
     ///
-    /// Convenience wrapper around [`parse_ccsds_c`] and [`parse_ccsds_d`].
+    /// Convenience wrapper around [`from_ccsds_c`] and [`from_ccsds_d`].
     ///
     /// # Errors
     /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any Code ID other than `001` (CUC) or `100` (CDS).
-    pub fn parse_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtError> {
+    pub fn from_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
             return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }
         let code_id = (input[0] >> 4) & 0b0111;
         match code_id {
-            0b001 => Self::parse_ccsds_c(input),
-            0b100 => Self::parse_ccsds_d(input),
+            0b001 => Self::from_ccsds_c(input),
+            0b100 => Self::from_ccsds_d(input),
             _ => Err(DtError::new(DtErrKind::CCSDSBinInvalidCodeId)),
         }
     }
