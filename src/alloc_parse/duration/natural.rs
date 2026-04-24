@@ -1,8 +1,8 @@
 use crate::{
-    DateToken, LANG_MAP, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE, NS_PER_MONTH,
-    NS_PER_SECOND, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, str_err, to_ascii_digit,
+    DateToken, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE, NS_PER_MONTH, NS_PER_SECOND,
+    NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, lang_map, str_err, to_ascii_digit,
 };
-use std::{
+use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
@@ -190,7 +190,7 @@ pub(crate) fn natural_duration_to_span(
         duration_ac,
         date_ac,
         ..
-    }) = LANG_MAP.get(&lang)
+    }) = lang_map().get(&lang)
     else {
         return Err(str_err!("Could not retrieve lang map for lang: {}", lang));
     };

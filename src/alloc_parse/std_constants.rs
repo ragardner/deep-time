@@ -1,11 +1,15 @@
 use crate::ParseCfg;
-use std::sync::LazyLock;
+use alloc::boxed::Box;
+use core::ops::RangeInclusive;
+use once_cell::race::OnceBox;
+
+static DEFAULT_DATE_PARSE_OPTIONS: OnceBox<ParseCfg> = OnceBox::new();
+pub(crate) fn default_date_parse_options() -> &'static ParseCfg {
+    DEFAULT_DATE_PARSE_OPTIONS.get_or_init(|| Box::new(ParseCfg::default()))
+}
 
 #[cfg(feature = "locale")]
-use {std::sync::OnceLock, sys_locale};
-
-#[cfg(feature = "locale")]
-static LOCALE_PREFERS_DAY_FIRST: OnceLock<bool> = OnceLock::new();
+use {once_cell::race::OnceBool, sys_locale};
 
 #[cfg(feature = "locale")]
 const MONTH_FIRST_LOCALES: &[&str] = &[
@@ -23,8 +27,11 @@ const MONTH_FIRST_LOCALES: &[&str] = &[
 ];
 
 #[cfg(feature = "locale")]
+static LOCALE_PREFERS_DAY_FIRST: OnceBool = OnceBool::new();
+
+#[cfg(feature = "locale")]
 pub(crate) fn locale_prefers_day_first() -> bool {
-    *LOCALE_PREFERS_DAY_FIRST.get_or_init(|| {
+    LOCALE_PREFERS_DAY_FIRST.get_or_init(|| {
         sys_locale::get_locale()
             .map(|locale| {
                 let lower = locale.to_ascii_lowercase();
@@ -40,8 +47,6 @@ pub(crate) fn locale_prefers_day_first() -> bool {
             .unwrap_or(true) // fallback: DayFirst
     })
 }
-
-pub(crate) static DEFAULT_DATE_PARSE_OPTIONS: LazyLock<ParseCfg> = LazyLock::new(ParseCfg::default);
 
 pub(crate) const DIGIT_CHARS: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -80,19 +85,19 @@ pub(crate) const MAX_YEAR: i32 = 9999;
 /// - 7-digit (YYYYJJJ): full 1850–2300 supported via %Y.
 /// - 5-digit (YYJJJ): limited to Chrono's %y window (~1969–2068).
 ///   Pre-1969 legacy ordinals must use 4-digit year or explicit format.
-pub(crate) const LEGACY_ORDINAL_YEAR_RANGE: std::ops::RangeInclusive<i32> = 1850..=2300;
+pub(crate) const LEGACY_ORDINAL_YEAR_RANGE: RangeInclusive<i32> = 1850..=2300;
 /// Year range considered plausible for YYYYMM pure-numeric input.
 /// Used in Auto mode to distinguish modern "202403" (year-month) from the far more common
 /// legacy YYMMDD case "240301" (2024-03-01). 1900–2150 covers all realistic use while
 /// excluding fake future years like 2403.
-pub(crate) const PLAUSIBLE_YYYYMM_YEAR_RANGE: std::ops::RangeInclusive<i32> = 1900..=2150;
+pub(crate) const PLAUSIBLE_YYYYMM_YEAR_RANGE: RangeInclusive<i32> = 1900..=2150;
 
 /// Modified Julian Date range for 5-digit pure-numeric input.
 /// Covers ~1968–2130.
-pub(crate) const MJD_RANGE: std::ops::RangeInclusive<i64> = 40_000..=85_000;
+pub(crate) const MJD_RANGE: RangeInclusive<i64> = 40_000..=85_000;
 /// Julian Day (JD) range for 7-digit pure-numeric input.
 /// Covers ~5000 BC to ~10,700 AD
-pub(crate) const JD_RANGE: std::ops::RangeInclusive<i64> = 1_400_000..=4_000_000;
+pub(crate) const JD_RANGE: RangeInclusive<i64> = 1_400_000..=4_000_000;
 
 /// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC
 pub(crate) const MJD_EPOCH_NANOS: i128 = 40_587_i128 * NS_PER_DAY;

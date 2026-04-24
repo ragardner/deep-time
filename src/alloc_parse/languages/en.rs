@@ -1,17 +1,22 @@
 use crate::{DateToken, LangData, TZ_ENTRIES};
 use aho_corasick::{AhoCorasick, MatchKind};
-use std::boxed::Box;
-use std::collections::HashMap;
-use std::sync::LazyLock;
-use std::vec::Vec;
+use alloc::boxed::Box;
+use alloc::vec::Vec;
+use hashbrown::HashMap;
+use once_cell::race::OnceBox;
 
-pub(crate) static TZ_LOWERED_KEYS: LazyLock<&'static [&'static str]> = LazyLock::new(|| {
-    let keys: Vec<&'static str> = TZ_ENTRIES
-        .iter()
-        .map(|&(name, _, _)| Box::leak(name.to_lowercase().into_boxed_str()) as &'static str)
-        .collect();
-    Box::leak(keys.into_boxed_slice())
-});
+pub(crate) static TZ_LOWERED_KEYS: OnceBox<&'static [&'static str]> = OnceBox::new();
+pub(crate) fn tz_lowered_keys() -> &'static [&'static str] {
+    *TZ_LOWERED_KEYS.get_or_init(|| {
+        let keys: Vec<&'static str> = TZ_ENTRIES
+            .iter()
+            .map(|&(name, _, _)| Box::leak(name.to_lowercase().into_boxed_str()) as &'static str)
+            .collect();
+
+        let leaked: &'static [&'static str] = Box::leak(keys.into_boxed_slice());
+        Box::new(leaked)
+    })
+}
 
 pub(crate) const EN_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("and", "and", DateToken::Plus),
@@ -202,33 +207,48 @@ pub(crate) const EN_DAYS: &[(&'static str, &'static str, DateToken)] = &[
 pub(crate) const EN_SPECIAL: &[(&'static str, &'static str, DateToken)] =
     &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
-static EN_DATE_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
-    let mut terms: Vec<&'static str> = Vec::with_capacity(
-        EN_RELATIVES.len() + EN_MONTHS.len() + EN_DAYS.len() + EN_SPECIAL.len() + TZ_ENTRIES.len(),
-    );
-    terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
-    terms.extend(EN_MONTHS.iter().map(|&(k, _, _)| k));
-    terms.extend(EN_DAYS.iter().map(|&(k, _, _)| k));
-    terms.extend(EN_SPECIAL.iter().map(|&(k, _, _)| k));
-    terms.extend(TZ_LOWERED_KEYS.iter());
-    AhoCorasick::builder()
-        .match_kind(MatchKind::LeftmostLongest)
-        .build(&terms)
-        .expect("invalid Aho-Corasick patterns for EN date terms")
-});
+static EN_DATE_AC: OnceBox<AhoCorasick> = OnceBox::new();
+pub(crate) fn en_date_ac() -> &'static AhoCorasick {
+    EN_DATE_AC.get_or_init(|| {
+        let mut terms: Vec<&'static str> = Vec::with_capacity(
+            EN_RELATIVES.len()
+                + EN_MONTHS.len()
+                + EN_DAYS.len()
+                + EN_SPECIAL.len()
+                + tz_lowered_keys().len(),
+        );
+        terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
+        terms.extend(EN_MONTHS.iter().map(|&(k, _, _)| k));
+        terms.extend(EN_DAYS.iter().map(|&(k, _, _)| k));
+        terms.extend(EN_SPECIAL.iter().map(|&(k, _, _)| k));
+        terms.extend(tz_lowered_keys());
+        let ac = AhoCorasick::builder()
+            .match_kind(MatchKind::LeftmostLongest)
+            .build(&terms)
+            .expect("invalid Aho-Corasick patterns for EN date terms");
+        Box::new(ac)
+    })
+}
 
-static EN_DURATION_AC: LazyLock<AhoCorasick> = LazyLock::new(|| {
-    let mut terms: Vec<&'static str> = Vec::with_capacity(EN_RELATIVES.len() + EN_DURATIONS.len());
-    terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
-    terms.extend(EN_DURATIONS.iter().map(|&(k, _, _)| k));
-    AhoCorasick::builder()
-        .match_kind(MatchKind::LeftmostLongest)
-        .build(&terms)
-        .expect("invalid Aho-Corasick patterns for EN duration terms")
-});
+static EN_DURATION_AC: OnceBox<AhoCorasick> = OnceBox::new();
+pub(crate) fn en_duration_ac() -> &'static AhoCorasick {
+    EN_DURATION_AC.get_or_init(|| {
+        let mut terms: Vec<&'static str> =
+            Vec::with_capacity(EN_RELATIVES.len() + EN_DURATIONS.len());
+        terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
+        terms.extend(EN_DURATIONS.iter().map(|&(k, _, _)| k));
+        let ac = AhoCorasick::builder()
+            .match_kind(MatchKind::LeftmostLongest)
+            .build(&terms)
+            .expect("invalid Aho-Corasick patterns for EN duration terms");
+        Box::new(ac)
+    })
+}
 
-pub(crate) static EN: LazyLock<HashMap<&'static str, (&'static str, DateToken)>> =
-    LazyLock::new(|| {
+pub(crate) static EN: OnceBox<HashMap<&'static str, (&'static str, DateToken)>> = OnceBox::new();
+
+pub(crate) fn en() -> &'static HashMap<&'static str, (&'static str, DateToken)> {
+    EN.get_or_init(|| {
         let mut m = HashMap::new();
         for &(k, v, token) in EN_RELATIVES {
             m.insert(k, (v, token));
@@ -245,15 +265,22 @@ pub(crate) static EN: LazyLock<HashMap<&'static str, (&'static str, DateToken)>>
         for &(k, v, token) in EN_SPECIAL {
             m.insert(k, (v, token));
         }
-        for (&lowered_key, &(original_name, _, _)) in TZ_LOWERED_KEYS.iter().zip(TZ_ENTRIES.iter())
+        for (&lowered_key, &(original_name, _, _)) in
+            tz_lowered_keys().iter().zip(TZ_ENTRIES.iter())
         {
             m.insert(lowered_key, (original_name, DateToken::Iana));
         }
-        m
-    });
+        Box::new(m)
+    })
+}
 
-pub(crate) static EN_LANG_DATA: LangData = LangData {
-    map: &EN,
-    date_ac: &EN_DATE_AC,
-    duration_ac: &EN_DURATION_AC,
-};
+static EN_LANG_DATA: OnceBox<LangData> = OnceBox::new();
+pub(crate) fn en_lang_data() -> &'static LangData {
+    EN_LANG_DATA.get_or_init(|| {
+        Box::new(LangData {
+            map: en(),
+            date_ac: en_date_ac(),
+            duration_ac: en_duration_ac(),
+        })
+    })
+}

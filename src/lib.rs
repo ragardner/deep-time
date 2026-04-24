@@ -15,8 +15,8 @@ macro_rules! f {
 // _________________________________________
 // FEATURE MOD
 // _________________________________________
-#[cfg(feature = "std")]
-mod std_parse;
+#[cfg(feature = "parse")]
+mod alloc_parse;
 
 // _________________________________________
 // MOD
@@ -26,8 +26,9 @@ mod clock_drift;
 mod clock_model;
 mod clock_type;
 mod common;
+mod formatter;
 mod light_time;
-mod parse;
+mod parser;
 mod position;
 mod time_parts;
 mod time_point;
@@ -47,8 +48,8 @@ pub mod tzdb;
 // _________________________________________
 // FEATURE CRATE USE
 // _________________________________________
-#[cfg(feature = "std")]
-pub(crate) use std_parse::{
+#[cfg(feature = "parse")]
+pub(crate) use alloc_parse::{
     date::*, date_classification::*, duration::*, lang::*, lang_map::*, languages::en::*,
     parse_date::*, std_constants::*, types::*,
 };
@@ -65,8 +66,8 @@ pub(crate) use utils::*;
 // _________________________________________
 // FEATURE PUB USE
 // _________________________________________
-#[cfg(feature = "std")]
-pub use std_parse::{
+#[cfg(feature = "parse")]
+pub use alloc_parse::{
     lang::Lang,
     types::{DateOrder, DateParseMode, ParseCfg},
 };
@@ -79,7 +80,6 @@ pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
 pub use light_time::{LightContext, ObserverState};
-pub use parse::{formatter, parser};
 pub use position::{Position, Velocity};
 pub use time_parts::{Meridiem, TimeParts, TimeZone, Weekday};
 pub use time_point::TimePoint;

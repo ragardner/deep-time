@@ -1,6 +1,6 @@
-use crate::Lang;
-use std::string::String;
-use std::vec::Vec;
+use crate::{Lang, TimePoint};
+use alloc::string::String;
+use alloc::vec::Vec;
 
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -82,6 +82,16 @@ pub struct ParseCfg {
     /// ONLY set to `false` if the &str is already lowercase.
     #[cfg_attr(feature = "serde", serde(default = "default_true"))]
     pub to_lower: bool,
+
+    /// **Reference ("current") time** used for relative expressions:
+    /// - "tomorrow", "next Friday", "in 3 days", "next week"
+    /// - dates missing a year/month ("March 15", "15th of next month")
+    ///
+    /// - If `Some(tp)`, this `TimePoint` is used as "now" (overrides everything).
+    /// - If `None` + `std` feature enabled: automatically uses real system time.
+    /// - If `None` + no `std`: parsing relative dates will fail with a clear error.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub ref_time: Option<TimePoint>,
 }
 
 #[cfg(feature = "serde")]
@@ -97,6 +107,7 @@ impl Default for ParseCfg {
             order: DateOrder::default(),
             lang: Lang::default(),
             to_lower: true,
+            ref_time: None,
         }
     }
 }

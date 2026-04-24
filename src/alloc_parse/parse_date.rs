@@ -1,14 +1,14 @@
 use crate::{
-    ClassifiedDate, ClockType, DEFAULT_DATE_PARSE_OPTIONS, DateClassification, DateOrder,
-    DateParseMode, DetectedDateOrder, DtError, DtStdError, MAX_DATE_STRING_LEN, ParseCfg,
-    TimeParts, TimePoint, classify_date, generate_ambiguous_day_first_candidates,
+    ClassifiedDate, ClockType, DateClassification, DateOrder, DateParseMode, DetectedDateOrder,
+    DtError, DtStdError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, classify_date,
+    default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
     parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
     parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
 };
-use std::borrow::Cow;
-use std::string::{String, ToString};
+use alloc::borrow::Cow;
+use alloc::string::{String, ToString};
 
 impl TimePoint {
     pub fn from_str(
@@ -18,7 +18,7 @@ impl TimePoint {
     ) -> Result<TimePoint, DtStdError> {
         let opts: &ParseCfg = opts
             .as_ref()
-            .unwrap_or_else(|| &*DEFAULT_DATE_PARSE_OPTIONS);
+            .unwrap_or_else(|| default_date_parse_options());
 
         if s.is_empty() || s.len() > MAX_DATE_STRING_LEN {
             return Err(DtStdError::date(
@@ -30,6 +30,7 @@ impl TimePoint {
         }
 
         let lang = opts.lang;
+        let ref_time = &opts.ref_time;
 
         let lowered: Cow<str> = if opts.to_lower {
             Cow::Owned(s.to_lowercase())
@@ -37,7 +38,7 @@ impl TimePoint {
             Cow::Borrowed(s)
         };
 
-        let classification = match classify_date(&lowered, lang) {
+        let classification = match classify_date(&lowered, lang, ref_time) {
             Ok(ClassifiedDate::Parsed(time_point)) => return Ok(time_point),
             Ok(ClassifiedDate::Cls(c)) => c,
             Err(e) => {
@@ -102,13 +103,13 @@ impl TimePoint {
             }
         }
         if !classification.has_year {
-            if let Some(dt) = parse_syslog_no_year(&normalized, None, lang) {
+            if let Some(dt) = parse_syslog_no_year(&normalized, lang, ref_time) {
                 return Ok(dt);
             }
         }
         if is_week_date_missing_weekday(&classification) {
             // std::eprintln!("IS WEEK DATE MISSING WEEKDAY: {:?}", s);
-            if let Some(dt) = parse_week_date_no_weekday(&classification.date, lang) {
+            if let Some(dt) = parse_week_date_no_weekday(&classification.date, lang, ref_time) {
                 return Ok(dt);
             }
         }

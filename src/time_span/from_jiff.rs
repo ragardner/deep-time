@@ -1,6 +1,6 @@
-use crate::{TimeSpan, DtStdError};
+use crate::{DtStdError, TimeSpan};
+use alloc::string::ToString;
 use jiff::{SignedDuration, Span, Timestamp};
-use std::string::ToString;
 
 impl TimeSpan {
     /// Creates a `TimeSpan` from a `jiff::SignedDuration` (nanosecond precision).

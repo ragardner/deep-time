@@ -1,15 +1,15 @@
 use crate::DateToken;
 use aho_corasick::AhoCorasick;
-use std::{collections::HashMap, sync::LazyLock};
+use hashbrown::HashMap;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct LangData {
     /// Master lookup table: short/long term → (canonical form, token)
-    pub map: &'static LazyLock<HashMap<&'static str, (&'static str, DateToken)>>,
+    pub map: &'static HashMap<&'static str, (&'static str, DateToken)>,
     /// Aho-Corasick for full date parsing
-    pub date_ac: &'static LazyLock<AhoCorasick>,
+    pub date_ac: &'static AhoCorasick,
     /// Aho-Corasick that only contains relatives + durations
-    pub duration_ac: &'static LazyLock<AhoCorasick>,
+    pub duration_ac: &'static AhoCorasick,
 }
 
 /// Language codes following ISO 639-1 standard (two-letter codes)
@@ -390,8 +390,8 @@ pub enum Lang {
     Zu,
 }
 
-impl std::fmt::Display for Lang {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl alloc::fmt::Display for Lang {
+    fn fmt(&self, f: &mut alloc::fmt::Formatter<'_>) -> alloc::fmt::Result {
         write!(f, "{:?}", self)
     }
 }

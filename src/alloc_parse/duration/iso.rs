@@ -1,7 +1,7 @@
 use crate::{
     SECONDS_PER_DAY, SECONDS_PER_MONTH, SECONDS_PER_WEEK, SECONDS_PER_YEAR, TimeSpan, str_err,
 };
-use std::string::String;
+use alloc::string::String;
 
 pub(crate) fn parse_iso_duration_span(s: &str) -> Result<TimeSpan, String> {
     let len = s.len();
@@ -97,10 +97,10 @@ fn parse_next_component(
             &chars[start..]
         ));
     }
-    let int: i64 = std::str::from_utf8(&chars[start..*i])
+    let int: i64 = core::str::from_utf8(&chars[start..*i])
         .unwrap()
         .parse()
-        .map_err(|e: std::num::ParseIntError| str_err!("{}", e))?;
+        .map_err(|e: core::num::ParseIntError| str_err!("{}", e))?;
 
     // Parse optional fraction
     let mut frac_num: i64 = 0;
@@ -124,10 +124,10 @@ fn parse_next_component(
                 &chars[start..]
             ));
         }
-        frac_num = std::str::from_utf8(&chars[frac_start..*i])
+        frac_num = core::str::from_utf8(&chars[frac_start..*i])
             .unwrap()
             .parse()
-            .map_err(|e: std::num::ParseIntError| str_err!("{}", e))?;
+            .map_err(|e: core::num::ParseIntError| str_err!("{}", e))?;
     }
 
     // Unit must follow

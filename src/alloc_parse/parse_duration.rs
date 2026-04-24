@@ -3,7 +3,7 @@ use crate::{
     Lang, TimeSpan, looks_like_iso_duration, natural_duration_to_iso, natural_duration_to_span,
     parse_iso_duration_span,
 };
-use std::string::{String, ToString};
+use alloc::string::{String, ToString};
 
 impl TimeSpan {
     /// Parses duration strings with three clean priority tiers:
@@ -26,7 +26,7 @@ impl TimeSpan {
             return parse_iso_duration_span(s).map_err(|e| {
                 DtStdError::duration(
                     s.to_string(),
-                    std::format!("Invalid ISO 8601 duration: {}", e),
+                    alloc::format!("Invalid ISO 8601 duration: {}", e),
                     lang,
                 )
             });

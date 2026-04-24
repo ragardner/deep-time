@@ -1,7 +1,7 @@
 use crate::DIGIT_CHARS;
 use aho_corasick::AhoCorasick;
 use aho_corasick::FindIter;
-use std::ops::Range;
+use core::ops::Range;
 
 #[derive(Debug)]
 pub struct SplitKeepWithPos<'a> {

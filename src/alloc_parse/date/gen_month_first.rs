@@ -1,11 +1,11 @@
 use crate::{
     AmBuilder, DateClassification, DateToken, append_to_all, get_compatible_time_suffixes,
 };
-use std::string::String;
-use std::vec;
-use std::vec::Vec;
+use alloc::string::String;
+use alloc::vec;
+use alloc::vec::Vec;
 
-pub(crate) fn generate_ambiguous_day_first_candidates(class: &DateClassification) -> Vec<String> {
+pub(crate) fn generate_ambiguous_month_first_candidates(class: &DateClassification) -> Vec<String> {
     if !class.has_year || class.num_named > 0 {
         return vec![];
     }
@@ -34,19 +34,17 @@ pub(crate) fn generate_ambiguous_day_first_candidates(class: &DateClassification
                 for b in &builders {
                     let filtered =
                         token
-                            .to_fmt_day_first()
+                            .to_fmt_month_first()
                             .iter()
                             .copied()
                             .filter(|&spec| match spec {
-                                // Day formats (including compact combined) — first position only
-                                "%d" | "%e" | "%-d" | "%_d" | "%j" | "%d%m%y" | "%d%m%Y" => {
-                                    !b.seen_day
-                                }
-                                // Month formats (only after day)
-                                "%m" | "%-m" | "%_m" => b.seen_day && !b.seen_month,
-                                // Year formats (only after day + month)
+                                // Month formats (including compact combined) — first position only
+                                "%m" | "%-m" | "%_m" | "%m%d%y" | "%m%d%Y" => !b.seen_month,
+                                // Day formats (only after month)
+                                "%d" | "%e" | "%-d" | "%_d" | "%j" => b.seen_month && !b.seen_day,
+                                // Year formats (only after month + day)
                                 "%Y" | "%y" | "%G" | "%C" => {
-                                    b.seen_day && b.seen_month && !b.seen_year
+                                    b.seen_month && b.seen_day && !b.seen_year
                                 }
                                 _ => false,
                             });
@@ -55,14 +53,14 @@ pub(crate) fn generate_ambiguous_day_first_candidates(class: &DateClassification
                         let mut new_b = b.clone();
                         new_b.pieces.push(spec);
 
-                        // Update state - handle combined formats like %d%m%Y / %d%m%y
+                        // Update state - handle combined formats like %m%d%Y / %m%d%y
                         match spec {
-                            "%d" | "%e" | "%-d" | "%_d" | "%j" => new_b.seen_day = true,
                             "%m" | "%-m" | "%_m" => new_b.seen_month = true,
+                            "%d" | "%e" | "%-d" | "%_d" | "%j" => new_b.seen_day = true,
                             "%Y" | "%y" | "%G" | "%C" => new_b.seen_year = true,
-                            "%d%m%y" | "%d%m%Y" => {
-                                new_b.seen_day = true;
+                            "%m%d%y" | "%m%d%Y" => {
                                 new_b.seen_month = true;
+                                new_b.seen_day = true;
                                 new_b.seen_year = true;
                             }
                             _ => {}
@@ -81,9 +79,7 @@ pub(crate) fn generate_ambiguous_day_first_candidates(class: &DateClassification
         if !(b.seen_year && b.seen_month && b.seen_day) {
             continue;
         }
-
         let date_part: String = b.pieces.concat();
-
         if class.time.is_none() {
             candidates.push(date_part);
             continue;

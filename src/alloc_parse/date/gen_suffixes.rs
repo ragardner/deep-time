@@ -1,7 +1,7 @@
 use crate::{DateClassification, OffsetType, TimeType};
-use std::string::String;
-use std::vec;
-use std::vec::Vec;
+use alloc::string::String;
+use alloc::vec;
+use alloc::vec::Vec;
 
 #[inline]
 pub(crate) fn get_compatible_time_suffixes(class: &DateClassification) -> Vec<String> {

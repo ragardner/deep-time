@@ -1,19 +1,21 @@
-//! Round-trip tests for all wire serialization formats.
-//!
-//! Run with: `cargo test --test wire_roundtrip`
+#[cfg(feature = "alloc")]
+extern crate alloc;
 
+use alloc::vec::Vec;
+use core::fmt::Debug;
 use deep_time_core::{
     ClockDrift, ClockModel, ClockType, GregorianTime, Meridiem, TimeParts, TimePoint, TimeRange,
     TimeSpan, TimeZone, Weekday,
 };
 
 /// Helper function to test round-trip serialization/deserialization.
+
 fn assert_roundtrip<T>(
     original: &T,
     to_bytes: impl Fn(&T) -> Vec<u8>,
     from_bytes: impl Fn(&[u8]) -> Option<T>,
 ) where
-    T: PartialEq + std::fmt::Debug,
+    T: PartialEq + Debug,
 {
     let bytes = to_bytes(original);
     let recovered = from_bytes(&bytes).expect("deserialization failed");

@@ -1,7 +1,7 @@
 use crate::{DateClassification, DateToken, get_compatible_time_suffixes};
-use std::string::String;
-use std::vec;
-use std::vec::Vec;
+use alloc::string::String;
+use alloc::vec;
+use alloc::vec::Vec;
 
 #[derive(Clone)]
 struct Builder {

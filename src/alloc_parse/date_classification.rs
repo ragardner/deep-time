@@ -1,6 +1,6 @@
 use crate::TimePoint;
-use std::string::String;
-use std::vec::Vec;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DateClassification {

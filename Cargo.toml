@@ -13,45 +13,55 @@ rust-version = "1.90"
 [dependencies]
 libm = "0.2"
 
+hashbrown = { version = "0.17", optional = true }
 aho-corasick = { version = "1.1.4", optional = true }
+once_cell = { version = "1.21", optional = true, default-features = false, features = ["alloc"] }
+
 jiff = { version = "0.2.23", optional = true, default-features = false }
 chrono = { version = "0.4", optional = true, default-features = false }
 hifitime = { version = "4.2", optional = true, default-features = false }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "rc"] }
-tsify = { version = "=0.5.5", optional = true }
+tsify = { version = "=0.5.6", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
 js-sys = { version = "0.3", optional = true }
 sys-locale = { version = "0.3", optional = true }
 
 [features]
 # ──────────────────────────────────────────────────────────────
-# STD / ALLOC (core priority)
+# CORE FEATURES
 # ──────────────────────────────────────────────────────────────
 default = []
 
 alloc = [
     "jiff?/alloc",
+    "chrono?/alloc",
 ]
 
 std = [
     "alloc",
-    "dep:aho-corasick",
     "jiff?/std",
     "chrono?/std",
     "hifitime?/std",
 ]
 
 # ──────────────────────────────────────────────────────────────
-# LANGUAGE / PARSER FEATURES (all require std)
+# PARSER / LANGUAGE (no_std friendly)
 # ──────────────────────────────────────────────────────────────
-fr = ["std"]
-euro = ["std", "fr"]
-lang = ["std", "euro"]
+parse = [
+    "alloc",
+    "dep:aho-corasick",
+    "dep:once_cell",
+    "dep:hashbrown",
+]
+
+fr = ["parse"]
+euro = ["parse", "fr"]
+lang = ["parse", "euro"]
 
 # ──────────────────────────────────────────────────────────────
 # LOCALE
 # ──────────────────────────────────────────────────────────────
-locale = ["std", "dep:sys-locale"]
+locale = ["alloc", "dep:sys-locale"] # TODO: requires std?
 
 # ──────────────────────────────────────────────────────────────
 # SERIALIZATION
@@ -64,27 +74,26 @@ serde = [
 ]
 
 # ──────────────────────────────────────────────────────────────
-# DATETIME INTEROP
+# DATETIME INTEROP (std is optional)
 # ──────────────────────────────────────────────────────────────
 jiff = [
-    "std",
     "dep:jiff",
+    "jiff?/alloc",
 ]
+
 jiff-tz = [
+    "std",
     "jiff",
     "jiff?/tzdb-bundle-always",
 ]
 
 chrono = [
-    "std",
     "dep:chrono",
-    "chrono/std",
+    "chrono?/alloc",
 ]
 
 hifitime = [
-    "std",
     "dep:hifitime",
-    "hifitime?/std",
 ]
 
 # ──────────────────────────────────────────────────────────────

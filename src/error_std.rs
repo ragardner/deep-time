@@ -1,6 +1,7 @@
 use crate::{DateOrder, DateParseMode, Lang, ParseCfg};
-use std::panic::Location;
-use std::string::String;
+use alloc::string::String;
+use core::fmt::{Display, Formatter, Result};
+use core::panic::Location;
 
 #[derive(Debug)]
 pub enum DtStdError {
@@ -106,8 +107,8 @@ impl DtStdError {
     }
 }
 
-impl std::fmt::Display for DtStdError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl Display for DtStdError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
             DtStdError::Date {
                 input,
@@ -181,7 +182,8 @@ impl std::fmt::Display for DtStdError {
     }
 }
 
-impl std::error::Error for DtStdError {}
+// Implement Error trait from core (available since Rust 1.81, your MSRV is 1.90)
+impl core::error::Error for DtStdError {}
 
 // Properly formats a String Err. Supports literal strings, format! syntax,
 // AND direct String/&str expressions (or any impl Display).
@@ -189,11 +191,11 @@ impl std::error::Error for DtStdError {}
 macro_rules! str_err {
     // Single expression case
     ($err:expr) => {
-        std::format!("Error at {}:{}: {}", file!(), line!(), $err)
+        alloc::format!("Error at {}:{}: {}", file!(), line!(), $err)
     };
 
     // Format! syntax case
     ($($arg:tt)*) => {
-        std::format!("Error at {}:{}: {}", file!(), line!(), std::format!($($arg)*))
+        alloc::format!("Error at {}:{}: {}", file!(), line!(), alloc::format!($($arg)*))
     };
 }

@@ -1,19 +1,26 @@
 use crate::{
-    ClassifiedDate, ClockType, ConnectorType, DateClassification, DateToken, EndsWithExt, IndexIn,
-    LANG_MAP, Lang, LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType,
+    ClassifiedDate, ConnectorType, DateClassification, DateToken, EndsWithExt, IndexIn, Lang,
+    LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType, lang_map,
     natural_duration_to_span, str_err, to_ascii_digit,
 };
-use std::string::String;
-use std::vec::Vec;
+use alloc::string::String;
+use alloc::vec::Vec;
+
+#[cfg(feature = "std")]
+use crate::ClockType;
 
 /// Expects s to be lowercase.
 #[inline]
-pub(crate) fn classify_date(s: &str, lang: Lang) -> Result<ClassifiedDate, String> {
+pub(crate) fn classify_date(
+    s: &str,
+    lang: Lang,
+    ref_time: &Option<TimePoint>,
+) -> Result<ClassifiedDate, String> {
     let Some(LangData {
         map: term_map,
         date_ac: finder,
         ..
-    }) = LANG_MAP.get(&lang)
+    }) = lang_map().get(&lang)
     else {
         return Err(str_err!("Could not retrieve lang map for lang: {}", lang));
     };
@@ -66,10 +73,22 @@ pub(crate) fn classify_date(s: &str, lang: Lang) -> Result<ClassifiedDate, Strin
     while let Some((part, _)) = splitter.next() {
         if let Some((norm_part, token)) = term_map.get(part) {
             if token.is_relative() {
+                // ── Use the reference time (or fall back to real system time) ──
+                let now: TimePoint = if let Some(tp) = ref_time {
+                    *tp
+                } else {
+                    #[cfg(feature = "std")]
+                    {
+                        TimePoint::now(ClockType::UTC)
+                    }
+                    #[cfg(not(feature = "std"))]
+                    {
+                        return Err(str_err!("Relative dates require a reference time or std"));
+                    }
+                };
                 let span = natural_duration_to_span(s, lang, false)?;
-                let time_point = TimePoint::now(ClockType::UTC);
-                time_point.saturating_add_ref(&span);
-                return Ok(ClassifiedDate::Parsed(time_point));
+                now.saturating_add_ref(&span);
+                return Ok(ClassifiedDate::Parsed(now));
             }
             match token {
                 DateToken::DayShort

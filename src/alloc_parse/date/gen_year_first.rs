@@ -1,9 +1,9 @@
 use crate::{
     AmBuilder, DateClassification, DateToken, append_to_all, get_compatible_time_suffixes,
 };
-use std::string::String;
-use std::vec;
-use std::vec::Vec;
+use alloc::string::String;
+use alloc::vec;
+use alloc::vec::Vec;
 
 pub(crate) fn generate_ambiguous_year_first_candidates(class: &DateClassification) -> Vec<String> {
     if !class.has_year || class.num_named > 0 {
