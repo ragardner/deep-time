@@ -257,7 +257,7 @@ mod tests {
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtError> {
-        let parsed = TimeParts::strptime(fmt, input, strict, false)?;
+        let parsed = TimeParts::from_str(fmt, input, strict, false)?;
         parsed.to_jiff_timestamp()
     }
 
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_iana_timezone() {
-        let parsed = TimeParts::strptime(
+        let parsed = TimeParts::from_str(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -325,7 +325,7 @@ mod tests {
     #[test]
     fn test_leap_second_rejected_by_jiff() {
         let parsed =
-            TimeParts::strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false)
+            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false)
                 .unwrap();
         assert!(parsed.is_leap_second);
 
@@ -358,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_broken_down_time_assembly() {
-        let parsed = TimeParts::strptime(
+        let parsed = TimeParts::from_str(
             "%Y-%m-%d %H:%M:%S %z",
             "2024-04-15 14:30:45 +0200",
             false,

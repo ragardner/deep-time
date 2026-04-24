@@ -5,7 +5,7 @@ use crate::{
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline(always)]
 pub(crate) fn parse_yymmdd(input: &str) -> Option<TimePoint> {
-    let parsed = TimeParts::strptime("%y%m%d", input, true, false).ok()?;
+    let parsed = TimeParts::from_str("%y%m%d", input, true, false).ok()?;
     parsed.to_time_point(ClockType::UTC).ok()
 }
 
@@ -96,7 +96,7 @@ pub(crate) fn parse_yyyymm(s: &str) -> Option<TimePoint> {
         }
         if (1..=12).contains(&m) && (crate::MIN_YEAR..=crate::MAX_YEAR).contains(&y) {
             let parsed =
-                TimeParts::strptime("%Y%m", s.trim_start_matches('-'), true, true).ok()?;
+                TimeParts::from_str("%Y%m", s.trim_start_matches('-'), true, true).ok()?;
             return parsed.to_time_point(ClockType::UTC).ok();
         }
     }

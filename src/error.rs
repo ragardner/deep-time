@@ -2,7 +2,7 @@ use core::panic::Location;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DtErrKind {
-    // strptime parser errors
+    // from_str parser errors
     UnexpectedEndAfterPercent,
     InputExhaustedInStrictMode,
     UnexpectedEndAfterDot,

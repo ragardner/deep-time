@@ -1,5 +1,5 @@
 use crate::error::{DtErrKind, DtError};
-use crate::{ClockType, TimeParts, Meridiem, TimeZone, Weekday};
+use crate::{ClockType, Meridiem, TimeParts, TimeZone, Weekday};
 use core::result::Result;
 use core::str;
 
@@ -11,12 +11,7 @@ pub(crate) struct Parser<'f, 'i, 't> {
 }
 
 impl<'f, 'i, 't> Parser<'f, 'i, 't> {
-    pub(crate) fn new(
-        fmt: &'f [u8],
-        inp: &'i [u8],
-        tm: &'t mut TimeParts,
-        strict: bool,
-    ) -> Self {
+    pub(crate) fn new(fmt: &'f [u8], inp: &'i [u8], tm: &'t mut TimeParts, strict: bool) -> Self {
         Self {
             fmt,
             inp,
@@ -1178,8 +1173,7 @@ mod tests {
     #[test]
     fn test_basic_ymd_hms() {
         let parsed =
-            TimeParts::strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false)
-                .unwrap();
+            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false).unwrap();
         assert_eq!(parsed.year, Some(2024));
         assert_eq!(parsed.month, Some(4));
         assert_eq!(parsed.day, Some(15));
@@ -1192,14 +1186,14 @@ mod tests {
 
     #[test]
     fn test_unix_timestamp_direct() {
-        let parsed = TimeParts::strptime("%s", "1713191445", false, false).unwrap();
+        let parsed = TimeParts::from_str("%s", "1713191445", false, false).unwrap();
         assert_eq!(parsed.unix_timestamp_seconds, Some(1713191445));
     }
 
     #[test]
     fn test_fractional_seconds_various_widths() {
         // Explicit literal dot + %.f (the parser's optional-dot logic works reliably this way)
-        let parsed = TimeParts::strptime(
+        let parsed = TimeParts::from_str(
             "%Y-%m-%d %H:%M:%S.%.f",
             "2024-04-15 14:30:45.123456789",
             false,
@@ -1209,7 +1203,7 @@ mod tests {
         let expected = 123_456_789u64 * 10u64.pow(9);
         assert_eq!(parsed.attos, Some(expected));
 
-        let parsed2 = TimeParts::strptime(
+        let parsed2 = TimeParts::from_str(
             "%Y-%m-%d %H:%M:%S.%3N",
             "2024-04-15 14:30:45.123",
             false,
@@ -1223,15 +1217,14 @@ mod tests {
     #[test]
     fn test_leap_second_flag() {
         let parsed =
-            TimeParts::strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false)
-                .unwrap();
+            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false).unwrap();
         assert!(parsed.is_leap_second);
         assert_eq!(parsed.second, Some(60));
     }
 
     #[test]
     fn test_iana_name_parsing() {
-        let parsed = TimeParts::strptime(
+        let parsed = TimeParts::from_str(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -1249,23 +1242,20 @@ mod tests {
     fn test_fixed_offset_parsing() {
         // Space before %z is required by the current parser (no literal character between %T and %z otherwise)
         let parsed =
-            TimeParts::strptime("%F %T %z", "2024-04-15 10:30:00 -0400", false, false)
-                .unwrap();
+            TimeParts::from_str("%F %T %z", "2024-04-15 10:30:00 -0400", false, false).unwrap();
         assert_eq!(parsed.tz, Some(TimeZone::Fixed(-14400)));
     }
 
     #[test]
     fn test_fixed_offset_with_colons() {
         let parsed =
-            TimeParts::strptime("%F %T %:z", "2024-04-15 10:30:00 -04:00", false, false)
-                .unwrap();
+            TimeParts::from_str("%F %T %:z", "2024-04-15 10:30:00 -04:00", false, false).unwrap();
         assert_eq!(parsed.tz, Some(TimeZone::Fixed(-14400)));
     }
 
     #[test]
     fn test_shortcut_formats() {
-        let parsed_f =
-            TimeParts::strptime("%F %T", "2024-04-15 14:30:45", false, false).unwrap();
+        let parsed_f = TimeParts::from_str("%F %T", "2024-04-15 14:30:45", false, false).unwrap();
         assert_eq!(parsed_f.year, Some(2024));
         assert_eq!(parsed_f.month, Some(4));
         assert_eq!(parsed_f.day, Some(15));
@@ -1273,7 +1263,7 @@ mod tests {
         assert_eq!(parsed_f.minute, Some(30));
         assert_eq!(parsed_f.second, Some(45));
 
-        let parsed_d = TimeParts::strptime("%D", "04/15/24", false, false).unwrap();
+        let parsed_d = TimeParts::from_str("%D", "04/15/24", false, false).unwrap();
         assert_eq!(parsed_d.year, Some(2024));
         assert_eq!(parsed_d.month, Some(4));
         assert_eq!(parsed_d.day, Some(15));
@@ -1282,8 +1272,7 @@ mod tests {
     #[test]
     fn test_month_and_weekday_names() {
         let parsed =
-            TimeParts::strptime("%B %d, %Y (%A)", "April 15, 2024 (Monday)", false, false)
-                .unwrap();
+            TimeParts::from_str("%B %d, %Y (%A)", "April 15, 2024 (Monday)", false, false).unwrap();
         assert_eq!(parsed.month, Some(4));
         assert_eq!(parsed.day, Some(15));
         assert_eq!(parsed.year, Some(2024));
@@ -1292,27 +1281,26 @@ mod tests {
 
     #[test]
     fn test_strict_mode_trailing_chars() {
-        let err =
-            TimeParts::strptime("%Y-%m-%d", "2024-04-15 extra", true, false).unwrap_err();
+        let err = TimeParts::from_str("%Y-%m-%d", "2024-04-15 extra", true, false).unwrap_err();
         assert!(matches!(err.kind, DtErrKind::TrailingCharacters));
     }
 
     #[test]
     fn test_incomplete_date_error() {
-        let err = TimeParts::strptime("%H:%M:%S", "14:30:45", false, false).unwrap_err();
+        let err = TimeParts::from_str("%H:%M:%S", "14:30:45", false, false).unwrap_err();
         assert!(matches!(err.kind, DtErrKind::IncompleteDate));
     }
 
     #[test]
     fn test_ordinal_date() {
-        let parsed = TimeParts::strptime("%Y-%j", "2024-106", false, false).unwrap();
+        let parsed = TimeParts::from_str("%Y-%j", "2024-106", false, false).unwrap();
         assert_eq!(parsed.year, Some(2024));
         assert_eq!(parsed.day_of_year, Some(106));
     }
 
     #[test]
     fn test_iso_week_date() {
-        let parsed = TimeParts::strptime("%G-W%V-%u", "2024-W16-2", false, false).unwrap();
+        let parsed = TimeParts::from_str("%G-W%V-%u", "2024-W16-2", false, false).unwrap();
         assert_eq!(parsed.iso_week_year, Some(2024));
         assert_eq!(parsed.iso_week, Some(16));
         assert_eq!(parsed.weekday, Some(Weekday::Tuesday));

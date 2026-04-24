@@ -56,7 +56,7 @@ impl TimePoint {
         let (mode, date_order) = if let Some(formats) = &opts.parse {
             if !formats.is_empty() {
                 for fmt in formats {
-                    if let Some(value) = parse_fmt(normalized, fmt) {
+                    if let Some(value) = Self::strptime(normalized, fmt) {
                         return Ok(value);
                     }
                 }
@@ -250,41 +250,41 @@ impl TimePoint {
             .ok()
             .map(|tp| tp.to_unix_ms())
     }
-}
 
-/// Low-level parser that works around the known Zoned::strptime edge case
-/// with %j + %.f + literal Z (and any similar future quirks).
-#[inline(always)]
-fn parse_fmt(s: &str, fmt: &str) -> Option<TimePoint> {
-    // std::eprintln!("TRYING: {}, FOR: {}", fmt, s);
+    #[inline(always)]
+    pub fn strptime(s: &str, fmt: &str) -> Option<TimePoint> {
+        // std::eprintln!("TRYING: {}, FOR: {}", fmt, s);
 
-    let components = TimeParts::strptime(fmt, s, true, false);
+        let components = TimeParts::from_str(fmt, s, true, false);
 
-    // std::eprintln!("RESULT STRPTIME: {:?}", components);
+        // std::eprintln!("RESULT from_str: {:?}", components);
 
-    // Convert Result<TimeParts, DtError> -> Result<TimePoint, DtError>
-    let time_point_result: Result<TimePoint, DtError> =
-        components.and_then(|p| p.to_time_point(ClockType::UTC));
+        // Convert Result<TimeParts, DtError> -> Result<TimePoint, DtError>
+        let time_point_result: Result<TimePoint, DtError> =
+            components.and_then(|p| p.to_time_point(ClockType::UTC));
 
-    // Print the error if there is one (this is what you asked for)
-    if let Err(_) = &time_point_result {
-        // std::eprintln!("ERROR in to_time_point: {:?}", e);
+        // Print the error if there is one (this is what you asked for)
+        if let Err(_) = &time_point_result {
+            // std::eprintln!("ERROR in to_time_point: {:?}", e);
+        }
+
+        // Finally convert Result -> Option (as your function signature requires)
+        time_point_result.ok()
     }
-
-    // Finally convert Result -> Option (as your function signature requires)
-    time_point_result.ok()
 }
 
 /// Core zero-allocation helper (updated to match the new `&str` signature).
 ///
 /// The `fmt` we get from the iterator is still `'static`, but it coerces automatically
 /// to `&str`, so everything continues to work.
-#[inline(always)]
+#[inline]
 pub(crate) fn try_compatible_formats<'a, I>(s: &str, formats: I) -> Option<TimePoint>
 where
     I: IntoIterator<Item = String>,
 {
-    formats.into_iter().find_map(|fmt| parse_fmt(s, &fmt))
+    formats
+        .into_iter()
+        .find_map(|fmt| TimePoint::strptime(s, &fmt))
 }
 
 #[inline]

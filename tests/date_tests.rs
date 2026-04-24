@@ -1,5 +1,5 @@
 use deep_time_core::{DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
-#[cfg(feature = "perf_tests")]
+#[cfg(feature = "perf-tests")]
 use std::time::Instant;
 
 #[cfg(feature = "jiff-tz")]
@@ -1055,7 +1055,7 @@ fn date_millis_and_errors() {
     assert_fails("2024-13-01", None);
 }
 
-#[cfg(feature = "perf_tests")]
+#[cfg(feature = "perf-tests")]
 #[test]
 fn date_parser_perf_smoke() {
     let corpus: Vec<&str> = vec![

@@ -149,7 +149,7 @@ impl TimeParts {
             Err(_) => return Err(DtError::new(DtErrKind::CCSDSStrFromUtf8Err)),
         };
 
-        TimeParts::strptime(format, cleaned, false, false)
+        TimeParts::from_str(format, cleaned, false, false)
     }
 }
 
@@ -157,7 +157,7 @@ impl TimeParts {
 mod tests {
     use super::*;
 
-    /// Small helper for tests (strptime already calls .finish() internally on full consumption)
+    /// Small helper for tests (from_str already calls .finish() internally on full consumption)
     fn parse(s: &str) -> TimeParts {
         let x = TimeParts::parse_ccsds(s);
         match x {

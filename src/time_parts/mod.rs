@@ -36,7 +36,7 @@ pub struct TimeParts {
 }
 
 impl TimeParts {
-    pub fn strptime(
+    pub fn from_str(
         fmt: &str,
         input: &str,
         strict: bool,
@@ -44,11 +44,9 @@ impl TimeParts {
     ) -> Result<TimeParts, DtError> {
         let mut tm = TimeParts::default();
         let mut parser = Parser::new(fmt.as_bytes(), input.as_bytes(), &mut tm, strict);
-
         if let Err(e) = parser.parse() {
             return Err(e);
         }
-
         if parser.inp.is_empty() {
             // All input consumed → finalize
             tm.finish(allow_partial)
