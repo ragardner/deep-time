@@ -4,8 +4,6 @@ use chrono::{DateTime, Duration, TimeDelta, Utc};
 impl Delta {
     /// Converts this `Delta` to a `chrono::Duration` (nanosecond precision).
     ///
-    /// This is the **main/default** conversion method.
-    ///
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
     /// - The conversion is fully exact up to the nanosecond (128-bit integer arithmetic).
     /// - **Saturates** at `chrono::Duration::MIN` / `chrono::Duration::MAX`

@@ -1,7 +1,7 @@
-use crate::{ClockType, DateComponents, DtErrKind, DtError, TimePoint, TimeZone};
+use crate::{ClockType, TimeParts, DtErrKind, DtError, TimePoint, TimeZone};
 
 // tests are in TimePoint to_ccsds_bin
-impl DateComponents {
+impl TimeParts {
     /// Helper: converts days since 1958-01-01 (midnight) into Gregorian Y/M/D.
     /// Pure integer arithmetic, matches the exact CCSDS Level 1 epoch
     /// (1958-01-01 00:00:00) used by both CUC and CDS.
@@ -63,7 +63,7 @@ impl DateComponents {
     }
 
     /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
-    /// directly into [`DateComponents`].
+    /// directly into [`TimeParts`].
     ///
     /// This function implements **CCSDS 301.0-B-4 §3.2** (Level 1 only) **with full support
     /// for the extended P-field** (second octet) as defined in the standard.
@@ -87,7 +87,7 @@ impl DateComponents {
     /// with 10 fractional bytes).
     ///
     /// # Returns
-    /// A [`DateComponents`] with `clock_type = TAI` and `tz = Utc`.
+    /// A [`TimeParts`] with `clock_type = TAI` and `tz = Utc`.
     ///
     /// # Errors
     /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
@@ -96,7 +96,7 @@ impl DateComponents {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] if the Code ID is not `001`.
     /// - [`DtErrKind::CCSDSBinInvalidPFieldExtension`] if the further-extension flag is set
     ///   (3+ byte P-field, unsupported).
-    pub fn parse_ccsds_c(input: &[u8]) -> Result<DateComponents, DtError> {
+    pub fn parse_ccsds_c(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
             return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }
@@ -164,14 +164,14 @@ impl DateComponents {
         let days_since_epoch = (coarse_sec / 86400) as i64;
         let sec_of_day = (coarse_sec % 86400) as i64;
 
-        let (year, month, day) = DateComponents::days_since_1958_to_gregorian(days_since_epoch);
+        let (year, month, day) = TimeParts::days_since_1958_to_gregorian(days_since_epoch);
 
         let hour = (sec_of_day / 3600) as u8;
         let minute = ((sec_of_day % 3600) / 60) as u8;
         let second = (sec_of_day % 60) as u8;
 
-        // ── Build DateComponents ──────────────────────────────────────────────
-        let pd = DateComponents {
+        // ── Build TimeParts ──────────────────────────────────────────────
+        let pd = TimeParts {
             year: Some(year),
             month: Some(month),
             day: Some(day),
@@ -181,14 +181,14 @@ impl DateComponents {
             attos: Some(frac_attos),
             clock_type: ClockType::TAI,
             tz: Some(TimeZone::Utc),
-            ..DateComponents::default()
+            ..TimeParts::default()
         };
 
         pd.finish(false)
     }
 
     /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
-    /// directly into [`DateComponents`].
+    /// directly into [`TimeParts`].
     ///
     /// This function implements CCSDS 301.0-B-4 §3.3 (Level 1 only).
     ///
@@ -208,7 +208,7 @@ impl DateComponents {
     /// - With 4-byte sub-ms: maximum quantization error ≈ ±0.116 ps.
     ///
     /// # Returns
-    /// A [`DateComponents`] with `timescale = Utc` and `tz = Utc`.
+    /// A [`TimeParts`] with `timescale = Utc` and `tz = Utc`.
     ///
     /// # Errors
     /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
@@ -216,7 +216,7 @@ impl DateComponents {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] if the Code ID is not `100`.
     /// - [`DtErrKind::CCSDSBinInvalidEpoch`] if the Epoch bit is set (non-Level-1 / non-1958 epoch).
     /// - [`DtErrKind::CCSDSBinInvalidSubMillisecondCode`] if bits 6-7 encode an unsupported value (0b11).
-    pub fn parse_ccsds_d(input: &[u8]) -> Result<DateComponents, DtError> {
+    pub fn parse_ccsds_d(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
             return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }
@@ -297,14 +297,14 @@ impl DateComponents {
 
         // ── Exact CCSDS CDS midnight epoch conversion (custom Gregorian) ─────
         let days_since_epoch = day_count as i64;
-        let (year, month, day) = DateComponents::days_since_1958_to_gregorian(days_since_epoch);
+        let (year, month, day) = TimeParts::days_since_1958_to_gregorian(days_since_epoch);
 
         let hour = (sec_of_day / 3600) as u8;
         let minute = ((sec_of_day % 3600) / 60) as u8;
         let second = (sec_of_day % 60) as u8;
 
-        // ── Build DateComponents ──────────────────────────────────────────────
-        let pd = DateComponents {
+        // ── Build TimeParts ──────────────────────────────────────────────
+        let pd = TimeParts {
             year: Some(year),
             month: Some(month),
             day: Some(day),
@@ -314,7 +314,7 @@ impl DateComponents {
             attos: Some(frac_attos as u64),
             clock_type: ClockType::UTC,
             tz: Some(TimeZone::Utc),
-            ..DateComponents::default()
+            ..TimeParts::default()
         };
 
         pd.finish(false)
@@ -328,7 +328,7 @@ impl DateComponents {
     /// # Errors
     /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any Code ID other than `001` (CUC) or `100` (CDS).
-    pub fn parse_ccsds_bin(input: &[u8]) -> Result<DateComponents, DtError> {
+    pub fn parse_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
             return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
         }

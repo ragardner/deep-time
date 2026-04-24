@@ -1,6 +1,6 @@
 use {
     crate::{
-        ATTOSEC_PER_NANOSEC, DateComponents, Meridiem, TimePoint, TimeZone, Weekday,
+        ATTOSEC_PER_NANOSEC, TimeParts, Meridiem, TimePoint, TimeZone, Weekday,
         error::{DtErrKind, DtError},
         tzdb::offset_at,
     },
@@ -14,8 +14,8 @@ use {
     },
 };
 
-impl DateComponents {
-    /// Converts `DateComponents` → Jiff’s `BrokenDownTime`.
+impl TimeParts {
+    /// Converts `TimeParts` → Jiff’s `BrokenDownTime`.
     pub fn to_jiff_broken_down_time(&self) -> Result<BrokenDownTime, DtError> {
         let to_err = || DtError::new(DtErrKind::JiffBrokenDownTime);
 
@@ -152,7 +152,7 @@ impl DateComponents {
         return Err(DtError::new(DtErrKind::JiffToZoned));
     }
 
-    /// Converts `DateComponents` → absolute `Timestamp` on the SI scale.
+    /// Converts `TimeParts` → absolute `Timestamp` on the SI scale.
     ///
     /// Fast path for the common cases (unix seconds or full YMD date).
     /// Falls back to `BrokenDownTime` for everything else (ordinal date, ISO week, etc.).
@@ -251,13 +251,13 @@ impl DateComponents {
 
 #[cfg(all(test, feature = "jiff"))]
 mod tests {
-    use crate::parser::strptime;
+    use crate::TimeParts;
 
     use super::*;
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtError> {
-        let parsed = strptime(fmt, input, strict, false)?;
+        let parsed = TimeParts::strptime(fmt, input, strict, false)?;
         parsed.to_jiff_timestamp()
     }
 
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_iana_timezone() {
-        let parsed = strptime(
+        let parsed = TimeParts::strptime(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -324,7 +324,9 @@ mod tests {
 
     #[test]
     fn test_leap_second_rejected_by_jiff() {
-        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false)
+                .unwrap();
         assert!(parsed.is_leap_second);
 
         assert!(parsed.to_jiff_broken_down_time().is_err());
@@ -356,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_broken_down_time_assembly() {
-        let parsed = strptime(
+        let parsed = TimeParts::strptime(
             "%Y-%m-%d %H:%M:%S %z",
             "2024-04-15 14:30:45 +0200",
             false,

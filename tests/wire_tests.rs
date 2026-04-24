@@ -3,7 +3,7 @@
 //! Run with: `cargo test --test wire_roundtrip`
 
 use deep_time_core::{
-    ClockDrift, ClockModel, ClockType, DateComponents, Delta, GregorianPoint, Meridiem, TimePoint,
+    ClockDrift, ClockModel, ClockType, Delta, GregorianPoint, Meridiem, TimeParts, TimePoint,
     TimeRange, TimeZone, Weekday,
 };
 
@@ -110,8 +110,8 @@ fn test_gregorianpoint_roundtrip() {
 }
 
 #[test]
-fn test_datecomponents_roundtrip() {
-    let mut dc = DateComponents::default();
+fn test_time_parts_roundtrip() {
+    let mut dc = TimeParts::default();
     dc.year = Some(2025);
     dc.month = Some(6);
     dc.day = Some(15);
@@ -125,7 +125,7 @@ fn test_datecomponents_roundtrip() {
     assert_roundtrip(
         &dc,
         |d| d.to_wire_bytes().to_vec(),
-        DateComponents::from_wire_bytes,
+        TimeParts::from_wire_bytes,
     );
 }
 

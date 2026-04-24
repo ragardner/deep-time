@@ -1,8 +1,7 @@
-use crate::parser::strptime;
 use crate::{
-    ClassifiedDate, ClockType, DEFAULT_DATE_PARSE_OPTIONS, DateClassification, DateOrder,
-    DateParseMode, DetectedDateOrder, DtError, DtStdError, MAX_DATE_STRING_LEN, ParseCfg,
-    TimePoint, classify_date, generate_ambiguous_day_first_candidates,
+    ClassifiedDate, ClockType, DEFAULT_DATE_PARSE_OPTIONS, DateClassification, TimeParts,
+    DateOrder, DateParseMode, DetectedDateOrder, DtError, DtStdError, MAX_DATE_STRING_LEN,
+    ParseCfg, TimePoint, classify_date, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
     parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
@@ -254,11 +253,11 @@ pub fn parse_date_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
 fn parse_fmt(s: &str, fmt: &str) -> Option<TimePoint> {
     // std::eprintln!("TRYING: {}, FOR: {}", fmt, s);
 
-    let components: Result<crate::DateComponents, crate::DtError> = strptime(fmt, s, true, false);
+    let components = TimeParts::strptime(fmt, s, true, false);
 
     // std::eprintln!("RESULT STRPTIME: {:?}", components);
 
-    // Convert Result<DateComponents, DtError> -> Result<TimePoint, DtError>
+    // Convert Result<TimeParts, DtError> -> Result<TimePoint, DtError>
     let time_point_result: Result<TimePoint, DtError> =
         components.and_then(|p| p.to_time_point(ClockType::UTC));
 

@@ -1,10 +1,11 @@
-use crate::parser::strptime;
-use crate::{ClockType, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimePoint};
+use crate::{
+    ClockType, TimeParts, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimePoint,
+};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline(always)]
 pub(crate) fn parse_yymmdd(input: &str) -> Option<TimePoint> {
-    let parsed = strptime("%y%m%d", input, true, false).ok()?;
+    let parsed = TimeParts::strptime("%y%m%d", input, true, false).ok()?;
     parsed.to_time_point(ClockType::UTC).ok()
 }
 
@@ -94,7 +95,8 @@ pub(crate) fn parse_yyyymm(s: &str) -> Option<TimePoint> {
             y = -y;
         }
         if (1..=12).contains(&m) && (crate::MIN_YEAR..=crate::MAX_YEAR).contains(&y) {
-            let parsed = strptime("%Y%m", s.trim_start_matches('-'), true, true).ok()?;
+            let parsed =
+                TimeParts::strptime("%Y%m", s.trim_start_matches('-'), true, true).ok()?;
             return parsed.to_time_point(ClockType::UTC).ok();
         }
     }

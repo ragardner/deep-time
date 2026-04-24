@@ -178,7 +178,7 @@ impl TimePoint {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::DateComponents;
+    use crate::TimeParts;
 
     #[test]
     fn test_ccsds_c_direct_frac() {
@@ -187,7 +187,7 @@ mod tests {
         // T-field = coarse 0x0001 (1 second) + frac 0x80 (0.5 seconds)
         let c_bytes = &[0x15u8, 0x00, 0x01, 0x80];
 
-        let parsed = DateComponents::parse_ccsds_c(c_bytes).unwrap();
+        let parsed = TimeParts::parse_ccsds_c(c_bytes).unwrap();
 
         assert_eq!(parsed.year, Some(1958));
         assert_eq!(parsed.month, Some(1));
@@ -205,7 +205,7 @@ mod tests {
         // n_coarse=1, n_frac=0, T-field = 0x64 → 100 seconds
         let c_bytes = &[0x90u8, 0x00, 0x64];
 
-        let parsed = DateComponents::parse_ccsds_c(c_bytes).unwrap();
+        let parsed = TimeParts::parse_ccsds_c(c_bytes).unwrap();
 
         assert_eq!(parsed.year, Some(1958));
         assert_eq!(parsed.month, Some(1));
@@ -222,7 +222,7 @@ mod tests {
         // Millis-of-day = 0x00000001 → 1 ms → 0 seconds + 1 ms
         let d_bytes = &[0x40u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01];
 
-        let parsed = DateComponents::parse_ccsds_d(d_bytes).unwrap();
+        let parsed = TimeParts::parse_ccsds_d(d_bytes).unwrap();
 
         assert_eq!(parsed.year, Some(1958));
         assert_eq!(parsed.month, Some(1));
@@ -242,7 +242,7 @@ mod tests {
         // Sub-ms = 0x8000 → exactly 0.5 ms
         let d_bytes = &[0x41u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00];
 
-        let parsed = DateComponents::parse_ccsds_d(d_bytes).unwrap();
+        let parsed = TimeParts::parse_ccsds_d(d_bytes).unwrap();
 
         assert_eq!(parsed.second, Some(0));
         assert_eq!(parsed.attos, Some(1_500_000_000_000_000)); // 1.5 ms
@@ -254,7 +254,7 @@ mod tests {
         // We compute the *exact* total TAI seconds since the CCSDS epoch (1958-01-01 00:00:00 TAI)
         // using the same Gregorian logic as the parser. This is 100% independent of the library's
         // JD, leap-second table, or to_time_point path.
-        let days_since_1958 = DateComponents::gregorian_to_days_since_1958(2025, 4, 17);
+        let days_since_1958 = TimeParts::gregorian_to_days_since_1958(2025, 4, 17);
         let sec_of_day = (14 * 3600) + (30 * 60) + 45;
         let total_tai_seconds = days_since_1958 * SEC_PER_DAYI64 + sec_of_day;
 
@@ -265,7 +265,7 @@ mod tests {
         let t = TimePoint::new(tai_sec, 123_456_789_000_000_000, ClockType::TAI);
 
         let (buf, len) = t.to_ccsds_c_bin(4, 3, false).unwrap();
-        let parsed = DateComponents::parse_ccsds_c(&buf[0..len]).unwrap();
+        let parsed = TimeParts::parse_ccsds_c(&buf[0..len]).unwrap();
 
         assert_eq!(parsed.year, Some(2025));
         assert_eq!(parsed.month, Some(4));
@@ -288,7 +288,7 @@ mod tests {
     fn test_ccsds_d_roundtrip() {
         // Desired CCSDS D (CDS) civil time: 2025-04-17 14:30:45.000400000 UTC
         // Same pure-CCSDS-epoch calculation as above (no library conversions).
-        let days_since_1958 = DateComponents::gregorian_to_days_since_1958(2025, 4, 17);
+        let days_since_1958 = TimeParts::gregorian_to_days_since_1958(2025, 4, 17);
         let sec_of_day = (14 * 3600) + (30 * 60) + 45;
         let total_utc_seconds = days_since_1958 * SEC_PER_DAYI64 + sec_of_day;
 
@@ -299,7 +299,7 @@ mod tests {
         let t = TimePoint::new(utc_sec, 400_000_000_000, ClockType::UTC);
 
         let (buf, len) = t.to_ccsds_d_bin(2, 1, false).unwrap();
-        let parsed = DateComponents::parse_ccsds_d(&buf[0..len]).unwrap();
+        let parsed = TimeParts::parse_ccsds_d(&buf[0..len]).unwrap();
 
         assert_eq!(parsed.year, Some(2025));
         assert_eq!(parsed.month, Some(4));

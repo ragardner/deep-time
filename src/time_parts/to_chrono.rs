@@ -1,14 +1,14 @@
 use crate::{
     ATTOSEC_PER_NANOSEC, TimePoint,
     error::{DtErrKind, DtError},
-    {DateComponents, Meridiem, TimeZone, Weekday},
+    {TimeParts, Meridiem, TimeZone, Weekday},
 };
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
 };
 
-impl DateComponents {
-    /// Converts `DateComponents` → Chrono’s `NaiveDateTime` (civil time, no TZ).
+impl TimeParts {
+    /// Converts `TimeParts` → Chrono’s `NaiveDateTime` (civil time, no TZ).
     pub fn to_chrono_naive_datetime(&self) -> Result<NaiveDateTime, DtError> {
         let date = self.build_naive_date()?;
         let time = self.build_naive_time()?;
@@ -115,7 +115,7 @@ impl DateComponents {
         NaiveTime::from_hms_nano_opt(hour, minute, second, subsec_nano).ok_or_else(to_err)
     }
 
-    /// Helper: resolve the DateComponents TZ to a Chrono `FixedOffset`.
+    /// Helper: resolve the TimeParts TZ to a Chrono `FixedOffset`.
     /// IANA names are **not supported** in core chrono (they require the `chrono-tz` crate).
     /// TODO: Add chrono-tz feature?
     fn to_chrono_offset(&self) -> Result<FixedOffset, DtError> {
@@ -139,7 +139,7 @@ impl DateComponents {
         }
     }
 
-    /// Converts `DateComponents` → absolute `DateTime<FixedOffset>`.
+    /// Converts `TimeParts` → absolute `DateTime<FixedOffset>`.
     ///
     /// If `unix_timestamp_seconds` is present, it is treated as the
     /// **absolute source of truth** for the instant (UTC seconds since the Unix epoch).
@@ -174,7 +174,7 @@ impl DateComponents {
             };
 
             // Note: is_leap_second is ignored here (and cannot be set when unix_timestamp_seconds
-            // is present, per DateComponents::finish()).
+            // is present, per TimeParts::finish()).
             let utc_dt = DateTime::from_timestamp(secs, subsec_nano).ok_or_else(to_err)?;
             return Ok(utc_dt.with_timezone(&offset));
         }
@@ -187,7 +187,7 @@ impl DateComponents {
             .ok_or_else(to_err)
     }
 
-    /// Converts `DateComponents` → absolute Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).
+    /// Converts `TimeParts` → absolute Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).
     /// Fast path for unix seconds or full YMD; falls back to civil + TZ conversion.
     pub fn to_chrono_timestamp(&self) -> Result<i64, DtError> {
         if let Some(secs) = self.unix_timestamp_seconds {
@@ -201,11 +201,13 @@ impl DateComponents {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::parser::strptime;
+    use crate::TimeParts;
 
     #[test]
     fn test_to_chrono_naive_datetime_basic_ymd_hms() {
-        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false)
+                .unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         let expected_date = NaiveDate::from_ymd_opt(2024, 4, 15).unwrap();
@@ -217,7 +219,8 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_ordinal_date() {
-        let parsed = strptime("%Y-%j %H:%M:%S", "2024-106 14:30:45", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%Y-%j %H:%M:%S", "2024-106 14:30:45", false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         let expected_date = NaiveDate::from_yo_opt(2024, 106).unwrap();
@@ -231,7 +234,9 @@ mod tests {
     fn test_to_chrono_naive_datetime_iso_week_date() {
         use chrono::Weekday as ChronoWeekday;
 
-        let parsed = strptime("%G-W%V-%u %H:%M:%S", "2024-W16-2 14:30:45", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%G-W%V-%u %H:%M:%S", "2024-W16-2 14:30:45", false, false)
+                .unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         // 2024-W16-2 = Tuesday 2024-04-16
@@ -244,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_fractional_seconds() {
-        let parsed = strptime(
+        let parsed = TimeParts::strptime(
             "%Y-%m-%d %H:%M:%S.%N",
             "2024-04-15 14:30:45.123456789012345678901234567890",
             false,
@@ -262,7 +267,9 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_leap_second() {
-        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false)
+                .unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         // Chrono represents leap second as 23:59:59 + 1_000_000_000 ns
@@ -275,7 +282,9 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_fixed_offset() {
-        let parsed = strptime("%F %T %z", "2024-04-15 14:30:45 -0400", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%F %T %z", "2024-04-15 14:30:45 -0400", false, false)
+                .unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_naive = NaiveDateTime::new(
@@ -294,7 +303,9 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_colon_z_offset() {
-        let parsed = strptime("%F %T %:z", "2024-04-15 14:30:45 -04:00", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%F %T %:z", "2024-04-15 14:30:45 -04:00", false, false)
+                .unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_naive = NaiveDateTime::new(
@@ -312,7 +323,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_direct() {
-        let parsed = strptime("%s", "1713191445", false, false).unwrap();
+        let parsed = TimeParts::strptime("%s", "1713191445", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         // 1713191445 = 2024-04-15 14:30:45 UTC
@@ -326,7 +337,8 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_with_fraction() {
-        let parsed = strptime("%s.%N", "1713191445.123456789", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%s.%N", "1713191445.123456789", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_utc = DateTime::from_timestamp(1713191445, 123_456_789).unwrap();
@@ -338,21 +350,25 @@ mod tests {
 
     #[test]
     fn test_to_chrono_timestamp_basic() {
-        let parsed = strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false)
+                .unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         assert_eq!(ts, 1713191445);
     }
 
     #[test]
     fn test_to_chrono_timestamp_unix_direct() {
-        let parsed = strptime("%s", "1713191445", false, false).unwrap();
+        let parsed = TimeParts::strptime("%s", "1713191445", false, false).unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         assert_eq!(ts, 1713191445);
     }
 
     #[test]
     fn test_to_chrono_timestamp_with_offset() {
-        let parsed = strptime("%F %T %z", "2024-04-15 10:30:45 -0400", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%F %T %z", "2024-04-15 10:30:45 -0400", false, false)
+                .unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         // 10:30:45 EDT = 14:30:45 UTC → same as above
         assert_eq!(ts, 1713191445);
@@ -360,7 +376,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_iana_name_errors() {
-        let parsed = strptime(
+        let parsed = TimeParts::strptime(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -375,13 +391,15 @@ mod tests {
     #[test]
     fn test_to_chrono_naive_datetime_incomplete_date_fails_in_finish_but_assembly_fails_here() {
         // Parser already rejects incomplete date in finish(), but we test the assembly path too
-        let parsed = strptime("%H:%M:%S", "14:30:45", false, false);
+        let parsed = TimeParts::strptime("%H:%M:%S", "14:30:45", false, false);
         assert!(parsed.is_err()); // finish() already fails with IncompleteDate
     }
 
     #[test]
     fn test_to_chrono_datetime_utc_explicit() {
-        let parsed = strptime("%F %T %z", "2024-04-15 14:30:45 +0000", false, false).unwrap();
+        let parsed =
+            TimeParts::strptime("%F %T %z", "2024-04-15 14:30:45 +0000", false, false)
+                .unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected = DateTime::from_timestamp(1713191445, 0)

@@ -1,6 +1,6 @@
-use crate::{DateComponents, DtErrKind, DtError, strptime};
+use crate::{TimeParts, DtErrKind, DtError};
 
-impl DateComponents {
+impl TimeParts {
     /// Generalized CCSDS ASCII Time Code parser (A or B variant).
     /// Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
     /// All time components after the date portion are optional.
@@ -149,7 +149,7 @@ impl DateComponents {
             Err(_) => return Err(DtError::new(DtErrKind::CCSDSStrFromUtf8Err)),
         };
 
-        strptime(format, cleaned, false, false)
+        TimeParts::strptime(format, cleaned, false, false)
     }
 }
 
@@ -158,8 +158,8 @@ mod tests {
     use super::*;
 
     /// Small helper for tests (strptime already calls .finish() internally on full consumption)
-    fn parse(s: &str) -> DateComponents {
-        let x = DateComponents::parse_ccsds(s);
+    fn parse(s: &str) -> TimeParts {
+        let x = TimeParts::parse_ccsds(s);
         match x {
             Ok(x) => {
                 return x;

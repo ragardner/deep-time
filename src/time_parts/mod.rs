@@ -8,12 +8,12 @@ pub mod to_chrono;
 #[cfg(feature = "jiff")]
 pub mod to_jiff;
 
-use crate::{AsciiStr, ClockType, DtErrKind, DtError};
+use crate::{AsciiStr, ClockType, DtErrKind, DtError, parser::Parser};
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct DateComponents {
+pub struct TimeParts {
     pub year: Option<i64>,
     pub month: Option<u8>,  // 1-12
     pub day: Option<u8>,    // 1-31
@@ -35,7 +35,29 @@ pub struct DateComponents {
     pub unix_timestamp_seconds: Option<i64>, // %s
 }
 
-impl DateComponents {
+impl TimeParts {
+    pub fn strptime(
+        fmt: &str,
+        input: &str,
+        strict: bool,
+        allow_partial: bool,
+    ) -> Result<TimeParts, DtError> {
+        let mut tm = TimeParts::default();
+        let mut parser = Parser::new(fmt.as_bytes(), input.as_bytes(), &mut tm, strict);
+
+        if let Err(e) = parser.parse() {
+            return Err(e);
+        }
+
+        if parser.inp.is_empty() {
+            // All input consumed → finalize
+            tm.finish(allow_partial)
+        } else {
+            // Trailing characters remain
+            Err(DtError::new(DtErrKind::TrailingCharacters))
+        }
+    }
+
     #[inline]
     pub fn finish(mut self, allow_partial: bool) -> core::result::Result<Self, DtError> {
         if self.unix_timestamp_seconds.is_some() {
@@ -117,7 +139,7 @@ impl DateComponents {
     /// Total size of the wire representation (121 bytes).
     pub const WIRE_SIZE: usize = 121;
 
-    /// Serializes `DateComponents` into a fixed 121-byte buffer.
+    /// Serializes `TimeParts` into a fixed 121-byte buffer.
     ///
     /// Layout:
     /// - Byte 0: Version (`WIRE_VERSION`)
@@ -215,7 +237,7 @@ impl DateComponents {
         buf
     }
 
-    /// Deserializes `DateComponents` from exactly 121 bytes.
+    /// Deserializes `TimeParts` from exactly 121 bytes.
     ///
     /// Returns `None` if the version byte is unknown or the data is invalid.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
@@ -227,7 +249,7 @@ impl DateComponents {
             return None;
         }
 
-        let mut dc = DateComponents::default();
+        let mut dc = TimeParts::default();
         let mut offset = 1usize;
 
         // year (8 bytes)
