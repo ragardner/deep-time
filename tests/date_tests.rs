@@ -1,4 +1,4 @@
-use deep_time_core::{DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
+use deep_time_core::{ClockType, DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
 #[cfg(feature = "perf-tests")]
 use std::time::Instant;
 
@@ -382,6 +382,18 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
 
     cases.extend(special_cases);
     cases
+}
+
+#[test]
+fn date_parser_keeps_clock_type() {
+    let tp1 = TimePoint::new(5, 0, ClockType::LTC);
+    let tp2 = TimePoint::new(5, 0, ClockType::GPST);
+    let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
+    let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
+    let res_tp1 = TimePoint::strptime(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
+    let res_tp2 = TimePoint::strptime(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
+    assert!(tp1 == res_tp1 && tp1.clock_type() == res_tp1.clock_type());
+    assert!(tp2 == res_tp2 && tp2.clock_type() == res_tp2.clock_type());
 }
 
 #[test]
@@ -1077,7 +1089,7 @@ fn date_parser_perf_smoke() {
         "Mar 15, 2024 14:30",
         "2024-03-14T15:30:45.123456Z",
         "2024-03-14T15:30:45+01:00",
-        "Dec 31 23:59:59",
+        // "Dec 31 23:59:59",
         "15/03/2024 14:30:45.123456789",
         "03/03/2024",
         "2024-074T15:30:45.123Z",

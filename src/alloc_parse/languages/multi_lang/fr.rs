@@ -1,14 +1,12 @@
 use crate::{
-    DateToken, EN_DAYS, EN_DURATIONS, EN_MONTHS, EN_RELATIVES, EN_SPECIAL, LangData, TZ_ENTRIES,
-    tz_lowered_keys,
+    CLOCK_TYPES, DateToken, EN_DAYS, EN_DURATIONS, EN_MONTHS, EN_RELATIVES, EN_SPECIAL, LangData,
+    TZ_ENTRIES, tz_lowered_keys,
 };
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use hashbrown::HashMap;
 use once_cell::race::OnceBox;
-
-// ==================== FRENCH CONSTANTS ====================
 
 pub(crate) const FR_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("et", "and", DateToken::Plus),
@@ -67,7 +65,6 @@ pub(crate) const FR_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("ans", "y", DateToken::Year),
     ("an", "y", DateToken::Year),
 ];
-
 pub(crate) const FR_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("y", "y", DateToken::Year),
     ("w", "w", DateToken::Week),
@@ -147,7 +144,6 @@ pub(crate) const FR_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("rs", "rs", DateToken::Rontosecond),
     ("qs", "qs", DateToken::Quectosecond),
 ];
-
 pub(crate) const FR_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     ("janv", "Jan", DateToken::MonthShort),
     ("févr", "Feb", DateToken::MonthShort),
@@ -174,7 +170,6 @@ pub(crate) const FR_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     ("novembre", "November", DateToken::MonthLong),
     ("décembre", "December", DateToken::MonthLong),
 ];
-
 pub(crate) const FR_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     ("lun", "Mon", DateToken::DayShort),
     ("mar", "Tue", DateToken::DayShort),
@@ -191,14 +186,10 @@ pub(crate) const FR_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     ("samedi", "Saturday", DateToken::DayLong),
     ("dimanche", "Sunday", DateToken::DayLong),
 ];
-
 pub(crate) const FR_SPECIAL: &[(&'static str, &'static str, DateToken)] =
     &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
-// ==================== LAZY INITIALIZERS ====================
-
 static FR_DATE_AC: OnceBox<AhoCorasick> = OnceBox::new();
-
 pub(crate) fn fr_date_ac() -> &'static AhoCorasick {
     FR_DATE_AC.get_or_init(|| {
         let mut terms: Vec<&'static str> = Vec::with_capacity(
@@ -208,56 +199,47 @@ pub(crate) fn fr_date_ac() -> &'static AhoCorasick {
                 + FR_SPECIAL.len()
                 + tz_lowered_keys().len(),
         );
-
         // English base terms (French reuses many)
         terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
         terms.extend(EN_MONTHS.iter().map(|&(k, _, _)| k));
         terms.extend(EN_DAYS.iter().map(|&(k, _, _)| k));
         terms.extend(EN_SPECIAL.iter().map(|&(k, _, _)| k));
-
         // French-specific terms
         terms.extend(FR_RELATIVES.iter().map(|&(k, _, _)| k));
         terms.extend(FR_MONTHS.iter().map(|&(k, _, _)| k));
         terms.extend(FR_DAYS.iter().map(|&(k, _, _)| k));
         terms.extend(FR_SPECIAL.iter().map(|&(k, _, _)| k));
+        terms.extend(CLOCK_TYPES.iter().map(|&(k, _, _)| k));
         terms.extend(tz_lowered_keys());
-
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
             .build(&terms)
             .expect("invalid Aho-Corasick patterns for FR date terms");
-
         Box::new(ac)
     })
 }
 
 static FR_DURATION_AC: OnceBox<AhoCorasick> = OnceBox::new();
-
 pub(crate) fn fr_duration_ac() -> &'static AhoCorasick {
     FR_DURATION_AC.get_or_init(|| {
         let mut terms: Vec<&'static str> =
             Vec::with_capacity(FR_RELATIVES.len() + FR_DURATIONS.len());
-
         terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
         terms.extend(EN_DURATIONS.iter().map(|&(k, _, _)| k));
         terms.extend(FR_RELATIVES.iter().map(|&(k, _, _)| k));
         terms.extend(FR_DURATIONS.iter().map(|&(k, _, _)| k));
-
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
             .build(&terms)
             .expect("invalid Aho-Corasick patterns for FR duration terms");
-
         Box::new(ac)
     })
 }
 
 pub(crate) static FR: OnceBox<HashMap<&'static str, (&'static str, DateToken)>> = OnceBox::new();
-
 pub(crate) fn fr() -> &'static HashMap<&'static str, (&'static str, DateToken)> {
     FR.get_or_init(|| {
         let mut m = HashMap::new();
-
         // English base
         for &(k, v, token) in EN_RELATIVES {
             m.insert(k, (v, token));
@@ -274,7 +256,6 @@ pub(crate) fn fr() -> &'static HashMap<&'static str, (&'static str, DateToken)> 
         for &(k, v, token) in EN_SPECIAL {
             m.insert(k, (v, token));
         }
-
         // French-specific
         for &(k, v, token) in FR_RELATIVES {
             m.insert(k, (v, token));
@@ -291,19 +272,19 @@ pub(crate) fn fr() -> &'static HashMap<&'static str, (&'static str, DateToken)> 
         for &(k, v, token) in FR_SPECIAL {
             m.insert(k, (v, token));
         }
-
+        for &(k, v, token) in CLOCK_TYPES {
+            m.insert(k, (v, token));
+        }
         for (&lowered_key, &(original_name, _, _)) in
             tz_lowered_keys().iter().zip(TZ_ENTRIES.iter())
         {
             m.insert(lowered_key, (original_name, DateToken::Iana));
         }
-
         Box::new(m)
     })
 }
 
 static FR_LANG_DATA: OnceBox<LangData> = OnceBox::new();
-
 pub(crate) fn fr_lang_data() -> &'static LangData {
     FR_LANG_DATA.get_or_init(|| {
         Box::new(LangData {

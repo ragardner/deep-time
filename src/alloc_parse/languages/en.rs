@@ -18,6 +18,23 @@ pub(crate) fn tz_lowered_keys() -> &'static [&'static str] {
     })
 }
 
+pub(crate) const CLOCK_TYPES: &[(&'static str, &'static str, DateToken)] = &[
+    ("tai", "TAI", DateToken::TAI),
+    ("tt", "TT", DateToken::TT),
+    ("et", "ET", DateToken::ET),
+    ("tdb", "TDB", DateToken::TDB),
+    ("utc", "UTC", DateToken::UTC),
+    ("gpst", "GPST", DateToken::GPST),
+    ("gst", "GST", DateToken::GST),
+    ("bdt", "BDT", DateToken::BDT),
+    ("qzsst", "QZSST", DateToken::QZSST),
+    ("tcg", "TCG", DateToken::TCG),
+    ("tcb", "TCB", DateToken::TCB),
+    ("ltc", "LTC", DateToken::LTC),
+    ("proper", "Proper", DateToken::Proper),
+    ("custom", "Custom", DateToken::Custom),
+];
+
 pub(crate) const EN_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("and", "and", DateToken::Plus),
     ("plus", "plus", DateToken::Plus),
@@ -215,12 +232,14 @@ pub(crate) fn en_date_ac() -> &'static AhoCorasick {
                 + EN_MONTHS.len()
                 + EN_DAYS.len()
                 + EN_SPECIAL.len()
+                + CLOCK_TYPES.len()
                 + tz_lowered_keys().len(),
         );
         terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
         terms.extend(EN_MONTHS.iter().map(|&(k, _, _)| k));
         terms.extend(EN_DAYS.iter().map(|&(k, _, _)| k));
         terms.extend(EN_SPECIAL.iter().map(|&(k, _, _)| k));
+        terms.extend(CLOCK_TYPES.iter().map(|&(k, _, _)| k));
         terms.extend(tz_lowered_keys());
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
@@ -246,7 +265,6 @@ pub(crate) fn en_duration_ac() -> &'static AhoCorasick {
 }
 
 pub(crate) static EN: OnceBox<HashMap<&'static str, (&'static str, DateToken)>> = OnceBox::new();
-
 pub(crate) fn en() -> &'static HashMap<&'static str, (&'static str, DateToken)> {
     EN.get_or_init(|| {
         let mut m = HashMap::new();
@@ -263,6 +281,9 @@ pub(crate) fn en() -> &'static HashMap<&'static str, (&'static str, DateToken)> 
             m.insert(k, (v, token));
         }
         for &(k, v, token) in EN_SPECIAL {
+            m.insert(k, (v, token));
+        }
+        for &(k, v, token) in CLOCK_TYPES {
             m.insert(k, (v, token));
         }
         for (&lowered_key, &(original_name, _, _)) in

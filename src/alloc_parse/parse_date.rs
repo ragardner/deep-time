@@ -1,6 +1,6 @@
 use crate::{
-    ClassifiedDate, ClockType, DateClassification, DateOrder, DateParseMode, DetectedDateOrder,
-    DtError, DtStdError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, classify_date,
+    ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtError,
+    DtStdError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, classify_date,
     default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
@@ -262,7 +262,7 @@ impl TimePoint {
 
         // Convert Result<TimeParts, DtError> -> Result<TimePoint, DtError>
         let time_point_result: Result<TimePoint, DtError> =
-            components.and_then(|p| p.to_time_point(ClockType::UTC));
+            components.and_then(|p| p.to_time_point(None));
 
         // Print the error if there is one (this is what you asked for)
         if let Err(_) = &time_point_result {

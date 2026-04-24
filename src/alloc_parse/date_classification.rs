@@ -103,6 +103,20 @@ pub(crate) enum DateToken {
     Yoctosecond,
     Rontosecond,
     Quectosecond,
+    TAI,
+    TT,
+    ET,
+    TDB,
+    UTC,
+    GPST,
+    GST,
+    BDT,
+    QZSST,
+    TCG,
+    TCB,
+    LTC,
+    Proper,
+    Custom,
 }
 
 impl DateToken {

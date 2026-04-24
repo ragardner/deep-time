@@ -36,13 +36,21 @@ pub struct TimeParts {
 }
 
 impl TimeParts {
+    #[inline]
+    pub fn new_utc() -> Self {
+        Self {
+            clock_type: ClockType::UTC,
+            ..Default::default()
+        }
+    }
+
     pub fn from_str(
         fmt: &str,
         input: &str,
         strict: bool,
         allow_partial: bool,
     ) -> Result<TimeParts, DtError> {
-        let mut tm = TimeParts::default();
+        let mut tm = TimeParts::new_utc();
         let mut parser = Parser::new(fmt.as_bytes(), input.as_bytes(), &mut tm, strict);
         if let Err(e) = parser.parse() {
             return Err(e);

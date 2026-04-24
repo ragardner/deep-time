@@ -9,7 +9,7 @@ impl TimePoint {
         let utc = self.to_clock_type(ClockType::UTC);
         let unix_attosec = self.to_canonical_attoseconds();
         let (jd_days, frac) = utc.to_jd_tt_exact();
-        let (yr, mo, day) = utc.to_gregorian_date(Some((jd_days, frac)));
+        let (yr, mo, day) = utc.to_gregorian_ymd(Some((jd_days, frac)));
         let (hr, min, sec, attos) = utc.to_hms_subsec();
         let (iso_yr, iso_wk, iso_wkday) = utc.to_iso_week_date(Some((yr, mo, day)));
         let day_of_yr = utc.day_of_year(Some((yr, mo, day)));
@@ -40,7 +40,7 @@ impl TimePoint {
         }
     }
 
-    pub const fn to_gregorian_date(self, jd_tt_exact: Option<(i64, TimeSpan)>) -> (i64, u8, u8) {
+    pub const fn to_gregorian_ymd(self, jd_tt_exact: Option<(i64, TimeSpan)>) -> (i64, u8, u8) {
         let (jd_days, frac) = if let Some(jd_tt_exact) = jd_tt_exact {
             jd_tt_exact
         } else {
@@ -315,7 +315,7 @@ impl TimePoint {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
-            self.to_gregorian_date(None)
+            self.to_gregorian_ymd(None)
         };
         let jdn = Self::gregorian_jdn(year, month, day);
         let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
@@ -335,7 +335,7 @@ impl TimePoint {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
-            self.to_gregorian_date(None)
+            self.to_gregorian_ymd(None)
         };
         let doy = if let Some(doy) = doy {
             doy
@@ -366,7 +366,7 @@ impl TimePoint {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
-            self.to_gregorian_date(None)
+            self.to_gregorian_ymd(None)
         };
         let doy = if let Some(doy) = doy {
             doy
@@ -397,13 +397,13 @@ impl TimePoint {
     /// week containing January 4.
     ///
     /// The optional `ymd` argument is a performance optimization. If provided,
-    /// it is used directly; otherwise [`to_gregorian_date`](Self::to_gregorian_date)
+    /// it is used directly; otherwise [`to_gregorian_ymd`](Self::to_gregorian_ymd)
     /// is called internally.
     pub const fn to_iso_week_date(self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
-            self.to_gregorian_date(None)
+            self.to_gregorian_ymd(None)
         };
         let jdn = Self::gregorian_jdn(year, month, day);
         let wd = Self::jdn_to_weekday(jdn);

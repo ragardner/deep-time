@@ -65,11 +65,12 @@ use core::fmt;
 /// - `Custom` – user-defined / arbitrary time scale
 #[non_exhaustive]
 #[repr(u8)]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub enum ClockType {
     /// TAI is the representation of an Epoch internally.
+    #[default]
     TAI,
     /// Terrestrial Time (TT) (previously called Terrestrial Dynamical Time (TDT)).
     TT,
@@ -113,13 +114,6 @@ pub enum ClockType {
     /// **Custom / user-defined type** – for experimental or mission-specific timescales.
     /// Most powerful when paired with `ClockModel` (self-describing polynomial).
     Custom,
-}
-
-impl Default for ClockType {
-    /// Default is `TAI`
-    fn default() -> Self {
-        Self::TAI
-    }
 }
 
 impl ClockType {

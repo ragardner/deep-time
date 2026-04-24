@@ -6,6 +6,7 @@ mod from_ccsds;
 mod ops;
 mod to_canonical;
 mod to_ccsds_bin;
+mod to_str;
 
 pub mod gregorian;
 pub mod gregorian_time;

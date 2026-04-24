@@ -2,10 +2,13 @@ use crate::tzdb::offset_at;
 use crate::{
     ClockType, TimePoint,
     error::{DtErrKind, DtError},
-    {TimeParts, Meridiem, TimeZone, Weekday},
+    {Meridiem, TimeParts, TimeZone, Weekday},
 };
 use crate::{J2000_JD_TT, SEC_PER_DAYI64, UNIX_EPOCH_TO_J2000_NOON_UTC};
 
+/*
+TimePoint -> GregorianPoint -> str (clock type label) -> TimeParts (parses + stores clock type) -> TimePoint
+*/
 impl TimeParts {
     /// Converts parsed date/time components into a high-precision [`TimePoint`].
     ///
@@ -23,7 +26,7 @@ impl TimeParts {
     /// to the correct UTC instant. `TimeZone::Utc` and `None` are treated as UTC.
     ///
     /// The resulting `TimePoint` is automatically converted to the requested
-    /// [`ParsedTimeScale`].
+    /// [`ClockType`].
     ///
     /// # 12-hour time + meridiem support
     ///
@@ -52,14 +55,15 @@ impl TimeParts {
     /// - `TimePointJdnIsNone`
     /// - `TimePointHourOutOfRange`
     /// - `TimePointInvalidDate`
-    pub fn to_time_point(&self, clock_type: ClockType) -> Result<TimePoint, DtError> {
+    pub fn to_time_point(&self, clock_type: Option<ClockType>) -> Result<TimePoint, DtError> {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
             let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
             let subsec = self.attos.unwrap_or(0);
-            return Ok(TimePoint::new(sec, subsec, ClockType::UTC).to_clock_type(clock_type));
+            return Ok(TimePoint::new(sec, subsec, ClockType::UTC)
+                .to_clock_type(clock_type.unwrap_or(self.clock_type)));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -163,7 +167,8 @@ impl TimeParts {
         } else if let Some(TimeZone::Fixed(offset)) = self.tz {
             sec_utc -= offset as i64; // local civil time → true UTC instant
         }
-        Ok(TimePoint::new(sec_utc, subsec, ClockType::UTC).to_clock_type(clock_type))
+        Ok(TimePoint::new(sec_utc, subsec, ClockType::UTC)
+            .to_clock_type(clock_type.unwrap_or(self.clock_type)))
     }
 }
 
@@ -181,7 +186,7 @@ mod tests {
     #[test]
     fn test_unix_epoch_1970() {
         let parsed = TimeParts::from_str("%s", "0", false, false).unwrap();
-        let tp = parsed.to_time_point(ClockType::TAI).unwrap();
+        let tp = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
 
         let jd = jd_tt(&tp);
         // Unix epoch (1970-01-01 00:00:00 UTC) in TT scale:
@@ -196,7 +201,7 @@ mod tests {
     #[test]
     fn test_j2000_noon_via_unix_timestamp() {
         let parsed = TimeParts::from_str("%s", "946728000", false, false).unwrap();
-        let tp = parsed.to_time_point(ClockType::TAI).unwrap();
+        let tp = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
 
         let jd = jd_tt(&tp);
         // J2000.0 = JD 2451545.0 in TT. Tiny deviation expected due to leap seconds + TAI→TT.
@@ -217,7 +222,7 @@ mod tests {
             false,
         )
         .unwrap()
-        .to_time_point(ClockType::TAI)
+        .to_time_point(Some(ClockType::TAI))
         .unwrap();
 
         let ordinal = TimeParts::from_str(
@@ -227,7 +232,7 @@ mod tests {
             false,
         )
         .unwrap()
-        .to_time_point(ClockType::TAI)
+        .to_time_point(Some(ClockType::TAI))
         .unwrap();
 
         assert_eq!(jd_tt(&ymd), jd_tt(&ordinal));
@@ -243,7 +248,7 @@ mod tests {
             false,
         )
         .unwrap();
-        let tp = parsed.to_time_point(ClockType::TAI).unwrap();
+        let tp = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
 
         // 0.123456789 s = 123456789 × 10¹⁸ attoseconds
         let expected = 123_456_789u64 * 1_000_000_000;
@@ -259,7 +264,7 @@ mod tests {
             false,
         )
         .unwrap();
-        let tp = parsed.to_time_point(ClockType::TAI).unwrap();
+        let tp = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
 
         let (_, frac) = tp.to_jd_tt_exact();
         let seconds_in_day = frac.as_sec_f();
@@ -286,7 +291,7 @@ mod tests {
     fn test_incomplete_date_error() {
         // Default TimeParts has no year → early failure in to_time_point.
         let pd = TimeParts::default();
-        let err = pd.to_time_point(ClockType::TAI).unwrap_err();
+        let err = pd.to_time_point(Some(ClockType::TAI)).unwrap_err();
         assert!(matches!(err.kind, DtErrKind::TimePointYearIncompleteDate));
     }
 
@@ -298,7 +303,7 @@ mod tests {
         let mut pd = TimeParts::default();
         pd.year = Some(2023);
         pd.day_of_year = Some(366);
-        let err = pd.to_time_point(ClockType::TAI).unwrap_err();
+        let err = pd.to_time_point(Some(ClockType::TAI)).unwrap_err();
         assert!(matches!(err.kind, DtErrKind::TimePointDayOfYearOutOfRange));
     }
 
@@ -309,7 +314,7 @@ mod tests {
         pd.iso_week_year = Some(2024);
         pd.iso_week = Some(54);
         pd.weekday = Some(Weekday::Monday); // required for the ISO path
-        let err = pd.to_time_point(ClockType::TAI).unwrap_err();
+        let err = pd.to_time_point(Some(ClockType::TAI)).unwrap_err();
         assert!(matches!(err.kind, DtErrKind::TimePointIsoWeekOutOfRange));
     }
 
@@ -318,12 +323,12 @@ mod tests {
         // Pure ISO week date (%G/%V/%u) is now fully supported in to_time_point
         // via the iso_week_year + iso_week + weekday path (no regular .year required).
         let parsed = TimeParts::from_str("%G-W%V-%u", "2024-W16-1", false, false).unwrap();
-        let tp_iso = parsed.to_time_point(ClockType::TAI).unwrap();
+        let tp_iso = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
 
         // 2024-W16-1 is Monday, April 15, 2024
         let ymd = TimeParts::from_str("%Y-%m-%d", "2024-04-15", false, false)
             .unwrap()
-            .to_time_point(ClockType::TAI)
+            .to_time_point(Some(ClockType::TAI))
             .unwrap();
 
         assert_eq!(jd_tt(&tp_iso), jd_tt(&ymd));
