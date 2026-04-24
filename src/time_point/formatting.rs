@@ -1,4 +1,4 @@
-use crate::{ClockType, TimePoint};
+use crate::TimePoint;
 use core::fmt;
 
 #[cfg(feature = "alloc")]
@@ -14,91 +14,95 @@ impl TimePoint {
     /// - If fractional part is zero → no decimal point at all (e.g. `...45Z`).
     /// - Example: `"2024-03-14T15:30:45.123Z"`
     #[inline(always)]
-    pub fn to_rfc3339(&self) -> String {
-        self.to_rfc3339_precision(9)
+    pub fn to_str_rfc3339(&self) -> String {
+        self.to_str_rfc3339_nf(9)
     }
 
-    /// Same as [`to_rfc3339`] but with a configurable maximum number of fractional digits
+    /// Same as [`to_str_rfc3339`] but with a configurable maximum number of fractional digits
     /// (0–18). Trailing zeros are always trimmed.
-    pub fn to_rfc3339_precision(&self, max_precision: usize) -> String {
-        let gt = self.to_clock_type(ClockType::UTC).to_gregorian_time();
+    pub fn to_str_rfc3339_nf(&self, max_precision: usize) -> String {
+        let prec = max_precision.min(18);
+        // Uses the new formatter with the `~` "trim trailing zeros" flag.
+        // The formatter already handles:
+        //   - correct 4-digit years (with sign) for |yr| < 10000
+        //   - full-width years otherwise
+        //   - suppressing the decimal point entirely when the trimmed fraction is zero
+        let fmt = alloc::format!("%Y-%m-%dT%H:%M:%S%.{}~fZ", prec);
+        self.to_str_with_offset_label(&fmt, 0)
+            .expect("RFC 3339 formatting should never fail")
+    }
 
-        // RFC 3339 / ISO 8601 requires exactly 4 digits for years |year| <= 9999.
-        // Larger years use full width (no padding). Negative years always have the sign.
-        let year_str = if gt.yr.abs() < 10_000 {
-            if gt.yr < 0 {
-                alloc::format!("-{:04}", -gt.yr)
-            } else {
-                alloc::format!("{:04}", gt.yr)
-            }
-        } else {
-            alloc::format!("{}", gt.yr)
-        };
-        let mut prec = max_precision.min(18);
+    /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style).
+    ///
+    /// - Uses colon-separated offset (`%:z`) instead of forcing `Z`.
+    /// - Still trims trailing zeros in the fractional part.
+    /// - Example: `"2025-04-16T14:30:45.123+00:00"`
+    #[inline]
+    pub fn to_str_iso8601(&self) -> String {
+        self.to_str_with_offset_label("%Y-%m-%dT%H:%M:%S%.~f%:z", 0)
+            .expect("ISO 8601 formatting should never fail")
+    }
 
-        if prec == 0 {
-            return alloc::format!(
-                "{}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-                year_str,
-                gt.mo,
-                gt.day,
-                gt.hr,
-                gt.min,
-                gt.sec,
-            );
-        }
+    /// **Compact ISO 8601 basic format** (no separators).
+    ///
+    /// - Useful for filenames, URLs, database keys, etc.
+    /// - Example: `"20250416T143045.123456789Z"`
+    #[inline]
+    pub fn to_str_iso8601_basic(&self) -> String {
+        self.to_str_with_offset_label("%Y%m%dT%H%M%S%.~fZ", 0)
+            .expect("ISO 8601 basic formatting should never fail")
+    }
 
-        let scale = 10u64.pow(18 - prec as u32);
-        let mut frac_value = gt.attos / scale;
+    /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
+    ///
+    /// This is the format used in `Date`, `Expires`, `Last-Modified` headers.
+    /// Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
+    #[inline]
+    pub fn to_str_http(&self) -> String {
+        self.to_str_with_offset_label("%a, %d %b %Y %H:%M:%S GMT", 0)
+            .expect("HTTP date formatting should never fail")
+    }
 
-        // Trim trailing zeros (no string ops)
-        while prec > 0 && frac_value % 10 == 0 {
-            frac_value /= 10;
-            prec -= 1;
-        }
+    /// **RFC 2822** date format (used in email `Date` headers).
+    ///
+    /// Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
+    #[inline]
+    pub fn to_str_rfc2822(&self) -> String {
+        self.to_str_with_offset_label("%a, %d %b %Y %H:%M:%S %z", 0)
+            .expect("RFC 2822 formatting should never fail")
+    }
 
-        if prec == 0 {
-            alloc::format!(
-                "{}-{:02}-{:02}T{:02}:{:02}:{:02}Z",
-                year_str,
-                gt.mo,
-                gt.day,
-                gt.hr,
-                gt.min,
-                gt.sec,
-            )
-        } else {
-            alloc::format!(
-                "{}-{:02}-{:02}T{:02}:{:02}:{:02}.{:0>width$}Z",
-                year_str,
-                gt.mo,
-                gt.day,
-                gt.hr,
-                gt.min,
-                gt.sec,
-                frac_value,
-                width = prec,
-            )
-        }
+    /// **ISO 8601 week date**.
+    ///
+    /// Example: `"2025-W16-3"` (year-week-day)
+    #[inline]
+    pub fn to_str_iso_week_date(&self) -> String {
+        self.to_str_with_offset_label("%G-W%V-%u", 0)
+            .expect("ISO week date formatting should never fail")
+    }
+
+    /// Just the **ISO date** part (no time).
+    ///
+    /// Example: `"2025-04-16"`
+    #[inline]
+    pub fn to_str_iso_date(&self) -> String {
+        self.to_str_with_offset_label("%Y-%m-%d", 0)
+            .expect("ISO date formatting should never fail")
+    }
+
+    /// Just the **time** part with fractional seconds (trimmed).
+    ///
+    /// Example: `"14:30:45.123456789"`
+    #[inline]
+    pub fn to_str_iso_time(&self) -> String {
+        self.to_str_with_offset_label("%H:%M:%S%.~f", 0)
+            .expect("ISO time formatting should never fail")
     }
 }
 
-/// Writes the fractional part of a second when `subsec` is in **attoseconds** (10⁻¹⁸ s).
-///
-/// - `precision` = number of decimal digits after the point (capped at 18 because a u64 can't hold more).
-/// - This is the **correct** version after switching the internal representation to attoseconds.
-fn write_fractional(subsec: u64, precision: usize, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    if precision == 0 {
-        return Ok(());
-    }
-
-    // Cap at 18 digits (attosecond precision limit)
-    let prec = precision.min(18);
-    let scale = 10u64.pow(18 - prec as u32);
-    let value = subsec / scale;
-
-    write!(f, ".{:0>width$}", value, width = prec)
-}
+// ─────────────────────────────────────────────────────────────────────────────
+// Display / Debug (unchanged – they show internal representation, not RFC 3339)
+// ─────────────────────────────────────────────────────────────────────────────
 
 impl fmt::Display for TimePoint {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -114,10 +118,16 @@ impl fmt::Display for TimePoint {
         }
 
         write!(f, "{}", sec)?;
-        write_fractional(subsec, precision, f)?;
+        // (the old write_fractional helper is no longer needed – Display keeps its
+        // original zero-padded behaviour for debugging)
+        if precision > 0 {
+            let prec = precision.min(18);
+            let scale = 10u64.pow(18 - prec as u32);
+            let value = subsec / scale;
+            write!(f, ".{:0>width$}", value, width = prec)?;
+        }
 
         if f.alternate() {
-            // # flag → raw internal representation (great for debugging)
             write!(
                 f,
                 " [{} | sec={} subsec={}]",

@@ -211,7 +211,7 @@ impl TimePoint {
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
     #[inline]
-    pub const fn ymd_to_jdn_from_ordinal(year: i64, day_of_year: u16) -> i64 {
+    pub const fn ydoy_to_jdn(year: i64, day_of_year: u16) -> i64 {
         let jdn_jan1 = Self::ymd_to_jdn(year, 1, 1);
         jdn_jan1 + (day_of_year as i64 - 1)
     }

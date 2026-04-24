@@ -109,7 +109,7 @@ impl TimeParts {
                 if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
                     return Err(DtError::new(DtErrKind::TimePointDayOfYearOutOfRange));
                 }
-                jdn = Some(TimePoint::ymd_to_jdn_from_ordinal(year, doy));
+                jdn = Some(TimePoint::ydoy_to_jdn(year, doy));
             }
         }
 
