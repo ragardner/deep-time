@@ -62,7 +62,7 @@ fn test_historical_iana_with_jiff() {
         let our_dt = TimePoint::from_str(&our_input, &None, false)
             .unwrap_or_else(|e| panic!("deep_time_core failed on '{}': {}", our_input, e));
 
-        let our_rfc = our_dt.to_rfc3339();
+        let our_rfc = our_dt.to_str_rfc3339();
 
         // ─── Assert (no more manual prints) ────────────────────────────────────────
         assert_eq!(
@@ -82,7 +82,7 @@ fn test_historical_iana_with_jiff() {
 fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
     let dt = TimePoint::from_str(input.trim(), &opts, false)
         .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
-    let actual = dt.to_rfc3339();
+    let actual = dt.to_str_rfc3339();
 
     assert_eq!(actual, expected_rfc3339, "Input: {}", input);
 }
