@@ -67,7 +67,7 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<TimePoint> {
     }
 
     // Build TimePoint at day 1, 00:00:00 UTC using the same J2000 logic
-    let jdn = TimePoint::gregorian_jdn(year as i64, month as u8, 1);
+    let jdn = TimePoint::ymd_to_jdn(year as i64, month as u8, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // midnight = -12h from noon
 

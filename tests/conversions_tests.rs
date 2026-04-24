@@ -1,5 +1,75 @@
 use deep_time_core::TimePoint;
 
+mod fn_tests {
+    #[test]
+    fn test_ymd_to_jdn() {
+        use crate::TimePoint;
+
+        // ── Positive years ─────────────────────────────────────────────
+        assert_eq!(TimePoint::ymd_to_jdn(2025, 4, 16), 2460782);
+        assert_eq!(TimePoint::ymd_to_jdn(2000, 1, 1), 2451545); // J2000.0 epoch
+        assert_eq!(TimePoint::ymd_to_jdn(1970, 1, 1), 2440588); // Unix epoch
+        assert_eq!(TimePoint::ymd_to_jdn(1582, 10, 15), 2299161); // Gregorian calendar introduction
+        assert_eq!(TimePoint::ymd_to_jdn(1, 1, 1), 1721426);
+
+        // ── Year 0 (corrected) ─────────────────────────────────────────
+        assert_eq!(TimePoint::ymd_to_jdn(0, 1, 1), 1721060);
+        assert_eq!(TimePoint::ymd_to_jdn(0, 12, 31), 1721425);
+
+        // ── Negative years (BCE / large negative) (corrected) ──────────
+        assert_eq!(TimePoint::ymd_to_jdn(-1, 1, 1), 1720695);
+        assert_eq!(TimePoint::ymd_to_jdn(-1, 12, 31), 1721059);
+        assert_eq!(TimePoint::ymd_to_jdn(-4, 1, 1), 1719599); // leap year
+        assert_eq!(TimePoint::ymd_to_jdn(-100, 1, 1), 1684536);
+        assert_eq!(TimePoint::ymd_to_jdn(-400, 1, 1), 1574963);
+        assert_eq!(TimePoint::ymd_to_jdn(-100000, 12, 31), -34802825); // critical large negative year
+
+        // ── Leap year edge cases (corrected) ───────────────────────────
+        assert_eq!(TimePoint::ymd_to_jdn(2000, 2, 29), 2451604); // leap year
+        assert_eq!(TimePoint::ymd_to_jdn(1900, 2, 28), 2415079); // not a leap year
+        assert_eq!(TimePoint::ymd_to_jdn(4, 2, 29), 1722580); // positive leap year
+        assert_eq!(TimePoint::ymd_to_jdn(-4, 2, 29), 1719658); // negative leap year
+
+        // ── Round-trip tests ───────────────────────────────────────────
+        let test_dates = [
+            (2025, 4, 16),
+            (2000, 1, 1),
+            (1970, 1, 1),
+            (1582, 10, 15),
+            (1, 1, 1),
+            (0, 1, 1),
+            (0, 12, 31),
+            (-1, 1, 1),
+            (-1, 12, 31),
+            (-4, 1, 1),
+            (-100, 1, 1),
+            (-400, 1, 1),
+            (-100000, 12, 31),
+            (123456, 7, 4),
+            (-123456, 12, 31),
+        ];
+        for (y, m, d) in test_dates {
+            let jdn = TimePoint::ymd_to_jdn(y, m, d);
+            let (y2, m2, d2) = TimePoint::jdn_to_ymd(jdn);
+            assert_eq!(
+                (y2, m2, d2),
+                (y, m, d),
+                "round-trip failed for {}-{:02}-{:02}",
+                y,
+                m,
+                d
+            );
+        }
+
+        // ── Specific jdn_to_ymd known values (corrected) ─────────
+        assert_eq!(TimePoint::jdn_to_ymd(2460782), (2025, 4, 16));
+        assert_eq!(TimePoint::jdn_to_ymd(2451545), (2000, 1, 1));
+        assert_eq!(TimePoint::jdn_to_ymd(1721060), (0, 1, 1));
+        assert_eq!(TimePoint::jdn_to_ymd(1720695), (-1, 1, 1));
+        assert_eq!(TimePoint::jdn_to_ymd(-34802825), (-100000, 12, 31));
+    }
+}
+
 mod tdb_tests {
     use super::*;
     use deep_time_core::ClockType;
@@ -556,21 +626,21 @@ mod calendar_tests {
     use super::*;
 
     #[test]
-    fn gregorian_jdn_j2000() {
-        assert_eq!(TimePoint::gregorian_jdn(2000, 1, 1), 2451545);
+    fn ymd_to_jdn_j2000() {
+        assert_eq!(TimePoint::ymd_to_jdn(2000, 1, 1), 2451545);
     }
 
     #[test]
-    fn gregorian_jdn_leap_year_handling() {
-        assert_eq!(TimePoint::gregorian_jdn(2000, 2, 29), 2451604); // leap day
-        assert_eq!(TimePoint::gregorian_jdn(1900, 2, 28), 2415079); // non-leap
+    fn ymd_to_jdn_leap_year_handling() {
+        assert_eq!(TimePoint::ymd_to_jdn(2000, 2, 29), 2451604); // leap day
+        assert_eq!(TimePoint::ymd_to_jdn(1900, 2, 28), 2415079); // non-leap
     }
 
     #[test]
     fn is_leap_year_and_valid_date() {
         assert!(TimePoint::is_leap_year(2000));
         assert!(!TimePoint::is_leap_year(1900));
-        assert!(TimePoint::is_valid_gregorian_date(2024, 2, 29));
-        assert!(!TimePoint::is_valid_gregorian_date(2023, 2, 29));
+        assert!(TimePoint::is_valid_ymd(2024, 2, 29));
+        assert!(!TimePoint::is_valid_ymd(2023, 2, 29));
     }
 }

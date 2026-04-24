@@ -12,7 +12,7 @@ pub(crate) fn parse_i32_year(input: &str) -> Option<TimePoint> {
     }
     let year_i64 = year as i64;
 
-    let jdn = TimePoint::gregorian_jdn(year_i64, 1, 1);
+    let jdn = TimePoint::ymd_to_jdn(year_i64, 1, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
@@ -28,7 +28,7 @@ pub(crate) fn parse_two_digit_year(input: &str) -> Option<TimePoint> {
     }
     let year_i64 = full_year as i64;
 
-    let jdn = TimePoint::gregorian_jdn(year_i64, 1, 1);
+    let jdn = TimePoint::ymd_to_jdn(year_i64, 1, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 

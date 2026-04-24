@@ -2,7 +2,6 @@ use crate::error::{DtErrKind, DtError};
 use crate::{ClockType, Meridiem, TimeParts, TimeZone, Weekday};
 use core::result::Result;
 use core::str;
-use std::eprintln;
 
 pub(crate) struct Parser<'f, 'i, 't> {
     pub(crate) fmt: &'f [u8], // remaining format string

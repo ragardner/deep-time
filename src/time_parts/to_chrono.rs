@@ -1,7 +1,7 @@
 use crate::{
     ATTOSEC_PER_NANOSEC, TimePoint,
     error::{DtErrKind, DtError},
-    {TimeParts, Meridiem, TimeZone, Weekday},
+    {Meridiem, TimeParts, TimeZone, Weekday},
 };
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
@@ -41,21 +41,21 @@ impl TimeParts {
         // ISO week date (%G/%V + weekday)
         if let (Some(iso_y), Some(w)) = (self.iso_week_year, self.iso_week) {
             let wd = self.weekday.unwrap_or(Weekday::Monday); // ISO weeks start on Monday
-            let jdn = TimePoint::gregorian_jdn_from_iso_week(iso_y, w, wd);
+            let jdn = TimePoint::ymd_to_jdn_from_iso_week(iso_y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 
         // Sunday-based week number (%U)
         if let (Some(y), Some(w)) = (self.year, self.week_sun) {
             let wd = self.weekday.unwrap_or(Weekday::Sunday); // %U weeks start on Sunday
-            let jdn = TimePoint::gregorian_jdn_from_week_sun(y, w, wd);
+            let jdn = TimePoint::ymd_to_jdn_from_week_sun(y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 
         // Monday-based week number (%W)
         if let (Some(y), Some(w)) = (self.year, self.week_mon) {
             let wd = self.weekday.unwrap_or(Weekday::Monday); // %W weeks start on Monday
-            let jdn = TimePoint::gregorian_jdn_from_week_mon(y, w, wd);
+            let jdn = TimePoint::ymd_to_jdn_from_week_mon(y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 
@@ -206,8 +206,7 @@ mod tests {
     #[test]
     fn test_to_chrono_naive_datetime_basic_ymd_hms() {
         let parsed =
-            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false)
-                .unwrap();
+            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         let expected_date = NaiveDate::from_ymd_opt(2024, 4, 15).unwrap();
@@ -235,8 +234,7 @@ mod tests {
         use chrono::Weekday as ChronoWeekday;
 
         let parsed =
-            TimeParts::from_str("%G-W%V-%u %H:%M:%S", "2024-W16-2 14:30:45", false, false)
-                .unwrap();
+            TimeParts::from_str("%G-W%V-%u %H:%M:%S", "2024-W16-2 14:30:45", false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         // 2024-W16-2 = Tuesday 2024-04-16
@@ -268,8 +266,7 @@ mod tests {
     #[test]
     fn test_to_chrono_naive_datetime_leap_second() {
         let parsed =
-            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false)
-                .unwrap();
+            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         // Chrono represents leap second as 23:59:59 + 1_000_000_000 ns
@@ -283,8 +280,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_fixed_offset() {
         let parsed =
-            TimeParts::from_str("%F %T %z", "2024-04-15 14:30:45 -0400", false, false)
-                .unwrap();
+            TimeParts::from_str("%F %T %z", "2024-04-15 14:30:45 -0400", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_naive = NaiveDateTime::new(
@@ -304,8 +300,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_colon_z_offset() {
         let parsed =
-            TimeParts::from_str("%F %T %:z", "2024-04-15 14:30:45 -04:00", false, false)
-                .unwrap();
+            TimeParts::from_str("%F %T %:z", "2024-04-15 14:30:45 -04:00", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_naive = NaiveDateTime::new(
@@ -337,8 +332,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_with_fraction() {
-        let parsed =
-            TimeParts::from_str("%s.%N", "1713191445.123456789", false, false).unwrap();
+        let parsed = TimeParts::from_str("%s.%N", "1713191445.123456789", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_utc = DateTime::from_timestamp(1713191445, 123_456_789).unwrap();
@@ -351,8 +345,7 @@ mod tests {
     #[test]
     fn test_to_chrono_timestamp_basic() {
         let parsed =
-            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false)
-                .unwrap();
+            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 14:30:45", false, false).unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         assert_eq!(ts, 1713191445);
     }
@@ -367,8 +360,7 @@ mod tests {
     #[test]
     fn test_to_chrono_timestamp_with_offset() {
         let parsed =
-            TimeParts::from_str("%F %T %z", "2024-04-15 10:30:45 -0400", false, false)
-                .unwrap();
+            TimeParts::from_str("%F %T %z", "2024-04-15 10:30:45 -0400", false, false).unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         // 10:30:45 EDT = 14:30:45 UTC → same as above
         assert_eq!(ts, 1713191445);
@@ -398,8 +390,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_utc_explicit() {
         let parsed =
-            TimeParts::from_str("%F %T %z", "2024-04-15 14:30:45 +0000", false, false)
-                .unwrap();
+            TimeParts::from_str("%F %T %z", "2024-04-15 14:30:45 +0000", false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected = DateTime::from_timestamp(1713191445, 0)

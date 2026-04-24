@@ -52,12 +52,18 @@ impl GregorianTime {
                 continue;
             }
 
-            // ── Parse optional flags (- 0 _) ───────────────────────
+            // ── Parse optional flags (- 0 _ ~) ───────────────────────
+            // ~ means "trim trailing zeros" (only affects %f / %N fractional seconds)
             let mut flag = b'0'; // temporary default; many directives override it via pad param
+            let mut trim_trailing = false;
             while i < fmt.len() {
                 match fmt[i] {
                     b'-' | b'0' | b'_' => {
                         flag = fmt[i];
+                        i += 1;
+                    }
+                    b'~' => {
+                        trim_trailing = true;
                         i += 1;
                     }
                     _ => break,
@@ -111,18 +117,50 @@ impl GregorianTime {
                     return Err(DtErrKind::ExpectedFOrNAfterDot);
                 }
 
+                // optional ~ for trim trailing zeros, after width e.g. %.3~f or %.~f
+                if fmt[i] == b'~' {
+                    trim_trailing = true;
+                    i += 1;
+                }
+
+                if i >= fmt.len() {
+                    return Err(DtErrKind::ExpectedFOrNAfterDot);
+                }
+
                 let next = fmt[i];
                 i += 1;
 
                 if matches!(next, b'f' | b'N') {
-                    // Only print the dot for %f when width > 0
+                    // Only print the dot for %f when width > 0.
+                    // When trim_trailing (~) is used and the fractional part is zero
+                    // after trimming, we suppress the dot entirely. This gives clean
+                    // RFC 3339 / ISO 8601 output (no ".000..." for integer seconds).
                     let width_val = frac_width.unwrap_or(18);
                     let add_dot = (next == b'f') && (width_val > 0);
 
-                    if add_dot {
+                    let dot_pos = if add_dot {
+                        let p = *pos;
                         Self::write_bytes(buf, pos, b".");
+                        Some(p)
+                    } else {
+                        None
+                    };
+
+                    let wrote_frac = self.write_fractional_seconds(
+                        buf,
+                        pos,
+                        flag,
+                        frac_width,
+                        colons,
+                        trim_trailing,
+                    );
+
+                    if add_dot && !wrote_frac {
+                        // Nothing significant was written → remove the dot
+                        if let Some(p) = dot_pos {
+                            *pos = p;
+                        }
                     }
-                    self.write_fractional_seconds(buf, pos, flag, frac_width, colons);
                     continue;
                 } else {
                     return Err(DtErrKind::ExpectedFOrNAfterDot);
@@ -137,7 +175,10 @@ impl GregorianTime {
                 b'b' | b'h' => self.write_month_name_abbrev(buf, pos),
                 b'C' => self.write_century(buf, pos, flag, width, colons),
                 b'd' | b'e' => self.write_day_of_month(buf, pos, flag, width, colons, true),
-                b'f' | b'N' => self.write_fractional_seconds(buf, pos, flag, width, colons),
+                b'f' | b'N' => {
+                    let _ =
+                        self.write_fractional_seconds(buf, pos, flag, width, colons, trim_trailing);
+                }
                 b'G' => self.write_iso_week_year(buf, pos, flag, width, colons),
                 b'g' => self.write_two_digit_iso_week_year(buf, pos, flag, width, colons),
                 b'H' | b'k' => self.write_hour24(buf, pos, flag, width, colons, true),
@@ -359,10 +400,11 @@ impl GregorianTime {
         pos: &mut usize,
         subsec: u64,
         width: Option<u8>,
-    ) {
+        trim: bool,
+    ) -> bool {
         let w = width.unwrap_or(18).min(18) as usize;
         if w == 0 {
-            return;
+            return false;
         }
 
         let mut n = subsec;
@@ -371,7 +413,21 @@ impl GregorianTime {
             digits[i] = b'0' + (n % 10) as u8;
             n /= 10;
         }
-        Self::write_bytes(buf, pos, &digits[0..w]);
+
+        let mut end = w;
+        if trim {
+            // Trim trailing zeros from the least-significant end of the selected width.
+            // If everything is zero after trimming, return false so the caller
+            // can suppress the decimal point entirely (perfect for RFC 3339 / ISO 8601).
+            while end > 0 && digits[end - 1] == b'0' {
+                end -= 1;
+            }
+            if end == 0 {
+                return false; // emit nothing at all (no dot, no "0")
+            }
+        }
+        Self::write_bytes(buf, pos, &digits[0..end]);
+        true
     }
 
     // ──────────────────────────────────────────────────────────────
@@ -438,8 +494,9 @@ impl GregorianTime {
         _flag: u8,
         width: Option<u8>,
         _colons: u8,
-    ) {
-        Self::write_fractional(buf, pos, self.attos, width);
+        trim: bool,
+    ) -> bool {
+        Self::write_fractional(buf, pos, self.attos, width, trim)
     }
 
     #[inline]
@@ -859,7 +916,7 @@ mod format_tests {
     // Helper to create a TimePoint at the requested civil UTC time.
     // Now matches GregorianTime::to_time_point exactly (UTC civil seconds).
     fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
-        let jdn = TimePoint::gregorian_jdn(y, m, d);
+        let jdn = TimePoint::ymd_to_jdn(y, m, d);
         let days_since_j2000 = jdn - 2451545i64; // J2000_JD_TT
         let seconds_from_noon = (h as i64 - 12) * 3600 + (min as i64) * 60 + (s as i64);
         let sec = days_since_j2000 * 86400i64 + seconds_from_noon;
@@ -1143,5 +1200,100 @@ mod format_tests {
         let t_large = tp(2038, 1, 19, 3, 14, 7, 0);
         let n = t_large.to_u8_with_offset_label("%s", &mut buf, 0).unwrap();
         assert_eq!(&buf[0..n], b"2147483647");
+    }
+
+    #[test]
+    fn test_fractional_trim_flag() {
+        let mut buf = [0u8; STRFTIME_SIZE];
+
+        // Value with trailing zeros in fractional part
+        let t = tp(2025, 4, 16, 0, 0, 0, 123_456_789_000_000_000);
+
+        // %.~f should trim all trailing zeros
+        let n = t.to_u8_with_offset_label("%.~f", &mut buf, 0).unwrap();
+        assert_eq!(&buf[0..n], b".123456789");
+
+        // %.9~f should trim to 9 significant digits
+        let n = t.to_u8_with_offset_label("%.9~f", &mut buf, 0).unwrap();
+        assert_eq!(&buf[0..n], b".123456789");
+
+        // %.18~f trims trailing zeros (this is the intended behavior of ~)
+        let n = t.to_u8_with_offset_label("%.18~f", &mut buf, 0).unwrap();
+        assert_eq!(&buf[0..n], b".123456789"); // trimmed to significant digits
+
+        // Value that becomes all zeros after trimming
+        let t_zero = tp(2025, 4, 16, 0, 0, 0, 0);
+        let n = t_zero.to_u8_with_offset_label("%.~f", &mut buf, 0).unwrap();
+        assert_eq!(&buf[0..n], b""); // no dot, no "0"
+
+        let n = t_zero
+            .to_u8_with_offset_label("%.9~f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b""); // still nothing
+
+        // Without ~ it should NOT trim (keeps trailing zeros)
+        let t_trailing = tp(2025, 4, 16, 0, 0, 0, 123_000_000_000_000_000);
+        let n = t_trailing
+            .to_u8_with_offset_label("%.9f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b".123000000"); // keeps trailing zeros without ~
+
+        let n = t_trailing
+            .to_u8_with_offset_label("%.9~f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b".123"); // trims with ~
+
+        // %.0~f should always be empty
+        let n = t.to_u8_with_offset_label("%.0~f", &mut buf, 0).unwrap();
+        assert_eq!(&buf[0..n], b"");
+
+        // ── Negative years + fractional trim ─────────────────────────────
+        let t_neg = tp(-123, 6, 15, 9, 30, 45, 123_456_789_000_000_000);
+        let n = t_neg
+            .to_u8_with_offset_label("%Y-%m-%dT%H:%M:%S%.~fZ", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b"-0123-06-15T09:30:45.123456789Z");
+
+        // Negative year with all-zero fractional after trim
+        let t_neg_zero = tp(-1, 1, 1, 0, 0, 0, 0);
+        let n = t_neg_zero
+            .to_u8_with_offset_label("%Y-%.~f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b"-0001-"); // no fractional part at all
+
+        // Year 0 with fractional
+        let t_year0 = tp(0, 1, 1, 0, 0, 0, 500_000_000_000_000_000);
+        let n = t_year0
+            .to_u8_with_offset_label("%Y%.~f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b"0000.5");
+
+        // ── Long years (6 digits) + fractional ───────────────────────────
+        let t_long_year = tp(123456, 7, 4, 12, 0, 0, 987654321987654321);
+        let n = t_long_year
+            .to_u8_with_offset_label("%Y-%m-%dT%H:%M:%S%.~fZ", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b"123456-07-04T12:00:00.987654321987654321Z");
+
+        let t_long_neg_year = tp(-100000, 12, 31, 23, 59, 59, 111111111111111111);
+        let n = t_long_neg_year
+            .to_u8_with_offset_label("%Y-%.~f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b"-100000-.111111111111111111");
+
+        // ── 18-digit attos with NO trailing zeros (with and without ~) ───
+        let t_full_attos = tp(2025, 4, 16, 0, 0, 0, 123456789012345678);
+
+        // With ~ (should still output all 18 digits since no trailing zeros)
+        let n = t_full_attos
+            .to_u8_with_offset_label("%.18~f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b".123456789012345678");
+
+        // Without ~ (same result)
+        let n = t_full_attos
+            .to_u8_with_offset_label("%.18f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b".123456789012345678");
     }
 }

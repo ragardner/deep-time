@@ -100,16 +100,16 @@ impl TimeParts {
         if let Some(year) = self.year {
             if let (Some(m), Some(d)) = (self.month, self.day) {
                 // Classic YMD – highest priority + full validation
-                if !TimePoint::is_valid_gregorian_date(year, m, d) {
+                if !TimePoint::is_valid_ymd(year, m, d) {
                     return Err(DtError::new(DtErrKind::TimePointInvalidDate));
                 }
-                jdn = Some(TimePoint::gregorian_jdn(year, m, d));
+                jdn = Some(TimePoint::ymd_to_jdn(year, m, d));
             } else if let Some(doy) = self.day_of_year {
                 // Ordinal date (%j) – already validated
                 if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
                     return Err(DtError::new(DtErrKind::TimePointDayOfYearOutOfRange));
                 }
-                jdn = Some(TimePoint::gregorian_jdn_from_ordinal(year, doy));
+                jdn = Some(TimePoint::ymd_to_jdn_from_ordinal(year, doy));
             }
         }
 
@@ -123,21 +123,21 @@ impl TimeParts {
                     return Err(DtError::new(DtErrKind::TimePointInvalidDate));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Monday);
-                jdn = Some(TimePoint::gregorian_jdn_from_iso_week(iso_y, iso_w, wd));
+                jdn = Some(TimePoint::ymd_to_jdn_from_iso_week(iso_y, iso_w, wd));
             } else if let (Some(y), Some(w)) = (self.year, self.week_sun) {
                 // Sunday-based week (%U)
                 if w > 53 {
                     return Err(DtError::new(DtErrKind::TimePointIsoWeekOutOfRange));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Sunday);
-                jdn = Some(TimePoint::gregorian_jdn_from_week_sun(y, w, wd));
+                jdn = Some(TimePoint::ymd_to_jdn_from_week_sun(y, w, wd));
             } else if let (Some(y), Some(w)) = (self.year, self.week_mon) {
                 // Monday-based week (%W)
                 if w > 53 {
                     return Err(DtError::new(DtErrKind::TimePointIsoWeekOutOfRange));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Monday);
-                jdn = Some(TimePoint::gregorian_jdn_from_week_mon(y, w, wd));
+                jdn = Some(TimePoint::ymd_to_jdn_from_week_mon(y, w, wd));
             }
         }
 

@@ -81,7 +81,7 @@ impl TimePoint {
             }
         };
 
-        Self::jdn_to_gregorian(jdn)
+        Self::jdn_to_ymd(jdn)
     }
 
     pub const fn to_hms_subsec(self) -> (u8, u8, u8, u64) {
@@ -146,33 +146,61 @@ impl TimePoint {
     /// Returns `(year, month, day)` where `month` ∈ [1, 12] and `day` ∈ [1, 31]
     /// (standard 1-based Gregorian values).
     ///
-    /// This is the inverse of [`Self::gregorian_jdn`]. Supports the full `i64`
+    /// This is the inverse of [`Self::ymd_to_jdn`]. Supports the full `i64`
     /// range, including negative years and year zero.
-    pub const fn jdn_to_gregorian(jdn: i64) -> (i64, u8, u8) {
+    pub const fn jdn_to_ymd(jdn: i64) -> (i64, u8, u8) {
         // Use i128 internally to avoid overflow on full i64 JDN range
         let j = jdn as i128;
+
+        // Floor division helper (required for negative JDNs)
+        const fn floor_div(a: i128, b: i128) -> i128 {
+            let q = a / b;
+            let r = a % b;
+            if (r > 0 && b < 0) || (r < 0 && b > 0) {
+                q - 1
+            } else {
+                q
+            }
+        }
+
         let a = j + 32044;
-        let b = (4 * a + 3) / 146097;
-        let c = a - (b * 146097) / 4;
-        let d = (4 * c + 3) / 1461;
-        let e = c - (1461 * d) / 4;
-        let m = (5 * e + 2) / 153;
-        let day = (e - (153 * m + 2) / 5 + 1) as u8;
-        let month = (m + 3 - 12 * (m / 10)) as u8;
-        let year = b * 100 + d - 4800 + (m / 10);
+        let b = floor_div(4 * a + 3, 146097);
+        let c = a - floor_div(b * 146097, 4);
+        let d = floor_div(4 * c + 3, 1461);
+        let e = c - floor_div(1461 * d, 4);
+        let m = floor_div(5 * e + 2, 153);
+        let day = (e - floor_div(153 * m + 2, 5) + 1) as u8;
+        let month = (m + 3 - 12 * floor_div(m, 10)) as u8;
+        let year = b * 100 + d - 4800 + floor_div(m, 10);
         (year as i64, month, day)
     }
 
     /// Computes the Julian Day Number (JDN) for a proleptic Gregorian calendar date at noon UT.
     ///
     /// The algorithm matches the standard astronomical convention used throughout the library
-    /// (`gregorian_jdn(2000, 1, 1) == 2451545`).
+    /// (`ymd_to_jdn(2000, 1, 1) == 2451545`).
     #[inline]
-    pub const fn gregorian_jdn(year: i64, month: u8, day: u8) -> i64 {
+    pub const fn ymd_to_jdn(year: i64, month: u8, day: u8) -> i64 {
         let a = (14 - month as i64) / 12;
         let y = year + 4800 - a;
         let m = month as i64 + 12 * a - 3;
-        day as i64 + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
+
+        // Floor division helper (must be const fn, not a closure)
+        const fn floor_div(a: i64, b: i64) -> i64 {
+            let q = a / b;
+            let r = a % b;
+            if (r > 0 && b < 0) || (r < 0 && b > 0) {
+                q - 1
+            } else {
+                q
+            }
+        }
+
+        let y4 = floor_div(y, 4);
+        let y100 = floor_div(y, 100);
+        let y400 = floor_div(y, 400);
+
+        day as i64 + (153 * m + 2) / 5 + 365 * y + y4 - y100 + y400 - 32045
     }
 
     /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.
@@ -183,8 +211,8 @@ impl TimePoint {
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
     #[inline]
-    pub const fn gregorian_jdn_from_ordinal(year: i64, day_of_year: u16) -> i64 {
-        let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
+    pub const fn ymd_to_jdn_from_ordinal(year: i64, day_of_year: u16) -> i64 {
+        let jdn_jan1 = Self::ymd_to_jdn(year, 1, 1);
         jdn_jan1 + (day_of_year as i64 - 1)
     }
 
@@ -196,8 +224,8 @@ impl TimePoint {
 
     /// Computes the Julian Day Number from an ISO week date (Monday-based week).
     #[inline]
-    pub const fn gregorian_jdn_from_iso_week(iso_year: i64, iso_week: u8, weekday: Weekday) -> i64 {
-        let jan4_jdn = Self::gregorian_jdn(iso_year, 1, 4);
+    pub const fn ymd_to_jdn_from_iso_week(iso_year: i64, iso_week: u8, weekday: Weekday) -> i64 {
+        let jan4_jdn = Self::ymd_to_jdn(iso_year, 1, 4);
         let wd_jan4 = Self::jdn_to_weekday(jan4_jdn);
         let days_to_monday = (wd_jan4 + 6) % 7;
         let monday_week1 = jan4_jdn - (days_to_monday as i64);
@@ -217,8 +245,8 @@ impl TimePoint {
     }
 
     /// Computes the Julian Day Number from a Sunday-based week-of-year (`%U`).
-    pub const fn gregorian_jdn_from_week_sun(year: i64, week: u8, weekday: Weekday) -> i64 {
-        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
+    pub const fn ymd_to_jdn_from_week_sun(year: i64, week: u8, weekday: Weekday) -> i64 {
+        let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
 
         let days_to_first_sunday = ((7u8 - wd_jan1) % 7u8) as i64;
@@ -239,8 +267,8 @@ impl TimePoint {
     }
 
     /// Computes the Julian Day Number from a Monday-based week-of-year (`%W`).
-    pub const fn gregorian_jdn_from_week_mon(year: i64, week: u8, weekday: Weekday) -> i64 {
-        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
+    pub const fn ymd_to_jdn_from_week_mon(year: i64, week: u8, weekday: Weekday) -> i64 {
+        let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
 
         let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
@@ -261,7 +289,7 @@ impl TimePoint {
     }
 
     /// Returns `true` if the supplied values form a valid proleptic Gregorian calendar date.
-    pub const fn is_valid_gregorian_date(year: i64, month: u8, day: u8) -> bool {
+    pub const fn is_valid_ymd(year: i64, month: u8, day: u8) -> bool {
         if month < 1 || month > 12 || day < 1 {
             return false;
         }
@@ -283,7 +311,7 @@ impl TimePoint {
     /// Returns `true` if the given Gregorian year contains an ISO week 53.
     #[inline]
     pub const fn has_iso_week_53(year: i64) -> bool {
-        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
+        let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
         wd_jan1 == 4 || (Self::is_leap_year(year) && wd_jan1 == 3)
     }
@@ -317,8 +345,8 @@ impl TimePoint {
         } else {
             self.to_gregorian_ymd(None)
         };
-        let jdn = Self::gregorian_jdn(year, month, day);
-        let jdn_jan1 = Self::gregorian_jdn(year, 1, 1);
+        let jdn = Self::ymd_to_jdn(year, month, day);
+        let jdn_jan1 = Self::ymd_to_jdn(year, 1, 1);
         (jdn - jdn_jan1 + 1) as u16
     }
 
@@ -342,7 +370,7 @@ impl TimePoint {
         } else {
             self.day_of_year(ymd)
         };
-        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
+        let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
         let days_to_first_sunday = (7u8 - wd_jan1) % 7u8;
         let first_sunday_doy = days_to_first_sunday as u16 + 1;
@@ -373,7 +401,7 @@ impl TimePoint {
         } else {
             self.day_of_year(ymd)
         };
-        let jan1_jdn = Self::gregorian_jdn(year, 1, 1);
+        let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
         let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
         let first_monday_doy = days_to_first_monday as u16 + 1;
@@ -405,11 +433,11 @@ impl TimePoint {
         } else {
             self.to_gregorian_ymd(None)
         };
-        let jdn = Self::gregorian_jdn(year, month, day);
+        let jdn = Self::ymd_to_jdn(year, month, day);
         let wd = Self::jdn_to_weekday(jdn);
         let wd_iso = if wd == 0 { 7 } else { wd };
 
-        let jan4_jdn = Self::gregorian_jdn(year, 1, 4);
+        let jan4_jdn = Self::ymd_to_jdn(year, 1, 4);
         let wd_jan4 = Self::jdn_to_weekday(jan4_jdn);
         let days_to_monday = (wd_jan4 + 6) % 7;
         let monday_week1 = jan4_jdn - (days_to_monday as i64);
