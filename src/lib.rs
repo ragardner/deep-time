@@ -26,13 +26,13 @@ mod clock_drift;
 mod clock_model;
 mod clock_type;
 mod common;
-mod delta;
 mod light_time;
 mod parse;
 mod position;
 mod time_parts;
 mod time_point;
 mod time_range;
+mod time_span;
 mod utils;
 
 // _________________________________________
@@ -68,8 +68,6 @@ pub(crate) use utils::*;
 #[cfg(feature = "std")]
 pub use std_parse::{
     lang::Lang,
-    parse_date::{parse_date, parse_date_ms, parse_date_unix_ms},
-    parse_duration::{duration_to_iso, parse_duration},
     types::{DateOrder, DateParseMode, ParseCfg},
 };
 
@@ -80,12 +78,12 @@ pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
-pub use delta::Delta;
-pub use delta::time_units::TimeUnits;
 pub use light_time::{LightContext, ObserverState};
 pub use parse::{formatter, parser};
 pub use position::{Position, Velocity};
 pub use time_parts::{Meridiem, TimeParts, TimeZone, Weekday};
 pub use time_point::TimePoint;
-pub use time_point::gregorian_point::GregorianPoint;
+pub use time_point::gregorian_time::GregorianTime;
 pub use time_range::{Every, TimeRange};
+pub use time_span::TimeSpan;
+pub use time_span::time_units::TimeUnits;

@@ -1,10 +1,10 @@
-use crate::Delta;
+use crate::TimeSpan;
 use chrono::{DateTime, Duration, Utc};
 
-impl Delta {
-    /// Creates a `Delta` from a `chrono::Duration` / `TimeDelta` (nanosecond precision).
+impl TimeSpan {
+    /// Creates a `TimeSpan` from a `chrono::Duration` / `TimeTimeSpan` (nanosecond precision).
     ///
-    /// This is the exact reverse of [`Delta::to_chrono_duration`].
+    /// This is the exact reverse of [`TimeSpan::to_chrono_duration`].
     ///
     /// - The conversion is **lossless** when the chrono duration fits inside an `i64`
     ///   number of nanoseconds.
@@ -14,7 +14,7 @@ impl Delta {
     ///   range that chrono itself can represent as nanoseconds), we clamp to
     ///   **exactly** the maximum/minimum nanosecond value that chrono can store
     ///   (`i64::MAX` / `i64::MIN` nanoseconds) rather than saturating to
-    ///   `Delta::MAX` / `Delta::MIN`.
+    ///   `TimeSpan::MAX` / `TimeSpan::MIN`.
     #[inline]
     pub fn from_chrono_duration(dur: Duration) -> Self {
         match dur.num_nanoseconds() {
@@ -30,18 +30,18 @@ impl Delta {
         }
     }
 
-    /// Creates a `Delta` representing the duration since the Unix epoch
+    /// Creates a `TimeSpan` representing the duration since the Unix epoch
     /// (1970-01-01 00:00:00 UTC) from a `chrono::DateTime<Utc>`.
     ///
-    /// This is the exact reverse of [`Delta::to_chrono_datetime_utc`].
+    /// This is the exact reverse of [`TimeSpan::to_chrono_datetime_utc`].
     ///
-    /// - Returns a `Delta` whose value is the number of nanoseconds since the
+    /// - Returns a `TimeSpan` whose value is the number of nanoseconds since the
     ///   Unix epoch (with sub-nanosecond attoseconds set to zero).
     /// - Uses the safe `timestamp_nanos_opt()` API.
     /// - If the DateTime is outside the nanosecond range chrono can represent,
     ///   we clamp to **exactly** the maximum/minimum nanosecond value that chrono
     ///   itself can store (`i64::MAX` / `i64::MIN` nanoseconds since epoch)
-    ///   rather than saturating to `Delta::MAX` / `Delta::MIN`.
+    ///   rather than saturating to `TimeSpan::MAX` / `TimeSpan::MIN`.
     #[inline]
     pub fn from_chrono_datetime_utc(dt: DateTime<Utc>) -> Self {
         match dt.timestamp_nanos_opt() {

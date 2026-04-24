@@ -1,4 +1,4 @@
-use crate::{Delta, TimePoint};
+use crate::{TimeSpan, TimePoint};
 use jiff::Timestamp;
 
 impl TimePoint {
@@ -26,6 +26,6 @@ impl TimePoint {
             nanos as i64
         };
 
-        TimePoint::UNIX_EPOCH_TAI.add(Delta::from_ns(ns))
+        TimePoint::UNIX_EPOCH_TAI.add(TimeSpan::from_ns(ns))
     }
 }

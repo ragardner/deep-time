@@ -1,7 +1,7 @@
 use crate::{
-    ClassifiedDate, ConnectorType, DateClassification, DateToken, EndsWithExt, IndexIn, LANG_MAP,
-    Lang, LangData, OffsetType, SplitKeepWithPos, TimeType, parse_relative, str_err,
-    to_ascii_digit,
+    ClassifiedDate, ClockType, ConnectorType, DateClassification, DateToken, EndsWithExt, IndexIn,
+    LANG_MAP, Lang, LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType,
+    natural_duration_to_span, str_err, to_ascii_digit,
 };
 use std::string::String;
 use std::vec::Vec;
@@ -66,7 +66,10 @@ pub(crate) fn classify_date(s: &str, lang: Lang) -> Result<ClassifiedDate, Strin
     while let Some((part, _)) = splitter.next() {
         if let Some((norm_part, token)) = term_map.get(part) {
             if token.is_relative() {
-                return parse_relative(&s, lang, false);
+                let span = natural_duration_to_span(s, lang, false)?;
+                let time_point = TimePoint::now(ClockType::UTC);
+                time_point.saturating_add_ref(&span);
+                return Ok(ClassifiedDate::Parsed(time_point));
             }
             match token {
                 DateToken::DayShort

@@ -1,12 +1,12 @@
 // tests/duration_tests.rs
-use deep_time_core::{Lang, parse_duration};
+use deep_time_core::{Lang, TimeSpan};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 fn assert_duration(input: &str, expected_millis: i64) {
     let trimmed = input.trim();
-    let dur = parse_duration(trimmed, Lang::default())
+    let dur = TimeSpan::from_str(trimmed, Lang::default())
         .unwrap_or_else(|e| panic!("Failed '{}': {}", input, e));
 
     let actual_millis = dur.as_ms() as i64;
@@ -17,7 +17,7 @@ fn assert_duration(input: &str, expected_millis: i64) {
 fn assert_fails(input: &str) {
     let trimmed = input.trim();
     assert!(
-        parse_duration(trimmed, Lang::default()).is_err(),
+        TimeSpan::from_str(trimmed, Lang::default()).is_err(),
         "Expected failure: {}",
         input
     );

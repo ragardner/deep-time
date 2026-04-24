@@ -1,10 +1,10 @@
-use crate::{AsciiStr, ClockType, Delta, J2000_JD_TT, SEC_PER_DAYI64, TimePoint, Weekday};
+use crate::{AsciiStr, ClockType, J2000_JD_TT, SEC_PER_DAYI64, TimePoint, TimeSpan, Weekday};
 
 /// UTC Civil calendar and time-of-day components of a `TimePoint`.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GregorianPoint {
+pub struct GregorianTime {
     /// UNIX attoseconds counting from 1970 epoch
     pub(crate) unix_attosec: i128,
     /// Gregorian year (proleptic Gregorian calendar, supports negative years and year 0).
@@ -32,7 +32,7 @@ pub struct GregorianPoint {
     /// Weekday number (0 = Sunday … 6 = Saturday).
     pub(crate) wkday: u8,
     /// Output from jd_tt_exact() on TimePoint.
-    pub(crate) jd_tt_exact: (i64, Delta),
+    pub(crate) jd_tt_exact: (i64, TimeSpan),
     /// Sunday based week of year (Range: `0..=53`).
     pub(crate) wk_of_yr_sun: u8,
     /// Monday based week of year (Range: `0..=53`).
@@ -45,14 +45,14 @@ pub struct GregorianPoint {
     /// UTC, EST, %Z
     pub(crate) tz_abbrev: Option<AsciiStr<16>>,
     /// Used for formatting (strftime).
-    /// Clock type of the Time Point this UTC GregorianPoint came from.
+    /// Clock type of the Time Point this UTC GregorianTime came from.
     pub(crate) clock_type: ClockType,
 }
 
-impl GregorianPoint {
-    /// Creates a new `GregorianPoint` with all fields specified.
-    /// This isn't the recommended way to make a `GregorianPoint`.
-    /// It's safer to use `TimePoint::to_gregorian_point()`.
+impl GregorianTime {
+    /// Creates a new `GregorianTime` with all fields specified.
+    /// This isn't the recommended way to make a `GregorianTime`.
+    /// It's safer to use `TimePoint::to_gregorian_time()`.
     #[inline]
     pub const fn new(
         unix_attosec: i128,
@@ -68,7 +68,7 @@ impl GregorianPoint {
         iso_wkday: Weekday,
         day_of_yr: u16,
         wkday: u8,
-        jd_tt_exact: (i64, Delta),
+        jd_tt_exact: (i64, TimeSpan),
         wk_of_yr_sun: u8,
         wk_of_yr_mon: u8,
         offset_sec: Option<i32>,
@@ -249,12 +249,12 @@ impl GregorianPoint {
     }
     /// Sets the clock type label that will be used when formatting with `%L`.
     ///
-    /// This is useful when you want to reuse the same `GregorianPoint` multiple times
+    /// This is useful when you want to reuse the same `GregorianTime` multiple times
     /// with different clock scale labels (e.g. once as `TAI`, once as `LTC`, once as `Proper`).
     ///
     /// # Example
     /// ```ignore
-    /// let gp = time_point.to_gregorian_point();
+    /// let gp = time_point.to_gregorian_time();
     ///
     /// let s1 = gp.set_clock_type(ClockType::LTC)
     ///            .strftime("%Y-%m-%d %H:%M:%S %L")?;
@@ -269,7 +269,7 @@ impl GregorianPoint {
 
     /// Reconstructs a [`TimePoint`] from these **UTC** civil components.
     ///
-    /// Round-tripping with `TimePoint::to_gregorian_point`.
+    /// Round-tripping with `TimePoint::to_gregorian_time`.
     pub const fn to_time_point(self, clock_type: ClockType) -> TimePoint {
         let jdn = TimePoint::gregorian_jdn(self.yr, self.mo, self.day);
         let days_since_j2000 = jdn - J2000_JD_TT;
@@ -285,7 +285,7 @@ impl GregorianPoint {
     /// Size of the canonical wire representation in bytes (152 bytes).
     pub const WIRE_SIZE: usize = 152;
 
-    /// Serializes this `GregorianPoint` into a fixed 152-byte buffer.
+    /// Serializes this `GregorianTime` into a fixed 152-byte buffer.
     ///
     /// # Wire Format (Version 1)
     ///
@@ -299,7 +299,7 @@ impl GregorianPoint {
     /// - Bytes `48..50`: `day_of_yr` (`u16`)
     /// - Byte `50`: `wkday` (`u8`)
     /// - Bytes `51..59`: `jd_tt_exact.0` (`i64`)
-    /// - Bytes `59..76`: `jd_tt_exact.1` (`Delta`)
+    /// - Bytes `59..76`: `jd_tt_exact.1` (`TimeSpan`)
     /// - Bytes `76..78`: `wk_of_yr_sun` + `wk_of_yr_mon`
     /// - Bytes `78..83`: `offset_sec` (tag byte + `i32`)
     /// - Bytes `83..134`: `tz` (tag byte + `AsciiStr<50>`)
@@ -356,9 +356,9 @@ impl GregorianPoint {
         // jd_tt_exact (8 + 17 = 25 bytes)
         buf[offset..offset + 8].copy_from_slice(&self.jd_tt_exact.0.to_le_bytes());
         offset += 8;
-        let jd_delta_bytes = self.jd_tt_exact.1.to_wire_bytes();
-        buf[offset..offset + Delta::WIRE_SIZE].copy_from_slice(&jd_delta_bytes);
-        offset += Delta::WIRE_SIZE;
+        let jd_span_bytes = self.jd_tt_exact.1.to_wire_bytes();
+        buf[offset..offset + TimeSpan::WIRE_SIZE].copy_from_slice(&jd_span_bytes);
+        offset += TimeSpan::WIRE_SIZE;
 
         // wk_of_yr_sun + wk_of_yr_mon (2 bytes)
         buf[offset] = self.wk_of_yr_sun;
@@ -401,7 +401,7 @@ impl GregorianPoint {
         buf
     }
 
-    /// Deserializes a `GregorianPoint` from exactly 152 bytes of wire data.
+    /// Deserializes a `GregorianTime` from exactly 152 bytes of wire data.
     ///
     /// Returns `None` if the version is unknown or any field is invalid.
     ///
@@ -518,8 +518,8 @@ impl GregorianPoint {
             bytes[offset + 7],
         ]);
         offset += 8;
-        let jd1 = Delta::from_wire_bytes(&bytes[offset..offset + Delta::WIRE_SIZE])?;
-        offset += Delta::WIRE_SIZE;
+        let jd1 = TimeSpan::from_wire_bytes(&bytes[offset..offset + TimeSpan::WIRE_SIZE])?;
+        offset += TimeSpan::WIRE_SIZE;
 
         // wk_of_yr_sun + wk_of_yr_mon
         let wk_of_yr_sun = bytes[offset];

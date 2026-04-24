@@ -1,4 +1,4 @@
-use crate::{Delta, Real};
+use crate::{Real, TimeSpan};
 
 /// Exactly 86,400 seconds in one standard Earth day  
 /// (24 hours × 60 minutes × 60 seconds).
@@ -44,8 +44,8 @@ pub const ATTOSEC_PER_ATTOSEC: u64 = 1;
 pub(crate) const TT_TAI_OFFSET_SEC: i64 = 32;
 pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 × 10¹⁸
 
-/// Helper that returns the exact TT–TAI offset as a `Delta`.
-pub const TT_TAI_OFFSET_DELTA: Delta = Delta::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
+/// Helper that returns the exact TT–TAI offset as a `TimeSpan`.
+pub const TT_TAI_OFFSET_SPAN: TimeSpan = TimeSpan::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
 
 // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
 pub(crate) const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;

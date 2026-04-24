@@ -3,8 +3,8 @@
 //! Run with: `cargo test --test wire_roundtrip`
 
 use deep_time_core::{
-    ClockDrift, ClockModel, ClockType, Delta, GregorianPoint, Meridiem, TimeParts, TimePoint,
-    TimeRange, TimeZone, Weekday,
+    ClockDrift, ClockModel, ClockType, GregorianTime, Meridiem, TimeParts, TimePoint, TimeRange,
+    TimeSpan, TimeZone, Weekday,
 };
 
 /// Helper function to test round-trip serialization/deserialization.
@@ -21,12 +21,12 @@ fn assert_roundtrip<T>(
 }
 
 #[test]
-fn test_delta_roundtrip() {
-    let delta = Delta::from_sec(123456789) + Delta::from_ns(987654321);
+fn test_span_roundtrip() {
+    let span = TimeSpan::from_sec(123456789) + TimeSpan::from_ns(987654321);
     assert_roundtrip(
-        &delta,
+        &span,
         |d| d.to_wire_bytes().to_vec(),
-        Delta::from_wire_bytes,
+        TimeSpan::from_wire_bytes,
     );
 }
 
@@ -42,7 +42,11 @@ fn test_timepoint_roundtrip() {
 
 #[test]
 fn test_clockdrift_roundtrip() {
-    let drift = ClockDrift::new(Delta::from_sec(5), Delta::from_ns(1), Delta::from_as(2));
+    let drift = ClockDrift::new(
+        TimeSpan::from_sec(5),
+        TimeSpan::from_ns(1),
+        TimeSpan::from_as(2),
+    );
     assert_roundtrip(
         &drift,
         |d| d.to_wire_bytes().to_vec(),
@@ -54,7 +58,7 @@ fn test_clockdrift_roundtrip() {
 fn test_clockmodel_roundtrip() {
     let model = ClockModel::proper(
         TimePoint::new(0, 0, ClockType::TAI),
-        ClockDrift::from_offset_and_rate(Delta::from_sec(42), Delta::from_ns(1)),
+        ClockDrift::from_offset_and_rate(TimeSpan::from_sec(42), TimeSpan::from_ns(1)),
     );
     assert_roundtrip(
         &model,
@@ -66,8 +70,8 @@ fn test_clockmodel_roundtrip() {
 #[test]
 fn test_timerange_roundtrip() {
     let start = TimePoint::new(1000000000, 0, ClockType::TAI);
-    let end = start + Delta::from_hr(24);
-    let step = Delta::from_hr(1);
+    let end = start + TimeSpan::from_hr(24);
+    let step = TimeSpan::from_hr(1);
     let range = start.range_to(end, step);
 
     assert_roundtrip(
@@ -78,8 +82,8 @@ fn test_timerange_roundtrip() {
 }
 
 #[test]
-fn test_gregorianpoint_roundtrip() {
-    let gp = GregorianPoint::new(
+fn test_gregorian_time_roundtrip() {
+    let gp = GregorianTime::new(
         1_700_000_000_000_000_000_000_000_000, // unix_attosec
         2024,                                  // yr
         12,                                    // mo
@@ -93,7 +97,7 @@ fn test_gregorianpoint_roundtrip() {
         Weekday::Wednesday,                    // iso_wkday
         360,                                   // day_of_yr
         3,                                     // wkday
-        (2460670, Delta::from_sec(43200)),     // jd_tt_exact
+        (2460670, TimeSpan::from_sec(43200)),  // jd_tt_exact
         51,                                    // wk_of_yr_sun
         52,                                    // wk_of_yr_mon
         Some(0),                               // offset_sec
@@ -105,7 +109,7 @@ fn test_gregorianpoint_roundtrip() {
     assert_roundtrip(
         &gp,
         |g| g.to_wire_bytes().to_vec(),
-        GregorianPoint::from_wire_bytes,
+        GregorianTime::from_wire_bytes,
     );
 }
 

@@ -38,7 +38,7 @@ impl DateClassification {
 
 /// A parsed date
 /// Or a DateClassification for use with parsing.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum ClassifiedDate {
     Parsed(TimePoint),
     Cls(DateClassification),

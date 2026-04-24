@@ -1,8 +1,8 @@
-use crate::Delta;
+use crate::TimeSpan;
 use chrono::{DateTime, Duration, TimeDelta, Utc};
 
-impl Delta {
-    /// Converts this `Delta` to a `chrono::Duration` (nanosecond precision).
+impl TimeSpan {
+    /// Converts this `TimeSpan` to a `chrono::Duration` (nanosecond precision).
     ///
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
     /// - The conversion is fully exact up to the nanosecond (128-bit integer arithmetic).
@@ -26,7 +26,7 @@ impl Delta {
         TimeDelta::nanoseconds(nanos).into()
     }
 
-    /// Converts this `Delta` to a `chrono::DateTime<chrono::Utc>`.
+    /// Converts this `TimeSpan` to a `chrono::DateTime<chrono::Utc>`.
     ///
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
     /// - The conversion assumes `total_attos()` returns attoseconds since the

@@ -15,10 +15,10 @@ pub mod from_jiff;
 #[cfg(feature = "jiff")]
 pub mod to_jiff;
 
-/// A high-precision **duration** (time delta) expressed as **seconds + attoseconds**
+/// A high-precision **duration** (time span) expressed as **seconds + attoseconds**
 /// (where 1 attosecond = 10⁻¹⁸ s).
 ///
-/// `Delta` is the delta counterpart of `TimePoint`. It does **not** carry a [`ClockType`]
+/// `TimeSpan` is the span counterpart of `TimePoint`. It does **not** carry a [`ClockType`]
 /// because durations are scale-independent (they can be added to or subtracted from any
 /// `TimePoint` regardless of its scale; any scale-specific adjustments like leap seconds
 /// are handled by the `TimePoint` arithmetic).
@@ -28,21 +28,21 @@ pub mod to_jiff;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Delta {
+pub struct TimeSpan {
     /// Signed whole seconds.
     pub(crate) sec: i64,
     /// Fractional part in attoseconds (`0 ≤ attos < 10¹⁸`).
     pub(crate) subsec: u64,
 }
 
-impl Delta {
+impl TimeSpan {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes (17 bytes).
     pub const WIRE_SIZE: usize = 17;
 
-    /// Serializes this `Delta` into a fixed 17-byte little-endian buffer.
+    /// Serializes this `TimeSpan` into a fixed 17-byte little-endian buffer.
     ///
     /// # Wire Format
     ///
@@ -58,11 +58,11 @@ impl Delta {
         buf
     }
 
-    /// Deserializes a `Delta` from exactly 17 bytes of wire data.
+    /// Deserializes a `TimeSpan` from exactly 17 bytes of wire data.
     ///
     /// Returns `None` if the version byte is unknown.
     /// Any `subsec` value ≥ 10¹⁸ is automatically normalized using
-    /// [`carry_over`](Self::carry_over) so the resulting `Delta`
+    /// [`carry_over`](Self::carry_over) so the resulting `TimeSpan`
     /// is always in canonical form.
     ///
     /// ## Security
@@ -90,7 +90,7 @@ impl Delta {
     }
 }
 
-impl Default for Delta {
+impl Default for TimeSpan {
     fn default() -> Self {
         Self::ZERO
     }

@@ -1,8 +1,8 @@
-use crate::Delta;
+use crate::TimeSpan;
 use jiff::{SignedDuration, Span, Timestamp};
 
-impl Delta {
-    /// Converts this `Delta` to a [`jiff::Span`] (seconds + nanoseconds only).
+impl TimeSpan {
+    /// Converts this `TimeSpan` to a [`jiff::Span`] (seconds + nanoseconds only).
     ///
     /// This is the **main/default** conversion method.
     ///
@@ -36,17 +36,17 @@ impl Delta {
         }
     }
 
-    /// Converts this `Delta` to a `jiff::SignedDuration` (nanosecond precision).
+    /// Converts this `TimeSpan` to a `jiff::SignedDuration` (nanosecond precision).
     ///
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
-    /// - Supports the **entire** range of `Delta` (never saturates).
+    /// - Supports the **entire** range of `TimeSpan` (never saturates).
     #[inline]
     pub fn to_jiff_signed_duration(self) -> SignedDuration {
         let total_nanos = self.total_attos() / 1_000_000_000i128;
         SignedDuration::from_nanos_i128(total_nanos)
     }
 
-    /// Converts this `Delta` to a [`jiff::Timestamp`].
+    /// Converts this `TimeSpan` to a [`jiff::Timestamp`].
     ///
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
     /// - The conversion assumes `total_attos()` returns attoseconds since the Unix epoch

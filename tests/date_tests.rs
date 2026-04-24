@@ -1,4 +1,4 @@
-use deep_time_core::{DateOrder, DateParseMode, Lang, ParseCfg, parse_date, parse_date_unix_ms};
+use deep_time_core::{DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
 #[cfg(feature = "perf_tests")]
 use std::time::Instant;
 
@@ -59,7 +59,7 @@ fn test_historical_iana_with_jiff() {
         // ─── Your library ──────────────────────────────────────────────────────────
         let our_input = format!("{} {}", civil_str, iana_name);
 
-        let our_dt = parse_date(&our_input, &None, false)
+        let our_dt = TimePoint::from_str(&our_input, &None, false)
             .unwrap_or_else(|e| panic!("deep_time_core failed on '{}': {}", our_input, e));
 
         let our_rfc = our_dt.to_rfc3339();
@@ -80,7 +80,7 @@ fn test_historical_iana_with_jiff() {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
-    let dt = parse_date(input.trim(), &opts, false)
+    let dt = TimePoint::from_str(input.trim(), &opts, false)
         .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
     let actual = dt.to_rfc3339();
 
@@ -88,14 +88,14 @@ fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
 }
 
 fn assert_millis(input: &str, expected_millis: i128, opts: Option<ParseCfg>) {
-    let millis = parse_date_unix_ms(input, &opts)
+    let millis = TimePoint::str_to_unix_ms(input, &opts)
         .unwrap_or_else(|| panic!("Failed millis parse: {}", input));
     assert_eq!(millis, expected_millis, "Input: {}", input);
 }
 
 fn assert_fails(input: &str, opts: Option<ParseCfg>) {
     assert!(
-        parse_date(input, &opts, false).is_err(),
+        TimePoint::from_str(input, &opts, false).is_err(),
         "Expected failure: {}",
         input
     );
@@ -1040,7 +1040,7 @@ fn relative_date_parser_comprehensive() {
     let cases = generate_relative_date_test_cases();
 
     for input in cases {
-        let result = parse_date(input.trim(), &None, false);
+        let result = TimePoint::from_str(input.trim(), &None, false);
         // eprintln!("Tried: {}, got result: {:?}", &input, result);
         assert!(result.is_ok(), "Failed to parse relative date: '{}'", input);
     }
@@ -1094,7 +1094,7 @@ fn date_parser_perf_smoke() {
     let start = Instant::now();
     for _ in 0..ITERATIONS {
         for &input in &corpus {
-            let _ = parse_date(input, &None, false);
+            let _ = TimePoint::from_str(input, &None, false);
             // if let Err(x) = x {
             //     eprintln!("{}", x);
             //     return;

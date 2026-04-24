@@ -1,39 +1,39 @@
-use crate::Delta;
+use crate::TimeSpan;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-impl Add<Delta> for Delta {
+impl Add<TimeSpan> for TimeSpan {
     type Output = Self;
 
     #[inline(always)]
-    fn add(self, rhs: Delta) -> Self {
+    fn add(self, rhs: TimeSpan) -> Self {
         self.add(rhs)
     }
 }
 
-impl AddAssign<Delta> for Delta {
+impl AddAssign<TimeSpan> for TimeSpan {
     #[inline(always)]
-    fn add_assign(&mut self, rhs: Delta) {
+    fn add_assign(&mut self, rhs: TimeSpan) {
         *self = self.add(rhs);
     }
 }
 
-impl Sub<Delta> for Delta {
+impl Sub<TimeSpan> for TimeSpan {
     type Output = Self;
 
     #[inline(always)]
-    fn sub(self, rhs: Delta) -> Self {
+    fn sub(self, rhs: TimeSpan) -> Self {
         self.sub(rhs)
     }
 }
 
-impl SubAssign<Delta> for Delta {
+impl SubAssign<TimeSpan> for TimeSpan {
     #[inline(always)]
-    fn sub_assign(&mut self, rhs: Delta) {
+    fn sub_assign(&mut self, rhs: TimeSpan) {
         *self = self.sub(rhs);
     }
 }
 
-impl Neg for Delta {
+impl Neg for TimeSpan {
     type Output = Self;
 
     #[inline(always)]
@@ -42,7 +42,7 @@ impl Neg for Delta {
     }
 }
 
-impl Mul<i64> for Delta {
+impl Mul<i64> for TimeSpan {
     type Output = Self;
 
     #[inline(always)]
@@ -51,14 +51,14 @@ impl Mul<i64> for Delta {
     }
 }
 
-impl MulAssign<i64> for Delta {
+impl MulAssign<i64> for TimeSpan {
     #[inline(always)]
     fn mul_assign(&mut self, rhs: i64) {
         *self = self.mul(rhs);
     }
 }
 
-impl Div<i64> for Delta {
+impl Div<i64> for TimeSpan {
     type Output = Self;
 
     #[inline(always)]
@@ -67,7 +67,7 @@ impl Div<i64> for Delta {
     }
 }
 
-impl DivAssign<i64> for Delta {
+impl DivAssign<i64> for TimeSpan {
     #[inline(always)]
     fn div_assign(&mut self, rhs: i64) {
         *self = self.div(rhs);

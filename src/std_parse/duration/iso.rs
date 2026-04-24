@@ -1,9 +1,9 @@
 use crate::{
-    Delta, SECONDS_PER_DAY, SECONDS_PER_MONTH, SECONDS_PER_WEEK, SECONDS_PER_YEAR, str_err,
+    SECONDS_PER_DAY, SECONDS_PER_MONTH, SECONDS_PER_WEEK, SECONDS_PER_YEAR, TimeSpan, str_err,
 };
 use std::string::String;
 
-pub(crate) fn parse_iso_duration_delta(s: &str) -> Result<Delta, String> {
+pub(crate) fn parse_iso_duration_span(s: &str) -> Result<TimeSpan, String> {
     let len = s.len();
     if len == 0 {
         return Err(str_err!("duration is empty"));
@@ -55,9 +55,9 @@ pub(crate) fn parse_iso_duration_delta(s: &str) -> Result<Delta, String> {
     parse_duration_part(date_part, &mut total_nanos, true, sign, &mut has_fraction)?;
     parse_duration_part(time_part, &mut total_nanos, false, sign, &mut has_fraction)?;
 
-    // Convert accumulated nanoseconds to attoseconds and build Delta
+    // Convert accumulated nanoseconds to attoseconds and build TimeSpan
     let total_attos = total_nanos * 1_000_000_000i128;
-    Ok(Delta::from_total_attos(total_attos))
+    Ok(TimeSpan::from_total_attos(total_attos))
 }
 
 struct ParsedComponent {
@@ -165,7 +165,7 @@ fn parse_next_component(
 /// and accumulates nanoseconds into `total_nanos`.
 ///
 /// Years, months, weeks, and days are converted using the fixed-length
-/// constants (the only sensible semantics for a pure `Delta`).
+/// constants (the only sensible semantics for a pure `TimeSpan`).
 fn parse_duration_part(
     chars: &[u8],
     total_nanos: &mut i128,

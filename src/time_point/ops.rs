@@ -1,44 +1,44 @@
-use crate::{Delta, TimePoint};
+use crate::{TimeSpan, TimePoint};
 use core::cmp::Ordering;
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
-impl Add<Delta> for TimePoint {
+impl Add<TimeSpan> for TimePoint {
     type Output = Self;
 
     #[inline(always)]
-    fn add(self, rhs: Delta) -> Self {
+    fn add(self, rhs: TimeSpan) -> Self {
         self.add(rhs)
     }
 }
 
-impl AddAssign<Delta> for TimePoint {
+impl AddAssign<TimeSpan> for TimePoint {
     #[inline(always)]
-    fn add_assign(&mut self, rhs: Delta) {
+    fn add_assign(&mut self, rhs: TimeSpan) {
         self.mut_add(&rhs);
     }
 }
 
-impl Sub<Delta> for TimePoint {
+impl Sub<TimeSpan> for TimePoint {
     type Output = Self;
 
     #[inline(always)]
-    fn sub(self, rhs: Delta) -> Self {
+    fn sub(self, rhs: TimeSpan) -> Self {
         self.sub(rhs)
     }
 }
 
-impl SubAssign<Delta> for TimePoint {
+impl SubAssign<TimeSpan> for TimePoint {
     #[inline(always)]
-    fn sub_assign(&mut self, rhs: Delta) {
+    fn sub_assign(&mut self, rhs: TimeSpan) {
         self.mut_sub(&rhs);
     }
 }
 
 impl Sub<TimePoint> for TimePoint {
-    type Output = Delta;
+    type Output = TimeSpan;
 
     #[inline(always)]
-    fn sub(self, rhs: TimePoint) -> Delta {
+    fn sub(self, rhs: TimePoint) -> TimeSpan {
         self.duration_since(rhs)
     }
 }

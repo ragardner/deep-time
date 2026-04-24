@@ -1,9 +1,9 @@
 use crate::{
     ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
-    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, Delta,
+    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, TimeSpan,
 };
 
-impl Delta {
+impl TimeSpan {
     /// Zero duration (`0 s`).
     pub const ZERO: Self = Self { sec: 0, subsec: 0 };
 
@@ -23,7 +23,7 @@ impl Delta {
     pub const SEC_33: Self = Self::from_sec(33);
     pub const SEC_37: Self = Self::from_sec(37);
 
-    /// Creates a new `Delta` from whole seconds and a subsecond part.
+    /// Creates a new `TimeSpan` from whole seconds and a subsecond part.
     ///
     /// The result is automatically normalized so `subsec` lies in `[0, 10¹⁸)`.
     #[inline]
@@ -51,61 +51,61 @@ impl Delta {
         }
     }
 
-    /// Creates a `Delta` representing `s` seconds.
+    /// Creates a `TimeSpan` representing `s` seconds.
     #[inline]
     pub const fn from_sec(s: i64) -> Self {
         Self::new(s, 0)
     }
 
-    /// Creates a `Delta` representing `ms` milliseconds.
+    /// Creates a `TimeSpan` representing `ms` milliseconds.
     #[inline]
     pub const fn from_ms(ms: i64) -> Self {
         Self::from_subunits(ms, ATTOSEC_PER_MILLISEC)
     }
 
-    /// Creates a `Delta` representing `us` microseconds.
+    /// Creates a `TimeSpan` representing `us` microseconds.
     #[inline]
     pub const fn from_us(us: i64) -> Self {
         Self::from_subunits(us, ATTOSEC_PER_MICROSEC)
     }
 
-    /// Creates a `Delta` representing `ns` nanoseconds.
+    /// Creates a `TimeSpan` representing `ns` nanoseconds.
     #[inline]
     pub const fn from_ns(ns: i64) -> Self {
         Self::from_subunits(ns, ATTOSEC_PER_NANOSEC)
     }
 
-    /// Creates a `Delta` representing `ps` picoseconds.
+    /// Creates a `TimeSpan` representing `ps` picoseconds.
     #[inline]
     pub const fn from_ps(ps: i64) -> Self {
         Self::from_subunits(ps, ATTOSEC_PER_PICOSEC)
     }
 
-    /// Creates a `Delta` representing `fs` femtoseconds.
+    /// Creates a `TimeSpan` representing `fs` femtoseconds.
     #[inline]
     pub const fn from_fs(fs: i64) -> Self {
         Self::from_subunits(fs, ATTOSEC_PER_FEMTOSEC)
     }
 
-    /// Creates a `Delta` representing `as` attoseconds.
+    /// Creates a `TimeSpan` representing `as` attoseconds.
     #[inline]
     pub const fn from_as(as_: i64) -> Self {
         Self::from_subunits(as_, ATTOSEC_PER_ATTOSEC)
     }
 
-    /// Creates a `Delta` representing `m` minutes.
+    /// Creates a `TimeSpan` representing `m` minutes.
     #[inline]
     pub const fn from_min(m: i64) -> Self {
         Self::from_sec(m * 60)
     }
 
-    /// Creates a `Delta` representing `h` hours.
+    /// Creates a `TimeSpan` representing `h` hours.
     #[inline]
     pub const fn from_hr(h: i64) -> Self {
         Self::from_sec(h * 3600)
     }
 
-    /// Creates a `Delta` from hours, minutes, seconds, milliseconds,
+    /// Creates a `TimeSpan` from hours, minutes, seconds, milliseconds,
     /// microseconds, and nanoseconds.
     #[inline]
     pub const fn from_hms(hr: i64, min: i64, sec: i64, ms: i64, us: i64, ns: i64) -> Self {

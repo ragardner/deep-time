@@ -1,4 +1,4 @@
-use crate::Delta;
+use crate::TimeSpan;
 use core::fmt;
 
 fn write_fractional(subsec: u64, precision: usize, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -11,7 +11,7 @@ fn write_fractional(subsec: u64, precision: usize, f: &mut fmt::Formatter<'_>) -
     write!(f, ".{:0>width$}", value, width = prec)
 }
 
-impl fmt::Display for Delta {
+impl fmt::Display for TimeSpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let precision = f.precision().unwrap_or(9); // nanosecond precision — most useful default
 
@@ -47,11 +47,11 @@ impl fmt::Display for Delta {
     }
 }
 
-impl fmt::Debug for Delta {
+impl fmt::Debug for TimeSpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let approx_sec_f = self.sec as f64 + (self.subsec as f64 / 1e18_f64);
 
-        f.debug_struct("Delta")
+        f.debug_struct("TimeSpan")
             .field("sec", &self.sec)
             .field("subsec", &self.subsec)
             .field("as_sec_f", &approx_sec_f)

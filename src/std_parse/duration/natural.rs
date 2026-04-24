@@ -1,7 +1,6 @@
 use crate::{
-    DateToken, Delta, LANG_MAP, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
-    NS_PER_MONTH, NS_PER_SECOND, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, str_err,
-    to_ascii_digit,
+    DateToken, LANG_MAP, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE, NS_PER_MONTH,
+    NS_PER_SECOND, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, str_err, to_ascii_digit,
 };
 use std::{
     string::{String, ToString},
@@ -181,11 +180,11 @@ fn add_to_total(
     *total_nanos = total_nanos.saturating_add(contribution.saturating_mul(effective_multiplier));
 }
 
-pub(crate) fn natural_duration_to_delta(
+pub(crate) fn natural_duration_to_span(
     input: &str,
     lang: Lang,
     use_dur_finder: bool,
-) -> Result<Delta, String> {
+) -> Result<TimeSpan, String> {
     let Some(LangData {
         map: term_map,
         duration_ac,
@@ -222,17 +221,17 @@ pub(crate) fn natural_duration_to_delta(
                 DateToken::Past => overall_multiplier = -1,
                 DateToken::Now | DateToken::Today => {
                     if !has_duration {
-                        return Ok(Delta::ZERO);
+                        return Ok(TimeSpan::ZERO);
                     }
                 }
                 DateToken::Tomorrow => {
                     if !has_duration {
-                        return Ok(Delta::from_ns(NS_PER_DAY as i64));
+                        return Ok(TimeSpan::from_ns(NS_PER_DAY as i64));
                     }
                 }
                 DateToken::Yesterday => {
                     if !has_duration {
-                        return Ok(Delta::from_ns(-(NS_PER_DAY as i64)));
+                        return Ok(TimeSpan::from_ns(-(NS_PER_DAY as i64)));
                     }
                 }
 
@@ -337,10 +336,10 @@ pub(crate) fn natural_duration_to_delta(
         ));
     }
 
-    // Convert total nanoseconds → attoseconds and build Delta
-    // (Delta supports the full representable range, so no size checks are needed)
+    // Convert total nanoseconds → attoseconds and build TimeSpan
+    // (TimeSpan supports the full representable range, so no size checks are needed)
     let total_attos = total_nanos * 1_000_000_000i128;
-    Ok(Delta::from_total_attos(total_attos))
+    Ok(TimeSpan::from_total_attos(total_attos))
 }
 
 pub(crate) fn natural_duration_to_iso(
@@ -348,6 +347,6 @@ pub(crate) fn natural_duration_to_iso(
     lang: Lang,
     use_dur_finder: bool,
 ) -> Result<String, String> {
-    let span = natural_duration_to_delta(input, lang, use_dur_finder)?;
+    let span = natural_duration_to_span(input, lang, use_dur_finder)?;
     Ok(span.to_string())
 }

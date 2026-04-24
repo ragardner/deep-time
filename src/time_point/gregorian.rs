@@ -1,10 +1,10 @@
 use crate::{
-    ATTOSEC_PER_SEC_I128, ClockType, Delta, GregorianPoint, SEC_PER_DAYI128, TT_TAI_OFFSET_DELTA,
-    TimePoint, Weekday, leap_seconds::leap_seconds_before,
+    ATTOSEC_PER_SEC_I128, ClockType, GregorianTime, SEC_PER_DAYI128, TT_TAI_OFFSET_SPAN, TimePoint,
+    TimeSpan, Weekday, leap_seconds::leap_seconds_before,
 };
 
 impl TimePoint {
-    pub const fn to_gregorian_point(self) -> GregorianPoint {
+    pub const fn to_gregorian_time(self) -> GregorianTime {
         let clock_type = self.clock_type;
         let utc = self.to_clock_type(ClockType::UTC);
         let unix_attosec = self.to_canonical_attoseconds();
@@ -16,7 +16,7 @@ impl TimePoint {
         let wkday = utc.weekday(Some((jd_days, frac)));
         let wk_of_yr_sun = utc.wk_sun(Some((yr, mo, day)), Some(day_of_yr));
         let wk_of_yr_mon = utc.wk_mon(Some((yr, mo, day)), Some(day_of_yr));
-        GregorianPoint {
+        GregorianTime {
             unix_attosec,
             yr,
             mo,
@@ -40,7 +40,7 @@ impl TimePoint {
         }
     }
 
-    pub const fn to_gregorian_date(self, jd_tt_exact: Option<(i64, Delta)>) -> (i64, u8, u8) {
+    pub const fn to_gregorian_date(self, jd_tt_exact: Option<(i64, TimeSpan)>) -> (i64, u8, u8) {
         let (jd_days, frac) = if let Some(jd_tt_exact) = jd_tt_exact {
             jd_tt_exact
         } else {
@@ -51,7 +51,7 @@ impl TimePoint {
                 let tai = self.to_tai();
                 let leaps = leap_seconds_before(tai);
                 let offset_attos =
-                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_DELTA.total_attos();
+                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_SPAN.total_attos();
 
                 let mut utc_frac_attos = frac.total_attos() as i128 - offset_attos;
                 let day_attos = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
@@ -90,7 +90,7 @@ impl TimePoint {
                 let tai = self.to_tai();
                 let leaps = leap_seconds_before(tai);
                 let offset_attos =
-                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_DELTA.total_attos();
+                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_SPAN.total_attos();
 
                 let (_, frac) = self.to_jd_tt_exact();
                 let mut utc_frac_attos = frac.total_attos() as i128 - offset_attos;
@@ -292,7 +292,7 @@ impl TimePoint {
     ///
     /// The result is computed from the civil (proleptic Gregorian) date of this
     /// `TimePoint`, matching the convention used by [`Self::jdn_to_weekday`].
-    pub const fn weekday(self, jd_tt_exact: Option<(i64, Delta)>) -> u8 {
+    pub const fn weekday(self, jd_tt_exact: Option<(i64, TimeSpan)>) -> u8 {
         let (jd_days, frac) = if let Some(jd_tt_exact) = jd_tt_exact {
             jd_tt_exact
         } else {

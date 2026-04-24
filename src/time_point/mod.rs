@@ -7,7 +7,7 @@ mod to_canonical;
 mod to_ccsds_bin;
 
 pub mod gregorian;
-pub mod gregorian_point;
+pub mod gregorian_time;
 pub mod trajectory;
 
 #[cfg(feature = "chrono")]

@@ -55,7 +55,7 @@ K_{\rm eff} = 1 - \Lambda^2 + (\ell_{\rm Pl}^4 \mathcal{K})\Lambda^4 + \mathcal{
 \[
 \frac{d\tau}{dt} = \sqrt{1 - \Lambda^2}\left(1 + \frac{\ell_{\rm Pl}^4 \mathcal{K} \,\Lambda^4}{2(1 - \Lambda^2)} + \mathcal{O}(\ell_{\rm Pl}^8 \mathcal{K}^2)\right).
 \]
-The accumulated proper-time shifts remain \(\delta(\Delta\tau) \ll 10^{-140}\) s over cosmic history and far below machine precision in solar-system integrations—identical to the original low-curvature recovery of GR.
+The accumulated proper-time shifts remain \(\delta(\TimeSpan\tau) \ll 10^{-140}\) s over cosmic history and far below machine precision in solar-system integrations—identical to the original low-curvature recovery of GR.
 
 **High-curvature saturation (\(x \gg 1\))**
 \[
@@ -96,7 +96,7 @@ General relativity is recovered exactly as the low-curvature projection of this 
 This formulation is production-ready for spacecraft navigation pipelines, black-hole flyby simulations, cosmological trajectories, or any mixed weak/strong-field probe adventure. All prior stages are recovered algebraically in the low-curvature limit. The engine is minimal, modular, and fully first-principles at the level of the master Lagrangian.
 */
 
-use crate::{ATTOSEC_PER_SEC_I128, C_SQUARED, Delta, PLANCK_LENGTH_4, Real, Velocity};
+use crate::{ATTOSEC_PER_SEC_I128, C_SQUARED, PLANCK_LENGTH_4, Real, TimeSpan, Velocity};
 
 /// The three local spacetime quantities that fully determine how fast an observer’s
 /// proper time advances relative to coordinate time.
@@ -338,7 +338,7 @@ impl LocalSpacetime {
 /// steer clocks, predict time offsets, and maintain synchronization over long
 /// durations.
 ///
-/// All three coefficients are stored using the exact `Delta` type, which
+/// All three coefficients are stored using the exact `TimeSpan` type, which
 /// guarantees 36-digit precision with no floating-point rounding errors even
 /// over centuries of integration.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -348,23 +348,23 @@ pub struct ClockDrift {
     /// Constant term a₀ expressed in seconds.  
     /// This represents any fixed time offset between the observer’s proper time
     /// and the chosen coordinate time.
-    constant: Delta,
+    constant: TimeSpan,
 
     /// Linear drift rate a₁ expressed in seconds per second.  
     /// This term captures a steady fractional rate difference (for example, a
     /// clock that runs consistently fast or slow).
-    rate: Delta,
+    rate: TimeSpan,
 
     /// Quadratic acceleration term a₂ expressed in seconds per second squared.  
     /// This term accounts for any changing drift rate, such as the gradual
     /// acceleration caused by relativistic effects or hardware aging.
-    accel: Delta,
+    accel: TimeSpan,
 }
 
 impl ClockDrift {
     /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
     #[inline(always)]
-    pub const fn new(constant: Delta, rate: Delta, accel: Delta) -> Self {
+    pub const fn new(constant: TimeSpan, rate: TimeSpan, accel: TimeSpan) -> Self {
         Self {
             constant,
             rate,
@@ -376,11 +376,11 @@ impl ClockDrift {
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize = 3 * Delta::WIRE_SIZE; // 3 × 17 = 51
+    pub const WIRE_SIZE: usize = 3 * TimeSpan::WIRE_SIZE; // 3 × 17 = 51
 
     /// Serializes this `ClockDrift` polynomial into a fixed buffer.
     ///
-    /// The layout is the concatenation of the three `Delta` fields.
+    /// The layout is the concatenation of the three `TimeSpan` fields.
     #[inline]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
@@ -388,20 +388,20 @@ impl ClockDrift {
         let r = self.rate.to_wire_bytes();
         let a = self.accel.to_wire_bytes();
 
-        buf[0..Delta::WIRE_SIZE].copy_from_slice(&c);
-        buf[Delta::WIRE_SIZE..2 * Delta::WIRE_SIZE].copy_from_slice(&r);
-        buf[2 * Delta::WIRE_SIZE..].copy_from_slice(&a);
+        buf[0..TimeSpan::WIRE_SIZE].copy_from_slice(&c);
+        buf[TimeSpan::WIRE_SIZE..2 * TimeSpan::WIRE_SIZE].copy_from_slice(&r);
+        buf[2 * TimeSpan::WIRE_SIZE..].copy_from_slice(&a);
         buf
     }
 
     /// Deserializes a `ClockDrift` from exactly `WIRE_SIZE` bytes of wire data.
     ///
-    /// Returns `None` if any nested `Delta` fails validation or if the version
+    /// Returns `None` if any nested `TimeSpan` fails validation or if the version
     /// byte is unknown.
     ///
     /// ## Security
     ///
-    /// Composes the safety guarantees of [`Delta::from_wire_bytes`].
+    /// Composes the safety guarantees of [`TimeSpan::from_wire_bytes`].
     /// Fixed size and layered validation make it safe for untrusted input.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
@@ -412,9 +412,9 @@ impl ClockDrift {
             return None;
         }
 
-        let constant = Delta::from_wire_bytes(&bytes[0..Delta::WIRE_SIZE])?;
-        let rate = Delta::from_wire_bytes(&bytes[Delta::WIRE_SIZE..2 * Delta::WIRE_SIZE])?;
-        let accel = Delta::from_wire_bytes(&bytes[2 * Delta::WIRE_SIZE..])?;
+        let constant = TimeSpan::from_wire_bytes(&bytes[0..TimeSpan::WIRE_SIZE])?;
+        let rate = TimeSpan::from_wire_bytes(&bytes[TimeSpan::WIRE_SIZE..2 * TimeSpan::WIRE_SIZE])?;
+        let accel = TimeSpan::from_wire_bytes(&bytes[2 * TimeSpan::WIRE_SIZE..])?;
 
         Some(Self::new(constant, rate, accel))
     }
@@ -422,15 +422,15 @@ impl ClockDrift {
     /// The zero polynomial representing no correction at all.  
     /// Use this when the observer’s clock is already perfectly synchronized with
     /// the chosen coordinate time.
-    pub const ZERO: Self = Self::new(Delta::ZERO, Delta::ZERO, Delta::ZERO);
+    pub const ZERO: Self = Self::new(TimeSpan::ZERO, TimeSpan::ZERO, TimeSpan::ZERO);
 
     /// Creates a `ClockDrift` consisting of a pure constant offset.  
     /// This is the most common constructor when only a fixed time bias is known
     /// (for example, after a one-time clock synchronization or leap-second
     /// adjustment).
     #[inline(always)]
-    pub const fn from_constant(c: Delta) -> Self {
-        Self::new(c, Delta::ZERO, Delta::ZERO)
+    pub const fn from_constant(c: TimeSpan) -> Self {
+        Self::new(c, TimeSpan::ZERO, TimeSpan::ZERO)
     }
 
     /// Creates a `ClockDrift` consisting of a constant offset together with a
@@ -439,56 +439,56 @@ impl ClockDrift {
     /// where a steady fractional frequency offset must be corrected in addition
     /// to any fixed bias.
     #[inline(always)]
-    pub const fn from_offset_and_rate(offset: Delta, rate: Delta) -> Self {
-        Self::new(offset, rate, Delta::ZERO)
+    pub const fn from_offset_and_rate(offset: TimeSpan, rate: TimeSpan) -> Self {
+        Self::new(offset, rate, TimeSpan::ZERO)
     }
 
     #[inline]
-    pub const fn constant(&self) -> &Delta {
+    pub const fn constant(&self) -> &TimeSpan {
         &self.constant
     }
 
     #[inline]
-    pub const fn rate(&self) -> &Delta {
+    pub const fn rate(&self) -> &TimeSpan {
         &self.rate
     }
 
     #[inline]
-    pub const fn accel(&self) -> &Delta {
+    pub const fn accel(&self) -> &TimeSpan {
         &self.accel
     }
 
     #[inline]
-    pub fn set_constant(&mut self, constant: Delta) -> &mut Self {
+    pub fn set_constant(&mut self, constant: TimeSpan) -> &mut Self {
         self.constant = constant;
         self
         // constant never affects the pre-computed big fields
     }
 
     #[inline]
-    pub fn set_rate(&mut self, rate: Delta) -> &mut Self {
+    pub fn set_rate(&mut self, rate: TimeSpan) -> &mut Self {
         self.rate = rate;
         self
     }
 
     #[inline]
-    pub fn set_accel(&mut self, accel: Delta) -> &mut Self {
+    pub fn set_accel(&mut self, accel: TimeSpan) -> &mut Self {
         self.accel = accel;
         self
     }
 
     #[inline]
-    pub const fn with_constant(self, constant: Delta) -> Self {
+    pub const fn with_constant(self, constant: TimeSpan) -> Self {
         Self::new(constant, self.rate, self.accel)
     }
 
     #[inline]
-    pub const fn with_rate(self, rate: Delta) -> Self {
+    pub const fn with_rate(self, rate: TimeSpan) -> Self {
         Self::new(self.constant, rate, self.accel)
     }
 
     #[inline]
-    pub const fn with_accel(self, accel: Delta) -> Self {
+    pub const fn with_accel(self, accel: TimeSpan) -> Self {
         Self::new(self.constant, self.rate, accel)
     }
 
@@ -506,15 +506,15 @@ impl ClockDrift {
         f!(1.0) + self.rate.as_sec_f()
     }
 
-    /// Evaluates the polynomial at the given elapsed coordinate time `delta`.  
+    /// Evaluates the polynomial at the given elapsed coordinate time span.  
     ///
     /// Returns the exact accumulated time difference (in seconds) between proper
-    /// time and coordinate time after the interval `delta` has passed. All
+    /// time and coordinate time after the interval span has passed. All
     /// arithmetic is performed with full 36-digit precision, ensuring no loss of
     /// accuracy even for multi-year integrations.
     #[inline]
-    pub const fn time_diff_after(&self, delta: &Delta) -> Delta {
-        let dt_attos = delta.total_attos();
+    pub const fn time_diff_after(&self, span: &TimeSpan) -> TimeSpan {
+        let dt_attos = span.total_attos();
         let mut total_attos = self.constant.total_attos();
 
         if !self.rate.is_zero() || !self.accel.is_zero() {
@@ -530,7 +530,7 @@ impl ClockDrift {
             total_attos = total_attos.saturating_add(accel_term);
         }
 
-        Delta::from_total_attos(total_attos)
+        TimeSpan::from_total_attos(total_attos)
     }
 
     /// Creates a `ClockDrift` directly from an observer’s velocity and total
@@ -594,7 +594,7 @@ impl ClockDrift {
         let rate_factor = libm::sqrt(k_eff).max(f!(0.0));
         let rate_offset = rate_factor - f!(1.0);
 
-        Self::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(rate_offset))
+        Self::from_offset_and_rate(TimeSpan::ZERO, TimeSpan::from_sec_f(rate_offset))
     }
 
     /// Creates a `ClockDrift` from a fully resolved `LocalSpacetime` snapshot.  
@@ -614,70 +614,70 @@ impl ClockDrift {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Delta;
+    use crate::TimeSpan;
 
     #[test]
     fn evaluate_zero_drift() {
         let drift = ClockDrift::ZERO;
-        let dt = Delta::from_sec(1_234_567);
-        assert_eq!(drift.time_diff_after(&dt), Delta::ZERO);
+        let dt = TimeSpan::from_sec(1_234_567);
+        assert_eq!(drift.time_diff_after(&dt), TimeSpan::ZERO);
     }
 
     #[test]
     fn evaluate_constant_only() {
-        let drift = ClockDrift::from_constant(Delta::from_sec_f(0.5));
-        let dt = Delta::from_sec(1_000);
-        assert_eq!(drift.time_diff_after(&dt), Delta::from_sec_f(0.5));
+        let drift = ClockDrift::from_constant(TimeSpan::from_sec_f(0.5));
+        let dt = TimeSpan::from_sec(1_000);
+        assert_eq!(drift.time_diff_after(&dt), TimeSpan::from_sec_f(0.5));
     }
 
     #[test]
     fn evaluate_rate_only() {
-        let drift = ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(1e-9)); // 1 ns/s
-        let dt = Delta::from_sec(1_000_000); // 1 million seconds
-        assert_eq!(drift.time_diff_after(&dt), Delta::from_sec_f(0.001)); // 1 µs
+        let drift = ClockDrift::from_offset_and_rate(TimeSpan::ZERO, TimeSpan::from_sec_f(1e-9)); // 1 ns/s
+        let dt = TimeSpan::from_sec(1_000_000); // 1 million seconds
+        assert_eq!(drift.time_diff_after(&dt), TimeSpan::from_sec_f(0.001)); // 1 µs
     }
 
     #[test]
     fn evaluate_full_quadratic() {
         let drift = ClockDrift::new(
-            Delta::from_sec(2),
-            Delta::from_ns(1), // exactly 1e-9 s/s
-            Delta::from_as(2), // exactly 2e-18 s/s²
+            TimeSpan::from_sec(2),
+            TimeSpan::from_ns(1), // exactly 1e-9 s/s
+            TimeSpan::from_as(2), // exactly 2e-18 s/s²
         );
-        let dt = Delta::from_sec(1_000_000);
+        let dt = TimeSpan::from_sec(1_000_000);
 
         // Exact mathematical result:
         // 2 + (1e-9 * 1_000_000) + (2e-18 * 1_000_000²) = 2 + 0.001 + 0.000002
         // = 2.001002 s = 2 s + 1_002_000_000_000_000 attoseconds
         assert_eq!(
             drift.time_diff_after(&dt),
-            Delta::new(2, 1_002_000_000_000_000)
+            TimeSpan::new(2, 1_002_000_000_000_000)
         );
     }
 
     #[test]
     fn evaluate_negative_dt() {
         let drift = ClockDrift::new(
-            Delta::from_sec(5),
-            Delta::from_ns(1), // exactly 1e-9 s/s
-            Delta::from_as(1), // exactly 1e-18 s/s²
+            TimeSpan::from_sec(5),
+            TimeSpan::from_ns(1), // exactly 1e-9 s/s
+            TimeSpan::from_as(1), // exactly 1e-18 s/s²
         );
-        let dt = Delta::from_sec(-500_000);
+        let dt = TimeSpan::from_sec(-500_000);
 
         // Exact mathematical result (no f64 loss)
-        let expected = Delta::from_sec(4)
-            .add(Delta::from_ms(999))
-            .add(Delta::from_us(500))
-            .add(Delta::from_ns(250));
+        let expected = TimeSpan::from_sec(4)
+            .add(TimeSpan::from_ms(999))
+            .add(TimeSpan::from_us(500))
+            .add(TimeSpan::from_ns(250));
 
         assert_eq!(drift.time_diff_after(&dt), expected);
     }
 
     #[test]
     fn evaluate_large_dt_exact() {
-        let drift = ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(1e-12));
-        let dt = Delta::from_sec(1_000_000_000); // ~31.7 years
-        assert_eq!(drift.time_diff_after(&dt), Delta::from_sec_f(0.001));
+        let drift = ClockDrift::from_offset_and_rate(TimeSpan::ZERO, TimeSpan::from_sec_f(1e-12));
+        let dt = TimeSpan::from_sec(1_000_000_000); // ~31.7 years
+        assert_eq!(drift.time_diff_after(&dt), TimeSpan::from_sec_f(0.001));
     }
 
     // ========================================================================
@@ -700,8 +700,10 @@ mod tests {
         for &(u, k, expected_rate) in test_cases {
             let drift = ClockDrift::from_unified_proper_time_rate(u, k);
             let expected_offset = expected_rate - 1.0;
-            let expected_drift =
-                ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(expected_offset));
+            let expected_drift = ClockDrift::from_offset_and_rate(
+                TimeSpan::ZERO,
+                TimeSpan::from_sec_f(expected_offset),
+            );
             assert_eq!(
                 drift, expected_drift,
                 "Low-curvature GR recovery failed for u={}, k={}",
@@ -726,8 +728,10 @@ mod tests {
             let expected_rate = k_eff_limit.sqrt().max(0.0);
             let expected_offset = expected_rate - 1.0;
 
-            let expected_drift =
-                ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(expected_offset));
+            let expected_drift = ClockDrift::from_offset_and_rate(
+                TimeSpan::ZERO,
+                TimeSpan::from_sec_f(expected_offset),
+            );
             assert_eq!(
                 drift, expected_drift,
                 "High-curvature saturation failed for δ = {}",
@@ -742,9 +746,9 @@ mod tests {
         let drift_neg_u = ClockDrift::from_unified_proper_time_rate(-0.5, 0.0);
 
         // Semantic check using .as_sec_f() — this is the robust way.
-        // (Delta::from_sec_f(-1.0) currently produces a non-canonical internal
+        // (TimeSpan::from_sec_f(-1.0) currently produces a non-canonical internal
         // representation while the unified function produces the canonical one.
-        // The two Deltas are mathematically identical but not ==.)
+        // The two TimeSpans are mathematically identical but not ==.)
         assert_eq!(
             drift_neg_u.rate.as_sec_f(),
             -1.0,
@@ -761,7 +765,7 @@ mod tests {
         // delta = 1.0 must always give exactly rate = 1.0 (no drift) regardless of curvature
         for k in [0.0, 1.0, 1e10, 1e30] {
             let drift = ClockDrift::from_unified_proper_time_rate(1.0, k);
-            assert_eq!(drift.rate, Delta::ZERO, "δ=1 should be exactly rate=1");
+            assert_eq!(drift.rate, TimeSpan::ZERO, "δ=1 should be exactly rate=1");
         }
 
         // delta = 0 with moderate curvature (null-ray / lightlike edge case sanity).
@@ -776,8 +780,10 @@ mod tests {
         let x = PLANCK_LENGTH_4 * kretschmann;
         let k_eff = x / (1.0 + x);
         let expected_null_rate: f64 = k_eff.sqrt() - 1.0;
-        let expected_null =
-            ClockDrift::from_offset_and_rate(Delta::ZERO, Delta::from_sec_f(expected_null_rate));
+        let expected_null = ClockDrift::from_offset_and_rate(
+            TimeSpan::ZERO,
+            TimeSpan::from_sec_f(expected_null_rate),
+        );
 
         assert_eq!(drift_null, expected_null);
     }

@@ -1,7 +1,7 @@
 use crate::{
     ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
     ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ClockDrift, ClockModel, ClockType,
-    TT_TAI_OFFSET_DELTA, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC,
+    TT_TAI_OFFSET_SPAN, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 
 impl TimePoint {
@@ -22,7 +22,7 @@ impl TimePoint {
     /// Because TT = TAI + 32.184 s, this is exactly 32.184 seconds *before* `ZERO`.
     /// This constant is provided for convenience when working with astronomical
     /// ephemerides that are natively referenced to J2000 TT.
-    pub const J2000_TAI: Self = Self::ZERO.sub_ref(&TT_TAI_OFFSET_DELTA);
+    pub const J2000_TAI: Self = Self::ZERO.sub_ref(&TT_TAI_OFFSET_SPAN);
 
     /// The J1900.0 epoch expressed in TAI (1900-01-01 12:00:00 TAI).
     pub const J1900_TAI: Self = Self::from_tai_sec(-3_155_760_000);
@@ -273,7 +273,7 @@ impl TimePoint {
         let secs = dur.as_secs() as i64;
         let nanos = dur.subsec_nanos() as i64;
         crate::TimePoint::from_unix_sec(secs)
-            .add(crate::Delta::from_ns(nanos))
+            .add(crate::TimeSpan::from_ns(nanos))
             .to_clock_type(target)
     }
 
@@ -286,7 +286,7 @@ impl TimePoint {
         let secs = millis / 1000;
         let nanos = (millis % 1000) * 1_000_000;
         crate::TimePoint::from_unix_sec(secs)
-            .add(crate::Delta::from_ns(nanos))
+            .add(crate::TimeSpan::from_ns(nanos))
             .to_clock_type(target)
     }
 }

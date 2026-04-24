@@ -1,6 +1,6 @@
 use crate::{
     ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ATTOSEC_PER_NANOSEC, ATTOSEC_PER_SEC_I128,
-    ClockType, Delta, SEC_PER_DAYI64, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC,
+    ClockType, TimeSpan, SEC_PER_DAYI64, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 
 impl TimePoint {
@@ -48,14 +48,14 @@ impl TimePoint {
     pub const fn from_canonical_attoseconds(attos: i128, clock_type: ClockType) -> Self {
         match clock_type {
             ClockType::UTC => Self::UNIX_EPOCH_UTC
-                .add(Delta::from_total_attos(attos))
+                .add(TimeSpan::from_total_attos(attos))
                 .to_tai(),
             ClockType::GPST | ClockType::QZSST => {
-                Self::TRADITIONAL_GPS_EPOCH.add(Delta::from_total_attos(attos))
+                Self::TRADITIONAL_GPS_EPOCH.add(TimeSpan::from_total_attos(attos))
             }
-            ClockType::GST => Self::TRADITIONAL_GALILEO_EPOCH.add(Delta::from_total_attos(attos)),
-            ClockType::BDT => Self::TRADITIONAL_BEIDOU_EPOCH.add(Delta::from_total_attos(attos)),
-            _ => TimePoint::new(0, 0, clock_type).add(Delta::from_total_attos(attos)),
+            ClockType::GST => Self::TRADITIONAL_GALILEO_EPOCH.add(TimeSpan::from_total_attos(attos)),
+            ClockType::BDT => Self::TRADITIONAL_BEIDOU_EPOCH.add(TimeSpan::from_total_attos(attos)),
+            _ => TimePoint::new(0, 0, clock_type).add(TimeSpan::from_total_attos(attos)),
         }
     }
 

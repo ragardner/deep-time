@@ -1,6 +1,6 @@
 use crate::{
-    C, C_SQUARED, ClockDrift, Delta, LocalSpacetime, Position, Real, TWO_GM_SUN_OVER_C3, TimePoint,
-    Velocity,
+    C, C_SQUARED, ClockDrift, LocalSpacetime, Position, Real, TWO_GM_SUN_OVER_C3, TimePoint,
+    TimeSpan, Velocity,
 };
 
 /// Configuration for the **Shapiro delay** — the extra time light (or radio signals)
@@ -228,7 +228,7 @@ impl ObserverState {
     ///   or black hole.
     ///
     /// # Returns
-    /// A [`Delta`] (in seconds) to be **added** to the Newtonian geometric light time.
+    /// A [`TimeSpan`] (in seconds) to be **added** to the Newtonian geometric light time.
     ///
     /// # Examples
     ///
@@ -236,7 +236,7 @@ impl ObserverState {
     ///
     /// ```no_run
     /// use deep_time_core::{
-    ///     ObserverState, Position, Velocity, TimePoint, Delta, LightContext,
+    ///     ObserverState, Position, Velocity, TimePoint, TimeSpan, LightContext,
     ///     // Assume you have ephemeris functions or constants available
     /// };
     ///
@@ -264,7 +264,7 @@ impl ObserverState {
     /// );
     ///
     /// // Use SOLAR for Sun-centered calculations
-    /// let correction: Delta = transmitter
+    /// let correction: TimeSpan = transmitter
     ///     .one_way_relativistic_delay_to(receiver_approx, LightContext::SOLAR);
     ///
     /// // The result should be added to the Newtonian geometric delay `r_sep / C`
@@ -290,8 +290,12 @@ impl ObserverState {
     /// Alternatively, you can compute individual Shapiro contributions from each body
     /// (using the helper `shapiro_one_way_for_body` if you add it) and manually combine
     /// them with the result of this function.
-    pub fn one_way_relativistic_delay_to(&self, rx: ObserverState, context: LightContext) -> Delta {
-        let delta = rx.time.duration_since_ref(&self.time);
+    pub fn one_way_relativistic_delay_to(
+        &self,
+        rx: ObserverState,
+        context: LightContext,
+    ) -> TimeSpan {
+        let span = rx.time.duration_since_ref(&self.time);
 
         let tx_drift = ClockDrift::from_velocity_potential_and_scale(
             self.velocity.speed(),
@@ -305,8 +309,8 @@ impl ObserverState {
         );
 
         let drift_correction = rx_drift
-            .time_diff_after(&delta)
-            .sub(tx_drift.time_diff_after(&delta));
+            .time_diff_after(&span)
+            .sub(tx_drift.time_diff_after(&span));
 
         let r_tx = self.position.norm();
         let r_rx = rx.position.norm();
@@ -331,7 +335,7 @@ impl ObserverState {
     /// - `context` – gravitational context (`LightContext::SOLAR`, `LightContext::FLAT`,
     ///   or a custom value). See [`one_way_relativistic_delay_to`] for details.
     /// - `tolerance` – maximum allowed change in receive time between iterations
-    ///   (recommended `Delta::from_ns(1)` or tighter)
+    ///   (recommended `TimeSpan::from_ns(1)` or tighter)
     /// - `max_iter` – safety limit on the number of iterations (recommended 8–12)
     ///
     /// # Returns
@@ -342,7 +346,7 @@ impl ObserverState {
     /// # Examples
     ///
     /// ```no_run
-    /// use deep_time_core::{ObserverState, TimePoint, Delta, LightContext, Position, Velocity};
+    /// use deep_time_core::{ObserverState, TimePoint, TimeSpan, LightContext, Position, Velocity};
     ///
     /// # // Assume these exist in your code (e.g. from an ephemeris library)
     /// # let tx_time: TimePoint = todo!();
@@ -365,7 +369,7 @@ impl ObserverState {
     ///         ObserverState::new(guessed_rx_time, pos, vel, potential)
     ///     },
     ///     LightContext::SOLAR,
-    ///     Delta::from_ns(1),   // 1 nanosecond tolerance (recommended)
+    ///     TimeSpan::from_ns(1),   // 1 nanosecond tolerance (recommended)
     ///     12,                  // safety limit (recommended)
     /// );
     ///
@@ -381,27 +385,27 @@ impl ObserverState {
     /// let context = LightContext::from_grav_param(jupiter_gm);
     ///
     /// let (correction, rx_time) = tx.iterative_one_way_relativistic_delay_to(
-    ///     rx_provider, context, Delta::from_ns(0.1), 10
+    ///     rx_provider, context, TimeSpan::from_ns(0.1), 10
     /// );
     /// ```
     pub fn iterative_one_way_relativistic_delay_to<F>(
         &self,
         mut rx_provider: F,
         context: LightContext,
-        tolerance: Delta,
+        tolerance: TimeSpan,
         max_iter: usize,
-    ) -> (Delta, TimePoint)
+    ) -> (TimeSpan, TimePoint)
     where
         F: FnMut(TimePoint) -> ObserverState,
     {
         let mut rx = rx_provider(self.time);
-        let mut rel_correction = Delta::ZERO;
+        let mut rel_correction = TimeSpan::ZERO;
 
         for _ in 0..max_iter {
             rel_correction = self.one_way_relativistic_delay_to(rx, context);
 
             let r_sep = self.position.distance_to(rx.position);
-            let geometric = Delta::from_sec_f(r_sep / C);
+            let geometric = TimeSpan::from_sec_f(r_sep / C);
             let full_delay = geometric.add(rel_correction);
 
             let new_rx_time = self.time.add(full_delay);
@@ -433,7 +437,7 @@ impl ObserverState {
     ///   excellent accuracy.
     ///
     /// # Returns
-    /// A [`Delta`] containing the integrated clock-drift correction plus the Shapiro
+    /// A [`TimeSpan`] containing the integrated clock-drift correction plus the Shapiro
     /// delay from the supplied `context`.
     ///
     /// # Example of building `samples`
@@ -460,7 +464,7 @@ impl ObserverState {
     /// ```no_run
     /// use deep_time_core::{
     ///     ObserverState, LocalSpacetime, Position, Velocity, TimePoint,
-    ///     Delta, LightContext,
+    ///     TimeSpan, LightContext,
     /// };
     ///
     /// # let tx_time: TimePoint = todo!();
@@ -497,7 +501,7 @@ impl ObserverState {
     ///     })
     ///     .collect();
     ///
-    /// let total_correction: Delta = transmitter.one_way_relativistic_delay_integrated(
+    /// let total_correction: TimeSpan = transmitter.one_way_relativistic_delay_integrated(
     ///     receiver,
     ///     LightContext::SOLAR,
     ///     &samples,
@@ -534,7 +538,7 @@ impl ObserverState {
         rx: ObserverState,
         context: LightContext,
         samples: &[LocalSpacetime],
-    ) -> Delta {
+    ) -> TimeSpan {
         if samples.is_empty() {
             return self.one_way_relativistic_delay_to(rx, context);
         }
@@ -568,7 +572,7 @@ impl ObserverState {
         let r_sep = self.position.distance_to(rx.position);
         let shapiro = Self::shapiro_one_way_delay(context, r_tx, r_rx, r_sep);
 
-        Delta::from_sec_f(integrated_drift_sec).add(shapiro)
+        TimeSpan::from_sec_f(integrated_drift_sec).add(shapiro)
     }
 
     /// Computes the relativistic correction for a two-way round-trip ranging measurement
@@ -585,7 +589,7 @@ impl ObserverState {
     /// - `context` – gravitational context for the Shapiro delay (see [`one_way_relativistic_delay_to`])
     ///
     /// # Returns
-    /// A [`Delta`] (in seconds) that must be **subtracted** from the measured round-trip time.
+    /// A [`TimeSpan`] (in seconds) that must be **subtracted** from the measured round-trip time.
     ///
     /// # Examples
     ///
@@ -593,7 +597,7 @@ impl ObserverState {
     ///
     /// ```no_run
     /// use deep_time_core::{
-    ///     ObserverState, Position, Velocity, TimePoint, Delta, LightContext,
+    ///     ObserverState, Position, Velocity, TimePoint, TimeSpan, LightContext,
     /// };
     ///
     /// # let tx_time: TimePoint = todo!();
@@ -603,7 +607,7 @@ impl ObserverState {
     /// # let rx_pos: Position = todo!();
     /// # let rx_vel: Velocity = todo!();
     /// # let rx_potential: f64 = todo!();
-    /// # let measured_round_trip: Delta = todo!(); // from your ranging hardware / DSN
+    /// # let measured_round_trip: TimeSpan = todo!(); // from your ranging hardware / DSN
     ///
     /// let transmitter = ObserverState::new(
     ///     tx_time,
@@ -643,10 +647,10 @@ impl ObserverState {
     /// ```
     pub fn round_trip_relativistic_correction(
         &self,
-        round_trip_measured: Delta,
+        round_trip_measured: TimeSpan,
         rx: ObserverState,
         context: LightContext,
-    ) -> Delta {
+    ) -> TimeSpan {
         let one_way_approx = round_trip_measured.div_by_2();
         let rx_approx = ObserverState {
             time: self.time.add(one_way_approx),
@@ -662,26 +666,31 @@ impl ObserverState {
     ///
     /// This is an internal helper used by the public delay functions. It implements the
     /// standard logarithmic formula used in solar-system navigation and pulsar timing.
-    fn shapiro_one_way_delay(context: LightContext, r_tx: Real, r_rx: Real, r_sep: Real) -> Delta {
+    fn shapiro_one_way_delay(
+        context: LightContext,
+        r_tx: Real,
+        r_rx: Real,
+        r_sep: Real,
+    ) -> TimeSpan {
         if context.two_grav_param_over_c3 == f!(0.0)
             || r_tx <= f!(0.0)
             || r_rx <= f!(0.0)
             || r_sep <= f!(0.0)
         {
-            return Delta::ZERO;
+            return TimeSpan::ZERO;
         }
 
         let arg = (r_tx + r_rx + r_sep) / (r_tx + r_rx - r_sep).max(f!(1.0));
         let delay_sec = context.two_grav_param_over_c3 * libm::log(arg);
 
-        Delta::from_sec_f(delay_sec)
+        TimeSpan::from_sec_f(delay_sec)
     }
 }
 
 #[cfg(test)]
 mod relativistic_tests {
     use super::*;
-    use crate::{Delta, ObserverState, Position, TimePoint, Velocity};
+    use crate::{ObserverState, Position, TimePoint, TimeSpan, Velocity};
 
     /// Small helper to build a `ObserverState` quickly.
     fn make_state(
@@ -708,7 +717,7 @@ mod relativistic_tests {
         let rx = make_state(0, origin, zero_vel, 0.0, 0.0);
 
         let correction = tx.one_way_relativistic_delay_to(rx, LightContext::FLAT);
-        assert_eq!(correction, Delta::ZERO);
+        assert_eq!(correction, TimeSpan::ZERO);
     }
 
     #[test]
@@ -762,7 +771,7 @@ mod relativistic_tests {
         let rx_pos = Position::new(1.52e11, 0.0, 0.0);
         let rx_phi = -8.80e8;
 
-        let tolerance = Delta::from_ns(1);
+        let tolerance = TimeSpan::from_ns(1);
         let (correction, final_rx_time) = tx.iterative_one_way_relativistic_delay_to(
             |guessed_time| {
                 make_state(
@@ -797,7 +806,7 @@ mod relativistic_tests {
         let tx = make_state(0, tx_pos, Velocity::from_speed(30_000.0), -8.87e8, 0.0);
         let rx = make_state(0, rx_pos, Velocity::from_speed(29_000.0), -8.80e8, 0.0);
 
-        let round_trip_measured = Delta::from_sec_f(1010.0);
+        let round_trip_measured = TimeSpan::from_sec_f(1010.0);
 
         let correction =
             tx.round_trip_relativistic_correction(round_trip_measured, rx, LightContext::SOLAR);

@@ -80,19 +80,19 @@ mod tdb_tests {
 
 mod drift_tests {
     use super::*;
-    use deep_time_core::{ClockDrift, ClockModel, ClockType, Delta};
+    use deep_time_core::{ClockDrift, ClockModel, ClockType, TimeSpan};
 
     #[test]
     fn proper_to_tt_with_drift_roundtrip() {
         let reference = TimePoint::from_tai_sec(0);
         let drift = ClockDrift::new(
-            Delta::from_ms(100), // exactly 0.1 s
-            Delta::from_ns(1),   // exactly 1 ns/s = 1e-9 s/s
-            Delta::ZERO,
+            TimeSpan::from_ms(100), // exactly 0.1 s
+            TimeSpan::from_ns(1),   // exactly 1 ns/s = 1e-9 s/s
+            TimeSpan::ZERO,
         );
         let model = ClockModel::proper(reference, drift);
 
-        let onboard_proper = TimePoint::create_from_model(model).add(Delta::from_sec(1_000_000));
+        let onboard_proper = TimePoint::create_from_model(model).add(TimeSpan::from_sec(1_000_000));
 
         let tt = onboard_proper.convert_using_model(model);
         let back = tt.convert_back_using_model(model);
@@ -115,14 +115,14 @@ mod drift_tests {
     #[test]
     fn constant_offset_only() {
         let reference = TimePoint::from_tai_sec(0);
-        let drift = ClockDrift::from_constant(Delta::from_sec_f(32.184));
+        let drift = ClockDrift::from_constant(TimeSpan::from_sec_f(32.184));
         let model = ClockModel::proper(reference, drift);
 
-        let onboard = TimePoint::create_from_model(model).add(Delta::from_sec(100));
+        let onboard = TimePoint::create_from_model(model).add(TimeSpan::from_sec(100));
         let tt = onboard.convert_using_model(model);
 
         let expected = onboard
-            .add(Delta::from_sec_f(32.184))
+            .add(TimeSpan::from_sec_f(32.184))
             .to_clock_type(ClockType::Proper);
         assert_eq!(tt, expected);
     }
@@ -131,14 +131,14 @@ mod drift_tests {
     fn convert_back_using_model_inverse() {
         let reference = TimePoint::from_tai_sec(0);
         let drift = ClockDrift::new(
-            Delta::from_ms(500), // exactly 0.5 s
-            Delta::from_ns(2),   // exactly 2 ns/s = 2e-9 s/s
-            Delta::ZERO,
+            TimeSpan::from_ms(500), // exactly 0.5 s
+            TimeSpan::from_ns(2),   // exactly 2 ns/s = 2e-9 s/s
+            TimeSpan::ZERO,
         );
         let model = ClockModel::proper(reference, drift);
 
         // Start from onboard Proper time (the natural input for this API)
-        let proper = TimePoint::create_from_model(model).add(Delta::from_sec(1_000_000));
+        let proper = TimePoint::create_from_model(model).add(TimeSpan::from_sec(1_000_000));
 
         let tt = proper.convert_using_model(model); // Proper → TT
         let back = tt.convert_back_using_model(model); // TT → Proper
@@ -342,7 +342,7 @@ mod mars_tests {
         // New exact value (no magic number)
         let frac_sols = frac.as_sec_f() / MARS_SOL_LENGTH_SEC;
         assert!(
-            (frac_sols - 0.61987471912).abs() < 1e-11, // or use a Delta comparison
+            (frac_sols - 0.61987471912).abs() < 1e-11, // or use a TimeSpan comparison
             "Fractional part of MSD at J2000 (TAI) was {} sols",
             frac_sols
         );
@@ -498,7 +498,7 @@ mod utc_tests {
 }
 
 mod jd_mjd_tests {
-    use deep_time_core::Delta;
+    use deep_time_core::TimeSpan;
 
     use super::*;
 
@@ -506,7 +506,7 @@ mod jd_mjd_tests {
     /// The library’s exact MJD convention is JD − 2_400_000 (MJD 51545.0, frac = 0).
     #[test]
     fn j2000_tt_is_jd_2451545() {
-        let j2000_tt = TimePoint::from_jd_tt_exact(2451545, Delta::ZERO);
+        let j2000_tt = TimePoint::from_jd_tt_exact(2451545, TimeSpan::ZERO);
 
         let (jd, frac) = j2000_tt.to_jd_tt_exact();
         assert_eq!(jd, 2451545, "JD integer part wrong");

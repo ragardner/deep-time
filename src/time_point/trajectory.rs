@@ -1,4 +1,4 @@
-use crate::{ClockDrift, Delta, LocalSpacetime, Real, TimePoint};
+use crate::{ClockDrift, TimeSpan, LocalSpacetime, Real, TimePoint};
 
 impl TimePoint {
     /// Computes the accumulated **proper time** (Δτ) experienced by a clock moving along a
@@ -26,7 +26,7 @@ impl TimePoint {
     ///
     /// # Example
     /// ```rust
-    /// use deep_time_core::{ClockType, Delta, LocalSpacetime, TimePoint};
+    /// use deep_time_core::{ClockType, TimeSpan, LocalSpacetime, TimePoint};
     ///
     /// let start = TimePoint::from_tai_sec(0);
     /// let end   = TimePoint::from_tai_sec(1000);
@@ -36,14 +36,14 @@ impl TimePoint {
     /// let samples = [slow; 2];
     ///
     /// let delta_tau = start.proper_time_interval_samples(end, &samples);
-    /// assert_eq!(delta_tau, Delta::from_sec(900));
+    /// assert_eq!(delta_tau, TimeSpan::from_sec(900));
     ///
     /// // Update onboard proper time clock
     /// let onboard_tau = start.to_clock_type(ClockType::Proper).add(delta_tau);
     /// ```
-    pub fn proper_time_interval_samples(self, end: TimePoint, samples: &[LocalSpacetime]) -> Delta {
+    pub fn proper_time_interval_samples(self, end: TimePoint, samples: &[LocalSpacetime]) -> TimeSpan {
         if samples.len() < 2 || self == end {
-            return Delta::ZERO;
+            return TimeSpan::ZERO;
         }
 
         let mut dt = end.duration_since(self);
@@ -60,7 +60,7 @@ impl TimePoint {
             let rate0 = Self::rate_from_local(&samples[0]);
             let rate1 = Self::rate_from_local(&samples[samples.len() - 1]);
             let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt_sec;
-            return Delta::from_sec_f(sign * (dt_sec + integral));
+            return TimeSpan::from_sec_f(sign * (dt_sec + integral));
         }
 
         // Simpson’s rule quadrature (high-order accuracy)
@@ -83,7 +83,7 @@ impl TimePoint {
         }
 
         let integral = (h / f!(3.0)) * s;
-        Delta::from_sec_f(sign * (dt_sec + integral))
+        TimeSpan::from_sec_f(sign * (dt_sec + integral))
     }
 
     /// Computes the relativistic correction (Δτ − Δt) using pre-computed samples.
@@ -97,12 +97,12 @@ impl TimePoint {
     ///   [`proper_time_interval_samples`] for details and example).
     ///
     /// # Returns
-    /// The relativistic correction as a `Delta`.
+    /// The relativistic correction as a `TimeSpan`.
     pub fn relativistic_correction_with_samples(
         self,
         end: TimePoint,
         samples: &[LocalSpacetime],
-    ) -> Delta {
+    ) -> TimeSpan {
         let dtau = self.proper_time_interval_samples(end, samples);
         let dt = end.duration_since(self);
         dtau.sub(dt)
@@ -119,7 +119,7 @@ impl TimePoint {
 #[cfg(test)]
 mod proper_time_samples_tests {
     use super::*;
-    use crate::{Delta, LocalSpacetime};
+    use crate::{TimeSpan, LocalSpacetime};
 
     fn make_state(tai_sec: i64) -> TimePoint {
         TimePoint::from_tai_sec(tai_sec)
@@ -132,7 +132,7 @@ mod proper_time_samples_tests {
         let samples = [LocalSpacetime::new(1.0, 0.0, 0.0); 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, Delta::ZERO);
+        assert_eq!(dtau, TimeSpan::ZERO);
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod proper_time_samples_tests {
         let samples = [flat; 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, Delta::from_sec(1000));
+        assert_eq!(dtau, TimeSpan::from_sec(1000));
     }
 
     #[test]
@@ -156,7 +156,7 @@ mod proper_time_samples_tests {
         let samples = [slow; 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, Delta::from_sec(900));
+        assert_eq!(dtau, TimeSpan::from_sec(900));
     }
 
     #[test]
@@ -168,7 +168,7 @@ mod proper_time_samples_tests {
         let samples = [slow; 2];
 
         let correction = t0.relativistic_correction_with_samples(t1, &samples);
-        assert_eq!(correction, Delta::from_sec(-100));
+        assert_eq!(correction, TimeSpan::from_sec(-100));
     }
 
     #[test]
@@ -180,7 +180,7 @@ mod proper_time_samples_tests {
         let samples = [slow; 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, Delta::from_sec(-900));
+        assert_eq!(dtau, TimeSpan::from_sec(-900));
     }
 
     #[test]
@@ -192,6 +192,6 @@ mod proper_time_samples_tests {
         let samples = [moving; 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, Delta::from_sec(400));
+        assert_eq!(dtau, TimeSpan::from_sec(400));
     }
 }

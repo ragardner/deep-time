@@ -1,6 +1,6 @@
 use crate::{
-    AsciiStr, ClockType, Delta, GregorianPoint, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE, TimePoint,
-    WEEKDAYS_ABBR, WEEKDAYS_FULL, error::DtErrKind, tzdb::offset_info_at,
+    AsciiStr, ClockType, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE, TimePoint,
+    TimeSpan, WEEKDAYS_ABBR, WEEKDAYS_FULL, error::DtErrKind, tzdb::offset_info_at,
 };
 
 // #[inline]
@@ -58,11 +58,11 @@ impl TimePoint {
         dest: &mut [u8],
         label_in_secs: i32,
     ) -> Result<usize, DtErrKind> {
-        let mut gp = self.to_gregorian_point();
-        gp.set_offset(Some(label_in_secs)).set_tz_abbrev(None);
+        let mut gt = self.to_gregorian_time();
+        gt.set_offset(Some(label_in_secs)).set_tz_abbrev(None);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
-        gp.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
+        gt.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
         let written = pos.min(dest.len());
         if written > 0 {
             dest[0..written].copy_from_slice(&internal_buf[0..written]);
@@ -77,7 +77,7 @@ impl TimePoint {
         dest: &mut [u8],
         tz_name: &str,
     ) -> Result<usize, DtErrKind> {
-        let gp = self.gregorian_point_adjusted_to_tz(tz_name);
+        let gp = self.gregorian_time_adjusted_to_tz(tz_name);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gp.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
@@ -90,7 +90,7 @@ impl TimePoint {
 
     /// No-alloc label-only formatting.
     pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
-        let mut gp = self.to_gregorian_point();
+        let mut gp = self.to_gregorian_time();
         gp.set_offset(Some(0)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -104,7 +104,7 @@ impl TimePoint {
         fmt: &str,
         label_in_secs: i32,
     ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
-        let mut gp = self.to_gregorian_point();
+        let mut gp = self.to_gregorian_time();
         gp.set_offset(Some(label_in_secs)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -118,15 +118,15 @@ impl TimePoint {
         fmt: &str,
         tz_name: &str,
     ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
-        let gp = self.gregorian_point_adjusted_to_tz(tz_name);
+        let gp = self.gregorian_time_adjusted_to_tz(tz_name);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gp.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
         Ok(AsciiStr::from_filled_buffer(buf))
     }
 
-    /// Helper for creating a timezone adjusted GregorianPoint.
-    fn gregorian_point_adjusted_to_tz(&self, tz_name: &str) -> GregorianPoint {
+    /// Helper for creating a timezone adjusted GregorianTime.
+    fn gregorian_time_adjusted_to_tz(&self, tz_name: &str) -> GregorianTime {
         let unix_ts = self.to_unix_sec();
 
         let (offset_secs, abbrev) = match offset_info_at(tz_name, unix_ts) {
@@ -135,10 +135,10 @@ impl TimePoint {
         };
 
         let utc = self.to_clock_type(ClockType::UTC);
-        let delta = Delta::new(offset_secs as i64, 0);
-        let local_tp = utc + delta;
+        let span = TimeSpan::new(offset_secs as i64, 0);
+        let local_tp = utc + span;
 
-        let mut gp = local_tp.to_gregorian_point();
+        let mut gp = local_tp.to_gregorian_time();
         gp.set_offset(Some(offset_secs));
         gp.set_tz(Some(tz_name));
         gp.set_tz_abbrev(abbrev);
@@ -146,7 +146,7 @@ impl TimePoint {
     }
 }
 
-impl GregorianPoint {
+impl GregorianTime {
     #[cfg(feature = "alloc")]
     #[inline]
     pub fn strftime(&self, fmt: &str) -> Result<alloc::string::String, DtErrKind> {
@@ -999,7 +999,7 @@ mod format_tests {
     use super::*;
 
     // Helper to create a TimePoint at the requested civil UTC time.
-    // Now matches GregorianPoint::to_time_point exactly (UTC civil seconds).
+    // Now matches GregorianTime::to_time_point exactly (UTC civil seconds).
     fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
         let jdn = TimePoint::gregorian_jdn(y, m, d);
         let days_since_j2000 = jdn - 2451545i64; // J2000_JD_TT

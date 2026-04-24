@@ -1,11 +1,11 @@
-use crate::{Delta, DtStdError};
+use crate::{TimeSpan, DtStdError};
 use jiff::{SignedDuration, Span, Timestamp};
 use std::string::ToString;
 
-impl Delta {
-    /// Creates a `Delta` from a `jiff::SignedDuration` (nanosecond precision).
+impl TimeSpan {
+    /// Creates a `TimeSpan` from a `jiff::SignedDuration` (nanosecond precision).
     ///
-    /// This is the exact reverse of [`Delta::to_jiff_signed_duration`].
+    /// This is the exact reverse of [`TimeSpan::to_jiff_signed_duration`].
     ///
     /// - The conversion is lossless when the value fits in an `i64` number of
     ///   nanoseconds.
@@ -27,9 +27,9 @@ impl Delta {
         Self::from_ns(ns)
     }
 
-    /// Creates a `Delta` from a `jiff::Span`.
+    /// Creates a `TimeSpan` from a `jiff::Span`.
     ///
-    /// This is the exact reverse of [`Delta::to_jiff_span`].
+    /// This is the exact reverse of [`TimeSpan::to_jiff_span`].
     ///
     /// - Works perfectly for pure time-based `Span`s (seconds + nanoseconds only).
     /// - Returns `Err` if the `Span` contains any calendar units (years, months,
@@ -41,10 +41,10 @@ impl Delta {
         Ok(Self::from_jiff_signed_duration(dur))
     }
 
-    /// Creates a `Delta` representing the duration since the Unix epoch
+    /// Creates a `TimeSpan` representing the duration since the Unix epoch
     /// (1970-01-01 00:00:00 UTC) from a `jiff::Timestamp`.
     ///
-    /// This is the exact reverse of [`Delta::to_jiff_timestamp`].
+    /// This is the exact reverse of [`TimeSpan::to_jiff_timestamp`].
     ///
     /// - If the timestamp is extremely far in the future or past, we clamp to
     ///   **exactly** the maximum/minimum nanosecond value (`i64::MAX` /

@@ -1,6 +1,6 @@
-use crate::{ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, Delta, Real, floor_f};
+use crate::{ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, TimeSpan, Real, floor_f};
 
-impl Delta {
+impl TimeSpan {
     /// Returns the sum of `self` and `rhs`.
     ///
     /// The result is normalized so the fractional part lies in `[0, ATTOSEC_PER_SEC)`.
@@ -35,7 +35,7 @@ impl Delta {
         Self { sec, subsec }
     }
 
-    /// Returns the sum of `self` and `rhs`, saturating at [`Delta::MAX`] or [`Delta::MIN`] on overflow.
+    /// Returns the sum of `self` and `rhs`, saturating at [`TimeSpan::MAX`] or [`TimeSpan::MIN`] on overflow.
     #[inline]
     pub const fn saturating_add(self, rhs: Self) -> Self {
         let mut subsec = self.subsec + rhs.subsec;
@@ -58,7 +58,7 @@ impl Delta {
         Self { sec, subsec }
     }
 
-    /// Returns the difference `self - rhs`, saturating at [`Delta::MAX`] or [`Delta::MIN`] on overflow.
+    /// Returns the difference `self - rhs`, saturating at [`TimeSpan::MAX`] or [`TimeSpan::MIN`] on overflow.
     #[inline]
     pub const fn saturating_sub(self, rhs: Self) -> Self {
         let mut subsec = self.subsec;
@@ -89,7 +89,7 @@ impl Delta {
         self.sec == 0 && self.subsec == 0
     }
 
-    /// Reconstruct `Delta` from total attoseconds (exact, handles negative values correctly).
+    /// Reconstruct `TimeSpan` from total attoseconds (exact, handles negative values correctly).
     #[inline]
     pub const fn from_total_attos(mut attos: i128) -> Self {
         if attos > (i64::MAX as i128) * ATTOSEC_PER_SEC_I128 {
@@ -129,7 +129,7 @@ impl Delta {
         self.sec as Real + (self.subsec as Real) / (ATTOSEC_PER_SEC as Real)
     }
 
-    /// Creates a `Delta` from a floating-point number of seconds.
+    /// Creates a `TimeSpan` from a floating-point number of seconds.
     #[inline]
     pub const fn from_sec_f(sec_f: Real) -> Self {
         if sec_f.is_nan() {
@@ -181,7 +181,7 @@ impl Delta {
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
     #[inline]
-    pub const fn floor(self, unit: Delta) -> Delta {
+    pub const fn floor(self, unit: TimeSpan) -> TimeSpan {
         if unit.is_zero() {
             return self;
         }
@@ -195,7 +195,7 @@ impl Delta {
     /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
     #[inline]
-    pub const fn ceil(self, unit: Delta) -> Delta {
+    pub const fn ceil(self, unit: TimeSpan) -> TimeSpan {
         if unit.is_zero() {
             return self;
         }
@@ -213,7 +213,7 @@ impl Delta {
     /// Halfway cases round **away from zero** (matches old `f64::round`).
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
     #[inline]
-    pub const fn round(self, unit: Delta) -> Delta {
+    pub const fn round(self, unit: TimeSpan) -> TimeSpan {
         if unit.is_zero() {
             return self;
         }
@@ -244,7 +244,7 @@ impl Delta {
     ///
     /// Fully exact integer arithmetic using 128-bit intermediaries. Used by `TimeRange::len`.
     #[inline]
-    pub const fn abs_div_floor(self, unit: Delta) -> usize {
+    pub const fn abs_div_floor(self, unit: TimeSpan) -> usize {
         if unit.is_zero() {
             return 0;
         }
@@ -308,7 +308,7 @@ impl Delta {
 
     /// Divides this duration by 2 (convenience wrapper).
     #[inline(always)]
-    pub fn div_by_2(self) -> Delta {
+    pub fn div_by_2(self) -> TimeSpan {
         self.div_by_f(2.0)
     }
 }

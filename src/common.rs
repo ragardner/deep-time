@@ -1,8 +1,8 @@
-//! Time increment and decrement methods for `TimePoint` and `Delta`.
+//! Time increment and decrement methods for `TimePoint` and `TimeSpan`.
 use crate::{
     ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
-    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, Delta,
-    TimePoint,
+    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, TimePoint,
+    TimeSpan,
 };
 
 macro_rules! impl_time_inc {
@@ -105,7 +105,7 @@ macro_rules! impl_time_inc {
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn add_ms(&mut self, n: i64) {
-                    self.add_subsec_delta(n, ATTOSEC_PER_MILLISEC);
+                    self.add_subsec_span(n, ATTOSEC_PER_MILLISEC);
                 }
 
                 /// Adds the specified number of microseconds to this time value.
@@ -113,7 +113,7 @@ macro_rules! impl_time_inc {
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn add_us(&mut self, n: i64) {
-                    self.add_subsec_delta(n, ATTOSEC_PER_MICROSEC);
+                    self.add_subsec_span(n, ATTOSEC_PER_MICROSEC);
                 }
 
                 /// Adds the specified number of nanoseconds to this time value.
@@ -121,7 +121,7 @@ macro_rules! impl_time_inc {
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn add_ns(&mut self, n: i64) {
-                    self.add_subsec_delta(n, ATTOSEC_PER_NANOSEC);
+                    self.add_subsec_span(n, ATTOSEC_PER_NANOSEC);
                 }
 
                 /// Adds the specified number of picoseconds to this time value.
@@ -129,7 +129,7 @@ macro_rules! impl_time_inc {
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn add_ps(&mut self, n: i64) {
-                    self.add_subsec_delta(n, ATTOSEC_PER_PICOSEC);
+                    self.add_subsec_span(n, ATTOSEC_PER_PICOSEC);
                 }
 
                 /// Adds the specified number of femtoseconds to this time value.
@@ -137,7 +137,7 @@ macro_rules! impl_time_inc {
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn add_fs(&mut self, n: i64) {
-                    self.add_subsec_delta(n, ATTOSEC_PER_FEMTOSEC);
+                    self.add_subsec_span(n, ATTOSEC_PER_FEMTOSEC);
                 }
 
                 /// Adds the specified number of attoseconds to this time value.
@@ -145,7 +145,7 @@ macro_rules! impl_time_inc {
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn add_as(&mut self, n: i64) {
-                    self.add_subsec_delta(n, ATTOSEC_PER_ATTOSEC);
+                    self.add_subsec_span(n, ATTOSEC_PER_ATTOSEC);
                 }
 
                 /// Adds the specified number of attoseconds (the internal subsecond unit)
@@ -154,7 +154,7 @@ macro_rules! impl_time_inc {
                 /// Handles carry into the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn add_subsec(&mut self, n: i64) {
-                    self.add_subsec_delta(n, ATTOSEC_PER_ATTOSEC);
+                    self.add_subsec_span(n, ATTOSEC_PER_ATTOSEC);
                 }
 
                 // =====================================================================
@@ -184,7 +184,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
                 pub const fn sub_1ms(&mut self) {
-                    self.add_subsec_delta(-1, ATTOSEC_PER_MILLISEC);
+                    self.add_subsec_span(-1, ATTOSEC_PER_MILLISEC);
                 }
 
                 /// Subtracts exactly 1 microsecond from this time value.
@@ -192,7 +192,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
                 pub const fn sub_1us(&mut self) {
-                    self.add_subsec_delta(-1, ATTOSEC_PER_MICROSEC);
+                    self.add_subsec_span(-1, ATTOSEC_PER_MICROSEC);
                 }
 
                 /// Subtracts exactly 1 nanosecond from this time value.
@@ -200,7 +200,7 @@ macro_rules! impl_time_inc {
                 /// This affects the subsecond component and may cause a borrow from the seconds field.
                 #[inline(always)]
                 pub const fn sub_1ns(&mut self) {
-                    self.add_subsec_delta(-1, ATTOSEC_PER_NANOSEC);
+                    self.add_subsec_span(-1, ATTOSEC_PER_NANOSEC);
                 }
 
                 // =====================================================================
@@ -230,7 +230,7 @@ macro_rules! impl_time_inc {
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn sub_ms(&mut self, n: i64) {
-                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_MILLISEC);
+                    self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_MILLISEC);
                 }
 
                 /// Subtracts the specified number of microseconds from this time value.
@@ -238,7 +238,7 @@ macro_rules! impl_time_inc {
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn sub_us(&mut self, n: i64) {
-                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_MICROSEC);
+                    self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_MICROSEC);
                 }
 
                 /// Subtracts the specified number of nanoseconds from this time value.
@@ -246,7 +246,7 @@ macro_rules! impl_time_inc {
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn sub_ns(&mut self, n: i64) {
-                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_NANOSEC);
+                    self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_NANOSEC);
                 }
 
                 /// Subtracts the specified number of picoseconds from this time value.
@@ -254,7 +254,7 @@ macro_rules! impl_time_inc {
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn sub_ps(&mut self, n: i64) {
-                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_PICOSEC);
+                    self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_PICOSEC);
                 }
 
                 /// Subtracts the specified number of femtoseconds from this time value.
@@ -262,7 +262,7 @@ macro_rules! impl_time_inc {
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn sub_fs(&mut self, n: i64) {
-                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_FEMTOSEC);
+                    self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_FEMTOSEC);
                 }
 
                 /// Subtracts the specified number of attoseconds from this time value.
@@ -270,7 +270,7 @@ macro_rules! impl_time_inc {
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn sub_as(&mut self, n: i64) {
-                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
+                    self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
                 }
 
                 /// Subtracts the specified number of attoseconds (the internal subsecond unit)
@@ -279,21 +279,21 @@ macro_rules! impl_time_inc {
                 /// Handles borrow from the seconds field using saturating logic.
                 #[inline(always)]
                 pub const fn sub_subsec(&mut self, n: i64) {
-                    self.add_subsec_delta(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
+                    self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
                 }
 
                 // =====================================================================
                 // Internal helper methods
                 // =====================================================================
 
-                /// Internal method to add or subtract a subsecond delta in a given unit.
+                /// Internal method to add or subtract a subsecond span in a given unit.
                 ///
                 /// This is the core implementation for all subsecond addition and subtraction
                 /// operations. It properly handles carry and borrow between the fractional
                 /// part (`subsec`) and the whole seconds (`sec`), using saturating arithmetic
                 /// throughout.
                 #[doc(hidden)]
-                const fn add_subsec_delta(&mut self, n: i64, unit: u64) {
+                const fn add_subsec_span(&mut self, n: i64, unit: u64) {
                     if n == 0 {
                         return;
                     }
@@ -337,8 +337,8 @@ macro_rules! impl_time_inc {
                 /// Internal fast-path method for adding a small positive subsecond amount.
                 ///
                 /// Used by the single-unit `add_1ms`, `add_1us`, and `add_1ns` methods.
-                /// This is intentionally simpler and faster than the general `add_subsec_delta`
-                /// when the delta is known to be positive and small.
+                /// This is intentionally simpler and faster than the general `add_subsec_span`
+                /// when the span is known to be positive and small.
                 #[doc(hidden)]
                 #[inline]
                 const fn _add_subsec(&mut self, amount: u64) {
@@ -395,5 +395,5 @@ macro_rules! impl_time_inc {
     };
 }
 
-// Apply the implementation to both `TimePoint` and `Delta` types.
-impl_time_inc!(TimePoint, Delta);
+// Apply the implementation to both `TimePoint` and `TimeSpan` types.
+impl_time_inc!(TimePoint, TimeSpan);
