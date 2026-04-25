@@ -267,11 +267,17 @@ impl TimePoint {
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     #[inline]
     pub fn now(target: ClockType) -> Self {
-        let dur = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .expect("system time before Unix epoch");
-        let secs = dur.as_secs() as i64;
-        let nanos = dur.subsec_nanos() as i64;
+        let now = std::time::SystemTime::now();
+        let (secs, nanos) = match now.duration_since(std::time::UNIX_EPOCH) {
+            Ok(dur) => (dur.as_secs() as i64, dur.subsec_nanos() as i64),
+            Err(_) => {
+                // System time is before Unix epoch — support negative time
+                let dur = std::time::SystemTime::UNIX_EPOCH
+                    .duration_since(now)
+                    .unwrap();
+                (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
+            }
+        };
         crate::TimePoint::from_unix_sec(secs)
             .add(crate::TimeSpan::from_ns(nanos))
             .to_clock_type(target)

@@ -1,4 +1,4 @@
-use crate::{TimeSpan, TimePoint};
+use crate::{TimePoint, TimeSpan};
 use core::cmp::Ordering;
 use core::ops::{Add, AddAssign, Sub, SubAssign};
 
@@ -70,6 +70,34 @@ impl TimePoint {
             Ordering::Greater
         } else {
             Ordering::Equal
+        }
+    }
+
+    /// Returns the smaller of two `TimePoint`s according to the total physical-time order
+    /// defined by [`Self::cmp`].
+    ///
+    /// Both instants are converted to TAI internally, so the result is the physically
+    /// earlier instant even when the two `TimePoint`s belong to different [`ClockType`]s
+    /// (leap seconds, relativistic offsets, etc. are all taken into account).
+    ///
+    /// This is a `const fn` and can be used in const contexts.
+    #[inline]
+    pub const fn min(self, other: Self) -> Self {
+        match self.cmp(other) {
+            Ordering::Greater => other,
+            _ => self,
+        }
+    }
+
+    /// Returns the larger of two `TimePoint`s according to the total physical-time order
+    /// defined by [`Self::cmp`].
+    ///
+    /// See [`Self::min`] for more details.
+    #[inline]
+    pub const fn max(self, other: Self) -> Self {
+        match self.cmp(other) {
+            Ordering::Less => other,
+            _ => self,
         }
     }
 }

@@ -147,3 +147,11 @@ impl core::fmt::Display for DtError {
 }
 
 impl core::error::Error for DtError {}
+
+impl From<DtErrKind> for DtError {
+    #[track_caller]
+    #[inline]
+    fn from(kind: DtErrKind) -> Self {
+        Self::new(kind)
+    }
+}

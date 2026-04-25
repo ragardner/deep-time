@@ -1,12 +1,12 @@
 use crate::{
-    AsciiStr, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE, TimePoint, WEEKDAYS_ABBR,
-    WEEKDAYS_FULL, error::DtErrKind,
+    AsciiStr, DtErrKind, DtError, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE,
+    TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL,
 };
 
 impl GregorianTime {
     #[cfg(feature = "alloc")]
     #[inline]
-    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErrKind> {
+    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtError> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -15,7 +15,7 @@ impl GregorianTime {
 
     /// No-allocation formatting.
     #[inline]
-    pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErrKind> {
+    pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtError> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -27,7 +27,7 @@ impl GregorianTime {
         fmt: &[u8],
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
-    ) -> Result<(), DtErrKind> {
+    ) -> Result<(), DtError> {
         let mut i = 0usize;
 
         while i < fmt.len() {
@@ -42,7 +42,7 @@ impl GregorianTime {
             i += 1; // skip '%'
 
             if i >= fmt.len() {
-                return Err(DtErrKind::UnexpectedEndAfterPercent);
+                return Err(DtErrKind::UnexpectedEndAfterPercent.into());
             }
 
             // %% → literal percent
@@ -92,7 +92,7 @@ impl GregorianTime {
             }
 
             if i >= fmt.len() {
-                return Err(DtErrKind::UnexpectedEndAfterPercent);
+                return Err(DtErrKind::UnexpectedEndAfterPercent.into());
             }
 
             let directive = fmt[i];
@@ -114,7 +114,7 @@ impl GregorianTime {
                 }
 
                 if i >= fmt.len() {
-                    return Err(DtErrKind::ExpectedFOrNAfterDot);
+                    return Err(DtErrKind::ExpectedFOrNAfterDot.into());
                 }
 
                 // optional ~ for trim trailing zeros, after width e.g. %.3~f or %.~f
@@ -124,7 +124,7 @@ impl GregorianTime {
                 }
 
                 if i >= fmt.len() {
-                    return Err(DtErrKind::ExpectedFOrNAfterDot);
+                    return Err(DtErrKind::ExpectedFOrNAfterDot.into());
                 }
 
                 let next = fmt[i];
@@ -163,7 +163,7 @@ impl GregorianTime {
                     }
                     continue;
                 } else {
-                    return Err(DtErrKind::ExpectedFOrNAfterDot);
+                    return Err(DtErrKind::ExpectedFOrNAfterDot.into());
                 }
             }
 
@@ -212,7 +212,7 @@ impl GregorianTime {
                 b'L' => self.write_clock_type(buf, pos),
 
                 b'c' | b'r' | b'X' | b'x' => self.write_unsupported(buf, pos),
-                _ => return Err(DtErrKind::UnknownFormatDirective),
+                _ => return Err(DtErrKind::UnknownFormatDirective.into()),
             }
         }
 

@@ -15,7 +15,7 @@ impl TimeParts {
 
         // Year (exactly 4 digits)
         if pos + 4 > len_ || !bytes[pos..pos + 4].iter().all(|&b| b.is_ascii_digit()) {
-            return Err(DtError::new(DtErrKind::CCSDSStrNoYear));
+            return Err(DtErrKind::CCSDSStrNoYear.into());
         }
         fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%Y");
         fmt_len += 2;
@@ -43,7 +43,7 @@ impl TimeParts {
 
             // %m
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::CCSDSStrInvalidMonth));
+                return Err(DtErrKind::CCSDSStrInvalidMonth.into());
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%m");
             fmt_len += 2;
@@ -58,7 +58,7 @@ impl TimeParts {
 
             // %d
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::CCSDSStrInvalidDay));
+                return Err(DtErrKind::CCSDSStrInvalidDay.into());
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%d");
             fmt_len += 2;
@@ -75,9 +75,7 @@ impl TimeParts {
                 fmt_len += 1;
                 pos += 1;
             } else {
-                return Err(DtError::new(
-                    DtErrKind::CCSDSStrInvalidRequiredTimeSeparator,
-                ));
+                return Err(DtErrKind::CCSDSStrInvalidRequiredTimeSeparator.into());
             }
         }
 
@@ -86,7 +84,7 @@ impl TimeParts {
         // %H
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::CCSDSStrInvalidHour));
+                return Err(DtErrKind::CCSDSStrInvalidHour.into());
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%H");
             fmt_len += 2;
@@ -103,7 +101,7 @@ impl TimeParts {
         // %M
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::CCSDSStrInvalidMinute));
+                return Err(DtErrKind::CCSDSStrInvalidMinute.into());
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%M");
             fmt_len += 2;
@@ -120,7 +118,7 @@ impl TimeParts {
         // %S
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(DtError::new(DtErrKind::CCSDSStrInvalidSecond));
+                return Err(DtErrKind::CCSDSStrInvalidSecond.into());
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%S");
             fmt_len += 2;
@@ -146,7 +144,7 @@ impl TimeParts {
 
         let format = match core::str::from_utf8(&fmt_buf[0..fmt_len]) {
             Ok(f) => f,
-            Err(_) => return Err(DtError::new(DtErrKind::CCSDSStrFromUtf8Err)),
+            Err(_) => return Err(DtErrKind::CCSDSStrFromUtf8Err.into()),
         };
 
         TimeParts::from_str(format, cleaned, false, false)

@@ -1,4 +1,4 @@
-use crate::{ClockType, DtErrKind, SEC_PER_DAYI64, TimePoint};
+use crate::{ClockType, DtErrKind, DtError, SEC_PER_DAYI64, TimePoint};
 
 impl TimePoint {
     /// Maximum size needed for a CCSDS C (CUC) binary packet (with extended P-field).
@@ -19,9 +19,9 @@ impl TimePoint {
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
-    ) -> Result<([u8; Self::CCSDS_C_MAX_SIZE], usize), DtErrKind> {
+    ) -> Result<([u8; Self::CCSDS_C_MAX_SIZE], usize), DtError> {
         if !(1..=7).contains(&n_coarse) || n_frac > 10 {
-            return Err(DtErrKind::UnsupportedDirective);
+            return Err(DtErrKind::UnsupportedDirective.into());
         }
 
         let tai = self.to_clock_type(ClockType::TAI);
@@ -98,9 +98,9 @@ impl TimePoint {
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
-    ) -> Result<([u8; Self::CCSDS_D_MAX_SIZE], usize), DtErrKind> {
+    ) -> Result<([u8; Self::CCSDS_D_MAX_SIZE], usize), DtError> {
         if !matches!(n_day, 2 | 3) || !matches!(sub_ms_code, 0 | 1 | 2) {
-            return Err(DtErrKind::UnsupportedDirective);
+            return Err(DtErrKind::UnsupportedDirective.into());
         }
 
         let utc = self.to_clock_type(ClockType::UTC);

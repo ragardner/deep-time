@@ -6,7 +6,7 @@ impl TimePoint {
     /// All time components after the date portion are optional.
     #[inline(always)]
     pub fn from_ccsds_str(input: &str, clock_type: ClockType) -> Result<Self, DtError> {
-        Ok(TimeParts::from_ccsds_str(input)?.to_time_point(Some(clock_type))?)
+        TimeParts::from_ccsds_str(input)?.to_time_point(Some(clock_type))
     }
 
     /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
@@ -45,7 +45,7 @@ impl TimePoint {
     ///   (3+ byte P-field, unsupported).
     #[inline(always)]
     pub fn from_ccsds_c(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
-        Ok(TimeParts::from_ccsds_c(input)?.to_time_point(Some(clock_type))?)
+        TimeParts::from_ccsds_c(input)?.to_time_point(Some(clock_type))
     }
 
     /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
@@ -79,7 +79,7 @@ impl TimePoint {
     /// - [`DtErrKind::CCSDSBinInvalidSubMillisecondCode`] if bits 6-7 encode an unsupported value (0b11).
     #[inline(always)]
     pub fn from_ccsds_d(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
-        Ok(TimeParts::from_ccsds_d(input)?.to_time_point(Some(clock_type))?)
+        TimeParts::from_ccsds_d(input)?.to_time_point(Some(clock_type))
     }
 
     /// Auto-detects and parses either a CCSDS C (CUC) or D (CDS) binary time code
@@ -92,6 +92,6 @@ impl TimePoint {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any Code ID other than `001` (CUC) or `100` (CDS).
     #[inline(always)]
     pub fn from_ccsds_bin(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
-        Ok(TimeParts::from_ccsds_bin(input)?.to_time_point(Some(clock_type))?)
+        TimeParts::from_ccsds_bin(input)?.to_time_point(Some(clock_type))
     }
 }

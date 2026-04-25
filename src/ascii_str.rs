@@ -45,7 +45,12 @@ pub enum AsciiStrError {
         /// Length of the rejected input.
         length: usize,
     },
-    /// Internal data is not valid UTF-8.
+    /// Internal data is corrupted or violates the type invariant.
+    ///
+    /// This can occur when:
+    /// - The bytes are not valid UTF-8 (should never happen for ASCII data).
+    /// - Non-zero bytes appear after the first nul byte (violates the
+    ///   "nul-terminated + trailing zeros" representation invariant).
     ///
     /// This variant exists only to keep the public API 100% panic-free.
     /// It is unreachable when the type is constructed through the safe API.
@@ -67,7 +72,9 @@ impl fmt::Display for AsciiStrError {
                     length, capacity
                 )
             }
-            AsciiStrError::CorruptedData => f.write_str("internal data is not valid UTF-8"),
+            AsciiStrError::CorruptedData => {
+                f.write_str("internal data is corrupted or violates the representation invariant")
+            }
         }
     }
 }
@@ -101,32 +108,55 @@ impl<const N: usize> AsciiStr<N> {
         if bytes.len() != N {
             return None;
         }
+        let mut arr = [0u8; N];
+        arr.copy_from_slice(bytes);
+        Self::try_from_filled_buffer(arr).ok()
+    }
 
-        // Check that it's valid ASCII
-        if !bytes.is_ascii() {
-            return None;
+    /// Internal constructor used by the `strftime` formatter (and other
+    /// trusted code paths).
+    ///
+    /// The caller **must** guarantee that:
+    /// - The first `pos` bytes contain the formatted ASCII string.
+    /// - All remaining bytes are zero (nul-terminated).
+    ///
+    /// For untrusted input use the safe [`try_from_filled_buffer`](Self::try_from_filled_buffer) instead.
+    pub(crate) const fn from_filled_buffer(buffer: [u8; N]) -> Self {
+        Self { bytes: buffer }
+    }
+
+    /// Attempts to create an `AsciiStr<N>` from a raw byte buffer **safely**.
+    ///
+    /// This is the public, validated counterpart to the internal
+    /// [`from_filled_buffer`](Self::from_filled_buffer).
+    ///
+    /// It performs full validation:
+    /// - All bytes must be valid ASCII.
+    /// - Every byte after the first `b'\0'` must be zero (preserves the
+    ///   nul-terminated + trailing-zeros invariant).
+    ///
+    /// Use this when you have untrusted or externally-supplied bytes
+    /// (network packets, C `strftime` output, user input, etc.).
+    ///
+    /// **This method (and the entire public API) is completely panic-free.**
+    /// All fallible operations return `Result` or `Option`.
+    ///
+    /// # Errors
+    /// - [`AsciiStrError::InvalidAscii`] if the buffer contains non-ASCII bytes.
+    /// - [`AsciiStrError::CorruptedData`] if bytes after the first nul are
+    ///   not all zero (violates the representation invariant).
+    pub fn try_from_filled_buffer(buffer: [u8; N]) -> Result<Self, AsciiStrError> {
+        if !buffer.is_ascii() {
+            return Err(AsciiStrError::InvalidAscii);
         }
 
-        // Verify that everything after the first nul is zero
-        // (this maintains the type's invariant)
-        if let Some(first_nul) = bytes.iter().position(|&b| b == 0) {
-            if bytes[first_nul..].iter().any(|&b| b != 0) {
-                return None;
+        if let Some(first_nul) = buffer.iter().position(|&b| b == 0) {
+            if buffer[first_nul..].iter().any(|&b| b != 0) {
+                return Err(AsciiStrError::CorruptedData);
             }
         }
 
-        let mut arr = [0u8; N];
-        arr.copy_from_slice(bytes);
-        Some(Self { bytes: arr })
-    }
-
-    /// Internal constructor used by the `strftime` formatter.
-    ///
-    /// The formatter guarantees that:
-    /// - The first `pos` bytes contain the formatted ASCII string.
-    /// - All remaining bytes are zero (nul-terminated).
-    pub(crate) const fn from_filled_buffer(buffer: [u8; N]) -> Self {
-        Self { bytes: buffer }
+        Ok(Self { bytes: buffer })
     }
 
     /// Attempts to create an `AsciiStr<N>` from a string slice.
@@ -224,5 +254,17 @@ impl<const N: usize> TryFrom<&str> for AsciiStr<N> {
 
     fn try_from(s: &str) -> Result<Self, Self::Error> {
         AsciiStr::try_from_str(s)
+    }
+}
+
+impl<const N: usize> TryFrom<[u8; N]> for AsciiStr<N> {
+    type Error = AsciiStrError;
+
+    /// Attempts to create an `AsciiStr<N>` from a filled buffer.
+    ///
+    /// This is the idiomatic, **completely panic-free** way to construct
+    /// from a byte array using the `?` operator or `.unwrap_or_else()`.
+    fn try_from(buffer: [u8; N]) -> Result<Self, Self::Error> {
+        AsciiStr::try_from_filled_buffer(buffer)
     }
 }
