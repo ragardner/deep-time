@@ -11,7 +11,7 @@ use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 
 impl TimePoint {
-    pub fn from_str(
+    pub fn from_str_parse(
         s: &str,
         opts: &Option<ParseCfg>,
         verbose_err: bool,
@@ -57,7 +57,7 @@ impl TimePoint {
         let (mode, date_order) = if let Some(formats) = &opts.parse {
             if !formats.is_empty() {
                 for fmt in formats {
-                    if let Some(value) = Self::strptime(normalized, fmt) {
+                    if let Some(value) = Self::from_str(normalized, fmt) {
                         return Ok(value);
                     }
                 }
@@ -235,7 +235,7 @@ impl TimePoint {
     /// on any parse error.
     #[inline]
     pub fn str_to_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        TimePoint::from_str(s, opts, false)
+        TimePoint::from_str_parse(s, opts, false)
             .ok()
             .map(|tp| tp.as_ms())
     }
@@ -247,13 +247,13 @@ impl TimePoint {
     /// on any parse error.
     #[inline]
     pub fn str_to_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        TimePoint::from_str(s, opts, false)
+        TimePoint::from_str_parse(s, opts, false)
             .ok()
             .map(|tp| tp.to_unix_ms())
     }
 
     #[inline(always)]
-    pub fn strptime(s: &str, fmt: &str) -> Option<TimePoint> {
+    pub fn from_str(s: &str, fmt: &str) -> Option<TimePoint> {
         // std::eprintln!("TRYING: {}, FOR: {}", fmt, s);
 
         let components = TimeParts::from_str(fmt, s, true, false);
@@ -285,7 +285,7 @@ where
 {
     formats
         .into_iter()
-        .find_map(|fmt| TimePoint::strptime(s, &fmt))
+        .find_map(|fmt| TimePoint::from_str(s, &fmt))
 }
 
 #[inline]

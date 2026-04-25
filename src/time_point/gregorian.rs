@@ -1,6 +1,6 @@
 use crate::{
-    ATTOSEC_PER_SEC_I128, ClockType, GregorianTime, SEC_PER_DAYI128, TT_TAI_OFFSET_SPAN, TimePoint,
-    TimeSpan, Weekday, leap_seconds::leap_seconds_before,
+    ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockType, GregorianTime, SEC_PER_DAYI128,
+    TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan, Weekday, leap_seconds::leap_seconds_before,
 };
 
 impl TimePoint {
@@ -483,5 +483,57 @@ impl TimePoint {
         };
 
         (iso_year, iso_week, weekday_enum)
+    }
+
+    /// Creates a `TimePoint` representing **00:00:00 UTC** on the given proleptic
+    /// Gregorian date, converted to the requested [`ClockType`].
+    ///
+    /// The date components are interpreted according to POSIX civil time
+    /// (leap seconds are not inserted into the day count).
+    #[inline]
+    pub const fn from_gregorian_ymd(yr: i64, mo: u8, day: u8, clock_type: ClockType) -> Self {
+        let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, 0, 0, 0);
+        Self::from_unix_sec(unix_sec).to_clock_type(clock_type)
+    }
+
+    /// Creates a `TimePoint` at the specified civil UTC instant with full
+    /// attosecond precision on the proleptic Gregorian calendar, then converts
+    /// it to the requested [`ClockType`].
+    ///
+    /// All input components are clamped to their valid ranges:
+    /// - `mo`   → 0..=12
+    /// - `day`  → 0..=31
+    /// - `hr`   → 0..=23
+    /// - `min`  → 0..=59
+    /// - `sec`  → 0..=60 (permits leap seconds)
+    /// - `attos` → values ≥ 10¹⁸ are carried into the seconds field
+    #[inline]
+    pub const fn from_gregorian_ymdhms(
+        yr: i64,
+        mo: u8,
+        day: u8,
+        hr: u8,
+        min: u8,
+        sec: u8,
+        attos: u64,
+        clock_type: ClockType,
+    ) -> Self {
+        // Clamp inputs to valid ranges
+        let mo = if mo > 12 { 12 } else { mo };
+        let day = if day > 31 { 31 } else { day };
+        let h = if hr > 23 { 23 } else { hr };
+        let m = if min > 59 { 59 } else { min };
+        let s = if sec > 60 { 60 } else { sec };
+
+        // Carry excess attoseconds into whole seconds
+        let extra_sec = (attos / ATTOSEC_PER_SEC) as i64;
+        let final_attos = attos % ATTOSEC_PER_SEC;
+
+        let total_day_sec = (h as i64) * 3600 + (m as i64) * 60 + (s as i64) + extra_sec;
+        let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, 0, 0, 0) + total_day_sec;
+
+        let base = Self::from_unix_sec(unix_sec);
+        base.add(TimeSpan::from_total_attos(final_attos as i128))
+            .to_clock_type(clock_type)
     }
 }

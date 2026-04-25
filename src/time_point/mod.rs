@@ -9,7 +9,6 @@ mod to_ccsds_bin;
 mod to_str;
 
 pub mod gregorian;
-pub mod gregorian_time;
 pub mod trajectory;
 
 #[cfg(feature = "chrono")]

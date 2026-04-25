@@ -59,7 +59,7 @@ fn test_historical_iana_with_jiff() {
         // ─── Your library ──────────────────────────────────────────────────────────
         let our_input = format!("{} {}", civil_str, iana_name);
 
-        let our_dt = TimePoint::from_str(&our_input, &None, false)
+        let our_dt = TimePoint::from_str_parse(&our_input, &None, false)
             .unwrap_or_else(|e| panic!("deep_time_core failed on '{}': {}", our_input, e));
 
         let our_rfc = our_dt.to_str_rfc3339();
@@ -80,7 +80,7 @@ fn test_historical_iana_with_jiff() {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
-    let dt = TimePoint::from_str(input.trim(), &opts, false)
+    let dt = TimePoint::from_str_parse(input.trim(), &opts, false)
         .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
     let actual = dt.to_str_rfc3339();
 
@@ -95,7 +95,7 @@ fn assert_millis(input: &str, expected_millis: i128, opts: Option<ParseCfg>) {
 
 fn assert_fails(input: &str, opts: Option<ParseCfg>) {
     assert!(
-        TimePoint::from_str(input, &opts, false).is_err(),
+        TimePoint::from_str_parse(input, &opts, false).is_err(),
         "Expected failure: {}",
         input
     );
@@ -376,7 +376,19 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
         (
             "Dec 31 23:59:59".to_string(),
             "2025-12-31T23:59:59Z".to_string(),
-            None,
+            Some(ParseCfg {
+                ref_time: Some(TimePoint::from_gregorian_ymdhms(
+                    2025,
+                    12,
+                    31,
+                    23,
+                    59,
+                    59,
+                    0,
+                    ClockType::UTC,
+                )),
+                ..Default::default()
+            }),
         ),
     ];
 
@@ -390,8 +402,8 @@ fn date_parser_keeps_clock_type() {
     let tp2 = TimePoint::new(5, 0, ClockType::GPST);
     let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
-    let res_tp1 = TimePoint::strptime(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
-    let res_tp2 = TimePoint::strptime(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
+    let res_tp1 = TimePoint::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
+    let res_tp2 = TimePoint::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     assert!(tp1 == res_tp1 && tp1.clock_type() == res_tp1.clock_type());
     assert!(tp2 == res_tp2 && tp2.clock_type() == res_tp2.clock_type());
 }
@@ -951,7 +963,23 @@ fn date_parser_comprehensive() {
         ("-2025/01/01", "-2025-01-01T00:00:00Z", None),
         ("-0001-01-01", "-0001-01-01T00:00:00Z", None),
         // Syslog no-year
-        ("Dec 31 23:59:59", "2025-12-31T23:59:59Z", None),
+        (
+            "Dec 31 23:59:59",
+            "2025-12-31T23:59:59Z",
+            Some(ParseCfg {
+                ref_time: Some(TimePoint::from_gregorian_ymdhms(
+                    2025,
+                    12,
+                    31,
+                    23,
+                    59,
+                    59,
+                    0,
+                    ClockType::UTC,
+                )),
+                ..Default::default()
+            }),
+        ),
         // Explicit format
         (
             "14/03/2024 15:30",
@@ -1050,9 +1078,13 @@ fn generate_relative_date_test_cases() -> Vec<String> {
 #[test]
 fn relative_date_parser_comprehensive() {
     let cases = generate_relative_date_test_cases();
+    let opts = Some(ParseCfg {
+        ref_time: Some(TimePoint::new(5_000_000, 0, ClockType::UTC)),
+        ..Default::default()
+    });
 
     for input in cases {
-        let result = TimePoint::from_str(input.trim(), &None, false);
+        let result = TimePoint::from_str_parse(input.trim(), &opts, false);
         // eprintln!("Tried: {}, got result: {:?}", &input, result);
         assert!(result.is_ok(), "Failed to parse relative date: '{}'", input);
     }
@@ -1069,7 +1101,7 @@ fn date_millis_and_errors() {
 
 #[cfg(feature = "perf-tests")]
 #[test]
-fn date_parser_perf_smoke() {
+fn date_alloc_parser_perf() {
     let corpus: Vec<&str> = vec![
         "2024-03-14",
         "14 Mar 2024",
@@ -1106,7 +1138,7 @@ fn date_parser_perf_smoke() {
     let start = Instant::now();
     for _ in 0..ITERATIONS {
         for &input in &corpus {
-            let _ = TimePoint::from_str(input, &None, false);
+            let _ = TimePoint::from_str_parse(input, &None, false);
             // if let Err(x) = x {
             //     eprintln!("{}", x);
             //     return;
@@ -1118,7 +1150,35 @@ fn date_parser_perf_smoke() {
     let total_parses = corpus.len() * ITERATIONS;
     let ns_per_parse = elapsed.as_nanos() as f64 / total_parses as f64;
 
-    println!("\n=== DATE PARSER PERF SMOKE ===");
+    println!("\n=== DATE ALLOC PARSER PERF ===");
+    println!("Total parses : {}", total_parses);
+    println!("Total time   : {:.3} ms", elapsed.as_secs_f64() * 1000.0);
+    println!("Avg time     : {:.2} ns/parse", ns_per_parse);
+    println!(
+        "Throughput   : {:.0} k parses/sec",
+        1_000_000.0 / ns_per_parse
+    );
+}
+
+#[cfg(feature = "perf-tests")]
+#[test]
+fn date_from_str_perf() {
+    const ITERATIONS: usize = 10_000_000;
+
+    let start = Instant::now();
+    for _ in 0..ITERATIONS {
+        let _ = TimePoint::from_str("2024-03-14T00:00:00", "%Y-%m-%dT%H:%M:%S");
+        // if let Err(x) = x {
+        //     eprintln!("{}", x);
+        //     return;
+        // }
+    }
+    let elapsed = start.elapsed();
+
+    let total_parses = ITERATIONS;
+    let ns_per_parse = elapsed.as_nanos() as f64 / total_parses as f64;
+
+    println!("\n=== DATE FROM STR PERF ===");
     println!("Total parses : {}", total_parses);
     println!("Total time   : {:.3} ms", elapsed.as_secs_f64() * 1000.0);
     println!("Avg time     : {:.2} ns/parse", ns_per_parse);

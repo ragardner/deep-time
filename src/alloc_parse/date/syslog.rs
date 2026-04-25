@@ -9,7 +9,7 @@ use crate::ClockType;
 /// Parses syslog-style dates missing the year (e.g. "Mar  5 10:23:45", "Dec 31 23:59:59").
 ///
 /// - Try current year first.
-/// - If the parsed date is **more than 30 days in the future**, assume previous year.
+/// - If the parsed date is **more than 2 days in the future**, assume previous year.
 ///   This covers the classic December-in-January case while tolerating clock drift.
 ///
 /// Pass `reference_date` when reprocessing historical logs for perfect reproducibility.
@@ -49,7 +49,7 @@ pub(crate) fn parse_syslog_no_year(
 
     if let Some(dt) = try_with_year(this_year) {
         // Compare against the same reference time
-        if dt > now + 30.days() {
+        if dt > now + 2.days() {
             return try_with_year(this_year - 1);
         }
         return Some(dt);

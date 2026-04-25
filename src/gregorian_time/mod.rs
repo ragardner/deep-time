@@ -1,5 +1,7 @@
 use crate::{AsciiStr, ClockType, J2000_JD_TT, SEC_PER_DAYI64, TimePoint, TimeSpan, Weekday};
 
+mod to_str;
+
 /// UTC Civil calendar and time-of-day components of a `TimePoint`.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
@@ -257,9 +259,9 @@ impl GregorianTime {
     /// let gp = time_point.to_gregorian_time();
     ///
     /// let s1 = gp.set_clock_type(ClockType::LTC)
-    ///            .strftime("%Y-%m-%d %H:%M:%S %L")?;
+    ///            .to_str("%Y-%m-%d %H:%M:%S %L")?;
     /// let s2 = gp.set_clock_type(ClockType::TAI)
-    ///            .strftime("%Y-%m-%d %H:%M:%S %L")?;
+    ///            .to_str("%Y-%m-%d %H:%M:%S %L")?;
     /// ```
     #[inline(always)]
     pub fn set_clock_type(&mut self, clock_type: ClockType) -> &mut Self {
