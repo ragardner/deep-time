@@ -47,17 +47,23 @@ impl TimeParts {
     pub fn from_str(
         fmt: &str,
         input: &str,
-        strict: bool,
-        allow_partial: bool,
+        inp_can_end_before_fmt: bool,
+        fmt_can_end_before_inp: bool,
+        allow_partial_date: bool,
     ) -> Result<TimeParts, DtError> {
         let mut tm = TimeParts::new_utc();
-        let mut parser = Parser::new(fmt.as_bytes(), input.as_bytes(), &mut tm, strict);
+        let mut parser = Parser::new(
+            fmt.as_bytes(),
+            input.as_bytes(),
+            &mut tm,
+            inp_can_end_before_fmt,
+        );
         if let Err(e) = parser.parse() {
             return Err(e);
         }
-        if parser.inp.is_empty() {
+        if parser.inp.is_empty() || fmt_can_end_before_inp {
             // All input consumed → finalize
-            tm.finish(allow_partial)?;
+            tm.finish(allow_partial_date)?;
             Ok(tm)
         } else {
             // Trailing characters remain
@@ -65,7 +71,7 @@ impl TimeParts {
         }
     }
 
-    pub fn finish(&mut self, allow_partial: bool) -> core::result::Result<&mut Self, DtError> {
+    pub fn finish(&mut self, allow_partial_date: bool) -> core::result::Result<&mut Self, DtError> {
         if self.unix_timestamp_seconds.is_some() {
             if self.hour.is_none() {
                 self.hour = Some(0);
@@ -102,7 +108,7 @@ impl TimeParts {
             self.tz = Some(TimeZone::Utc);
         }
 
-        let has_calendar_date = if allow_partial {
+        let has_calendar_date = if allow_partial_date {
             if self.day.is_none() {
                 self.day = Some(1);
             }

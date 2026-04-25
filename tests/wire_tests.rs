@@ -102,9 +102,6 @@ fn test_gregorian_time_roundtrip() {
         (2460670, TimeSpan::from_sec(43200)),  // jd_tt_exact
         51,                                    // wk_of_yr_sun
         52,                                    // wk_of_yr_mon
-        Some(0),                               // offset_sec
-        None,                                  // tz
-        None,                                  // tz_abbrev
         ClockType::UTC,                        // clock_type
     );
 

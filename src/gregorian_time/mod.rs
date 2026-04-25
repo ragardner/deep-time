@@ -73,9 +73,6 @@ impl GregorianTime {
         jd_tt_exact: (i64, TimeSpan),
         wk_of_yr_sun: u8,
         wk_of_yr_mon: u8,
-        offset_sec: Option<i32>,
-        tz: Option<AsciiStr<50>>,
-        tz_abbrev: Option<AsciiStr<16>>,
         clock_type: ClockType,
     ) -> Self {
         Self {
@@ -95,9 +92,9 @@ impl GregorianTime {
             jd_tt_exact,
             wk_of_yr_sun,
             wk_of_yr_mon,
-            offset_sec,
-            tz,
-            tz_abbrev,
+            offset_sec: None,
+            tz: None,
+            tz_abbrev: None,
             clock_type,
         }
     }
@@ -233,19 +230,19 @@ impl GregorianTime {
     }
 
     #[inline(always)]
-    pub fn set_offset(&mut self, offset_sec: Option<i32>) -> &mut Self {
+    pub(crate) fn set_offset(&mut self, offset_sec: Option<i32>) -> &mut Self {
         self.offset_sec = offset_sec;
         self
     }
 
     #[inline(always)]
-    pub fn set_tz(&mut self, tz: Option<&str>) -> &mut Self {
+    pub(crate) fn set_tz(&mut self, tz: Option<&str>) -> &mut Self {
         self.tz = tz.and_then(|s| AsciiStr::try_from_str(s).ok());
         self
     }
 
     #[inline(always)]
-    pub fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) -> &mut Self {
+    pub(crate) fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) -> &mut Self {
         self.tz_abbrev = tz_abbrev.and_then(|s| AsciiStr::try_from_str(s).ok());
         self
     }

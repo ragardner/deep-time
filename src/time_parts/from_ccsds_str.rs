@@ -147,7 +147,7 @@ impl TimeParts {
             Err(_) => return Err(DtErrKind::CCSDSStrFromUtf8Err.into()),
         };
 
-        TimeParts::from_str(format, cleaned, false, false)
+        TimeParts::from_str(format, cleaned, false, false, false)
     }
 }
 

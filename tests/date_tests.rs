@@ -402,10 +402,28 @@ fn date_parser_keeps_clock_type() {
     let tp2 = TimePoint::new(5, 0, ClockType::GPST);
     let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
-    let res_tp1 = TimePoint::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
-    let res_tp2 = TimePoint::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
+    let res_tp1 = TimePoint::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
+    let res_tp2 = TimePoint::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
     assert!(tp1 == res_tp1 && tp1.clock_type() == res_tp1.clock_type());
     assert!(tp2 == res_tp2 && tp2.clock_type() == res_tp2.clock_type());
+}
+
+#[test]
+fn round_trip_fixed_offsets() {
+    for tp in [
+        TimePoint::new(5, 0, ClockType::TAI),
+        TimePoint::new(5, 0, ClockType::UTC),
+    ] {
+        let xp1 = tp
+            .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
+            .unwrap();
+        let tp2 = TimePoint::from_str_parse(&xp1, &None, true).unwrap();
+        let xp2 = tp2
+            .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
+            .unwrap();
+        let tp3 = TimePoint::from_str_parse(&xp2, &None, true).unwrap();
+        assert_eq!(tp, tp3);
+    }
 }
 
 #[test]
@@ -1167,7 +1185,13 @@ fn date_from_str_perf() {
 
     let start = Instant::now();
     for _ in 0..ITERATIONS {
-        let _ = TimePoint::from_str("2024-03-14T00:00:00", "%Y-%m-%dT%H:%M:%S");
+        let _ = TimePoint::from_str(
+            "2024-03-14T00:00:00",
+            "%Y-%m-%dT%H:%M:%S",
+            true,
+            true,
+            false,
+        );
         // if let Err(x) = x {
         //     eprintln!("{}", x);
         //     return;

@@ -1,6 +1,6 @@
 use {
     crate::{
-        ATTOSEC_PER_NANOSEC, TimeParts, Meridiem, TimePoint, TimeZone, Weekday,
+        ATTOSEC_PER_NANOSEC, Meridiem, TimeParts, TimePoint, TimeZone, Weekday,
         error::{DtErrKind, DtError},
         tzdb::offset_at,
     },
@@ -257,7 +257,7 @@ mod tests {
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtError> {
-        let parsed = TimeParts::from_str(fmt, input, strict, false)?;
+        let parsed = TimeParts::from_str(fmt, input, strict, false, false)?;
         parsed.to_jiff_timestamp()
     }
 
@@ -292,6 +292,7 @@ mod tests {
             "2024-04-15 10:30:00 America/New_York",
             false,
             false,
+            false,
         )
         .unwrap();
         assert!(parsed.iana_name.is_some());
@@ -324,9 +325,14 @@ mod tests {
 
     #[test]
     fn test_leap_second_rejected_by_jiff() {
-        let parsed =
-            TimeParts::from_str("%Y-%m-%d %H:%M:%S", "2024-04-15 23:59:60", false, false)
-                .unwrap();
+        let parsed = TimeParts::from_str(
+            "%Y-%m-%d %H:%M:%S",
+            "2024-04-15 23:59:60",
+            false,
+            false,
+            false,
+        )
+        .unwrap();
         assert!(parsed.is_leap_second);
 
         assert!(parsed.to_jiff_broken_down_time().is_err());
@@ -361,6 +367,7 @@ mod tests {
         let parsed = TimeParts::from_str(
             "%Y-%m-%d %H:%M:%S %z",
             "2024-04-15 14:30:45 +0200",
+            false,
             false,
             false,
         )

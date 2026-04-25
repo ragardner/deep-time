@@ -1,6 +1,6 @@
 use crate::{
-    AsciiStr, DtErrKind, DtError, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE,
-    TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL,
+    AsciiStr, ClockType, DtErrKind, DtError, GregorianTime, MONTHS_ABBR, MONTHS_FULL,
+    STRFTIME_SIZE, TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL,
 };
 
 impl GregorianTime {
@@ -190,7 +190,6 @@ impl GregorianTime {
                 b't' => self.write_whitespace(buf, pos, b't'),
                 b'P' => self.write_ampm(buf, pos, false),
                 b'p' => self.write_ampm(buf, pos, true),
-                b'Q' => self.write_iana(buf, pos),
                 b'S' => self.write_second(buf, pos, flag, width, colons, true),
                 b's' => self.write_unix_timestamp(buf, pos, flag, width, colons),
                 b'U' => self.write_week_number_sunday_based(buf, pos, flag, width, colons),
@@ -207,9 +206,43 @@ impl GregorianTime {
                 b'R' => self.write_time_without_seconds_shortcut(buf, pos),
                 b'Z' => self.write_timezone_abbrev(buf, pos),
 
-                // Library directives
+                b'Q' => {
+                    /*
+                    we skip writing UTC fallback when:
+                    1. there's no iana
+                    2. %Q directive present
+                    3. offset isn't 0
+                    */
+                    if let Some(iana) = self.tz() {
+                        Self::write_bytes(buf, pos, iana.as_bytes());
+                    } else if let Some(abbrev) = self.tz_abbrev() {
+                        Self::write_bytes(buf, pos, abbrev.as_bytes());
+                    } else if self.offset_sec().unwrap_or_default() == 0 {
+                        Self::write_bytes(buf, pos, "UTC".as_bytes());
+                    } else if i >= fmt.len() {
+                        while *pos > 0 && matches!(buf[*pos - 1], b' ' | b'\t' | b'\n' | b'\r') {
+                            *pos -= 1;
+                        }
+                    }
+                }
+                b'L' => {
+                    // skip writing UTC clock type because the default is UTC
+                    // and avoid issues with iana overlap and offsets
+                    match self.clock_type {
+                        ClockType::UTC => {
+                            if i >= fmt.len() {
+                                while *pos > 0
+                                    && matches!(buf[*pos - 1], b' ' | b'\t' | b'\n' | b'\r')
+                                {
+                                    *pos -= 1;
+                                }
+                            }
+                        }
+                        _ => Self::write_bytes(buf, pos, self.clock_type().abbrev().as_bytes()),
+                    }
+                }
+
                 b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
-                b'L' => self.write_clock_type(buf, pos),
 
                 b'c' | b'r' | b'X' | b'x' => self.write_unsupported(buf, pos),
                 _ => return Err(DtErrKind::UnknownFormatDirective.into()),
@@ -776,22 +809,6 @@ impl GregorianTime {
         _colons: u8,
     ) {
         Self::write_i64_padded(buf, pos, self.yr, flag, width, b'0');
-    }
-
-    #[inline]
-    pub(crate) fn write_iana(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        if let Some(iana) = self.tz() {
-            Self::write_bytes(buf, pos, iana.as_bytes());
-        } else if let Some(abbrev) = self.tz_abbrev() {
-            Self::write_bytes(buf, pos, abbrev.as_bytes());
-        } else {
-            Self::write_bytes(buf, pos, "UTC".as_bytes());
-        }
-    }
-
-    #[inline]
-    pub(crate) fn write_clock_type(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        Self::write_bytes(buf, pos, self.clock_type().abbrev().as_bytes());
     }
 
     pub(crate) fn write_timezone_offset(

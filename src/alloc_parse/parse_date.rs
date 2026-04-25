@@ -57,7 +57,7 @@ impl TimePoint {
         let (mode, date_order) = if let Some(formats) = &opts.parse {
             if !formats.is_empty() {
                 for fmt in formats {
-                    if let Some(value) = Self::from_str(normalized, fmt) {
+                    if let Some(value) = Self::from_str(normalized, fmt, true, true, false) {
                         return Ok(value);
                     }
                 }
@@ -253,10 +253,22 @@ impl TimePoint {
     }
 
     #[inline(always)]
-    pub fn from_str(s: &str, fmt: &str) -> Option<TimePoint> {
+    pub fn from_str(
+        s: &str,
+        fmt: &str,
+        inp_can_end_before_fmt: bool,
+        fmt_can_end_before_inp: bool,
+        allow_partial_date: bool,
+    ) -> Option<TimePoint> {
         // std::eprintln!("TRYING: {}, FOR: {}", fmt, s);
 
-        let components = TimeParts::from_str(fmt, s, true, false);
+        let components = TimeParts::from_str(
+            fmt,
+            s,
+            inp_can_end_before_fmt,
+            fmt_can_end_before_inp,
+            allow_partial_date,
+        );
 
         // std::eprintln!("RESULT from_str: {:?}", components);
 
@@ -285,7 +297,7 @@ where
 {
     formats
         .into_iter()
-        .find_map(|fmt| TimePoint::from_str(s, &fmt))
+        .find_map(|fmt| TimePoint::from_str(s, &fmt, true, true, false))
 }
 
 #[inline]
