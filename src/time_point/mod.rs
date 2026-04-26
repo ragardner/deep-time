@@ -4,11 +4,13 @@ mod conversions;
 mod formatting;
 mod from_canonical;
 mod from_ccsds;
+mod from_gps;
 mod gregorian;
 mod ops;
 mod to_canonical;
 mod to_ccsds_bin;
 mod to_ccsds_str;
+mod to_gps;
 mod to_str;
 mod trajectory;
 

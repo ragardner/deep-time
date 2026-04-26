@@ -6,6 +6,10 @@ pub const SEC_PER_DAY: Real = 86_400.0;
 pub const SEC_PER_DAYI64: i64 = 86_400;
 pub(crate) const SEC_PER_DAYI128: i128 = 86_400;
 pub(crate) const SEC_PER_HALF_DAYI64: i64 = 43_200;
+/// Seconds in one GPS week (exactly 7 days).
+pub(crate) const SECS_PER_WEEK: i64 = 7 * SEC_PER_DAYI64;
+/// Attoseconds in one GPS week.
+pub(crate) const ATTOS_PER_WEEK: i128 = SECS_PER_WEEK as i128 * ATTOSEC_PER_SEC_I128;
 
 /// Solar gravitational parameter GM☉ in m³ s⁻²  
 /// (exact nominal value from IAU 2015 Resolution B3)
