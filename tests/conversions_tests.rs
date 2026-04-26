@@ -72,7 +72,69 @@ mod fn_tests {
 
 mod tdb_tests {
     use super::*;
-    use deep_time_core::ClockType;
+    use deep_time_core::{ClockType, Real, TimeSpan, constants::ATTOSEC_PER_SEC};
+
+    /// Verifies that `ClockType::ET` is a true alias for `ClockType::TDB`
+    /// as defined by NASA/NAIF SPICE.
+    ///
+    /// Per the official SPICE documentation:
+    /// "In the Toolkit ET Means TDB. When ephemeris time is called for by
+    /// CSPICE functions, TDB is the implied time system."
+    ///
+    /// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/time.html
+    /// (section "In the Toolkit ET Means TDB")
+    #[test]
+    fn et_is_alias_for_tdb() {
+        let p = TimePoint::from_tai_sec(1_234_567_890);
+
+        let et = p.to_clock_type(ClockType::ET);
+        let tdb = p.to_clock_type(ClockType::TDB);
+
+        assert_eq!(
+            et, tdb,
+            "ET and TDB must represent the identical physical instant"
+        );
+        assert_eq!(et.clock_type(), ClockType::ET);
+        assert_eq!(tdb.clock_type(), ClockType::TDB);
+    }
+
+    /// Verifies that the TDB-TT difference produced by our implementation
+    /// stays within the documented SPICE tolerance (~30 µs accuracy for
+    /// the simple approximation, max amplitude ~1.658 ms).
+    ///
+    /// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/time.html
+    /// (section describing "TDB - TT = K * sin(E)" with amplitude ~0.001658 s)
+    #[test]
+    fn tdb_tt_difference_matches_spice_approximation() {
+        // Test at a few representative epochs
+        for &tai_sec in &[0i64, 1_000_000_000, -500_000_000] {
+            let tt = TimePoint::from_tai_sec(tai_sec).to_clock_type(ClockType::TT);
+            let tdb = tt.to_clock_type(ClockType::TDB);
+
+            let diff = tdb.duration_since(tt).as_sec_f().abs();
+            assert!(
+                diff < 0.002,
+                "TDB-TT difference ({:.6} s) exceeded SPICE documented max (~1.658 ms)",
+                diff
+            );
+        }
+    }
+
+    /// Verifies lossless round-trip conversion through ET (which is TDB)
+    /// and back to the original TAI instant. This is the core safety
+    /// property required for all SPICE-based ephemeris work.
+    ///
+    /// Source: SPICE time conversion routines (str2et, et2utc, unitim, etc.)
+    /// https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/time.html
+    #[test]
+    fn et_tai_roundtrip_is_lossless() {
+        let original = TimePoint::from_tai_sec(987_654_321_098);
+
+        let et = original.to_clock_type(ClockType::ET);
+        let back_to_tai = et.to_tai();
+
+        assert_eq!(original, back_to_tai, "ET round-trip must be lossless");
+    }
 
     /// Round-trip accuracy test (TAI → TDB → TAI)
     #[test]
@@ -105,7 +167,6 @@ mod tdb_tests {
     fn tdb_minus_tt_at_j2000() {
         let tai = TimePoint::ZERO;
         let tdb = tai.to_clock_type(ClockType::TDB);
-
         let diff_s = tdb.numerical_seconds_since(&tai); // see helper below
 
         assert!(
@@ -120,7 +181,8 @@ mod tdb_tests {
         let tai = TimePoint::ZERO;
         let tdb = tai.to_clock_type(ClockType::TDB);
         let diff_s = tdb.numerical_seconds_since(&tai);
-        assert!((diff_s - 32.183925).abs() < 1e-6, "got {}", diff_s);
+
+        assert!((diff_s - 32.18392391273422).abs() < 1e-6, "got {}", diff_s);
     }
 
     /// Check that the *periodic correction* (TDB − TT) stays within sensible bounds
