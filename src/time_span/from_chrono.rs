@@ -8,8 +8,7 @@ impl TimeSpan {
     ///
     /// - The conversion is **lossless** when the chrono duration fits inside an `i64`
     ///   number of nanoseconds.
-    /// - Uses your existing `from_ns` helper (which already does the correct
-    ///   attosecond scaling and normalization).
+    /// - Uses existing `from_ns` helper.
     /// - If `num_nanoseconds()` returns `None` (the chrono value is outside the
     ///   range that chrono itself can represent as nanoseconds), we clamp to
     ///   **exactly** the maximum/minimum nanosecond value that chrono can store

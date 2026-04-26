@@ -182,7 +182,7 @@ impl Display for DtStdError {
     }
 }
 
-// Implement Error trait from core (available since Rust 1.81, your MSRV is 1.90)
+// Implement Error trait from core
 impl core::error::Error for DtStdError {}
 
 // Properly formats a String Err. Supports literal strings, format! syntax,

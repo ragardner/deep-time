@@ -62,6 +62,152 @@ impl TimeParts {
         days + (day as i64 - 1)
     }
 
+    /// Parses a **CCSDS CCS (Calendar Segmented Time Code)** binary time code
+    /// directly into [`TimeParts`].
+    ///
+    /// Implements **CCSDS 301.0-B-4 §3.4** (Level 1 only).
+    ///
+    /// # P-field (exactly 1 byte)
+    /// - Bit 7:     Extension flag → must be `0` (we reject extensions)
+    /// - Bits 6-4:  Code ID = `101`
+    /// - Bit 3:     Calendar type (`0` = Month/Day, `1` = Day-of-Year)
+    /// - Bits 2-0:  Number of subsecond BCD octets (`0`–`6`)
+    ///
+    /// # T-field (BCD, big-endian)
+    /// - 2 bytes: Year (0001–9999)
+    /// - 2 bytes: Month+Day (01-12,01-31) **or** Day-of-Year (001–366)
+    /// - 3 bytes: Hour (00-23), Minute (00-59), Second (00-60)
+    /// - 0–6 bytes: Fractional seconds (exactly 2 decimal digits per byte)
+    ///
+    /// Epoch: 1958-01-01 00:00:00 **UTC** (identical to CDS).
+    pub fn from_ccsds_ccs(input: &[u8]) -> Result<TimeParts, DtError> {
+        if input.is_empty() {
+            return Err(DtError::new(DtErrKind::CCSDSBinEmpty));
+        }
+
+        let p1 = input[0];
+        let mut idx = 1usize;
+
+        // ── P-field validation ─────────────────────────────────────
+        if (p1 & 0b1000_0000) != 0 {
+            return Err(DtError::new(DtErrKind::CCSDSBinInvalidPFieldExtension));
+        }
+
+        let code_id = (p1 >> 4) & 0b0111;
+        if code_id != 0b101 {
+            return Err(DtError::new(DtErrKind::CCSDSBinInvalidCodeId));
+        }
+
+        let is_doy = ((p1 >> 3) & 1) != 0; // bit 3
+        let n_subsec = (p1 & 0b0000_0111) as usize; // bits 2-0
+
+        if n_subsec > 6 {
+            return Err(DtError::new(DtErrKind::CCSDSBinInvalidSubMillisecondCode));
+        }
+
+        // Minimum T-field size
+        let min_len = 1 + 2 + 2 + 3 + n_subsec;
+        if input.len() < min_len {
+            return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
+        }
+
+        // ── BCD decoder (two decimal digits per byte) ──────────────
+        let bcd_byte = |b: u8| -> Result<u8, DtError> {
+            let hi = b >> 4;
+            let lo = b & 0x0F;
+            if hi > 9 || lo > 9 {
+                Err(DtError::new(DtErrKind::CCSDSBinTooShort))
+            } else {
+                Ok(hi * 10 + lo)
+            }
+        };
+
+        // ── Year (4 BCD digits) ────────────────────────────────────
+        let y1 = bcd_byte(input[idx])?;
+        let y2 = bcd_byte(input[idx + 1])?;
+        let year = (y1 as i64) * 100 + (y2 as i64);
+        idx += 2;
+
+        // ── Date field (Month/Day or Day-of-Year) ──────────────────
+        let (month, day, day_of_year) = if !is_doy {
+            // Month/Day variant
+            let mo = bcd_byte(input[idx])?;
+            let d = bcd_byte(input[idx + 1])?;
+            idx += 2;
+            if !(1..=12).contains(&mo) || !(1..=31).contains(&d) {
+                return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
+            }
+            (Some(mo), Some(d), None)
+        } else {
+            // Day-of-Year variant
+            let d1 = bcd_byte(input[idx])?;
+            let d2 = bcd_byte(input[idx + 1])?;
+            idx += 2;
+            let doy = (d1 as u16) * 100 + (d2 as u16);
+            if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
+                return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
+            }
+            (None, None, Some(doy))
+        };
+
+        // ── Hour / Minute / Second (BCD) ───────────────────────────
+        let hour = bcd_byte(input[idx])?;
+        let minute = bcd_byte(input[idx + 1])?;
+        let mut second = bcd_byte(input[idx + 2])?;
+        idx += 3;
+
+        if hour > 23 || minute > 59 {
+            return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
+        }
+
+        let is_leap_second = second == 60;
+        if is_leap_second {
+            second = 59; // normalize (finish() will set the flag)
+        } else if second > 59 {
+            return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
+        }
+
+        // ── Subsecond BCD → attoseconds (exact decimal scaling) ────
+        let mut frac_value: u128 = 0;
+        for _ in 0..n_subsec {
+            let b = input[idx];
+            let hi = (b >> 4) as u128;
+            let lo = (b & 0x0F) as u128;
+            if hi > 9 || lo > 9 {
+                return Err(DtError::new(DtErrKind::CCSDSBinTooShort));
+            }
+            frac_value = frac_value * 100 + hi * 10 + lo;
+            idx += 1;
+        }
+
+        let attos = if n_subsec == 0 {
+            0u64
+        } else {
+            let decimal_places = (2 * n_subsec) as u32;
+            let denom = 10u128.pow(decimal_places);
+            ((frac_value * 1_000_000_000_000_000_000u128) / denom) as u64
+        };
+
+        // ── Build TimeParts ────────────────────────────────────────
+        let mut pd = TimeParts {
+            year: Some(year),
+            month,
+            day,
+            day_of_year,
+            hour: Some(hour),
+            minute: Some(minute),
+            second: Some(second),
+            attos: Some(attos),
+            is_leap_second,
+            clock_type: ClockType::UTC,
+            tz: Some(TimeZone::Utc),
+            ..TimeParts::default()
+        };
+
+        pd.finish(false)?;
+        Ok(pd)
+    }
+
     /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
     /// directly into [`TimeParts`].
     ///
@@ -336,6 +482,7 @@ impl TimeParts {
         match code_id {
             0b001 => Self::from_ccsds_c(input),
             0b100 => Self::from_ccsds_d(input),
+            0b101 => Self::from_ccsds_ccs(input),
             _ => Err(DtError::new(DtErrKind::CCSDSBinInvalidCodeId)),
         }
     }

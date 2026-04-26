@@ -56,7 +56,7 @@ impl TimePoint {
         match self.clock_type {
             ClockType::TAI => self,
 
-            ClockType::TT | ClockType::ET => {
+            ClockType::TT => {
                 let mut tp = self.sub_ref(&TT_TAI_OFFSET_SPAN);
                 tp.set_clock_type(ClockType::TAI);
                 tp
@@ -76,7 +76,7 @@ impl TimePoint {
                 tp
             }
 
-            ClockType::TDB => Self::tdb_to_tai(self),
+            ClockType::TDB | ClockType::ET => Self::tdb_to_tai(self),
             ClockType::TCG => Self::tcg_to_tai(self),
             ClockType::TCB => Self::tcb_to_tai(self),
 
@@ -94,7 +94,7 @@ impl TimePoint {
         match target {
             ClockType::TAI => self,
 
-            ClockType::TT | ClockType::ET => {
+            ClockType::TT => {
                 let mut tp = self.add_ref(&TT_TAI_OFFSET_SPAN);
                 tp.set_clock_type(target);
                 tp
@@ -114,7 +114,7 @@ impl TimePoint {
                 tp
             }
 
-            ClockType::TDB => Self::tai_to_tdb(self),
+            ClockType::TDB | ClockType::ET => Self::tai_to_tdb(self),
             ClockType::TCG => Self::tai_to_tcg(self),
             ClockType::TCB => Self::tai_to_tcb(self),
 

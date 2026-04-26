@@ -453,18 +453,6 @@ mod tt_tests {
             diff_s
         );
     }
-
-    #[test]
-    fn et_alias_tt() {
-        let p = TimePoint::from_tai_sec(1_234_567);
-        let et = p.to_clock_type(ClockType::ET);
-        let tt = p.to_clock_type(ClockType::TT);
-
-        // Same physical instant (identical TAI value), only the tag differs.
-        assert_eq!(et.to_tai(), tt.to_tai());
-        assert_eq!(et.clock_type(), ClockType::ET);
-        assert_eq!(tt.clock_type(), ClockType::TT);
-    }
 }
 
 mod gnss_tests {

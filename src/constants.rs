@@ -3,7 +3,7 @@ use crate::{Real, TimeSpan};
 /// Exactly 86,400 seconds in one standard Earth day  
 /// (24 hours × 60 minutes × 60 seconds).
 pub const SEC_PER_DAY: Real = 86_400.0;
-pub(crate) const SEC_PER_DAYI64: i64 = 86_400;
+pub const SEC_PER_DAYI64: i64 = 86_400;
 pub(crate) const SEC_PER_DAYI128: i128 = 86_400;
 pub(crate) const SEC_PER_HALF_DAYI64: i64 = 43_200;
 

@@ -68,9 +68,9 @@ fn test_historical_iana_with_jiff() {
         assert_eq!(
             our_rfc, jiff_rfc,
             "\n=== IANA Historical Test FAILED: {} ===\n\
-             Input string          : {}\n\
-             Jiff (ground truth)   : {}\n\
-             deep_time_core (yours): {}\n",
+             Input string       : {}\n\
+             Jiff               : {}\n\
+             deep_time_core     : {}\n",
             description, our_input, jiff_rfc, our_rfc
         );
     }
@@ -104,21 +104,6 @@ fn assert_fails(input: &str, opts: Option<ParseCfg>) {
 // ─────────────────────────────────────────────────────────────────────────────
 // Comprehensive suite
 // ─────────────────────────────────────────────────────────────────────────────
-// === NEW RECOMMENDED APPROACH: Programmatic test-case generator ===
-//
-// Why this is better:
-//   • You get **hundreds of unique combinations** automatically
-//   • Adding a new format = just append one string to an array
-//   • Zero duplication (your current list has ~30% repeated cases)
-//   • Easy to maintain, extend, and review
-//   • Still 100% compatible with your existing test loop
-//
-// Just replace your giant `vec![]` with:
-//
-//     let cases = generate_date_test_cases();
-//
-// (You can keep any truly-special cases that don't fit the patterns
-//  at the bottom of the function.)
 
 fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
     let mut cases = Vec::new();
@@ -255,7 +240,7 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
                             continue;
                         }
 
-                        // === USER REQUEST: Prevent all pure numeric YYYYMMDDHHMM* format tests ===
+                        // === Prevent all pure numeric YYYYMMDDHHMM* format tests ===
                         //     (ONLY REMOVE THE PURE NUMERIC CASES — separators, connectors, T, :, ., space, etc. are OK!)
                         //     This blocks only fully-glued digit-only cases like "202403141530" or "240314153045".
                         //     Cases with any separator/connector (including the . in millis) are left untouched.
@@ -267,8 +252,8 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
                             continue;
                         }
 
-                        // === NEW: Prevent 6-digit pure numeric date (e.g. 240314) glued directly to time
-                        //     without any connector (per your explicit request).
+                        // === Prevent 6-digit pure numeric date (e.g. 240314) glued directly to time
+                        //     without any connector
                         //     Bad examples that are now blocked:
                         //       "24031415:30:00", "24031415:30:45", "24031415:30:45.123"
                         //     Allowed (they contain a connector):

@@ -281,7 +281,6 @@ impl TimePoint {
             // std::eprintln!("ERROR in to_time_point: {:?}", e);
         }
 
-        // Finally convert Result -> Option (as your function signature requires)
         time_point_result.ok()
     }
 }

@@ -9,6 +9,29 @@ impl TimePoint {
         TimeParts::from_ccsds_str(input)?.to_time_point(Some(clock_type))
     }
 
+    /// Parses a **CCSDS CCS (Calendar Segmented Time Code)** binary time code
+    /// directly into [`TimeParts`].
+    ///
+    /// Implements **CCSDS 301.0-B-4 §3.4** (Level 1 only).
+    ///
+    /// # P-field (exactly 1 byte)
+    /// - Bit 7:     Extension flag → must be `0` (we reject extensions)
+    /// - Bits 6-4:  Code ID = `101`
+    /// - Bit 3:     Calendar type (`0` = Month/Day, `1` = Day-of-Year)
+    /// - Bits 2-0:  Number of subsecond BCD octets (`0`–`6`)
+    ///
+    /// # T-field (BCD, big-endian)
+    /// - 2 bytes: Year (0001–9999)
+    /// - 2 bytes: Month+Day (01-12,01-31) **or** Day-of-Year (001–366)
+    /// - 3 bytes: Hour (00-23), Minute (00-59), Second (00-60)
+    /// - 0–6 bytes: Fractional seconds (exactly 2 decimal digits per byte)
+    ///
+    /// Epoch: 1958-01-01 00:00:00 **UTC** (identical to CDS).
+    #[inline(always)]
+    pub fn from_ccsds_ccs(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
+        TimeParts::from_ccsds_ccs(input)?.to_time_point(Some(clock_type))
+    }
+
     /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
     /// directly into [`TimePoint`].
     ///
@@ -82,14 +105,19 @@ impl TimePoint {
         TimeParts::from_ccsds_d(input)?.to_time_point(Some(clock_type))
     }
 
-    /// Auto-detects and parses either a CCSDS C (CUC) or D (CDS) binary time code
+    /// Auto-detects and parses a CCSDS binary time code (CUC, CDS, or CCS)
     /// based on the Code ID in the first P-field byte.
     ///
-    /// Convenience wrapper around [`from_ccsds_c`] and [`from_ccsds_d`].
+    /// Convenience wrapper around [`TimeParts::from_ccsds_bin`].
+    ///
+    /// # Supported formats
+    /// - Code ID `001` → CUC (Unsegmented)
+    /// - Code ID `100` → CDS (Day Segmented)
+    /// - Code ID `101` → CCS (Calendar Segmented)
     ///
     /// # Errors
     /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
-    /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any Code ID other than `001` (CUC) or `100` (CDS).
+    /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any other Code ID.
     #[inline(always)]
     pub fn from_ccsds_bin(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
         TimeParts::from_ccsds_bin(input)?.to_time_point(Some(clock_type))

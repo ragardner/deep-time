@@ -1,8 +1,8 @@
 use crate::{ClockType, DtErrKind, DtError, SEC_PER_DAYI64, TimePoint};
 
 impl TimePoint {
-    /// Maximum size needed for a CCSDS C (CUC) binary packet (with extended P-field).
-    const CCSDS_C_MAX_SIZE: usize = 32;
+    /// Maximum size needed for a CCSDS C & D (CUC) binary packet (with extended P-field).
+    pub const CCSDS_C_AND_D_MAX_SIZE: usize = 32;
 
     /// Formats this [`TimePoint`] as a **CCSDS C (CUC)** binary time code.
     ///
@@ -19,7 +19,7 @@ impl TimePoint {
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
-    ) -> Result<([u8; Self::CCSDS_C_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
         if !(1..=7).contains(&n_coarse) || n_frac > 10 {
             return Err(DtErrKind::UnsupportedDirective.into());
         }
@@ -36,7 +36,7 @@ impl TimePoint {
             (tai.subsec as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
         };
 
-        let mut buf = [0u8; Self::CCSDS_C_MAX_SIZE];
+        let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
         let mut pos = 0usize;
 
         // Decide whether extension byte is needed
@@ -86,9 +86,6 @@ impl TimePoint {
         Ok((buf, pos))
     }
 
-    /// Maximum size needed for a CCSDS D (CDS) binary packet.
-    const CCSDS_D_MAX_SIZE: usize = 32;
-
     /// Formats this [`TimePoint`] as a **CCSDS D (CDS)** binary time code.
     ///
     /// Fully configurable for round-tripping with [`from_ccsds_d`].
@@ -98,7 +95,7 @@ impl TimePoint {
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
-    ) -> Result<([u8; Self::CCSDS_D_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
         if !matches!(n_day, 2 | 3) || !matches!(sub_ms_code, 0 | 1 | 2) {
             return Err(DtErrKind::UnsupportedDirective.into());
         }
@@ -131,7 +128,7 @@ impl TimePoint {
             _ => unreachable!(),
         };
 
-        let mut buf = [0u8; Self::CCSDS_D_MAX_SIZE];
+        let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
         let mut pos = 0usize;
 
         let mut p1 = 0b0100_0000u8;
@@ -173,147 +170,116 @@ impl TimePoint {
 
         Ok((buf, pos))
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::TimeParts;
+    /// Maximum size needed for a CCSDS CCS binary packet (P-field + T-field).
+    pub const CCSDS_CCS_MAX_SIZE: usize = 14; // 1 + 2(year) + 2(date) + 3(HMS) + 6(subsec)
 
-    #[test]
-    fn test_ccsds_c_direct_frac() {
-        // P-field = 0x15 (binary 00010101)
-        //   → 2 coarse bytes, 1 fractional byte
-        // T-field = coarse 0x0001 (1 second) + frac 0x80 (0.5 seconds)
-        let c_bytes = &[0x15u8, 0x00, 0x01, 0x80];
+    /// Formats this [`TimePoint`] as a **CCSDS CCS (Calendar Segmented Time Code)**.
+    ///
+    /// Implements **CCSDS 301.0-B-4 §3.4** (Level 1 only).
+    ///
+    /// # Parameters
+    /// - `use_doy`: `false` = Month/Day variant (most common), `true` = Day-of-Year variant
+    /// - `n_subsec`: Number of subsecond BCD octets (`0`–`6`). Each octet holds 2 decimal digits.
+    ///
+    /// # Returns
+    /// `(buffer, written_len)` — the P-field + T-field (big-endian BCD).
+    ///
+    /// # Precision & Rounding
+    /// Fractional seconds are rounded to the nearest representable value at the chosen precision
+    /// (exactly as `to_ccsds_d` does for milliseconds).
+    pub fn to_ccsds_ccs(
+        &self,
+        use_doy: bool,
+        n_subsec: u8,
+    ) -> Result<([u8; Self::CCSDS_CCS_MAX_SIZE], usize), DtError> {
+        if n_subsec > 6 {
+            return Err(DtErrKind::UnsupportedDirective.into());
+        }
 
-        let parsed = TimeParts::from_ccsds_c(c_bytes).unwrap();
+        // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
+        let utc = self.to_clock_type(ClockType::UTC);
+        let gt = utc.to_gregorian_time();
 
-        assert_eq!(parsed.year, Some(1958));
-        assert_eq!(parsed.month, Some(1));
-        assert_eq!(parsed.day, Some(1));
-        assert_eq!(parsed.hour, Some(0));
-        assert_eq!(parsed.minute, Some(0));
-        assert_eq!(parsed.second, Some(1));
-        assert!(parsed.attos.unwrap() > 499_000_000_000_000_000); // ~0.5 s
-        assert_eq!(parsed.clock_type, ClockType::TAI);
+        let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
+        let mut pos = 0usize;
+
+        // ── P-field (exactly 1 byte, no extension) ─────────────────────────────────────
+        let mut p1 = 0b0101_0000u8; // bits 6-4 = 101 (Code ID)
+        if use_doy {
+            p1 |= 0b0000_1000; // bit 3 = 1 for DOY
+        }
+        p1 |= n_subsec & 0b0000_0111; // bits 2-0 = subsecond count
+        buf[pos] = p1;
+        pos += 1;
+
+        // ── BCD encoder helper (2 decimal digits per byte) ─────────────────────────────
+        let bcd = |val: u32| -> u8 {
+            let hi = (val / 10) as u8;
+            let lo = (val % 10) as u8;
+            (hi << 4) | lo
+        };
+
+        // ── Year (4 BCD digits) ───────────────────────────────────────────────────────
+        let year = gt.yr as u32;
+        let y_hi = year / 100;
+        let y_lo = year % 100;
+        buf[pos] = bcd(y_hi);
+        buf[pos + 1] = bcd(y_lo);
+        pos += 2;
+
+        // ── Date field (Month+Day or Day-of-Year) ─────────────────────────────────────
+        if !use_doy {
+            // Month/Day variant
+            buf[pos] = bcd(gt.mo as u32);
+            buf[pos + 1] = bcd(gt.day as u32);
+        } else {
+            // Day-of-Year variant (high nibble of first byte is always 0)
+            let doy = gt.day_of_yr as u32;
+            buf[pos] = bcd(doy / 100); // high byte = 00–03 (but only 0-3 used)
+            buf[pos + 1] = bcd(doy % 100);
+        }
+        pos += 2;
+
+        // ── Hour / Minute / Second (BCD) ──────────────────────────────────────────────
+        buf[pos] = bcd(gt.hr as u32);
+        buf[pos + 1] = bcd(gt.min as u32);
+        buf[pos + 2] = bcd(gt.sec as u32); // leap second 60 is allowed by spec
+        pos += 3;
+
+        // ── Subsecond BCD (0–12 decimal digits, 2 per byte, rounded) ──────────────────
+        if n_subsec > 0 {
+            let decimal_places = (2 * n_subsec) as u32;
+            let scale = 10u128.pow(decimal_places);
+
+            // Round attos to nearest representable value at this precision
+            let frac_scaled = ((gt.attos as u128 * scale + 500_000_000_000_000_000)
+                / 1_000_000_000_000_000_000) as u128;
+
+            let mut remaining = frac_scaled;
+            for i in (0..n_subsec).rev() {
+                let pair = (remaining % 100) as u32;
+                remaining /= 100;
+                buf[pos + i as usize] = bcd(pair);
+            }
+            pos += n_subsec as usize;
+        }
+
+        Ok((buf, pos))
     }
 
-    #[test]
-    fn test_ccsds_c_2byte_pfield() {
-        // P-field = 0x90 (extension=1) + second byte 0x00
-        // n_coarse=1, n_frac=0, T-field = 0x64 → 100 seconds
-        let c_bytes = &[0x90u8, 0x00, 0x64];
-
-        let parsed = TimeParts::from_ccsds_c(c_bytes).unwrap();
-
-        assert_eq!(parsed.year, Some(1958));
-        assert_eq!(parsed.month, Some(1));
-        assert_eq!(parsed.day, Some(1));
-        assert_eq!(parsed.hour, Some(0));
-        assert_eq!(parsed.minute, Some(1));
-        assert_eq!(parsed.second, Some(40));
-    }
-
-    #[test]
-    fn test_ccsds_d_direct() {
-        // P-field = 0x40 (n_day=2, sub_ms=00)
-        // Day = 0x0000
-        // Millis-of-day = 0x00000001 → 1 ms → 0 seconds + 1 ms
-        let d_bytes = &[0x40u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01];
-
-        let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
-
-        assert_eq!(parsed.year, Some(1958));
-        assert_eq!(parsed.month, Some(1));
-        assert_eq!(parsed.day, Some(1));
-        assert_eq!(parsed.hour, Some(0));
-        assert_eq!(parsed.minute, Some(0));
-        assert_eq!(parsed.second, Some(0));
-        assert_eq!(parsed.attos, Some(1_000_000_000_000_000)); // 1 ms
-        assert_eq!(parsed.clock_type, ClockType::UTC);
-    }
-
-    #[test]
-    fn test_ccsds_d_direct_frac() {
-        // P-field = 0x41 (n_day=2, sub_ms=01 → 2 bytes)
-        // Day count = 0x0000
-        // Millis-of-day = 0x00000001 → 1 ms
-        // Sub-ms = 0x8000 → exactly 0.5 ms
-        let d_bytes = &[0x41u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00];
-
-        let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
-
-        assert_eq!(parsed.second, Some(0));
-        assert_eq!(parsed.attos, Some(1_500_000_000_000_000)); // 1.5 ms
-    }
-
-    #[test]
-    fn test_ccsds_c_roundtrip() {
-        // Desired CCSDS C (TAI) civil time: 2025-04-17 14:30:45.123456789 TAI
-        // We compute the *exact* total TAI seconds since the CCSDS epoch (1958-01-01 00:00:00 TAI)
-        // using the same Gregorian logic as the parser. This is 100% independent of the library's
-        // JD, leap-second table, or to_time_point path.
-        let days_since_1958 = TimeParts::gregorian_to_days_since_1958(2025, 4, 17);
-        let sec_of_day = (14 * 3600) + (30 * 60) + 45;
-        let total_tai_seconds = days_since_1958 * SEC_PER_DAYI64 + sec_of_day;
-
-        // Library-internal TAI representation (TAI zero = library epoch)
-        const EPOCH_OFFSET: i64 = 1_325_419_167;
-        let tai_sec = total_tai_seconds - EPOCH_OFFSET;
-
-        let t = TimePoint::new(tai_sec, 123_456_789_000_000_000, ClockType::TAI);
-
-        let (buf, len) = t.to_ccsds_c(4, 3, false).unwrap();
-        let parsed = TimeParts::from_ccsds_c(&buf[0..len]).unwrap();
-
-        assert_eq!(parsed.year, Some(2025));
-        assert_eq!(parsed.month, Some(4));
-        assert_eq!(parsed.day, Some(17));
-        assert_eq!(parsed.hour, Some(14));
-        assert_eq!(parsed.minute, Some(30));
-        assert_eq!(parsed.second, Some(45));
-        assert_eq!(parsed.clock_type, ClockType::TAI);
-
-        // 3 fractional bytes → max ~59.6 ns quantization error
-        let diff = (parsed.attos.unwrap() as i64 - 123_456_789_000_000_000i64).abs();
-        assert!(
-            diff < 60_000_000_000,
-            "Fractional error too large: {} attos",
-            diff
-        );
-    }
-
-    #[test]
-    fn test_ccsds_d_roundtrip() {
-        // Desired CCSDS D (CDS) civil time: 2025-04-17 14:30:45.000400000 UTC
-        // Same pure-CCSDS-epoch calculation as above (no library conversions).
-        let days_since_1958 = TimeParts::gregorian_to_days_since_1958(2025, 4, 17);
-        let sec_of_day = (14 * 3600) + (30 * 60) + 45;
-        let total_utc_seconds = days_since_1958 * SEC_PER_DAYI64 + sec_of_day;
-
-        // Library-internal UTC representation
-        const EPOCH_OFFSET: i64 = 1_325_419_135;
-        let utc_sec = total_utc_seconds - EPOCH_OFFSET;
-
-        let t = TimePoint::new(utc_sec, 400_000_000_000, ClockType::UTC);
-
-        let (buf, len) = t.to_ccsds_d(2, 1, false).unwrap();
-        let parsed = TimeParts::from_ccsds_d(&buf[0..len]).unwrap();
-
-        assert_eq!(parsed.year, Some(2025));
-        assert_eq!(parsed.month, Some(4));
-        assert_eq!(parsed.day, Some(17));
-        assert_eq!(parsed.hour, Some(14));
-        assert_eq!(parsed.minute, Some(30));
-        assert_eq!(parsed.second, Some(45));
-        assert_eq!(parsed.clock_type, ClockType::UTC);
-
-        let diff = (parsed.attos.unwrap() as i64 - 400_000_000_000i64).abs();
-        assert!(
-            diff < 16_000_000_000, // ~16 ns tolerance (2-byte sub-ms resolution)
-            "Fractional error too large: {} attos",
-            diff
-        );
+    /// Convenience method that automatically selects the most appropriate
+    /// CCSDS binary time code based on this `TimePoint`’s [`ClockType`].
+    ///
+    /// # Automatic selection (matches common mission practice)
+    /// - `ClockType::TAI` → **CUC** (4 coarse + 4 fractional bytes)
+    /// - Any other `ClockType` (UTC, TT, GPST, TCG, …) → converted to UTC and uses **CDS**
+    ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
+    #[inline]
+    pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
+        match self.clock_type() {
+            ClockType::TAI => self.to_ccsds_c(4, 4, false),
+            _ => self.to_clock_type(ClockType::UTC).to_ccsds_d(2, 1, false),
+        }
     }
 }

@@ -2,24 +2,30 @@ mod arithmetic;
 mod constructors;
 mod conversions;
 mod formatting;
+mod from_canonical;
 mod from_ccsds;
+mod gregorian;
 mod ops;
 mod to_canonical;
 mod to_ccsds_bin;
+mod to_ccsds_str;
 mod to_str;
+mod trajectory;
 
-pub mod gregorian;
-pub mod trajectory;
+#[cfg(feature = "hifitime")]
+mod from_hifitime;
+#[cfg(feature = "hifitime")]
+mod to_hifitime;
 
 #[cfg(feature = "chrono")]
-pub mod from_chrono;
+mod from_chrono;
 #[cfg(feature = "chrono")]
-pub mod to_chrono;
+mod to_chrono;
 
 #[cfg(feature = "jiff")]
-pub mod from_jiff;
+mod from_jiff;
 #[cfg(feature = "jiff")]
-pub mod to_jiff;
+mod to_jiff;
 
 use crate::ClockType;
 

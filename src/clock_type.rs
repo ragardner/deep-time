@@ -74,9 +74,9 @@ pub enum ClockType {
     TAI,
     /// Terrestrial Time (TT) (previously called Terrestrial Dynamical Time (TDT)).
     TT,
-    /// Ephemeris Time as defined by SPICE (slightly different from true TDB).
+    /// Ephemeris Time as defined by NASA/NAIF SPICE (identical to TDB).
     ET,
-    /// Dynamic Barycentric Time (TDB) (higher fidelity SPICE ephemeris time).
+    /// Barycentric Dynamical Time (TDB) — SPICE ephemeris time (ET is an alias for this).
     TDB,
     /// Universal Coordinated Time.
     UTC,
