@@ -42,6 +42,7 @@ mod utils;
 pub mod constants;
 pub mod error;
 pub mod error_std;
+pub mod historical_sofa_offsets;
 pub mod leap_seconds;
 pub mod tzdb;
 

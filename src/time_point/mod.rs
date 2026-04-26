@@ -6,6 +6,7 @@ mod from_canonical;
 mod from_ccsds;
 mod from_gps;
 mod gregorian;
+mod gregorian_historical;
 mod ops;
 mod to_canonical;
 mod to_ccsds_bin;

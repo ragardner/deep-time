@@ -9,7 +9,7 @@ use crate::{SEC_PER_HALF_DAYI64, TimePoint};
 /// (NTP timestamp of the leap second insertion, cumulative leap seconds *after* this insertion)
 ///
 /// NTP timestamp = seconds since 1900-01-01 00:00:00 (the format used by the official file).
-const LEAP_SECONDS: &[(i64, i64)] = &[
+pub const LEAP_SECONDS: &[(i64, i64)] = &[
     (2272060800, 10), // 1 Jan 1972
     (2287785600, 11), // 1 Jul 1972
     (2303683200, 12), // 1 Jan 1973
