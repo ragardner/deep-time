@@ -23,13 +23,14 @@ impl TimePoint {
         tai.from_tai(target)
     }
 
-    /// Returns a copy of this `TimePoint` with the specified [`ClockType`] while preserving the exact
-    /// numerical seconds and attoseconds values.
+    /// Returns a copy of this `TimePoint` with the specified [`ClockType`]
+    /// **while preserving the exact numerical `sec` and `subsec` values**.
     ///
-    /// This operation is zero-cost and is primarily intended for internal use after a conversion has
-    /// already been performed.
+    /// ### Warning:
+    ///
+    /// This performs **no time-scale conversion** and does **not** change the physical instant.
     #[inline]
-    pub(crate) const fn with_clock_type(self, clock_type: ClockType) -> Self {
+    pub const fn with_clock_type(self, clock_type: ClockType) -> Self {
         Self {
             sec: self.sec,
             subsec: self.subsec,

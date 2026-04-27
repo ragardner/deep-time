@@ -136,6 +136,7 @@ all = [
 
 # Internal tests
 perf-tests = []
+ut1-tests = ["ut1"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]

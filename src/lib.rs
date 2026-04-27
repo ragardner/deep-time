@@ -76,8 +76,8 @@ pub use alloc_parse::{
     types::{DateOrder, DateParseMode, ParseCfg},
 };
 
-// #[cfg(feature = "ut1")]
-// pub use ut1::{EopColumns, EopEntry, EopFormat};
+#[cfg(feature = "ut1")]
+pub use ut1::{EopColumns, EopEntry, EopFormat, Separator, Ut1Provider};
 
 // _________________________________________
 // PUB USE
