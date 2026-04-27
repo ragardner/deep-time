@@ -12,6 +12,6 @@ pkg/
 
 # library stuff
 Cargo.lock
-output.txt
 *.py
-.vscode
+*.vscode
+*.txt

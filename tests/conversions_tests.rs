@@ -1,10 +1,10 @@
 use deep_time_core::TimePoint;
 
-mod fn_tests {
+mod mjd_leaps_roundtrips {
+    use deep_time_core::{ClockType, TimePoint};
+
     #[test]
     fn test_ymd_to_jdn() {
-        use crate::TimePoint;
-
         // ── Positive years ─────────────────────────────────────────────
         assert_eq!(TimePoint::ymd_to_jdn(2025, 4, 16), 2460782);
         assert_eq!(TimePoint::ymd_to_jdn(2000, 1, 1), 2451545); // J2000.0 epoch
@@ -68,11 +68,110 @@ mod fn_tests {
         assert_eq!(TimePoint::jdn_to_ymd(1720695), (-1, 1, 1));
         assert_eq!(TimePoint::jdn_to_ymd(-34802825), (-100000, 12, 31));
     }
+
+    #[test]
+    fn test_mjd_utc_roundtrip() {
+        // Normal instant (non-leap)
+        let original = TimePoint::from_gregorian_ymdhms(
+            2025,
+            4,
+            27,
+            14,
+            30,
+            0,
+            123_456_789_000_000_000,
+            ClockType::UTC,
+        );
+        let (mjd, frac) = original.to_mjd_utc_exact();
+        let roundtrip = TimePoint::from_mjd_utc_exact(mjd, frac);
+        assert_eq!(
+            original, roundtrip,
+            "MJD UTC round-trip failed for normal time"
+        );
+
+        // Also exercise the JD variant
+        let (jd, frac_jd) = original.to_jd_utc_exact();
+        let roundtrip_jd = TimePoint::from_jd_utc_exact(jd, frac_jd);
+        assert_eq!(original, roundtrip_jd, "JD UTC round-trip failed");
+
+        // Leap-second case (2015-06-30 23:59:60 UTC) — the trickiest path
+        let leap = TimePoint::from_gregorian_ymdhms(2015, 6, 30, 23, 59, 60, 0, ClockType::UTC);
+        let (mjd_leap, frac_leap) = leap.to_mjd_utc_exact();
+        let roundtrip_leap = TimePoint::from_mjd_utc_exact(mjd_leap, frac_leap);
+        assert_eq!(
+            leap, roundtrip_leap,
+            "MJD UTC round-trip failed for leap second"
+        );
+
+        // Also verify JD round-trip on the leap second
+        let (jd_leap, frac_jd_leap) = leap.to_jd_utc_exact();
+        let roundtrip_jd_leap = TimePoint::from_jd_utc_exact(jd_leap, frac_jd_leap);
+        assert_eq!(
+            leap, roundtrip_jd_leap,
+            "JD UTC round-trip failed for leap second"
+        );
+    }
+
+    #[test]
+    fn test_leap_second_gotcha_1972_06_30() {
+        let leap = TimePoint::from_gregorian_ymdhms(1972, 6, 30, 23, 59, 60, 0, ClockType::UTC);
+        let g = leap.to_gregorian_ymdhms();
+        assert_eq!(g.sec, 60);
+        assert_eq!(g.day, 30);
+    }
+
+    #[test]
+    fn test_leap_second_roundtrip_2015_06_30() {
+        // A leap second from the middle of the table (36 leap seconds accumulated)
+        let original = TimePoint::from_gregorian_ymdhms(
+            2015,
+            6,
+            30,
+            23,
+            59,
+            60,
+            123_456_789_000_000_000,
+            ClockType::UTC,
+        );
+
+        // === Round-trip through canonical attoseconds ===
+        let canon = original.to_canonical_attoseconds();
+        let roundtrip1 = TimePoint::from_canonical_attoseconds(canon, ClockType::UTC);
+
+        assert_eq!(original, roundtrip1, "Canonical round-trip failed");
+
+        // === Multiple Gregorian round-trips ===
+        let mut current = original;
+        for i in 0..5 {
+            let g = current.to_gregorian_ymdhms();
+            assert_eq!(g.sec, 60, "Leap second lost on iteration {}", i);
+            assert_eq!(g.day, 30);
+            assert_eq!(g.mo, 6);
+            assert_eq!(g.yr, 2015);
+
+            current = TimePoint::from_gregorian_ymdhms(
+                g.yr,
+                g.mo,
+                g.day,
+                g.hr,
+                g.min,
+                g.sec,
+                g.subsec,
+                ClockType::UTC,
+            );
+        }
+        assert_eq!(original, current, "Multiple Gregorian round-trips failed");
+
+        // Final sanity check via to_gregorian_time
+        let gt = original.to_gregorian_time();
+        assert_eq!(gt.sec(), 60);
+        assert_eq!(gt.day(), 30);
+    }
 }
 
 mod tdb_tests {
     use super::*;
-    use deep_time_core::{ClockType, Real, TimeSpan, constants::ATTOSEC_PER_SEC};
+    use deep_time_core::ClockType;
 
     /// Verifies that `ClockType::ET` is a true alias for `ClockType::TDB`
     /// as defined by NASA/NAIF SPICE.

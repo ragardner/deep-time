@@ -670,6 +670,58 @@ impl TimePoint {
         Self::from_jd_tt_exact(mjd_days + 2_400_000, frac)
     }
 
+    /// Creates a `TimePoint` from an exact Julian Date in UTC using full library precision.
+    ///
+    /// This is the inverse of [`Self::to_jd_utc_exact`].
+    ///
+    /// The input `(jd_days, frac)` must match exactly what [`Self::to_jd_utc_exact`] returns
+    /// for the desired instant. Uses the library’s canonical UTC attosecond representation
+    /// (via [`Self::from_canonical_attoseconds`]), so leap seconds are handled correctly
+    /// and the proleptic Gregorian civil second count is respected.
+    ///
+    /// # Precision
+    /// Exact to the attosecond (pure integer arithmetic).
+    ///
+    /// # See also
+    /// - [`Self::to_jd_utc_exact`] — the matching `to_` function
+    /// - [`Self::from_jd_tt_exact`] — the astronomical (TT) counterpart
+    /// - [`Self::from_mjd_utc_exact`] — the MJD variant in UTC
+    #[inline]
+    pub const fn from_jd_utc_exact(jd_days: i64, frac: TimeSpan) -> Self {
+        let days_since_1970 = jd_days - 2_440_587i64;
+        const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+        let total_attos = (days_since_1970 as i128) * ATTOS_PER_DAY + frac.total_attos();
+        Self::from_canonical_attoseconds(total_attos, ClockType::UTC)
+    }
+
+    /// Creates a `TimePoint` from an exact Modified Julian Date in UTC using full library precision.
+    ///
+    /// This is the inverse of [`Self::to_mjd_utc_exact`].
+    ///
+    /// MJD is defined as `JD − 2_400_000.5`. The conventional reference epoch is
+    /// **1970-01-01 00:00:00 UTC ≡ MJD 40587.0 exactly**.
+    ///
+    /// Uses the library’s canonical UTC representation, so leap seconds are handled correctly
+    /// and the civil Gregorian second count is respected.
+    ///
+    /// # Precision
+    /// Exact to the attosecond (pure integer arithmetic on the canonical UTC attosecond count).
+    ///
+    /// # Important distinction
+    /// - Use **`from_mjd_utc_exact`** for civil/operational/GNSS contexts (RINEX, flight software, etc.).
+    /// - Use **`from_mjd_tt_exact`** for astronomical work (ephemerides, pulsars, barycentric navigation).
+    ///
+    /// The two differ by the accumulated leap seconds + the fixed 32.184 s TT–TAI offset.
+    ///
+    /// # See also
+    /// - [`Self::to_mjd_utc_exact`] — the matching `to_` function
+    /// - [`Self::from_mjd_tt_exact`] — the astronomical (TT) counterpart
+    /// - [`Self::from_jd_utc_exact`] — the full JD variant in UTC
+    #[inline]
+    pub const fn from_mjd_utc_exact(mjd_days: i64, frac: TimeSpan) -> Self {
+        Self::from_jd_utc_exact(mjd_days + 2_400_000, frac)
+    }
+
     /// Creates a `TimePoint` (in TT) from a floating-point Mars Sol Date.
     /// Non-exact Real.
     #[inline]

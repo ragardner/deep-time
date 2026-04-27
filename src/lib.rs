@@ -18,6 +18,9 @@ macro_rules! f {
 #[cfg(feature = "parse")]
 mod alloc_parse;
 
+#[cfg(feature = "ut1")]
+mod ut1;
+
 // _________________________________________
 // MOD
 // _________________________________________
@@ -72,6 +75,9 @@ pub use alloc_parse::{
     lang::Lang,
     types::{DateOrder, DateParseMode, ParseCfg},
 };
+
+// #[cfg(feature = "ut1")]
+// pub use ut1::{EopColumns, EopEntry, EopFormat};
 
 // _________________________________________
 // PUB USE

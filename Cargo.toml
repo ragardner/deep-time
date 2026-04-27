@@ -74,8 +74,12 @@ serde = [
 ]
 
 # ──────────────────────────────────────────────────────────────
-# DATETIME INTEROP (std is optional)
+# DATETIME (std is optional)
 # ──────────────────────────────────────────────────────────────
+ut1 = [
+    "std",
+]
+
 jiff = [
     "dep:jiff",
     "jiff?/alloc",
