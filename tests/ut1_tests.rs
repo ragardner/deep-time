@@ -1,6 +1,7 @@
 #[cfg(feature = "ut1-tests")]
 #[cfg(test)]
 mod tests {
+    use deep_time_core::constants::SEC_PER_DAY;
     use deep_time_core::{ClockType, EopFormat, Separator, TimePoint, TimeSpan, Ut1Provider};
     use std::eprintln;
 
@@ -165,5 +166,156 @@ mod tests {
         );
 
         eprintln!("✅ C04 row 57259.00 passed (DUT1 ≈ {:.7})", dut1);
+    }
+
+    // ============================================================
+    // Helper to load a provider (reuses your existing test data)
+    // ============================================================
+    fn load_finals2000a() -> Ut1Provider {
+        let path = "finals.all.iau2000.txt";
+        Ut1Provider::from_file(path, EopFormat::Finals2000A, Separator::Whitespace)
+            .expect("failed to load finals2000A.all / finals.all.iau2000.txt")
+    }
+
+    // ============================================================
+    // 1. Basic round-trip: UT1 → JD_UT1 → back to UT1
+    // ============================================================
+    #[test]
+    fn test_jd_ut1_exact_roundtrip() {
+        let provider = load_finals2000a();
+
+        // Use a known good row (MJD 56879.00, DUT1 ≈ -0.3170554)
+        let utc = TimePoint::from_mjd_utc_exact(56879, TimeSpan::ZERO);
+        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+
+        // Round-trip through JD_UT1
+        let (jd_days, frac) = ut1.to_jd_ut1_exact();
+        let roundtrip = TimePoint::from_jd_ut1_exact(jd_days, frac);
+
+        assert_eq!(roundtrip.clock_type(), ClockType::Custom);
+        assert_eq!(ut1.sec(), roundtrip.sec());
+        assert_eq!(ut1.subsec(), roundtrip.subsec());
+
+        // Physical round-trip check (via TAI)
+        let diff = ut1.duration_since(roundtrip);
+        assert!(
+            diff.as_sec_f().abs() < 1e-12,
+            "JD_UT1 round-trip error too large: {} s",
+            diff.as_sec_f()
+        );
+
+        eprintln!("✅ JD_UT1 round-trip passed (MJD 56879)");
+    }
+
+    // ============================================================
+    // 2. Full pipeline round-trip using real EOP data
+    //    UTC → UT1 → JD_UT1 → back to UT1 → back to UTC
+    // ============================================================
+    #[test]
+    fn test_full_pipeline_jd_ut1_roundtrip() {
+        let provider = load_finals2000a();
+
+        let original_utc = TimePoint::from_mjd_utc_exact(60961, TimeSpan::ZERO); // known row
+        let ut1 = original_utc.to_ut1(&provider).expect("to_ut1 failed");
+
+        // Convert to JD in UT1
+        let (jd_days, frac) = ut1.to_jd_ut1_exact();
+
+        // Go back
+        let ut1_back = TimePoint::from_jd_ut1_exact(jd_days, frac);
+        let utc_back = TimePoint::from_ut1(ut1_back, &provider).expect("from_ut1 failed");
+
+        // Final check: should be extremely close to original UTC
+        let error = original_utc.duration_since(utc_back).as_sec_f();
+        assert!(
+            error.abs() < 1e-10,
+            "Full pipeline round-trip error too large: {} s",
+            error
+        );
+
+        eprintln!("✅ Full UTC → UT1 → JD_UT1 → UTC pipeline passed (MJD 60961)");
+    }
+
+    // ============================================================
+    // 3. MJD_UT1 round-trip
+    // ============================================================
+    #[test]
+    fn test_mjd_ut1_exact_roundtrip() {
+        let provider = load_finals2000a();
+
+        let utc = TimePoint::from_mjd_utc_exact(57259, TimeSpan::ZERO);
+        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+
+        let (mjd_days, frac) = ut1.to_mjd_ut1_exact();
+        let roundtrip = TimePoint::from_mjd_ut1_exact(mjd_days, frac);
+
+        assert_eq!(roundtrip.clock_type(), ClockType::Custom);
+        assert_eq!(ut1.sec(), roundtrip.sec());
+        assert_eq!(ut1.subsec(), roundtrip.subsec());
+
+        let diff = ut1.duration_since(roundtrip).as_sec_f();
+        assert!(diff.abs() < 1e-12, "MJD_UT1 round-trip error: {} s", diff);
+
+        eprintln!("✅ MJD_UT1 round-trip passed (MJD 57259)");
+    }
+
+    // ============================================================
+    // 4. Cross-check: JD_UT1 vs JD_UTC should differ by DUT1 / 86400
+    //    uses total JD to avoid noon wrap-around)
+    // ============================================================
+    #[test]
+    fn test_jd_ut1_vs_jd_utc_consistency() {
+        let provider = load_finals2000a();
+        let dut1_expected = -0.3170554; // known value for MJD 56879.00
+
+        let utc = TimePoint::from_mjd_utc_exact(56879, TimeSpan::ZERO);
+        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+
+        let (jd_ut1, frac_ut1) = ut1.to_jd_ut1_exact();
+        let (jd_utc, frac_utc) = utc.to_jd_utc_exact();
+
+        // Compute total JD (integer + fraction) as f64
+        let total_jd_ut1 = jd_ut1 as f64 + frac_ut1.as_sec_f() / SEC_PER_DAY;
+        let total_jd_utc = jd_utc as f64 + frac_utc.as_sec_f() / SEC_PER_DAY;
+
+        let diff_days = total_jd_ut1 - total_jd_utc;
+        let expected_diff = dut1_expected / SEC_PER_DAY;
+
+        assert!(
+            (diff_days - expected_diff).abs() < 1e-9,
+            "JD difference mismatch: got {}, expected {}",
+            diff_days,
+            expected_diff
+        );
+
+        eprintln!(
+            "✅ JD_UT1 vs JD_UTC consistency passed (diff ≈ {:.9} days)",
+            diff_days
+        );
+    }
+
+    // ============================================================
+    // 5. Round-trip with non-zero fractional day
+    // ============================================================
+    #[test]
+    fn test_jd_ut1_roundtrip_with_fractional_day() {
+        let provider = load_finals2000a();
+
+        // 12:00:00 UTC on a known day
+        let frac = TimeSpan::from_sec_f(12.0 * 3600.0);
+        let utc = TimePoint::from_mjd_utc_exact(60961, frac);
+        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+
+        let (jd_days, frac2) = ut1.to_jd_ut1_exact();
+        let roundtrip = TimePoint::from_jd_ut1_exact(jd_days, frac2);
+
+        let diff = ut1.duration_since(roundtrip).as_sec_f();
+        assert!(
+            diff.abs() < 1e-11,
+            "Fractional day round-trip error: {} s",
+            diff
+        );
+
+        eprintln!("✅ JD_UT1 round-trip with fractional day passed");
     }
 }

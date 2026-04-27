@@ -1,4 +1,7 @@
-use crate::{ClockType, DtStdError, Real, TimePoint, TimeSpan};
+use crate::{
+    ATTOSEC_PER_SEC_I128, ClockType, DtStdError, Real, SEC_PER_DAY, SEC_PER_DAYI128, TimePoint,
+    TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC,
+};
 use alloc::format;
 use alloc::string::ToString;
 use alloc::vec::Vec;
@@ -264,5 +267,76 @@ impl TimePoint {
         }
 
         Ok(utc_guess)
+    }
+
+    /// Returns the exact **Julian Date in UT1** with full attosecond precision.
+    ///
+    /// Uses the **Unix epoch (1970-01-01)** — exactly the same convention
+    /// as [`Self::to_jd_utc_exact`]. This is the expected form for civil,
+    /// GNSS, Earth orientation (IERS/VLBI), and operational use cases.
+    #[inline]
+    pub const fn to_jd_ut1_exact(self) -> (i64, TimeSpan) {
+        // Mirror the UTC logic exactly:
+        // Apply the same UNIX_EPOCH_TO_J2000_NOON_UTC offset that
+        // to_canonical_attoseconds() uses for UTC.
+        const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+
+        let canon_attos = ((self.sec as i128) + (UNIX_EPOCH_TO_J2000_NOON_UTC as i128))
+            * ATTOSEC_PER_SEC_I128
+            + (self.subsec as i128);
+
+        let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
+        let frac_attos = canon_attos.rem_euclid(ATTOS_PER_DAY);
+
+        let jd_int = 2_440_587i64 + (days_since_1970 as i64);
+
+        (jd_int, TimeSpan::from_total_attos(frac_attos))
+    }
+
+    /// Returns the exact **Modified Julian Date in UT1** (Unix epoch convention).
+    #[inline]
+    pub const fn to_mjd_ut1_exact(self) -> (i64, TimeSpan) {
+        let (jd, frac) = self.to_jd_ut1_exact();
+        (jd - 2_400_000, frac)
+    }
+
+    /// Creates a `TimePoint` (as `Custom`) from an exact Julian Date in **UT1**.
+    ///
+    /// Inverse of [`Self::to_jd_ut1_exact`]. Uses the Unix epoch (1970),
+    /// exactly like `from_jd_utc_exact`.
+    #[inline]
+    pub const fn from_jd_ut1_exact(jd_days: i64, frac: TimeSpan) -> Self {
+        let days_since_1970 = jd_days - 2_440_587i64;
+        const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+
+        let total_attos = (days_since_1970 as i128) * ATTOS_PER_DAY + frac.total_attos();
+
+        // Apply the inverse offset (mirror what from_canonical_attoseconds does for UTC)
+        let internal_sec =
+            (total_attos / ATTOSEC_PER_SEC_I128) as i64 - UNIX_EPOCH_TO_J2000_NOON_UTC;
+        let subsec = (total_attos % ATTOSEC_PER_SEC_I128) as u64;
+
+        TimePoint::new(internal_sec, subsec, ClockType::Custom)
+    }
+
+    /// Creates a `TimePoint` (as `Custom`) from an exact Modified Julian Date in **UT1**.
+    #[inline]
+    pub const fn from_mjd_ut1_exact(mjd_days: i64, frac: TimeSpan) -> Self {
+        Self::from_jd_ut1_exact(mjd_days + 2_400_000, frac)
+    }
+
+    /// Returns the **Julian Date in UT1** as a floating-point value (`f64`).
+    ///
+    /// Uses the Unix epoch (1970) convention, consistent with [`Self::to_jd_utc`].
+    #[inline]
+    pub const fn to_jd_ut1(self) -> Real {
+        let (jd_days, frac) = self.to_jd_ut1_exact();
+        (jd_days as Real) + (frac.as_sec_f() / SEC_PER_DAY)
+    }
+
+    /// Returns the **Modified Julian Date in UT1** as a floating-point value (`f64`).
+    #[inline]
+    pub const fn to_mjd_ut1(self) -> Real {
+        self.to_jd_ut1() - f!(2_400_000.5)
     }
 }
