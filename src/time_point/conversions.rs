@@ -136,6 +136,26 @@ impl TimePoint {
         }
     }
 
+    /// Converts this instant to another [`ClockType`] by applying a constant time offset.
+    ///
+    /// This is the recommended method for the common case of a fixed offset between two time scales
+    /// (e.g. applying a DUT1 value when converting to a UT1-like custom scale, or any other constant bias).
+    ///
+    /// The offset can be positive or negative. Negative offsets move the time backward.
+    ///
+    /// This is a zero-cost convenience wrapper around [`Self::saturating_add`] + [`Self::with_clock_type`].
+    #[inline(always)]
+    pub const fn convert_using_offset(&mut self, target: ClockType, offset: TimeSpan) -> Self {
+        self.mut_add(&offset).with_clock_type(target)
+    }
+
+    /// Same as [`Self::convert_using_offset`], but accepts the offset as an `f64` (in seconds) for convenience.
+    #[inline(always)]
+    pub const fn convert_using_offset_f(&mut self, target: ClockType, offset_sec: Real) -> Self {
+        self.mut_add(&TimeSpan::from_sec_f(offset_sec))
+            .with_clock_type(target)
+    }
+
     /// Converts this instant to any other [`ClockType`] while applying an exact quadratic relativistic
     /// or clock-drift correction defined by a [`ClockDrift`] model relative to a reference instant.
     #[inline]
@@ -473,10 +493,34 @@ impl TimePoint {
         tt.to_tai()
     }
 
-    /// Returns an exact Julian Date in Terrestrial Time (TT) with full library precision.
+    /// Returns an exact Julian Date in **Terrestrial Time (TT)** with full
+    /// attosecond precision.
     ///
-    /// The returned tuple consists of the integer number of Julian days and the fractional part of
-    /// the day expressed as a [`TimeSpan`] (always in the range [0, 1 day)).
+    /// This is the *astronomical standard* form of JD used by IAU/IERS
+    /// ephemerides, pulsar timing, planetary missions, and virtually all
+    /// high-precision astrodynamics software (SOFA/ERFA, NASA SPICE, etc.).
+    ///
+    /// The function always converts the input `TimePoint` to TT internally,
+    /// guaranteeing consistency across all clock types (including relativistic
+    /// scales TCG/TCB/LTC, UTC leap seconds, etc.).
+    ///
+    /// By international convention **J2000.0 TT ≡ JD 2451545.0 exactly**
+    /// (2000-01-01 12:00:00 TT).
+    ///
+    /// # Return
+    /// A tuple `(jd_integer_days, fractional_day)` where:
+    /// - `jd_integer_days` is the integer part of the JD (i64)
+    /// - `fractional_day` is a [`TimeSpan`] in the range `[0, 1)` day,
+    ///   representing the exact fraction of a day since noon TT (astronomical
+    ///   convention).
+    ///
+    /// # Precision
+    /// Exact to the attosecond (no floating-point arithmetic is used).
+    ///
+    /// # See also
+    /// - [`Self::to_jd_tt`] — floating-point convenience version
+    /// - [`Self::to_mjd_tt_exact`] — Modified Julian Date in TT
+    /// - [`Self::to_jd_utc_exact`] — civil/engineering form in UTC
     #[inline]
     pub const fn to_jd_tt_exact(self) -> (i64, TimeSpan) {
         let tt = self.to_clock_type(ClockType::TT);
@@ -486,11 +530,128 @@ impl TimePoint {
         (J2000_JD_TT + days_since_j2000, frac)
     }
 
-    /// Returns an exact Modified Julian Date in Terrestrial Time (TT) with full library precision.
+    /// Returns the **Julian Date (JD)** expressed in **UTC** with full attosecond
+    /// precision.
+    ///
+    /// This is the *civil/operational form* of JD used by GNSS, RINEX files,
+    /// flight software, and most modern engineering pipelines.
+    ///
+    /// The reference epoch is **1970-01-01 00:00:00 UTC ≡ JD 2440587.5 exactly**.
+    /// The function uses the library’s canonical UTC representation
+    /// ([`Self::to_canonical_attoseconds`]), so leap seconds are handled correctly
+    /// and the proleptic Gregorian civil second count is respected.
+    ///
+    /// # Return
+    /// A tuple `(jd_integer_days, fractional_day)` where:
+    /// - `jd_integer_days` is the integer part of the JD (i64)
+    /// - `fractional_day` is a [`TimeSpan`] in the range `[0, 1)` day,
+    ///   representing the exact fraction of a day since noon UTC (astronomical
+    ///   convention).
+    ///
+    /// # Precision
+    /// Exact to the attosecond (pure integer arithmetic).
+    ///
+    /// # Important distinction
+    /// - Use **`to_jd_tt_exact`** (or `to_jd_tt`) for the *astronomical standard*
+    ///   (Terrestrial Time).
+    /// - Use **`to_jd_utc_exact`** for civil/operational/GNSS contexts.
+    ///
+    /// # See also
+    /// - [`Self::to_jd_utc`] — floating-point convenience version
+    /// - [`Self::to_mjd_utc_exact`] — Modified Julian Date in UTC
+    #[inline]
+    pub const fn to_jd_utc_exact(self) -> (i64, TimeSpan) {
+        let utc = self.to_clock_type(ClockType::UTC);
+        let canon_attos = utc.to_canonical_attoseconds();
+
+        const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+
+        let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
+        let frac_attos = canon_attos.rem_euclid(ATTOS_PER_DAY);
+
+        let jd_int = 2_440_587i64 + (days_since_1970 as i64);
+
+        (jd_int, TimeSpan::from_total_attos(frac_attos))
+    }
+
+    /// Returns the **Modified Julian Date (MJD)** expressed in **Terrestrial Time (TT)**
+    /// with full attosecond precision.
+    ///
+    /// MJD is defined as `JD − 2_400_000.5`. The conventional astronomical reference
+    /// epoch is **J2000.0 TT ≡ MJD 51544.5 exactly** (2000-01-01 12:00:00 TT).
+    ///
+    /// This is the *standard astronomical form* used by IAU/IERS ephemerides,
+    /// pulsar timing arrays, planetary missions, and virtually all high-precision
+    /// astrodynamics software (SOFA/ERFA, NASA SPICE, etc.).
+    ///
+    /// The function always converts the input `TimePoint` to TT internally via
+    /// [`Self::to_jd_tt_exact`], guaranteeing consistency across all clock types
+    /// (including relativistic scales TCG/TCB/LTC, UTC leap seconds, etc.).
+    ///
+    /// # Return
+    /// A tuple `(mjd_integer_days, fractional_day)` where:
+    /// - `mjd_integer_days` is the integer part of the MJD (i64)
+    /// - `fractional_day` is a [`TimeSpan`] in the range `[0, 1)` day,
+    ///   representing the exact fraction of a day since midnight TT.
+    ///
+    /// # Precision
+    /// Exact to the attosecond (no floating-point arithmetic is used).
+    ///
+    /// # See also
+    /// - [`Self::to_jd_tt_exact`] — the full Julian Date in TT
+    /// - [`Self::to_mjd_utc_exact`] — the civil/engineering form in UTC
     #[inline]
     pub const fn to_mjd_tt_exact(self) -> (i64, TimeSpan) {
         let (jd, frac) = self.to_jd_tt_exact();
         (jd - 2_400_000, frac)
+    }
+
+    /// Returns the **Modified Julian Date (MJD)** expressed in **UTC** with full
+    /// attosecond precision.
+    ///
+    /// This is the *civil/engineering form* of MJD used by GNSS receivers,
+    /// RINEX files, operational flight software, and most modern Earth-based
+    /// timing pipelines.
+    ///
+    /// The reference epoch is **1970-01-01 00:00:00 UTC ≡ MJD 40587.0 exactly**.
+    /// The function uses the library’s canonical UTC representation
+    /// ([`Self::to_canonical_attoseconds`]), so leap seconds are handled correctly
+    /// and the civil Gregorian second count is respected.
+    ///
+    /// # Return
+    /// A tuple `(mjd_integer_days, fractional_day)` where:
+    /// - `mjd_integer_days` is the integer part of the MJD (i64)
+    /// - `fractional_day` is a [`TimeSpan`] in the range `[0, 1)` day,
+    ///   representing the exact fraction of a day since midnight UTC.
+    ///
+    /// # Precision
+    /// Exact to the attosecond (pure integer arithmetic on the canonical UTC
+    /// attosecond count).
+    ///
+    /// # Important distinction
+    /// - Use **`to_mjd_tt_exact`** for astronomical work (ephemerides, pulsars,
+    ///   spacecraft navigation in barycentric frames).
+    /// - Use **`to_mjd_utc_exact`** for civil/operational/GNSS contexts.
+    ///
+    /// The two values differ by the accumulated leap seconds + the fixed 32.184 s
+    /// TT–TAI offset.
+    ///
+    /// # See also
+    /// - [`Self::to_mjd_tt_exact`] — the astronomical standard
+    /// - [`Self::to_jd_tt_exact`] — Julian Date in TT
+    #[inline]
+    pub const fn to_mjd_utc_exact(self) -> (i64, TimeSpan) {
+        let utc = self.to_clock_type(ClockType::UTC);
+        let canon_attos = utc.to_canonical_attoseconds();
+
+        const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+
+        let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
+        let frac_attos = canon_attos.rem_euclid(ATTOS_PER_DAY);
+
+        let mjd_int = 40_587i64 + (days_since_1970 as i64);
+
+        (mjd_int, TimeSpan::from_total_attos(frac_attos))
     }
 
     /// Creates a `TimePoint` from an exact Julian Date in Terrestrial Time using full library precision.
@@ -507,24 +668,6 @@ impl TimePoint {
     #[inline]
     pub const fn from_mjd_tt_exact(mjd_days: i64, frac: TimeSpan) -> Self {
         Self::from_jd_tt_exact(mjd_days + 2_400_000, frac)
-    }
-}
-
-impl TimePoint {
-    /// TODO: SHOULDN'T USE TT?
-    /// Returns the Julian Date in UTC (computed on the TT scale and then expressed in UTC).
-    /// Non-exact Real.
-    #[inline]
-    pub const fn to_jd_utc(self) -> Real {
-        self.to_clock_type(ClockType::UTC).to_jd_tt()
-    }
-
-    /// TODO: SHOULDN'T USE TT?
-    /// Returns the Modified Julian Date in UTC (computed on the TT scale and then expressed in UTC).
-    /// Non-exact Real.
-    #[inline]
-    pub const fn to_mjd_utc(self) -> Real {
-        self.to_clock_type(ClockType::UTC).to_mjd_tt()
     }
 
     /// Creates a `TimePoint` (in TT) from a floating-point Mars Sol Date.
@@ -545,11 +688,21 @@ impl TimePoint {
         whole as Real + frac.as_sec_f() / MARS_SOL_LENGTH_SEC
     }
 
-    /// Returns the standard Julian Date in Terrestrial Time (TT) as a floating-point value.
+    /// Returns the **Julian Date (JD)** in **Terrestrial Time (TT)** as a
+    /// floating-point value (`Real = f64`).
     ///
-    /// By international convention J2000.0 TT corresponds to JD 2451545.0 exactly. The returned value
-    /// uses the highest precision possible with `Real`. For full attosecond accuracy use
-    /// [`Self::to_jd_tt_exact`].
+    /// This is the *astronomical standard* form (see [`Self::to_jd_tt_exact`]
+    /// for details). By convention **J2000.0 TT ≡ JD 2451545.0 exactly**.
+    ///
+    /// # Precision
+    /// Double-precision floating point (`f64`). Near the present the
+    /// fractional part has sub-microsecond accuracy; precision degrades
+    /// slowly for dates far in the past or future (as expected for `f64`).
+    ///
+    /// # See also
+    /// - [`Self::to_jd_tt_exact`] — full attosecond exact version
+    /// - [`Self::to_mjd_tt`] — Modified Julian Date in TT
+    /// - [`Self::to_jd_utc`] — civil/engineering form in UTC
     #[inline]
     pub const fn to_jd_tt(self) -> Real {
         let (jd_days, frac) = self.to_jd_tt_exact();
@@ -558,12 +711,87 @@ impl TimePoint {
         days_f + frac_days
     }
 
-    /// Returns the standard Modified Julian Date in Terrestrial Time (TT) as a floating-point value.
+    /// Returns the **Julian Date (JD)** in **UTC** as a floating-point value
+    /// (`Real = f64`).
     ///
-    /// J2000.0 TT corresponds to MJD 51544.5 exactly.
-    /// Non-exact Real.
+    /// This is the civil/operational form (see [`Self::to_jd_utc_exact`] for
+    /// details).
+    ///
+    /// # Precision
+    /// Double-precision floating point. Near the present the fractional part
+    /// has sub-microsecond accuracy.
+    ///
+    /// # See also
+    /// - [`Self::to_jd_utc_exact`] — full attosecond exact version
+    /// - [`Self::to_jd_tt`] — astronomical standard (TT)
+    #[inline]
+    pub const fn to_jd_utc(self) -> Real {
+        let (jd_int, frac) = self.to_jd_utc_exact();
+        let days_f = jd_int as Real;
+        let frac_days = frac.as_sec_f() / SEC_PER_DAY;
+        days_f + frac_days
+    }
+
+    /// Returns the **Modified Julian Date (MJD)** in **Terrestrial Time (TT)**
+    /// as a floating-point value (`Real = f64`).
+    ///
+    /// MJD is defined as `JD − 2_400_000.5`. The conventional astronomical
+    /// reference is **J2000.0 TT ≡ MJD 51544.5 exactly**.
+    ///
+    /// This is the *standard astronomical form* used by IAU/IERS ephemerides,
+    /// pulsar timing, planetary missions, and virtually all high-precision
+    /// astrodynamics software.
+    ///
+    /// The function internally uses the exact attosecond path
+    /// ([`Self::to_jd_tt_exact`]) before converting to `f64`, so it inherits
+    /// the library’s full correctness guarantees for leap seconds and relativistic
+    /// scales.
+    ///
+    /// # Precision
+    /// Double-precision floating point (`f64`). For dates near the present the
+    /// fractional part is accurate to better than 1 microsecond; precision
+    /// degrades slowly for dates far in the past or future (as expected for `f64`).
+    ///
+    /// # See also
+    /// - [`Self::to_mjd_tt_exact`] — full attosecond exact version
+    /// - [`Self::to_jd_tt`] — Julian Date in TT
+    /// - [`Self::to_mjd_utc`] — civil/engineering form in UTC
     #[inline]
     pub const fn to_mjd_tt(self) -> Real {
         self.to_jd_tt() - f!(2_400_000.5)
+    }
+
+    /// Returns the **Modified Julian Date (MJD)** in **UTC** as a floating-point
+    /// value (`Real = f64`).
+    ///
+    /// This is the *civil/operational/GNSS form* used by GNSS receivers, RINEX
+    /// files, flight software, and most Earth-based timing pipelines.
+    ///
+    /// The reference epoch is **1970-01-01 00:00:00 UTC ≡ MJD 40587.0 exactly**.
+    /// The function uses the library’s canonical UTC representation, so leap
+    /// seconds are handled correctly and the proleptic Gregorian civil second
+    /// count is respected.
+    ///
+    /// # Precision
+    /// Double-precision floating point (`f64`). Near the present the fractional
+    /// part has sub-microsecond accuracy.
+    ///
+    /// # Important distinction
+    /// - Use **`to_mjd_tt`** for astronomical work (ephemerides, pulsars,
+    ///   spacecraft navigation).
+    /// - Use **`to_mjd_utc`** for civil/operational/GNSS contexts.
+    ///
+    /// The two values differ by the accumulated leap seconds plus the fixed
+    /// 32.184 s TT–TAI offset.
+    ///
+    /// # See also
+    /// - [`Self::to_mjd_utc_exact`] — full attosecond exact version
+    /// - [`Self::to_mjd_tt`] — astronomical standard
+    #[inline]
+    pub const fn to_mjd_utc(self) -> Real {
+        let (mjd_int, frac) = self.to_mjd_utc_exact();
+        let days_f = mjd_int as Real;
+        let frac_days = frac.as_sec_f() / SEC_PER_DAY;
+        days_f + frac_days
     }
 }

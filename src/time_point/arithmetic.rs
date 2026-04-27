@@ -259,7 +259,7 @@ impl TimePoint {
     /// Adding a negative `TimeSpan` moves the time point backward in time.
     /// The `clock_type` is left unchanged. The operation saturates at the representable extremes
     /// (`i64::MIN` / `i64::MAX`) rather than wrapping.
-    pub fn mut_add(&mut self, span: &TimeSpan) {
+    pub const fn mut_add(&mut self, span: &TimeSpan) -> &mut Self {
         let mut sec = self.sec.saturating_add(span.sec);
         let mut subsec = self.subsec as i64 + span.subsec as i64;
 
@@ -290,6 +290,7 @@ impl TimePoint {
         } else {
             subsec as u64
         };
+        self
     }
 
     /// Mutably subtracts the given `TimeSpan` (positive or negative) from this `TimePoint` using saturating arithmetic.
@@ -297,7 +298,7 @@ impl TimePoint {
     /// Subtracting a negative `TimeSpan` moves the time point forward in time.
     /// The `clock_type` is left unchanged. The operation saturates at the representable extremes
     /// (`i64::MIN` / `i64::MAX`) rather than wrapping.
-    pub fn mut_sub(&mut self, span: &TimeSpan) {
+    pub const fn mut_sub(&mut self, span: &TimeSpan) -> &mut Self {
         let mut sec = self.sec.saturating_sub(span.sec);
         let mut subsec = self.subsec as i64 - span.subsec as i64;
 
@@ -328,6 +329,7 @@ impl TimePoint {
         } else {
             subsec as u64
         };
+        self
     }
 
     /// Advances this `TimePoint` by the given elapsed duration while applying the relativistic proper-time correction
