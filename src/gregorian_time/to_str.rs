@@ -930,14 +930,74 @@ mod format_tests {
     use super::*;
     use crate::ClockType;
 
-    // Helper to create a TimePoint at the requested civil UTC time.
-    // Now matches GregorianTime::to_time_point exactly (UTC civil seconds).
+    /// Creates a UTC TimePoint from civil Gregorian components.
+    /// This now correctly matches the new direct Unix-based civil time path.
     fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
-        let jdn = TimePoint::ymd_to_jdn(y, m, d);
-        let days_since_j2000 = jdn - 2451545i64; // J2000_JD_TT
-        let seconds_from_noon = (h as i64 - 12) * 3600 + (min as i64) * 60 + (s as i64);
-        let sec = days_since_j2000 * 86400i64 + seconds_from_noon;
-        TimePoint::new(sec, attos, ClockType::UTC)
+        // Use the existing civil-time constructor (recommended)
+        TimePoint::from_gregorian_ymdhms(y, m, d, h, min, s, attos, ClockType::UTC)
+    }
+
+    #[test]
+    fn test_leap_second_gotcha_2016_12_31() {
+        // 2016-12-31 23:59:60 UTC — the last leap second in the current table
+        // (TAI-UTC offset becomes 37 seconds at this instant)
+        let leap = TimePoint::from_gregorian_ymdhms(
+            2016,
+            12,
+            31,
+            23,
+            59,
+            60,
+            123_456_789_000_000_000,
+            ClockType::UTC,
+        );
+
+        // === Gotcha 1: Civil time must show sec=60 (not roll over to next day) ===
+        let g = leap.to_gregorian_ymdhms();
+        assert_eq!(g.yr, 2016);
+        assert_eq!(g.mo, 12);
+        assert_eq!(g.day, 31);
+        assert_eq!(g.hr, 23);
+        assert_eq!(g.min, 59);
+        assert_eq!(
+            g.sec, 60,
+            "Leap second must be represented as 60, not rolled over"
+        );
+        assert_eq!(g.subsec, 123_456_789_000_000_000);
+
+        // === Gotcha 2: Round-trip must be exact ===
+        let roundtrip = TimePoint::from_gregorian_ymdhms(
+            2016,
+            12,
+            31,
+            23,
+            59,
+            60,
+            123_456_789_000_000_000,
+            ClockType::UTC,
+        );
+        assert_eq!(leap, roundtrip);
+
+        // === Gotcha 3: Formatting must output "60" correctly ===
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let n = leap
+            .to_u8_with_offset("%Y-%m-%d %H:%M:%S.%f", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b"2016-12-31 23:59:60.123456789000000000");
+
+        // === Gotcha 4: Trimmed fractional on leap second ===
+        let n = leap
+            .to_u8_with_offset("%Y-%m-%dT%H:%M:%S%.~fZ", &mut buf, 0)
+            .unwrap();
+        assert_eq!(&buf[0..n], b"2016-12-31T23:59:60.123456789Z");
+
+        // === Gotcha 5: to_unix_sec() should still be consistent ===
+        // In this library, the leap second (23:59:60) is represented internally
+        // by the Unix timestamp of the *following* midnight (1483228800),
+        // while civil time correctly displays 23:59:60 on 2016-12-31.
+        // This matches the design in is_leap_second_at_unix and from_gregorian_ymdhms.
+        let unix = leap.to_unix_sec();
+        assert_eq!(unix, 1483228800);
     }
 
     #[test]

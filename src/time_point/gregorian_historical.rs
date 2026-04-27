@@ -99,7 +99,8 @@ impl TimePoint {
     /// - The returned `TimePoint` has `clock_type == ClockType::UTC`.
     pub const fn to_historical_utc(&self) -> Self {
         let utc_naive = self.to_tai().to_clock_type(ClockType::UTC);
-        let (yr, mo, day) = utc_naive.to_gregorian_ymd(None);
+        let g = utc_naive.to_gregorian_ymdhms();
+        let (yr, mo, day) = (g.yr, g.mo, g.day);
 
         if let Some(offset) = historical_tai_minus_utc_offset(yr as i32, mo, day) {
             utc_naive
@@ -200,10 +201,8 @@ impl TimePoint {
     pub const fn to_spice_utc(&self) -> Self {
         let tai = self.to_tai();
         let utc_naive = tai.to_clock_type(ClockType::UTC);
-
-        let (yr, _, _) = utc_naive.to_gregorian_ymd(None);
-
-        if yr < 1972 {
+        let g = utc_naive.to_gregorian_ymdhms();
+        if g.yr < 1972 {
             utc_naive
                 .sub(TimeSpan::from_sec_f(f!(9.0)))
                 .with_clock_type(ClockType::UTC)

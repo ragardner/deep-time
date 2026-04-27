@@ -203,20 +203,6 @@ impl TimePoint {
             .with_clock_type(ClockType::UTC)
     }
 
-    // const fn tdb_minus_tt(tt: Self) -> TimeSpan {
-    //     let seconds_since_j2000_tt =
-    //         (tt.sec as Real) + (tt.subsec as Real) / (ATTOSEC_PER_SEC as Real);
-
-    //     let t = seconds_since_j2000_tt / J2000_SECONDS_PER_CENTURY;
-
-    //     let g = f!(2.0) * core::f64::consts::PI * (f!(357.528) + f!(35_999.050) * t) / f!(360.0);
-    //     let sin_g = sin_approx(g + f!(0.0167) * sin_approx(g));
-    //     let sin_2g = sin_approx(f!(2.0) * g);
-    //     let correction = f!(0.001658) * sin_g + f!(0.000022) * sin_2g;
-
-    //     TimeSpan::from_sec_f(correction)
-    // }
-
     /// Computes the difference TDB − TT (in seconds) using the four dominant
     /// periodic terms from the Fairhead & Bretagnon (1990) analytical series,
     /// as extracted from the SOFA/ERFA library (`eraDtdb`).

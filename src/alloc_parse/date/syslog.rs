@@ -33,7 +33,8 @@ pub(crate) fn parse_syslog_no_year(
         }
     };
 
-    let (this_year, _, _) = now.to_gregorian_ymd(None);
+    let g = now.to_gregorian_ymdhms();
+    let this_year = g.yr;
 
     let try_with_year = |year: i64| -> Option<TimePoint> {
         let s = alloc::format!("{} {}", year, input);

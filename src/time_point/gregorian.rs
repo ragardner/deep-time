@@ -1,30 +1,57 @@
 use crate::{
-    ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockType, GregorianTime, SEC_PER_DAYI128,
-    TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan, Weekday, leap_seconds::leap_seconds_before,
+    ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockType, GregorianTime, SEC_PER_DAYI64, TimePoint,
+    TimeSpan, Weekday,
 };
 
+/// Combined Gregorian date + wall time with subsecond precision.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct GregorianYmdHms {
+    pub yr: i64,
+    pub mo: u8,
+    pub day: u8,
+    pub hr: u8,
+    pub min: u8,
+    pub sec: u8,     // 0–60 (60 only during leap seconds)
+    pub subsec: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
+}
+
 impl TimePoint {
+    /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
+    /// to a proleptic Gregorian date (year, month, day).
+    #[inline]
+    pub const fn unix_sec_to_gregorian_ymd(unix_sec: i64) -> (i64, u8, u8) {
+        let days_since_1970 = unix_sec.div_euclid(SEC_PER_DAYI64);
+        // 1970-01-01 00:00:00 UTC is JD 2440588.0
+        let jdn = days_since_1970 + 2440588;
+        Self::jdn_to_ymd(jdn)
+    }
+
     pub const fn to_gregorian_time(self) -> GregorianTime {
         let clock_type = self.clock_type;
-        let utc = self.to_clock_type(ClockType::UTC);
+
+        // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
+        let ymdhms = self.to_gregorian_ymdhms();
         let unix_attosec = self.to_canonical_attoseconds();
-        let (jd_days, frac) = utc.to_jd_tt_exact();
-        let (yr, mo, day) = utc.to_gregorian_ymd(Some((jd_days, frac)));
-        let (hr, min, sec, attos) = utc.to_hms_subsec();
-        let (iso_yr, iso_wk, iso_wkday) = utc.to_iso_week_date(Some((yr, mo, day)));
-        let day_of_yr = utc.day_of_year(Some((yr, mo, day)));
-        let wkday = utc.weekday(Some((jd_days, frac)));
-        let wk_of_yr_sun = utc.wk_sun(Some((yr, mo, day)), Some(day_of_yr));
-        let wk_of_yr_mon = utc.wk_mon(Some((yr, mo, day)), Some(day_of_yr));
+
+        // Still needed for weekday, wk_sun, wk_mon, and the jd_tt_exact field
+        let (jd_days, frac) = self.to_jd_tt_exact();
+
+        let (iso_yr, iso_wk, iso_wkday) =
+            self.to_iso_week_date(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
+        let day_of_yr = self.day_of_year(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
+        let wkday = self.weekday(Some((jd_days, frac)));
+        let wk_of_yr_sun = self.wk_sun(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
+        let wk_of_yr_mon = self.wk_mon(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
+
         GregorianTime {
             unix_attosec,
-            yr,
-            mo,
-            day,
-            hr,
-            min,
-            sec,
-            attos,
+            yr: ymdhms.yr,
+            mo: ymdhms.mo,
+            day: ymdhms.day,
+            hr: ymdhms.hr,
+            min: ymdhms.min,
+            sec: ymdhms.sec,
+            attos: ymdhms.subsec,
             iso_yr,
             iso_wk,
             iso_wkday,
@@ -36,108 +63,103 @@ impl TimePoint {
             offset_sec: None,
             tz: None,
             tz_abbrev: None,
-            clock_type: clock_type,
+            clock_type,
         }
     }
 
-    pub const fn to_gregorian_ymd(self, jd_tt_exact: Option<(i64, TimeSpan)>) -> (i64, u8, u8) {
-        let (jd_days, frac) = if let Some(jd_tt_exact) = jd_tt_exact {
-            jd_tt_exact
-        } else {
-            self.to_jd_tt_exact()
-        };
-        let jdn = match self.clock_type {
-            ClockType::UTC => {
-                let tai = self.to_tai();
-                let leaps = leap_seconds_before(tai);
-                let offset_attos =
-                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_SPAN.total_attos();
-
-                let mut utc_frac_attos = frac.total_attos() as i128 - offset_attos;
-                let day_attos = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
-                let mut utc_jd_days = jd_days;
-
-                if utc_frac_attos < 0 {
-                    utc_frac_attos += day_attos;
-                    utc_jd_days -= 1;
-                } else if utc_frac_attos >= day_attos {
-                    utc_frac_attos -= day_attos;
-                    utc_jd_days += 1;
-                }
-
-                let seconds_since_noon = (utc_frac_attos / ATTOSEC_PER_SEC_I128) as i64;
-                if seconds_since_noon >= 43200 {
-                    utc_jd_days + 1
-                } else {
-                    utc_jd_days
-                }
-            }
-            _ => {
-                if frac.sec >= 43200 {
-                    jd_days + 1
-                } else {
-                    jd_days
-                }
-            }
-        };
-
-        Self::jdn_to_ymd(jdn)
+    /// Stripped down version of `TimePoint::to_gregorian_time`.
+    ///
+    /// Returns the Gregorian date and wall time for this instant.
+    ///
+    /// - For `ClockType::UTC`: Uses a direct Unix-timestamp-based path (fast and clean).
+    /// - For all other clock types: Uses the standard TT-based JD path.
+    #[inline(always)]
+    pub const fn to_gregorian_ymdhms(self) -> GregorianYmdHms {
+        match self.clock_type {
+            ClockType::UTC => self.to_gregorian_ymdhms_utc(),
+            _ => self.to_gregorian_ymdhms_non_utc(),
+        }
     }
 
-    pub const fn to_hms_subsec(self) -> (u8, u8, u8, u64) {
-        match self.clock_type {
-            ClockType::UTC => {
-                let tai = self.to_tai();
-                let leaps = leap_seconds_before(tai);
-                let offset_attos =
-                    (leaps as i128) * ATTOSEC_PER_SEC_I128 + TT_TAI_OFFSET_SPAN.total_attos();
+    /// Direct UTC civil time path (no TT/JD conversion).
+    /// Correctly handles leap seconds (23:59:60 stays on the correct day).
+    const fn to_gregorian_ymdhms_utc(self) -> GregorianYmdHms {
+        let unix_sec = self.to_unix_sec();
+        let canon = self.to_canonical_attoseconds();
+        let subsec = (canon.rem_euclid(ATTOSEC_PER_SEC_I128)) as u64;
 
-                let (_, frac) = self.to_jd_tt_exact();
-                let mut utc_frac_attos = frac.total_attos() as i128 - offset_attos;
+        let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAYI64);
+        let is_leap_second = Self::is_leap_second_at_unix(unix_sec);
 
-                // Normalize to [0, one day) — this is still "seconds since noon"
-                let day_attos = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
-                if utc_frac_attos < 0 {
-                    utc_frac_attos += day_attos;
-                } else if utc_frac_attos >= day_attos {
-                    utc_frac_attos -= day_attos;
-                }
+        let unix_sec_for_date = if is_leap_second {
+            unix_sec - 1
+        } else {
+            unix_sec
+        };
 
-                let seconds_since_noon = (utc_frac_attos / ATTOSEC_PER_SEC_I128) as i64;
-                let subsec = (utc_frac_attos % ATTOSEC_PER_SEC_I128) as u64;
+        let (yr, mo, day) = Self::unix_sec_to_gregorian_ymd(unix_sec_for_date);
 
-                // Convert "seconds since noon" → "seconds since midnight" (same logic as non-UTC path)
-                let seconds_since_midnight = if seconds_since_noon >= 43200 {
-                    seconds_since_noon - 43200
-                } else {
-                    seconds_since_noon + 43200
-                };
-
-                if seconds_since_midnight == 86400 {
-                    // Leap second case
-                    (23, 59, 60, subsec)
-                } else {
-                    let hour = (seconds_since_midnight / 3600) as u8;
-                    let minute = ((seconds_since_midnight % 3600) / 60) as u8;
-                    let second = (seconds_since_midnight % 60) as u8;
-                    (hour, minute, second, subsec)
-                }
+        if is_leap_second {
+            GregorianYmdHms {
+                yr,
+                mo,
+                day,
+                hr: 23,
+                min: 59,
+                sec: 60,
+                subsec,
             }
-            _ => {
-                // All other scales (including TT, TAI, TDB, TCG, etc.) use the standard
-                // TT-based JD machinery for time-of-day.
-                let tt = self.to_clock_type(ClockType::TT);
-                let (_, frac) = tt.to_jd_tt_exact();
-                let seconds_since_midnight = if frac.sec >= 43200 {
-                    frac.sec - 43200
-                } else {
-                    frac.sec + 43200
-                };
-                let hour = (seconds_since_midnight / 3600) as u8;
-                let minute = ((seconds_since_midnight % 3600) / 60) as u8;
-                let second = (seconds_since_midnight % 60) as u8;
-                (hour, minute, second, frac.subsec)
+        } else {
+            let hr = (seconds_since_midnight / 3600) as u8;
+            let min = ((seconds_since_midnight % 3600) / 60) as u8;
+            let sec = (seconds_since_midnight % 60) as u8;
+
+            GregorianYmdHms {
+                yr,
+                mo,
+                day,
+                hr,
+                min,
+                sec,
+                subsec,
             }
+        }
+    }
+
+    /// Non-UTC path (uses the existing TT-based JD machinery)
+    const fn to_gregorian_ymdhms_non_utc(self) -> GregorianYmdHms {
+        let (jd_days, frac) = self.to_jd_tt_exact();
+
+        // Date
+        let jdn = if frac.sec >= 43200 {
+            jd_days + 1
+        } else {
+            jd_days
+        };
+        let (yr, mo, day) = Self::jdn_to_ymd(jdn);
+
+        // Time
+        let tt = self.to_clock_type(ClockType::TT);
+        let (_, tt_frac) = tt.to_jd_tt_exact();
+
+        let seconds_since_midnight = if tt_frac.sec >= 43200 {
+            tt_frac.sec - 43200
+        } else {
+            tt_frac.sec + 43200
+        };
+
+        let hr = (seconds_since_midnight / 3600) as u8;
+        let min = ((seconds_since_midnight % 3600) / 60) as u8;
+        let sec = (seconds_since_midnight % 60) as u8;
+
+        GregorianYmdHms {
+            yr,
+            mo,
+            day,
+            hr,
+            min,
+            sec,
+            subsec: tt_frac.subsec,
         }
     }
 
@@ -343,7 +365,8 @@ impl TimePoint {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
-            self.to_gregorian_ymd(None)
+            let g = self.to_gregorian_ymdhms();
+            (g.yr, g.mo, g.day)
         };
         let jdn = Self::ymd_to_jdn(year, month, day);
         let jdn_jan1 = Self::ymd_to_jdn(year, 1, 1);
@@ -363,7 +386,8 @@ impl TimePoint {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
-            self.to_gregorian_ymd(None)
+            let g = self.to_gregorian_ymdhms();
+            (g.yr, g.mo, g.day)
         };
         let doy = if let Some(doy) = doy {
             doy
@@ -394,7 +418,8 @@ impl TimePoint {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
-            self.to_gregorian_ymd(None)
+            let g = self.to_gregorian_ymdhms();
+            (g.yr, g.mo, g.day)
         };
         let doy = if let Some(doy) = doy {
             doy
@@ -431,7 +456,8 @@ impl TimePoint {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
-            self.to_gregorian_ymd(None)
+            let g = self.to_gregorian_ymdhms();
+            (g.yr, g.mo, g.day)
         };
         let jdn = Self::ymd_to_jdn(year, month, day);
         let wd = Self::jdn_to_weekday(jdn);
@@ -529,11 +555,98 @@ impl TimePoint {
         let extra_sec = (attos / ATTOSEC_PER_SEC) as i64;
         let final_attos = attos % ATTOSEC_PER_SEC;
 
-        let total_day_sec = (h as i64) * 3600 + (m as i64) * 60 + (s as i64) + extra_sec;
+        // Special handling for leap second (sec == 60)
+        // Use 59 + 1 second carry so the timestamp lands correctly
+        let (civil_sec, leap_carry) = if s == 60 { (59u8, 1i64) } else { (s, 0i64) };
+
+        let total_day_sec =
+            (h as i64) * 3600 + (m as i64) * 60 + civil_sec as i64 + extra_sec + leap_carry;
+
         let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, 0, 0, 0) + total_day_sec;
 
         let base = Self::from_unix_sec(unix_sec);
         base.add(TimeSpan::from_total_attos(final_attos as i128))
             .to_clock_type(clock_type)
     }
+
+    /// Returns true if the given Unix timestamp corresponds to a leap second instant.
+    /// In this library the leap second (23:59:60) is represented by the *following*
+    /// midnight in the POSIX/Unix count (because leap seconds are not inserted into
+    /// the civil second count).  The IANA table entry for that midnight is what we
+    /// match.
+    #[inline]
+    pub(crate) const fn is_leap_second_at_unix(unix_sec: i64) -> bool {
+        let tod = unix_sec.rem_euclid(SEC_PER_DAYI64);
+        if tod != 0 {
+            return false;
+        }
+
+        const UNIX_TO_NTP: i64 = 2_208_988_800;
+        let ntp = unix_sec + UNIX_TO_NTP;
+
+        let mut i = 0usize;
+        while i < crate::leap_seconds::LEAP_SECONDS.len() {
+            if ntp == crate::leap_seconds::LEAP_SECONDS[i].0 {
+                return true;
+            }
+            i += 1;
+        }
+        false
+    }
+}
+
+#[test]
+fn test_leap_second_gotcha_1972_06_30() {
+    let leap = TimePoint::from_gregorian_ymdhms(1972, 6, 30, 23, 59, 60, 0, ClockType::UTC);
+    let g = leap.to_gregorian_ymdhms();
+    assert_eq!(g.sec, 60);
+    assert_eq!(g.day, 30);
+}
+
+#[test]
+fn test_leap_second_roundtrip_2015_06_30() {
+    // A leap second from the middle of the table (36 leap seconds accumulated)
+    let original = TimePoint::from_gregorian_ymdhms(
+        2015,
+        6,
+        30,
+        23,
+        59,
+        60,
+        123_456_789_000_000_000,
+        ClockType::UTC,
+    );
+
+    // === Round-trip through canonical attoseconds ===
+    let canon = original.to_canonical_attoseconds();
+    let roundtrip1 = TimePoint::from_canonical_attoseconds(canon, ClockType::UTC);
+
+    assert_eq!(original, roundtrip1, "Canonical round-trip failed");
+
+    // === Multiple Gregorian round-trips ===
+    let mut current = original;
+    for i in 0..5 {
+        let g = current.to_gregorian_ymdhms();
+        assert_eq!(g.sec, 60, "Leap second lost on iteration {}", i);
+        assert_eq!(g.day, 30);
+        assert_eq!(g.mo, 6);
+        assert_eq!(g.yr, 2015);
+
+        current = TimePoint::from_gregorian_ymdhms(
+            g.yr,
+            g.mo,
+            g.day,
+            g.hr,
+            g.min,
+            g.sec,
+            g.subsec,
+            ClockType::UTC,
+        );
+    }
+    assert_eq!(original, current, "Multiple Gregorian round-trips failed");
+
+    // Final sanity check via to_gregorian_time
+    let gt = original.to_gregorian_time();
+    assert_eq!(gt.sec(), 60);
+    assert_eq!(gt.day(), 30);
 }

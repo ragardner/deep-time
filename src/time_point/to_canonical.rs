@@ -45,7 +45,11 @@ impl TimePoint {
     /// Returns this instant as **seconds** since the POSIX Unix epoch (UTC).
     #[inline]
     pub const fn to_unix_sec(self) -> i64 {
-        (self.to_canonical_attoseconds() / ATTOSEC_PER_SEC_I128) as i64
+        let canon = self.to_canonical_attoseconds();
+        let div = ATTOSEC_PER_SEC_I128;
+        let q = canon / div;
+        let r = canon % div;
+        if r >= 0 { q as i64 } else { (q - 1) as i64 }
     }
 
     /// Returns this instant as **milliseconds** since the POSIX Unix epoch
@@ -73,7 +77,11 @@ impl TimePoint {
 
     #[inline]
     pub const fn to_gps_sec(self) -> i64 {
-        (self.to_canonical_attoseconds() / ATTOSEC_PER_SEC_I128) as i64
+        let canon = self.to_canonical_attoseconds();
+        let div = ATTOSEC_PER_SEC_I128;
+        let q = canon / div;
+        let r = canon % div;
+        if r >= 0 { q as i64 } else { (q - 1) as i64 }
     }
 
     #[inline]
@@ -95,7 +103,11 @@ impl TimePoint {
 
     #[inline]
     pub const fn to_galileo_sec(self) -> i64 {
-        (self.to_canonical_attoseconds() / ATTOSEC_PER_SEC_I128) as i64
+        let canon = self.to_canonical_attoseconds();
+        let div = ATTOSEC_PER_SEC_I128;
+        let q = canon / div;
+        let r = canon % div;
+        if r >= 0 { q as i64 } else { (q - 1) as i64 }
     }
 
     #[inline]
@@ -117,7 +129,11 @@ impl TimePoint {
 
     #[inline]
     pub const fn to_beidou_sec(self) -> i64 {
-        (self.to_canonical_attoseconds() / ATTOSEC_PER_SEC_I128) as i64
+        let canon = self.to_canonical_attoseconds();
+        let div = ATTOSEC_PER_SEC_I128;
+        let q = canon / div;
+        let r = canon % div;
+        if r >= 0 { q as i64 } else { (q - 1) as i64 }
     }
 
     #[inline]
@@ -138,11 +154,7 @@ impl TimePoint {
     /// Converts a proleptic Gregorian calendar date+time to a Unix timestamp
     /// (seconds since 1970-01-01 00:00:00 UTC).
     ///
-    /// - `year` can be any i64 (negative years = BC, positive = AD).
-    /// - `month` 1-12, `day` 1-31, `hour` 0-23, `minute` 0-59, `second` 0-60.
-    /// - No validation is performed (assumes the caller passes a valid civil date).
-    /// - Works for the full practical i64 range (±292 billion years) with no overflow.
-    /// - Pure Rust, no dependencies, no_std compatible.
+    /// This version is correct for the full i64 range, including negative years.
     #[inline]
     pub const fn ymdhms_to_unix_timestamp(
         year: i64,
@@ -152,22 +164,13 @@ impl TimePoint {
         minute: u8,
         second: u8,
     ) -> i64 {
-        let mut y = year;
-        let mut m = month as i64;
+        let jdn = Self::ymd_to_jdn(year, month, day);
 
-        // January and February are counted as months 13 and 14 of the previous year
-        if m <= 2 {
-            y -= 1;
-            m += 12;
-        }
+        // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
+        let days_since_1970 = jdn - 2440588;
 
-        // Days since 1970-01-01 (proleptic Gregorian)
-        let days =
-            y * 365 + y / 4 - y / 100 + y / 400 + (m * 153 - 457) / 5 + (day as i64) - 719469;
-
-        // Seconds in the day
         let time_of_day = (hour as i64) * 3600 + (minute as i64) * 60 + (second as i64);
 
-        days * SEC_PER_DAYI64 + time_of_day
+        days_since_1970 * SEC_PER_DAYI64 + time_of_day
     }
 }
