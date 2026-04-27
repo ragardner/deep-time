@@ -42,7 +42,7 @@ impl TimePoint {
     ///
     /// This is the mutable counterpart to [`Self::with_clock_type`] and remains zero-cost.
     #[inline]
-    pub const fn set_clock_type(&mut self, clock_type: ClockType) -> &Self {
+    pub(crate) const fn set_clock_type(&mut self, clock_type: ClockType) -> &Self {
         self.clock_type = clock_type;
         self
     }

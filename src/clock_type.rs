@@ -1,5 +1,3 @@
-// Full updated content for /home/workdir/attachments/clock_type.rs
-
 //! # Time scales and reference epochs — the heart of the library
 //!
 //! This crate provides a **single `TimePoint` type** that can represent an
