@@ -10,105 +10,133 @@ impl TimePoint {
         self.sec as Real + (self.subsec as Real) / (ATTOSEC_PER_SEC as Real)
     }
 
-    /// Performs an overflowing addition of the given `TimeSpan` to this `TimePoint`.
+    /// Performs an exact addition of any `TimeSpan` (positive or negative) to this `TimePoint`.
     ///
-    /// The resulting `TimePoint` retains the original [`ClockType`] of `self`. Overflow wraps around according to two's-complement rules for the seconds component.
+    /// Adding a negative `TimeSpan` moves the time point backward in time.
+    /// The resulting `TimePoint` retains the original [`ClockType`].
+    /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
+    #[inline]
     pub const fn add(self, span: TimeSpan) -> Self {
         let mut sec = self.sec + span.sec;
-        let mut subsec = self.subsec + span.subsec;
+        let mut subsec = self.subsec as i64 + span.subsec as i64;
 
-        if subsec >= ATTOSEC_PER_SEC {
+        if subsec >= ATTOSEC_PER_SEC as i64 {
             sec += 1;
-            subsec -= ATTOSEC_PER_SEC;
+            subsec -= ATTOSEC_PER_SEC as i64;
+        } else if subsec < 0 {
+            sec -= 1;
+            subsec += ATTOSEC_PER_SEC as i64;
         }
 
         Self {
             sec,
-            subsec,
+            subsec: subsec as u64,
             clock_type: self.clock_type,
         }
     }
 
-    /// Performs an overflowing addition of the given `TimeSpan` (by reference) to this `TimePoint`.
+    /// Performs an exact addition of any `TimeSpan` (by reference, positive or negative) to this `TimePoint`.
     ///
-    /// The resulting `TimePoint` retains the original [`ClockType`] of `self`.
+    /// Adding a negative `TimeSpan` moves the time point backward in time.
+    /// The resulting `TimePoint` retains the original [`ClockType`].
+    /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
+    #[inline]
     pub const fn add_ref(self, span: &TimeSpan) -> Self {
         let mut sec = self.sec + span.sec;
-        let mut subsec = self.subsec + span.subsec;
+        let mut subsec = self.subsec as i64 + span.subsec as i64;
 
-        if subsec >= ATTOSEC_PER_SEC {
+        if subsec >= ATTOSEC_PER_SEC as i64 {
             sec += 1;
-            subsec -= ATTOSEC_PER_SEC;
+            subsec -= ATTOSEC_PER_SEC as i64;
+        } else if subsec < 0 {
+            sec -= 1;
+            subsec += ATTOSEC_PER_SEC as i64;
         }
 
         Self {
             sec,
-            subsec,
+            subsec: subsec as u64,
             clock_type: self.clock_type,
         }
     }
 
-    /// Performs an overflowing subtraction of the given `TimeSpan` from this `TimePoint`.
+    /// Performs an exact subtraction of any `TimeSpan` (positive or negative) from this `TimePoint`.
     ///
-    /// The resulting `TimePoint` retains the original [`ClockType`] of `self`.
+    /// Subtracting a negative `TimeSpan` moves the time point forward in time.
+    /// The resulting `TimePoint` retains the original [`ClockType`].
+    /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
+    #[inline]
     pub const fn sub(self, span: TimeSpan) -> Self {
         let mut sec = self.sec - span.sec;
-        let mut subsec = self.subsec;
+        let mut subsec = self.subsec as i64 - span.subsec as i64;
 
-        if subsec >= span.subsec {
-            subsec -= span.subsec;
-        } else {
+        if subsec < 0 {
             sec -= 1;
-            subsec += ATTOSEC_PER_SEC - span.subsec;
+            subsec += ATTOSEC_PER_SEC as i64;
+        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            sec += 1;
+            subsec -= ATTOSEC_PER_SEC as i64;
         }
 
         Self {
             sec,
-            subsec,
+            subsec: subsec as u64,
             clock_type: self.clock_type,
         }
     }
 
-    /// Performs an overflowing subtraction of the given `TimeSpan` (by reference) from this `TimePoint`.
+    /// Performs an exact subtraction of any `TimeSpan` (by reference, positive or negative) from this `TimePoint`.
     ///
-    /// The resulting `TimePoint` retains the original [`ClockType`] of `self`.
+    /// Subtracting a negative `TimeSpan` moves the time point forward in time.
+    /// The resulting `TimePoint` retains the original [`ClockType`].
+    /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
+    #[inline]
     pub const fn sub_ref(self, span: &TimeSpan) -> Self {
         let mut sec = self.sec - span.sec;
-        let mut subsec = self.subsec;
+        let mut subsec = self.subsec as i64 - span.subsec as i64;
 
-        if subsec >= span.subsec {
-            subsec -= span.subsec;
-        } else {
+        if subsec < 0 {
             sec -= 1;
-            subsec += ATTOSEC_PER_SEC - span.subsec;
+            subsec += ATTOSEC_PER_SEC as i64;
+        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            sec += 1;
+            subsec -= ATTOSEC_PER_SEC as i64;
         }
 
         Self {
             sec,
-            subsec,
+            subsec: subsec as u64,
             clock_type: self.clock_type,
         }
     }
 
-    /// Performs a saturating addition of the given `TimeSpan` to this `TimePoint`.
+    /// Performs a saturating addition of any `TimeSpan` (positive or negative) to this `TimePoint`.
     ///
-    /// The resulting `TimePoint` retains the original [`ClockType`] of `self` and saturates at the representable extremes rather than wrapping.
+    /// Adding a negative `TimeSpan` moves the time point backward in time.
+    /// The resulting `TimePoint` retains the original [`ClockType`] and saturates at the
+    /// representable extremes (`i64::MIN` / `i64::MAX`) rather than wrapping.
     pub const fn saturating_add(self, span: TimeSpan) -> Self {
-        let mut subsec = self.subsec + span.subsec;
-        let mut carry = 0i64;
-        if subsec >= ATTOSEC_PER_SEC {
-            subsec -= ATTOSEC_PER_SEC;
-            carry = 1;
-        }
+        let mut sec = self.sec.saturating_add(span.sec);
+        let mut subsec = self.subsec as i64 + span.subsec as i64;
 
-        let sec = self.sec.saturating_add(span.sec).saturating_add(carry);
+        if subsec >= ATTOSEC_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            subsec -= ATTOSEC_PER_SEC as i64;
+        } else if subsec < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            subsec += ATTOSEC_PER_SEC as i64;
+        }
 
         let subsec = if sec == i64::MAX {
             ATTOSEC_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
-            subsec
+            subsec as u64
         };
 
         Self {
@@ -118,25 +146,33 @@ impl TimePoint {
         }
     }
 
-    /// Performs a saturating addition of the given `TimeSpan` (by reference) to this `TimePoint`.
+    /// Performs a saturating addition of any `TimeSpan` (by reference, positive or negative) to this `TimePoint`.
     ///
-    /// The resulting `TimePoint` retains the original [`ClockType`] of `self` and saturates at the representable extremes rather than wrapping.
+    /// Adding a negative `TimeSpan` moves the time point backward in time.
+    /// The resulting `TimePoint` retains the original [`ClockType`] and saturates at the
+    /// representable extremes (`i64::MIN` / `i64::MAX`) rather than wrapping.
     pub const fn saturating_add_ref(self, span: &TimeSpan) -> Self {
-        let mut subsec = self.subsec + span.subsec;
-        let mut carry = 0i64;
-        if subsec >= ATTOSEC_PER_SEC {
-            subsec -= ATTOSEC_PER_SEC;
-            carry = 1;
-        }
+        let mut sec = self.sec.saturating_add(span.sec);
+        let mut subsec = self.subsec as i64 + span.subsec as i64;
 
-        let sec = self.sec.saturating_add(span.sec).saturating_add(carry);
+        if subsec >= ATTOSEC_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            subsec -= ATTOSEC_PER_SEC as i64;
+        } else if subsec < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            subsec += ATTOSEC_PER_SEC as i64;
+        }
 
         let subsec = if sec == i64::MAX {
             ATTOSEC_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
-            subsec
+            subsec as u64
         };
 
         Self {
@@ -146,27 +182,33 @@ impl TimePoint {
         }
     }
 
-    /// Performs a saturating subtraction of the given `TimeSpan` from this `TimePoint`.
+    /// Performs a saturating subtraction of any `TimeSpan` (positive or negative) from this `TimePoint`.
     ///
-    /// The resulting `TimePoint` retains the original [`ClockType`] of `self` and saturates at the representable extremes rather than wrapping.
+    /// Subtracting a negative `TimeSpan` moves the time point forward in time.
+    /// The resulting `TimePoint` retains the original [`ClockType`] and saturates at the
+    /// representable extremes (`i64::MIN` / `i64::MAX`) rather than wrapping.
     pub const fn saturating_sub(self, span: TimeSpan) -> Self {
-        let mut subsec = self.subsec;
-        let mut borrow = 0i64;
-        if subsec >= span.subsec {
-            subsec -= span.subsec;
-        } else {
-            subsec += ATTOSEC_PER_SEC - span.subsec;
-            borrow = 1;
-        }
+        let mut sec = self.sec.saturating_sub(span.sec);
+        let mut subsec = self.subsec as i64 - span.subsec as i64;
 
-        let sec = self.sec.saturating_sub(span.sec).saturating_sub(borrow);
+        if subsec < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            subsec += ATTOSEC_PER_SEC as i64;
+        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            subsec -= ATTOSEC_PER_SEC as i64;
+        }
 
         let subsec = if sec == i64::MAX {
             ATTOSEC_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
-            subsec
+            subsec as u64
         };
 
         Self {
@@ -176,27 +218,33 @@ impl TimePoint {
         }
     }
 
-    /// Performs a saturating subtraction of the given `TimeSpan` (by reference) from this `TimePoint`.
+    /// Performs a saturating subtraction of any `TimeSpan` (by reference, positive or negative) from this `TimePoint`.
     ///
-    /// The resulting `TimePoint` retains the original [`ClockType`] of `self` and saturates at the representable extremes rather than wrapping.
+    /// Subtracting a negative `TimeSpan` moves the time point forward in time.
+    /// The resulting `TimePoint` retains the original [`ClockType`] and saturates at the
+    /// representable extremes (`i64::MIN` / `i64::MAX`) rather than wrapping.
     pub const fn saturating_sub_ref(self, span: &TimeSpan) -> Self {
-        let mut subsec = self.subsec;
-        let mut borrow = 0i64;
-        if subsec >= span.subsec {
-            subsec -= span.subsec;
-        } else {
-            subsec += ATTOSEC_PER_SEC - span.subsec;
-            borrow = 1;
-        }
+        let mut sec = self.sec.saturating_sub(span.sec);
+        let mut subsec = self.subsec as i64 - span.subsec as i64;
 
-        let sec = self.sec.saturating_sub(span.sec).saturating_sub(borrow);
+        if subsec < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            subsec += ATTOSEC_PER_SEC as i64;
+        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            subsec -= ATTOSEC_PER_SEC as i64;
+        }
 
         let subsec = if sec == i64::MAX {
             ATTOSEC_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
-            subsec
+            subsec as u64
         };
 
         Self {
@@ -206,51 +254,79 @@ impl TimePoint {
         }
     }
 
-    /// Mutably adds the given `TimeSpan` to this `TimePoint` using saturating arithmetic.
+    /// Mutably adds the given `TimeSpan` (positive or negative) to this `TimePoint` using saturating arithmetic.
     ///
-    /// The `clock_type` is left unchanged. The operation saturates at the representable extremes.
+    /// Adding a negative `TimeSpan` moves the time point backward in time.
+    /// The `clock_type` is left unchanged. The operation saturates at the representable extremes
+    /// (`i64::MIN` / `i64::MAX`) rather than wrapping.
     pub fn mut_add(&mut self, span: &TimeSpan) {
-        let mut subsec = self.subsec + span.subsec;
-        let mut carry = 0i64;
-        if subsec >= ATTOSEC_PER_SEC {
-            subsec -= ATTOSEC_PER_SEC;
-            carry = 1;
+        let mut sec = self.sec.saturating_add(span.sec);
+        let mut subsec = self.subsec as i64 + span.subsec as i64;
+
+        if subsec >= ATTOSEC_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            subsec -= ATTOSEC_PER_SEC as i64;
+        } else if subsec < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            subsec += ATTOSEC_PER_SEC as i64;
         }
 
-        let sec = self.sec.saturating_add(span.sec).saturating_add(carry);
-
-        self.sec = sec;
-        self.subsec = if sec == i64::MAX {
-            ATTOSEC_PER_SEC - 1
+        self.sec = if sec == i64::MAX {
+            i64::MAX
         } else if sec == i64::MIN {
+            i64::MIN
+        } else {
+            sec
+        };
+
+        self.subsec = if self.sec == i64::MAX {
+            ATTOSEC_PER_SEC - 1
+        } else if self.sec == i64::MIN {
             0
         } else {
-            subsec
+            subsec as u64
         };
     }
 
-    /// Mutably subtracts the given `TimeSpan` from this `TimePoint` using saturating arithmetic.
+    /// Mutably subtracts the given `TimeSpan` (positive or negative) from this `TimePoint` using saturating arithmetic.
     ///
-    /// The `clock_type` is left unchanged. The operation saturates at the representable extremes.
+    /// Subtracting a negative `TimeSpan` moves the time point forward in time.
+    /// The `clock_type` is left unchanged. The operation saturates at the representable extremes
+    /// (`i64::MIN` / `i64::MAX`) rather than wrapping.
     pub fn mut_sub(&mut self, span: &TimeSpan) {
-        let mut subsec = self.subsec;
-        let mut borrow = 0i64;
-        if subsec >= span.subsec {
-            subsec -= span.subsec;
-        } else {
-            subsec += ATTOSEC_PER_SEC - span.subsec;
-            borrow = 1;
+        let mut sec = self.sec.saturating_sub(span.sec);
+        let mut subsec = self.subsec as i64 - span.subsec as i64;
+
+        if subsec < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            subsec += ATTOSEC_PER_SEC as i64;
+        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            subsec -= ATTOSEC_PER_SEC as i64;
         }
 
-        let sec = self.sec.saturating_sub(span.sec).saturating_sub(borrow);
-
-        self.sec = sec;
-        self.subsec = if sec == i64::MAX {
-            ATTOSEC_PER_SEC - 1
+        self.sec = if sec == i64::MAX {
+            i64::MAX
         } else if sec == i64::MIN {
+            i64::MIN
+        } else {
+            sec
+        };
+
+        self.subsec = if self.sec == i64::MAX {
+            ATTOSEC_PER_SEC - 1
+        } else if self.sec == i64::MIN {
             0
         } else {
-            subsec
+            subsec as u64
         };
     }
 

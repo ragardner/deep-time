@@ -1,83 +1,113 @@
-use crate::{ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, TimeSpan, Real, floor_f};
+use crate::{ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, Real, TimeSpan, floor_f};
 
 impl TimeSpan {
     /// Returns the sum of `self` and `rhs`.
     ///
-    /// The result is normalized so the fractional part lies in `[0, ATTOSEC_PER_SEC)`.
+    /// Both positive and negative `rhs` are supported. Adding a negative value
+    /// is equivalent to subtraction. The result is normalized so the fractional
+    /// part lies in `[0, ATTOSEC_PER_SEC)`.
     #[inline]
     pub const fn add(self, rhs: Self) -> Self {
         let mut sec = self.sec + rhs.sec;
-        let mut subsec = self.subsec + rhs.subsec;
+        let mut subsec = self.subsec as i64 + rhs.subsec as i64;
 
-        if subsec >= ATTOSEC_PER_SEC {
+        if subsec >= ATTOSEC_PER_SEC as i64 {
             sec += 1;
-            subsec -= ATTOSEC_PER_SEC;
+            subsec -= ATTOSEC_PER_SEC as i64;
+        } else if subsec < 0 {
+            sec -= 1;
+            subsec += ATTOSEC_PER_SEC as i64;
         }
 
-        Self { sec, subsec }
+        Self {
+            sec,
+            subsec: subsec as u64,
+        }
     }
 
     /// Returns the difference `self - rhs`.
     ///
-    /// The result is normalized so the fractional part lies in `[0, ATTOSEC_PER_SEC)`.
+    /// Both positive and negative `rhs` are supported. Subtracting a negative value
+    /// is equivalent to addition. The result is normalized so the fractional part
+    /// lies in `[0, ATTOSEC_PER_SEC)`.
     #[inline]
     pub const fn sub(self, rhs: Self) -> Self {
         let mut sec = self.sec - rhs.sec;
-        let mut subsec = self.subsec;
+        let mut subsec = self.subsec as i64 - rhs.subsec as i64;
 
-        if subsec >= rhs.subsec {
-            subsec -= rhs.subsec;
-        } else {
+        if subsec < 0 {
             sec -= 1;
-            subsec += ATTOSEC_PER_SEC - rhs.subsec;
+            subsec += ATTOSEC_PER_SEC as i64;
+        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            sec += 1;
+            subsec -= ATTOSEC_PER_SEC as i64;
         }
 
-        Self { sec, subsec }
+        Self {
+            sec,
+            subsec: subsec as u64,
+        }
     }
 
-    /// Returns the sum of `self` and `rhs`, saturating at [`TimeSpan::MAX`] or [`TimeSpan::MIN`] on overflow.
+    /// Returns the sum of `self` and `rhs`, saturating at [`TimeSpan::MAX`] or
+    /// [`TimeSpan::MIN`] on overflow.
+    ///
+    /// Both positive and negative `rhs` are supported.
     #[inline]
     pub const fn saturating_add(self, rhs: Self) -> Self {
-        let mut subsec = self.subsec + rhs.subsec;
-        let mut carry = 0i64;
-        if subsec >= ATTOSEC_PER_SEC {
-            subsec -= ATTOSEC_PER_SEC;
-            carry = 1;
-        }
+        let mut sec = self.sec.saturating_add(rhs.sec);
+        let mut subsec = self.subsec as i64 + rhs.subsec as i64;
 
-        let sec = self.sec.saturating_add(rhs.sec).saturating_add(carry);
+        if subsec >= ATTOSEC_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            subsec -= ATTOSEC_PER_SEC as i64;
+        } else if subsec < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            subsec += ATTOSEC_PER_SEC as i64;
+        }
 
         let subsec = if sec == i64::MAX {
             ATTOSEC_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
-            subsec
+            subsec as u64
         };
 
         Self { sec, subsec }
     }
 
-    /// Returns the difference `self - rhs`, saturating at [`TimeSpan::MAX`] or [`TimeSpan::MIN`] on overflow.
+    /// Returns the difference `self - rhs`, saturating at [`TimeSpan::MAX`] or
+    /// [`TimeSpan::MIN`] on overflow.
+    ///
+    /// Both positive and negative `rhs` are supported.
     #[inline]
     pub const fn saturating_sub(self, rhs: Self) -> Self {
-        let mut subsec = self.subsec;
-        let mut borrow = 0i64;
-        if subsec >= rhs.subsec {
-            subsec -= rhs.subsec;
-        } else {
-            subsec += ATTOSEC_PER_SEC - rhs.subsec;
-            borrow = 1;
-        }
+        let mut sec = self.sec.saturating_sub(rhs.sec);
+        let mut subsec = self.subsec as i64 - rhs.subsec as i64;
 
-        let sec = self.sec.saturating_sub(rhs.sec).saturating_sub(borrow);
+        if subsec < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            subsec += ATTOSEC_PER_SEC as i64;
+        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            subsec -= ATTOSEC_PER_SEC as i64;
+        }
 
         let subsec = if sec == i64::MAX {
             ATTOSEC_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
-            subsec
+            subsec as u64
         };
 
         Self { sec, subsec }
