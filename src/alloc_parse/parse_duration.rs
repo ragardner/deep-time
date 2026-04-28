@@ -66,7 +66,11 @@ impl TimeSpan {
     pub fn natural_to_iso(s: &str, lang: Lang) -> Result<String, DtAllocError> {
         match natural_duration_to_iso(s, lang, true) {
             Ok(iso) => Ok(iso),
-            Err(e) => Err(DtAllocError::simple(s.to_string(), e)),
+            Err(e) => Err(DtAllocError::reason(alloc::format!(
+                "Input: {}, Error: {}",
+                s,
+                e
+            ))),
         }
     }
 }

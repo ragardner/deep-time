@@ -23,22 +23,6 @@ pub enum DtAllocError {
         location: &'static Location<'static>,
     },
 
-    /// Failed to parse `input` according to a strftime-style `fmt` string
-    /// (used by the low-level `Parser` in the custom format parser).
-    Strftime {
-        fmt: String,
-        input: String,
-        reason: String,
-        location: &'static Location<'static>,
-    },
-
-    /// Simple general-purpose error (only input + reason + location)
-    Simple {
-        input: String,
-        reason: String,
-        location: &'static Location<'static>,
-    },
-
     Reason {
         reason: String,
         location: &'static Location<'static>,
@@ -68,31 +52,6 @@ impl DtAllocError {
             input,
             reason,
             lang,
-            location: Location::caller(),
-        }
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn strftime(
-        fmt: impl Into<String>,
-        input: impl Into<String>,
-        reason: impl Into<String>,
-    ) -> Self {
-        Self::Strftime {
-            fmt: fmt.into(),
-            input: input.into(),
-            reason: reason.into(),
-            location: Location::caller(),
-        }
-    }
-
-    #[inline]
-    #[track_caller]
-    pub fn simple(input: String, reason: String) -> Self {
-        Self::Simple {
-            input,
-            reason,
             location: Location::caller(),
         }
     }
@@ -146,30 +105,6 @@ impl Display for DtAllocError {
                 writeln!(f, "Could not parse: \"{}\"", input)?;
                 writeln!(f, "• Reason      : {}", reason)?;
                 writeln!(f, "• Lang        : {:?}", lang)?;
-                writeln!(f, "    at {}:{}", location.file(), location.line())
-            }
-
-            DtAllocError::Strftime {
-                fmt,
-                input,
-                reason,
-                location,
-            } => {
-                writeln!(f, "--")?;
-                writeln!(f, "Could not parse: \"{}\"", input)?;
-                writeln!(f, "• Format   : \"{}\"", fmt)?;
-                writeln!(f, "• Reason   : {}", reason)?;
-                writeln!(f, "    at {}:{}", location.file(), location.line())
-            }
-
-            DtAllocError::Simple {
-                input,
-                reason,
-                location,
-            } => {
-                writeln!(f, "--")?;
-                writeln!(f, "Input: \"{}\"", input)?;
-                writeln!(f, "• Reason   : {}", reason)?;
                 writeln!(f, "    at {}:{}", location.file(), location.line())
             }
 

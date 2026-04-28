@@ -1,4 +1,7 @@
-use core::{fmt, str};
+use core::{
+    fmt::{self, Write},
+    str,
+};
 
 /// Fixed-capacity, stack-only ASCII string stored in a single `[u8; N]` array.
 ///
@@ -247,6 +250,43 @@ impl<const N: usize> AsciiStr<N> {
     pub const fn capacity(&self) -> usize {
         N
     }
+
+    /// Creates an `AsciiStr` from a `&str`, **truncating** if it exceeds capacity `N`.
+    ///
+    /// Non-ASCII characters are allowed (the name "lossy" was misleading).
+    /// This is the most ergonomic constructor for error messages.
+    pub fn from_str_truncate(s: &str) -> Self {
+        let mut bytes = [0u8; N];
+        let len = s.len().min(N);
+        bytes[..len].copy_from_slice(&s.as_bytes()[..len]);
+        Self { bytes }
+    }
+
+    /// Creates an `AsciiStr` from any type that implements `Display`.
+    /// The output is truncated if it exceeds capacity `N`.
+    ///
+    /// Very useful for embedding numbers, paths, etc. into errors.
+    pub fn from_display<T: core::fmt::Display>(value: T) -> Self {
+        let mut s = Self::new();
+        // Ignore write errors — we intentionally truncate
+        let _ = write!(&mut s, "{}", value);
+        s
+    }
+
+    /// Creates an `AsciiStr` from `format_args!` / `format_args_nl!`.
+    /// The output is truncated if it exceeds capacity `N`.
+    ///
+    /// This is the most flexible version.
+    pub fn from_args(args: core::fmt::Arguments<'_>) -> Self {
+        let mut s = Self::new();
+        let _ = write!(&mut s, "{}", args);
+        s
+    }
+
+    /// Alias for `from_str_truncate` (some people prefer this name).
+    pub fn truncate_from(s: &str) -> Self {
+        Self::from_str_truncate(s)
+    }
 }
 
 impl<const N: usize> TryFrom<&str> for AsciiStr<N> {
@@ -266,5 +306,22 @@ impl<const N: usize> TryFrom<[u8; N]> for AsciiStr<N> {
     /// from a byte array using the `?` operator or `.unwrap_or_else()`.
     fn try_from(buffer: [u8; N]) -> Result<Self, Self::Error> {
         AsciiStr::try_from_filled_buffer(buffer)
+    }
+}
+
+impl<const N: usize> core::fmt::Write for AsciiStr<N> {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        if !s.is_ascii() {
+            return Err(core::fmt::Error);
+        }
+        let current_len = self.len();
+        let new_len = current_len + s.len();
+
+        if new_len > N {
+            return Err(core::fmt::Error);
+        }
+
+        self.bytes[current_len..new_len].copy_from_slice(s.as_bytes());
+        Ok(())
     }
 }
