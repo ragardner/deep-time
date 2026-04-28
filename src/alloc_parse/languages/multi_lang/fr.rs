@@ -1,6 +1,6 @@
 use crate::{
     CLOCK_TYPES, DateToken, EN_DAYS, EN_DURATIONS, EN_MONTHS, EN_RELATIVES, EN_SPECIAL, LangData,
-    TZ_ENTRIES, tz_lowered_keys,
+    tz_lowered_keys, tzdb::TZ_ENTRIES,
 };
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;

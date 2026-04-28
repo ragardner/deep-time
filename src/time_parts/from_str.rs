@@ -55,7 +55,13 @@ impl TimeParts {
         if self.minute.is_none() {
             self.minute = Some(0);
         }
-        if self.second.is_none() {
+        if let Some(sec) = self.second {
+            if sec == 60 {
+                self.is_leap_second = true;
+            } else if sec > 60 {
+                return Err(DtError::new(DtErrKind::SecondOutOfRange));
+            }
+        } else {
             self.second = Some(0);
         }
         if self.attos.is_none() {
@@ -81,14 +87,6 @@ impl TimeParts {
 
         if !has_calendar_date && !has_ordinal_date && !has_iso_week_date {
             return Err(DtError::new(DtErrKind::IncompleteDate));
-        }
-
-        let sec = self.second.unwrap();
-        if sec > 60 {
-            return Err(DtError::new(DtErrKind::SecondOutOfRange));
-        }
-        if sec == 60 {
-            self.is_leap_second = true;
         }
 
         Ok(self)

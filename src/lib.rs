@@ -4,6 +4,21 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+// ──────────────────────────────────────────────────────────────
+// Optional panic handler (opt-in via feature)
+// ──────────────────────────────────────────────────────────────
+#[cfg(all(feature = "panic-handler", not(feature = "std")))]
+use core::panic::PanicInfo;
+
+#[cfg(all(feature = "panic-handler", not(feature = "std")))]
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    // Uses spin_loop() for better power characteristics than plain loop{}
+    loop {
+        core::hint::spin_loop();
+    }
+}
+
 // possibly upgrade to f128 when it's stable
 pub type Real = f64;
 macro_rules! f {
@@ -44,7 +59,6 @@ mod utils;
 // _________________________________________
 pub mod constants;
 pub mod error;
-pub mod error_std;
 pub mod historical_sofa_offsets;
 pub mod leap_seconds;
 pub mod tzdb;
@@ -52,6 +66,12 @@ pub mod tzdb;
 // _________________________________________
 // FEATURE CRATE USE
 // _________________________________________
+#[cfg(feature = "parse")]
+pub mod error_alloc;
+
+#[cfg(feature = "parse")]
+pub(crate) use error_alloc::DtAllocError;
+
 #[cfg(feature = "parse")]
 pub(crate) use alloc_parse::{
     date::*, date_classification::*, duration::*, lang::*, lang_map::*, languages::en::*,
@@ -63,8 +83,6 @@ pub(crate) use alloc_parse::{
 // _________________________________________
 pub(crate) use constants::*;
 pub(crate) use error::{DtErrKind, DtError};
-pub(crate) use error_std::DtStdError;
-pub(crate) use tzdb::TZ_ENTRIES;
 pub(crate) use utils::*;
 
 // _________________________________________
@@ -77,7 +95,7 @@ pub use alloc_parse::{
 };
 
 #[cfg(feature = "ut1")]
-pub use ut1::{EopColumns, EopEntry, EopFormat, Separator, Ut1Provider};
+pub use ut1::{Separator, Ut1Columns, Ut1Data, Ut1Entry, Ut1Format};
 
 // _________________________________________
 // PUB USE

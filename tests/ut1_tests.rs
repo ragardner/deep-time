@@ -2,7 +2,7 @@
 #[cfg(test)]
 mod tests {
     use deep_time_core::constants::SEC_PER_DAY;
-    use deep_time_core::{ClockType, EopFormat, Separator, TimePoint, TimeSpan, Ut1Provider};
+    use deep_time_core::{ClockType, Separator, TimePoint, TimeSpan, Ut1Data, Ut1Format};
     use std::eprintln;
 
     #[test]
@@ -10,7 +10,7 @@ mod tests {
         // CHANGE THIS PATH to the actual location of your finals2000A.all (or finals.all) file
         let path = "finals.all.iau2000.txt";
 
-        let provider = Ut1Provider::from_file(path, EopFormat::Finals2000A, Separator::Whitespace)
+        let provider = Ut1Data::from_text_file(path, Ut1Format::Finals2000A, Separator::Whitespace)
             .expect("failed to load real EOP file");
 
         // The exact row you gave us: MJD 56879.00 → DUT1 = -0.3170554
@@ -68,7 +68,7 @@ mod tests {
         // CHANGE THIS PATH if your file lives somewhere else
         let path = "finals2000A.all.txt";
 
-        let provider = Ut1Provider::from_file(path, EopFormat::Finals2000A, Separator::Whitespace)
+        let provider = Ut1Data::from_text_file(path, Ut1Format::Finals2000A, Separator::Whitespace)
             .expect("failed to load real EOP file for MJD 60961.00 test");
 
         // The exact row you provided:
@@ -132,7 +132,7 @@ mod tests {
     fn test_ut1_c04_specific_row_57259() {
         let path = "EOP_20u24_C04_one_file_1962-now.txt"; // ← change to your C04 file
 
-        let provider = Ut1Provider::from_file(path, EopFormat::C04, Separator::Whitespace)
+        let provider = Ut1Data::from_text_file(path, Ut1Format::C04, Separator::Whitespace)
             .expect("failed to load C04 file");
 
         let mjd = 57259.0;
@@ -171,9 +171,9 @@ mod tests {
     // ============================================================
     // Helper to load a provider (reuses your existing test data)
     // ============================================================
-    fn load_finals2000a() -> Ut1Provider {
+    fn load_finals2000a() -> Ut1Data {
         let path = "finals.all.iau2000.txt";
-        Ut1Provider::from_file(path, EopFormat::Finals2000A, Separator::Whitespace)
+        Ut1Data::from_text_file(path, Ut1Format::Finals2000A, Separator::Whitespace)
             .expect("failed to load finals2000A.all / finals.all.iau2000.txt")
     }
 

@@ -1,4 +1,4 @@
-use crate::{DateToken, LangData, TZ_ENTRIES};
+use crate::{DateToken, LangData, tzdb::TZ_ENTRIES};
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;
 use alloc::vec::Vec;

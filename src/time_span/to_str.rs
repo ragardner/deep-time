@@ -1,6 +1,5 @@
 use crate::{ATTOSEC_PER_SEC, TimeSpan};
 
-#[cfg(feature = "alloc")]
 impl TimeSpan {
     /// Converts this `TimeSpan` to an ISO 8601 duration string
     /// (e.g. `"PT1H23M45.6789S"`, `"-PT0.5S"`, `"PT0.000000000000000001S"`, or `"PT0S"`).

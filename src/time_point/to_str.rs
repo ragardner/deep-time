@@ -82,8 +82,8 @@ impl TimePoint {
         (seconds < 0, hours, minutes)
     }
 
-    /// Helper for strftime.
-    pub(crate) fn to_u8_with_offset(
+    /// Helper for to_str.
+    pub fn to_u8_with_offset(
         &self,
         fmt: &str,
         dest: &mut [u8],
@@ -100,8 +100,8 @@ impl TimePoint {
         Ok(written)
     }
 
-    /// Helper for strftime.
-    pub(crate) fn to_u8_with_tz(
+    /// Helper for to_str.
+    pub fn to_u8_with_tz(
         &self,
         fmt: &str,
         dest: &mut [u8],

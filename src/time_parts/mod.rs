@@ -2,8 +2,10 @@ mod from_ccsds_bin;
 mod from_ccsds_str;
 mod from_str;
 mod to_ccsds_bin;
-mod to_ccsds_str;
 mod to_deep_time;
+
+#[cfg(feature = "alloc")]
+mod to_ccsds_str;
 
 #[cfg(feature = "chrono")]
 mod to_chrono;

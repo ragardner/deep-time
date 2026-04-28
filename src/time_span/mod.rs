@@ -1,9 +1,11 @@
 mod arithmetic;
 mod constructors;
-mod conversions;
 mod formatting;
 mod ops;
 pub mod time_units;
+
+#[cfg(feature = "alloc")]
+mod to_str;
 
 #[cfg(feature = "chrono")]
 pub mod from_chrono;

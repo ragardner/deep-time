@@ -4,7 +4,7 @@ use core::fmt::{Display, Formatter, Result};
 use core::panic::Location;
 
 #[derive(Debug)]
-pub enum DtStdError {
+pub enum DtAllocError {
     Date {
         input: String,
         reason: String,
@@ -45,7 +45,7 @@ pub enum DtStdError {
     },
 }
 
-impl DtStdError {
+impl DtAllocError {
     #[inline]
     #[track_caller]
     pub fn date(input: String, reason: String, opts: &ParseCfg, verbose: bool) -> Self {
@@ -107,10 +107,10 @@ impl DtStdError {
     }
 }
 
-impl Display for DtStdError {
+impl Display for DtAllocError {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
         match self {
-            DtStdError::Date {
+            DtAllocError::Date {
                 input,
                 reason,
                 mode,
@@ -136,7 +136,7 @@ impl Display for DtStdError {
                 }
             }
 
-            DtStdError::Duration {
+            DtAllocError::Duration {
                 input,
                 reason,
                 lang,
@@ -149,7 +149,7 @@ impl Display for DtStdError {
                 writeln!(f, "    at {}:{}", location.file(), location.line())
             }
 
-            DtStdError::Strftime {
+            DtAllocError::Strftime {
                 fmt,
                 input,
                 reason,
@@ -162,7 +162,7 @@ impl Display for DtStdError {
                 writeln!(f, "    at {}:{}", location.file(), location.line())
             }
 
-            DtStdError::Simple {
+            DtAllocError::Simple {
                 input,
                 reason,
                 location,
@@ -173,7 +173,7 @@ impl Display for DtStdError {
                 writeln!(f, "    at {}:{}", location.file(), location.line())
             }
 
-            DtStdError::Reason { reason, location } => {
+            DtAllocError::Reason { reason, location } => {
                 writeln!(f, "--")?;
                 writeln!(f, "• Reason   : {}", reason)?;
                 writeln!(f, "    at {}:{}", location.file(), location.line())
@@ -183,7 +183,7 @@ impl Display for DtStdError {
 }
 
 // Implement Error trait from core
-impl core::error::Error for DtStdError {}
+impl core::error::Error for DtAllocError {}
 
 // Properly formats a String Err. Supports literal strings, format! syntax,
 // AND direct String/&str expressions (or any impl Display).

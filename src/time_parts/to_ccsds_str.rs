@@ -1,9 +1,6 @@
 use crate::{DtError, TimeParts};
-
-#[cfg(feature = "alloc")]
 use alloc::string::String;
 
-#[cfg(feature = "alloc")]
 impl TimeParts {
     /// Returns this instant as a **CCSDS ASCII Time Code** (calendar variant A).
     ///

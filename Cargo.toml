@@ -31,6 +31,7 @@ sys-locale = { version = "0.3", optional = true }
 # CORE FEATURES
 # ──────────────────────────────────────────────────────────────
 default = []
+panic-handler = []
 
 alloc = [
     "jiff?/alloc",
@@ -77,7 +78,7 @@ serde = [
 # DATETIME (std is optional)
 # ──────────────────────────────────────────────────────────────
 ut1 = [
-    "std",
+    "alloc",
 ]
 
 jiff = [
@@ -136,7 +137,13 @@ all = [
 
 # Internal tests
 perf-tests = []
-ut1-tests = ["ut1"]
+ut1-tests = ["ut1", "std"]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

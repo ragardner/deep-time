@@ -97,8 +97,10 @@ fn parse_next_component(
             &chars[start..]
         ));
     }
-    let int: i64 = core::str::from_utf8(&chars[start..*i])
-        .unwrap()
+
+    let int_str = core::str::from_utf8(&chars[start..*i])
+        .map_err(|_| str_err!("Invalid UTF-8 in integer part"))?;
+    let int: i64 = int_str
         .parse()
         .map_err(|e: core::num::ParseIntError| str_err!("{}", e))?;
 
@@ -124,8 +126,10 @@ fn parse_next_component(
                 &chars[start..]
             ));
         }
-        frac_num = core::str::from_utf8(&chars[frac_start..*i])
-            .unwrap()
+
+        let frac_str = core::str::from_utf8(&chars[frac_start..*i])
+            .map_err(|_| str_err!("Invalid UTF-8 in fractional part"))?;
+        frac_num = frac_str
             .parse()
             .map_err(|e: core::num::ParseIntError| str_err!("{}", e))?;
     }

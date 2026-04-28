@@ -1,11 +1,7 @@
 use crate::DtError;
 use crate::TimePoint;
-use core::fmt;
-
-#[cfg(feature = "alloc")]
 use alloc::string::String;
 
-#[cfg(feature = "alloc")]
 impl TimePoint {
     /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp in **UTC**
     /// with the `Z` suffix.
@@ -90,61 +86,5 @@ impl TimePoint {
     #[inline]
     pub fn to_str_iso_time(&self) -> Result<String, DtError> {
         self.to_str_with_offset("%H:%M:%S%.~f", 0)
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Display / Debug (unchanged – they show internal representation, not RFC 3339)
-// ─────────────────────────────────────────────────────────────────────────────
-
-impl fmt::Display for TimePoint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sec = self.sec();
-        let subsec = self.subsec();
-
-        // Default to nanosecond precision (9 digits) — most useful for everyday use
-        let precision = f.precision().unwrap_or(9);
-
-        // Respect the `+` sign when the user writes {:+}
-        if f.sign_plus() && sec >= 0 {
-            write!(f, "+")?;
-        }
-
-        write!(f, "{}", sec)?;
-        // (the old write_fractional helper is no longer needed – Display keeps its
-        // original zero-padded behaviour for debugging)
-        if precision > 0 {
-            let prec = precision.min(18);
-            let scale = 10u64.pow(18 - prec as u32);
-            let value = subsec / scale;
-            write!(f, ".{:0>width$}", value, width = prec)?;
-        }
-
-        if f.alternate() {
-            write!(
-                f,
-                " [{} | sec={} subsec={}]",
-                self.clock_type(),
-                sec,
-                subsec
-            )?;
-        } else {
-            write!(f, " [{}]", self.clock_type())?;
-        }
-
-        Ok(())
-    }
-}
-
-impl fmt::Debug for TimePoint {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let approx_sec = self.sec() as f64 + (self.subsec() as f64 / 1_000_000_000_000_000_000.0);
-
-        f.debug_struct("TimePoint")
-            .field("sec", &self.sec())
-            .field("subsec", &self.subsec())
-            .field("clock_type", &self.clock_type())
-            .field("approx_sec", &approx_sec)
-            .finish()
     }
 }

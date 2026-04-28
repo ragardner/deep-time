@@ -1,13 +1,11 @@
 use crate::{
-    ATTOSEC_PER_SEC_I128, ClockType, DtStdError, Real, SEC_PER_DAY, SEC_PER_DAYI128, TimePoint,
+    ATTOSEC_PER_SEC_I128, ClockType, DtAllocError, Real, SEC_PER_DAY, SEC_PER_DAYI128, TimePoint,
     TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 use alloc::format;
 use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Separator {
@@ -20,48 +18,52 @@ pub enum Separator {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct EopColumns {
+pub struct Ut1Columns {
     pub mjd: usize,
     pub ut1_utc: usize,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum EopFormat {
-    /// Auto-detects finals2000A.all / finals.all.iau2000.txt style files
+#[derive(Debug, Clone, Copy, Default)]
+pub enum Ut1Format {
+    /// finals2000A.all / finals.all.iau2000.txt style files
+    #[default]
     Finals2000A,
     /// C04 long-term series
     C04,
     /// User-defined column indices (0-based)
-    Custom(EopColumns),
+    Custom(Ut1Columns),
 }
 
-#[derive(Debug, Clone)]
-pub struct EopEntry {
+#[derive(Debug, Clone, Copy)]
+pub struct Ut1Entry {
     pub mjd: Real,
     pub ut1_minus_utc: Real,
 }
 
 #[derive(Debug, Clone)]
-pub struct Ut1Provider {
-    entries: Vec<EopEntry>,
+pub struct Ut1Data {
+    entries: Vec<Ut1Entry>,
 }
 
-impl Ut1Provider {
-    pub fn parse_eop(
+impl Ut1Data {
+    #[cfg(feature = "std")]
+    pub fn data_from_text_file(
         path: &str,
-        format: EopFormat,
+        format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<EopEntry>, DtStdError> {
-        // [your original parse_eop implementation — unchanged]
+    ) -> Result<Vec<Ut1Entry>, DtAllocError> {
+        use std::fs::File;
+        use std::io::{BufRead, BufReader};
+
         let file = File::open(path)
-            .map_err(|e| DtStdError::reason(format!("Failed to open file '{}': {}", path, e)))?;
+            .map_err(|e| DtAllocError::reason(format!("Failed to open file '{}': {}", path, e)))?;
 
         let reader = BufReader::new(file);
         let mut entries = Vec::new();
 
         for line in reader.lines() {
             let line =
-                line.map_err(|e| DtStdError::reason(format!("Failed to read line: {}", e)))?;
+                line.map_err(|e| DtAllocError::reason(format!("Failed to read line: {}", e)))?;
             let trimmed = line.trim();
 
             if trimmed.len() > 8192 || trimmed.is_empty() || trimmed.starts_with('#') {
@@ -81,7 +83,7 @@ impl Ut1Provider {
             }
 
             let (mjd, ut1_utc) = match format {
-                EopFormat::Finals2000A => {
+                Ut1Format::Finals2000A => {
                     let mjd_idx = parts.iter().position(|p| {
                         p.contains('.') && p.parse::<Real>().map_or(false, |v| v > 30000.0)
                     });
@@ -123,7 +125,7 @@ impl Ut1Provider {
                     (Some(mjd_val), Some(ut1))
                 }
 
-                EopFormat::C04 => {
+                Ut1Format::C04 => {
                     let (Some(mjd_str), Some(ut1_str)) = (parts.get(4), parts.get(7)) else {
                         continue;
                     };
@@ -133,7 +135,7 @@ impl Ut1Provider {
                     }
                 }
 
-                EopFormat::Custom(cols) => {
+                Ut1Format::Custom(cols) => {
                     let (Some(mjd_str), Some(ut1_str)) =
                         (parts.get(cols.mjd), parts.get(cols.ut1_utc))
                     else {
@@ -147,7 +149,7 @@ impl Ut1Provider {
             };
 
             if let (Some(mjd_val), Some(ut1_val)) = (mjd, ut1_utc) {
-                entries.push(EopEntry {
+                entries.push(Ut1Entry {
                     mjd: mjd_val,
                     ut1_minus_utc: ut1_val,
                 });
@@ -155,7 +157,7 @@ impl Ut1Provider {
         }
 
         if entries.is_empty() {
-            return Err(DtStdError::reason(
+            return Err(DtAllocError::reason(
                 "No valid EOP entries found in file".to_string(),
             ));
         }
@@ -166,12 +168,12 @@ impl Ut1Provider {
     }
 
     /// Load EOP table from file (finals2000A.all, C04, or custom).
-    pub fn from_file(
+    pub fn from_text_file(
         path: &str,
-        format: EopFormat,
+        format: Ut1Format,
         separator: Separator,
-    ) -> Result<Self, DtStdError> {
-        let entries = Self::parse_eop(path, format, separator)?;
+    ) -> Result<Self, DtAllocError> {
+        let entries = Self::data_from_text_file(path, format, separator)?;
         Ok(Self { entries })
     }
 
@@ -183,7 +185,7 @@ impl Ut1Provider {
     fn ut1_minus_utc_exact(&self, mjd_days: i64, mjd_frac: TimeSpan) -> Option<Real> {
         // This conversion is identical to what `to_mjd_utc()` does internally,
         // but we do it explicitly here so the caller stays on the exact path.
-        let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / crate::SEC_PER_DAY;
+        let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
         self.ut1_minus_utc(mjd_f)
     }
 
@@ -204,7 +206,7 @@ impl Ut1Provider {
                     return Some(self.entries[0].ut1_minus_utc);
                 }
                 if i >= self.entries.len() {
-                    return Some(self.entries.last().unwrap().ut1_minus_utc);
+                    return Some(self.entries[self.entries.len() - 1].ut1_minus_utc);
                 }
                 i - 1
             }
@@ -225,15 +227,15 @@ impl TimePoint {
     /// Convert **any** `TimePoint` to the equivalent UT1 instant (stored as `Custom`).
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
-    pub fn to_ut1(&self, provider: &Ut1Provider) -> Result<Self, DtStdError> {
+    pub fn to_ut1(&self, provider: &Ut1Data) -> Result<Self, DtAllocError> {
         let utc = self.to_clock_type(ClockType::UTC);
         let (mjd_days, mjd_frac) = utc.to_mjd_utc_exact();
 
         let dut1 = provider
             .ut1_minus_utc_exact(mjd_days, mjd_frac)
             .ok_or_else(|| {
-                let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / crate::SEC_PER_DAY;
-                DtStdError::reason(format!("MJD {mjd_f} outside loaded EOP range"))
+                let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
+                DtAllocError::reason(format!("MJD {mjd_f} outside loaded EOP range"))
             })?;
 
         Ok(utc
@@ -246,9 +248,9 @@ impl TimePoint {
     /// Uses fixed-point iteration (exactly like the library’s TDB ↔ TAI,
     /// TCG ↔ TT, etc.) to solve the implicit equation  
     /// `UTC = UT1 − DUT1(MJD_UTC)` to machine precision.
-    pub fn from_ut1(ut1: Self, provider: &Ut1Provider) -> Result<Self, DtStdError> {
+    pub fn from_ut1(ut1: Self, provider: &Ut1Data) -> Result<Self, DtAllocError> {
         if provider.entries.is_empty() {
-            return Err(DtStdError::reason("EOP table is empty".to_string()));
+            return Err(DtAllocError::reason("EOP table is empty".to_string()));
         }
 
         let mut utc_guess = ut1.with_clock_type(ClockType::UTC);
@@ -259,7 +261,7 @@ impl TimePoint {
 
             let dut1 = provider
                 .ut1_minus_utc_exact(mjd_days, mjd_frac)
-                .ok_or_else(|| DtStdError::reason("MJD outside loaded EOP range".to_string()))?;
+                .ok_or_else(|| DtAllocError::reason("MJD outside loaded EOP range".to_string()))?;
 
             utc_guess = ut1
                 .sub(TimeSpan::from_sec_f(dut1))

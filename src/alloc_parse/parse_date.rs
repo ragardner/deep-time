@@ -1,6 +1,6 @@
 use crate::{
-    ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtError,
-    DtStdError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, classify_date,
+    ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtAllocError,
+    DtError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, classify_date,
     default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
@@ -15,13 +15,13 @@ impl TimePoint {
         s: &str,
         opts: &Option<ParseCfg>,
         verbose_err: bool,
-    ) -> Result<TimePoint, DtStdError> {
+    ) -> Result<TimePoint, DtAllocError> {
         let opts: &ParseCfg = opts
             .as_ref()
             .unwrap_or_else(|| default_date_parse_options());
 
         if s.is_empty() || s.len() > MAX_DATE_STRING_LEN {
-            return Err(DtStdError::date(
+            return Err(DtAllocError::date(
                 s.to_string(),
                 "Date either empty or longer than max len".to_string(),
                 &opts,
@@ -43,7 +43,7 @@ impl TimePoint {
             Ok(ClassifiedDate::Cls(c)) => c,
             Err(e) => {
                 // std::eprintln!("{}", e);
-                return Err(DtStdError::date(s.to_string(), e, &opts, verbose_err));
+                return Err(DtAllocError::date(s.to_string(), e, &opts, verbose_err));
             }
         };
         // let xx = &classification.date;
@@ -63,7 +63,7 @@ impl TimePoint {
                 }
                 // None of the provided formats worked and mode is Explicit
                 if opts.mode == DateParseMode::Explicit {
-                    return Err(DtStdError::date(
+                    return Err(DtAllocError::date(
                         s.to_string(),
                         "Could not parse using the provided explicit formats".to_string(),
                         &opts,
@@ -220,7 +220,7 @@ impl TimePoint {
                 return Ok(dt);
             }
         }
-        Err(DtStdError::date(
+        Err(DtAllocError::date(
             s.to_string(),
             "Could not parse using any method".to_string(),
             &opts,

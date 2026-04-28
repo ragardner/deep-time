@@ -134,7 +134,7 @@ impl TimeParts {
                 FixedOffset::east_opt(secs).ok_or_else(to_err)
             }
             Some(TimeZone::Utc) | Some(TimeZone::None) | None => {
-                Ok(FixedOffset::east_opt(0).unwrap())
+                FixedOffset::east_opt(0).ok_or_else(to_err)
             }
         }
     }
