@@ -1,6 +1,7 @@
 use crate::{
-    DateToken, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE, NS_PER_MONTH, NS_PER_SECOND,
-    NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, lang_map, str_err, to_ascii_digit,
+    DateToken, DtErrKind, DtError, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
+    NS_PER_MONTH, NS_PER_SECOND, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, ez_err,
+    lang_map, to_ascii_digit,
 };
 use alloc::{
     string::{String, ToString},
@@ -184,7 +185,7 @@ pub(crate) fn natural_duration_to_span(
     input: &str,
     lang: Lang,
     use_dur_finder: bool,
-) -> Result<TimeSpan, String> {
+) -> Result<TimeSpan, DtError> {
     let Some(LangData {
         map: term_map,
         duration_ac,
@@ -192,7 +193,11 @@ pub(crate) fn natural_duration_to_span(
         ..
     }) = lang_map().get(&lang)
     else {
-        return Err(str_err!("Could not retrieve lang map for lang: {}", lang));
+        return Err(ez_err!(
+            DtErrKind::InternalErr,
+            "Couldn't retrieve LangData for: {}",
+            lang
+        ));
     };
     let finder = if use_dur_finder { duration_ac } else { date_ac };
 
@@ -331,9 +336,7 @@ pub(crate) fn natural_duration_to_span(
     }
 
     if !has_duration {
-        return Err(str_err!(
-            "Duration did not contain either a digit or a unit"
-        ));
+        return Err(ez_err!(DtErrKind::InvalidDuration, "Duration empty"));
     }
 
     // Convert total nanoseconds → attoseconds and build TimeSpan
@@ -346,7 +349,7 @@ pub(crate) fn natural_duration_to_iso(
     input: &str,
     lang: Lang,
     use_dur_finder: bool,
-) -> Result<String, String> {
+) -> Result<String, DtError> {
     let span = natural_duration_to_span(input, lang, use_dur_finder)?;
     Ok(span.to_string())
 }

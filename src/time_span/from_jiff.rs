@@ -1,5 +1,4 @@
-use crate::{DtAllocError, TimeSpan};
-use alloc::string::ToString;
+use crate::{DtErrKind, DtError, TimeSpan, ez_err};
 use jiff::{SignedDuration, Span, Timestamp};
 
 impl TimeSpan {
@@ -35,8 +34,14 @@ impl TimeSpan {
     /// - Returns `Err` if the `Span` contains any calendar units (years, months,
     ///   weeks, days, etc.) that cannot be converted to a pure elapsed-time
     ///   duration.
-    pub fn from_jiff_span(span: Span) -> Result<Self, DtAllocError> {
-        let dur = SignedDuration::try_from(span).map_err(|e| DtAllocError::reason(e.to_string()))?;
+    pub fn from_jiff_span(span: Span) -> Result<Self, DtError> {
+        let dur = SignedDuration::try_from(span).map_err(|e| {
+            ez_err!(
+                DtErrKind::InvalidDuration,
+                "Failed to create jiff Span: {}",
+                e
+            )
+        })?;
 
         Ok(Self::from_jiff_signed_duration(dur))
     }

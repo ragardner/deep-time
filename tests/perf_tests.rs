@@ -42,7 +42,7 @@ fn date_alloc_parser_perf() {
     let start = Instant::now();
     for _ in 0..ITERATIONS {
         for &input in &corpus {
-            let _ = TimePoint::from_str_parse(input, &None, false);
+            let _ = TimePoint::from_str_parse(input, &None);
             // if let Err(x) = x {
             //     eprintln!("{}", x);
             //     return;

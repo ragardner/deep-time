@@ -1,4 +1,4 @@
-use crate::{DtErrKind, DtError, TimeParts, TimeZone, parser::Parser};
+use crate::{DtErrKind, DtError, TimeParts, TimeZone, ez_err, parser::Parser};
 
 impl TimeParts {
     pub fn from_str(
@@ -24,7 +24,7 @@ impl TimeParts {
             Ok(tm)
         } else {
             // Trailing characters remain
-            Err(DtError::new(DtErrKind::TrailingCharacters))
+            Err(ez_err!(DtErrKind::TrailingCharacters))
         }
     }
 
@@ -59,7 +59,11 @@ impl TimeParts {
             if sec == 60 {
                 self.is_leap_second = true;
             } else if sec > 60 {
-                return Err(DtError::new(DtErrKind::SecondOutOfRange));
+                return Err(ez_err!(
+                    DtErrKind::OutOfRange,
+                    "Seconds !(0..=60) got: {}",
+                    sec
+                ));
             }
         } else {
             self.second = Some(0);
@@ -86,7 +90,7 @@ impl TimeParts {
         let has_iso_week_date = self.iso_week_year.is_some() && self.iso_week.is_some();
 
         if !has_calendar_date && !has_ordinal_date && !has_iso_week_date {
-            return Err(DtError::new(DtErrKind::IncompleteDate));
+            return Err(ez_err!(DtErrKind::Incomplete));
         }
 
         Ok(self)

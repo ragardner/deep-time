@@ -57,7 +57,7 @@ fn test_historical_iana_with_jiff() {
         // ─── Your library ──────────────────────────────────────────────────────────
         let our_input = format!("{} {}", civil_str, iana_name);
 
-        let our_dt = TimePoint::from_str_parse(&our_input, &None, false)
+        let our_dt = TimePoint::from_str_parse(&our_input, &None)
             .unwrap_or_else(|e| panic!("deep_time_core failed on '{}': {}", our_input, e));
 
         let our_rfc = our_dt.to_str_rfc3339().unwrap();
@@ -78,7 +78,7 @@ fn test_historical_iana_with_jiff() {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
-    let dt = TimePoint::from_str_parse(input.trim(), &opts, false)
+    let dt = TimePoint::from_str_parse(input.trim(), &opts)
         .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
     let actual = dt.to_str_rfc3339().unwrap();
 
@@ -93,7 +93,7 @@ fn assert_millis(input: &str, expected_millis: i128, opts: Option<ParseCfg>) {
 
 fn assert_fails(input: &str, opts: Option<ParseCfg>) {
     assert!(
-        TimePoint::from_str_parse(input, &opts, false).is_err(),
+        TimePoint::from_str_parse(input, &opts).is_err(),
         "Expected failure: {}",
         input
     );
@@ -400,12 +400,23 @@ fn round_trip_fixed_offsets() {
         let xp1 = tp
             .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
             .unwrap();
-        let tp2 = TimePoint::from_str_parse(&xp1, &None, true).unwrap();
+        let tp2 = TimePoint::from_str_parse(&xp1, &None).unwrap();
         let xp2 = tp2
             .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
             .unwrap();
-        let tp3 = TimePoint::from_str_parse(&xp2, &None, true).unwrap();
+        let tp3 = TimePoint::from_str_parse(&xp2, &None).unwrap();
         assert_eq!(tp, tp3);
+    }
+}
+
+#[test]
+fn test_date_error() {
+    let dt = TimePoint::from_str_parse("bad date", &None);
+    match dt {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("{}", e);
+        }
     }
 }
 
@@ -1085,7 +1096,7 @@ fn relative_date_parser_comprehensive() {
     });
 
     for input in cases {
-        let result = TimePoint::from_str_parse(input.trim(), &opts, false);
+        let result = TimePoint::from_str_parse(input.trim(), &opts);
         // eprintln!("Tried: {}, got result: {:?}", &input, result);
         assert!(result.is_ok(), "Failed to parse relative date: '{}'", input);
     }

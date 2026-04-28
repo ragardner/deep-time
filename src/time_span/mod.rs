@@ -1,6 +1,7 @@
 mod arithmetic;
 mod constructors;
 mod formatting;
+mod from_str;
 mod ops;
 pub mod time_units;
 

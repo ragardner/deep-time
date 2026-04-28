@@ -1,4 +1,4 @@
-use crate::{ClockType, DtErrKind, DtError, SEC_PER_DAYI64, TimePoint};
+use crate::{ClockType, DtErrKind, DtError, SEC_PER_DAYI64, TimePoint, ez_err};
 
 impl TimePoint {
     /// Maximum size needed for a CCSDS C & D (CUC) binary packet (with extended P-field).
@@ -21,7 +21,7 @@ impl TimePoint {
         extension: bool,
     ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
         if !(1..=7).contains(&n_coarse) || n_frac > 10 {
-            return Err(DtErrKind::UnsupportedDirective.into());
+            return Err(ez_err!(DtErrKind::CCSDSOutputErr, "Unsupported directive"));
         }
 
         let tai = self.to_clock_type(ClockType::TAI);
@@ -97,7 +97,7 @@ impl TimePoint {
         extension: bool,
     ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
         if !matches!(n_day, 2 | 3) || !matches!(sub_ms_code, 0 | 1 | 2) {
-            return Err(DtErrKind::UnsupportedDirective.into());
+            return Err(ez_err!(DtErrKind::CCSDSOutputErr, "Unsupported directive"));
         }
 
         let utc = self.to_clock_type(ClockType::UTC);
@@ -194,7 +194,7 @@ impl TimePoint {
         n_subsec: u8,
     ) -> Result<([u8; Self::CCSDS_CCS_MAX_SIZE], usize), DtError> {
         if n_subsec > 6 {
-            return Err(DtErrKind::UnsupportedDirective.into());
+            return Err(ez_err!(DtErrKind::CCSDSOutputErr, "Unsupported directive"));
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────

@@ -1,7 +1,7 @@
 use crate::{
-    ClassifiedDate, ConnectorType, DateClassification, DateToken, EndsWithExt, IndexIn, Lang,
-    LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType, lang_map,
-    natural_duration_to_span, str_err, to_ascii_digit,
+    ClassifiedDate, ConnectorType, DateClassification, DateToken, DtErrKind, DtError, EndsWithExt,
+    IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType, ez_err, lang_map,
+    natural_duration_to_span, to_ascii_digit,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -15,14 +15,18 @@ pub(crate) fn classify_date(
     s: &str,
     lang: Lang,
     ref_time: &Option<TimePoint>,
-) -> Result<ClassifiedDate, String> {
+) -> Result<ClassifiedDate, DtError> {
     let Some(LangData {
         map: term_map,
         date_ac: finder,
         ..
     }) = lang_map().get(&lang)
     else {
-        return Err(str_err!("Could not retrieve lang map for lang: {}", lang));
+        return Err(ez_err!(
+            DtErrKind::InternalErr,
+            "Couldn't retrieve LangData for: {}",
+            lang
+        ));
     };
 
     let (s, attach_hyphen) = s.strip_prefix('-').map_or((s, false), |s| (s, true));
@@ -433,7 +437,7 @@ pub(crate) fn classify_date(
     }
 
     if num_digits == 0 {
-        return Err(str_err!("Date contained no digits"));
+        return Err(ez_err!(DtErrKind::InvalidDate, "No digits"));
     }
     if curr_date_digit_run_len > 0 && matches!(currently, IndexIn::Date | IndexIn::PostDate) {
         tokens.push(DateToken::Digits(curr_date_digit_run_len));

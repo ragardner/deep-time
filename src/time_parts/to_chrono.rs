@@ -1,7 +1,7 @@
 use crate::{
     ATTOSEC_PER_NANOSEC, TimePoint,
     error::{DtErrKind, DtError},
-    {Meridiem, TimeParts, TimeZone, Weekday},
+    ez_err, {Meridiem, TimeParts, TimeZone, Weekday},
 };
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
@@ -17,7 +17,12 @@ impl TimeParts {
     }
 
     fn build_naive_date(&self) -> Result<NaiveDate, DtError> {
-        let to_err = || DtError::new(DtErrKind::ChronoNaiveDate);
+        let to_err = || {
+            ez_err!(
+                DtErrKind::ChronoConversion,
+                "Failed to build Chrono NaiveDate"
+            )
+        };
 
         // YMD (highest priority, matches Jiff fast-path)
         if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
@@ -64,7 +69,12 @@ impl TimeParts {
     }
 
     fn build_naive_time(&self) -> Result<NaiveTime, DtError> {
-        let to_err = || DtError::new(DtErrKind::ChronoNaiveTime);
+        let to_err = || {
+            ez_err!(
+                DtErrKind::ChronoConversion,
+                "Failed to build Chrono NaiveTime"
+            )
+        };
 
         let mut hour = self.hour.unwrap_or(0) as u32;
         let minute = self.minute.unwrap_or(0) as u32;
@@ -119,7 +129,12 @@ impl TimeParts {
     /// IANA names are **not supported** in core chrono (they require the `chrono-tz` crate).
     /// TODO: Add chrono-tz feature?
     fn to_chrono_offset(&self) -> Result<FixedOffset, DtError> {
-        let to_err = || DtError::new(DtErrKind::ChronoOffset);
+        let to_err = || {
+            ez_err!(
+                DtErrKind::ChronoConversion,
+                "Failed to build Chrono FixedOffset"
+            )
+        };
         // IANA name present → explicit error (vanilla chrono cannot resolve it)
         if let Some(name) = &self.iana_name {
             let name_str = name.as_str().map_err(|_| to_err())?;
@@ -154,7 +169,12 @@ impl TimeParts {
     /// - If no `%s` is present, the normal civil path is taken: the date/time components are
     ///   interpreted as local time *in the parsed timezone*.
     pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, DtError> {
-        let to_err = || DtError::new(DtErrKind::ChronoDateTime);
+        let to_err = || {
+            ez_err!(
+                DtErrKind::ChronoConversion,
+                "Failed to build Chrono DateTime<FixedOffset>"
+            )
+        };
 
         let offset = self.to_chrono_offset()?;
 
@@ -413,7 +433,7 @@ mod tests {
         .unwrap();
         let err = parsed.to_chrono_datetime().unwrap_err();
         // IANA is rejected in to_chrono_offset (vanilla chrono cannot resolve it)
-        assert!(matches!(err.kind, DtErrKind::ChronoOffset));
+        assert!(matches!(err.kind(), DtErrKind::ChronoConversion));
     }
 
     #[test]

@@ -1,9 +1,8 @@
 use crate::{
-    ATTOSEC_PER_SEC_I128, ClockType, DtAllocError, Real, SEC_PER_DAY, SEC_PER_DAYI128, TimePoint,
-    TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC,
+    ATTOSEC_PER_SEC_I128, ClockType, DtErrKind, DtError, Real, SEC_PER_DAY, SEC_PER_DAYI128,
+    TimePoint, TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC, ez_err,
 };
-use alloc::format;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
@@ -133,7 +132,7 @@ impl Ut1Data {
         lines: impl Iterator<Item = &'a str>,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+    ) -> Result<Vec<Ut1Row>, DtError> {
         let mut rows = Vec::new();
 
         for line in lines {
@@ -149,9 +148,7 @@ impl Ut1Data {
         }
 
         if rows.is_empty() {
-            return Err(DtAllocError::reason(
-                "No valid EOP rows found in source".to_string(),
-            ));
+            return Err(ez_err!(DtErrKind::Incomplete, "No valid rows"));
         }
 
         rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
@@ -165,7 +162,7 @@ impl Ut1Data {
         s: &str,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+    ) -> Result<Vec<Ut1Row>, DtError> {
         Self::parse_lines(s.lines(), format, separator)
     }
 
@@ -173,16 +170,12 @@ impl Ut1Data {
         bytes: &[u8],
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+    ) -> Result<Vec<Ut1Row>, DtError> {
         let s = core::str::from_utf8(bytes).unwrap_or("");
         Self::data_from_str(s, format, separator)
     }
 
-    pub fn from_str(
-        s: &str,
-        format: Ut1Format,
-        separator: Separator,
-    ) -> Result<Self, DtAllocError> {
+    pub fn from_str(s: &str, format: Ut1Format, separator: Separator) -> Result<Self, DtError> {
         let rows = Self::data_from_str(s, format, separator)?;
         Ok(Self { rows })
     }
@@ -191,7 +184,7 @@ impl Ut1Data {
         bytes: &[u8],
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Self, DtAllocError> {
+    ) -> Result<Self, DtError> {
         let rows = Self::data_from_bytes(bytes, format, separator)?;
         Ok(Self { rows })
     }
@@ -204,7 +197,7 @@ impl Ut1Data {
         mut reader: R,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+    ) -> Result<Vec<Ut1Row>, DtError> {
         let mut line_buf = String::with_capacity(256);
         let mut rows = Vec::new();
 
@@ -215,10 +208,7 @@ impl Ut1Data {
                 Ok(0) => break,
                 Ok(n) => n,
                 Err(e) => {
-                    return Err(DtAllocError::reason(format!(
-                        "Failed to read line from EOP source: {}",
-                        e
-                    )));
+                    return Err(ez_err!(DtErrKind::IOErr, "Read line fail: {}", e));
                 }
             };
 
@@ -237,9 +227,7 @@ impl Ut1Data {
         }
 
         if rows.is_empty() {
-            return Err(DtAllocError::reason(
-                "No valid EOP rows found in source".to_string(),
-            ));
+            return Err(ez_err!(DtErrKind::Incomplete, "No valid rows"));
         }
 
         rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
@@ -251,17 +239,18 @@ impl Ut1Data {
         path: P,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+    ) -> Result<Vec<Ut1Row>, DtError> {
         use std::fs::File;
         use std::io::BufReader;
 
         let path = path.as_ref();
         let file = File::open(path).map_err(|e| {
-            DtAllocError::reason(format!(
-                "Failed to open EOP file '{}': {}",
+            ez_err!(
+                DtErrKind::IOErr,
+                "Open file fail: '{}': {}",
                 path.display(),
                 e
-            ))
+            )
         })?;
 
         let reader = BufReader::new(file);
@@ -273,7 +262,7 @@ impl Ut1Data {
         path: P,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Self, DtAllocError> {
+    ) -> Result<Self, DtError> {
         let rows = Self::data_from_text_file(path, format, separator)?;
         Ok(Self { rows })
     }
@@ -328,15 +317,15 @@ impl TimePoint {
     /// Convert **any** `TimePoint` to the equivalent UT1 instant (stored as `Custom`).
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
-    pub fn to_ut1(&self, provider: &Ut1Data) -> Result<Self, DtAllocError> {
+    pub fn to_ut1(&self, ut1_data: &Ut1Data) -> Result<Self, DtError> {
         let utc = self.to_clock_type(ClockType::UTC);
         let (mjd_days, mjd_frac) = utc.to_mjd_utc_exact();
 
-        let dut1 = provider
+        let dut1 = ut1_data
             .ut1_minus_utc_exact(mjd_days, mjd_frac)
             .ok_or_else(|| {
                 let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
-                DtAllocError::reason(format!("MJD {mjd_f} outside loaded EOP range"))
+                ez_err!(DtErrKind::OutOfRange, "Mjd out of range: {mjd_f}")
             })?;
 
         Ok(utc
@@ -349,9 +338,9 @@ impl TimePoint {
     /// Uses fixed-point iteration (exactly like the library’s TDB ↔ TAI,
     /// TCG ↔ TT, etc.) to solve the implicit equation  
     /// `UTC = UT1 − DUT1(MJD_UTC)` to machine precision.
-    pub fn from_ut1(ut1: Self, provider: &Ut1Data) -> Result<Self, DtAllocError> {
-        if provider.rows.is_empty() {
-            return Err(DtAllocError::reason("EOP table is empty".to_string()));
+    pub fn from_ut1(ut1: Self, ut1_data: &Ut1Data) -> Result<Self, DtError> {
+        if ut1_data.rows.is_empty() {
+            return Err(ez_err!(DtErrKind::InternalErr, "No data"));
         }
 
         let mut utc_guess = ut1.with_clock_type(ClockType::UTC);
@@ -360,9 +349,12 @@ impl TimePoint {
         for _ in 0..4 {
             let (mjd_days, mjd_frac) = utc_guess.to_mjd_utc_exact();
 
-            let dut1 = provider
+            let dut1 = ut1_data
                 .ut1_minus_utc_exact(mjd_days, mjd_frac)
-                .ok_or_else(|| DtAllocError::reason("MJD outside loaded EOP range".to_string()))?;
+                .ok_or_else(|| {
+                    let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
+                    ez_err!(DtErrKind::OutOfRange, "Mjd out of range: {mjd_f}")
+                })?;
 
             utc_guess = ut1
                 .sub(TimeSpan::from_sec_f(dut1))

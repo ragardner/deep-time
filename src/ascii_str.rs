@@ -253,8 +253,7 @@ impl<const N: usize> AsciiStr<N> {
 
     /// Creates an `AsciiStr` from a `&str`, **truncating** if it exceeds capacity `N`.
     ///
-    /// Non-ASCII characters are allowed (the name "lossy" was misleading).
-    /// This is the most ergonomic constructor for error messages.
+    /// Non-ASCII characters are allowed.
     pub fn from_str_truncate(s: &str) -> Self {
         let mut bytes = [0u8; N];
         let len = s.len().min(N);
@@ -268,24 +267,15 @@ impl<const N: usize> AsciiStr<N> {
     /// Very useful for embedding numbers, paths, etc. into errors.
     pub fn from_display<T: core::fmt::Display>(value: T) -> Self {
         let mut s = Self::new();
-        // Ignore write errors — we intentionally truncate
         let _ = write!(&mut s, "{}", value);
         s
     }
 
-    /// Creates an `AsciiStr` from `format_args!` / `format_args_nl!`.
-    /// The output is truncated if it exceeds capacity `N`.
-    ///
-    /// This is the most flexible version.
-    pub fn from_args(args: core::fmt::Arguments<'_>) -> Self {
+    /// Convenience: create from a format string (most ergonomic for errors)
+    pub fn from_fmt(args: core::fmt::Arguments<'_>) -> Self {
         let mut s = Self::new();
         let _ = write!(&mut s, "{}", args);
         s
-    }
-
-    /// Alias for `from_str_truncate` (some people prefer this name).
-    pub fn truncate_from(s: &str) -> Self {
-        Self::from_str_truncate(s)
     }
 }
 
@@ -314,14 +304,20 @@ impl<const N: usize> core::fmt::Write for AsciiStr<N> {
         if !s.is_ascii() {
             return Err(core::fmt::Error);
         }
-        let current_len = self.len();
-        let new_len = current_len + s.len();
 
-        if new_len > N {
-            return Err(core::fmt::Error);
+        let current_len = self.len();
+        let remaining = N.saturating_sub(current_len);
+
+        // Nothing space to write
+        if remaining == 0 {
+            return Ok(());
         }
 
-        self.bytes[current_len..new_len].copy_from_slice(s.as_bytes());
+        // Copy as much as possible (truncate if necessary)
+        let to_copy = s.len().min(remaining);
+
+        self.bytes[current_len..current_len + to_copy].copy_from_slice(&s.as_bytes()[..to_copy]);
+
         Ok(())
     }
 }

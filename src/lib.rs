@@ -44,6 +44,7 @@ mod clock_drift;
 mod clock_model;
 mod clock_type;
 mod common;
+mod ez_error;
 mod gregorian_time;
 mod light_time;
 mod parser;
@@ -67,12 +68,6 @@ pub mod tzdb;
 // FEATURE CRATE USE
 // _________________________________________
 #[cfg(feature = "parse")]
-pub mod error_alloc;
-
-#[cfg(feature = "parse")]
-pub(crate) use error_alloc::DtAllocError;
-
-#[cfg(feature = "parse")]
 pub(crate) use alloc_parse::{
     date::*, date_classification::*, duration::*, lang::*, lang_map::*, languages::en::*,
     parse_date::*, std_constants::*, types::*,
@@ -82,7 +77,6 @@ pub(crate) use alloc_parse::{
 // CRATE USE
 // _________________________________________
 pub(crate) use constants::*;
-pub(crate) use error::{DtErrKind, DtError};
 pub(crate) use utils::*;
 
 // _________________________________________
@@ -104,6 +98,8 @@ pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
+pub use error::{DtErrKind, DtError};
+pub use ez_error::EzError;
 pub use gregorian_time::GregorianTime;
 pub use light_time::{LightContext, ObserverState};
 pub use position::{Position, Velocity};

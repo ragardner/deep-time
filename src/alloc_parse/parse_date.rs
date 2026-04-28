@@ -1,31 +1,26 @@
 use crate::{
-    ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtAllocError,
+    ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtErrKind,
     DtError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, classify_date,
-    default_date_parse_options, generate_ambiguous_day_first_candidates,
+    default_date_parse_options, ez_err, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
     parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
     parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
 };
 use alloc::borrow::Cow;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 
 impl TimePoint {
-    pub fn from_str_parse(
-        s: &str,
-        opts: &Option<ParseCfg>,
-        verbose_err: bool,
-    ) -> Result<TimePoint, DtAllocError> {
+    pub fn from_str_parse(s: &str, opts: &Option<ParseCfg>) -> Result<TimePoint, DtError> {
         let opts: &ParseCfg = opts
             .as_ref()
             .unwrap_or_else(|| default_date_parse_options());
 
         if s.is_empty() || s.len() > MAX_DATE_STRING_LEN {
-            return Err(DtAllocError::date(
-                s.to_string(),
-                "Date either empty or longer than max len".to_string(),
-                &opts,
-                verbose_err,
+            return Err(ez_err!(
+                DtErrKind::InvalidDate,
+                "Invalid date (empty or too long): '{}'",
+                s
             ));
         }
 
@@ -43,7 +38,11 @@ impl TimePoint {
             Ok(ClassifiedDate::Cls(c)) => c,
             Err(e) => {
                 // std::eprintln!("{}", e);
-                return Err(DtAllocError::date(s.to_string(), e, &opts, verbose_err));
+                return Err(ez_err!(
+                    DtErrKind::InvalidDate,
+                    "Invalid date '{}'",
+                    s => e
+                ));
             }
         };
         // let xx = &classification.date;
@@ -63,11 +62,10 @@ impl TimePoint {
                 }
                 // None of the provided formats worked and mode is Explicit
                 if opts.mode == DateParseMode::Explicit {
-                    return Err(DtAllocError::date(
-                        s.to_string(),
-                        "Could not parse using the provided explicit formats".to_string(),
-                        &opts,
-                        verbose_err,
+                    return Err(ez_err!(
+                        DtErrKind::InvalidDate,
+                        "Could not parse using the provided explicit formats: '{}'",
+                        s
                     ));
                 }
             }
@@ -220,11 +218,10 @@ impl TimePoint {
                 return Ok(dt);
             }
         }
-        Err(DtAllocError::date(
-            s.to_string(),
-            "Could not parse using any method".to_string(),
-            &opts,
-            verbose_err,
+        Err(ez_err!(
+            DtErrKind::InvalidDate,
+            "Could not parse date using any method: '{}'",
+            s
         ))
     }
 
@@ -235,9 +232,7 @@ impl TimePoint {
     /// on any parse error.
     #[inline]
     pub fn str_to_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        TimePoint::from_str_parse(s, opts, false)
-            .ok()
-            .map(|tp| tp.as_ms())
+        TimePoint::from_str_parse(s, opts).ok().map(|tp| tp.as_ms())
     }
 
     /// Same parsing logic as `TimePoint::from_str`, but returns milliseconds since
@@ -247,7 +242,7 @@ impl TimePoint {
     /// on any parse error.
     #[inline]
     pub fn str_to_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        TimePoint::from_str_parse(s, opts, false)
+        TimePoint::from_str_parse(s, opts)
             .ok()
             .map(|tp| tp.to_unix_ms())
     }
