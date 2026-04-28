@@ -1,3 +1,4 @@
+#[cfg(feature = "perf-tests")]
 use deep_time_core::TimePoint;
 #[cfg(feature = "perf-tests")]
 use std::time::Instant;

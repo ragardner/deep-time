@@ -95,7 +95,7 @@ pub use alloc_parse::{
 };
 
 #[cfg(feature = "ut1")]
-pub use ut1::{Separator, Ut1Columns, Ut1Data, Ut1Entry, Ut1Format};
+pub use ut1::{Separator, Ut1Columns, Ut1Data, Ut1Format, Ut1Row};
 
 // _________________________________________
 // PUB USE

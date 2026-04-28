@@ -354,37 +354,37 @@ macro_rules! impl_time_inc {
                     (self.sec as i128) * ATTOSEC_PER_SEC_I128 + (self.subsec as i128)
                 }
 
-                /// Returns the total duration in milliseconds (exact, using full attosecond precision).
+                /// Returns the total duration in milliseconds.
                 #[inline(always)]
                 pub const fn as_ms(self) -> i128 {
                     self.total_attos() / (ATTOSEC_PER_MILLISEC as i128)
                 }
 
-                /// Returns the total duration in microseconds (exact).
+                /// Returns the total duration in microseconds.
                 #[inline(always)]
                 pub const fn as_us(self) -> i128 {
                     self.total_attos() / (ATTOSEC_PER_MICROSEC as i128)
                 }
 
-                /// Returns the total duration in nanoseconds (exact).
+                /// Returns the total duration in nanoseconds.
                 #[inline(always)]
                 pub const fn as_ns(self) -> i128 {
                     self.total_attos() / (ATTOSEC_PER_NANOSEC as i128)
                 }
 
-                /// Returns the total duration in picoseconds (exact).
+                /// Returns the total duration in picoseconds.
                 #[inline(always)]
                 pub const fn as_ps(self) -> i128 {
                     self.total_attos() / (ATTOSEC_PER_PICOSEC as i128)
                 }
 
-                /// Returns the total duration in femtoseconds (exact).
+                /// Returns the total duration in femtoseconds.
                 #[inline(always)]
                 pub const fn as_fs(self) -> i128 {
                     self.total_attos() / (ATTOSEC_PER_FEMTOSEC as i128)
                 }
 
-                /// Returns the total duration in attoseconds (exact).
+                /// Returns the total duration in attoseconds.
                 /// This is an alias for [`Self::total_attos`].
                 #[inline(always)]
                 pub const fn as_as(self) -> i128 {

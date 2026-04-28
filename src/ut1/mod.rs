@@ -3,7 +3,7 @@ use crate::{
     TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 use alloc::format;
-use alloc::string::ToString;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
@@ -35,146 +35,247 @@ pub enum Ut1Format {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Ut1Entry {
+pub struct Ut1Row {
     pub mjd: Real,
     pub ut1_minus_utc: Real,
 }
 
 #[derive(Debug, Clone)]
 pub struct Ut1Data {
-    entries: Vec<Ut1Entry>,
+    rows: Vec<Ut1Row>,
 }
 
 impl Ut1Data {
-    #[cfg(feature = "std")]
-    pub fn data_from_text_file(
-        path: &str,
-        format: Ut1Format,
-        separator: Separator,
-    ) -> Result<Vec<Ut1Entry>, DtAllocError> {
-        use std::fs::File;
-        use std::io::{BufRead, BufReader};
+    pub const MAX_LINE_LEN: usize = 8192;
 
-        let file = File::open(path)
-            .map_err(|e| DtAllocError::reason(format!("Failed to open file '{}': {}", path, e)))?;
+    // ============================================================
+    // Small helper — parses ONE row (shared by all paths)
+    // ============================================================
+    fn try_parse_row(trimmed: &str, format: Ut1Format, separator: Separator) -> Option<Ut1Row> {
+        let parts: Vec<&str> = match separator {
+            Separator::Whitespace => trimmed.split_whitespace().collect(),
+            Separator::Comma => trimmed.split(',').map(|s| s.trim()).collect(),
+            Separator::Tab => trimmed.split('\t').map(|s| s.trim()).collect(),
+            Separator::Pipe => trimmed.split('|').map(|s| s.trim()).collect(),
+            Separator::Semicolon => trimmed.split(';').map(|s| s.trim()).collect(),
+        };
 
-        let reader = BufReader::new(file);
-        let mut entries = Vec::new();
+        if parts.len() < 2 {
+            return None;
+        }
 
-        for line in reader.lines() {
-            let line =
-                line.map_err(|e| DtAllocError::reason(format!("Failed to read line: {}", e)))?;
-            let trimmed = line.trim();
+        let (mjd, ut1_utc) = match format {
+            Ut1Format::Finals2000A => {
+                let mjd_idx = parts.iter().position(|p| {
+                    p.contains('.') && p.parse::<Real>().map_or(false, |v| v > 30000.0)
+                })?;
+                let mut flag_count = 0;
+                let mut ut1_value: Option<Real> = None;
 
-            if trimmed.len() > 8192 || trimmed.is_empty() || trimmed.starts_with('#') {
-                continue;
-            }
+                for i in (mjd_idx + 1)..parts.len() {
+                    let token = parts[i];
+                    let is_flag = token == "I"
+                        || token == "P"
+                        || token.starts_with("I-")
+                        || token.starts_with("P-");
 
-            let parts: Vec<&str> = match separator {
-                Separator::Whitespace => trimmed.split_whitespace().collect(),
-                Separator::Comma => trimmed.split(',').map(|s| s.trim()).collect(),
-                Separator::Tab => trimmed.split('\t').map(|s| s.trim()).collect(),
-                Separator::Pipe => trimmed.split('|').map(|s| s.trim()).collect(),
-                Separator::Semicolon => trimmed.split(';').map(|s| s.trim()).collect(),
-            };
-
-            if parts.len() < 4 {
-                continue;
-            }
-
-            let (mjd, ut1_utc) = match format {
-                Ut1Format::Finals2000A => {
-                    let mjd_idx = parts.iter().position(|p| {
-                        p.contains('.') && p.parse::<Real>().map_or(false, |v| v > 30000.0)
-                    });
-                    let Some(mjd_idx) = mjd_idx else { continue };
-
-                    let mut flag_count = 0;
-                    let mut ut1_value: Option<Real> = None;
-
-                    for i in (mjd_idx + 1)..parts.len() {
-                        let token = parts[i];
-                        let is_flag = token == "I"
-                            || token == "P"
-                            || token.starts_with("I-")
-                            || token.starts_with("P-");
-
-                        if is_flag {
-                            flag_count += 1;
-                            if flag_count == 2 {
-                                let value_str =
-                                    if token.starts_with("I-") || token.starts_with("P-") {
-                                        &token[1..]
-                                    } else if i + 1 < parts.len() {
-                                        parts[i + 1]
-                                    } else {
-                                        break;
-                                    };
-                                if let Ok(val) = value_str.parse::<Real>() {
-                                    ut1_value = Some(val);
-                                }
+                    if is_flag {
+                        flag_count += 1;
+                        if flag_count == 2 {
+                            let value_str = if token.starts_with("I-") || token.starts_with("P-") {
+                                &token[1..]
+                            } else if i + 1 < parts.len() {
+                                parts[i + 1]
+                            } else {
                                 break;
+                            };
+                            if let Ok(val) = value_str.parse::<Real>() {
+                                ut1_value = Some(val);
                             }
+                            break;
                         }
                     }
-
-                    let Some(ut1) = ut1_value else { continue };
-                    let Ok(mjd_val) = parts[mjd_idx].parse::<Real>() else {
-                        continue;
-                    };
-                    (Some(mjd_val), Some(ut1))
                 }
 
-                Ut1Format::C04 => {
-                    let (Some(mjd_str), Some(ut1_str)) = (parts.get(4), parts.get(7)) else {
-                        continue;
-                    };
-                    match (mjd_str.parse::<Real>(), ut1_str.parse::<Real>()) {
-                        (Ok(mjd), Ok(ut1)) => (Some(mjd), Some(ut1)),
-                        _ => continue,
-                    }
-                }
+                let ut1 = ut1_value?;
+                let mjd_val = parts[mjd_idx].parse::<Real>().ok()?;
+                (Some(mjd_val), Some(ut1))
+            }
 
-                Ut1Format::Custom(cols) => {
-                    let (Some(mjd_str), Some(ut1_str)) =
-                        (parts.get(cols.mjd), parts.get(cols.ut1_utc))
-                    else {
-                        continue;
-                    };
-                    match (mjd_str.parse::<Real>(), ut1_str.parse::<Real>()) {
-                        (Ok(mjd), Ok(ut1)) => (Some(mjd), Some(ut1)),
-                        _ => continue,
-                    }
-                }
-            };
+            Ut1Format::C04 => {
+                let (mjd_str, ut1_str) = (parts.get(4)?, parts.get(7)?);
+                let mjd = mjd_str.parse::<Real>().ok()?;
+                let ut1 = ut1_str.parse::<Real>().ok()?;
+                (Some(mjd), Some(ut1))
+            }
 
-            if let (Some(mjd_val), Some(ut1_val)) = (mjd, ut1_utc) {
-                entries.push(Ut1Entry {
-                    mjd: mjd_val,
-                    ut1_minus_utc: ut1_val,
-                });
+            Ut1Format::Custom(cols) => {
+                let (mjd_str, ut1_str) = (parts.get(cols.mjd)?, parts.get(cols.ut1_utc)?);
+                let mjd = mjd_str.parse::<Real>().ok()?;
+                let ut1 = ut1_str.parse::<Real>().ok()?;
+                (Some(mjd), Some(ut1))
+            }
+        };
+
+        match (mjd, ut1_utc) {
+            (Some(mjd_val), Some(ut1_val)) => Some(Ut1Row {
+                mjd: mjd_val,
+                ut1_minus_utc: ut1_val,
+            }),
+            _ => None,
+        }
+    }
+
+    // ============================================================
+    // CORE PARSER (no_std + alloc)
+    // ============================================================
+    fn parse_lines<'a>(
+        lines: impl Iterator<Item = &'a str>,
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+        let mut rows = Vec::new();
+
+        for line in lines {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') || trimmed.len() > Self::MAX_LINE_LEN
+            {
+                continue;
+            }
+
+            if let Some(row) = Self::try_parse_row(trimmed, format, separator) {
+                rows.push(row);
             }
         }
 
-        if entries.is_empty() {
+        if rows.is_empty() {
             return Err(DtAllocError::reason(
-                "No valid EOP entries found in file".to_string(),
+                "No valid EOP rows found in source".to_string(),
             ));
         }
 
-        entries.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
-
-        Ok(entries)
+        rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
+        Ok(rows)
     }
 
-    /// Load EOP table from file (finals2000A.all, C04, or custom).
-    pub fn from_text_file(
-        path: &str,
+    // ============================================================
+    // no_std constructors
+    // ============================================================
+    pub fn data_from_str(
+        s: &str,
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+        Self::parse_lines(s.lines(), format, separator)
+    }
+
+    pub fn data_from_bytes(
+        bytes: &[u8],
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+        let s = core::str::from_utf8(bytes).unwrap_or("");
+        Self::data_from_str(s, format, separator)
+    }
+
+    pub fn from_str(
+        s: &str,
         format: Ut1Format,
         separator: Separator,
     ) -> Result<Self, DtAllocError> {
-        let entries = Self::data_from_text_file(path, format, separator)?;
-        Ok(Self { entries })
+        let rows = Self::data_from_str(s, format, separator)?;
+        Ok(Self { rows })
+    }
+
+    pub fn from_bytes(
+        bytes: &[u8],
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Self, DtAllocError> {
+        let rows = Self::data_from_bytes(bytes, format, separator)?;
+        Ok(Self { rows })
+    }
+
+    // ============================================================
+    // std-only constructors (streaming)
+    // ============================================================
+    #[cfg(feature = "std")]
+    pub fn data_from_reader<R: std::io::BufRead>(
+        mut reader: R,
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+        let mut line_buf = String::with_capacity(256);
+        let mut rows = Vec::new();
+
+        loop {
+            line_buf.clear();
+
+            let bytes_read = match reader.read_line(&mut line_buf) {
+                Ok(0) => break,
+                Ok(n) => n,
+                Err(e) => {
+                    return Err(DtAllocError::reason(format!(
+                        "Failed to read line from EOP source: {}",
+                        e
+                    )));
+                }
+            };
+
+            if bytes_read > Self::MAX_LINE_LEN {
+                continue;
+            }
+
+            let trimmed = line_buf.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+
+            if let Some(row) = Self::try_parse_row(trimmed, format, separator) {
+                rows.push(row);
+            }
+        }
+
+        if rows.is_empty() {
+            return Err(DtAllocError::reason(
+                "No valid EOP rows found in source".to_string(),
+            ));
+        }
+
+        rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
+        Ok(rows)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn data_from_text_file<P: AsRef<std::path::Path>>(
+        path: P,
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Vec<Ut1Row>, DtAllocError> {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        let path = path.as_ref();
+        let file = File::open(path).map_err(|e| {
+            DtAllocError::reason(format!(
+                "Failed to open EOP file '{}': {}",
+                path.display(),
+                e
+            ))
+        })?;
+
+        let reader = BufReader::new(file);
+        Self::data_from_reader(reader, format, separator)
+    }
+
+    #[cfg(feature = "std")]
+    pub fn from_text_file<P: AsRef<std::path::Path>>(
+        path: P,
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Self, DtAllocError> {
+        let rows = Self::data_from_text_file(path, format, separator)?;
+        Ok(Self { rows })
     }
 
     /// Returns DUT1 = UT1 − UTC using the library’s *exact* MJD representation.
@@ -192,33 +293,33 @@ impl Ut1Data {
     /// Returns DUT1 = UT1 − UTC (seconds) at the given MJD using linear interpolation.
     /// Returns `None` if the MJD is completely outside the loaded table.
     pub fn ut1_minus_utc(&self, mjd: Real) -> Option<Real> {
-        if self.entries.is_empty() {
+        if self.rows.is_empty() {
             return None;
         }
 
         let idx = match self
-            .entries
+            .rows
             .binary_search_by(|probe| probe.mjd.partial_cmp(&mjd).unwrap_or(Ordering::Equal))
         {
             Ok(i) => i,
             Err(i) => {
                 if i == 0 {
-                    return Some(self.entries[0].ut1_minus_utc);
+                    return Some(self.rows[0].ut1_minus_utc);
                 }
-                if i >= self.entries.len() {
-                    return Some(self.entries[self.entries.len() - 1].ut1_minus_utc);
+                if i >= self.rows.len() {
+                    return Some(self.rows[self.rows.len() - 1].ut1_minus_utc);
                 }
                 i - 1
             }
         };
 
-        if idx + 1 < self.entries.len() {
-            let e0 = &self.entries[idx];
-            let e1 = &self.entries[idx + 1];
+        if idx + 1 < self.rows.len() {
+            let e0 = &self.rows[idx];
+            let e1 = &self.rows[idx + 1];
             let t = (mjd - e0.mjd) / (e1.mjd - e0.mjd);
             Some(e0.ut1_minus_utc + t * (e1.ut1_minus_utc - e0.ut1_minus_utc))
         } else {
-            Some(self.entries[idx].ut1_minus_utc)
+            Some(self.rows[idx].ut1_minus_utc)
         }
     }
 }
@@ -249,7 +350,7 @@ impl TimePoint {
     /// TCG ↔ TT, etc.) to solve the implicit equation  
     /// `UTC = UT1 − DUT1(MJD_UTC)` to machine precision.
     pub fn from_ut1(ut1: Self, provider: &Ut1Data) -> Result<Self, DtAllocError> {
-        if provider.entries.is_empty() {
+        if provider.rows.is_empty() {
             return Err(DtAllocError::reason("EOP table is empty".to_string()));
         }
 
