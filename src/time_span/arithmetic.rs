@@ -189,7 +189,7 @@ impl TimeSpan {
         if rhs == 0 || self.is_zero() {
             return Self::ZERO;
         }
-        let total = self.total_attos() * (rhs as i128);
+        let total: i128 = self.total_attos().saturating_mul(rhs as i128);
         Self::from_total_attos(total)
     }
 
@@ -314,13 +314,13 @@ impl TimeSpan {
         let int_part = floor_f(rhs) as i128; // exact integer part
         let frac_part = rhs - (int_part as Real); // always in [0, 1)
 
-        // Integer part: fully exact i128 multiply
-        let int_result = Self::from_total_attos(self.total_attos() * int_part);
+        // Integer part
+        let int_result = Self::from_total_attos(self.total_attos().saturating_mul(int_part));
 
-        // Fractional part: scaling is now 100% safe (|frac_part| < 1)
+        // Fractional part: scaling is safe (|frac_part| < 1)
         const SCALE: i128 = 1_000_000_000_000_000; // 10¹⁵
         let frac_scaled = (frac_part * (SCALE as Real)) as i128;
-        let frac_product = self.total_attos() * frac_scaled;
+        let frac_product = self.total_attos().saturating_mul(frac_scaled);
         let frac_attos = frac_product / SCALE;
         let frac_result = Self::from_total_attos(frac_attos);
 

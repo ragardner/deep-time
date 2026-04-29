@@ -1,7 +1,7 @@
 use crate::{
-    ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
-    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ClockDrift, ClockModel, ClockType,
-    TT_TAI_OFFSET_SPAN, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC,
+    ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ATTOSEC_PER_NANOSEC,
+    ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ClockDrift, ClockModel, ClockType, TT_TAI_OFFSET_SPAN,
+    TimePoint, TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 
 impl TimePoint {
@@ -124,34 +124,54 @@ impl TimePoint {
         Self::new(s, 0, clock_type)
     }
 
+    /// Reconstruct `TimePoint` from total attoseconds since the reference epoch of the given `clock_type`.
+    ///
+    /// Handles saturation at the `MAX`/`MIN` bounds and negative values correctly
+    /// (reuses `TimeSpan::from_total_attos` for normalization).
+    #[inline]
+    pub const fn from_total_attos(attos: i128, clock_type: ClockType) -> Self {
+        let span = TimeSpan::from_total_attos(attos);
+        Self {
+            sec: span.sec,
+            subsec: span.subsec,
+            clock_type,
+        }
+    }
+
+    /// Creates a `TimePoint` representing `ms` milliseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ms(ms: i128, clock_type: ClockType) -> Self {
-        Self::from_subunits(ms, ATTOSEC_PER_MILLISEC, clock_type)
+        Self::from_total_attos(ms.saturating_mul(ATTOSEC_PER_MILLISEC as i128), clock_type)
     }
 
+    /// Creates a `TimePoint` representing `us` microseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_us(us: i128, clock_type: ClockType) -> Self {
-        Self::from_subunits(us, ATTOSEC_PER_MICROSEC, clock_type)
+        Self::from_total_attos(us.saturating_mul(ATTOSEC_PER_MICROSEC as i128), clock_type)
     }
 
+    /// Creates a `TimePoint` representing `ns` nanoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ns(ns: i128, clock_type: ClockType) -> Self {
-        Self::from_subunits(ns, ATTOSEC_PER_NANOSEC, clock_type)
+        Self::from_total_attos(ns.saturating_mul(ATTOSEC_PER_NANOSEC as i128), clock_type)
     }
 
+    /// Creates a `TimePoint` representing `ps` picoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ps(ps: i128, clock_type: ClockType) -> Self {
-        Self::from_subunits(ps, ATTOSEC_PER_PICOSEC, clock_type)
+        Self::from_total_attos(ps.saturating_mul(ATTOSEC_PER_PICOSEC as i128), clock_type)
     }
 
+    /// Creates a `TimePoint` representing `fs` femtoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_fs(fs: i128, clock_type: ClockType) -> Self {
-        Self::from_subunits(fs, ATTOSEC_PER_FEMTOSEC, clock_type)
+        Self::from_total_attos(fs.saturating_mul(ATTOSEC_PER_FEMTOSEC as i128), clock_type)
     }
 
+    /// Creates a `TimePoint` representing `as` attoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_as(as_: i128, clock_type: ClockType) -> Self {
-        Self::from_subunits(as_, ATTOSEC_PER_ATTOSEC, clock_type)
+        Self::from_total_attos(as_, clock_type)
     }
 
     #[inline]
@@ -162,6 +182,31 @@ impl TimePoint {
     #[inline]
     pub const fn from_hr(h: i64, clock_type: ClockType) -> Self {
         Self::from_sec(h * 3600, clock_type)
+    }
+
+    #[inline]
+    pub const fn new_tai(sec: i64, subsec: u64) -> Self {
+        Self::new(sec, subsec, ClockType::TAI)
+    }
+
+    #[inline]
+    pub const fn from_tai_sec(s: i64) -> Self {
+        Self::from_sec(s, ClockType::TAI)
+    }
+
+    #[inline]
+    pub const fn from_tai_ms(ms: i128) -> Self {
+        Self::from_ms(ms, ClockType::TAI)
+    }
+
+    #[inline]
+    pub const fn from_tai_us(us: i128) -> Self {
+        Self::from_us(us, ClockType::TAI)
+    }
+
+    #[inline]
+    pub const fn from_tai_ns(ns: i128) -> Self {
+        Self::from_ns(ns, ClockType::TAI)
     }
 
     /// Creates a `TimePoint` from hours, minutes, seconds, milliseconds, microseconds,
@@ -197,48 +242,6 @@ impl TimePoint {
         };
 
         Self::new(final_sec, final_frac, clock_type)
-    }
-
-    #[inline]
-    pub const fn new_tai(sec: i64, subsec: u64) -> Self {
-        Self::new(sec, subsec, ClockType::TAI)
-    }
-
-    #[inline]
-    pub const fn from_tai_sec(s: i64) -> Self {
-        Self::from_sec(s, ClockType::TAI)
-    }
-
-    #[inline]
-    pub const fn from_tai_ms(ms: i128) -> Self {
-        Self::from_ms(ms, ClockType::TAI)
-    }
-
-    #[inline]
-    pub const fn from_tai_us(us: i128) -> Self {
-        Self::from_us(us, ClockType::TAI)
-    }
-
-    #[inline]
-    pub const fn from_tai_ns(ns: i128) -> Self {
-        Self::from_ns(ns, ClockType::TAI)
-    }
-
-    const fn from_subunits(count: i128, attos_per_unit: u64, clock_type: ClockType) -> Self {
-        let abs_count = count.unsigned_abs();
-        let units_per_second = ATTOSEC_PER_SEC / attos_per_unit;
-
-        let extra_sec = (abs_count / (units_per_second as u128)) as i64;
-        let remaining = abs_count % (units_per_second as u128);
-        let frac = (remaining as u64) * attos_per_unit;
-
-        if count >= 0 {
-            Self::new(extra_sec, frac, clock_type)
-        } else if frac == 0 {
-            Self::new(-extra_sec, 0, clock_type)
-        } else {
-            Self::new(-extra_sec - 1, ATTOSEC_PER_SEC - frac, clock_type)
-        }
     }
 
     /// Creates a `TimePoint` from a fully self-describing `ClockModel`.
@@ -279,7 +282,7 @@ impl TimePoint {
             }
         };
         crate::TimePoint::from_unix_sec(secs)
-            .add(crate::TimeSpan::from_ns(nanos))
+            .add(crate::TimeSpan::from_ns(nanos as i128))
             .to_clock_type(target)
     }
 

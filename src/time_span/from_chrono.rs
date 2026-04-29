@@ -17,14 +17,14 @@ impl TimeSpan {
     #[inline]
     pub fn from_chrono_duration(dur: Duration) -> Self {
         match dur.num_nanoseconds() {
-            Some(ns) => Self::from_ns(ns),
+            Some(ns) => Self::from_ns(ns as i128),
             None => {
                 let ns = if dur > Duration::zero() {
                     i64::MAX
                 } else {
                     i64::MIN
                 };
-                Self::from_ns(ns)
+                Self::from_ns(ns as i128)
             }
         }
     }
@@ -44,14 +44,14 @@ impl TimeSpan {
     #[inline]
     pub fn from_chrono_datetime_utc(dt: DateTime<Utc>) -> Self {
         match dt.timestamp_nanos_opt() {
-            Some(ns) => Self::from_ns(ns),
+            Some(ns) => Self::from_ns(ns as i128),
             None => {
                 let ns = if dt > DateTime::<Utc>::UNIX_EPOCH {
                     i64::MAX
                 } else {
                     i64::MIN
                 };
-                Self::from_ns(ns)
+                Self::from_ns(ns as i128)
             }
         }
     }

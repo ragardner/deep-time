@@ -8,15 +8,20 @@ pub mod time_units;
 #[cfg(feature = "alloc")]
 mod to_str;
 
+#[cfg(feature = "hifitime")]
+mod from_hifitime;
+#[cfg(feature = "hifitime")]
+mod to_hifitime;
+
 #[cfg(feature = "chrono")]
-pub mod from_chrono;
+mod from_chrono;
 #[cfg(feature = "chrono")]
-pub mod to_chrono;
+mod to_chrono;
 
 #[cfg(feature = "jiff")]
-pub mod from_jiff;
+mod from_jiff;
 #[cfg(feature = "jiff")]
-pub mod to_jiff;
+mod to_jiff;
 
 /// A high-precision **duration** (time span) expressed as **seconds + attoseconds**
 /// (where 1 attosecond = 10⁻¹⁸ s).

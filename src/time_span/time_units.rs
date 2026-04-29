@@ -36,13 +36,13 @@ macro_rules! impl_time_units_int {
         $(
             impl TimeUnits for $ty {
                 #[inline(always)]
-                fn ns(self) -> TimeSpan { TimeSpan::from_ns(self as i64) }
+                fn ns(self) -> TimeSpan { TimeSpan::from_ns(self as i128) }
 
                 #[inline(always)]
-                fn us(self) -> TimeSpan { TimeSpan::from_us(self as i64) }
+                fn us(self) -> TimeSpan { TimeSpan::from_us(self as i128) }
 
                 #[inline(always)]
-                fn ms(self) -> TimeSpan { TimeSpan::from_ms(self as i64) }
+                fn ms(self) -> TimeSpan { TimeSpan::from_ms(self as i128) }
 
                 #[inline(always)]
                 fn sec(self) -> TimeSpan { TimeSpan::from_sec(self as i64) }
@@ -82,17 +82,17 @@ impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
 impl TimeUnits for f64 {
     #[inline]
     fn ns(self) -> TimeSpan {
-        TimeSpan::from_ns(self as i64)
+        TimeSpan::from_ns(self as i128)
     }
 
     #[inline]
     fn us(self) -> TimeSpan {
-        TimeSpan::from_us(self as i64)
+        TimeSpan::from_us(self as i128)
     }
 
     #[inline]
     fn ms(self) -> TimeSpan {
-        TimeSpan::from_ms(self as i64)
+        TimeSpan::from_ms(self as i128)
     }
 
     #[inline]
@@ -139,17 +139,17 @@ impl TimeUnits for f64 {
 impl TimeUnits for f32 {
     #[inline]
     fn ns(self) -> TimeSpan {
-        TimeSpan::from_ns(self as i64)
+        TimeSpan::from_ns(self as i128)
     }
 
     #[inline]
     fn us(self) -> TimeSpan {
-        TimeSpan::from_us(self as i64)
+        TimeSpan::from_us(self as i128)
     }
 
     #[inline]
     fn ms(self) -> TimeSpan {
-        TimeSpan::from_ms(self as i64)
+        TimeSpan::from_ms(self as i128)
     }
 
     #[inline]

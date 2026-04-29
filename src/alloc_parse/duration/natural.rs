@@ -227,12 +227,12 @@ pub(crate) fn natural_duration_to_span(
                 }
                 DateToken::Tomorrow => {
                     if !has_duration {
-                        return Ok(TimeSpan::from_ns(NS_PER_DAY as i64));
+                        return Ok(TimeSpan::from_ns(NS_PER_DAY));
                     }
                 }
                 DateToken::Yesterday => {
                     if !has_duration {
-                        return Ok(TimeSpan::from_ns(-(NS_PER_DAY as i64)));
+                        return Ok(TimeSpan::from_ns(-NS_PER_DAY));
                     }
                 }
 

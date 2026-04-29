@@ -35,10 +35,7 @@ impl TimeSpan {
                 return Err(ez_err!(DtErrKind::OutOfRange, "{}", s));
             }
             let nanos = (ms * 1_000_000.0).round() as i128;
-            if nanos > i64::MAX as i128 || nanos < i64::MIN as i128 {
-                return Err(ez_err!(DtErrKind::OutOfRange, "{}", s));
-            }
-            let span = TimeSpan::from_ns(nanos as i64);
+            let span = TimeSpan::from_ns(nanos);
             return Ok(span);
         }
 

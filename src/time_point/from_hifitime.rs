@@ -7,7 +7,7 @@ impl TimePoint {
     /// The conversion is exact (within hifitime's nanosecond precision).
     /// Uses a runtime-computed offset so it always matches whatever
     /// calendar math hifitime uses (including negative years).
-    pub fn from_hifitime(epoch: Epoch) -> Self {
+    pub fn from_hifitime_epoch(epoch: Epoch) -> Self {
         let ns_since_j1900 = epoch.to_tai_duration().total_nanoseconds();
 
         let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);

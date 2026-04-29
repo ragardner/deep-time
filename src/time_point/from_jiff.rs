@@ -1,4 +1,4 @@
-use crate::{TimeSpan, TimePoint};
+use crate::{TimePoint, TimeSpan};
 use jiff::Timestamp;
 
 impl TimePoint {
@@ -12,20 +12,7 @@ impl TimePoint {
     /// - The resulting `TimePoint` is expressed in the TAI clock type
     ///   (the library's canonical internal scale).
     /// - Sub-nanosecond attoseconds are set to zero.
-    /// - If the timestamp is outside the range representable as an `i64`
-    ///   number of nanoseconds since the Unix epoch, it is clamped to
-    ///   exactly `i64::MAX` / `i64::MIN` nanoseconds.
     pub fn from_jiff_timestamp(ts: Timestamp) -> Self {
-        let nanos = ts.as_nanosecond();
-
-        let ns = if nanos > i64::MAX as i128 {
-            i64::MAX
-        } else if nanos < i64::MIN as i128 {
-            i64::MIN
-        } else {
-            nanos as i64
-        };
-
-        TimePoint::UNIX_EPOCH_TAI.add(TimeSpan::from_ns(ns))
+        TimePoint::UNIX_EPOCH_TAI.add(TimeSpan::from_ns(ts.as_nanosecond()))
     }
 }

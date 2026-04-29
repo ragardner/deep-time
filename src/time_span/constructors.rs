@@ -1,6 +1,6 @@
 use crate::{
-    ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
-    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, TimeSpan,
+    ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ATTOSEC_PER_NANOSEC,
+    ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, TimeSpan,
 };
 
 impl TimeSpan {
@@ -33,24 +33,6 @@ impl TimeSpan {
         dt
     }
 
-    #[inline]
-    const fn from_subunits(count: i64, attos_per_unit: u64) -> Self {
-        let abs_count = count.unsigned_abs();
-        let units_per_second = ATTOSEC_PER_SEC / attos_per_unit;
-
-        let extra_secs = (abs_count / units_per_second) as i64;
-        let remaining = abs_count % units_per_second;
-        let frac = remaining * attos_per_unit;
-
-        if count >= 0 {
-            Self::new(extra_secs, frac)
-        } else if frac == 0 {
-            Self::new(-extra_secs, 0)
-        } else {
-            Self::new(-extra_secs - 1, ATTOSEC_PER_SEC - frac)
-        }
-    }
-
     /// Creates a `TimeSpan` representing `s` seconds.
     #[inline]
     pub const fn from_sec(s: i64) -> Self {
@@ -59,38 +41,38 @@ impl TimeSpan {
 
     /// Creates a `TimeSpan` representing `ms` milliseconds.
     #[inline]
-    pub const fn from_ms(ms: i64) -> Self {
-        Self::from_subunits(ms, ATTOSEC_PER_MILLISEC)
+    pub const fn from_ms(ms: i128) -> Self {
+        Self::from_total_attos(ms.saturating_mul(ATTOSEC_PER_MILLISEC as i128))
     }
 
     /// Creates a `TimeSpan` representing `us` microseconds.
     #[inline]
-    pub const fn from_us(us: i64) -> Self {
-        Self::from_subunits(us, ATTOSEC_PER_MICROSEC)
+    pub const fn from_us(us: i128) -> Self {
+        Self::from_total_attos(us.saturating_mul(ATTOSEC_PER_MICROSEC as i128))
     }
 
     /// Creates a `TimeSpan` representing `ns` nanoseconds.
     #[inline]
-    pub const fn from_ns(ns: i64) -> Self {
-        Self::from_subunits(ns, ATTOSEC_PER_NANOSEC)
+    pub const fn from_ns(ns: i128) -> Self {
+        Self::from_total_attos(ns.saturating_mul(ATTOSEC_PER_NANOSEC as i128))
     }
 
     /// Creates a `TimeSpan` representing `ps` picoseconds.
     #[inline]
-    pub const fn from_ps(ps: i64) -> Self {
-        Self::from_subunits(ps, ATTOSEC_PER_PICOSEC)
+    pub const fn from_ps(ps: i128) -> Self {
+        Self::from_total_attos(ps.saturating_mul(ATTOSEC_PER_PICOSEC as i128))
     }
 
     /// Creates a `TimeSpan` representing `fs` femtoseconds.
     #[inline]
-    pub const fn from_fs(fs: i64) -> Self {
-        Self::from_subunits(fs, ATTOSEC_PER_FEMTOSEC)
+    pub const fn from_fs(fs: i128) -> Self {
+        Self::from_total_attos(fs.saturating_mul(ATTOSEC_PER_FEMTOSEC as i128))
     }
 
     /// Creates a `TimeSpan` representing `as` attoseconds.
     #[inline]
-    pub const fn from_as(as_: i64) -> Self {
-        Self::from_subunits(as_, ATTOSEC_PER_ATTOSEC)
+    pub const fn from_as(as_: i128) -> Self {
+        Self::from_total_attos(as_)
     }
 
     /// Creates a `TimeSpan` representing `m` minutes.
