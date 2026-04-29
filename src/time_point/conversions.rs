@@ -539,7 +539,7 @@ impl TimePoint {
     ///
     /// The reference epoch is **1970-01-01 00:00:00 UTC ≡ JD 2440587.5 exactly**.
     /// The function uses the library’s canonical UTC representation
-    /// ([`Self::to_canonical_attoseconds`]), so leap seconds are handled correctly
+    /// ([`Self::to_canonical`]), so leap seconds are handled correctly
     /// and the proleptic Gregorian civil second count is respected.
     ///
     /// # Return
@@ -563,7 +563,7 @@ impl TimePoint {
     #[inline]
     pub const fn to_jd_utc_exact(self) -> (i64, TimeSpan) {
         let utc = self.to_clock_type(ClockType::UTC);
-        let canon_attos = utc.to_canonical_attoseconds();
+        let canon_attos = utc.to_canonical();
 
         const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
 
@@ -616,7 +616,7 @@ impl TimePoint {
     ///
     /// The reference epoch is **1970-01-01 00:00:00 UTC ≡ MJD 40587.0 exactly**.
     /// The function uses the library’s canonical UTC representation
-    /// ([`Self::to_canonical_attoseconds`]), so leap seconds are handled correctly
+    /// ([`Self::to_canonical`]), so leap seconds are handled correctly
     /// and the civil Gregorian second count is respected.
     ///
     /// # Return
@@ -643,7 +643,7 @@ impl TimePoint {
     #[inline]
     pub const fn to_mjd_utc_exact(self) -> (i64, TimeSpan) {
         let utc = self.to_clock_type(ClockType::UTC);
-        let canon_attos = utc.to_canonical_attoseconds();
+        let canon_attos = utc.to_canonical();
 
         const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
 
@@ -677,7 +677,7 @@ impl TimePoint {
     ///
     /// The input `(jd_days, frac)` must match exactly what [`Self::to_jd_utc_exact`] returns
     /// for the desired instant. Uses the library’s canonical UTC attosecond representation
-    /// (via [`Self::from_canonical_attoseconds`]), so leap seconds are handled correctly
+    /// (via [`Self::from_canonical`]), so leap seconds are handled correctly
     /// and the proleptic Gregorian civil second count is respected.
     ///
     /// # Precision
@@ -692,7 +692,7 @@ impl TimePoint {
         let days_since_1970 = jd_days - 2_440_587i64;
         const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
         let total_attos = (days_since_1970 as i128) * ATTOS_PER_DAY + frac.total_attos();
-        Self::from_canonical_attoseconds(total_attos, ClockType::UTC)
+        Self::from_canonical(total_attos, ClockType::UTC)
     }
 
     /// Creates a `TimePoint` from an exact Modified Julian Date in UTC using full library precision.

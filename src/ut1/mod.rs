@@ -367,7 +367,7 @@ impl TimePoint {
     pub const fn to_jd_ut1_exact(self) -> (i64, TimeSpan) {
         // Mirror the UTC logic exactly:
         // Apply the same UNIX_EPOCH_TO_J2000_NOON_UTC offset that
-        // to_canonical_attoseconds() uses for UTC.
+        // to_canonical() uses for UTC.
         const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
 
         let canon_attos = ((self.sec as i128) + (UNIX_EPOCH_TO_J2000_NOON_UTC as i128))
@@ -400,7 +400,7 @@ impl TimePoint {
 
         let total_attos = (days_since_1970 as i128) * ATTOS_PER_DAY + frac.total_attos();
 
-        // Apply the inverse offset (mirror what from_canonical_attoseconds does for UTC)
+        // Apply the inverse offset (mirror what from_canonical does for UTC)
         let internal_sec =
             (total_attos / ATTOSEC_PER_SEC_I128) as i64 - UNIX_EPOCH_TO_J2000_NOON_UTC;
         let subsec = (total_attos % ATTOSEC_PER_SEC_I128) as u64;

@@ -4,12 +4,12 @@ use crate::{
 };
 
 impl TimePoint {
-    /// Inverse of [`Self::to_canonical_attoseconds`].
+    /// Inverse of [`Self::to_canonical`].
     ///
     /// Creates a `TimePoint` that is exactly `attos` attoseconds after the
     /// globally-expected canonical epoch of the requested `clock_type`.
     #[inline]
-    pub const fn from_canonical_attoseconds(attos: i128, clock_type: ClockType) -> Self {
+    pub const fn from_canonical(attos: i128, clock_type: ClockType) -> Self {
         match clock_type {
             ClockType::UTC => {
                 let sec = attos.div_euclid(ATTOSEC_PER_SEC_I128) as i64;
@@ -36,28 +36,28 @@ impl TimePoint {
     /// (1970-01-01 00:00:00 UTC).
     #[inline]
     pub const fn from_unix_sec(s: i64) -> Self {
-        Self::from_canonical_attoseconds((s as i128) * ATTOSEC_PER_SEC_I128, ClockType::UTC)
+        Self::from_canonical((s as i128) * ATTOSEC_PER_SEC_I128, ClockType::UTC)
     }
 
     /// Creates a `TimePoint` from **milliseconds** since the POSIX Unix epoch
     /// (full `i128` range supported to match `TimePoint`’s full representable span).
     #[inline]
     pub const fn from_unix_ms(ms: i128) -> Self {
-        Self::from_canonical_attoseconds(ms * (ATTOSEC_PER_MILLISEC as i128), ClockType::UTC)
+        Self::from_canonical(ms * (ATTOSEC_PER_MILLISEC as i128), ClockType::UTC)
     }
 
     /// Creates a `TimePoint` from **microseconds** since the POSIX Unix epoch
     /// (full `i128` range supported).
     #[inline]
     pub const fn from_unix_us(us: i128) -> Self {
-        Self::from_canonical_attoseconds(us * (ATTOSEC_PER_MICROSEC as i128), ClockType::UTC)
+        Self::from_canonical(us * (ATTOSEC_PER_MICROSEC as i128), ClockType::UTC)
     }
 
     /// Creates a `TimePoint` from **nanoseconds** since the POSIX Unix epoch
     /// (full `i128` range supported).
     #[inline]
     pub const fn from_unix_ns(ns: i128) -> Self {
-        Self::from_canonical_attoseconds(ns * (ATTOSEC_PER_NANOSEC as i128), ClockType::UTC)
+        Self::from_canonical(ns * (ATTOSEC_PER_NANOSEC as i128), ClockType::UTC)
     }
 
     // --------------------- GPS / QZSS (1980-01-06 00:00:00 GPST) ---------------------
@@ -66,66 +66,66 @@ impl TimePoint {
     /// (1980-01-06 00:00:00 GPST). Works for both `GPST` and `QZSST`.
     #[inline]
     pub const fn from_gps_sec(s: i64) -> Self {
-        Self::from_canonical_attoseconds((s as i128) * ATTOSEC_PER_SEC_I128, ClockType::GPST)
+        Self::from_canonical((s as i128) * ATTOSEC_PER_SEC_I128, ClockType::GPST)
     }
 
     #[inline]
     pub const fn from_gps_ms(ms: i128) -> Self {
-        Self::from_canonical_attoseconds(ms * (ATTOSEC_PER_MILLISEC as i128), ClockType::GPST)
+        Self::from_canonical(ms * (ATTOSEC_PER_MILLISEC as i128), ClockType::GPST)
     }
 
     #[inline]
     pub const fn from_gps_us(us: i128) -> Self {
-        Self::from_canonical_attoseconds(us * (ATTOSEC_PER_MICROSEC as i128), ClockType::GPST)
+        Self::from_canonical(us * (ATTOSEC_PER_MICROSEC as i128), ClockType::GPST)
     }
 
     #[inline]
     pub const fn from_gps_ns(ns: i128) -> Self {
-        Self::from_canonical_attoseconds(ns * (ATTOSEC_PER_NANOSEC as i128), ClockType::GPST)
+        Self::from_canonical(ns * (ATTOSEC_PER_NANOSEC as i128), ClockType::GPST)
     }
 
     // --------------------- Galileo (1999-08-22 00:00:00 GST) ---------------------
 
     #[inline]
     pub const fn from_galileo_sec(s: i64) -> Self {
-        Self::from_canonical_attoseconds((s as i128) * ATTOSEC_PER_SEC_I128, ClockType::GST)
+        Self::from_canonical((s as i128) * ATTOSEC_PER_SEC_I128, ClockType::GST)
     }
 
     #[inline]
     pub const fn from_galileo_ms(ms: i128) -> Self {
-        Self::from_canonical_attoseconds(ms * (ATTOSEC_PER_MILLISEC as i128), ClockType::GST)
+        Self::from_canonical(ms * (ATTOSEC_PER_MILLISEC as i128), ClockType::GST)
     }
 
     #[inline]
     pub const fn from_galileo_us(us: i128) -> Self {
-        Self::from_canonical_attoseconds(us * (ATTOSEC_PER_MICROSEC as i128), ClockType::GST)
+        Self::from_canonical(us * (ATTOSEC_PER_MICROSEC as i128), ClockType::GST)
     }
 
     #[inline]
     pub const fn from_galileo_ns(ns: i128) -> Self {
-        Self::from_canonical_attoseconds(ns * (ATTOSEC_PER_NANOSEC as i128), ClockType::GST)
+        Self::from_canonical(ns * (ATTOSEC_PER_NANOSEC as i128), ClockType::GST)
     }
 
     // --------------------- BeiDou (2006-01-01 00:00:00 BDT) ---------------------
 
     #[inline]
     pub const fn from_beidou_sec(s: i64) -> Self {
-        Self::from_canonical_attoseconds((s as i128) * ATTOSEC_PER_SEC_I128, ClockType::BDT)
+        Self::from_canonical((s as i128) * ATTOSEC_PER_SEC_I128, ClockType::BDT)
     }
 
     #[inline]
     pub const fn from_beidou_ms(ms: i128) -> Self {
-        Self::from_canonical_attoseconds(ms * (ATTOSEC_PER_MILLISEC as i128), ClockType::BDT)
+        Self::from_canonical(ms * (ATTOSEC_PER_MILLISEC as i128), ClockType::BDT)
     }
 
     #[inline]
     pub const fn from_beidou_us(us: i128) -> Self {
-        Self::from_canonical_attoseconds(us * (ATTOSEC_PER_MICROSEC as i128), ClockType::BDT)
+        Self::from_canonical(us * (ATTOSEC_PER_MICROSEC as i128), ClockType::BDT)
     }
 
     #[inline]
     pub const fn from_beidou_ns(ns: i128) -> Self {
-        Self::from_canonical_attoseconds(ns * (ATTOSEC_PER_NANOSEC as i128), ClockType::BDT)
+        Self::from_canonical(ns * (ATTOSEC_PER_NANOSEC as i128), ClockType::BDT)
     }
 }
 
@@ -135,8 +135,8 @@ fn test_1972_leap_second_canonical_roundtrip() {
     let original = TimePoint::from_gregorian_ymdhms(1972, 6, 30, 23, 59, 60, 0, ClockType::UTC);
 
     // Round-trip through canonical attoseconds
-    let canon = original.to_canonical_attoseconds();
-    let roundtrip = TimePoint::from_canonical_attoseconds(canon, ClockType::UTC);
+    let canon = original.to_canonical();
+    let roundtrip = TimePoint::from_canonical(canon, ClockType::UTC);
 
     // These should be identical if everything is consistent
     assert_eq!(

@@ -135,8 +135,8 @@ mod mjd_leaps_roundtrips {
         );
 
         // === Round-trip through canonical attoseconds ===
-        let canon = original.to_canonical_attoseconds();
-        let roundtrip1 = TimePoint::from_canonical_attoseconds(canon, ClockType::UTC);
+        let canon = original.to_canonical();
+        let roundtrip1 = TimePoint::from_canonical(canon, ClockType::UTC);
 
         assert_eq!(original, roundtrip1, "Canonical round-trip failed");
 
