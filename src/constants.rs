@@ -1,5 +1,24 @@
 use crate::{Real, TimeSpan};
 
+/// Fixed-length second equivalents for ISO 8601 calendar units (Y, M, W, D).
+///
+/// These constants deliberately use the **Julian year** convention (exactly
+/// 365.25 days per year) rather than the slightly more precise Gregorian
+/// average (365.2425 days). This is the traditional astronomical standard
+/// used by Julian Day (JD) and Modified Julian Date (MJD) systems, and it
+/// matches the `NS_PER_YEAR` / `NS_PER_MONTH` constants already defined
+/// elsewhere in the crate.
+///
+/// They exist so that years/months/weeks/days can be converted to a
+/// **fixed number of seconds**.
+/// The resulting `Span` then contains only fixed time units (hours,
+/// minutes, seconds, nanoseconds) and no longer requires a reference
+/// date for `.total()` conversions.
+pub(crate) const SECONDS_PER_YEAR: i128 = 31_557_600; // 365.25 days × 86_400
+pub(crate) const SECONDS_PER_MONTH: i128 = 2_629_800; // 30.4375 days × 86_400
+pub(crate) const SECONDS_PER_WEEK: i128 = 604_800;
+pub(crate) const SECONDS_PER_DAY: i128 = 86_400;
+
 /// Exactly 86,400 seconds in one standard Earth day  
 /// (24 hours × 60 minutes × 60 seconds).
 pub const SEC_PER_DAY: Real = 86_400.0;

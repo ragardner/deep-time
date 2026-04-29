@@ -193,11 +193,7 @@ pub(crate) fn natural_duration_to_span(
         ..
     }) = lang_map().get(&lang)
     else {
-        return Err(ez_err!(
-            DtErrKind::InternalErr,
-            "Couldn't retrieve LangData for: {}",
-            lang
-        ));
+        return Err(ez_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
     };
     let finder = if use_dur_finder { duration_ac } else { date_ac };
 
@@ -336,7 +332,7 @@ pub(crate) fn natural_duration_to_span(
     }
 
     if !has_duration {
-        return Err(ez_err!(DtErrKind::InvalidDuration, "Duration empty"));
+        return Err(ez_err!(DtErrKind::InvalidInput, "{}", input));
     }
 
     // Convert total nanoseconds → attoseconds and build TimeSpan

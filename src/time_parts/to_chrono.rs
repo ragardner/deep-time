@@ -17,30 +17,32 @@ impl TimeParts {
     }
 
     fn build_naive_date(&self) -> Result<NaiveDate, DtError> {
-        let to_err = || {
-            ez_err!(
-                DtErrKind::ChronoConversion,
-                "Failed to build Chrono NaiveDate"
-            )
-        };
-
         // YMD (highest priority, matches Jiff fast-path)
         if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
-            let year_i32: i32 = y.try_into().map_err(|_| to_err())?;
-            return NaiveDate::from_ymd_opt(year_i32, m as u32, d as u32).ok_or_else(to_err);
+            let year_i32: i32 = y
+                .try_into()
+                .map_err(|e| ez_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
+            return NaiveDate::from_ymd_opt(year_i32, m as u32, d as u32)
+                .ok_or_else(|| ez_err!(DtErrKind::InvalidInput, "ymd: {}-{}-{}", year_i32, m, d));
         }
 
         // Ordinal date (%j)
         if let (Some(y), Some(doy)) = (self.year, self.day_of_year) {
-            let year_i32: i32 = y.try_into().map_err(|_| to_err())?;
-            return NaiveDate::from_yo_opt(year_i32, doy as u32).ok_or_else(to_err);
+            let year_i32: i32 = y
+                .try_into()
+                .map_err(|e| ez_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
+            return NaiveDate::from_yo_opt(year_i32, doy as u32)
+                .ok_or_else(|| ez_err!(DtErrKind::InvalidInput, "ydoy: {}-{}", y, doy));
         }
 
         // Small helper: JDN → chrono NaiveDate
         // (JDN 1721426 == proleptic Gregorian 0001-01-01; chrono counts days since then)
         let jdn_to_naive_date = |jdn: i64| -> Result<NaiveDate, DtError> {
-            let days_from_ce: i32 = (jdn - 1721425).try_into().map_err(|_| to_err())?;
-            NaiveDate::from_num_days_from_ce_opt(days_from_ce).ok_or_else(to_err)
+            let days_from_ce: i32 = (jdn - 1721425)
+                .try_into()
+                .map_err(|e| ez_err!(DtErrKind::InvalidInput, "jdn: {}: {}", jdn, e))?;
+            NaiveDate::from_num_days_from_ce_opt(days_from_ce)
+                .ok_or_else(|| ez_err!(DtErrKind::InvalidInput, "days_from_ce: {}", days_from_ce))
         };
 
         // ISO week date (%G/%V + weekday)
@@ -65,17 +67,10 @@ impl TimeParts {
         }
 
         // No supported date format
-        Err(to_err())
+        Err(ez_err!(DtErrKind::InvalidInput, "failed to convert"))
     }
 
     fn build_naive_time(&self) -> Result<NaiveTime, DtError> {
-        let to_err = || {
-            ez_err!(
-                DtErrKind::ChronoConversion,
-                "Failed to build Chrono NaiveTime"
-            )
-        };
-
         let mut hour = self.hour.unwrap_or(0) as u32;
         let minute = self.minute.unwrap_or(0) as u32;
         let mut second = self.second.unwrap_or(0) as u32;
@@ -102,7 +97,7 @@ impl TimeParts {
         //   • Non-leap seconds → strictly < 1 s (error if exceeded)
         //   • Leap seconds      → allow up to ~2 s (chrono’s internal representation)
         if !is_leap && raw_ns_u64 > 999_999_999 {
-            return Err(to_err());
+            return Err(ez_err!(DtErrKind::OutOfRange, "leap ns: {}", raw_ns_u64));
         }
 
         let mut subsec_nano: u32 = if raw_ns_u64 > 1_999_999_999 {
@@ -119,38 +114,52 @@ impl TimeParts {
                 subsec_nano = 1_999_999_999;
             }
         } else if second > 59 {
-            return Err(to_err());
+            return Err(ez_err!(DtErrKind::OutOfRange, "seconds: {}", second));
         }
 
-        NaiveTime::from_hms_nano_opt(hour, minute, second, subsec_nano).ok_or_else(to_err)
+        NaiveTime::from_hms_nano_opt(hour, minute, second, subsec_nano).ok_or_else(|| {
+            ez_err!(
+                DtErrKind::InvalidInput,
+                "hms: {} {} {} {}",
+                hour,
+                minute,
+                second,
+                subsec_nano
+            )
+        })
     }
 
     /// Helper: resolve the TimeParts TZ to a Chrono `FixedOffset`.
     /// IANA names are **not supported** in core chrono (they require the `chrono-tz` crate).
     /// TODO: Add chrono-tz feature?
     fn to_chrono_offset(&self) -> Result<FixedOffset, DtError> {
-        let to_err = || {
-            ez_err!(
-                DtErrKind::ChronoConversion,
-                "Failed to build Chrono FixedOffset"
-            )
-        };
         // IANA name present → explicit error (vanilla chrono cannot resolve it)
         if let Some(name) = &self.iana_name {
-            let name_str = name.as_str().map_err(|_| to_err())?;
+            let name_str = name.as_str().map_err(|e| {
+                ez_err!(
+                    DtErrKind::InvalidBytes,
+                    "invalid iana ascii: {:?}: {}",
+                    name,
+                    e
+                )
+            })?;
             if !name_str.is_empty() {
-                return Err(to_err()); // "IANA timezones not supported in chrono feature"
+                return Err(ez_err!(
+                    DtErrKind::InternalErr,
+                    "iana tz not supported in chrono feat" // TODO
+                ));
             }
         }
         match self.tz {
             Some(TimeZone::Fixed(secs)) => {
                 // east_opt already handles negative values correctly:
                 // positive = east of UTC, negative = west of UTC.
-                FixedOffset::east_opt(secs).ok_or_else(to_err)
+                FixedOffset::east_opt(secs).ok_or_else(|| {
+                    ez_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: {}", secs)
+                })
             }
-            Some(TimeZone::Utc) | Some(TimeZone::None) | None => {
-                FixedOffset::east_opt(0).ok_or_else(to_err)
-            }
+            Some(TimeZone::Utc) | Some(TimeZone::None) | None => FixedOffset::east_opt(0)
+                .ok_or_else(|| ez_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: 0")),
         }
     }
 
@@ -169,13 +178,6 @@ impl TimeParts {
     /// - If no `%s` is present, the normal civil path is taken: the date/time components are
     ///   interpreted as local time *in the parsed timezone*.
     pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, DtError> {
-        let to_err = || {
-            ez_err!(
-                DtErrKind::ChronoConversion,
-                "Failed to build Chrono DateTime<FixedOffset>"
-            )
-        };
-
         let offset = self.to_chrono_offset()?;
 
         // Fast path: %s is gospel — absolute UTC instant (civil fields are ignored)
@@ -195,7 +197,13 @@ impl TimeParts {
 
             // Note: is_leap_second is ignored here (and cannot be set when unix_timestamp_seconds
             // is present, per TimeParts::finish()).
-            let utc_dt = DateTime::from_timestamp(secs, subsec_nano).ok_or_else(to_err)?;
+            let utc_dt = DateTime::from_timestamp(secs, subsec_nano).ok_or_else(|| {
+                ez_err!(
+                    DtErrKind::InvalidNumber,
+                    "timestamp: {:?}",
+                    self.unix_timestamp_seconds
+                )
+            })?;
             return Ok(utc_dt.with_timezone(&offset));
         }
 
@@ -204,7 +212,7 @@ impl TimeParts {
         offset
             .from_local_datetime(&naive)
             .single()
-            .ok_or_else(to_err)
+            .ok_or_else(|| ez_err!(DtErrKind::InvalidTimezoneOffset, "offset: {:?}", offset))
     }
 
     /// Converts `TimeParts` → absolute Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).
@@ -433,7 +441,7 @@ mod tests {
         .unwrap();
         let err = parsed.to_chrono_datetime().unwrap_err();
         // IANA is rejected in to_chrono_offset (vanilla chrono cannot resolve it)
-        assert!(matches!(err.kind(), DtErrKind::ChronoConversion));
+        assert!(matches!(err.kind().unwrap(), DtErrKind::InternalErr));
     }
 
     #[test]

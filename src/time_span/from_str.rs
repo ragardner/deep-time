@@ -14,7 +14,7 @@ impl TimeSpan {
     pub fn from_iso(s: &str) -> Result<TimeSpan, DtError> {
         let len = s.len();
         if len == 0 {
-            return Err(ez_err!(DtErrKind::InvalidDuration, "Empty duration"));
+            return Err(ez_err!(DtErrKind::Incomplete, "empty"));
         }
 
         let b = s.as_bytes();
@@ -31,10 +31,7 @@ impl TimeSpan {
 
         // Must start with P/p
         if i >= len || !matches!(b[i], b'P' | b'p') {
-            return Err(ez_err!(
-                DtErrKind::InvalidDuration,
-                "Duration must start with P"
-            ));
+            return Err(ez_err!(DtErrKind::MustStartWith, "P"));
         }
         i += 1;
 
@@ -47,16 +44,10 @@ impl TimeSpan {
         let (date_part, time_part) = match t_pos {
             Some(pos) => {
                 if pos == len - 1 {
-                    return Err(ez_err!(
-                        DtErrKind::InvalidDuration,
-                        "T separator present but no time components follow"
-                    ));
+                    return Err(ez_err!(DtErrKind::InvalidSyntax, "T with no time"));
                 }
                 if b[pos + 1..].iter().any(|&c| matches!(c, b'T' | b't')) {
-                    return Err(ez_err!(
-                        DtErrKind::InvalidDuration,
-                        "Multiple 'T' separators not allowed"
-                    ));
+                    return Err(ez_err!(DtErrKind::InvalidSyntax, "multiple T"));
                 }
                 (&b[i..pos], &b[pos + 1..])
             }
@@ -88,10 +79,7 @@ impl TimeSpan {
         }
 
         if *has_fraction {
-            return Err(ez_err!(
-                DtErrKind::InvalidDuration,
-                "No components allowed after fractional"
-            ));
+            return Err(ez_err!(DtErrKind::InvalidSyntax, "components after frac"));
         }
 
         // Parse integer part
@@ -100,14 +88,14 @@ impl TimeSpan {
             *i += 1;
         }
         if start == *i {
-            return Err(ez_err!(DtErrKind::InvalidDuration, "Expected a number"));
+            return Err(ez_err!(DtErrKind::ExpectedValue, "number"));
         }
 
         let int_str = core::str::from_utf8(&chars[start..*i])
-            .map_err(|_| ez_err!(DtErrKind::InvalidDuration, "Invalid UTF-8 in integer part"))?;
-        let int: i64 = int_str
-            .parse()
-            .map_err(|e: core::num::ParseIntError| ez_err!(DtErrKind::InvalidDuration, "{}", e))?;
+            .map_err(|_| ez_err!(DtErrKind::InvalidNumber, "invalid utf8 in int"))?;
+        let int: i64 = int_str.parse().map_err(|e: core::num::ParseIntError| {
+            ez_err!(DtErrKind::InvalidNumber, "{}: {}", int_str, e)
+        })?;
 
         // Parse optional fraction
         let mut frac_num: i64 = 0;
@@ -120,34 +108,24 @@ impl TimeSpan {
             }
             frac_digits = *i - frac_start;
             if frac_digits == 0 {
-                return Err(ez_err!(
-                    DtErrKind::InvalidDuration,
-                    "Empty fraction after . or ,"
-                ));
+                return Err(ez_err!(DtErrKind::ExpectedValue, "empty frac after ."));
             }
             if frac_digits > 9 {
-                return Err(ez_err!(
-                    DtErrKind::InvalidDuration,
-                    "Too many decimal places (max 9 for ns)"
-                ));
+                return Err(ez_err!(DtErrKind::OutOfRange, "frac >9"));
             }
 
-            let frac_str = core::str::from_utf8(&chars[frac_start..*i]).map_err(|_| {
-                ez_err!(
-                    DtErrKind::InvalidDuration,
-                    "Invalid UTF-8 in fractional part"
-                )
-            })?;
+            let frac_str = core::str::from_utf8(&chars[frac_start..*i])
+                .map_err(|_| ez_err!(DtErrKind::InvalidNumber, "invalid utf8 in frac"))?;
             frac_num = frac_str.parse().map_err(|e: core::num::ParseIntError| {
-                ez_err!(DtErrKind::InvalidDuration, "{}", e)
+                ez_err!(DtErrKind::InvalidNumber, "{}: {}", frac_str, e)
             })?;
         }
 
         // Unit must follow
         if *i >= chars.len() {
             return Err(ez_err!(
-                DtErrKind::InvalidDuration,
-                "Missing unit after number"
+                DtErrKind::InvalidSyntax,
+                "missing unit after number"
             ));
         }
         let unit = chars[*i];
@@ -157,8 +135,8 @@ impl TimeSpan {
         if frac_digits > 0 {
             if !matches!(unit, b'S' | b's') {
                 return Err(ez_err!(
-                    DtErrKind::InvalidDuration,
-                    "Fractional only supported for seconds"
+                    DtErrKind::InvalidSyntax,
+                    "frac only supported for seconds"
                 ));
             }
             *has_fraction = true;
@@ -192,27 +170,25 @@ impl TimeSpan {
                 (true, b'Y' | b'y') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SECONDS_PER_YEAR)
-                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "Year value out of range"))?;
+                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "year"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'M' | b'm') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SECONDS_PER_MONTH)
-                        .ok_or_else(|| {
-                            ez_err!(DtErrKind::OutOfRange, "Month value out of range")
-                        })?;
+                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "month"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'W' | b'w') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SECONDS_PER_WEEK)
-                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "Week value out of range"))?;
+                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "week"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'D' | b'd') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SECONDS_PER_DAY)
-                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "Day value out of range"))?;
+                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "day"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (false, b'H' | b'h') => (comp.signed_int as i128) * 3_600_000_000_000i128,
@@ -227,11 +203,7 @@ impl TimeSpan {
                     sec_nanos
                 }
                 _ => {
-                    return Err(ez_err!(
-                        DtErrKind::InvalidDuration,
-                        "Unknown duration unit: {}",
-                        comp.unit as char
-                    ));
+                    return Err(ez_err!(DtErrKind::InvalidItem, "{}", comp.unit as char));
                 }
             };
 

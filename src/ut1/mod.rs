@@ -148,7 +148,7 @@ impl Ut1Data {
         }
 
         if rows.is_empty() {
-            return Err(ez_err!(DtErrKind::Incomplete, "No valid rows"));
+            return Err(ez_err!(DtErrKind::Incomplete, "no valid rows"));
         }
 
         rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
@@ -208,7 +208,7 @@ impl Ut1Data {
                 Ok(0) => break,
                 Ok(n) => n,
                 Err(e) => {
-                    return Err(ez_err!(DtErrKind::IOErr, "Read line fail: {}", e));
+                    return Err(ez_err!(DtErrKind::IOErr, "read line: {}", e));
                 }
             };
 
@@ -227,7 +227,7 @@ impl Ut1Data {
         }
 
         if rows.is_empty() {
-            return Err(ez_err!(DtErrKind::Incomplete, "No valid rows"));
+            return Err(ez_err!(DtErrKind::Incomplete, "no valid rows"));
         }
 
         rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
@@ -244,14 +244,8 @@ impl Ut1Data {
         use std::io::BufReader;
 
         let path = path.as_ref();
-        let file = File::open(path).map_err(|e| {
-            ez_err!(
-                DtErrKind::IOErr,
-                "Open file fail: '{}': {}",
-                path.display(),
-                e
-            )
-        })?;
+        let file = File::open(path)
+            .map_err(|e| ez_err!(DtErrKind::IOErr, "open file: '{}': {}", path.display(), e))?;
 
         let reader = BufReader::new(file);
         Self::data_from_reader(reader, format, separator)
@@ -325,7 +319,7 @@ impl TimePoint {
             .ut1_minus_utc_exact(mjd_days, mjd_frac)
             .ok_or_else(|| {
                 let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
-                ez_err!(DtErrKind::OutOfRange, "Mjd out of range: {mjd_f}")
+                ez_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
             })?;
 
         Ok(utc
@@ -340,7 +334,7 @@ impl TimePoint {
     /// `UTC = UT1 − DUT1(MJD_UTC)` to machine precision.
     pub fn from_ut1(ut1: Self, ut1_data: &Ut1Data) -> Result<Self, DtError> {
         if ut1_data.rows.is_empty() {
-            return Err(ez_err!(DtErrKind::InternalErr, "No data"));
+            return Err(ez_err!(DtErrKind::InternalErr, "contains no data"));
         }
 
         let mut utc_guess = ut1.with_clock_type(ClockType::UTC);
@@ -353,7 +347,7 @@ impl TimePoint {
                 .ut1_minus_utc_exact(mjd_days, mjd_frac)
                 .ok_or_else(|| {
                     let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
-                    ez_err!(DtErrKind::OutOfRange, "Mjd out of range: {mjd_f}")
+                    ez_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
                 })?;
 
             utc_guess = ut1

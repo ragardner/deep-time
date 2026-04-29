@@ -59,11 +59,7 @@ impl TimeParts {
             if sec == 60 {
                 self.is_leap_second = true;
             } else if sec > 60 {
-                return Err(ez_err!(
-                    DtErrKind::OutOfRange,
-                    "Seconds !(0..=60) got: {}",
-                    sec
-                ));
+                return Err(ez_err!(DtErrKind::OutOfRange, "seconds (0..=60): {}", sec));
             }
         } else {
             self.second = Some(0);

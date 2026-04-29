@@ -15,7 +15,7 @@ impl TimeParts {
 
         // Year (exactly 4 digits)
         if pos + 4 > len_ || !bytes[pos..pos + 4].iter().all(|&b| b.is_ascii_digit()) {
-            return Err(ez_err!(DtErrKind::CCSDSInputErr, "expected 4-digit year"));
+            return Err(ez_err!(DtErrKind::ExpectedValue, "4-digit year"));
         }
         fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%Y");
         fmt_len += 2;
@@ -39,7 +39,7 @@ impl TimeParts {
         } else {
             // %m
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(ez_err!(DtErrKind::CCSDSInputErr, "expected 2-digit month"));
+                return Err(ez_err!(DtErrKind::ExpectedValue, "2-digit month"));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%m");
             fmt_len += 2;
@@ -53,7 +53,7 @@ impl TimeParts {
 
             // %d
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(ez_err!(DtErrKind::CCSDSInputErr, "expected 2-digit day"));
+                return Err(ez_err!(DtErrKind::ExpectedValue, "2-digit day"));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%d");
             fmt_len += 2;
@@ -69,7 +69,7 @@ impl TimeParts {
                 pos += 1;
             } else {
                 return Err(ez_err!(
-                    DtErrKind::CCSDSInputErr,
+                    DtErrKind::InvalidSyntax,
                     "expected T/t/space separator"
                 ));
             }
@@ -79,7 +79,7 @@ impl TimeParts {
 
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(ez_err!(DtErrKind::CCSDSInputErr, "expected 2-digit hour"));
+                return Err(ez_err!(DtErrKind::ExpectedValue, "2-digit hour"));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%H");
             fmt_len += 2;
@@ -94,7 +94,7 @@ impl TimeParts {
 
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(ez_err!(DtErrKind::CCSDSInputErr, "expected 2-digit minute"));
+                return Err(ez_err!(DtErrKind::ExpectedValue, "2-digit minute"));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%M");
             fmt_len += 2;
@@ -109,7 +109,7 @@ impl TimeParts {
 
         if pos + 2 <= len_ {
             if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(ez_err!(DtErrKind::CCSDSInputErr, "expected 2-digit second"));
+                return Err(ez_err!(DtErrKind::ExpectedValue, "2-digit second"));
             }
             fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%S");
             fmt_len += 2;
@@ -134,7 +134,7 @@ impl TimeParts {
         let format = match core::str::from_utf8(&fmt_buf[0..fmt_len]) {
             Ok(f) => f,
             Err(_) => {
-                return Err(ez_err!(DtErrKind::CCSDSInputErr, "from utf8"));
+                return Err(ez_err!(DtErrKind::InvalidBytes, "from utf8"));
             }
         };
 

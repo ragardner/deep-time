@@ -1,3 +1,5 @@
+use std::mem;
+
 use deep_time_core::{ClockType, DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
 
 #[cfg(feature = "jiff-tz")]
@@ -415,6 +417,7 @@ fn test_date_error() {
     match dt {
         Ok(_) => {}
         Err(e) => {
+            eprintln!("EzError size = {} bytes", mem::size_of_val(&e));
             eprintln!("{}", e);
         }
     }

@@ -1,4 +1,4 @@
-use crate::alloc_parse::en::*;
+use crate::en_lang_data;
 use crate::{Lang, LangData};
 use alloc::boxed::Box;
 use hashbrown::HashMap;

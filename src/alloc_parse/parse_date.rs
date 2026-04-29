@@ -16,12 +16,10 @@ impl TimePoint {
             .as_ref()
             .unwrap_or_else(|| default_date_parse_options());
 
-        if s.is_empty() || s.len() > MAX_DATE_STRING_LEN {
-            return Err(ez_err!(
-                DtErrKind::InvalidDate,
-                "Invalid date (empty or too long): '{}'",
-                s
-            ));
+        if s.is_empty() {
+            return Err(ez_err!(DtErrKind::Incomplete, "empty"));
+        } else if s.len() > MAX_DATE_STRING_LEN {
+            return Err(ez_err!(DtErrKind::InvalidInput, "too long: {}", s));
         }
 
         let lang = opts.lang;
@@ -39,8 +37,8 @@ impl TimePoint {
             Err(e) => {
                 // std::eprintln!("{}", e);
                 return Err(ez_err!(
-                    DtErrKind::InvalidDate,
-                    "Invalid date '{}'",
+                    DtErrKind::InvalidInput,
+                    "{}",
                     s => e
                 ));
             }
@@ -62,11 +60,7 @@ impl TimePoint {
                 }
                 // None of the provided formats worked and mode is Explicit
                 if opts.mode == DateParseMode::Explicit {
-                    return Err(ez_err!(
-                        DtErrKind::InvalidDate,
-                        "Could not parse using the provided explicit formats: '{}'",
-                        s
-                    ));
+                    return Err(ez_err!(DtErrKind::InvalidInput, "{}", s));
                 }
             }
             (opts.mode, opts.order)
@@ -218,11 +212,7 @@ impl TimePoint {
                 return Ok(dt);
             }
         }
-        Err(ez_err!(
-            DtErrKind::InvalidDate,
-            "Could not parse date using any method: '{}'",
-            s
-        ))
+        Err(ez_err!(DtErrKind::InvalidInput, "{}", s))
     }
 
     /// Same parsing logic as `TimePoint::from_str`, but returns milliseconds since

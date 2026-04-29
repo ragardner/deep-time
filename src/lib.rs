@@ -7,10 +7,10 @@ extern crate std;
 // ──────────────────────────────────────────────────────────────
 // Optional panic handler (opt-in via feature)
 // ──────────────────────────────────────────────────────────────
-#[cfg(all(feature = "panic-handler", not(feature = "std")))]
+#[cfg(all(feature = "panic-handler", not(feature = "alloc")))]
 use core::panic::PanicInfo;
 
-#[cfg(all(feature = "panic-handler", not(feature = "std")))]
+#[cfg(all(feature = "panic-handler", not(feature = "alloc")))]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     // Uses spin_loop() for better power characteristics than plain loop{}
@@ -69,8 +69,8 @@ pub mod tzdb;
 // _________________________________________
 #[cfg(feature = "parse")]
 pub(crate) use alloc_parse::{
-    date::*, date_classification::*, duration::*, lang::*, lang_map::*, languages::en::*,
-    parse_date::*, std_constants::*, types::*,
+    alloc_constants::*, date::*, date_classification::*, duration::*, lang::*, lang_map::*,
+    languages::en::*, parse_date::*, types::*,
 };
 
 // _________________________________________
