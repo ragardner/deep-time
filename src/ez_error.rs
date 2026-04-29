@@ -110,7 +110,6 @@ where
 ///
 /// ```text
 /// --
-/// EzError
 /// • Trace (2 levels):
 ///    1. Io    @ src/io.rs:42:10    while loading config from /etc/foo
 ///    2. Parse @ src/parser.rs:17:5  unexpected token at byte 42
@@ -298,6 +297,80 @@ where
             self.len += 1;
         }
     }
+
+    /// Serialize this error into a fixed-size byte buffer for transmission.
+    ///
+    /// The caller must provide a buffer that is at least `Self::WIRE_SIZE::<PATH_LEN>()` bytes long.
+    /// Returns the number of bytes actually written (always the same for a given `PATH_LEN`).
+    ///
+    /// Recommended usage:
+    /// ```rust,ignore
+    /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    /// #[repr(u8)]   // or #[repr(u16)] for >256 variants
+    /// pub enum MyKind { ... }
+    ///
+    /// let mut buf = [0u8; EzError::<MyKind, 3, 29>::wire_size::<80>()];
+    /// let written = my_error.to_wire_bytes::<80>(|k| k as u16, &mut buf);
+    /// let packet = &buf[..written];
+    /// ```
+    pub fn to_wire_bytes<const PATH_LEN: usize>(
+        &self,
+        kind_to_u16: impl Fn(K) -> u16,
+        buf: &mut [u8],
+    ) -> Result<usize, ()> {
+        let needed = Self::wire_size::<PATH_LEN>();
+        if buf.len() < needed {
+            return Err(());
+        }
+
+        let mut offset = 0;
+
+        // Header
+        buf[offset] = 1; // wire format version
+        offset += 1;
+        buf[offset] = self.len;
+        offset += 1;
+
+        for i in 0..DEPTH {
+            if i < self.len as usize {
+                // 1. Kind as u16
+                let kind_val = self.kinds[i].map_or(0, |k| kind_to_u16(k));
+                buf[offset..offset + 2].copy_from_slice(&kind_val.to_le_bytes());
+                offset += 2;
+
+                // 2. Reason
+                let reason = self.reasons[i]
+                    .as_ref()
+                    .unwrap_or_else(|| &AsciiStr::DEFAULT);
+                buf[offset..offset + REASON_LEN].copy_from_slice(&reason.to_wire_bytes());
+                offset += REASON_LEN;
+
+                // 3. Location
+                if let Some(loc) = self.locations[i] {
+                    let file = AsciiStr::<PATH_LEN>::from_str_truncate(loc.file());
+                    buf[offset..offset + PATH_LEN].copy_from_slice(&file.to_wire_bytes());
+                    offset += PATH_LEN;
+
+                    buf[offset..offset + 4].copy_from_slice(&loc.line().to_le_bytes());
+                    offset += 4;
+                    buf[offset..offset + 4].copy_from_slice(&loc.column().to_le_bytes());
+                    offset += 4;
+                } else {
+                    offset += PATH_LEN + 8; // pad
+                }
+            } else {
+                // pad remaining levels
+                offset += 2 + REASON_LEN + PATH_LEN + 8;
+            }
+        }
+
+        Ok(needed)
+    }
+
+    /// Compile-time size of the wire representation for a given `PATH_LEN`.
+    pub const fn wire_size<const PATH_LEN: usize>() -> usize {
+        2 + DEPTH * (2 + REASON_LEN + PATH_LEN + 8)
+    }
 }
 
 impl<K, const DEPTH: usize, const REASON_LEN: usize> From<K> for EzError<K, DEPTH, REASON_LEN>
@@ -320,11 +393,9 @@ where
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f)?;
         writeln!(f, "--")?;
-        writeln!(f, "EzError")?;
-
         writeln!(
             f,
-            "• Trace ({} level{}):",
+            "EzError Trace ({} level{}):",
             self.len,
             if self.len == 1 { "" } else { "s" }
         )?;
@@ -397,4 +468,100 @@ macro_rules! ez_err {
     ($kind:expr, $fmt:literal $(, $arg:expr)* $(,)?) => {
         $crate::EzError::with_fmt($kind, format_args!($fmt $(, $arg)*))
     };
+}
+
+/// Portable location for wire transmission.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WireLocation<const N: usize> {
+    pub file: AsciiStr<N>,
+    pub line: u32,
+    pub column: u32,
+}
+
+/// Fully portable, zero-allocation error for transmission/reception.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WireErr<const DEPTH: usize = 3, const REASON_LEN: usize = 29, const FILE_LEN: usize = 80>
+{
+    pub len: u8,
+    pub kinds: [Option<u16>; DEPTH],
+    pub reasons: [Option<AsciiStr<REASON_LEN>>; DEPTH],
+    pub locations: [Option<WireLocation<FILE_LEN>>; DEPTH],
+}
+
+impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
+    WireErr<DEPTH, REASON_LEN, FILE_LEN>
+{
+    /// Fixed wire size (exactly matches `EzError::wire_size::<FILE_LEN>()`).
+    pub const fn wire_size() -> usize {
+        const fn compute_size<const D: usize, const R: usize, const F: usize>() -> usize {
+            2 + D * (2 + R + F + 8)
+        }
+        compute_size::<DEPTH, REASON_LEN, FILE_LEN>()
+    }
+
+    /// Parse a wire buffer from `EzError` into a `WireErr`.
+    ///
+    /// Returns `None` on any corruption, wrong size, unknown version,
+    /// or invalid `AsciiStr` data.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::wire_size() {
+            return None;
+        }
+
+        let mut offset = 0;
+
+        // Version
+        let version = bytes[offset];
+        if version != 1 {
+            return None; // unknown wire format
+        }
+        offset += 1;
+
+        let len = bytes[offset];
+        if len == 0 || len as usize > DEPTH {
+            return None;
+        }
+        offset += 1;
+
+        let mut kinds = [None; DEPTH];
+        let mut reasons = [None; DEPTH];
+        let mut locations = [None; DEPTH];
+
+        for i in 0..(len as usize) {
+            // kind (u16)
+            let kind_bytes = <[u8; 2]>::try_from(&bytes[offset..offset + 2]).ok()?;
+            kinds[i] = Some(u16::from_le_bytes(kind_bytes));
+            offset += 2;
+
+            // reason
+            let reason_bytes = &bytes[offset..offset + REASON_LEN];
+            reasons[i] = AsciiStr::from_wire_bytes(reason_bytes);
+            offset += REASON_LEN;
+
+            // location
+            let file_bytes = &bytes[offset..offset + FILE_LEN];
+            let file = AsciiStr::from_wire_bytes(file_bytes)?;
+
+            offset += FILE_LEN;
+
+            let line_bytes = <[u8; 4]>::try_from(&bytes[offset..offset + 4]).ok()?;
+            let line = u32::from_le_bytes(line_bytes);
+            offset += 4;
+
+            let col_bytes = <[u8; 4]>::try_from(&bytes[offset..offset + 4]).ok()?;
+            let column = u32::from_le_bytes(col_bytes);
+            offset += 4;
+
+            locations[i] = Some(WireLocation { file, line, column });
+        }
+
+        // remaining bytes are padding (we already checked total length)
+
+        Some(WireErr {
+            len,
+            kinds,
+            reasons,
+            locations,
+        })
+    }
 }

@@ -1,7 +1,5 @@
-use core::{
-    fmt::{self, Write},
-    str,
-};
+use core::fmt::{self, Write};
+use core::str;
 
 /// Fixed-capacity, stack-only ASCII string stored in a single `[u8; N]` array.
 ///
@@ -90,6 +88,8 @@ impl<const N: usize> AsciiStr<N> {
 
     /// Size of the wire representation in bytes (always equal to the capacity `N`).
     pub const WIRE_SIZE: usize = N;
+
+    pub const DEFAULT: Self = Self::new();
 
     /// Serializes this `AsciiStr` into a fixed-size byte array.
     ///
