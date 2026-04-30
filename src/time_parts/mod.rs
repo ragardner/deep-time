@@ -26,7 +26,7 @@ pub struct TimeParts {
     pub minute: Option<u8>, // 0-59
     pub second: Option<u8>, // 0-60
     pub attos: Option<u64>, // 0 ≤ value < 10¹⁸
-    pub tz: Option<TimeZone>,
+    pub offset: Option<Offset>,
     pub iana_name: Option<AsciiStr<50>>,
     pub is_leap_second: bool,
     pub clock_type: ClockType,
@@ -106,9 +106,9 @@ impl TimeParts {
         buf[offset..offset + 8].copy_from_slice(&attos.to_le_bytes());
         offset += 8;
 
-        // tz (5 bytes)
-        let tz_bytes = self.tz.unwrap_or_default().to_wire_bytes();
-        buf[offset..offset + 5].copy_from_slice(&tz_bytes);
+        // offset (5 bytes)
+        let offset_bytes = self.offset.unwrap_or_default().to_wire_bytes();
+        buf[offset..offset + 5].copy_from_slice(&offset_bytes);
         offset += 5;
 
         // iana_name (50 bytes)
@@ -226,9 +226,9 @@ impl TimeParts {
         }
         offset += 8;
 
-        // tz (5 bytes) — already nice
-        if let Some(tz) = TimeZone::from_wire_bytes(&bytes[offset..offset + 5]) {
-            dc.tz = Some(tz);
+        // offset (5 bytes) — already nice
+        if let Some(offset) = Offset::from_wire_bytes(&bytes[offset..offset + 5]) {
+            dc.offset = Some(offset);
         }
         offset += 5;
 
@@ -433,7 +433,7 @@ impl Weekday {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum TimeZone {
+pub enum Offset {
     #[default]
     Utc,
     None,
@@ -441,16 +441,16 @@ pub enum TimeZone {
     Fixed(i32),
 }
 
-impl TimeZone {
+impl Offset {
     pub const WIRE_SIZE: usize = 5; // tag (1) + i32 (4)
 
     #[inline]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         match self {
-            TimeZone::Utc => buf[0] = 0,
-            TimeZone::None => buf[0] = 1,
-            TimeZone::Fixed(offset) => {
+            Offset::Utc => buf[0] = 0,
+            Offset::None => buf[0] = 1,
+            Offset::Fixed(offset) => {
                 buf[0] = 2;
                 buf[1..5].copy_from_slice(&offset.to_le_bytes());
             }
@@ -464,11 +464,11 @@ impl TimeZone {
             return None;
         }
         match bytes[0] {
-            0 => Some(TimeZone::Utc),
-            1 => Some(TimeZone::None),
+            0 => Some(Offset::Utc),
+            1 => Some(Offset::None),
             2 => {
                 let offset = i32::from_le_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]);
-                Some(TimeZone::Fixed(offset))
+                Some(Offset::Fixed(offset))
             }
             _ => None,
         }

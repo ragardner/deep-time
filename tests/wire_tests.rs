@@ -4,8 +4,8 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::fmt::Debug;
 use deep_time_core::{
-    ClockDrift, ClockModel, ClockType, GregorianTime, Meridiem, TimeParts, TimePoint, TimeRange,
-    TimeSpan, TimeZone, Weekday,
+    ClockDrift, ClockModel, ClockType, GregorianTime, Meridiem, Offset, TimeParts, TimePoint,
+    TimeRange, TimeSpan, Weekday,
 };
 
 /// Helper function to test round-trip serialization/deserialization.
@@ -123,7 +123,7 @@ fn test_time_parts_roundtrip() {
     dc.second = Some(0);
     dc.attos = Some(0);
     dc.clock_type = ClockType::TAI;
-    dc.tz = Some(TimeZone::Utc);
+    dc.offset = Some(Offset::Utc);
 
     assert_roundtrip(
         &dc,
@@ -155,13 +155,13 @@ fn test_small_enums_roundtrip() {
         );
     }
 
-    // TimeZone
-    let zones = [TimeZone::Utc, TimeZone::None, TimeZone::Fixed(3600)];
-    for tz in zones {
+    // Offset
+    let offsets = [Offset::Utc, Offset::None, Offset::Fixed(3600)];
+    for offset in offsets {
         assert_roundtrip(
-            &tz,
+            &offset,
             |t| t.to_wire_bytes().to_vec(),
-            TimeZone::from_wire_bytes,
+            Offset::from_wire_bytes,
         );
     }
 }

@@ -1,8 +1,7 @@
 use {
     crate::{
-        ATTOSEC_PER_NANOSEC, Meridiem, TimeParts, TimePoint, TimeZone, Weekday,
+        ATTOSEC_PER_NANOSEC, Meridiem, Offset, TimeParts, TimePoint, Weekday, an_err,
         error::{DtErrKind, DtError},
-        ez_err,
         tzdb::offset_at,
     },
     alloc::string::String,
@@ -11,7 +10,7 @@ use {
         Timestamp, Zoned,
         civil::{Date, Time},
         fmt::strtime::{BrokenDownTime, Meridiem as JiffMeridiem},
-        tz::{Offset, TimeZone as JiffTimeZone},
+        tz::{Offset as JiffOffset, TimeZone as JiffTimeZone},
     },
 };
 
@@ -24,57 +23,57 @@ impl TimeParts {
         if let Some(year) = self.year {
             let y: i16 = year
                 .try_into()
-                .map_err(|e| ez_err!(DtErrKind::InvalidInput, "year: {}: {}", year, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidInput, "year: {}: {}", year, e))?;
             bdt.set_year(Some(y))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "year: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "year: {}: {}", y, e))?;
         }
         if let Some(m) = self.month {
             bdt.set_month(Some(m as i8))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "month: {}: {}", m, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "month: {}: {}", m, e))?;
         }
         if let Some(d) = self.day {
             bdt.set_day(Some(d as i8))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "day: {}: {}", d, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "day: {}: {}", d, e))?;
         }
 
         // Week / day-of-year fields
         if let Some(doy) = self.day_of_year {
             bdt.set_day_of_year(Some(doy as i16))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "doy: {}: {}", doy, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "doy: {}: {}", doy, e))?;
         }
         if let Some(y) = self.iso_week_year {
             let y: i16 = y
                 .try_into()
-                .map_err(|e| ez_err!(DtErrKind::InvalidInput, "iso wk yr: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidInput, "iso wk yr: {}: {}", y, e))?;
             bdt.set_iso_week_year(Some(y))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "iso wk yr: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "iso wk yr: {}: {}", y, e))?;
         }
         if let Some(w) = self.iso_week {
             bdt.set_iso_week(Some(w as i8))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "iso wk: {}: {}", w, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "iso wk: {}: {}", w, e))?;
         }
         if let Some(w) = self.week_sun {
             bdt.set_sunday_based_week(Some(w as i8))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "sun based wk: {}: {}", w, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "sun based wk: {}: {}", w, e))?;
         }
         if let Some(w) = self.week_mon {
             bdt.set_monday_based_week(Some(w as i8))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "mon based wk: {}: {}", w, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "mon based wk: {}: {}", w, e))?;
         }
 
         // Time of day
         if let Some(h) = self.hour {
             bdt.set_hour(Some(h as i8))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "hour: {}: {}", h, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "hour: {}: {}", h, e))?;
         }
         if let Some(m) = self.minute {
             bdt.set_minute(Some(m as i8))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "minute: {}: {}", m, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "minute: {}: {}", m, e))?;
         }
         if let Some(s) = self.second {
             let non_ls_s = if s == 60 { 59 } else { s };
             bdt.set_second(Some(non_ls_s as i8))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
         }
 
         // Subsecond precision (attoseconds → nanoseconds)
@@ -86,7 +85,7 @@ impl TimeParts {
                 ns_u64 as i32
             };
             bdt.set_subsec_nanosecond(Some(ns))
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "ns: {}: {}", ns, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "ns: {}: {}", ns, e))?;
         }
 
         // Infallible setters
@@ -113,7 +112,7 @@ impl TimeParts {
         // Explicit Unix timestamp (highest priority)
         if let Some(secs) = self.unix_timestamp_seconds {
             let ts = Timestamp::from_second(secs)
-                .map_err(|e| ez_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e))?;
             bdt.set_timestamp(Some(ts));
         }
 
@@ -125,7 +124,7 @@ impl TimeParts {
                 }
                 Ok(_) => {} // empty name — do nothing
                 Err(e) => {
-                    return Err(ez_err!(
+                    return Err(an_err!(
                         DtErrKind::InvalidBytes,
                         "invalid iana ascii: {:?}: {}",
                         name,
@@ -133,11 +132,11 @@ impl TimeParts {
                     ));
                 }
             }
-        } else if let Some(TimeZone::Fixed(secs)) = self.tz {
-            if let Ok(offset) = Offset::from_seconds(secs) {
-                let _ = bdt.set_offset(Some(offset));
+        } else if let Some(Offset::Fixed(secs)) = self.offset {
+            if let Ok(jiff_offset) = JiffOffset::from_seconds(secs) {
+                let _ = bdt.set_offset(Some(jiff_offset));
             } else {
-                return Err(ez_err!(
+                return Err(an_err!(
                     DtErrKind::InvalidTimezoneOffset,
                     "offset secs: {}",
                     secs
@@ -145,7 +144,7 @@ impl TimeParts {
             }
         } else {
             // Utc / None → treat as UTC
-            let _ = bdt.set_offset(Some(Offset::UTC));
+            let _ = bdt.set_offset(Some(JiffOffset::UTC));
         }
 
         Ok(bdt)
@@ -171,7 +170,7 @@ impl TimeParts {
                 return Ok(dt);
             }
         }
-        Err(ez_err!(
+        Err(an_err!(
             DtErrKind::InvalidInput,
             "could not convert to jiff zoned"
         ))
@@ -181,16 +180,16 @@ impl TimeParts {
     pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtError> {
         if let Some(secs) = self.unix_timestamp_seconds {
             return Timestamp::from_second(secs)
-                .map_err(|e| ez_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e));
+                .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e));
         }
 
         if let (Some(year), Some(month), Some(day)) = (self.year, self.month, self.day) {
             let year_i16: i16 = year
                 .try_into()
-                .map_err(|e| ez_err!(DtErrKind::InvalidItem, "year: {}: {}", year, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidItem, "year: {}: {}", year, e))?;
 
             let date = Date::new(year_i16, month as i8, day as i8).map_err(|e| {
-                ez_err!(
+                an_err!(
                     DtErrKind::InvalidInput,
                     "ymd: {} {} {}: {}",
                     year_i16,
@@ -216,7 +215,7 @@ impl TimeParts {
             };
 
             let time = Time::new(hour, minute, second, subsec_nanosecond).map_err(|e| {
-                ez_err!(
+                an_err!(
                     DtErrKind::InvalidInput,
                     "hms: {} {} {} {}: {}",
                     hour,
@@ -232,7 +231,7 @@ impl TimeParts {
             let tz = self.to_jiff_time_zone()?;
             let zoned = tz
                 .to_zoned(civil_dt)
-                .map_err(|e| ez_err!(DtErrKind::InvalidInput, "civil to zoned: {}", e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidInput, "civil to zoned: {}", e))?;
             return Ok(zoned.timestamp());
         }
 
@@ -240,7 +239,7 @@ impl TimeParts {
         let bdt = self.clone().to_jiff_broken_down_time()?;
 
         bdt.to_timestamp()
-            .map_err(|e| ez_err!(DtErrKind::InvalidInput, "to timestamp: {}", e))
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "to timestamp: {}", e))
     }
 
     // Helper used by to_timestamp
@@ -248,7 +247,7 @@ impl TimeParts {
         // IANA name takes precedence — use OUR own tz database only
         if let Some(name) = &self.iana_name {
             let name_str = name.as_str().map_err(|e| {
-                ez_err!(
+                an_err!(
                     DtErrKind::InvalidBytes,
                     "invalid iana ascii: {:?}: {}",
                     name,
@@ -273,8 +272,8 @@ impl TimeParts {
                 };
 
                 if let Some(offset) = offset_at(name_str, probe_ts) {
-                    let jiff_offset = Offset::from_seconds(offset).map_err(|e| {
-                        ez_err!(
+                    let jiff_offset = JiffOffset::from_seconds(offset).map_err(|e| {
+                        an_err!(
                             DtErrKind::InvalidTimezoneOffset,
                             "offset secs: {}: {}",
                             offset,
@@ -283,7 +282,7 @@ impl TimeParts {
                     })?;
                     return Ok(JiffTimeZone::fixed(jiff_offset));
                 } else {
-                    return Err(ez_err!(
+                    return Err(an_err!(
                         DtErrKind::InvalidTimezoneOffset,
                         "iana: {}",
                         name_str
@@ -293,10 +292,10 @@ impl TimeParts {
         }
 
         // Fallback to the custom TimeZone enum
-        match self.tz {
-            Some(TimeZone::Fixed(secs)) => {
-                let offset = Offset::from_seconds(secs).map_err(|e| {
-                    ez_err!(
+        match self.offset {
+            Some(Offset::Fixed(secs)) => {
+                let offset = JiffOffset::from_seconds(secs).map_err(|e| {
+                    an_err!(
                         DtErrKind::InvalidTimezoneOffset,
                         "offset secs: {}: {}",
                         secs,
@@ -305,7 +304,7 @@ impl TimeParts {
                 })?;
                 Ok(JiffTimeZone::fixed(offset))
             }
-            Some(TimeZone::Utc) | Some(TimeZone::None) | None => Ok(JiffTimeZone::UTC),
+            Some(Offset::Utc) | Some(Offset::None) | None => Ok(JiffTimeZone::UTC),
         }
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
     AsciiStr, ClockType, DtErrKind, DtError, GregorianTime, MONTHS_ABBR, MONTHS_FULL,
-    STRFTIME_SIZE, TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL, ez_err,
+    STRFTIME_SIZE, TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
 };
 
 impl GregorianTime {
@@ -42,7 +42,7 @@ impl GregorianTime {
             i += 1; // skip '%'
 
             if i >= fmt.len() {
-                return Err(ez_err!(DtErrKind::UnexpectedEnd, "after %"));
+                return Err(an_err!(DtErrKind::UnexpectedEnd, "after %"));
             }
 
             // %% → literal percent
@@ -92,7 +92,7 @@ impl GregorianTime {
             }
 
             if i >= fmt.len() {
-                return Err(ez_err!(DtErrKind::UnexpectedEnd, "after %"));
+                return Err(an_err!(DtErrKind::UnexpectedEnd, "after %"));
             }
 
             let directive = fmt[i];
@@ -114,7 +114,7 @@ impl GregorianTime {
                 }
 
                 if i >= fmt.len() {
-                    return Err(ez_err!(DtErrKind::BadFractional, "expected f or N after ."));
+                    return Err(an_err!(DtErrKind::BadFractional, "expected f or N after ."));
                 }
 
                 // optional ~ for trim trailing zeros, after width e.g. %.3~f or %.~f
@@ -124,7 +124,7 @@ impl GregorianTime {
                 }
 
                 if i >= fmt.len() {
-                    return Err(ez_err!(DtErrKind::BadFractional, "expected f or N after ."));
+                    return Err(an_err!(DtErrKind::BadFractional, "expected f or N after ."));
                 }
 
                 let next = fmt[i];
@@ -163,7 +163,7 @@ impl GregorianTime {
                     }
                     continue;
                 } else {
-                    return Err(ez_err!(DtErrKind::BadFractional, "expected f or N after ."));
+                    return Err(an_err!(DtErrKind::BadFractional, "expected f or N after ."));
                 }
             }
 
@@ -245,7 +245,7 @@ impl GregorianTime {
                 b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
 
                 b'c' | b'r' | b'X' | b'x' => self.write_unsupported(buf, pos),
-                _ => return Err(ez_err!(DtErrKind::UnknownDirective)),
+                _ => return Err(an_err!(DtErrKind::UnknownDirective)),
             }
         }
 

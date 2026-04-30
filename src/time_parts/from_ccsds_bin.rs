@@ -1,4 +1,4 @@
-use crate::{ClockType, DtErrKind, DtError, TimeParts, TimePoint, TimeZone, ez_err};
+use crate::{ClockType, DtErrKind, DtError, Offset, TimeParts, TimePoint, an_err};
 
 // tests are in TimePoint to_ccsds_bin
 impl TimeParts {
@@ -82,7 +82,7 @@ impl TimeParts {
     /// Epoch: 1958-01-01 00:00:00 **UTC** (identical to CDS).
     pub fn from_ccsds_ccs(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
-            return Err(ez_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
 
         let p1 = input[0];
@@ -90,7 +90,7 @@ impl TimeParts {
 
         // ── P-field validation ─────────────────────────────────────
         if (p1 & 0b1000_0000) != 0 {
-            return Err(ez_err!(
+            return Err(an_err!(
                 DtErrKind::InvalidInput,
                 "P-field extension not supported"
             ));
@@ -98,20 +98,20 @@ impl TimeParts {
 
         let code_id = (p1 >> 4) & 0b0111;
         if code_id != 0b101 {
-            return Err(ez_err!(DtErrKind::InvalidItem, "code id"));
+            return Err(an_err!(DtErrKind::InvalidItem, "code id"));
         }
 
         let is_doy = ((p1 >> 3) & 1) != 0; // bit 3
         let n_subsec = (p1 & 0b0000_0111) as usize; // bits 2-0
 
         if n_subsec > 6 {
-            return Err(ez_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
+            return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
         }
 
         // Minimum T-field size
         let min_len = 1 + 2 + 2 + 3 + n_subsec;
         if input.len() < min_len {
-            return Err(ez_err!(DtErrKind::InvalidSyntax, "t field too short"));
+            return Err(an_err!(DtErrKind::InvalidSyntax, "t field too short"));
         }
 
         // ── BCD decoder (two decimal digits per byte) ──────────────
@@ -119,7 +119,7 @@ impl TimeParts {
             let hi = b >> 4;
             let lo = b & 0x0F;
             if hi > 9 || lo > 9 {
-                Err(ez_err!(DtErrKind::InvalidBytes, "bad bcd"))
+                Err(an_err!(DtErrKind::InvalidBytes, "bad bcd"))
             } else {
                 Ok(hi * 10 + lo)
             }
@@ -139,9 +139,9 @@ impl TimeParts {
             idx += 2;
 
             if !(1..=12).contains(&mo) {
-                return Err(ez_err!(DtErrKind::OutOfRange, "month: {}", mo));
+                return Err(an_err!(DtErrKind::OutOfRange, "month: {}", mo));
             } else if !(1..=31).contains(&d) {
-                return Err(ez_err!(DtErrKind::OutOfRange, "day: {}", d));
+                return Err(an_err!(DtErrKind::OutOfRange, "day: {}", d));
             }
             (Some(mo), Some(d), None)
         } else {
@@ -151,7 +151,7 @@ impl TimeParts {
             idx += 2;
             let doy = (d1 as u16) * 100 + (d2 as u16);
             if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
-                return Err(ez_err!(DtErrKind::OutOfRange, "day of year: {}", doy));
+                return Err(an_err!(DtErrKind::OutOfRange, "day of year: {}", doy));
             }
             (None, None, Some(doy))
         };
@@ -163,16 +163,16 @@ impl TimeParts {
         idx += 3;
 
         if hour > 23 || minute > 59 {
-            return Err(ez_err!(DtErrKind::OutOfRange, "hour: {}", hour));
+            return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", hour));
         } else if minute > 59 {
-            return Err(ez_err!(DtErrKind::OutOfRange, "minute: {}", minute));
+            return Err(an_err!(DtErrKind::OutOfRange, "minute: {}", minute));
         }
 
         let is_leap_second = second == 60;
         if is_leap_second {
             second = 59; // normalize (finish() will set the flag)
         } else if second > 59 {
-            return Err(ez_err!(DtErrKind::OutOfRange, "second: {}", second));
+            return Err(an_err!(DtErrKind::OutOfRange, "second: {}", second));
         }
 
         // ── Subsecond BCD → attoseconds (exact decimal scaling) ────
@@ -182,7 +182,7 @@ impl TimeParts {
             let hi = (b >> 4) as u128;
             let lo = (b & 0x0F) as u128;
             if hi > 9 || lo > 9 {
-                return Err(ez_err!(DtErrKind::InvalidBytes, "bad subsec bcd"));
+                return Err(an_err!(DtErrKind::InvalidBytes, "bad subsec bcd"));
             }
             frac_value = frac_value * 100 + hi * 10 + lo;
             idx += 1;
@@ -208,7 +208,7 @@ impl TimeParts {
             attos: Some(attos),
             is_leap_second,
             clock_type: ClockType::UTC,
-            tz: Some(TimeZone::Utc),
+            offset: Some(Offset::Utc),
             ..TimeParts::default()
         };
 
@@ -252,7 +252,7 @@ impl TimeParts {
     ///   (3+ byte P-field, unsupported).
     pub fn from_ccsds_c(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
-            return Err(ez_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
 
         let p1 = input[0];
@@ -262,7 +262,7 @@ impl TimeParts {
         let extension = (p1 & 0b1000_0000) != 0;
         let code_id = (p1 >> 4) & 0b0111;
         if code_id != 0b001 {
-            return Err(ez_err!(DtErrKind::InvalidItem, "code id"));
+            return Err(an_err!(DtErrKind::InvalidItem, "code id"));
         }
 
         let base_coarse = (((p1 >> 2) & 0b0011) as usize) + 1;
@@ -271,14 +271,14 @@ impl TimeParts {
         // ── Octet 2 (if present) ─────────────────────────────
         let (n_coarse, n_frac) = if extension {
             if input.len() < 2 {
-                return Err(ez_err!(DtErrKind::InvalidInput, "too short"));
+                return Err(an_err!(DtErrKind::InvalidInput, "too short"));
             }
             let p2 = input[1];
             idx += 1;
 
             // Further extension (3+ byte P-field) is not supported
             if (p2 & 0b1000_0000) != 0 {
-                return Err(ez_err!(
+                return Err(an_err!(
                     DtErrKind::InvalidInput,
                     "P-field extension not supported"
                 ));
@@ -293,7 +293,7 @@ impl TimeParts {
         };
 
         if n_coarse == 0 || input.len() < idx + n_coarse + n_frac {
-            return Err(ez_err!(DtErrKind::InvalidSyntax, "too short"));
+            return Err(an_err!(DtErrKind::InvalidSyntax, "too short"));
         }
 
         // ── Read T-field (big-endian) ─────────────────────────────────────
@@ -337,7 +337,7 @@ impl TimeParts {
             second: Some(second),
             attos: Some(frac_attos),
             clock_type: ClockType::TAI,
-            tz: Some(TimeZone::Utc),
+            offset: Some(Offset::Utc),
             ..TimeParts::default()
         };
         pd.finish(false)?;
@@ -375,7 +375,7 @@ impl TimeParts {
     /// - [`DtErrKind::CCSDSBinInvalidSubMillisecondCode`] if bits 6-7 encode an unsupported value (0b11).
     pub fn from_ccsds_d(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
-            return Err(ez_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
 
         let p1 = input[0];
@@ -385,7 +385,7 @@ impl TimeParts {
         let extension = (p1 & 0b1000_0000) != 0;
         if extension {
             if input.len() < 2 {
-                return Err(ez_err!(DtErrKind::InvalidInput, "too short"));
+                return Err(an_err!(DtErrKind::InvalidInput, "too short"));
             }
             idx += 1;
         }
@@ -393,12 +393,12 @@ impl TimeParts {
         // Code ID must be 100
         let code_id = (p1 >> 4) & 0b0111;
         if code_id != 0b100 {
-            return Err(ez_err!(DtErrKind::InvalidItem, "code id"));
+            return Err(an_err!(DtErrKind::InvalidItem, "code id"));
         }
 
         // Epoch bit (bit 4) must be 0 for Level 1
         if (p1 & 0b0000_1000) != 0 {
-            return Err(ez_err!(DtErrKind::InvalidItem, "epoch"));
+            return Err(an_err!(DtErrKind::InvalidItem, "epoch"));
         }
 
         // Day segment length (bit 5)
@@ -411,12 +411,12 @@ impl TimeParts {
             0b01 => 2,
             0b10 => 4,
             _ => {
-                return Err(ez_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
+                return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
             }
         };
 
         if input.len() < idx + n_day + 4 + n_subsec {
-            return Err(ez_err!(DtErrKind::InvalidSyntax, "too short"));
+            return Err(an_err!(DtErrKind::InvalidSyntax, "too short"));
         }
 
         // ── Read T-field ─────────────────────────────────────
@@ -472,7 +472,7 @@ impl TimeParts {
             second: Some(second),
             attos: Some(frac_attos as u64),
             clock_type: ClockType::UTC,
-            tz: Some(TimeZone::Utc),
+            offset: Some(Offset::Utc),
             ..TimeParts::default()
         };
         pd.finish(false)?;
@@ -489,14 +489,14 @@ impl TimeParts {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any Code ID other than `001` (CUC) or `100` (CDS).
     pub fn from_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtError> {
         if input.is_empty() {
-            return Err(ez_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
         let code_id = (input[0] >> 4) & 0b0111;
         match code_id {
             0b001 => Self::from_ccsds_c(input),
             0b100 => Self::from_ccsds_d(input),
             0b101 => Self::from_ccsds_ccs(input),
-            _ => Err(ez_err!(DtErrKind::InvalidItem, "code id")),
+            _ => Err(an_err!(DtErrKind::InvalidItem, "code id")),
         }
     }
 }

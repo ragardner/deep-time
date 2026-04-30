@@ -2,9 +2,9 @@ use crate::tzdb::offset_at;
 use crate::{
     ClockType, TimePoint,
     error::{DtErrKind, DtError},
-    {Meridiem, TimeParts, TimeZone, Weekday},
+    {Meridiem, Offset, TimeParts, Weekday},
 };
-use crate::{J2000_JD_TT, SEC_PER_DAYI64, UNIX_EPOCH_TO_J2000_NOON_UTC, ez_err};
+use crate::{J2000_JD_TT, SEC_PER_DAYI64, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err};
 
 impl TimeParts {
     /// Converts parsed date/time components into a high-precision [`TimePoint`].
@@ -65,7 +65,7 @@ impl TimeParts {
         let hour = match (self.hour, self.meridiem) {
             (Some(h), Some(m)) => {
                 if !(1..=12).contains(&h) {
-                    return Err(ez_err!(DtErrKind::OutOfRange, "hour: {}", h));
+                    return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", h));
                 }
                 match (h, m) {
                     (12, Meridiem::AM) => 0,
@@ -82,7 +82,7 @@ impl TimeParts {
         // Civil date path
         // ──────────────────────────────────────────────────────────────
         if self.year.is_none() && self.iso_week_year.is_none() {
-            return Err(ez_err!(DtErrKind::Incomplete, "no year"));
+            return Err(an_err!(DtErrKind::Incomplete, "no year"));
         }
 
         let minute = self.minute.unwrap_or(0);
@@ -94,13 +94,13 @@ impl TimeParts {
             if let (Some(m), Some(d)) = (self.month, self.day) {
                 // Classic YMD – highest priority + full validation
                 if !TimePoint::is_valid_ymd(year, m, d) {
-                    return Err(ez_err!(DtErrKind::InvalidInput, "ymd"));
+                    return Err(an_err!(DtErrKind::InvalidInput, "ymd"));
                 }
                 jdn = Some(TimePoint::ymd_to_jdn(year, m, d));
             } else if let Some(doy) = self.day_of_year {
                 // Ordinal date (%j) – already validated
                 if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
-                    return Err(ez_err!(DtErrKind::OutOfRange, "day of year"));
+                    return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
                 }
                 jdn = Some(TimePoint::ydoy_to_jdn(year, doy));
             }
@@ -110,24 +110,24 @@ impl TimeParts {
             if let (Some(iso_y), Some(iso_w)) = (self.iso_week_year, self.iso_week) {
                 // ISO week date (%G/%V)
                 if iso_w == 0 || iso_w > 53 {
-                    return Err(ez_err!(DtErrKind::OutOfRange, "iso week"));
+                    return Err(an_err!(DtErrKind::OutOfRange, "iso week"));
                 }
                 if iso_w == 53 && !TimePoint::has_iso_week_53(iso_y) {
-                    return Err(ez_err!(DtErrKind::InvalidItem, "iso week"));
+                    return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Monday);
                 jdn = Some(TimePoint::ymd_to_jdn_from_iso_week(iso_y, iso_w, wd));
             } else if let (Some(y), Some(w)) = (self.year, self.week_sun) {
                 // Sunday-based week (%U)
                 if w > 53 {
-                    return Err(ez_err!(DtErrKind::OutOfRange, "week number"));
+                    return Err(an_err!(DtErrKind::OutOfRange, "week number"));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Sunday);
                 jdn = Some(TimePoint::ymd_to_jdn_from_week_sun(y, w, wd));
             } else if let (Some(y), Some(w)) = (self.year, self.week_mon) {
                 // Monday-based week (%W)
                 if w > 53 {
-                    return Err(ez_err!(DtErrKind::OutOfRange, "week number"));
+                    return Err(an_err!(DtErrKind::OutOfRange, "week number"));
                 }
                 let wd = self.weekday.unwrap_or(Weekday::Monday);
                 jdn = Some(TimePoint::ymd_to_jdn_from_week_mon(y, w, wd));
@@ -135,7 +135,7 @@ impl TimeParts {
         }
 
         let Some(jdn) = jdn else {
-            return Err(ez_err!(DtErrKind::InvalidInput, "could not create julian"));
+            return Err(an_err!(DtErrKind::InvalidInput, "could not create julian"));
         };
         let days_since_j2000 = jdn - J2000_JD_TT;
         let seconds_from_noon_utc =
@@ -147,7 +147,7 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         if let Some(name) = &self.iana_name {
             let name_str = name.as_str().map_err(|e| {
-                ez_err!(
+                an_err!(
                     DtErrKind::InvalidBytes,
                     "invalid iana ascii: {:?}: {}",
                     name,
@@ -160,7 +160,7 @@ impl TimeParts {
                 match offset_at(name_str, provisional_unix) {
                     Some(offset) => sec_utc -= offset as i64,
                     None => {
-                        return Err(ez_err!(
+                        return Err(an_err!(
                             DtErrKind::InvalidTimezoneOffset,
                             "invalid iana: {}",
                             name_str
@@ -168,7 +168,7 @@ impl TimeParts {
                     }
                 }
             }
-        } else if let Some(TimeZone::Fixed(offset)) = self.tz {
+        } else if let Some(Offset::Fixed(offset)) = self.offset {
             sec_utc -= offset as i64; // local civil time → true UTC instant
         }
         Ok(TimePoint::new(sec_utc, subsec, ClockType::UTC)

@@ -1,7 +1,7 @@
 use crate::{
-    ATTOSEC_PER_NANOSEC, TimePoint,
+    ATTOSEC_PER_NANOSEC, TimePoint, an_err,
     error::{DtErrKind, DtError},
-    ez_err, {Meridiem, TimeParts, TimeZone, Weekday},
+    {Meridiem, Offset, TimeParts, Weekday},
 };
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
@@ -21,18 +21,18 @@ impl TimeParts {
         if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
             let year_i32: i32 = y
                 .try_into()
-                .map_err(|e| ez_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
             return NaiveDate::from_ymd_opt(year_i32, m as u32, d as u32)
-                .ok_or_else(|| ez_err!(DtErrKind::InvalidInput, "ymd: {}-{}-{}", year_i32, m, d));
+                .ok_or_else(|| an_err!(DtErrKind::InvalidInput, "ymd: {}-{}-{}", year_i32, m, d));
         }
 
         // Ordinal date (%j)
         if let (Some(y), Some(doy)) = (self.year, self.day_of_year) {
             let year_i32: i32 = y
                 .try_into()
-                .map_err(|e| ez_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
             return NaiveDate::from_yo_opt(year_i32, doy as u32)
-                .ok_or_else(|| ez_err!(DtErrKind::InvalidInput, "ydoy: {}-{}", y, doy));
+                .ok_or_else(|| an_err!(DtErrKind::InvalidInput, "ydoy: {}-{}", y, doy));
         }
 
         // Small helper: JDN → chrono NaiveDate
@@ -40,9 +40,9 @@ impl TimeParts {
         let jdn_to_naive_date = |jdn: i64| -> Result<NaiveDate, DtError> {
             let days_from_ce: i32 = (jdn - 1721425)
                 .try_into()
-                .map_err(|e| ez_err!(DtErrKind::InvalidInput, "jdn: {}: {}", jdn, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidInput, "jdn: {}: {}", jdn, e))?;
             NaiveDate::from_num_days_from_ce_opt(days_from_ce)
-                .ok_or_else(|| ez_err!(DtErrKind::InvalidInput, "days_from_ce: {}", days_from_ce))
+                .ok_or_else(|| an_err!(DtErrKind::InvalidInput, "days_from_ce: {}", days_from_ce))
         };
 
         // ISO week date (%G/%V + weekday)
@@ -67,7 +67,7 @@ impl TimeParts {
         }
 
         // No supported date format
-        Err(ez_err!(DtErrKind::InvalidInput, "failed to convert"))
+        Err(an_err!(DtErrKind::InvalidInput, "failed to convert"))
     }
 
     fn build_naive_time(&self) -> Result<NaiveTime, DtError> {
@@ -97,7 +97,7 @@ impl TimeParts {
         //   • Non-leap seconds → strictly < 1 s (error if exceeded)
         //   • Leap seconds      → allow up to ~2 s (chrono’s internal representation)
         if !is_leap && raw_ns_u64 > 999_999_999 {
-            return Err(ez_err!(DtErrKind::OutOfRange, "leap ns: {}", raw_ns_u64));
+            return Err(an_err!(DtErrKind::OutOfRange, "leap ns: {}", raw_ns_u64));
         }
 
         let mut subsec_nano: u32 = if raw_ns_u64 > 1_999_999_999 {
@@ -114,11 +114,11 @@ impl TimeParts {
                 subsec_nano = 1_999_999_999;
             }
         } else if second > 59 {
-            return Err(ez_err!(DtErrKind::OutOfRange, "seconds: {}", second));
+            return Err(an_err!(DtErrKind::OutOfRange, "seconds: {}", second));
         }
 
         NaiveTime::from_hms_nano_opt(hour, minute, second, subsec_nano).ok_or_else(|| {
-            ez_err!(
+            an_err!(
                 DtErrKind::InvalidInput,
                 "hms: {} {} {} {}",
                 hour,
@@ -136,7 +136,7 @@ impl TimeParts {
         // IANA name present → explicit error (vanilla chrono cannot resolve it)
         if let Some(name) = &self.iana_name {
             let name_str = name.as_str().map_err(|e| {
-                ez_err!(
+                an_err!(
                     DtErrKind::InvalidBytes,
                     "invalid iana ascii: {:?}: {}",
                     name,
@@ -144,22 +144,22 @@ impl TimeParts {
                 )
             })?;
             if !name_str.is_empty() {
-                return Err(ez_err!(
+                return Err(an_err!(
                     DtErrKind::InternalErr,
                     "iana tz not supported in chrono feat" // TODO
                 ));
             }
         }
-        match self.tz {
-            Some(TimeZone::Fixed(secs)) => {
+        match self.offset {
+            Some(Offset::Fixed(secs)) => {
                 // east_opt already handles negative values correctly:
                 // positive = east of UTC, negative = west of UTC.
                 FixedOffset::east_opt(secs).ok_or_else(|| {
-                    ez_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: {}", secs)
+                    an_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: {}", secs)
                 })
             }
-            Some(TimeZone::Utc) | Some(TimeZone::None) | None => FixedOffset::east_opt(0)
-                .ok_or_else(|| ez_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: 0")),
+            Some(Offset::Utc) | Some(Offset::None) | None => FixedOffset::east_opt(0)
+                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: 0")),
         }
     }
 
@@ -198,7 +198,7 @@ impl TimeParts {
             // Note: is_leap_second is ignored here (and cannot be set when unix_timestamp_seconds
             // is present, per TimeParts::finish()).
             let utc_dt = DateTime::from_timestamp(secs, subsec_nano).ok_or_else(|| {
-                ez_err!(
+                an_err!(
                     DtErrKind::InvalidNumber,
                     "timestamp: {:?}",
                     self.unix_timestamp_seconds
@@ -212,7 +212,7 @@ impl TimeParts {
         offset
             .from_local_datetime(&naive)
             .single()
-            .ok_or_else(|| ez_err!(DtErrKind::InvalidTimezoneOffset, "offset: {:?}", offset))
+            .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset: {:?}", offset))
     }
 
     /// Converts `TimeParts` → absolute Unix timestamp (seconds since 1970-01-01 00:00:00 UTC).

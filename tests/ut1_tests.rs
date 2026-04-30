@@ -3,7 +3,6 @@
 mod tests {
     use deep_time_core::constants::SEC_PER_DAY;
     use deep_time_core::{ClockType, Separator, TimePoint, TimeSpan, Ut1Data, Ut1Format};
-    use std::eprintln;
 
     #[test]
     fn test_ut1_with_finals_all_iau2000_txt() {
@@ -58,8 +57,6 @@ mod tests {
             "round-trip should be exact within floating-point tolerance, got {}",
             roundtrip_diff.as_sec_f()
         );
-
-        eprintln!("✅ UT1 round-trip test passed for MJD 56879.00 (DUT1 ≈ {dut1})");
     }
 
     #[test]
@@ -121,11 +118,6 @@ mod tests {
             "UT1 ↔ UTC round-trip should be exact within machine precision, got {}",
             roundtrip_diff.as_sec_f()
         );
-
-        eprintln!(
-            "✅ Specific EOP row test passed for MJD 60961.00 (DUT1 ≈ {:.7})",
-            dut1
-        );
     }
 
     #[test]
@@ -164,8 +156,6 @@ mod tests {
             "C04 round-trip error too large: {} s",
             roundtrip_error
         );
-
-        eprintln!("✅ C04 row 57259.00 passed (DUT1 ≈ {:.7})", dut1);
     }
 
     // ============================================================
@@ -203,8 +193,6 @@ mod tests {
             "JD_UT1 round-trip error too large: {} s",
             diff.as_sec_f()
         );
-
-        eprintln!("✅ JD_UT1 round-trip passed (MJD 56879)");
     }
 
     // ============================================================
@@ -232,8 +220,6 @@ mod tests {
             "Full pipeline round-trip error too large: {} s",
             error
         );
-
-        eprintln!("✅ Full UTC → UT1 → JD_UT1 → UTC pipeline passed (MJD 60961)");
     }
 
     // ============================================================
@@ -255,8 +241,6 @@ mod tests {
 
         let diff = ut1.duration_since(roundtrip).as_sec_f();
         assert!(diff.abs() < 1e-12, "MJD_UT1 round-trip error: {} s", diff);
-
-        eprintln!("✅ MJD_UT1 round-trip passed (MJD 57259)");
     }
 
     // ============================================================
@@ -287,11 +271,6 @@ mod tests {
             diff_days,
             expected_diff
         );
-
-        eprintln!(
-            "✅ JD_UT1 vs JD_UTC consistency passed (diff ≈ {:.9} days)",
-            diff_days
-        );
     }
 
     // ============================================================
@@ -315,7 +294,5 @@ mod tests {
             "Fractional day round-trip error: {} s",
             diff
         );
-
-        eprintln!("✅ JD_UT1 round-trip with fractional day passed");
     }
 }

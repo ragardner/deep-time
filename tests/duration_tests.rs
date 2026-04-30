@@ -1,9 +1,6 @@
 // tests/duration_tests.rs
 use deep_time_core::{Lang, TimeSpan};
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
 fn assert_duration(input: &str, expected_millis: i64) {
     let trimmed = input.trim();
     let dur = TimeSpan::from_str(trimmed, Lang::default())
@@ -14,18 +11,6 @@ fn assert_duration(input: &str, expected_millis: i64) {
     assert_eq!(actual_millis, expected_millis, "Input: '{}'", input);
 }
 
-fn assert_fails(input: &str) {
-    let trimmed = input.trim();
-    assert!(
-        TimeSpan::from_str(trimmed, Lang::default()).is_err(),
-        "Expected failure: {}",
-        input
-    );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Comprehensive success cases (original tests + corrected comma coverage + EDGE CASES)
-// ─────────────────────────────────────────────────────────────────────────────
 #[test]
 fn duration_comprehensive() {
     let cases: Vec<(&str, i64)> = vec![
@@ -187,49 +172,3 @@ fn duration_comprehensive() {
         assert_duration(input, expected);
     }
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Error cases
-// ─────────────────────────────────────────────────────────────────────────────
-// #[test]
-// fn duration_errors() {
-//     let fails = vec![
-//         "",
-//         "   ",
-//         "abc123",
-//         "P1D with space",
-//         "PT",
-//         "P1X",
-//         "PT1.5H30M",
-//         "P1DT",
-//         "P999999999Y",
-//         "-",
-//         "+",
-//         "1h garbage",
-//         "hello world",
-//         // Comma-related error cases
-//         "1,",           // trailing comma → empty fraction
-//         "1,,000",       // double comma
-//         "1.1.1",        // multiple decimals
-//         "1,,5",         // malformed
-//         "1.234,56,78s", // extra comma after decimal
-//         "1 day 2 hours ,30,5 minutes",
-//         // === ADDED: More failure cases (malformed commas, trailing garbage, overflow-ish, etc.) ===
-//         "1,2,3d",            // multiple commas inside a single number
-//         " ,5,5h",            // decimal comma followed immediately by another comma
-//         "1.2,3 seconds",     // dot + comma in same number (invalid)
-//         "1 day ,5 ,6 hours", // multiple decimal-comma attempts in one string
-//         "and ,",             // incomplete decimal after "and"
-//         "1d , h",            // decimal comma followed by invalid unit start
-//         ",,5h",              // double leading comma
-//         "1h garbage ,5m",    // garbage text between components
-//         "1.2345678901s",     // more than 9 decimal places
-//         "999999999999999d",  // way beyond i64 range (will hit overflow check)
-//         "2,5h ,45,75m",
-//         "1,d",
-//         "1 d, ,2,5y",
-//     ];
-//     for input in fails {
-//         assert_fails(input);
-//     }
-// }

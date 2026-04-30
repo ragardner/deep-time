@@ -39,12 +39,12 @@ mod ut1;
 // _________________________________________
 // MOD
 // _________________________________________
+mod an_err;
 mod ascii_str;
 mod clock_drift;
 mod clock_model;
 mod clock_type;
 mod common;
-mod ez_error;
 mod gregorian_time;
 mod light_time;
 mod parser;
@@ -94,16 +94,16 @@ pub use ut1::{Separator, Ut1Columns, Ut1Data, Ut1Format, Ut1Row};
 // _________________________________________
 // PUB USE
 // _________________________________________
+pub use an_err::{AnErr, WireErr, WireLocation};
 pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
 pub use error::{DtErrKind, DtError};
-pub use ez_error::{EzError, WireErr, WireLocation};
 pub use gregorian_time::GregorianTime;
 pub use light_time::{LightContext, ObserverState};
 pub use position::{Position, Velocity};
-pub use time_parts::{Meridiem, TimeParts, TimeZone, Weekday};
+pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
 pub use time_point::TimePoint;
 pub use time_range::{Every, TimeRange};
 pub use time_span::TimeSpan;

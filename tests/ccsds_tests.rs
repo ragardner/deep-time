@@ -1,11 +1,8 @@
 use deep_time_core::constants::SEC_PER_DAYI64;
-use deep_time_core::{ClockType, TimeParts, TimePoint};
+use deep_time_core::{ClockType, Offset, TimeParts, TimePoint};
 
 #[cfg(test)]
 mod tests {
-
-    use deep_time_core::TimeZone;
-
     use super::*;
 
     #[test]
@@ -190,7 +187,7 @@ mod tests {
 
         // Verify other fields
         assert_eq!(parsed_parts.clock_type, ClockType::UTC);
-        assert_eq!(parsed_parts.tz, Some(TimeZone::Utc));
+        assert_eq!(parsed_parts.offset, Some(Offset::Utc));
         if parsed_parts.is_leap_second {
             assert_eq!(parsed_parts.second, Some(59));
         }

@@ -1,6 +1,6 @@
 use crate::{
     DateToken, DtErrKind, DtError, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
-    NS_PER_MONTH, NS_PER_SECOND, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, ez_err,
+    NS_PER_MONTH, NS_PER_SECOND, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, an_err,
     lang_map, to_ascii_digit,
 };
 use alloc::{
@@ -193,7 +193,7 @@ pub(crate) fn natural_duration_to_span(
         ..
     }) = lang_map().get(&lang)
     else {
-        return Err(ez_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+        return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
     };
     let finder = if use_dur_finder { duration_ac } else { date_ac };
 
@@ -332,7 +332,7 @@ pub(crate) fn natural_duration_to_span(
     }
 
     if !has_duration {
-        return Err(ez_err!(DtErrKind::InvalidInput, "{}", input));
+        return Err(an_err!(DtErrKind::InvalidInput, "{}", input));
     }
 
     // Convert total nanoseconds → attoseconds and build TimeSpan

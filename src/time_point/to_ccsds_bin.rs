@@ -1,4 +1,4 @@
-use crate::{ClockType, DtErrKind, DtError, SEC_PER_DAYI64, TimePoint, ez_err};
+use crate::{ClockType, DtErrKind, DtError, SEC_PER_DAYI64, TimePoint, an_err};
 
 impl TimePoint {
     /// Maximum size needed for a CCSDS C & D (CUC) binary packet (with extended P-field).
@@ -21,9 +21,9 @@ impl TimePoint {
         extension: bool,
     ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
         if !(1..=7).contains(&n_coarse) {
-            return Err(ez_err!(DtErrKind::OutOfRange, "coarse: {}", n_coarse,));
+            return Err(an_err!(DtErrKind::OutOfRange, "coarse: {}", n_coarse,));
         } else if n_frac > 10 {
-            return Err(ez_err!(DtErrKind::OutOfRange, "frac: {}", n_frac));
+            return Err(an_err!(DtErrKind::OutOfRange, "frac: {}", n_frac));
         }
 
         let tai = self.to_clock_type(ClockType::TAI);
@@ -99,9 +99,9 @@ impl TimePoint {
         extension: bool,
     ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
         if !matches!(n_day, 2 | 3) {
-            return Err(ez_err!(DtErrKind::InvalidNumber, "n_day: {}", n_day));
+            return Err(an_err!(DtErrKind::InvalidNumber, "n_day: {}", n_day));
         } else if !matches!(sub_ms_code, 0 | 1 | 2) {
-            return Err(ez_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
+            return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
         }
 
         let utc = self.to_clock_type(ClockType::UTC);
@@ -198,7 +198,7 @@ impl TimePoint {
         n_subsec: u8,
     ) -> Result<([u8; Self::CCSDS_CCS_MAX_SIZE], usize), DtError> {
         if n_subsec > 6 {
-            return Err(ez_err!(DtErrKind::OutOfRange, "n_subsec: {}", n_subsec));
+            return Err(an_err!(DtErrKind::OutOfRange, "n_subsec: {}", n_subsec));
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────

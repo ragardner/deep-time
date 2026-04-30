@@ -1,6 +1,6 @@
 use crate::{
     DtErrKind, DtError, SECONDS_PER_DAY, SECONDS_PER_MONTH, SECONDS_PER_WEEK, SECONDS_PER_YEAR,
-    TimeSpan, ez_err,
+    TimeSpan, an_err,
 };
 
 struct ParsedComponent {
@@ -14,7 +14,7 @@ impl TimeSpan {
     pub fn from_iso(s: &str) -> Result<TimeSpan, DtError> {
         let len = s.len();
         if len == 0 {
-            return Err(ez_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
 
         let b = s.as_bytes();
@@ -31,7 +31,7 @@ impl TimeSpan {
 
         // Must start with P/p
         if i >= len || !matches!(b[i], b'P' | b'p') {
-            return Err(ez_err!(DtErrKind::MustStartWith, "P"));
+            return Err(an_err!(DtErrKind::MustStartWith, "P"));
         }
         i += 1;
 
@@ -44,10 +44,10 @@ impl TimeSpan {
         let (date_part, time_part) = match t_pos {
             Some(pos) => {
                 if pos == len - 1 {
-                    return Err(ez_err!(DtErrKind::InvalidSyntax, "T with no time"));
+                    return Err(an_err!(DtErrKind::InvalidSyntax, "T with no time"));
                 }
                 if b[pos + 1..].iter().any(|&c| matches!(c, b'T' | b't')) {
-                    return Err(ez_err!(DtErrKind::InvalidSyntax, "multiple T"));
+                    return Err(an_err!(DtErrKind::InvalidSyntax, "multiple T"));
                 }
                 (&b[i..pos], &b[pos + 1..])
             }
@@ -79,7 +79,7 @@ impl TimeSpan {
         }
 
         if *has_fraction {
-            return Err(ez_err!(DtErrKind::InvalidSyntax, "components after frac"));
+            return Err(an_err!(DtErrKind::InvalidSyntax, "components after frac"));
         }
 
         // Parse integer part
@@ -88,13 +88,13 @@ impl TimeSpan {
             *i += 1;
         }
         if start == *i {
-            return Err(ez_err!(DtErrKind::ExpectedValue, "number"));
+            return Err(an_err!(DtErrKind::ExpectedValue, "number"));
         }
 
         let int_str = core::str::from_utf8(&chars[start..*i])
-            .map_err(|_| ez_err!(DtErrKind::InvalidNumber, "invalid utf8 in int"))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "invalid utf8 in int"))?;
         let int: i64 = int_str.parse().map_err(|e: core::num::ParseIntError| {
-            ez_err!(DtErrKind::InvalidNumber, "{}: {}", int_str, e)
+            an_err!(DtErrKind::InvalidNumber, "{}: {}", int_str, e)
         })?;
 
         // Parse optional fraction
@@ -108,22 +108,22 @@ impl TimeSpan {
             }
             frac_digits = *i - frac_start;
             if frac_digits == 0 {
-                return Err(ez_err!(DtErrKind::ExpectedValue, "empty frac after ."));
+                return Err(an_err!(DtErrKind::ExpectedValue, "empty frac after ."));
             }
             if frac_digits > 9 {
-                return Err(ez_err!(DtErrKind::OutOfRange, "frac >9"));
+                return Err(an_err!(DtErrKind::OutOfRange, "frac >9"));
             }
 
             let frac_str = core::str::from_utf8(&chars[frac_start..*i])
-                .map_err(|_| ez_err!(DtErrKind::InvalidNumber, "invalid utf8 in frac"))?;
+                .map_err(|_| an_err!(DtErrKind::InvalidNumber, "invalid utf8 in frac"))?;
             frac_num = frac_str.parse().map_err(|e: core::num::ParseIntError| {
-                ez_err!(DtErrKind::InvalidNumber, "{}: {}", frac_str, e)
+                an_err!(DtErrKind::InvalidNumber, "{}: {}", frac_str, e)
             })?;
         }
 
         // Unit must follow
         if *i >= chars.len() {
-            return Err(ez_err!(
+            return Err(an_err!(
                 DtErrKind::InvalidSyntax,
                 "missing unit after number"
             ));
@@ -134,7 +134,7 @@ impl TimeSpan {
         // Only seconds support a fractional part
         if frac_digits > 0 {
             if !matches!(unit, b'S' | b's') {
-                return Err(ez_err!(
+                return Err(an_err!(
                     DtErrKind::InvalidSyntax,
                     "frac only supported for seconds"
                 ));
@@ -170,25 +170,25 @@ impl TimeSpan {
                 (true, b'Y' | b'y') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SECONDS_PER_YEAR)
-                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "year"))?;
+                        .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "year"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'M' | b'm') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SECONDS_PER_MONTH)
-                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "month"))?;
+                        .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "month"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'W' | b'w') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SECONDS_PER_WEEK)
-                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "week"))?;
+                        .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "week"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'D' | b'd') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SECONDS_PER_DAY)
-                        .ok_or_else(|| ez_err!(DtErrKind::OutOfRange, "day"))?;
+                        .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "day"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (false, b'H' | b'h') => (comp.signed_int as i128) * 3_600_000_000_000i128,
@@ -203,7 +203,7 @@ impl TimeSpan {
                     sec_nanos
                 }
                 _ => {
-                    return Err(ez_err!(DtErrKind::InvalidItem, "{}", comp.unit as char));
+                    return Err(an_err!(DtErrKind::InvalidItem, "{}", comp.unit as char));
                 }
             };
 

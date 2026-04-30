@@ -1,6 +1,6 @@
 use crate::{
     ClassifiedDate, ConnectorType, DateClassification, DateToken, DtErrKind, DtError, EndsWithExt,
-    IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType, ez_err, lang_map,
+    IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType, an_err, lang_map,
     natural_duration_to_span, to_ascii_digit,
 };
 use alloc::string::String;
@@ -22,7 +22,7 @@ pub(crate) fn classify_date(
         ..
     }) = lang_map().get(&lang)
     else {
-        return Err(ez_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+        return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
     };
 
     let (s, attach_hyphen) = s.strip_prefix('-').map_or((s, false), |s| (s, true));
@@ -83,7 +83,7 @@ pub(crate) fn classify_date(
                     }
                     #[cfg(not(feature = "std"))]
                     {
-                        return Err(ez_err!(
+                        return Err(an_err!(
                             DtErrKind::InternalErr,
                             "relative dates need ref time/std"
                         ));
@@ -436,7 +436,7 @@ pub(crate) fn classify_date(
     }
 
     if num_digits == 0 {
-        return Err(ez_err!(DtErrKind::InvalidInput, "0 digits"));
+        return Err(an_err!(DtErrKind::InvalidInput, "0 digits"));
     }
     if curr_date_digit_run_len > 0 && matches!(currently, IndexIn::Date | IndexIn::PostDate) {
         tokens.push(DateToken::Digits(curr_date_digit_run_len));

@@ -1,7 +1,7 @@
 use crate::AsciiStr;
 use core::panic::Location;
 
-/// Iterator over the error trace levels of an [`EzError`].
+/// Iterator over the error trace levels of an [`AnErr`].
 ///
 /// Yields `(kind, location, reason)` tuples **from most recent context to oldest**
 /// (reverse chronological order). Only valid levels are returned.
@@ -13,7 +13,7 @@ pub struct TraceIter<'a, K, const DEPTH: usize, const REASON_LEN: usize>
 where
     K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
 {
-    error: &'a EzError<K, DEPTH, REASON_LEN>,
+    error: &'a AnErr<K, DEPTH, REASON_LEN>,
     pos: usize,
 }
 
@@ -58,7 +58,7 @@ where
 /// A compact, `Copy`, zero-allocation error type that records a parallel stack
 /// of error kinds, source locations, and per-level human-readable reasons.
 ///
-/// `EzError` stores up to `DEPTH` levels of error context. Each level contains:
+/// `AnErr` stores up to `DEPTH` levels of error context. Each level contains:
 /// - an error kind of type `K`,
 /// - the source location where the level was created,
 /// - an optional reason specific to that level (`AsciiStr<REASON_LEN>`).
@@ -80,7 +80,7 @@ where
 /// # Construction
 ///
 /// ```rust,ignore
-/// use ez_error::{EzError, ez_err};
+/// use an_error::{AnErr, an_err};
 ///
 /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// pub enum MyKind {
@@ -89,15 +89,15 @@ where
 ///     Validation,
 /// }
 ///
-/// pub type MyError = EzError<MyKind, 4, 64>;
+/// pub type MyError = AnErr<MyKind, 4, 64>;
 ///
 /// fn parse() -> Result<(), MyError> {
-///     Err(ez_err!(MyKind::Parse, "unexpected token at byte {}", 42))
+///     Err(an_err!(MyKind::Parse, "unexpected token at byte {}", 42))
 /// }
 ///
 /// fn load(path: &str) -> Result<(), MyError> {
 ///     let inner = parse()
-///         .map_err(|e| ez_err!(MyKind::Io, "while loading config from {}", path => e))?;
+///         .map_err(|e| an_err!(MyKind::Io, "while loading config from {}", path => e))?;
 ///     Ok(())
 /// }
 /// ```
@@ -126,7 +126,7 @@ where
 /// - `reasons[i]` is `Some` only if a non-empty reason was supplied for that level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[must_use = "this error should be handled or converted to a different type"]
-pub struct EzError<K, const DEPTH: usize = 3, const REASON_LEN: usize = 29>
+pub struct AnErr<K, const DEPTH: usize = 3, const REASON_LEN: usize = 29>
 where
     K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
 {
@@ -146,7 +146,7 @@ where
     pub len: u8,
 }
 
-impl<K, const DEPTH: usize, const REASON_LEN: usize> EzError<K, DEPTH, REASON_LEN>
+impl<K, const DEPTH: usize, const REASON_LEN: usize> AnErr<K, DEPTH, REASON_LEN>
 where
     K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
 {
@@ -259,7 +259,7 @@ where
 
     /// Appends a new context level with a formatted reason.
     ///
-    /// Used internally by the `ez_err!` macro. The formatted string is
+    /// Used internally by the `an_err!` macro. The formatted string is
     /// truncated if it exceeds `REASON_LEN` bytes.
     #[inline]
     #[track_caller]
@@ -309,7 +309,7 @@ where
     /// #[repr(u8)]   // or #[repr(u16)] for >256 variants
     /// pub enum MyKind { ... }
     ///
-    /// let mut buf = [0u8; EzError::<MyKind, 3, 29>::wire_size::<80>()];
+    /// let mut buf = [0u8; AnErr::<MyKind, 3, 29>::wire_size::<80>()];
     /// let written = my_error.to_wire_bytes::<80>(|k| k as u16, &mut buf);
     /// let packet = &buf[..written];
     /// ```
@@ -373,11 +373,11 @@ where
     }
 }
 
-impl<K, const DEPTH: usize, const REASON_LEN: usize> From<K> for EzError<K, DEPTH, REASON_LEN>
+impl<K, const DEPTH: usize, const REASON_LEN: usize> From<K> for AnErr<K, DEPTH, REASON_LEN>
 where
     K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
 {
-    /// Converts a kind into a new [`EzError`] with no reason.
+    /// Converts a kind into a new [`AnErr`] with no reason.
     #[inline]
     #[track_caller]
     fn from(kind: K) -> Self {
@@ -386,7 +386,7 @@ where
 }
 
 impl<K, const DEPTH: usize, const REASON_LEN: usize> core::fmt::Display
-    for EzError<K, DEPTH, REASON_LEN>
+    for AnErr<K, DEPTH, REASON_LEN>
 where
     K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
 {
@@ -397,25 +397,18 @@ where
 
         for (i, (kind, loc, reason_opt)) in self.trace().enumerate() {
             let num = i + 1;
-            write!(
-                f,
-                "   {:>2}. {:?} @ {}:{}:{}",
-                num,
-                kind,
-                loc.file(),
-                loc.line(),
-                loc.column()
-            )?;
+
+            write!(f, "  {:>2}. {:?}", num, kind)?;
 
             if let Some(reason) = reason_opt {
                 if let Ok(s) = reason.as_str() {
-                    writeln!(f, " -> {}", s)?;
+                    write!(f, ": {}", s)?;
                 } else {
-                    writeln!(f, " -> <invalid ascii>")?;
+                    write!(f, ": <invalid ascii>")?;
                 }
-            } else {
-                writeln!(f)?;
             }
+
+            writeln!(f, " @ {}:{}:{}", loc.file(), loc.line(), loc.column())?;
         }
 
         Ok(())
@@ -423,30 +416,30 @@ where
 }
 
 impl<K, const DEPTH: usize, const REASON_LEN: usize> core::error::Error
-    for EzError<K, DEPTH, REASON_LEN>
+    for AnErr<K, DEPTH, REASON_LEN>
 where
     K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
 {
 }
 
-/// Ergonomic constructor and chaining macro for [`EzError`].
+/// Ergonomic constructor and chaining macro for [`AnErr`].
 ///
 /// # Forms
 ///
 /// | Form                                              | Equivalent to                                      |
 /// |---------------------------------------------------|----------------------------------------------------|
-/// | `ez_err!(Kind)`                                   | `EzError::new(Kind)`                               |
-/// | `ez_err!(Kind, "reason")`                         | `EzError::with_fmt(Kind, ...)`                     |
-/// | `ez_err!(Kind, "reason {}", arg, ...)`            | `EzError::with_fmt(Kind, ...)`                     |
-/// | `ez_err!(Kind, "reason" => inner)`                | `inner.context(Kind, ...)`                         |
-/// | `ez_err!(Kind, "reason {}", arg => inner)`        | `inner.context(Kind, ...)`                         |
+/// | `an_err!(Kind)`                                   | `AnErr::new(Kind)`                               |
+/// | `an_err!(Kind, "reason")`                         | `AnErr::with_fmt(Kind, ...)`                     |
+/// | `an_err!(Kind, "reason {}", arg, ...)`            | `AnErr::with_fmt(Kind, ...)`                     |
+/// | `an_err!(Kind, "reason" => inner)`                | `inner.context(Kind, ...)`                         |
+/// | `an_err!(Kind, "reason {}", arg => inner)`        | `inner.context(Kind, ...)`                         |
 ///
 /// All forms capture the call site via `#[track_caller]`.
 #[macro_export]
-macro_rules! ez_err {
+macro_rules! an_err {
     // New error, no reason
     ($kind:expr) => {
-        $crate::EzError::new($kind)
+        $crate::AnErr::new($kind)
     };
 
     // Chaining form (must appear before the new-error form)
@@ -461,7 +454,7 @@ macro_rules! ez_err {
 
     // New error with reason (literal or formatted)
     ($kind:expr, $fmt:literal $(, $arg:expr)* $(,)?) => {
-        $crate::EzError::with_fmt($kind, format_args!($fmt $(, $arg)*))
+        $crate::AnErr::with_fmt($kind, format_args!($fmt $(, $arg)*))
     };
 }
 
@@ -486,7 +479,7 @@ pub struct WireErr<const DEPTH: usize = 3, const REASON_LEN: usize = 29, const F
 impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
     WireErr<DEPTH, REASON_LEN, FILE_LEN>
 {
-    /// Fixed wire size (exactly matches `EzError::wire_size::<FILE_LEN>()`).
+    /// Fixed wire size (exactly matches `AnErr::wire_size::<FILE_LEN>()`).
     pub const fn wire_size() -> usize {
         const fn compute_size<const D: usize, const R: usize, const F: usize>() -> usize {
             2 + D * (2 + R + F + 8)
@@ -494,7 +487,7 @@ impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
         compute_size::<DEPTH, REASON_LEN, FILE_LEN>()
     }
 
-    /// Parse a wire buffer from `EzError` into a `WireErr`.
+    /// Parse a wire buffer from `AnErr` into a `WireErr`.
     ///
     /// Returns `None` on any corruption, wrong size, unknown version,
     /// or invalid `AsciiStr` data.
@@ -583,14 +576,14 @@ mod tests {
         AsciiStr::from_str_truncate(s)
     }
 
-    // Use the crate's exact *default* parameters so the ez_err! macro + constructors
+    // Use the crate's exact *default* parameters so the an_err! macro + constructors
     // match perfectly and inference is unambiguous.
-    type E3 = EzError<TestKind, 3, 29>;
-    type E4 = EzError<TestKind, 4, 29>;
+    type E3 = AnErr<TestKind, 3, 29>;
+    type E4 = AnErr<TestKind, 4, 29>;
 
     #[test]
     fn test_new_from_and_basic_properties() {
-        let e1: E3 = EzError::new(TestKind::Root);
+        let e1: E3 = AnErr::new(TestKind::Root);
         let e2: E3 = TestKind::Root.into();
 
         // NOTE: We cannot use assert_eq!(e1, e2) because #[track_caller]
@@ -611,13 +604,13 @@ mod tests {
     #[test]
     fn test_with_reason_and_with_fmt() {
         // Explicit type fixes const-generic inference (DEPTH cannot be inferred from AsciiStr alone)
-        let e: E3 = EzError::with_reason(TestKind::Parse, r::<29>("bad token"));
+        let e: E3 = AnErr::with_reason(TestKind::Parse, r::<29>("bad token"));
         assert_eq!(e.depth(), 1);
 
         let items: Vec<_> = e.trace().collect();
         assert_eq!(items[0].2.unwrap().as_str().unwrap(), "bad token");
 
-        let e2: E3 = EzError::with_fmt(
+        let e2: E3 = AnErr::with_fmt(
             TestKind::Io,
             format_args!("file not found: {}", "config.toml"),
         );
@@ -629,19 +622,19 @@ mod tests {
     }
 
     #[test]
-    fn test_ez_err_macro_all_forms() {
-        let e1: E3 = ez_err!(TestKind::Root);
+    fn test_an_err_macro_all_forms() {
+        let e1: E3 = an_err!(TestKind::Root);
         assert_eq!(e1.kind(), Some(TestKind::Root));
 
-        let e2: E3 = ez_err!(TestKind::Parse, "unexpected {}", "EOF");
+        let e2: E3 = an_err!(TestKind::Parse, "unexpected {}", "EOF");
         assert_eq!(
             e2.trace().next().unwrap().2.unwrap().as_str().unwrap(),
             "unexpected EOF"
         );
 
         // Chaining form
-        let inner: E3 = ez_err!(TestKind::Parse, "bad data");
-        let outer: E3 = ez_err!(TestKind::Io, "while reading file" => inner);
+        let inner: E3 = an_err!(TestKind::Parse, "bad data");
+        let outer: E3 = an_err!(TestKind::Io, "while reading file" => inner);
 
         assert_eq!(outer.depth(), 2);
         let mut t = outer.trace();
@@ -656,7 +649,7 @@ mod tests {
 
     #[test]
     fn test_context_and_context_fmt() {
-        let mut e: E3 = ez_err!(TestKind::Root, "initial");
+        let mut e: E3 = an_err!(TestKind::Root, "initial");
         e.context(TestKind::Context1, r::<29>("level 1"));
         e.context_fmt(TestKind::Context2, format_args!("level {}", 2));
 
@@ -675,7 +668,7 @@ mod tests {
 
     #[test]
     fn test_max_depth_is_no_op() {
-        let mut e: E3 = ez_err!(TestKind::Root);
+        let mut e: E3 = an_err!(TestKind::Root);
         for i in 0..10 {
             e.context(TestKind::Context1, r::<29>(&format!("extra {i}")));
         }
@@ -688,11 +681,11 @@ mod tests {
 
     #[test]
     fn test_empty_reason_becomes_none() {
-        let e: E3 = ez_err!(TestKind::Parse, "");
+        let e: E3 = an_err!(TestKind::Parse, "");
         let (_, _, reason) = e.trace().next().unwrap();
         assert!(reason.is_none());
 
-        let mut e2: E3 = ez_err!(TestKind::Root);
+        let mut e2: E3 = an_err!(TestKind::Root);
         e2.context(TestKind::Io, r::<29>("")); // empty literal -> None
         let items: Vec<_> = e2.trace().collect();
         assert!(items[0].2.is_none());
@@ -700,7 +693,7 @@ mod tests {
 
     #[test]
     fn test_trace_iter_order_exact_size_and_size_hint() {
-        let e: E3 = ez_err!(TestKind::Root, "a" => ez_err!(TestKind::Io, "b" => ez_err!(TestKind::Parse, "c")));
+        let e: E3 = an_err!(TestKind::Root, "a" => an_err!(TestKind::Io, "b" => an_err!(TestKind::Parse, "c")));
 
         let trace = e.trace();
         assert_eq!(trace.len(), 3); // ExactSizeIterator
@@ -715,7 +708,7 @@ mod tests {
 
     #[test]
     fn test_kind_returns_most_recent() {
-        let mut e: E3 = ez_err!(TestKind::Parse);
+        let mut e: E3 = an_err!(TestKind::Parse);
         e.context(TestKind::Context1, r::<29>("ctx1"));
         e.context(TestKind::Context2, r::<29>("ctx2"));
 
@@ -724,8 +717,8 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let inner: E3 = ez_err!(TestKind::Parse, "bad syntax");
-        let e: E3 = ez_err!(TestKind::Io, "while loading config" => inner);
+        let inner: E3 = an_err!(TestKind::Parse, "bad syntax");
+        let e: E3 = an_err!(TestKind::Io, "while loading config" => inner);
 
         let display = format!("{}", e);
         assert!(display.contains("--"));
@@ -738,8 +731,8 @@ mod tests {
 
     #[test]
     fn test_wire_roundtrip() {
-        let inner: E4 = ez_err!(TestKind::Parse, "unexpected char");
-        let e: E4 = ez_err!(TestKind::Io, "while processing file" => inner);
+        let inner: E4 = an_err!(TestKind::Parse, "unexpected char");
+        let e: E4 = an_err!(TestKind::Io, "while processing file" => inner);
 
         const FILE_LEN: usize = 64;
         let wire_size = E4::wire_size::<FILE_LEN>();

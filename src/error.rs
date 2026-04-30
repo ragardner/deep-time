@@ -1,4 +1,4 @@
-use crate::EzError;
+use crate::AnErr;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,4 +43,4 @@ pub enum DtErrKind {
     ChronoConversion,
 }
 
-pub type DtError = EzError<DtErrKind, 3, 29>;
+pub type DtError = AnErr<DtErrKind, 3, 29>;

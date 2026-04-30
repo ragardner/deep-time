@@ -1,4 +1,4 @@
-use crate::{DtErrKind, DtError, TimeParts, TimeZone, ez_err, parser::Parser};
+use crate::{DtErrKind, DtError, Offset, TimeParts, an_err, parser::Parser};
 
 impl TimeParts {
     pub fn from_str(
@@ -24,7 +24,7 @@ impl TimeParts {
             Ok(tm)
         } else {
             // Trailing characters remain
-            Err(ez_err!(DtErrKind::TrailingCharacters))
+            Err(an_err!(DtErrKind::TrailingCharacters))
         }
     }
 
@@ -42,8 +42,8 @@ impl TimeParts {
             if self.attos.is_none() {
                 self.attos = Some(0);
             }
-            if self.tz.is_none() {
-                self.tz = Some(TimeZone::Utc);
+            if self.offset.is_none() {
+                self.offset = Some(Offset::Utc);
             }
             return Ok(self);
         }
@@ -59,7 +59,7 @@ impl TimeParts {
             if sec == 60 {
                 self.is_leap_second = true;
             } else if sec > 60 {
-                return Err(ez_err!(DtErrKind::OutOfRange, "seconds (0..=60): {}", sec));
+                return Err(an_err!(DtErrKind::OutOfRange, "seconds (0..=60): {}", sec));
             }
         } else {
             self.second = Some(0);
@@ -67,8 +67,8 @@ impl TimeParts {
         if self.attos.is_none() {
             self.attos = Some(0);
         }
-        if self.tz.is_none() {
-            self.tz = Some(TimeZone::Utc);
+        if self.offset.is_none() {
+            self.offset = Some(Offset::Utc);
         }
 
         let has_calendar_date = if allow_partial_date {
@@ -86,7 +86,7 @@ impl TimeParts {
         let has_iso_week_date = self.iso_week_year.is_some() && self.iso_week.is_some();
 
         if !has_calendar_date && !has_ordinal_date && !has_iso_week_date {
-            return Err(ez_err!(DtErrKind::Incomplete));
+            return Err(an_err!(DtErrKind::Incomplete));
         }
 
         Ok(self)

@@ -1,5 +1,3 @@
-use std::mem;
-
 use deep_time_core::{ClockType, DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
 
 #[cfg(feature = "jiff-tz")]
@@ -408,18 +406,6 @@ fn round_trip_fixed_offsets() {
             .unwrap();
         let tp3 = TimePoint::from_str_parse(&xp2, &None).unwrap();
         assert_eq!(tp, tp3);
-    }
-}
-
-#[test]
-fn test_date_error() {
-    let dt = TimePoint::from_str_parse("bad date", &None);
-    match dt {
-        Ok(_) => {}
-        Err(e) => {
-            eprintln!("EzError size = {} bytes", mem::size_of_val(&e));
-            eprintln!("{}", e);
-        }
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::{
     ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtErrKind,
     DtError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, classify_date,
-    default_date_parse_options, ez_err, generate_ambiguous_day_first_candidates,
+    default_date_parse_options, an_err, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
     parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
@@ -17,9 +17,9 @@ impl TimePoint {
             .unwrap_or_else(|| default_date_parse_options());
 
         if s.is_empty() {
-            return Err(ez_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Incomplete, "empty"));
         } else if s.len() > MAX_DATE_STRING_LEN {
-            return Err(ez_err!(DtErrKind::InvalidInput, "too long: {}", s));
+            return Err(an_err!(DtErrKind::InvalidInput, "too long: {}", s));
         }
 
         let lang = opts.lang;
@@ -36,7 +36,7 @@ impl TimePoint {
             Ok(ClassifiedDate::Cls(c)) => c,
             Err(e) => {
                 // std::eprintln!("{}", e);
-                return Err(ez_err!(
+                return Err(an_err!(
                     DtErrKind::InvalidInput,
                     "{}",
                     s => e
@@ -60,7 +60,7 @@ impl TimePoint {
                 }
                 // None of the provided formats worked and mode is Explicit
                 if opts.mode == DateParseMode::Explicit {
-                    return Err(ez_err!(DtErrKind::InvalidInput, "{}", s));
+                    return Err(an_err!(DtErrKind::InvalidInput, "{}", s));
                 }
             }
             (opts.mode, opts.order)
@@ -212,7 +212,7 @@ impl TimePoint {
                 return Ok(dt);
             }
         }
-        Err(ez_err!(DtErrKind::InvalidInput, "{}", s))
+        Err(an_err!(DtErrKind::InvalidInput, "{}", s))
     }
 
     /// Same parsing logic as `TimePoint::from_str`, but returns milliseconds since
