@@ -1,18 +1,10 @@
-//! Tests verifying that `TimePoint` conversions produce **identical physical instants**
-//! to the `hifitime` crate (up to hifitime's nanosecond precision).
-
-use deep_time_core::{ClockType, TimePoint};
-
-#[cfg(feature = "hifitime")]
-use hifitime::{Duration, Epoch, TimeScale};
-
-/// Seconds between hifitime's TAI reference epoch (1900-01-01 00:00:00 TAI)
-/// and our library's `ZERO` (2000-01-01 12:00:00 TAI).
-const HIFITIME_TAI_EPOCH_TO_OUR_ZERO: i64 = 3_155_716_800;
-
 #[cfg(feature = "hifitime")]
 mod tests {
-    use super::*;
+    use deep_time_core::{ClockType, TimePoint};
+    use hifitime::{Duration, Epoch, TimeScale};
+    /// Seconds between hifitime's TAI reference epoch (1900-01-01 00:00:00 TAI)
+    /// and our library's `ZERO` (2000-01-01 12:00:00 TAI).
+    const HIFITIME_TAI_EPOCH_TO_OUR_ZERO: i64 = 3_155_716_800;
 
     /// Map our `ClockType` to the equivalent `hifitime::TimeScale`.
     fn to_hifitime(ct: ClockType) -> Option<TimeScale> {

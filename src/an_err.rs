@@ -1,4 +1,5 @@
 use crate::AsciiStr;
+use core::fmt;
 use core::panic::Location;
 
 /// Iterator over the error trace levels of an [`AnErr`].
@@ -124,7 +125,7 @@ where
 /// - `len` is always in `1..=DEPTH`.
 /// - For every `i` in `0..len`, `kinds[i]` and `locations[i]` are `Some`.
 /// - `reasons[i]` is `Some` only if a non-empty reason was supplied for that level.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 #[must_use = "this error should be handled or converted to a different type"]
 pub struct AnErr<K, const DEPTH: usize = 3, const REASON_LEN: usize = 29>
 where
@@ -412,6 +413,18 @@ where
         }
 
         Ok(())
+    }
+}
+
+impl<K, const DEPTH: usize, const REASON_LEN: usize> fmt::Debug for AnErr<K, DEPTH, REASON_LEN>
+where
+    K: Copy + Clone + fmt::Debug + PartialEq + Eq,
+{
+    /// Debug prints the same clean, human-readable trace as Display.
+    /// This makes `unwrap()`, `dbg!()`, and panic messages readable instead of
+    /// dumping giant byte arrays.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
     }
 }
 

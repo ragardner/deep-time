@@ -6,9 +6,18 @@ use core::str;
 /// The string is stored as raw bytes. Its logical length is determined at
 /// runtime by the position of the first nul byte (`b'\0'`). All bytes after
 /// the string content are guaranteed to be zero.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct AsciiStr<const N: usize> {
     bytes: [u8; N],
+}
+
+impl<const N: usize> fmt::Debug for AsciiStr<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.as_str() {
+            Ok(s) => write!(f, "{:?}", s),
+            Err(_) => write!(f, "AsciiStr(<invalid ascii>)"),
+        }
+    }
 }
 
 #[cfg(feature = "serde")]

@@ -1,6 +1,6 @@
 use crate::{
     AsciiStr, ClockType, DtError, GregorianTime, STRFTIME_SIZE, TimePoint, TimeSpan,
-    tzdb::offset_info_at,
+    tzdb::offset_info_at_utc,
 };
 
 impl TimePoint {
@@ -133,24 +133,31 @@ impl TimePoint {
         gt
     }
 
-    /// Helper for creating a timezone adjusted GregorianTime.
+    /// Helper for creating a timezone-adjusted GregorianTime.
+    ///
+    /// Always converts to UTC first, then does a correct UTC-based lookup
+    /// in the IANA transition table. This avoids the previous bug where
+    /// a non-UTC `unix_ts` was being passed to `offset_info_at_local`.
     pub(crate) fn gregorian_time_with_tz(&self, tz_name: &str) -> GregorianTime {
         let orig_clock_type = self.clock_type;
-        let unix_ts = self.to_unix_sec();
 
-        let (offset_secs, abbrev) = match offset_info_at(tz_name, unix_ts) {
-            Some(info) => (info.offset, Some(info.abbrev)),
-            None => (0, None),
+        // 1. Get the true UTC Unix timestamp (this is what we search with)
+        let utc_unix = self.to_clock_type(ClockType::UTC).to_unix_sec();
+
+        // 2. Look up offset + abbrev at that exact UTC instant
+        let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, utc_unix) {
+            Some(info) => (info.offset, info.abbrev),
+            None => (0, "UTC"), // fallback for unknown timezone
         };
 
-        let utc = self.to_clock_type(ClockType::UTC);
+        // 3. Build local time = UTC + offset
         let span = TimeSpan::new(offset_secs as i64, 0);
-        let local_tp = utc + span;
+        let local_tp = self.to_clock_type(ClockType::UTC) + span;
 
         let mut gt = local_tp.to_gregorian_time();
         gt.set_offset(Some(offset_secs));
         gt.set_tz(Some(tz_name));
-        gt.set_tz_abbrev(abbrev);
+        gt.set_tz_abbrev(Some(abbrev));
         gt.set_clock_type(orig_clock_type);
         gt
     }

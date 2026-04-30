@@ -2,7 +2,7 @@ use {
     crate::{
         ATTOSEC_PER_NANOSEC, Meridiem, Offset, TimeParts, TimePoint, Weekday, an_err,
         error::{DtErrKind, DtError},
-        tzdb::offset_at,
+        tzdb::offset_info_at_local,
     },
     alloc::string::String,
     core::result::Result,
@@ -270,13 +270,12 @@ impl TimeParts {
                 } else {
                     0
                 };
-
-                if let Some(offset) = offset_at(name_str, probe_ts) {
-                    let jiff_offset = JiffOffset::from_seconds(offset).map_err(|e| {
+                if let Some(info) = offset_info_at_local(name_str, probe_ts) {
+                    let jiff_offset = JiffOffset::from_seconds(info.offset).map_err(|e| {
                         an_err!(
                             DtErrKind::InvalidTimezoneOffset,
                             "offset secs: {}: {}",
-                            offset,
+                            info.offset,
                             e
                         )
                     })?;

@@ -1,4 +1,4 @@
-use crate::tzdb::offset_at;
+use crate::tzdb::offset_info_at_local;
 use crate::{
     ClockType, TimePoint,
     error::{DtErrKind, DtError},
@@ -7,47 +7,6 @@ use crate::{
 use crate::{J2000_JD_TT, SEC_PER_DAYI64, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err};
 
 impl TimeParts {
-    /// Converts parsed date/time components into a high-precision [`TimePoint`].
-    ///
-    /// This is the core conversion routine used by the date-time parser. It supports
-    /// **all five** standard date representations (in strict precedence order):
-    ///
-    /// 1. Classic Gregorian YMD (`year` + `month` + `day`)
-    /// 2. Ordinal date (`year` + `day_of_year`)
-    /// 3. ISO 8601 week date (`iso_week_year` + `iso_week`)
-    /// 4. Sunday-based week-of-year (`week_sun` – `%U`)
-    /// 5. Monday-based week-of-year (`week_mon` – `%W`)
-    ///
-    /// When a timezone is present (either `iana_name` or `TimeZone::Fixed`),
-    /// the civil time is interpreted in that zone and automatically converted
-    /// to the correct UTC instant. `TimeZone::Utc` and `None` are treated as UTC.
-    ///
-    /// The resulting `TimePoint` is automatically converted to the requested
-    /// [`ClockType`].
-    ///
-    /// # 12-hour time + meridiem support
-    ///
-    /// When both `hour` and `meridiem` are present, `hour` is treated as 1–12
-    /// and automatically converted to 24-hour format (12 AM → 00, 12 PM → 12, etc.).
-    ///
-    /// # Leap-second support
-    ///
-    /// `second == 60` is fully supported and produces the correct physical instant.
-    /// The `is_leap_second` flag (set by [`finish()`]) is preserved for future use
-    /// but does not affect the conversion math.
-    ///
-    /// # Calendar validation
-    ///
-    /// - Full month/day validation (rejects Feb 30, Apr 31, invalid Feb 29, etc.).
-    /// - Strict ISO week 53 validation (only years that actually have week 53 are accepted).
-    ///
-    /// # Errors
-    ///
-    /// Returns [`DtError`] with:
-    ///
-    /// - `InvalidDate` for all calendar, week-date, ordinal-date, IANA lookup, and general conversion failures
-    /// - `OutOfRange` only for invalid 12-hour clock values (hour outside 1–12 when meridiem is present)
-    /// - `Incomplete` when no year or ISO week year is provided
     pub fn to_time_point(&self, clock_type: Option<ClockType>) -> Result<TimePoint, DtError> {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
@@ -145,6 +104,7 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Apply timezone correction (IANA or Fixed offset)
         // ──────────────────────────────────────────────────────────────
+
         if let Some(name) = &self.iana_name {
             let name_str = name.as_str().map_err(|e| {
                 an_err!(
@@ -157,8 +117,16 @@ impl TimeParts {
 
             if !name_str.is_empty() {
                 let provisional_unix = sec_utc + UNIX_EPOCH_TO_J2000_NOON_UTC;
-                match offset_at(name_str, provisional_unix) {
-                    Some(offset) => sec_utc -= offset as i64,
+                match offset_info_at_local(name_str, provisional_unix) {
+                    Some(info) => {
+                        if info.is_gap {
+                            // Non-existent time (spring-forward gap) — shift forward
+                            sec_utc += info.gap_size as i64; // shift local time into the valid post-gap period
+                            sec_utc -= info.offset as i64; // apply the post-jump offset
+                        } else {
+                            sec_utc -= info.offset as i64;
+                        }
+                    }
                     None => {
                         return Err(an_err!(
                             DtErrKind::InvalidTimezoneOffset,
