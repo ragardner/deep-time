@@ -31,7 +31,7 @@ impl TimePoint {
 
         // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
         let ymdhms = self.to_gregorian_ymdhms();
-        let unix_attosec = self.to_canonical();
+        let unix_attosec = self.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
 
         // Still needed for weekday, wk_sun, wk_mon, and the jd_tt_exact field
         let (jd_days, frac) = self.to_jd_tt_exact();
@@ -85,7 +85,7 @@ impl TimePoint {
     /// Correctly handles leap seconds (23:59:60 stays on the correct day).
     const fn to_gregorian_ymdhms_utc(self) -> GregorianYmdHms {
         let unix_sec = self.to_unix_sec();
-        let canon = self.to_canonical();
+        let canon = self.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
         let subsec = (canon.rem_euclid(ATTOSEC_PER_SEC_I128)) as u64;
 
         let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAYI64);

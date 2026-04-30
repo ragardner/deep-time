@@ -393,12 +393,7 @@ where
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         writeln!(f)?;
         writeln!(f, "--")?;
-        writeln!(
-            f,
-            "EzError Trace ({} level{}):",
-            self.len,
-            if self.len == 1 { "" } else { "s" }
-        )?;
+        writeln!(f, "Error:")?;
 
         for (i, (kind, loc, reason_opt)) in self.trace().enumerate() {
             let num = i + 1;
@@ -414,9 +409,9 @@ where
 
             if let Some(reason) = reason_opt {
                 if let Ok(s) = reason.as_str() {
-                    writeln!(f, "    {}", s)?;
+                    writeln!(f, " -> {}", s)?;
                 } else {
-                    writeln!(f, "    <invalid ascii>")?;
+                    writeln!(f, " -> <invalid ascii>")?;
                 }
             } else {
                 writeln!(f)?;
@@ -563,5 +558,223 @@ impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
             reasons,
             locations,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use alloc::format;
+    use alloc::vec;
+    use alloc::vec::Vec;
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    #[repr(u8)]
+    enum TestKind {
+        Root,
+        Context1,
+        Context2,
+        Parse,
+        Io,
+    }
+
+    /// Helper for creating `AsciiStr` reasons (turbofish required for const generic).
+    fn r<const N: usize>(s: &str) -> AsciiStr<N> {
+        AsciiStr::from_str_truncate(s)
+    }
+
+    // Use the crate's exact *default* parameters so the ez_err! macro + constructors
+    // match perfectly and inference is unambiguous.
+    type E3 = EzError<TestKind, 3, 29>;
+    type E4 = EzError<TestKind, 4, 29>;
+
+    #[test]
+    fn test_new_from_and_basic_properties() {
+        let e1: E3 = EzError::new(TestKind::Root);
+        let e2: E3 = TestKind::Root.into();
+
+        // NOTE: We cannot use assert_eq!(e1, e2) because #[track_caller]
+        // captures different source locations (different lines in this test).
+        // The rest of the data is identical.
+        assert_eq!(e1.depth(), e2.depth());
+        assert_eq!(e1.kind(), e2.kind());
+        assert_eq!(e1.depth(), 1);
+        assert_eq!(e1.kind(), Some(TestKind::Root));
+
+        let mut trace = e1.trace();
+        let (kind, _loc, reason) = trace.next().unwrap();
+        assert_eq!(kind, TestKind::Root);
+        assert!(reason.is_none());
+        assert!(trace.next().is_none());
+    }
+
+    #[test]
+    fn test_with_reason_and_with_fmt() {
+        // Explicit type fixes const-generic inference (DEPTH cannot be inferred from AsciiStr alone)
+        let e: E3 = EzError::with_reason(TestKind::Parse, r::<29>("bad token"));
+        assert_eq!(e.depth(), 1);
+
+        let items: Vec<_> = e.trace().collect();
+        assert_eq!(items[0].2.unwrap().as_str().unwrap(), "bad token");
+
+        let e2: E3 = EzError::with_fmt(
+            TestKind::Io,
+            format_args!("file not found: {}", "config.toml"),
+        );
+        let items2: Vec<_> = e2.trace().collect();
+        assert_eq!(
+            items2[0].2.unwrap().as_str().unwrap(),
+            "file not found: config.toml"
+        );
+    }
+
+    #[test]
+    fn test_ez_err_macro_all_forms() {
+        let e1: E3 = ez_err!(TestKind::Root);
+        assert_eq!(e1.kind(), Some(TestKind::Root));
+
+        let e2: E3 = ez_err!(TestKind::Parse, "unexpected {}", "EOF");
+        assert_eq!(
+            e2.trace().next().unwrap().2.unwrap().as_str().unwrap(),
+            "unexpected EOF"
+        );
+
+        // Chaining form
+        let inner: E3 = ez_err!(TestKind::Parse, "bad data");
+        let outer: E3 = ez_err!(TestKind::Io, "while reading file" => inner);
+
+        assert_eq!(outer.depth(), 2);
+        let mut t = outer.trace();
+        let (k1, _, r1) = t.next().unwrap();
+        assert_eq!(k1, TestKind::Io);
+        assert_eq!(r1.unwrap().as_str().unwrap(), "while reading file");
+
+        let (k2, _, r2) = t.next().unwrap();
+        assert_eq!(k2, TestKind::Parse);
+        assert_eq!(r2.unwrap().as_str().unwrap(), "bad data");
+    }
+
+    #[test]
+    fn test_context_and_context_fmt() {
+        let mut e: E3 = ez_err!(TestKind::Root, "initial");
+        e.context(TestKind::Context1, r::<29>("level 1"));
+        e.context_fmt(TestKind::Context2, format_args!("level {}", 2));
+
+        assert_eq!(e.depth(), 3);
+
+        let trace: Vec<_> = e.trace().collect();
+        // Most recent first
+        assert_eq!(trace[0].0, TestKind::Context2);
+        assert_eq!(trace[1].0, TestKind::Context1);
+        assert_eq!(trace[2].0, TestKind::Root);
+
+        assert_eq!(trace[0].2.unwrap().as_str().unwrap(), "level 2");
+        assert_eq!(trace[1].2.unwrap().as_str().unwrap(), "level 1");
+        assert_eq!(trace[2].2.unwrap().as_str().unwrap(), "initial");
+    }
+
+    #[test]
+    fn test_max_depth_is_no_op() {
+        let mut e: E3 = ez_err!(TestKind::Root);
+        for i in 0..10 {
+            e.context(TestKind::Context1, r::<29>(&format!("extra {i}")));
+        }
+        assert_eq!(e.depth(), 3); // DEPTH limit reached, further calls ignored
+
+        let trace: Vec<_> = e.trace().collect();
+        assert_eq!(trace.len(), 3);
+        assert_eq!(trace[0].0, TestKind::Context1); // last successful context
+    }
+
+    #[test]
+    fn test_empty_reason_becomes_none() {
+        let e: E3 = ez_err!(TestKind::Parse, "");
+        let (_, _, reason) = e.trace().next().unwrap();
+        assert!(reason.is_none());
+
+        let mut e2: E3 = ez_err!(TestKind::Root);
+        e2.context(TestKind::Io, r::<29>("")); // empty literal -> None
+        let items: Vec<_> = e2.trace().collect();
+        assert!(items[0].2.is_none());
+    }
+
+    #[test]
+    fn test_trace_iter_order_exact_size_and_size_hint() {
+        let e: E3 = ez_err!(TestKind::Root, "a" => ez_err!(TestKind::Io, "b" => ez_err!(TestKind::Parse, "c")));
+
+        let trace = e.trace();
+        assert_eq!(trace.len(), 3); // ExactSizeIterator
+        assert_eq!(trace.size_hint(), (3, Some(3)));
+
+        let collected: Vec<_> = trace.collect();
+        assert_eq!(collected.len(), 3);
+        assert_eq!(collected[0].0, TestKind::Root); // most recent
+        assert_eq!(collected[1].0, TestKind::Io);
+        assert_eq!(collected[2].0, TestKind::Parse); // original
+    }
+
+    #[test]
+    fn test_kind_returns_most_recent() {
+        let mut e: E3 = ez_err!(TestKind::Parse);
+        e.context(TestKind::Context1, r::<29>("ctx1"));
+        e.context(TestKind::Context2, r::<29>("ctx2"));
+
+        assert_eq!(e.kind(), Some(TestKind::Context2)); // top of the trace
+    }
+
+    #[test]
+    fn test_display() {
+        let inner: E3 = ez_err!(TestKind::Parse, "bad syntax");
+        let e: E3 = ez_err!(TestKind::Io, "while loading config" => inner);
+
+        let display = format!("{}", e);
+        assert!(display.contains("--"));
+        assert!(display.contains("Error:"));
+        assert!(display.contains("Io"));
+        assert!(display.contains("while loading config"));
+        assert!(display.contains("Parse"));
+        assert!(display.contains("bad syntax"));
+    }
+
+    #[test]
+    fn test_wire_roundtrip() {
+        let inner: E4 = ez_err!(TestKind::Parse, "unexpected char");
+        let e: E4 = ez_err!(TestKind::Io, "while processing file" => inner);
+
+        const FILE_LEN: usize = 64;
+        let wire_size = E4::wire_size::<FILE_LEN>();
+        let mut buf = vec![0u8; wire_size];
+
+        // Fixed: turbofish required for the const generic PATH_LEN
+        let written = e.to_wire_bytes::<FILE_LEN>(|k| k as u16, &mut buf).unwrap();
+        assert_eq!(written, wire_size);
+
+        let wire_err = WireErr::<4, 29, FILE_LEN>::from_wire_bytes(&buf[..written]).unwrap();
+
+        assert_eq!(wire_err.len, 2);
+
+        // Wire stores levels oldest-first (index 0 = root)
+        assert_eq!(wire_err.kinds[0], Some(TestKind::Parse as u16));
+        assert_eq!(wire_err.kinds[1], Some(TestKind::Io as u16));
+
+        assert_eq!(
+            wire_err.reasons[0].as_ref().unwrap().as_str().unwrap(),
+            "unexpected char"
+        );
+        assert_eq!(
+            wire_err.reasons[1].as_ref().unwrap().as_str().unwrap(),
+            "while processing file"
+        );
+    }
+
+    #[test]
+    fn test_wire_invalid_cases() {
+        // Wrong size
+        assert!(WireErr::<3, 29, 64>::from_wire_bytes(&[0u8; 10]).is_none());
+
+        // Bad version
+        let mut buf = vec![0u8; E4::wire_size::<64>()];
+        buf[0] = 99; // invalid version
+        assert!(WireErr::<4, 29, 64>::from_wire_bytes(&buf).is_none());
     }
 }

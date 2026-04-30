@@ -383,13 +383,6 @@ macro_rules! impl_time_inc {
                 pub const fn as_fs(self) -> i128 {
                     self.total_attos() / (ATTOSEC_PER_FEMTOSEC as i128)
                 }
-
-                /// Returns the total duration in attoseconds.
-                /// This is an alias for [`Self::total_attos`].
-                #[inline(always)]
-                pub const fn as_as(self) -> i128 {
-                    self.total_attos()
-                }
             }
         )*
     };

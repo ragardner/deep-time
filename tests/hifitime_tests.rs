@@ -21,7 +21,7 @@ mod tests {
             ClockType::TT => Some(TimeScale::TT),
             ClockType::TDB => Some(TimeScale::TDB),
             ClockType::UTC => Some(TimeScale::UTC),
-            ClockType::GPST | ClockType::QZSST => Some(TimeScale::GPST),
+            ClockType::GPS | ClockType::QZSS => Some(TimeScale::GPST),
             ClockType::GST => Some(TimeScale::GST),
             ClockType::BDT => Some(TimeScale::BDT),
             _ => None,
@@ -83,7 +83,7 @@ mod tests {
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 11, 59, 27, 816_000_000);
         assert_tp_matches_hifitime(our, hi, "J2000 TT zero");
 
-        let our = TimePoint::new(0, 0, ClockType::GPST);
+        let our = TimePoint::new(0, 0, ClockType::GPS);
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::GPST);
         assert_tp_matches_hifitime(our, hi, "J2000 GPST zero");
 
@@ -104,10 +104,10 @@ mod tests {
             ClockType::TT,
             ClockType::TDB,
             ClockType::UTC,
-            ClockType::GPST,
+            ClockType::GPS,
             ClockType::GST,
             ClockType::BDT,
-            ClockType::QZSST,
+            ClockType::QZSS,
         ];
 
         for &from in scales {
@@ -155,7 +155,7 @@ mod tests {
     #[test]
     fn test_negative_and_subsecond() {
         // Use a smaller negative value that hifitime handles cleanly
-        let our = TimePoint::new(-1_000_000_000i64, 123_456_789_012_345_678, ClockType::GPST);
+        let our = TimePoint::new(-1_000_000_000i64, 123_456_789_012_345_678, ClockType::GPS);
 
         let delta = Duration::from_seconds(-1_000_000_000f64)
             + Duration::from_nanoseconds(123_456_789_012_345_678u64 as f64 / 1_000_000_000.0);
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn roundtrip_traditional_gps_epoch() {
-        let tp = TimePoint::TRADITIONAL_GPS_EPOCH.to_clock_type(ClockType::TAI);
+        let tp = TimePoint::GPS_EPOCH.to_clock_type(ClockType::TAI);
         let h = tp.to_hifitime();
         let tp2 = TimePoint::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);

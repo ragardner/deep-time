@@ -13,7 +13,7 @@
 //! - `new(0, 0, ClockType::TAI)` → exactly 2000-01-01 12:00:00 TAI
 //! - `new(0, 0, ClockType::TT)`  → 2000-01-01 12:00:32.184 TT (J2000.0 TT)
 //! - `new(0, 0, ClockType::UTC)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00
-//! - `new(0, 0, ClockType::GPST)` → 19 s after the TAI zero
+//! - `new(0, 0, ClockType::GPS)` → 19 s after the TAI zero
 //! - `new(0, 0, ClockType::TCG)` → the TCG instant that corresponds to the TAI zero
 //!   (rate `L_G` integrated from 1977)
 //! - `new(0, 0, ClockType::TCB)` → the TCB instant that corresponds to the TAI zero
@@ -43,7 +43,7 @@
 //! | TAI                | 2000-01-01 12:00:00 TAI                                                          |
 //! | TT / ET            | 2000-01-01 12:00:32.184 TT (J2000.0 TT)                                         |
 //! | UTC                | UTC instant corresponding to TAI 2000-01-01 12:00:00                             |
-//! | GPST/QZSST/GST     | 2000-01-01 12:00:19 TAI (TAI zero + 19 s)                                       |
+//! | GPS/QZSS/GST       | 2000-01-01 12:00:19 TAI (TAI zero + 19 s)                                       |
 //! | BDT                | 2000-01-01 12:00:33 TAI (TAI zero + 33 s)                                       |
 //! | TDB                | The TDB instant corresponding to the TAI zero                                    |
 //! | TCG                | The TCG instant corresponding to the TAI zero (L_G integrated from 1977)        |
@@ -80,13 +80,13 @@ pub enum ClockType {
     UTC,
     /// GPS Time scale whose reference epoch is UTC midnight between 05 January and
     /// 06 January 1980.
-    GPST,
+    GPS,
     /// Galileo Time scale.
     GST,
     /// BeiDou Time scale.
     BDT,
-    /// QZSS Time scale has the same properties as GPST but with dedicated clocks.
-    QZSST,
+    /// QZSS Time scale has the same properties as GPS but with dedicated clocks.
+    QZSS,
     /// **Geocentric Coordinate Time (TCG)** – relativistic coordinate time in the
     /// Geocentric Celestial Reference System (GCRS).
     TCG,
@@ -122,7 +122,7 @@ impl ClockType {
     ///
     /// The returned byte is the `repr(u8)` discriminant of the enum.
     /// This is the canonical on-wire form used by [`TimePoint`] and [`ClockModel`].
-    #[inline]
+    #[inline(always)]
     pub const fn to_wire_byte(self) -> u8 {
         self as u8
     }
@@ -139,10 +139,10 @@ impl ClockType {
             2 => Some(Self::ET),
             3 => Some(Self::TDB),
             4 => Some(Self::UTC),
-            5 => Some(Self::GPST),
+            5 => Some(Self::GPS),
             6 => Some(Self::GST),
             7 => Some(Self::BDT),
-            8 => Some(Self::QZSST),
+            8 => Some(Self::QZSS),
             9 => Some(Self::TCG),
             10 => Some(Self::TCB),
             11 => Some(Self::LTC),
@@ -159,7 +159,7 @@ impl ClockType {
 
     /// Returns `true` if this clock type is based off a GNSS constellation.
     pub const fn is_gnss(&self) -> bool {
-        matches!(self, Self::GPST | Self::GST | Self::BDT | Self::QZSST)
+        matches!(self, Self::GPS | Self::GST | Self::BDT | Self::QZSS)
     }
 
     /// Parse clock type from abbreviation.
@@ -192,10 +192,10 @@ impl ClockType {
             "ET" => Some(Self::ET),
             "TDB" => Some(Self::TDB),
             "UTC" => Some(Self::UTC),
-            "GPST" => Some(Self::GPST),
+            "GPS" => Some(Self::GPS),
             "GST" => Some(Self::GST),
             "BDT" => Some(Self::BDT),
-            "QZSST" => Some(Self::QZSST),
+            "QZSS" => Some(Self::QZSS),
             "TCG" => Some(Self::TCG),
             "TCB" => Some(Self::TCB),
             "LTC" => Some(Self::LTC),
@@ -215,14 +215,26 @@ impl ClockType {
             Self::UTC => "UTC",
             Self::TCG => "TCG",
             Self::TCB => "TCB",
-            Self::GPST => "GPST",
+            Self::GPS => "GPS",
             Self::GST => "GST",
             Self::BDT => "BDT",
-            Self::QZSST => "QZSST",
+            Self::QZSS => "QZSS",
             Self::LTC => "LTC",
-            Self::Proper => "Proper",
-            Self::Custom => "Custom",
+            Self::Proper => "PROPER",
+            Self::Custom => "CUSTOM",
         }
+    }
+
+    /// Const-friendly equality comparison (does **not** rely on `==` for the enum itself).
+    ///
+    /// Uses the underlying `u8` wire representation (via the already-existing `to_wire_byte`
+    /// method). This works reliably in `const fn` contexts even on older Rust versions where
+    /// the derived `PartialEq::eq` might not be `const fn` yet.
+    ///
+    /// Zero-cost and guaranteed to match the `repr(u8)` layout.
+    #[inline(always)]
+    pub const fn eq(self, other: Self) -> bool {
+        self.to_wire_byte() == other.to_wire_byte()
     }
 
     /// Returns the reference epoch (zero instant) of this clock type,

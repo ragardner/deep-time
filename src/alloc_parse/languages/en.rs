@@ -24,10 +24,10 @@ pub(crate) const CLOCK_TYPES: &[(&'static str, &'static str, DateToken)] = &[
     ("et", "ET", DateToken::ET),
     ("tdb", "TDB", DateToken::TDB),
     // ("utc", "UTC", DateToken::UTC), // avoid overlap with iana
-    ("gpst", "GPST", DateToken::GPST),
+    ("gps", "GPS", DateToken::GPS),
     ("gst", "GST", DateToken::GST),
     ("bdt", "BDT", DateToken::BDT),
-    ("qzsst", "QZSST", DateToken::QZSST),
+    ("qzss", "QZSS", DateToken::QZSS),
     ("tcg", "TCG", DateToken::TCG),
     ("tcb", "TCB", DateToken::TCB),
     ("ltc", "LTC", DateToken::LTC),

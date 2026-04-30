@@ -1,13 +1,13 @@
 mod arithmetic;
 mod constructors;
 mod conversions;
-mod from_canonical;
+mod from_attos_since;
 mod from_ccsds;
 mod from_gps;
 mod gregorian;
 mod gregorian_historical;
 mod ops;
-mod to_canonical;
+mod to_attos_since;
 mod to_ccsds_bin;
 mod to_gps;
 mod to_str;
@@ -51,7 +51,7 @@ use core::fmt;
 /// - `new(0, 0, ClockType::TAI)` → exactly 2000-01-01 12:00:00 TAI
 /// - `new(0, 0, ClockType::TT)`  → 2000-01-01 12:00:32.184 TT (J2000.0 TT)
 /// - `new(0, 0, ClockType::UTC)` → the UTC instant that corresponds to TAI 2000-01-01 12:00:00
-/// - `new(0, 0, ClockType::GPST)` → 19 s after the TAI zero
+/// - `new(0, 0, ClockType::GPS)` → 19 s after the TAI zero
 /// - `new(0, 0, ClockType::TCG)` → the TCG instant that corresponds to the TAI zero
 ///   (rate `L_G` integrated from the IAU 1977 reference epoch)
 ///

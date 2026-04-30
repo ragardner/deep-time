@@ -384,7 +384,7 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
 #[test]
 fn date_parser_keeps_clock_type() {
     let tp1 = TimePoint::new(5, 0, ClockType::LTC);
-    let tp2 = TimePoint::new(5, 0, ClockType::GPST);
+    let tp2 = TimePoint::new(5, 0, ClockType::GPS);
     let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let res_tp1 = TimePoint::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();

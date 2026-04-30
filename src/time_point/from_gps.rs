@@ -1,7 +1,7 @@
 use crate::{ATTOS_PER_WEEK, Real, TimePoint, TimeSpan};
 
 impl TimePoint {
-    /// Creates a `TimePoint` in GPS Time (GPST) from a GPS week number and
+    /// Creates a `TimePoint` in GPS Time (GPS) from a GPS week number and
     /// Time of Week (TOW).
     ///
     /// This is the exact inverse of [`Self::to_gps_week_and_tow`].
@@ -10,11 +10,11 @@ impl TimePoint {
     /// - `tow`: Time of Week as a [`TimeSpan`]. Values ≥ 604800 seconds are
     ///   automatically carried into the week number.
     ///
-    /// The resulting `TimePoint` is always in `ClockType::GPST`.
+    /// The resulting `TimePoint` is always in `ClockType::GPS`.
     #[inline]
     pub const fn from_gps_wk_and_tow(wk: i64, tow: TimeSpan) -> Self {
         let total_attos = (wk as i128) * ATTOS_PER_WEEK + tow.total_attos();
-        Self::TRADITIONAL_GPS_EPOCH.add(TimeSpan::from_total_attos(total_attos))
+        Self::GPS_EPOCH.add(TimeSpan::from_total_attos(total_attos))
     }
 
     /// Creates a `TimePoint` in GPS Time from a GPS week number and

@@ -66,7 +66,7 @@ impl TimeParts {
     ///
     /// # Automatic selection (matches common mission practice)
     /// - `ClockType::TAI` → **CUC** (4 coarse + 4 fractional bytes)
-    /// - Any other `ClockType` (UTC, TT, GPST, TCG, …) → converted to UTC and uses **CDS**
+    /// - Any other `ClockType` (UTC, TT, GPS, TCG, …) → converted to UTC and uses **CDS**
     ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
     #[inline(always)]
     pub fn to_ccsds_bin(

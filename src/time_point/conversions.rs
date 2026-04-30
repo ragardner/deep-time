@@ -65,7 +65,7 @@ impl TimePoint {
 
             ClockType::UTC => Self::utc_to_tai(self),
 
-            ClockType::GPST | ClockType::QZSST | ClockType::GST => {
+            ClockType::GPS | ClockType::QZSS | ClockType::GST => {
                 let mut tp = self.add_ref(&TimeSpan::SEC_19);
                 tp.set_clock_type(ClockType::TAI);
                 tp
@@ -107,7 +107,7 @@ impl TimePoint {
 
             ClockType::UTC => Self::tai_to_utc(self),
 
-            ClockType::GPST | ClockType::QZSST | ClockType::GST => {
+            ClockType::GPS | ClockType::QZSS | ClockType::GST => {
                 let mut tp = self.sub_ref(&TimeSpan::SEC_19);
                 tp.set_clock_type(target);
                 tp
@@ -345,7 +345,7 @@ impl TimePoint {
 
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
     /// using only the numerical `sec`/`subsec` of the supplied `TimePoint` (clock_type is ignored).
-    const fn elapsed_attos_since_ref(numerical: Self) -> i128 {
+    const fn elapsed_to_attos_since_ref(numerical: Self) -> i128 {
         let days_since_j2000 = numerical.sec.div_euclid(SEC_PER_DAYI64);
         let tod_sec = numerical.sec.rem_euclid(SEC_PER_DAYI64);
 
@@ -392,21 +392,21 @@ impl TimePoint {
     }
 
     const fn tt_to_tcg(tt: Self) -> Self {
-        let elapsed = Self::elapsed_attos_since_ref(tt);
+        let elapsed = Self::elapsed_to_attos_since_ref(tt);
         let span_attos = Self::mul_lg(elapsed);
         tt.add(TimeSpan::from_total_attos(span_attos))
             .with_clock_type(ClockType::TCG)
     }
 
     const fn tcg_to_tt(tcg: Self) -> Self {
-        let elapsed_cg = Self::elapsed_attos_since_ref(tcg);
+        let elapsed_cg = Self::elapsed_to_attos_since_ref(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
         tcg.sub(TimeSpan::from_total_attos(span_attos))
             .with_clock_type(ClockType::TT)
     }
 
     const fn tcb_to_tdb(tcb: Self) -> Self {
-        let elapsed_cg = Self::elapsed_attos_since_ref(tcb);
+        let elapsed_cg = Self::elapsed_to_attos_since_ref(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
         tcb.sub(TimeSpan::from_total_attos(span_attos))
             .sub(TimeSpan::from_total_attos(TDB0_ATTOS))
@@ -414,7 +414,7 @@ impl TimePoint {
     }
 
     const fn tdb_to_tcb(tdb: Self) -> Self {
-        let elapsed = Self::elapsed_attos_since_ref(tdb.with_clock_type(ClockType::TT));
+        let elapsed = Self::elapsed_to_attos_since_ref(tdb.with_clock_type(ClockType::TT));
         let span_attos = Self::mul_lb(elapsed);
         tdb.add(TimeSpan::from_total_attos(span_attos))
             .add(TimeSpan::from_total_attos(TDB0_ATTOS))
@@ -422,21 +422,21 @@ impl TimePoint {
     }
 
     const fn tt_to_ltc(tt: Self) -> Self {
-        let elapsed = Self::elapsed_attos_since_ref(tt);
+        let elapsed = Self::elapsed_to_attos_since_ref(tt);
         let span_attos = Self::mul_lm(elapsed);
         tt.add(TimeSpan::from_total_attos(span_attos))
             .with_clock_type(ClockType::LTC)
     }
 
     const fn ltc_to_tt(ltc: Self) -> Self {
-        let elapsed = Self::elapsed_attos_since_ref(ltc);
+        let elapsed = Self::elapsed_to_attos_since_ref(ltc);
         let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
         ltc.sub(TimeSpan::from_total_attos(span_attos))
             .with_clock_type(ClockType::TT)
     }
 
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
-    const fn elapsed_attos_since_mars_ref(numerical_tt: Self) -> i128 {
+    const fn elapsed_to_attos_since_mars_ref(numerical_tt: Self) -> i128 {
         let days_since_j2000 = numerical_tt.sec.div_euclid(SEC_PER_DAYI64);
         let tod_sec = numerical_tt.sec.rem_euclid(SEC_PER_DAYI64);
 
@@ -466,7 +466,7 @@ impl TimePoint {
     /// [`ClockType`]. Leap seconds are automatically accounted for when converting from UTC.
     pub const fn to_msd_exact(self) -> (i64, TimeSpan) {
         let tt = self.to_clock_type(ClockType::TT);
-        let elapsed = Self::elapsed_attos_since_mars_ref(tt);
+        let elapsed = Self::elapsed_to_attos_since_mars_ref(tt);
         let attos_per_sol = MARS_SOL_ATTOS;
 
         let whole_sols = elapsed.div_euclid(attos_per_sol) as i64;
@@ -563,7 +563,7 @@ impl TimePoint {
     #[inline]
     pub const fn to_jd_utc_exact(self) -> (i64, TimeSpan) {
         let utc = self.to_clock_type(ClockType::UTC);
-        let canon_attos = utc.to_canonical();
+        let canon_attos = utc.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
 
         const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
 
@@ -643,7 +643,7 @@ impl TimePoint {
     #[inline]
     pub const fn to_mjd_utc_exact(self) -> (i64, TimeSpan) {
         let utc = self.to_clock_type(ClockType::UTC);
-        let canon_attos = utc.to_canonical();
+        let canon_attos = utc.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
 
         const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
 
@@ -692,7 +692,7 @@ impl TimePoint {
         let days_since_1970 = jd_days - 2_440_587i64;
         const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
         let total_attos = (days_since_1970 as i128) * ATTOS_PER_DAY + frac.total_attos();
-        Self::from_canonical(total_attos, ClockType::UTC)
+        Self::from_to_attos_since(total_attos, TimePoint::UNIX_EPOCH_UTC)
     }
 
     /// Creates a `TimePoint` from an exact Modified Julian Date in UTC using full library precision.

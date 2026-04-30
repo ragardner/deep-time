@@ -27,13 +27,13 @@ impl TimePoint {
     /// The J1900.0 epoch expressed in TAI (1900-01-01 12:00:00 TAI).
     pub const J1900_TAI: Self = Self::from_tai_sec(-3_155_760_000);
 
-    /// The library’s common reference zero instant expressed in GPS Time (GPST).
+    /// The library’s common reference zero instant expressed in GPS Time (GPS).
     ///
     /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI),
-    /// but represented on the GPST scale.
+    /// but represented on the GPS scale.
     ///
-    /// **Note**: This is *not* the traditional GPS reference epoch (1980-01-06 00:00:00 GPST).
-    pub const GPS_EPOCH: Self = Self::new(0, 0, ClockType::GPST);
+    /// **Note**: This is *not* the traditional GPS reference epoch (1980-01-06 00:00:00 GPS).
+    pub const GPS_ZERO: Self = Self::new(0, 0, ClockType::GPS);
 
     /// The library’s common reference zero instant expressed in Galileo Time (GST).
     ///
@@ -41,7 +41,7 @@ impl TimePoint {
     /// but represented on the GST scale.
     ///
     /// **Note**: This is *not* the traditional Galileo reference epoch (1999-08-22 00:00:00 GST).
-    pub const GALILEO_EPOCH: Self = Self::new(0, 0, ClockType::GST);
+    pub const GST_ZERO: Self = Self::new(0, 0, ClockType::GST);
 
     /// The library’s common reference zero instant expressed in BeiDou Time (BDT).
     ///
@@ -49,13 +49,13 @@ impl TimePoint {
     /// but represented on the BDT scale.
     ///
     /// **Note**: This is *not* the traditional BeiDou reference epoch (2006-01-01 00:00:00 BDT).
-    pub const BEIDOU_EPOCH: Self = Self::new(0, 0, ClockType::BDT);
+    pub const BDT_ZERO: Self = Self::new(0, 0, ClockType::BDT);
 
-    /// The library’s common reference zero instant expressed in QZSS Time (QZSST).
+    /// The library’s common reference zero instant expressed in QZSS Time (QZSS).
     ///
     /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI)
-    /// and is identical to [`Self::GPS_EPOCH`] (QZSS uses the same timescale as GPS).
-    pub const QZSS_EPOCH: Self = Self::new(0, 0, ClockType::QZSST);
+    /// and is identical to [`Self::GPS_ZERO`] (QZSS uses the same timescale as GPS).
+    pub const QZSS_ZERO: Self = Self::new(0, 0, ClockType::QZSS);
 
     /// The TAI instant corresponding to the POSIX Unix epoch
     /// (1970-01-01 00:00:00 UTC).
@@ -68,17 +68,23 @@ impl TimePoint {
     /// UTC representation of the POSIX Unix epoch (1970-01-01 00:00:00 UTC).
     pub const UNIX_EPOCH_UTC: Self = Self::UNIX_EPOCH_TAI.to_clock_type(ClockType::UTC);
 
-    /// Traditional GPS / QZSS reference epoch: **1980-01-06 00:00:00 GPST**
+    /// Traditional GPS / QZSS reference epoch: **1980-01-06 00:00:00 GPS**
     ///
     /// This is the epoch that GNSS receivers, navigation software, RINEX files,
-    /// and the vast majority of the world expect when working with GPST/QZSST.
-    pub const TRADITIONAL_GPS_EPOCH: Self = Self::new(-630_763_200, 0, ClockType::GPST);
+    /// and the vast majority of the world expect when working with GPS/QZSS.
+    pub const GPS_EPOCH: Self = Self::new(-630_763_200, 0, ClockType::GPS);
+
+    /// GALEX epoch (identical to GPS_EPOCH)
+    ///
+    /// Used by Astropy's `TimeGalexSec` format and GALEX mission data products.
+    /// Seconds since **1980-01-06 00:00:00** (continuous, no leap seconds).
+    pub const GALEX_EPOCH: Self = Self::GPS_EPOCH;
 
     /// Traditional Galileo reference epoch: **1999-08-22 00:00:00 GST**
-    pub const TRADITIONAL_GALILEO_EPOCH: Self = Self::new(-11_448_000, 0, ClockType::GST);
+    pub const GALILEO_EPOCH: Self = Self::new(-11_448_000, 0, ClockType::GST);
 
     /// Traditional BeiDou reference epoch: **2006-01-01 00:00:00 BDT**
-    pub const TRADITIONAL_BEIDOU_EPOCH: Self = Self::new(189_345_600, 0, ClockType::BDT);
+    pub const BDT_EPOCH: Self = Self::new(189_345_600, 0, ClockType::BDT);
 
     /// Creates a new `TimePoint` from whole seconds, a subsecond part in attoseconds,
     /// and a clock type, automatically normalizing the representation.

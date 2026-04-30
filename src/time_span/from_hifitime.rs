@@ -14,7 +14,7 @@ impl TimeSpan {
     ///
     /// This **respects whatever reference epoch the `hifitime::Epoch` has attached to it**
     /// (i.e. the duration is relative to the reference point of the Epoch's `time_scale`
-    /// — J1900 for TAI/UTC, 1980-01-06 for GPST, J2000 for TT/TDB, etc.).
+    /// — J1900 for TAI/UTC, 1980-01-06 for GPS, J2000 for TT/TDB, etc.).
     #[inline]
     pub fn from_hifitime_epoch(epoch: Epoch) -> Self {
         Self::from_hifitime_duration(epoch.duration)

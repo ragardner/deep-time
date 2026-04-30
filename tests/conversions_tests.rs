@@ -135,8 +135,8 @@ mod mjd_leaps_roundtrips {
         );
 
         // === Round-trip through canonical attoseconds ===
-        let canon = original.to_canonical();
-        let roundtrip1 = TimePoint::from_canonical(canon, ClockType::UTC);
+        let canon = original.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
+        let roundtrip1 = TimePoint::from_to_attos_since(canon, TimePoint::UNIX_EPOCH_UTC);
 
         assert_eq!(original, roundtrip1, "Canonical round-trip failed");
 
@@ -625,10 +625,10 @@ mod gnss_tests {
     fn gnss_offsets_are_correct() {
         let tai = TimePoint::ZERO;
 
-        let gpst = tai.to_clock_type(ClockType::GPST);
+        let gpst = tai.to_clock_type(ClockType::GPS);
         assert!((gpst.numerical_seconds_since(&tai) + 19.0).abs() < 1e-12);
 
-        let qzsst = tai.to_clock_type(ClockType::QZSST);
+        let qzsst = tai.to_clock_type(ClockType::QZSS);
         assert!((qzsst.numerical_seconds_since(&tai) + 19.0).abs() < 1e-12);
 
         let gst = tai.to_clock_type(ClockType::GST);

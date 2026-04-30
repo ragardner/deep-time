@@ -19,6 +19,7 @@ once_cell = { version = "1.21", optional = true, default-features = false, featu
 
 jiff = { version = "0.2.23", optional = true, default-features = false }
 chrono = { version = "0.4", optional = true, default-features = false }
+chrono-tz = { version = "0.10", optional = true, default-features = false }
 hifitime = { version = "4.2", optional = true, default-features = false }
 serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "rc"] }
 tsify = { version = "=0.5.6", optional = true }
@@ -99,6 +100,11 @@ chrono = [
     "chrono?/alloc",
 ]
 
+chrono-tz = [
+    "chrono",
+    "dep:chrono-tz",
+]
+
 hifitime = [
     "dep:hifitime",
 ]
@@ -131,8 +137,8 @@ all = [
     "lang",
     "locale",
     "js",
-    "chrono",
-    "jiff",
+    "chrono-tz",
+    "jiff-tz",
     "hifitime",
     "serde",
 ]

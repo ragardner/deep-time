@@ -108,10 +108,10 @@ pub(crate) enum DateToken {
     ET,
     TDB,
     // UTC, // avoid overlap with iana
-    GPST,
+    GPS,
     GST,
     BDT,
-    QZSST,
+    QZSS,
     TCG,
     TCB,
     LTC,

@@ -19,7 +19,7 @@ impl TimeSpan {
     ///
     /// The `TimeSpan` is interpreted as the **offset from the reference epoch**
     /// of the supplied `time_scale` (TAI reference for `TimeScale::TAI`,
-    /// J2000 for `TT`/`TDB`/`ET`, GPS epoch for `GPST`, Unix for `UTC`, etc.).
+    /// J2000 for `TT`/`TDB`/`ET`, GPS epoch for `GPS`, Unix for `UTC`, etc.).
     ///
     /// Uses the generic `hifitime::Epoch::from_duration` constructor — the most
     /// direct and flexible way to respect any attached epoch/timescale.
