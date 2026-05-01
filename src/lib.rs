@@ -44,7 +44,6 @@ mod ascii_str;
 mod clock_drift;
 mod clock_model;
 mod clock_type;
-mod common;
 mod gregorian_time;
 mod light_time;
 mod parser;

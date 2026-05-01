@@ -1,6 +1,6 @@
 use crate::{
-    ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtErrKind,
-    DtErr, MAX_DATE_STRING_LEN, ParseCfg, TimePoint, an_err, classify_date,
+    ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtErr,
+    DtErrKind, MAX_DATE_STRING_LEN, ParseCfg, TimePoint, an_err, classify_date,
     default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
@@ -222,7 +222,9 @@ impl TimePoint {
     /// on any parse error.
     #[inline]
     pub fn str_to_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        TimePoint::from_str_parse(s, opts).ok().map(|tp| tp.as_ms())
+        TimePoint::from_str_parse(s, opts)
+            .ok()
+            .map(|tp| tp.total_ms())
     }
 
     /// Same parsing logic as `TimePoint::from_str`, but returns milliseconds since
