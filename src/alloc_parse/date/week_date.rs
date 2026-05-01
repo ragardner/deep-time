@@ -14,7 +14,6 @@ pub(crate) fn is_week_date_missing_weekday(cls: &DateClassification) -> bool {
 }
 
 /// Expects a pre-classified (normalized to English) date string.
-#[inline(always)]
 pub(crate) fn parse_week_date_no_weekday(
     normalized: &str,
     lang: Lang,

@@ -122,7 +122,6 @@ pub(crate) const fn sin_approx(x: Real) -> Real {
 ///
 /// This is identical to `std::f64::floor` (including signed-zero
 /// preservation) while remaining fully `const fn` on stable Rust with `#![no_std]`.
-#[inline(always)]
 pub(crate) const fn floor_f(x: Real) -> Real {
     if x.is_nan() || x.is_infinite() {
         x

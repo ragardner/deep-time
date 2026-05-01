@@ -97,7 +97,6 @@ define_ends_with_methods! {
 
 /// Converts common Unicode decimal digit (ASCII + full-width + others)
 /// to the corresponding ASCII digit string.
-#[inline]
 pub(crate) fn to_ascii_digit(ch: char) -> Option<char> {
     if let Some(d) = ch.to_digit(10) {
         return Some(DIGIT_CHARS[d as usize]);

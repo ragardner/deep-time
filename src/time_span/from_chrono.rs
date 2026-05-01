@@ -14,7 +14,6 @@ impl TimeSpan {
     ///   **exactly** the maximum/minimum nanosecond value that chrono can store
     ///   (`i64::MAX` / `i64::MIN` nanoseconds) rather than saturating to
     ///   `TimeSpan::MAX` / `TimeSpan::MIN`.
-    #[inline]
     pub fn from_chrono_duration(dur: Duration) -> Self {
         match dur.num_nanoseconds() {
             Some(ns) => Self::from_ns(ns as i128),
@@ -41,7 +40,6 @@ impl TimeSpan {
     ///   we clamp to **exactly** the maximum/minimum nanosecond value that chrono
     ///   itself can store (`i64::MAX` / `i64::MIN` nanoseconds since epoch)
     ///   rather than saturating to `TimeSpan::MAX` / `TimeSpan::MIN`.
-    #[inline]
     pub fn from_chrono_datetime_utc(dt: DateTime<Utc>) -> Self {
         match dt.timestamp_nanos_opt() {
             Some(ns) => Self::from_ns(ns as i128),

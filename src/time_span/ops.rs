@@ -6,7 +6,7 @@ impl Add<TimeSpan> for TimeSpan {
     type Output = Self;
 
     /// Adds two `TimeSpan`s.
-    #[inline(always)]
+    #[inline]
     fn add(self, rhs: TimeSpan) -> Self {
         self.add(rhs)
     }
@@ -14,7 +14,7 @@ impl Add<TimeSpan> for TimeSpan {
 
 impl AddAssign<TimeSpan> for TimeSpan {
     /// Adds a `TimeSpan` to this one in place.
-    #[inline(always)]
+    #[inline]
     fn add_assign(&mut self, rhs: TimeSpan) {
         *self = self.add(rhs);
     }
@@ -24,7 +24,7 @@ impl Sub<TimeSpan> for TimeSpan {
     type Output = Self;
 
     /// Subtracts a `TimeSpan` from this one.
-    #[inline(always)]
+    #[inline]
     fn sub(self, rhs: TimeSpan) -> Self {
         self.sub(rhs)
     }
@@ -32,7 +32,7 @@ impl Sub<TimeSpan> for TimeSpan {
 
 impl SubAssign<TimeSpan> for TimeSpan {
     /// Subtracts a `TimeSpan` from this one in place.
-    #[inline(always)]
+    #[inline]
     fn sub_assign(&mut self, rhs: TimeSpan) {
         *self = self.sub(rhs);
     }
@@ -42,7 +42,7 @@ impl Neg for TimeSpan {
     type Output = Self;
 
     /// Negates this `TimeSpan` (returns the additive inverse).
-    #[inline(always)]
+    #[inline]
     fn neg(self) -> Self {
         self.neg()
     }
@@ -52,7 +52,7 @@ impl Mul<i64> for TimeSpan {
     type Output = Self;
 
     /// Multiplies this `TimeSpan` by an integer scalar.
-    #[inline(always)]
+    #[inline]
     fn mul(self, rhs: i64) -> Self {
         self.mul(rhs)
     }
@@ -60,7 +60,7 @@ impl Mul<i64> for TimeSpan {
 
 impl MulAssign<i64> for TimeSpan {
     /// Multiplies this `TimeSpan` by an integer scalar in place.
-    #[inline(always)]
+    #[inline]
     fn mul_assign(&mut self, rhs: i64) {
         *self = self.mul(rhs);
     }
@@ -70,7 +70,7 @@ impl Div<i64> for TimeSpan {
     type Output = Self;
 
     /// Divides this `TimeSpan` by an integer scalar.
-    #[inline(always)]
+    #[inline]
     fn div(self, rhs: i64) -> Self {
         self.div(rhs)
     }
@@ -78,7 +78,7 @@ impl Div<i64> for TimeSpan {
 
 impl DivAssign<i64> for TimeSpan {
     /// Divides this `TimeSpan` by an integer scalar in place.
-    #[inline(always)]
+    #[inline]
     fn div_assign(&mut self, rhs: i64) {
         *self = self.div(rhs);
     }

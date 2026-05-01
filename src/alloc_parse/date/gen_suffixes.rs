@@ -3,7 +3,6 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
-#[inline]
 pub(crate) fn get_compatible_time_suffixes(class: &DateClassification) -> Vec<String> {
     if class.time.is_none() {
         return get_offset_suffix(class).map_or_else(Vec::new, |s| vec![s]);
@@ -18,7 +17,6 @@ pub(crate) fn get_compatible_time_suffixes(class: &DateClassification) -> Vec<St
     time_bases
 }
 
-#[inline]
 fn get_offset_suffix(class: &DateClassification) -> Option<String> {
     let offset = class.offset;
     match offset {

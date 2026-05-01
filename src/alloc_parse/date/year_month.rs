@@ -9,7 +9,6 @@ pub(crate) fn parse_yymmdd(input: &str) -> Option<TimePoint> {
 
 /// Parses year-month formats with flexible separators and optional sign:
 /// "2024-03", "2024/3", "2024.03", "-2024-03", "-2024/3", "-2025.1", "+2024-05", etc.
-#[inline]
 pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<TimePoint> {
     let len = bytes.len();
 

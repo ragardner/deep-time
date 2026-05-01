@@ -5,7 +5,6 @@ use crate::{
 
 impl GregorianTime {
     #[cfg(feature = "alloc")]
-    #[inline]
     pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtError> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -14,7 +13,6 @@ impl GregorianTime {
     }
 
     /// No-allocation formatting.
-    #[inline]
     pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtError> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;

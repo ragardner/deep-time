@@ -14,7 +14,7 @@ use crate::{ConnectorType, DateClassification, DateToken, DetectedDateOrder};
 /// • ISO timestamp markers (`T`, `Z`, zoned/offset) are very reliable YearFirst.
 /// • `/` is deliberately ignored (culturally split).
 /// • Final fallback = cached locale (if enabled) or `DayFirst` (global majority).
-#[inline(always)]
+#[inline]
 pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> DetectedDateOrder {
     // ------------------------------------------------------------------
     // 1. Pure-numeric compact formats (the exact case you reported)

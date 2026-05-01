@@ -14,7 +14,7 @@ use crate::ClockType;
 ///
 /// Pass `reference_date` when reprocessing historical logs for perfect reproducibility.
 /// If `reference_date` is `None` and the `std` feature is enabled, real system time is used.
-#[inline(always)]
+#[inline]
 pub(crate) fn parse_syslog_no_year(
     input: &str,
     lang: Lang,

@@ -5,14 +5,14 @@ use core::ops::{Add, AddAssign, Sub, SubAssign};
 impl Add<TimeSpan> for TimePoint {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn add(self, rhs: TimeSpan) -> Self {
         self.add(rhs)
     }
 }
 
 impl AddAssign<TimeSpan> for TimePoint {
-    #[inline(always)]
+    #[inline]
     fn add_assign(&mut self, rhs: TimeSpan) {
         self.mut_add(&rhs);
     }
@@ -21,14 +21,14 @@ impl AddAssign<TimeSpan> for TimePoint {
 impl Sub<TimeSpan> for TimePoint {
     type Output = Self;
 
-    #[inline(always)]
+    #[inline]
     fn sub(self, rhs: TimeSpan) -> Self {
         self.sub(rhs)
     }
 }
 
 impl SubAssign<TimeSpan> for TimePoint {
-    #[inline(always)]
+    #[inline]
     fn sub_assign(&mut self, rhs: TimeSpan) {
         self.mut_sub(&rhs);
     }
@@ -37,7 +37,7 @@ impl SubAssign<TimeSpan> for TimePoint {
 impl Sub<TimePoint> for TimePoint {
     type Output = TimeSpan;
 
-    #[inline(always)]
+    #[inline]
     fn sub(self, rhs: TimePoint) -> TimeSpan {
         self.duration_since(rhs)
     }

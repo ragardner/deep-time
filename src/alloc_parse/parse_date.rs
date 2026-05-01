@@ -1,7 +1,7 @@
 use crate::{
     ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtErrKind,
-    DtError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, classify_date,
-    default_date_parse_options, an_err, generate_ambiguous_day_first_candidates,
+    DtError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, an_err, classify_date,
+    default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
     parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
@@ -237,7 +237,7 @@ impl TimePoint {
             .map(|tp| tp.to_unix_ms())
     }
 
-    #[inline(always)]
+    #[inline]
     pub fn from_str(
         s: &str,
         fmt: &str,
@@ -245,28 +245,15 @@ impl TimePoint {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Option<TimePoint> {
-        // std::eprintln!("TRYING: {}, FOR: {}", fmt, s);
-
-        let components = TimeParts::from_str(
+        TimeParts::from_str(
             fmt,
             s,
             inp_can_end_before_fmt,
             fmt_can_end_before_inp,
             allow_partial_date,
-        );
-
-        // std::eprintln!("RESULT from_str: {:?}", components);
-
-        // Convert Result<TimeParts, DtError> -> Result<TimePoint, DtError>
-        let time_point_result: Result<TimePoint, DtError> =
-            components.and_then(|p| p.to_time_point(None));
-
-        // Print the error if there is one (this is what you asked for)
-        if let Err(_) = &time_point_result {
-            // std::eprintln!("ERROR in to_time_point: {:?}", e);
-        }
-
-        time_point_result.ok()
+        )
+        .and_then(|p| p.to_time_point(None))
+        .ok()
     }
 }
 

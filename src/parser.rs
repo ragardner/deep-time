@@ -1016,7 +1016,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline(always)]
+    #[inline]
     fn parse_literal_character_byte(&mut self, expected: u8) -> Result<(), DtError> {
         if self.inp.is_empty() || self.current_input_byte() != expected {
             return Err(an_err!(

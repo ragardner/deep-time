@@ -30,13 +30,12 @@ impl TimePoint {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) const fn utc_civil_canonical_attos(self) -> i128 {
         ((self.sec as i128) + (UNIX_EPOCH_TO_J2000_NOON_UTC as i128)) * ATTOSEC_PER_SEC_I128
             + (self.subsec as i128)
     }
 
-    #[inline]
     pub(crate) const fn from_utc_civil_canonical(canon: i128) -> Self {
         let sec = canon.div_euclid(ATTOSEC_PER_SEC_I128) as i64;
         let subsec = (canon.rem_euclid(ATTOSEC_PER_SEC_I128)) as u64;
@@ -47,7 +46,6 @@ impl TimePoint {
     // --------------------- UNIX / UTC (POSIX epoch) ---------------------
 
     /// Returns this instant as **seconds** since the POSIX Unix epoch (UTC).
-    #[inline]
     pub const fn to_unix_sec(self) -> i64 {
         let canon = self.to_attos_since(Self::UNIX_EPOCH_UTC);
         let div = ATTOSEC_PER_SEC_I128;
@@ -79,7 +77,6 @@ impl TimePoint {
 
     // --------------------- GPS / QZSS (1980-01-06 00:00:00 GPS) ---------------------
 
-    #[inline]
     pub const fn to_gps_sec(self) -> i64 {
         let canon = self.to_attos_since(Self::GPS_EPOCH);
         let div = ATTOSEC_PER_SEC_I128;
@@ -127,7 +124,6 @@ impl TimePoint {
 
     // --------------------- Galileo (1999-08-22 00:00:00 GST) ---------------------
 
-    #[inline]
     pub const fn to_galileo_sec(self) -> i64 {
         let canon = self.to_attos_since(Self::GALILEO_EPOCH);
         let div = ATTOSEC_PER_SEC_I128;
@@ -153,7 +149,6 @@ impl TimePoint {
 
     // --------------------- BeiDou (2006-01-01 00:00:00 BDT) ---------------------
 
-    #[inline]
     pub const fn to_beidou_sec(self) -> i64 {
         let canon = self.to_attos_since(Self::BDT_EPOCH);
         let div = ATTOSEC_PER_SEC_I128;
@@ -181,7 +176,6 @@ impl TimePoint {
     /// (seconds since 1970-01-01 00:00:00 UTC).
     ///
     /// This version is correct for the full i64 range, including negative years.
-    #[inline]
     pub const fn ymdhms_to_unix_timestamp(
         year: i64,
         month: u8,

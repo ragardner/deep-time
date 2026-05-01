@@ -14,7 +14,6 @@ use crate::{UNIX_EPOCH_TO_J2000_NOON_UTC, frac_to_nanos};
 /// (2000-01-01 12:00:00 UTC) before constructing the `TimePoint`.
 ///
 /// Returns a `TimePoint` in `ClockType::UTC`.
-#[inline]
 pub(crate) fn parse_pure_numeric_unix_timestamp(
     trimmed: &str,
     integer_digits: usize,

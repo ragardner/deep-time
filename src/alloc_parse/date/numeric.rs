@@ -4,7 +4,7 @@ use crate::{
     parse_mjd, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
 };
 
-#[inline(always)]
+#[inline]
 pub(crate) fn parse_i32_year(input: &str) -> Option<TimePoint> {
     let year: i32 = input.parse().ok()?;
     if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
@@ -19,7 +19,7 @@ pub(crate) fn parse_i32_year(input: &str) -> Option<TimePoint> {
     Some(TimePoint::new(sec_utc, 0, ClockType::UTC))
 }
 
-#[inline(always)]
+#[inline]
 pub(crate) fn parse_two_digit_year(input: &str) -> Option<TimePoint> {
     let y: i32 = input.parse().ok()?;
     let full_year = if y <= 68 { 2000 + y } else { 1900 + y };
@@ -36,7 +36,7 @@ pub(crate) fn parse_two_digit_year(input: &str) -> Option<TimePoint> {
 }
 
 /// Fractional day string → nanoseconds (exact integer math, max 9 digits)
-#[inline(always)]
+#[inline]
 pub(crate) fn frac_to_nanos(frac_part: &str) -> Option<i128> {
     if frac_part.is_empty() {
         return Some(0);
@@ -55,7 +55,6 @@ pub(crate) fn frac_to_nanos(frac_part: &str) -> Option<i128> {
     Some(result)
 }
 
-#[inline]
 pub(crate) fn try_pure_numeric(
     input: &str,
     total_digits: u8,

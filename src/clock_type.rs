@@ -131,7 +131,6 @@ impl ClockType {
     ///
     /// Returns `None` for any value that does not correspond to a known variant.
     /// This provides safe deserialization from untrusted sources.
-    #[inline]
     pub const fn from_u8(v: u8) -> Option<Self> {
         match v {
             0 => Some(Self::TAI),
@@ -164,7 +163,6 @@ impl ClockType {
 
     /// Parse clock type from abbreviation.
     /// Returns `None` for any non-ASCII input.
-    #[inline]
     pub fn from_abbrev(s: &str) -> Option<Self> {
         let bytes = s.as_bytes();
         // Reject non-ASCII input immediately (clock abbreviations must be ASCII)
@@ -232,13 +230,14 @@ impl ClockType {
     /// the derived `PartialEq::eq` might not be `const fn` yet.
     ///
     /// Zero-cost and guaranteed to match the `repr(u8)` layout.
-    #[inline(always)]
+    #[inline]
     pub const fn eq(self, other: Self) -> bool {
         self.to_wire_byte() == other.to_wire_byte()
     }
 
     /// Returns the reference epoch (zero instant) of this clock type,
     /// expressed as a zero-duration [`TimePoint`] in this exact clock type.
+    #[inline(always)]
     pub const fn reference_epoch(self) -> TimePoint {
         TimePoint::new(0, 0, self)
     }

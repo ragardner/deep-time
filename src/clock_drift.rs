@@ -134,7 +134,7 @@ pub struct LocalSpacetime {
 }
 
 impl LocalSpacetime {
-    #[inline(always)]
+    #[inline]
     pub const fn new(alpha: Real, beta: Real, kretschmann: Real) -> Self {
         Self {
             alpha,
@@ -149,7 +149,6 @@ impl LocalSpacetime {
     /// Serializes this `LocalSpacetime` snapshot into a fixed 24-byte buffer.
     ///
     /// All fields are stored as little-endian IEEE 754 `f64`.
-    #[inline]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0..8].copy_from_slice(&self.alpha.to_le_bytes());
@@ -195,7 +194,7 @@ impl LocalSpacetime {
     }
 
     /// Convenience for direct gravimeter / sensor paths.
-    #[inline(always)]
+    #[inline]
     pub fn from_gravitic_and_velocity(alpha: Real, velocity: Velocity, kretschmann: Real) -> Self {
         Self::new(alpha, velocity.beta(), kretschmann)
     }
@@ -228,7 +227,7 @@ impl LocalSpacetime {
     /// In those extreme regimes this function alone is no longer sufficient; a full
     /// strong-field treatment (including curvature information passed to `LocalSpacetime`)
     /// is required.
-    #[inline(always)]
+    #[inline]
     pub fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
         // gravitational_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
         libm::sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
@@ -254,7 +253,6 @@ impl LocalSpacetime {
     /// Supply the measured or computed \(\phi\) and the real local length scale (or
     /// the value from your metric). The function returns a physically accurate non-zero
     /// curvature.
-    #[inline]
     pub const fn kretschmann_from_potential_and_scale(
         grav_potential_over_c2: Real,
         characteristic_length_scale: Real,
@@ -310,7 +308,6 @@ impl LocalSpacetime {
     ///   which the gravitational field varies significantly at the observer’s location.
     ///   This allows the library to estimate the Kretschmann scalar and activate the
     ///   intrinsic Planck-scale saturation term when curvature becomes extreme.
-    #[inline(always)]
     pub fn from_potential_velocity_and_scale(
         grav_potential_over_c2: Real, // Φ/c² (total local potential)
         velocity: Velocity,
@@ -381,7 +378,6 @@ impl ClockDrift {
     /// Serializes this `ClockDrift` polynomial into a fixed buffer.
     ///
     /// The layout is the concatenation of the three `TimeSpan` fields.
-    #[inline]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         let c = self.constant.to_wire_bytes();
@@ -438,7 +434,7 @@ impl ClockDrift {
     /// This form is very common for GNSS receivers and spacecraft clock steering,
     /// where a steady fractional frequency offset must be corrected in addition
     /// to any fixed bias.
-    #[inline(always)]
+    #[inline]
     pub const fn from_offset_and_rate(offset: TimeSpan, rate: TimeSpan) -> Self {
         Self::new(offset, rate, TimeSpan::ZERO)
     }
@@ -512,7 +508,6 @@ impl ClockDrift {
     /// time and coordinate time after the interval span has passed. All
     /// arithmetic is performed with full 36-digit precision, ensuring no loss of
     /// accuracy even for multi-year integrations.
-    #[inline]
     pub const fn time_diff_after(&self, span: &TimeSpan) -> TimeSpan {
         let dt_attos = span.total_attos();
         let mut total_attos = self.constant.total_attos();
@@ -553,7 +548,6 @@ impl ClockDrift {
     ///   over which the gravitational potential changes at the observer’s
     ///   location. This activates the library’s intrinsic Planck-scale saturation
     ///   term when spacetime curvature becomes extreme.
-    #[inline]
     pub fn from_velocity_potential_and_scale(
         velocity_m_s: Real,
         grav_potential_m2_s2: Real,
@@ -581,7 +575,6 @@ impl ClockDrift {
     /// K_eff = [δ(1 + x) + x(1−δ)²] / (1 + x)  
     /// where δ = α²(1−β²) and x = ℓ_Pl⁴ 𝒦. The returned rate offset is then
     /// applied as a linear term in the `ClockDrift` polynomial.
-    #[inline]
     pub fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Self {
         let delta = u.max(f!(0.0));
         let x = PLANCK_LENGTH_4 * kretschmann.max(f!(0.0));

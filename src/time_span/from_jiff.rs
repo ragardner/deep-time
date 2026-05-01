@@ -5,7 +5,7 @@ impl TimeSpan {
     /// Creates a `TimeSpan` from a `jiff::SignedDuration` (nanosecond precision).
     ///
     /// This is the exact reverse of [`TimeSpan::to_jiff_signed_duration`].
-    #[inline(always)]
+    #[inline]
     pub fn from_jiff_signed_duration(dur: SignedDuration) -> Self {
         Self::from_ns(dur.as_nanos())
     }
@@ -29,7 +29,7 @@ impl TimeSpan {
     /// (1970-01-01 00:00:00 UTC) from a `jiff::Timestamp`.
     ///
     /// This is the exact reverse of [`TimeSpan::to_jiff_timestamp`].
-    #[inline(always)]
+    #[inline]
     pub fn from_jiff_timestamp(ts: Timestamp) -> Self {
         Self::from_ns(ts.as_nanosecond())
     }

@@ -59,7 +59,6 @@ impl Position {
     ///
     /// Together with the two radial distances from the Sun, this value supplies the
     /// three geometric inputs needed to evaluate the Shapiro delay.
-    #[inline]
     pub fn distance_to(self, other: Self) -> Real {
         let dx = self.x - other.x;
         let dy = self.y - other.y;

@@ -1,11 +1,11 @@
 use crate::leap_seconds::leap_seconds_before;
 use crate::{
-    ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockDrift, ClockModel, ClockType, J2000_JD_TT,
-    J2000_SECONDS_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, LM_DEN, LM_NUM, MARS_MSD_REF_JD_INT,
-    MARS_MSD_REF_TOD_SEC, MARS_MSD_REF_TOD_SUBSEC, MARS_REF_SEC, MARS_REF_SUBSEC, MARS_SOL_ATTOS,
-    MARS_SOL_LENGTH_SEC, Real, SEC_PER_DAY, SEC_PER_DAYI64, SEC_PER_DAYI128, TCG_TCB_REF_JD_INT,
-    TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS, TT_TAI_OFFSET_SPAN, TimePoint,
-    TimeSpan, floor_f, sin_approx,
+    ATTOS_PER_DAY, ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockDrift, ClockModel, ClockType,
+    J2000_JD_TT, J2000_SECONDS_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, LM_DEN, LM_NUM,
+    MARS_MSD_REF_JD_INT, MARS_MSD_REF_TOD_SEC, MARS_MSD_REF_TOD_SUBSEC, MARS_REF_SEC,
+    MARS_REF_SUBSEC, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real, SEC_PER_DAY, SEC_PER_DAYI64,
+    SEC_PER_DAYI128, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS,
+    TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan, floor_f, sin_approx,
 };
 
 impl TimePoint {
@@ -176,7 +176,6 @@ impl TimePoint {
     ///
     /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
     /// case of a pure constant offset the function returns immediately without iteration.
-    #[inline]
     pub const fn convert_back_using_drift(
         self,
         source: ClockType,
@@ -212,12 +211,14 @@ impl TimePoint {
         self.convert_back_using_drift(model.base, model.reference, model.drift)
     }
 
+    #[inline]
     const fn utc_to_tai(utc: Self) -> Self {
         let leaps = leap_seconds_before(utc);
         utc.add(TimeSpan::from_sec(leaps))
             .with_clock_type(ClockType::TAI)
     }
 
+    #[inline]
     const fn tai_to_utc(tai: Self) -> Self {
         let leaps = leap_seconds_before(tai);
         tai.sub(TimeSpan::from_sec(leaps))
@@ -270,7 +271,6 @@ impl TimePoint {
     ///
     /// - SOFA/ERFA `eraDtdb` implementation (2021 May 11 revision):
     ///   https://raw.githubusercontent.com/liberfa/erfa/master/src/dtdb.c
-    #[inline]
     const fn tdb_minus_tt(tt: Self) -> TimeSpan {
         let seconds_since_j2000_tt =
             (tt.sec as Real) + (tt.subsec as Real) / (ATTOSEC_PER_SEC as Real);
@@ -455,7 +455,7 @@ impl TimePoint {
         sec_diff * ATTOSEC_PER_SEC_I128 + attos_diff
     }
 
-    #[inline]
+    #[inline(always)]
     const fn mars_ref_tt() -> Self {
         TimePoint::new(MARS_REF_SEC, MARS_REF_SUBSEC, ClockType::TT)
     }
@@ -522,7 +522,6 @@ impl TimePoint {
     /// - [`Self::to_jd_tt`] — floating-point convenience version
     /// - [`Self::to_mjd_tt_exact`] — Modified Julian Date in TT
     /// - [`Self::to_jd_utc_exact`] — civil/engineering form in UTC
-    #[inline]
     pub const fn to_jd_tt_exact(self) -> (i64, TimeSpan) {
         let tt = self.to_clock_type(ClockType::TT);
         let days_since_j2000 = tt.sec.div_euclid(SEC_PER_DAYI64);
@@ -560,7 +559,6 @@ impl TimePoint {
     /// # See also
     /// - [`Self::to_jd_utc`] — floating-point convenience version
     /// - [`Self::to_mjd_utc_exact`] — Modified Julian Date in UTC
-    #[inline]
     pub const fn to_jd_utc_exact(self) -> (i64, TimeSpan) {
         let utc = self.to_clock_type(ClockType::UTC);
         let canon_attos = utc.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
@@ -640,7 +638,6 @@ impl TimePoint {
     /// # See also
     /// - [`Self::to_mjd_tt_exact`] — the astronomical standard
     /// - [`Self::to_jd_tt_exact`] — Julian Date in TT
-    #[inline]
     pub const fn to_mjd_utc_exact(self) -> (i64, TimeSpan) {
         let utc = self.to_clock_type(ClockType::UTC);
         let canon_attos = utc.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
@@ -656,7 +653,6 @@ impl TimePoint {
     }
 
     /// Creates a `TimePoint` from an exact Julian Date in Terrestrial Time using full library precision.
-    #[inline]
     pub const fn from_jd_tt_exact(jd_days: i64, frac: TimeSpan) -> Self {
         let days_since_j2000 = jd_days - J2000_JD_TT;
         let total_sec = days_since_j2000 * SEC_PER_DAYI64 + frac.sec;
@@ -666,7 +662,7 @@ impl TimePoint {
 
     /// Creates a `TimePoint` from an exact Modified Julian Date in Terrestrial Time using full library
     /// precision.
-    #[inline]
+    #[inline(always)]
     pub const fn from_mjd_tt_exact(mjd_days: i64, frac: TimeSpan) -> Self {
         Self::from_jd_tt_exact(mjd_days + 2_400_000, frac)
     }
@@ -687,10 +683,8 @@ impl TimePoint {
     /// - [`Self::to_jd_utc_exact`] — the matching `to_` function
     /// - [`Self::from_jd_tt_exact`] — the astronomical (TT) counterpart
     /// - [`Self::from_mjd_utc_exact`] — the MJD variant in UTC
-    #[inline]
     pub const fn from_jd_utc_exact(jd_days: i64, frac: TimeSpan) -> Self {
         let days_since_1970 = jd_days - 2_440_587i64;
-        const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
         let total_attos = (days_since_1970 as i128) * ATTOS_PER_DAY + frac.total_attos();
         Self::from_to_attos_since(total_attos, TimePoint::UNIX_EPOCH_UTC)
     }
@@ -725,7 +719,6 @@ impl TimePoint {
 
     /// Creates a `TimePoint` (in TT) from a floating-point Mars Sol Date.
     /// Non-exact Real.
-    #[inline]
     pub const fn from_msd(msd: Real) -> Self {
         let whole = floor_f(msd) as i64;
         let frac = msd - (whole as Real);
@@ -756,7 +749,6 @@ impl TimePoint {
     /// - [`Self::to_jd_tt_exact`] — full attosecond exact version
     /// - [`Self::to_mjd_tt`] — Modified Julian Date in TT
     /// - [`Self::to_jd_utc`] — civil/engineering form in UTC
-    #[inline]
     pub const fn to_jd_tt(self) -> Real {
         let (jd_days, frac) = self.to_jd_tt_exact();
         let days_f = jd_days as Real;
@@ -777,7 +769,6 @@ impl TimePoint {
     /// # See also
     /// - [`Self::to_jd_utc_exact`] — full attosecond exact version
     /// - [`Self::to_jd_tt`] — astronomical standard (TT)
-    #[inline]
     pub const fn to_jd_utc(self) -> Real {
         let (jd_int, frac) = self.to_jd_utc_exact();
         let days_f = jd_int as Real;
@@ -809,7 +800,7 @@ impl TimePoint {
     /// - [`Self::to_mjd_tt_exact`] — full attosecond exact version
     /// - [`Self::to_jd_tt`] — Julian Date in TT
     /// - [`Self::to_mjd_utc`] — civil/engineering form in UTC
-    #[inline]
+    #[inline(always)]
     pub const fn to_mjd_tt(self) -> Real {
         self.to_jd_tt() - f!(2_400_000.5)
     }
@@ -840,7 +831,6 @@ impl TimePoint {
     /// # See also
     /// - [`Self::to_mjd_utc_exact`] — full attosecond exact version
     /// - [`Self::to_mjd_tt`] — astronomical standard
-    #[inline]
     pub const fn to_mjd_utc(self) -> Real {
         let (mjd_int, frac) = self.to_mjd_utc_exact();
         let days_f = mjd_int as Real;

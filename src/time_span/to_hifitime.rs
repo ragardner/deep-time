@@ -23,7 +23,7 @@ impl TimeSpan {
     ///
     /// Uses the generic `hifitime::Epoch::from_duration` constructor — the most
     /// direct and flexible way to respect any attached epoch/timescale.
-    #[inline(always)]
+    #[inline]
     pub fn to_hifitime_epoch(self, time_scale: TimeScale) -> Epoch {
         Epoch::from_duration(self.to_hifitime_duration(), time_scale)
     }

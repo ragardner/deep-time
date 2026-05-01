@@ -55,7 +55,6 @@ pub const HISTORICAL_TAI_UTC_OFFSETS: &[(i32, u8, u8, Real)] = &[
 /// on the given proleptic Gregorian date according to the SOFA model.
 ///
 /// Returns `None` if the date is before 1960-01-01 **or on/after 1972-01-01**.
-#[inline]
 pub const fn historical_tai_minus_utc_offset(year: i32, month: u8, day: u8) -> Option<Real> {
     // Explicit guard for the modern era
     if year >= 1972 {

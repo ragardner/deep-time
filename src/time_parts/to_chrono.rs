@@ -10,7 +10,7 @@ use chrono::{
 #[cfg(feature = "chrono-tz")]
 use chrono_tz::Tz;
 
-// #[cfg(not(feature = "chrono-tz"))]
+#[cfg(not(feature = "chrono-tz"))]
 use crate::tzdb::offset_info_at_local;
 
 impl TimeParts {

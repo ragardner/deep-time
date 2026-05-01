@@ -201,7 +201,6 @@ impl TimePoint {
     ///
     /// The algorithm matches the standard astronomical convention used throughout the library
     /// (`ymd_to_jdn(2000, 1, 1) == 2451545`).
-    #[inline]
     pub const fn ymd_to_jdn(year: i64, month: u8, day: u8) -> i64 {
         let a = (14 - month as i64) / 12;
         let y = year + 4800 - a;
@@ -245,7 +244,6 @@ impl TimePoint {
     }
 
     /// Computes the Julian Day Number from an ISO week date (Monday-based week).
-    #[inline]
     pub const fn ymd_to_jdn_from_iso_week(iso_year: i64, iso_week: u8, weekday: Weekday) -> i64 {
         let jan4_jdn = Self::ymd_to_jdn(iso_year, 1, 4);
         let wd_jan4 = Self::jdn_to_weekday(jan4_jdn);
@@ -331,7 +329,6 @@ impl TimePoint {
     }
 
     /// Returns `true` if the given Gregorian year contains an ISO week 53.
-    #[inline]
     pub const fn has_iso_week_53(year: i64) -> bool {
         let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
@@ -360,7 +357,6 @@ impl TimePoint {
     ///
     /// January 1 is day `1`; December 31 is day `365` or `366` (in leap years).
     /// Uses the proleptic Gregorian calendar.
-    #[inline]
     pub const fn day_of_year(self, ymd: Option<(i64, u8, u8)>) -> u16 {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
@@ -533,7 +529,6 @@ impl TimePoint {
     /// - `min`  → 0..=59
     /// - `sec`  → 0..=60 (permits leap seconds)
     /// - `attos` → values ≥ 10¹⁸ are carried into the seconds field
-    #[inline]
     pub const fn from_gregorian_ymdhms(
         yr: i64,
         mo: u8,
@@ -574,7 +569,6 @@ impl TimePoint {
     /// midnight in the POSIX/Unix count (because leap seconds are not inserted into
     /// the civil second count).  The IANA table entry for that midnight is what we
     /// match.
-    #[inline]
     pub(crate) const fn is_leap_second_at_unix(unix_sec: i64) -> bool {
         let tod = unix_sec.rem_euclid(SEC_PER_DAYI64);
         if tod != 0 {

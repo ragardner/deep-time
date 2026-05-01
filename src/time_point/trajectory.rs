@@ -1,4 +1,4 @@
-use crate::{ClockDrift, TimeSpan, LocalSpacetime, Real, TimePoint};
+use crate::{ClockDrift, LocalSpacetime, Real, TimePoint, TimeSpan};
 
 impl TimePoint {
     /// Computes the accumulated **proper time** (Δτ) experienced by a clock moving along a
@@ -41,7 +41,11 @@ impl TimePoint {
     /// // Update onboard proper time clock
     /// let onboard_tau = start.to_clock_type(ClockType::Proper).add(delta_tau);
     /// ```
-    pub fn proper_time_interval_samples(self, end: TimePoint, samples: &[LocalSpacetime]) -> TimeSpan {
+    pub fn proper_time_interval_samples(
+        self,
+        end: TimePoint,
+        samples: &[LocalSpacetime],
+    ) -> TimeSpan {
         if samples.len() < 2 || self == end {
             return TimeSpan::ZERO;
         }
@@ -109,7 +113,7 @@ impl TimePoint {
     }
 
     /// Private helper: instantaneous proper-time rate dτ/dt from a `LocalSpacetime` snapshot.
-    #[inline(always)]
+    #[inline]
     fn rate_from_local(spacetime: &LocalSpacetime) -> Real {
         let drift = ClockDrift::from_local_spacetime(spacetime);
         f!(1.0) + drift.rate().as_sec_f()
@@ -119,7 +123,7 @@ impl TimePoint {
 #[cfg(test)]
 mod proper_time_samples_tests {
     use super::*;
-    use crate::{TimeSpan, LocalSpacetime};
+    use crate::{LocalSpacetime, TimeSpan};
 
     fn make_state(tai_sec: i64) -> TimePoint {
         TimePoint::from_tai_sec(tai_sec)

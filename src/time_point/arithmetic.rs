@@ -15,7 +15,6 @@ impl TimePoint {
     /// Adding a negative `TimeSpan` moves the time point backward in time.
     /// The resulting `TimePoint` retains the original [`ClockType`].
     /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
-    #[inline]
     pub const fn add(self, span: TimeSpan) -> Self {
         let mut sec = self.sec + span.sec;
         let mut subsec = self.subsec as i64 + span.subsec as i64;
@@ -40,7 +39,6 @@ impl TimePoint {
     /// Adding a negative `TimeSpan` moves the time point backward in time.
     /// The resulting `TimePoint` retains the original [`ClockType`].
     /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
-    #[inline]
     pub const fn add_ref(self, span: &TimeSpan) -> Self {
         let mut sec = self.sec + span.sec;
         let mut subsec = self.subsec as i64 + span.subsec as i64;
@@ -65,7 +63,6 @@ impl TimePoint {
     /// Subtracting a negative `TimeSpan` moves the time point forward in time.
     /// The resulting `TimePoint` retains the original [`ClockType`].
     /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
-    #[inline]
     pub const fn sub(self, span: TimeSpan) -> Self {
         let mut sec = self.sec - span.sec;
         let mut subsec = self.subsec as i64 - span.subsec as i64;
@@ -90,7 +87,6 @@ impl TimePoint {
     /// Subtracting a negative `TimeSpan` moves the time point forward in time.
     /// The resulting `TimePoint` retains the original [`ClockType`].
     /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
-    #[inline]
     pub const fn sub_ref(self, span: &TimeSpan) -> Self {
         let mut sec = self.sec - span.sec;
         let mut subsec = self.subsec as i64 - span.subsec as i64;
@@ -337,7 +333,7 @@ impl TimePoint {
     ///
     /// This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
     /// For the spacecraft's own hardware proper-time clock, use the plain `add` method instead.
-    #[inline(always)]
+    #[inline]
     pub fn adjusted_advance(&mut self, elapsed: &TimeSpan, local_spacetime: &LocalSpacetime) {
         let dtau =
             elapsed.add(ClockDrift::from_local_spacetime(local_spacetime).time_diff_after(elapsed));
@@ -349,7 +345,7 @@ impl TimePoint {
     ///
     /// This is an optimized variant of `adjusted_advance` for callers that already hold a `ClockDrift` instance.
     /// It is intended for simulation of remote clocks; the spacecraft's own hardware clock should use the plain `add` method.
-    #[inline(always)]
+    #[inline]
     pub fn adjusted_advance_using_drift(&mut self, elapsed: &TimeSpan, drift: &ClockDrift) {
         let dtau = elapsed.add(drift.time_diff_after(elapsed));
         *self = self.add(dtau);

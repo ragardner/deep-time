@@ -9,7 +9,6 @@ impl TimeSpan {
     /// - **Saturates** at `chrono::Duration::MIN` / `chrono::Duration::MAX`
     ///   (roughly ±292 million years) if the value is out of range.
     ///   Never returns an error.
-    #[inline]
     pub fn to_chrono_duration(self) -> Duration {
         let total_nanos = self.total_attos() / 1_000_000_000i128;
 
@@ -35,7 +34,6 @@ impl TimeSpan {
     /// - **Saturates** at the minimum/maximum representable `DateTime<Utc>`
     ///   (roughly years 1678–2262) if the value is out of range.
     ///   Never returns an error.
-    #[inline]
     pub fn to_chrono_datetime_utc(self) -> DateTime<Utc> {
         let total_nanos = self.total_attos() / 1_000_000_000i128;
 

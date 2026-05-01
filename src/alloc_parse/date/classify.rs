@@ -10,7 +10,6 @@ use alloc::vec::Vec;
 use crate::ClockType;
 
 /// Expects s to be lowercase.
-#[inline]
 pub(crate) fn classify_date(
     s: &str,
     lang: Lang,

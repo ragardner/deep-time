@@ -188,6 +188,7 @@ impl ObserverState {
     /// let classical_doppler = 1.0 - v_radial / C;
     /// let total_frequency_shift = 1.0 * factor * classical_doppler;
     /// ```
+    #[inline]
     pub fn relativistic_clock_doppler_factor(&self, rx: ObserverState) -> Real {
         rx.proper_time_rate() / self.proper_time_rate()
     }
@@ -198,6 +199,7 @@ impl ObserverState {
     /// This is the product of the one-way factors for the complete round trip
     /// and is the value needed by deep-space networks when correcting measured
     /// range-rate data.
+    #[inline]
     pub fn two_way_relativistic_doppler_factor(&self, rx: ObserverState) -> Real {
         let one_way = self.relativistic_clock_doppler_factor(rx);
         one_way * one_way

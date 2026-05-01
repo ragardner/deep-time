@@ -5,7 +5,7 @@ impl TimeSpan {
     /// Creates a `TimeSpan` from a `hifitime::Duration` (nanosecond precision).
     ///
     /// This is the **exact reverse** of [`TimeSpan::to_hifitime_duration`].
-    #[inline(always)]
+    #[inline]
     pub fn from_hifitime_duration(dur: Duration) -> Self {
         Self::from_ns(dur.total_nanoseconds())
     }

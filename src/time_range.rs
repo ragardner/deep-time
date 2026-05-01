@@ -131,7 +131,6 @@ impl Every {
     /// Serializes this `Every` builder into a fixed 33-byte buffer.
     ///
     /// The layout is simply the concatenation of `start` (17 bytes) and `step` (16 bytes).
-    #[inline]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         let start = self.start.to_wire_bytes();
@@ -211,7 +210,6 @@ impl TimeRange {
     /// - `start` + `end` + `step` + `inclusive` flag
     ///
     /// Runtime iterator state (`current`, `finished`) is **not** serialized.
-    #[inline]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;

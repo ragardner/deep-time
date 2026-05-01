@@ -46,7 +46,6 @@ impl ClockModel {
     /// - Byte `1`: `base` (`ClockType`)
     /// - Bytes `2..20`: `reference` (`TimePoint`)
     /// - Bytes `20..71`: `drift` (`ClockDrift`)
-    #[inline]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;

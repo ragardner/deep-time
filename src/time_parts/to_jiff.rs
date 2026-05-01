@@ -270,6 +270,7 @@ impl TimeParts {
                 } else {
                     0
                 };
+                // TODO: use jiffs tzdb with feature
                 if let Some(info) = offset_info_at_local(name_str, probe_ts) {
                     let jiff_offset = JiffOffset::from_seconds(info.offset).map_err(|e| {
                         an_err!(

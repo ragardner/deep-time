@@ -4,7 +4,6 @@ use crate::{
 };
 
 /// Modified Julian Date (MJD) interpreted as UTC
-#[inline(always)]
 pub(crate) fn parse_mjd(s: &str) -> Option<TimePoint> {
     let (int_part, frac_part) = if let Some(dot) = s.find('.') {
         (&s[..dot], &s[dot + 1..])
@@ -30,7 +29,6 @@ pub(crate) fn parse_mjd(s: &str) -> Option<TimePoint> {
 }
 
 /// Julian Day (JD) interpreted as UTC
-#[inline(always)]
 pub(crate) fn parse_jd(s: &str, astronomical_noon: bool) -> Option<TimePoint> {
     let (int_part, frac_part) = if let Some(dot) = s.find('.') {
         (&s[..dot], &s[dot + 1..])

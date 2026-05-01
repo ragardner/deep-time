@@ -6,7 +6,6 @@ impl TimeSpan {
     /// Both positive and negative `rhs` are supported. Adding a negative value
     /// is equivalent to subtraction. The result is normalized so the fractional
     /// part lies in `[0, ATTOSEC_PER_SEC)`.
-    #[inline]
     pub const fn add(self, rhs: Self) -> Self {
         let mut sec = self.sec + rhs.sec;
         let mut subsec = self.subsec as i64 + rhs.subsec as i64;
@@ -30,7 +29,6 @@ impl TimeSpan {
     /// Both positive and negative `rhs` are supported. Subtracting a negative value
     /// is equivalent to addition. The result is normalized so the fractional part
     /// lies in `[0, ATTOSEC_PER_SEC)`.
-    #[inline]
     pub const fn sub(self, rhs: Self) -> Self {
         let mut sec = self.sec - rhs.sec;
         let mut subsec = self.subsec as i64 - rhs.subsec as i64;
@@ -53,7 +51,6 @@ impl TimeSpan {
     /// [`TimeSpan::MIN`] on overflow.
     ///
     /// Both positive and negative `rhs` are supported.
-    #[inline]
     pub const fn saturating_add(self, rhs: Self) -> Self {
         let mut sec = self.sec.saturating_add(rhs.sec);
         let mut subsec = self.subsec as i64 + rhs.subsec as i64;
@@ -85,7 +82,6 @@ impl TimeSpan {
     /// [`TimeSpan::MIN`] on overflow.
     ///
     /// Both positive and negative `rhs` are supported.
-    #[inline]
     pub const fn saturating_sub(self, rhs: Self) -> Self {
         let mut sec = self.sec.saturating_sub(rhs.sec);
         let mut subsec = self.subsec as i64 - rhs.subsec as i64;
@@ -120,7 +116,6 @@ impl TimeSpan {
     }
 
     /// Reconstruct `TimeSpan` from total attoseconds (exact, handles negative values correctly).
-    #[inline]
     pub const fn from_total_attos(mut attos: i128) -> Self {
         if attos > (i64::MAX as i128) * ATTOSEC_PER_SEC_I128 {
             return Self::MAX;
@@ -160,7 +155,6 @@ impl TimeSpan {
     }
 
     /// Creates a `TimeSpan` from a floating-point number of seconds.
-    #[inline]
     pub const fn from_sec_f(sec_f: Real) -> Self {
         if sec_f.is_nan() {
             return Self::ZERO;
@@ -184,7 +178,6 @@ impl TimeSpan {
     /// Multiplies this duration by an integer scalar (exact).
     ///
     /// Uses 128-bit arithmetic internally.
-    #[inline]
     pub const fn mul(self, rhs: i64) -> Self {
         if rhs == 0 || self.is_zero() {
             return Self::ZERO;
@@ -198,7 +191,6 @@ impl TimeSpan {
     /// Returns `ZERO` if `rhs == 0`.
     /// Uses floor division (toward negative infinity) for consistency
     /// with the existing `floor` method.
-    #[inline]
     pub const fn div(self, rhs: i64) -> Self {
         if rhs == 0 || self.is_zero() {
             return Self::ZERO;
@@ -210,7 +202,6 @@ impl TimeSpan {
 
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
-    #[inline]
     pub const fn floor(self, unit: TimeSpan) -> TimeSpan {
         if unit.is_zero() {
             return self;
@@ -224,7 +215,6 @@ impl TimeSpan {
 
     /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
-    #[inline]
     pub const fn ceil(self, unit: TimeSpan) -> TimeSpan {
         if unit.is_zero() {
             return self;
@@ -242,7 +232,6 @@ impl TimeSpan {
     /// Returns the nearest multiple of `unit`.
     /// Halfway cases round **away from zero** (matches old `f64::round`).
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
-    #[inline]
     pub const fn round(self, unit: TimeSpan) -> TimeSpan {
         if unit.is_zero() {
             return self;
@@ -273,7 +262,6 @@ impl TimeSpan {
     /// Returns `floor(|self| / |unit|)` as `usize`, saturating at `usize::MAX`.
     ///
     /// Fully exact integer arithmetic using 128-bit intermediaries. Used by `TimeRange::len`.
-    #[inline]
     pub const fn abs_div_floor(self, unit: TimeSpan) -> usize {
         if unit.is_zero() {
             return 0;
@@ -291,7 +279,6 @@ impl TimeSpan {
 
     /// - Integer part of `rhs` is multiplied **exactly** (pure i128 arithmetic).
     /// - Fractional part (|frac| < 1) uses the 10¹⁵ scaling.
-    #[inline]
     pub const fn mul_by_f(self, rhs: Real) -> Self {
         if rhs.is_nan() {
             return Self::ZERO;
