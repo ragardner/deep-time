@@ -153,7 +153,6 @@ impl TimePoint {
     ///   civil time.
     /// - For most modern scientific work, it is usually better to work
     ///   directly in TAI or TT rather than applying historical UTC offsets.
-    #[inline]
     pub const fn from_spice_gregorian_ymdhms(
         yr: i64,
         mo: u8,
@@ -165,7 +164,6 @@ impl TimePoint {
         clock_type: ClockType,
     ) -> Self {
         let naive = Self::from_gregorian_ymdhms(yr, mo, day, hr, min, sec, attos, ClockType::UTC);
-
         if yr < 1972 {
             let tai = naive.to_tai().add(TimeSpan::from_sec_f(f!(9.0)));
             tai.to_clock_type(clock_type)
@@ -197,7 +195,6 @@ impl TimePoint {
     ///   `from_spice_gregorian_ymdhms` will generally produce an incorrect
     ///   civil time.
     /// - The returned `TimePoint` has `clock_type == ClockType::UTC`.
-    #[inline]
     pub const fn to_spice_utc(&self) -> Self {
         let tai = self.to_tai();
         let utc_naive = tai.to_clock_type(ClockType::UTC);

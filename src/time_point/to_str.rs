@@ -6,7 +6,7 @@ use crate::{
 impl TimePoint {
     /// High-level alloc version (defaults to UTC label-only formatting).
     #[cfg(feature = "alloc")]
-    #[inline(always)]
+    #[inline]
     pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtError> {
         self.to_str_with_offset(fmt, 0)
     }

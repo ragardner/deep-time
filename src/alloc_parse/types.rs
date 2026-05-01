@@ -130,7 +130,7 @@ pub(crate) struct AmBuilder {
     pub seen_day: bool,
 }
 
-#[inline(always)]
+#[inline]
 pub(crate) fn append_to_all(builders: &mut Vec<AmBuilder>, s: &'static str) {
     for b in builders {
         b.pieces.push(s);

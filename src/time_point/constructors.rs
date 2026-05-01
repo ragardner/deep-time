@@ -102,7 +102,7 @@ impl TimePoint {
     /// Returns an exact copy of this `TimePoint`.
     ///
     /// This is a zero-cost, always-inlined convenience method.
-    #[inline(always)]
+    #[inline]
     pub const fn copy(self) -> Self {
         self
     }

@@ -100,7 +100,7 @@ impl GregorianTime {
     }
 
     /// UNIX attoseconds since 1970 epoch
-    #[inline(always)]
+    #[inline]
     pub const fn unix_attosec(&self) -> i128 {
         self.unix_attosec
     }
@@ -120,128 +120,128 @@ impl GregorianTime {
     }
 
     /// Gregorian year (proleptic Gregorian calendar, supports negative years and year 0).
-    #[inline(always)]
+    #[inline]
     pub const fn yr(&self) -> i64 {
         self.yr
     }
 
     /// Gregorian month in the range [1, 12].
-    #[inline(always)]
+    #[inline]
     pub const fn mo(&self) -> u8 {
         self.mo
     }
 
     /// Gregorian day of the month in the range [1, 31].
-    #[inline(always)]
+    #[inline]
     pub const fn day(&self) -> u8 {
         self.day
     }
 
     /// Hour of the day in the range [0, 23].
-    #[inline(always)]
+    #[inline]
     pub const fn hr(&self) -> u8 {
         self.hr
     }
 
     /// Minute in the range [0, 59].
-    #[inline(always)]
+    #[inline]
     pub const fn min(&self) -> u8 {
         self.min
     }
 
     /// Second in the range [0, 60] (60 only during UTC leap seconds).
-    #[inline(always)]
+    #[inline]
     pub const fn sec(&self) -> u8 {
         self.sec
     }
 
     /// Fractional part of the second expressed in attoseconds (`0 ≤ attos < 10¹⁸`).
-    #[inline(always)]
+    #[inline]
     pub const fn attos(&self) -> u64 {
         self.attos
     }
 
     /// ISO 8601 week year.
-    #[inline(always)]
+    #[inline]
     pub const fn iso_yr(&self) -> i64 {
         self.iso_yr
     }
 
     /// ISO 8601 week number in the range [1, 53].
-    #[inline(always)]
+    #[inline]
     pub const fn iso_wk(&self) -> u8 {
         self.iso_wk
     }
 
     /// ISO 8601 weekday (Monday-based [`Weekday`] enum).
-    #[inline(always)]
+    #[inline]
     pub const fn iso_wkday(&self) -> Weekday {
         self.iso_wkday
     }
 
     /// Ordinal day of the year (1-based).
-    #[inline(always)]
+    #[inline]
     pub const fn day_of_yr(&self) -> u16 {
         self.day_of_yr
     }
 
     /// Weekday number (0 = Sunday … 6 = Saturday).
-    #[inline(always)]
+    #[inline]
     pub const fn wkday_sun(&self) -> u8 {
         self.wkday
     }
 
     /// ISO 8601 weekday (0 = Monday ... 6 = Sunday).
-    #[inline(always)]
+    #[inline]
     pub const fn wkday_mon(&self) -> u8 {
         self.iso_wkday.wk_mon()
     }
 
     /// Sunday based week of year (Range: `0..=53`).
-    #[inline(always)]
+    #[inline]
     pub const fn wk_of_yr_sun(&self) -> u8 {
         self.wk_of_yr_sun
     }
 
     /// Monday based week of year (Range: `0..=53`).
-    #[inline(always)]
+    #[inline]
     pub const fn wk_of_yr_mon(&self) -> u8 {
         self.wk_of_yr_mon
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn offset_sec(&self) -> Option<i32> {
         self.offset_sec
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn tz(&self) -> Option<&AsciiStr<50>> {
         self.tz.as_ref()
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn tz_abbrev(&self) -> Option<&AsciiStr<16>> {
         self.tz_abbrev.as_ref()
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn clock_type(&self) -> ClockType {
         self.clock_type
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) fn set_offset(&mut self, offset_sec: Option<i32>) -> &mut Self {
         self.offset_sec = offset_sec;
         self
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) fn set_tz(&mut self, tz: Option<&str>) -> &mut Self {
         self.tz = tz.and_then(|s| AsciiStr::try_from_str(s).ok());
         self
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) -> &mut Self {
         self.tz_abbrev = tz_abbrev.and_then(|s| AsciiStr::try_from_str(s).ok());
         self
@@ -260,7 +260,7 @@ impl GregorianTime {
     /// let s2 = gp.set_clock_type(ClockType::TAI)
     ///            .to_str("%Y-%m-%d %H:%M:%S %L")?;
     /// ```
-    #[inline(always)]
+    #[inline]
     pub fn set_clock_type(&mut self, clock_type: ClockType) -> &mut Self {
         self.clock_type = clock_type;
         self

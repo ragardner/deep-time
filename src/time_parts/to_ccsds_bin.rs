@@ -68,7 +68,7 @@ impl TimeParts {
     /// - `ClockType::TAI` → **CUC** (4 coarse + 4 fractional bytes)
     /// - Any other `ClockType` (UTC, TT, GPS, TCG, …) → converted to UTC and uses **CDS**
     ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
-    #[inline(always)]
+    #[inline]
     pub fn to_ccsds_bin(
         &self,
     ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {

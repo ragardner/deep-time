@@ -145,7 +145,7 @@ fn build_time_bases(class: &DateClassification) -> Vec<String> {
     suffixes
 }
 
-#[inline(always)]
+#[inline]
 fn offset_spec(colon: bool, has_seconds: bool) -> &'static str {
     match (has_seconds, colon) {
         (true, true) => "%::z",

@@ -145,13 +145,13 @@ impl TimePoint {
     /// The offset can be positive or negative. Negative offsets move the time backward.
     ///
     /// This is a zero-cost convenience wrapper around [`Self::saturating_add`] + [`Self::with_clock_type`].
-    #[inline(always)]
+    #[inline]
     pub const fn convert_using_offset(&mut self, target: ClockType, offset: TimeSpan) -> Self {
         self.mut_add(&offset).with_clock_type(target)
     }
 
     /// Same as [`Self::convert_using_offset`], but accepts the offset as an `f64` (in seconds) for convenience.
-    #[inline(always)]
+    #[inline]
     pub const fn convert_using_offset_f(&mut self, target: ClockType, offset_sec: Real) -> Self {
         self.mut_add(&TimeSpan::from_sec_f(offset_sec))
             .with_clock_type(target)
@@ -200,13 +200,13 @@ impl TimePoint {
     ///
     /// This is the recommended high-level API for onboard or custom time scales (Proper, Custom,
     /// or any model with a defined base and drift).
-    #[inline(always)]
+    #[inline]
     pub const fn convert_using_model(self, model: ClockModel) -> Self {
         self.convert_using_drift(model.base, model.reference, model.drift)
     }
 
     /// Performs the inverse conversion of [`Self::convert_using_model`].
-    #[inline(always)]
+    #[inline]
     pub const fn convert_back_using_model(self, model: ClockModel) -> Self {
         self.convert_back_using_drift(model.base, model.reference, model.drift)
     }
@@ -376,17 +376,17 @@ impl TimePoint {
         sign * (q * num + (r * num) / den)
     }
 
-    #[inline(always)]
+    #[inline]
     const fn mul_lg(attos: i128) -> i128 {
         Self::mul_rate(attos, LG_NUM, LG_DEN)
     }
 
-    #[inline(always)]
+    #[inline]
     const fn mul_lb(attos: i128) -> i128 {
         Self::mul_rate(attos, LB_NUM, LB_DEN)
     }
 
-    #[inline(always)]
+    #[inline]
     const fn mul_lm(attos: i128) -> i128 {
         Self::mul_rate(attos, LM_NUM, LM_DEN)
     }
@@ -455,7 +455,7 @@ impl TimePoint {
         sec_diff * ATTOSEC_PER_SEC_I128 + attos_diff
     }
 
-    #[inline(always)]
+    #[inline]
     const fn mars_ref_tt() -> Self {
         TimePoint::new(MARS_REF_SEC, MARS_REF_SUBSEC, ClockType::TT)
     }
@@ -662,7 +662,7 @@ impl TimePoint {
 
     /// Creates a `TimePoint` from an exact Modified Julian Date in Terrestrial Time using full library
     /// precision.
-    #[inline(always)]
+    #[inline]
     pub const fn from_mjd_tt_exact(mjd_days: i64, frac: TimeSpan) -> Self {
         Self::from_jd_tt_exact(mjd_days + 2_400_000, frac)
     }
@@ -800,7 +800,7 @@ impl TimePoint {
     /// - [`Self::to_mjd_tt_exact`] — full attosecond exact version
     /// - [`Self::to_jd_tt`] — Julian Date in TT
     /// - [`Self::to_mjd_utc`] — civil/engineering form in UTC
-    #[inline(always)]
+    #[inline]
     pub const fn to_mjd_tt(self) -> Real {
         self.to_jd_tt() - f!(2_400_000.5)
     }

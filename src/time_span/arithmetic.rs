@@ -110,7 +110,7 @@ impl TimeSpan {
     }
 
     /// Returns `true` if this duration is exactly zero.
-    #[inline(always)]
+    #[inline]
     pub const fn is_zero(self) -> bool {
         self.sec == 0 && self.subsec == 0
     }
@@ -324,7 +324,7 @@ impl TimeSpan {
     }
 
     /// Divides this duration by 2 (convenience wrapper).
-    #[inline(always)]
+    #[inline]
     pub fn div_by_2(self) -> TimeSpan {
         self.div_by_f(2.0)
     }

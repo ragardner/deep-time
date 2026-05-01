@@ -122,7 +122,7 @@ impl ClockType {
     ///
     /// The returned byte is the `repr(u8)` discriminant of the enum.
     /// This is the canonical on-wire form used by [`TimePoint`] and [`ClockModel`].
-    #[inline(always)]
+    #[inline]
     pub const fn to_wire_byte(self) -> u8 {
         self as u8
     }
@@ -237,7 +237,7 @@ impl ClockType {
 
     /// Returns the reference epoch (zero instant) of this clock type,
     /// expressed as a zero-duration [`TimePoint`] in this exact clock type.
-    #[inline(always)]
+    #[inline]
     pub const fn reference_epoch(self) -> TimePoint {
         TimePoint::new(0, 0, self)
     }

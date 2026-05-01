@@ -402,7 +402,7 @@ impl Weekday {
     }
 
     /// Sunday-based weekday number (0 = Sunday … 6 = Saturday).
-    #[inline(always)]
+    #[inline]
     pub const fn wk_sun(self) -> u8 {
         match self {
             Weekday::Sunday => 0,
@@ -416,7 +416,7 @@ impl Weekday {
     }
 
     /// Monday-based weekday number (1 = Monday … 7 = Sunday).
-    #[inline(always)]
+    #[inline]
     pub const fn wk_mon(self) -> u8 {
         match self {
             Weekday::Monday => 1,

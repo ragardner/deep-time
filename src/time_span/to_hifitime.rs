@@ -10,7 +10,7 @@ impl TimeSpan {
     ///   automatically normalizes centuries/nanoseconds and saturates at
     ///   [`Duration::MAX`] / [`Duration::MIN`] if outside hifitime's range
     ///   (±32,768 centuries).
-    #[inline(always)]
+    #[inline]
     pub fn to_hifitime_duration(self) -> Duration {
         Duration::from_total_nanoseconds(self.total_attos() / 1_000_000_000i128)
     }

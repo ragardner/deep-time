@@ -30,7 +30,7 @@ pub(crate) struct DateClassification {
 }
 
 impl DateClassification {
-    #[inline(always)]
+    #[inline]
     pub(crate) fn has_offset_or_zone(&self) -> bool {
         self.offset.is_some()
     }
@@ -215,12 +215,12 @@ pub(crate) enum ConnectorType {
 }
 
 impl ConnectorType {
-    #[inline(always)]
+    #[inline]
     pub(crate) fn is_some(&self) -> bool {
         !matches!(self, ConnectorType::None)
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) fn as_str(&self) -> &'static str {
         match self {
             ConnectorType::None => "",
@@ -239,7 +239,7 @@ pub(crate) enum TimeType {
 }
 
 impl TimeType {
-    #[inline(always)]
+    #[inline]
     pub(crate) fn is_none(&self) -> bool {
         matches!(self, TimeType::None)
     }
@@ -279,7 +279,7 @@ pub(crate) enum OffsetType {
 }
 
 impl OffsetType {
-    #[inline(always)]
+    #[inline]
     pub(crate) fn is_bracketed(&self) -> bool {
         matches!(
             self,
@@ -291,7 +291,7 @@ impl OffsetType {
         )
     }
 
-    #[inline(always)]
+    #[inline]
     pub(crate) fn is_some(&self) -> bool {
         !matches!(self, OffsetType::None)
     }
@@ -309,7 +309,7 @@ pub(crate) enum IndexIn {
 }
 
 impl IndexIn {
-    #[inline(always)]
+    #[inline]
     pub(crate) fn after_date(&self) -> bool {
         !matches!(self, IndexIn::Date)
     }

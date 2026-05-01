@@ -5,7 +5,7 @@ impl TimePoint {
     ///
     /// The conversion is lossy by design, as `f64` (`Real`) provides approximately 15.95 decimal digits of precision.
     /// For full exactness, use the integer components `sec` and `subsec` directly or higher-precision arithmetic when available.
-    #[inline(always)]
+    #[inline]
     pub const fn as_sec_f(self) -> Real {
         self.sec as Real + (self.subsec as Real) / (ATTOSEC_PER_SEC as Real)
     }

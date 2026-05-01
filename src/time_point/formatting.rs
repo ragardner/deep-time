@@ -10,7 +10,7 @@ impl TimePoint {
     /// - Default = 9 digits (nanoseconds) but **automatically trims trailing zeros**.
     /// - If fractional part is zero → no decimal point at all (e.g. `...45Z`).
     /// - Example: `"2024-03-14T15:30:45.123Z"`
-    #[inline(always)]
+    #[inline]
     pub fn to_str_rfc3339(&self) -> Result<String, DtError> {
         self.to_str_rfc3339_nf(9)
     }
@@ -19,7 +19,7 @@ impl TimePoint {
     /// (0–18). Trailing zeros are always trimmed.
     pub fn to_str_rfc3339_nf(&self, max_precision: usize) -> Result<String, DtError> {
         let prec = max_precision.min(18);
-        // Uses the new formatter with the `~` "trim trailing zeros" flag.
+        // Uses the formatter with the `~` "trim trailing zeros" flag.
         // The formatter already handles:
         //   - correct 4-digit years (with sign) for |yr| < 10000
         //   - full-width years otherwise

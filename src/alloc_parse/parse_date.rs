@@ -1,6 +1,6 @@
 use crate::{
     ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtErrKind,
-    DtError, MAX_DATE_STRING_LEN, ParseCfg, TimeParts, TimePoint, an_err, classify_date,
+    DtError, MAX_DATE_STRING_LEN, ParseCfg, TimePoint, an_err, classify_date,
     default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
@@ -235,25 +235,6 @@ impl TimePoint {
         TimePoint::from_str_parse(s, opts)
             .ok()
             .map(|tp| tp.to_unix_ms())
-    }
-
-    #[inline]
-    pub fn from_str(
-        s: &str,
-        fmt: &str,
-        inp_can_end_before_fmt: bool,
-        fmt_can_end_before_inp: bool,
-        allow_partial_date: bool,
-    ) -> Option<TimePoint> {
-        TimeParts::from_str(
-            fmt,
-            s,
-            inp_can_end_before_fmt,
-            fmt_can_end_before_inp,
-            allow_partial_date,
-        )
-        .and_then(|p| p.to_time_point(None))
-        .ok()
     }
 }
 

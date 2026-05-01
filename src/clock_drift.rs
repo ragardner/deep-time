@@ -188,7 +188,7 @@ impl LocalSpacetime {
     ///
     /// Convenience method that internally uses the same unified calculation as
     /// `ClockDrift::proper_time_rate`.
-    #[inline(always)]
+    #[inline]
     pub fn proper_time_rate(self) -> Real {
         ClockDrift::from_local_spacetime(&self).proper_time_rate()
     }
@@ -360,7 +360,7 @@ pub struct ClockDrift {
 
 impl ClockDrift {
     /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
-    #[inline(always)]
+    #[inline]
     pub const fn new(constant: TimeSpan, rate: TimeSpan, accel: TimeSpan) -> Self {
         Self {
             constant,
@@ -424,7 +424,7 @@ impl ClockDrift {
     /// This is the most common constructor when only a fixed time bias is known
     /// (for example, after a one-time clock synchronization or leap-second
     /// adjustment).
-    #[inline(always)]
+    #[inline]
     pub const fn from_constant(c: TimeSpan) -> Self {
         Self::new(c, TimeSpan::ZERO, TimeSpan::ZERO)
     }
@@ -497,7 +497,7 @@ impl ClockDrift {
     ///
     /// The rate includes special-relativistic velocity effects, gravitational
     /// time dilation, and the library’s built-in Planck-scale saturation term.
-    #[inline(always)]
+    #[inline]
     pub const fn proper_time_rate(&self) -> Real {
         f!(1.0) + self.rate.as_sec_f()
     }

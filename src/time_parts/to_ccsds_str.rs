@@ -9,7 +9,7 @@ impl TimeParts {
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
     /// - **Perfect round-trip** with `TimePoint::from_ccsds_str` / `TimeParts::from_ccsds_str`.
-    #[inline(always)]
+    #[inline]
     pub fn to_ccsds_str(&self) -> Result<String, DtError> {
         self.to_time_point(Some(self.clock_type))?.to_ccsds_str()
     }
@@ -23,7 +23,7 @@ impl TimeParts {
     /// Returns this instant as a **CCSDS ASCII Time Code B** (day-of-year variant).
     ///
     /// Example: `"2025-107T14:30:45.123456789Z"`
-    #[inline(always)]
+    #[inline]
     pub fn to_ccsds_doy_str(&self) -> Result<String, DtError> {
         self.to_time_point(Some(self.clock_type))?
             .to_ccsds_doy_str_nf(18)

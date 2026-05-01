@@ -73,7 +73,7 @@ impl TimePoint {
     ///
     /// - For `ClockType::UTC`: Uses a direct Unix-timestamp-based path (fast and clean).
     /// - For all other clock types: Uses the standard TT-based JD path.
-    #[inline(always)]
+    #[inline]
     pub const fn to_gregorian_ymdhms(self) -> GregorianYmdHms {
         match self.clock_type {
             ClockType::UTC => self.to_gregorian_ymdhms_utc(),
@@ -225,7 +225,7 @@ impl TimePoint {
     }
 
     /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.
-    #[inline(always)]
+    #[inline]
     pub const fn is_leap_year(year: i64) -> bool {
         year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)
     }
@@ -238,7 +238,7 @@ impl TimePoint {
     }
 
     /// Converts a Julian Day Number to the corresponding weekday number (0 = Sunday … 6 = Saturday).
-    #[inline(always)]
+    #[inline]
     pub const fn jdn_to_weekday(jdn: i64) -> u8 {
         ((jdn + 1) % 7) as u8
     }

@@ -105,7 +105,6 @@ impl TimeSpan {
     /// Returns the smaller of two `TimeSpan`s.
     ///
     /// This is a `const fn`.
-    #[inline]
     pub const fn min(self, other: Self) -> Self {
         match self.cmp(other) {
             Ordering::Greater => other,
@@ -116,7 +115,6 @@ impl TimeSpan {
     /// Returns the larger of two `TimeSpan`s.
     ///
     /// This is a `const fn`.
-    #[inline]
     pub const fn max(self, other: Self) -> Self {
         match self.cmp(other) {
             Ordering::Less => other,

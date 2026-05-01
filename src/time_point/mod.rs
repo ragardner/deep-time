@@ -4,6 +4,7 @@ mod conversions;
 mod from_attos_since;
 mod from_ccsds;
 mod from_gps;
+mod from_str;
 mod gregorian;
 mod gregorian_historical;
 mod ops;
@@ -148,7 +149,7 @@ impl TimePoint {
         Some(Self::new(sec, subsec, clock_type))
     }
 
-    #[inline(always)]
+    #[inline]
     pub const fn clock_type(&self) -> ClockType {
         self.clock_type
     }

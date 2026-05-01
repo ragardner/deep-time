@@ -25,23 +25,23 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
     }
 
-    #[inline(always)]
+    #[inline]
     fn current_format_byte(&self) -> u8 {
         self.fmt[0]
     }
 
-    #[inline(always)]
+    #[inline]
     fn current_input_byte(&self) -> u8 {
         self.inp[0]
     }
 
-    #[inline(always)]
+    #[inline]
     fn advance_format(&mut self) -> bool {
         self.fmt = &self.fmt[1..];
         !self.fmt.is_empty()
     }
 
-    #[inline(always)]
+    #[inline]
     fn advance_input(&mut self) -> bool {
         self.inp = &self.inp[1..];
         !self.inp.is_empty()

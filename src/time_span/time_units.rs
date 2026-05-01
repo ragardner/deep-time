@@ -35,31 +35,31 @@ macro_rules! impl_time_units_int {
     ($($ty:ty),* $(,)?) => {
         $(
             impl TimeUnits for $ty {
-                #[inline(always)]
+                #[inline]
                 fn ns(self) -> TimeSpan { TimeSpan::from_ns(self as i128) }
 
-                #[inline(always)]
+                #[inline]
                 fn us(self) -> TimeSpan { TimeSpan::from_us(self as i128) }
 
-                #[inline(always)]
+                #[inline]
                 fn ms(self) -> TimeSpan { TimeSpan::from_ms(self as i128) }
 
-                #[inline(always)]
+                #[inline]
                 fn sec(self) -> TimeSpan { TimeSpan::from_sec(self as i64) }
 
-                #[inline(always)]
+                #[inline]
                 fn min(self) -> TimeSpan { TimeSpan::from_min(self as i64) }
 
-                #[inline(always)]
+                #[inline]
                 fn hr(self) -> TimeSpan { TimeSpan::from_hr(self as i64) }
 
-                #[inline(always)]
+                #[inline]
                 fn days(self) -> TimeSpan { TimeSpan::from_sec((self as i64).saturating_mul(SEC_PER_DAYI64)) }
 
-                #[inline(always)]
+                #[inline]
                 fn wk(self) -> TimeSpan { TimeSpan::from_sec((self as i64).saturating_mul(604_800)) }
 
-                #[inline(always)]
+                #[inline]
                 fn yr(self) -> TimeSpan { TimeSpan::from_sec((self as i64).saturating_mul(31_557_600)) }
 
                 #[inline]

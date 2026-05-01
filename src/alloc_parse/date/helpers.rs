@@ -12,7 +12,7 @@ pub struct SplitKeepWithPos<'a> {
 }
 
 impl<'a> SplitKeepWithPos<'a> {
-    #[inline(always)]
+    #[inline]
     pub fn new(ac: &'a AhoCorasick, haystack: &'a str) -> Self {
         Self {
             haystack,
@@ -69,12 +69,12 @@ macro_rules! define_ends_with_methods {
         }
 
         impl EndsWithExt for str {
-            $(#[inline(always)]
+            $(#[inline]
             fn $method_name(&self) -> bool {
                 self.as_bytes().last() == Some(&$byte)
             })*
 
-            #[inline(always)]
+            #[inline]
             fn ends_with_ascii_digit(&self) -> bool {
                 matches!(self.as_bytes().last(), Some(b'0'..=b'9'))
                 // or: self.as_bytes().last().copied().map_or(false, u8::is_ascii_digit)

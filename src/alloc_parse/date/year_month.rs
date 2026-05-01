@@ -1,7 +1,7 @@
 use crate::{ClockType, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimeParts, TimePoint};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
-#[inline(always)]
+#[inline]
 pub(crate) fn parse_yymmdd(input: &str) -> Option<TimePoint> {
     let parsed = TimeParts::from_str("%y%m%d", input, true, true, false).ok()?;
     parsed.to_time_point(Some(ClockType::UTC)).ok()

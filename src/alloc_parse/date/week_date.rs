@@ -6,7 +6,7 @@ use alloc::string::ToString;
 
 /// Returns true if the input uses an ISO week format but is missing the weekday
 /// (e.g. "2024-W11", "2025-W01", "2024-W11 14:30:00", "2024-W11T14:30:00", etc.).
-#[inline(always)]
+#[inline]
 pub(crate) fn is_week_date_missing_weekday(cls: &DateClassification) -> bool {
     cls.has_w                                   // has the literal "W"
         && cls.num_hyphen == 1                  // exactly one hyphen in the date part
