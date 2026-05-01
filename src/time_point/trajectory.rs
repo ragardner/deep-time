@@ -41,12 +41,12 @@ impl TimePoint {
     /// // Update onboard proper time clock
     /// let onboard_tau = start.to_clock_type(ClockType::Proper).add(delta_tau);
     /// ```
-    pub fn proper_time_interval_samples(
+    pub const fn proper_time_interval_samples(
         self,
         end: TimePoint,
         samples: &[LocalSpacetime],
     ) -> TimeSpan {
-        if samples.len() < 2 || self == end {
+        if samples.len() < 2 || self.eq(&end) {
             return TimeSpan::ZERO;
         }
 
@@ -72,7 +72,8 @@ impl TimePoint {
         let h = dt_sec / n;
         let mut s = f!(0.0);
 
-        for i in 0..=num_intervals {
+        let mut i = 0;
+        while i <= num_intervals {
             let local = &samples[i];
             let rate = Self::rate_from_local(local);
 
@@ -84,6 +85,8 @@ impl TimePoint {
                 f!(4.0)
             };
             s += coeff * (rate - f!(1.0));
+
+            i += 1;
         }
 
         let integral = (h / f!(3.0)) * s;
@@ -102,7 +105,7 @@ impl TimePoint {
     ///
     /// # Returns
     /// The relativistic correction as a `TimeSpan`.
-    pub fn relativistic_correction_with_samples(
+    pub const fn relativistic_correction_with_samples(
         self,
         end: TimePoint,
         samples: &[LocalSpacetime],
@@ -114,7 +117,7 @@ impl TimePoint {
 
     /// Private helper: instantaneous proper-time rate dτ/dt from a `LocalSpacetime` snapshot.
     #[inline]
-    fn rate_from_local(spacetime: &LocalSpacetime) -> Real {
+    const fn rate_from_local(spacetime: &LocalSpacetime) -> Real {
         let drift = ClockDrift::from_local_spacetime(spacetime);
         f!(1.0) + drift.rate().as_sec_f()
     }

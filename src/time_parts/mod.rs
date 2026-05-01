@@ -70,6 +70,7 @@ impl TimeParts {
     /// Layout:
     /// - Byte 0: Version (`WIRE_VERSION`)
     /// - Bytes 1..121: Data (120 bytes)
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -166,6 +167,7 @@ impl TimeParts {
     /// Deserializes `TimeParts` from exactly 121 bytes.
     ///
     /// Returns `None` if the version byte is unknown or the data is invalid.
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -444,7 +446,7 @@ pub enum Offset {
 impl Offset {
     pub const WIRE_SIZE: usize = 5; // tag (1) + i32 (4)
 
-    #[inline]
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         match self {
@@ -458,7 +460,7 @@ impl Offset {
         buf
     }
 
-    #[inline]
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;

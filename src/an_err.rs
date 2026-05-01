@@ -314,6 +314,7 @@ where
     /// let written = my_error.to_wire_bytes::<80>(|k| k as u16, &mut buf);
     /// let packet = &buf[..written];
     /// ```
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes<const PATH_LEN: usize>(
         &self,
         kind_to_u16: impl Fn(K) -> u16,
@@ -369,6 +370,7 @@ where
     }
 
     /// Compile-time size of the wire representation for a given `PATH_LEN`.
+    #[cfg(feature = "wire")]
     pub const fn wire_size<const PATH_LEN: usize>() -> usize {
         2 + DEPTH * (2 + REASON_LEN + PATH_LEN + 8)
     }
@@ -472,6 +474,7 @@ macro_rules! an_err {
 }
 
 /// Portable location for wire transmission.
+#[cfg(feature = "wire")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WireLocation<const N: usize> {
     pub file: AsciiStr<N>,
@@ -480,6 +483,7 @@ pub struct WireLocation<const N: usize> {
 }
 
 /// Fully portable, zero-allocation error for transmission/reception.
+#[cfg(feature = "wire")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WireErr<const DEPTH: usize = 3, const REASON_LEN: usize = 29, const FILE_LEN: usize = 80>
 {
@@ -489,6 +493,7 @@ pub struct WireErr<const DEPTH: usize = 3, const REASON_LEN: usize = 29, const F
     pub locations: [Option<WireLocation<FILE_LEN>>; DEPTH],
 }
 
+#[cfg(feature = "wire")]
 impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
     WireErr<DEPTH, REASON_LEN, FILE_LEN>
 {
@@ -571,7 +576,6 @@ impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
 mod tests {
     use super::*;
     use alloc::format;
-    use alloc::vec;
     use alloc::vec::Vec;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -592,7 +596,6 @@ mod tests {
     // Use the crate's exact *default* parameters so the an_err! macro + constructors
     // match perfectly and inference is unambiguous.
     type E3 = AnErr<TestKind, 3, 29>;
-    type E4 = AnErr<TestKind, 4, 29>;
 
     #[test]
     fn test_new_from_and_basic_properties() {
@@ -742,6 +745,12 @@ mod tests {
         assert!(display.contains("bad syntax"));
     }
 
+    #[cfg(feature = "wire")]
+    type E4 = AnErr<TestKind, 4, 29>;
+    #[cfg(feature = "wire")]
+    use alloc::vec;
+
+    #[cfg(feature = "wire")]
     #[test]
     fn test_wire_roundtrip() {
         let inner: E4 = an_err!(TestKind::Parse, "unexpected char");
@@ -773,6 +782,7 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "wire")]
     #[test]
     fn test_wire_invalid_cases() {
         // Wrong size

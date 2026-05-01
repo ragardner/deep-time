@@ -46,6 +46,7 @@ impl ClockModel {
     /// - Byte `1`: `base` (`ClockType`)
     /// - Bytes `2..20`: `reference` (`TimePoint`)
     /// - Bytes `20..71`: `drift` (`ClockDrift`)
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -72,6 +73,7 @@ impl ClockModel {
     /// - Validation is performed at every layer
     /// - No allocation, no `unsafe`, no possibility of code execution
     /// - Returns `None` on any invalid or malicious input
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;

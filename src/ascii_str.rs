@@ -104,6 +104,7 @@ impl<const N: usize> AsciiStr<N> {
     ///
     /// The entire internal buffer is written (including trailing zeros after
     /// the logical string content). This preserves the exact representation.
+    #[cfg(feature = "wire")]
     #[inline]
     pub fn to_wire_bytes(&self) -> [u8; N] {
         self.bytes
@@ -116,6 +117,7 @@ impl<const N: usize> AsciiStr<N> {
     ///
     /// Returns `None` if the input is not valid ASCII or violates the
     /// internal representation rules.
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != N {
             return None;

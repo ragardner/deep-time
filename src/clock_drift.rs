@@ -149,6 +149,7 @@ impl LocalSpacetime {
     /// Serializes this `LocalSpacetime` snapshot into a fixed 24-byte buffer.
     ///
     /// All fields are stored as little-endian IEEE 754 `f64`.
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0..8].copy_from_slice(&self.alpha.to_le_bytes());
@@ -164,6 +165,7 @@ impl LocalSpacetime {
     /// Accepts any `f64` bit pattern (including `NaN`/`Inf`) to match the
     /// type’s own invariants. Fixed size makes it immune to length-based
     /// attacks. Safe for untrusted input.
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -189,13 +191,17 @@ impl LocalSpacetime {
     /// Convenience method that internally uses the same unified calculation as
     /// `ClockDrift::proper_time_rate`.
     #[inline]
-    pub fn proper_time_rate(self) -> Real {
+    pub const fn proper_time_rate(self) -> Real {
         ClockDrift::from_local_spacetime(&self).proper_time_rate()
     }
 
     /// Convenience for direct gravimeter / sensor paths.
     #[inline]
-    pub fn from_gravitic_and_velocity(alpha: Real, velocity: Velocity, kretschmann: Real) -> Self {
+    pub const fn from_gravitic_and_velocity(
+        alpha: Real,
+        velocity: Velocity,
+        kretschmann: Real,
+    ) -> Self {
         Self::new(alpha, velocity.beta(), kretschmann)
     }
 
@@ -228,7 +234,7 @@ impl LocalSpacetime {
     /// strong-field treatment (including curvature information passed to `LocalSpacetime`)
     /// is required.
     #[inline]
-    pub fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
+    pub const fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
         // gravitational_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
         sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
     }
@@ -308,7 +314,7 @@ impl LocalSpacetime {
     ///   which the gravitational field varies significantly at the observer’s location.
     ///   This allows the library to estimate the Kretschmann scalar and activate the
     ///   intrinsic Planck-scale saturation term when curvature becomes extreme.
-    pub fn from_potential_velocity_and_scale(
+    pub const fn from_potential_velocity_and_scale(
         grav_potential_over_c2: Real, // Φ/c² (total local potential)
         velocity: Velocity,
         characteristic_length_scale: Real,
@@ -378,6 +384,7 @@ impl ClockDrift {
     /// Serializes this `ClockDrift` polynomial into a fixed buffer.
     ///
     /// The layout is the concatenation of the three `TimeSpan` fields.
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         let c = self.constant.to_wire_bytes();
@@ -399,6 +406,7 @@ impl ClockDrift {
     ///
     /// Composes the safety guarantees of [`TimeSpan::from_wire_bytes`].
     /// Fixed size and layered validation make it safe for untrusted input.
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -455,20 +463,20 @@ impl ClockDrift {
     }
 
     #[inline]
-    pub fn set_constant(&mut self, constant: TimeSpan) -> &mut Self {
+    pub const fn set_constant(&mut self, constant: TimeSpan) -> &mut Self {
         self.constant = constant;
         self
         // constant never affects the pre-computed big fields
     }
 
     #[inline]
-    pub fn set_rate(&mut self, rate: TimeSpan) -> &mut Self {
+    pub const fn set_rate(&mut self, rate: TimeSpan) -> &mut Self {
         self.rate = rate;
         self
     }
 
     #[inline]
-    pub fn set_accel(&mut self, accel: TimeSpan) -> &mut Self {
+    pub const fn set_accel(&mut self, accel: TimeSpan) -> &mut Self {
         self.accel = accel;
         self
     }
@@ -548,7 +556,7 @@ impl ClockDrift {
     ///   over which the gravitational potential changes at the observer’s
     ///   location. This activates the library’s intrinsic Planck-scale saturation
     ///   term when spacetime curvature becomes extreme.
-    pub fn from_velocity_potential_and_scale(
+    pub const fn from_velocity_potential_and_scale(
         velocity_m_s: Real,
         grav_potential_m2_s2: Real,
         characteristic_length_scale: Real,
@@ -575,7 +583,7 @@ impl ClockDrift {
     /// K_eff = [δ(1 + x) + x(1−δ)²] / (1 + x)  
     /// where δ = α²(1−β²) and x = ℓ_Pl⁴ 𝒦. The returned rate offset is then
     /// applied as a linear term in the `ClockDrift` polynomial.
-    pub fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Self {
+    pub const fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Self {
         let delta = u.max(f!(0.0));
         let x = PLANCK_LENGTH_4 * kretschmann.max(f!(0.0));
 
@@ -597,7 +605,7 @@ impl ClockDrift {
     /// unified proper-time rate and packages the result as a `ClockDrift`
     /// polynomial ready for evaluation at any future time.
     #[inline]
-    pub fn from_local_spacetime(spacetime: &LocalSpacetime) -> Self {
+    pub const fn from_local_spacetime(spacetime: &LocalSpacetime) -> Self {
         let u = spacetime.alpha * spacetime.alpha * (f!(1.0) - spacetime.beta * spacetime.beta);
         Self::from_unified_proper_time_rate(u, spacetime.kretschmann)
     }

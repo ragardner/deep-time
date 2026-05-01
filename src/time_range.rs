@@ -131,6 +131,7 @@ impl Every {
     /// Serializes this `Every` builder into a fixed 33-byte buffer.
     ///
     /// The layout is simply the concatenation of `start` (17 bytes) and `step` (16 bytes).
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         let start = self.start.to_wire_bytes();
@@ -146,6 +147,7 @@ impl Every {
     ///
     /// Safe for untrusted input. Fixed size with strict validation
     /// of the inner `TimePoint` and `TimeSpan`.
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -210,6 +212,7 @@ impl TimeRange {
     /// - `start` + `end` + `step` + `inclusive` flag
     ///
     /// Runtime iterator state (`current`, `finished`) is **not** serialized.
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -240,6 +243,7 @@ impl TimeRange {
     ///
     /// Safe for untrusted input. Fixed size with layered validation
     /// of all inner types. No runtime iterator state is accepted from the wire.
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;

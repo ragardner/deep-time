@@ -30,6 +30,8 @@ sys-locale = { version = "0.3", optional = true }
 # ──────────────────────────────────────────────────────────────
 default = []
 panic-handler = []
+tz = []
+wire = []
 
 alloc = [
     "jiff?/alloc",
@@ -42,8 +44,6 @@ std = [
     "chrono?/std",
     "hifitime?/std",
 ]
-
-tz = []
 
 # ──────────────────────────────────────────────────────────────
 # PARSER / LANGUAGES (no_std friendly)

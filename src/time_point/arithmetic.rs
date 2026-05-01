@@ -214,7 +214,7 @@ impl TimePoint {
     /// This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
     /// For the spacecraft's own hardware proper-time clock, use the plain `add` method instead.
     #[inline]
-    pub fn adjusted_advance(&mut self, elapsed: &TimeSpan, local_spacetime: &LocalSpacetime) {
+    pub const fn adjusted_advance(&mut self, elapsed: &TimeSpan, local_spacetime: &LocalSpacetime) {
         let dtau =
             elapsed.add(ClockDrift::from_local_spacetime(local_spacetime).time_diff_after(elapsed));
         *self = self.add(dtau);
@@ -226,7 +226,7 @@ impl TimePoint {
     /// This is an optimized variant of `adjusted_advance` for callers that already hold a `ClockDrift` instance.
     /// It is intended for simulation of remote clocks; the spacecraft's own hardware clock should use the plain `add` method.
     #[inline]
-    pub fn adjusted_advance_using_drift(&mut self, elapsed: &TimeSpan, drift: &ClockDrift) {
+    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &TimeSpan, drift: &ClockDrift) {
         let dtau = elapsed.add(drift.time_diff_after(elapsed));
         *self = self.add(dtau);
     }

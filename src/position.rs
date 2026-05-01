@@ -50,7 +50,7 @@ impl Position {
     /// When the position is Sun-centered, this is the radial distance from the Sun
     /// required for Shapiro-delay calculations.
     #[inline]
-    pub fn norm(self) -> Real {
+    pub const fn norm(self) -> Real {
         hypot(hypot(self.x, self.y), self.z)
     }
 
@@ -59,7 +59,7 @@ impl Position {
     ///
     /// Together with the two radial distances from the Sun, this value supplies the
     /// three geometric inputs needed to evaluate the Shapiro delay.
-    pub fn distance_to(self, other: Self) -> Real {
+    pub const fn distance_to(self, other: Self) -> Real {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         let dz = self.z - other.z;
@@ -91,7 +91,7 @@ impl Position {
     /// let beyond    = a.lerp(b, 1.5);          // (15.0, 30.0, 45.0)
     /// ```
     #[inline]
-    pub fn lerp(self, other: Self, t: Real) -> Self {
+    pub const fn lerp(self, other: Self, t: Real) -> Self {
         Self::new(
             self.x * (f!(1.0) - t) + other.x * t,
             self.y * (f!(1.0) - t) + other.y * t,
@@ -132,20 +132,20 @@ impl Velocity {
 
     /// Returns the squared Euclidean norm (v²).
     #[inline]
-    pub fn norm_squared(self) -> Real {
+    pub const fn norm_squared(self) -> Real {
         self.vx * self.vx + self.vy * self.vy + self.vz * self.vz
     }
 
     /// Speed in m/s (Euclidean magnitude).
     #[inline]
-    pub fn speed(self) -> Real {
+    pub const fn speed(self) -> Real {
         sqrt(self.norm_squared().max(f!(0.0)))
     }
 
     /// Dimensionless 3-velocity β = v/c relative to the local chrono-rest frame.
     /// This is exactly what the master Lagrangian and `LocalSpacetime` expect.
     #[inline]
-    pub fn beta(self) -> Real {
+    pub const fn beta(self) -> Real {
         sqrt((self.norm_squared() / C_SQUARED).max(f!(0.0)))
     }
 }

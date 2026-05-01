@@ -149,7 +149,7 @@ const LG6: f64 = 1.531383769920937332e-01; /* 3FC39A09 D078C69F */
 const LG7: f64 = 1.479819860511658591e-01; /* 3FC2F112 DF3E5244 */
 
 /// The natural logarithm of `x` (f64).
-pub fn log(mut x: f64) -> f64 {
+pub const fn log(mut x: f64) -> f64 {
     let x1p54 = f64::from_bits(0x4350000000000000); // 0x1p54 === 2 ^ 54
 
     let mut ui = x.to_bits();
@@ -213,12 +213,12 @@ const RSQRT_TAB: [u16; 128] = [
 ];
 
 #[inline]
-fn mul32(a: u32, b: u32) -> u32 {
+const fn mul32(a: u32, b: u32) -> u32 {
     ((a as u64).wrapping_mul(b as u64) >> 32) as u32
 }
 
 #[inline]
-fn mul64(a: u64, b: u64) -> u64 {
+const fn mul64(a: u64, b: u64) -> u64 {
     let ahi = a >> 32;
     let alo = a & 0xffffffff;
     let bhi = b >> 32;
@@ -230,7 +230,8 @@ fn mul64(a: u64, b: u64) -> u64 {
 
 /// Computes sqrt(x) using the table-driven Goldschmidt iteration
 /// from musl libc. Correctly rounded to nearest-even for all f64 inputs.
-pub fn sqrt(x: f64) -> f64 {
+/// const, no std, no alloc friendly.
+pub const fn sqrt(x: f64) -> f64 {
     let mut ix = x.to_bits();
     let mut top = ix >> 52;
 
@@ -300,7 +301,7 @@ pub fn sqrt(x: f64) -> f64 {
 
 const SPLIT: f64 = 134217728. + 1.; // 0x1p27 + 1 === (2 ^ 27) + 1
 
-fn sq(x: f64) -> (f64, f64) {
+const fn sq(x: f64) -> (f64, f64) {
     let xh: f64;
     let xl: f64;
     let xc: f64;
@@ -313,7 +314,7 @@ fn sq(x: f64) -> (f64, f64) {
     (hi, lo)
 }
 
-pub fn hypot(mut x: f64, mut y: f64) -> f64 {
+pub const fn hypot(mut x: f64, mut y: f64) -> f64 {
     let x1p700 = f64::from_bits(0x6bb0000000000000); // 0x1p700 === 2 ^ 700
     let x1p_700 = f64::from_bits(0x1430000000000000); // 0x1p-700 === 2 ^ -700
 

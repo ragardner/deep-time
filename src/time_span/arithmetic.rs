@@ -325,7 +325,7 @@ impl TimeSpan {
 
     /// Divides this duration by 2 (convenience wrapper).
     #[inline]
-    pub fn div_by_2(self) -> TimeSpan {
+    pub const fn div_by_2(self) -> TimeSpan {
         self.div_by_f(2.0)
     }
 }

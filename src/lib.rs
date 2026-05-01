@@ -91,10 +91,13 @@ pub use alloc_parse::{
 #[cfg(feature = "ut1")]
 pub use ut1::{Separator, Ut1Columns, Ut1Data, Ut1Format, Ut1Row};
 
+#[cfg(feature = "wire")]
+pub use an_err::{WireErr, WireLocation};
+
 // _________________________________________
 // PUB USE
 // _________________________________________
-pub use an_err::{AnErr, WireErr, WireLocation};
+pub use an_err::AnErr;
 pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;

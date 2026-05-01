@@ -57,7 +57,7 @@ impl TimeSpan {
     /// - Byte `0`: Version (`WIRE_VERSION`)
     /// - Bytes `[1..9]`: `sec` as little-endian `i64`
     /// - Bytes `[9..17]`: `subsec` as little-endian `u64`
-    #[inline]
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -77,6 +77,7 @@ impl TimeSpan {
     ///
     /// Safe to call with completely untrusted input. Fixed-size format,
     /// no allocation, no `unsafe`, and no possibility of code execution.
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;

@@ -304,7 +304,7 @@ impl GregorianTime {
     /// - Bytes `83..134`: `tz` (tag byte + `AsciiStr<50>`)
     /// - Bytes `134..164`: `tz_abbrev` (tag byte + `AsciiStr<29>`)
     /// - Byte `164`: `clock_type` (`ClockType`)
-    #[inline]
+    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -408,6 +408,7 @@ impl GregorianTime {
     ///
     /// Safe for untrusted input. Fixed-size format with strict validation.
     /// No allocation or `unsafe` code used.
+    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;

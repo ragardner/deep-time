@@ -100,14 +100,21 @@ impl TimePoint {
             _ => self,
         }
     }
+
+    #[inline]
+    pub const fn eq(&self, other: &Self) -> bool {
+        match TimePoint::cmp(*self, *other) {
+            // ← explicit + const
+            Ordering::Equal => true,
+            _ => false,
+        }
+    }
 }
 
 impl PartialEq for TimePoint {
-    /// Two `TimePoint`s are equal if and only if they represent the same physical
-    /// instant (i.e. their TAI representations are identical).
     #[inline]
     fn eq(&self, other: &Self) -> bool {
-        TimePoint::cmp(*self, *other) == Ordering::Equal
+        TimePoint::eq(self, other)
     }
 }
 

@@ -134,7 +134,7 @@ impl ObserverState {
     /// coordinate time. It is used internally by the library for proper-time
     /// integration, light-time corrections, and Doppler calculations.
     #[inline]
-    pub fn proper_time_rate(&self) -> Real {
+    pub const fn proper_time_rate(&self) -> Real {
         let ls = LocalSpacetime::from_potential_velocity_and_scale(
             self.grav_potential_m2_s2 / C_SQUARED,
             self.velocity,
@@ -189,7 +189,7 @@ impl ObserverState {
     /// let total_frequency_shift = 1.0 * factor * classical_doppler;
     /// ```
     #[inline]
-    pub fn relativistic_clock_doppler_factor(&self, rx: ObserverState) -> Real {
+    pub const fn relativistic_clock_doppler_factor(&self, rx: ObserverState) -> Real {
         rx.proper_time_rate() / self.proper_time_rate()
     }
 
@@ -200,7 +200,7 @@ impl ObserverState {
     /// and is the value needed by deep-space networks when correcting measured
     /// range-rate data.
     #[inline]
-    pub fn two_way_relativistic_doppler_factor(&self, rx: ObserverState) -> Real {
+    pub const fn two_way_relativistic_doppler_factor(&self, rx: ObserverState) -> Real {
         let one_way = self.relativistic_clock_doppler_factor(rx);
         one_way * one_way
     }
@@ -292,7 +292,7 @@ impl ObserverState {
     /// Alternatively, you can compute individual Shapiro contributions from each body
     /// (using the helper `shapiro_one_way_for_body` if you add it) and manually combine
     /// them with the result of this function.
-    pub fn one_way_relativistic_delay_to(
+    pub const fn one_way_relativistic_delay_to(
         &self,
         rx: ObserverState,
         context: LightContext,
@@ -535,7 +535,7 @@ impl ObserverState {
     /// supports a single central mass via `LightContext`. For complex geometries
     /// or high-fidelity simulations, this integrated method provides greater
     /// accuracy and flexibility.
-    pub fn one_way_relativistic_delay_integrated(
+    pub const fn one_way_relativistic_delay_integrated(
         &self,
         rx: ObserverState,
         context: LightContext,
@@ -552,7 +552,8 @@ impl ObserverState {
         let h = f!(1.0) / n;
         let mut s = f!(0.0);
 
-        for i in 0..num_samples {
+        let mut i = 0;
+        while i < num_samples {
             let local = samples[i];
             let drift = ClockDrift::from_local_spacetime(&local);
             let rate_offset = drift.rate().as_sec_f();
@@ -565,6 +566,8 @@ impl ObserverState {
                 f!(4.0)
             };
             s += coeff * rate_offset;
+
+            i += 1;
         }
 
         let integrated_drift_sec = (h / f!(3.0)) * s * dt_sec;
@@ -647,7 +650,7 @@ impl ObserverState {
     ///     measured, rx_approx, jupiter_context
     /// );
     /// ```
-    pub fn round_trip_relativistic_correction(
+    pub const fn round_trip_relativistic_correction(
         &self,
         round_trip_measured: TimeSpan,
         rx: ObserverState,
@@ -668,7 +671,7 @@ impl ObserverState {
     ///
     /// This is an internal helper used by the public delay functions. It implements the
     /// standard logarithmic formula used in solar-system navigation and pulsar timing.
-    fn shapiro_one_way_delay(
+    const fn shapiro_one_way_delay(
         context: LightContext,
         r_tx: Real,
         r_rx: Real,
