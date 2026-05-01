@@ -1,11 +1,11 @@
 use crate::{
-    AsciiStr, ClockType, DtErrKind, DtError, GregorianTime, MONTHS_ABBR, MONTHS_FULL,
+    AsciiStr, ClockType, DtErrKind, DtErr, GregorianTime, MONTHS_ABBR, MONTHS_FULL,
     STRFTIME_SIZE, TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
 };
 
 impl GregorianTime {
     #[cfg(feature = "alloc")]
-    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtError> {
+    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -13,7 +13,7 @@ impl GregorianTime {
     }
 
     /// No-allocation formatting.
-    pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtError> {
+    pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -25,7 +25,7 @@ impl GregorianTime {
         fmt: &[u8],
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
-    ) -> Result<(), DtError> {
+    ) -> Result<(), DtErr> {
         let mut i = 0usize;
 
         while i < fmt.len() {

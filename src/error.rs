@@ -43,4 +43,4 @@ pub enum DtErrKind {
     ChronoConversion,
 }
 
-pub type DtError = AnErr<DtErrKind, 3, 29>;
+pub type DtErr = AnErr<DtErrKind, 3, 29>;

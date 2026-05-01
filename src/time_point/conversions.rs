@@ -58,7 +58,7 @@ impl TimePoint {
             ClockType::TAI => self,
 
             ClockType::TT => {
-                let mut tp = self.sub_ref(&TT_TAI_OFFSET_SPAN);
+                let mut tp = self.sub(TT_TAI_OFFSET_SPAN);
                 tp.set_clock_type(ClockType::TAI);
                 tp
             }
@@ -66,13 +66,13 @@ impl TimePoint {
             ClockType::UTC => Self::utc_to_tai(self),
 
             ClockType::GPS | ClockType::QZSS | ClockType::GST => {
-                let mut tp = self.add_ref(&TimeSpan::SEC_19);
+                let mut tp = self.add(TimeSpan::SEC_19);
                 tp.set_clock_type(ClockType::TAI);
                 tp
             }
 
             ClockType::BDT => {
-                let mut tp = self.add_ref(&TimeSpan::SEC_33);
+                let mut tp = self.add(TimeSpan::SEC_33);
                 tp.set_clock_type(ClockType::TAI);
                 tp
             }
@@ -100,7 +100,7 @@ impl TimePoint {
             ClockType::TAI => self,
 
             ClockType::TT => {
-                let mut tp = self.add_ref(&TT_TAI_OFFSET_SPAN);
+                let mut tp = self.add(TT_TAI_OFFSET_SPAN);
                 tp.set_clock_type(target);
                 tp
             }
@@ -108,13 +108,13 @@ impl TimePoint {
             ClockType::UTC => Self::tai_to_utc(self),
 
             ClockType::GPS | ClockType::QZSS | ClockType::GST => {
-                let mut tp = self.sub_ref(&TimeSpan::SEC_19);
+                let mut tp = self.sub(TimeSpan::SEC_19);
                 tp.set_clock_type(target);
                 tp
             }
 
             ClockType::BDT => {
-                let mut tp = self.sub_ref(&TimeSpan::SEC_33);
+                let mut tp = self.sub(TimeSpan::SEC_33);
                 tp.set_clock_type(target);
                 tp
             }
@@ -147,13 +147,13 @@ impl TimePoint {
     /// This is a zero-cost convenience wrapper around [`Self::saturating_add`] + [`Self::with_clock_type`].
     #[inline]
     pub const fn convert_using_offset(&mut self, target: ClockType, offset: TimeSpan) -> Self {
-        self.mut_add(&offset).with_clock_type(target)
+        self.mut_add(offset).with_clock_type(target)
     }
 
     /// Same as [`Self::convert_using_offset`], but accepts the offset as an `f64` (in seconds) for convenience.
     #[inline]
     pub const fn convert_using_offset_f(&mut self, target: ClockType, offset_sec: Real) -> Self {
-        self.mut_add(&TimeSpan::from_sec_f(offset_sec))
+        self.mut_add(TimeSpan::from_sec_f(offset_sec))
             .with_clock_type(target)
     }
 
@@ -183,7 +183,7 @@ impl TimePoint {
         drift: ClockDrift,
     ) -> Self {
         if drift.rate().is_zero() && drift.accel().is_zero() {
-            return self.sub_ref(&drift.constant()).with_clock_type(source);
+            return self.sub(*drift.constant()).with_clock_type(source);
         }
         let mut guess = self;
         let mut i = 0u32;
@@ -302,9 +302,7 @@ impl TimePoint {
     }
 
     const fn tai_to_tdb(tai: Self) -> Self {
-        let tt = tai
-            .add_ref(&TT_TAI_OFFSET_SPAN)
-            .with_clock_type(ClockType::TT);
+        let tt = tai.add(TT_TAI_OFFSET_SPAN).with_clock_type(ClockType::TT);
         let span = Self::tdb_minus_tt(tt);
         tt.add(span).with_clock_type(ClockType::TDB)
     }
@@ -319,8 +317,7 @@ impl TimePoint {
             i += 1;
         }
 
-        tt.sub_ref(&TT_TAI_OFFSET_SPAN)
-            .with_clock_type(ClockType::TAI)
+        tt.sub(TT_TAI_OFFSET_SPAN).with_clock_type(ClockType::TAI)
     }
 
     const fn tcg_to_tai(tcg: Self) -> Self {

@@ -1,7 +1,7 @@
 use {
     crate::{
         ATTOSEC_PER_NANOSEC, Meridiem, Offset, TimeParts, TimePoint, Weekday, an_err,
-        error::{DtErrKind, DtError},
+        error::{DtErrKind, DtErr},
         tzdb::offset_info_at_local,
     },
     alloc::string::String,
@@ -16,7 +16,7 @@ use {
 
 impl TimeParts {
     /// Converts `TimeParts` → Jiff’s `BrokenDownTime`.
-    pub fn to_jiff_broken_down_time(&self) -> Result<BrokenDownTime, DtError> {
+    pub fn to_jiff_broken_down_time(&self) -> Result<BrokenDownTime, DtErr> {
         let mut bdt = BrokenDownTime::default();
 
         // Date fields
@@ -150,7 +150,7 @@ impl TimeParts {
         Ok(bdt)
     }
 
-    pub fn to_jiff_zoned(&self) -> Result<Zoned, DtError> {
+    pub fn to_jiff_zoned(&self) -> Result<Zoned, DtErr> {
         let bdt = self.to_jiff_broken_down_time()?;
         if let Ok(zoned) = bdt.to_zoned() {
             return Ok(zoned);
@@ -177,7 +177,7 @@ impl TimeParts {
     }
 
     /// Converts `TimeParts` → absolute `Timestamp` on the SI scale.
-    pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtError> {
+    pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtErr> {
         if let Some(secs) = self.unix_timestamp_seconds {
             return Timestamp::from_second(secs)
                 .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e));
@@ -243,7 +243,7 @@ impl TimeParts {
     }
 
     // Helper used by to_timestamp
-    fn to_jiff_time_zone(&self) -> core::result::Result<JiffTimeZone, DtError> {
+    fn to_jiff_time_zone(&self) -> core::result::Result<JiffTimeZone, DtErr> {
         // IANA name takes precedence — use OUR own tz database only
         if let Some(name) = &self.iana_name {
             let name_str = name.as_str().map_err(|e| {
@@ -316,7 +316,7 @@ mod tests {
     use super::*;
     use jiff::{SignedDuration, Timestamp};
 
-    fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtError> {
+    fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtErr> {
         let parsed = TimeParts::from_str(fmt, input, strict, false, false)?;
         parsed.to_jiff_timestamp()
     }

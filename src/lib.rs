@@ -99,7 +99,7 @@ pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use clock_type::ClockType;
-pub use error::{DtErrKind, DtError};
+pub use error::{DtErr, DtErrKind};
 pub use gregorian_time::GregorianTime;
 pub use light_time::{LightContext, ObserverState};
 pub use position::{Position, Velocity};

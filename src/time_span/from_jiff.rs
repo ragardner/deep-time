@@ -1,4 +1,4 @@
-use crate::{DtErrKind, DtError, TimeSpan, an_err};
+use crate::{DtErrKind, DtErr, TimeSpan, an_err};
 use jiff::{SignedDuration, Span, Timestamp};
 
 impl TimeSpan {
@@ -19,7 +19,7 @@ impl TimeSpan {
     ///   weeks, days, etc.) that cannot be converted to a pure elapsed-time
     ///   duration.
     #[inline]
-    pub fn from_jiff_span(span: Span) -> Result<Self, DtError> {
+    pub fn from_jiff_span(span: Span) -> Result<Self, DtErr> {
         let dur = SignedDuration::try_from(span)
             .map_err(|e| an_err!(DtErrKind::InvalidInput, "{:?}: {}", span, e))?;
         Ok(Self::from_jiff_signed_duration(dur))

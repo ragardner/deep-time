@@ -1,11 +1,11 @@
-use crate::{ClockType, DtError, TimeParts, TimePoint};
+use crate::{ClockType, DtErr, TimeParts, TimePoint};
 
 impl TimePoint {
     /// Generalized CCSDS ASCII Time Code parser (A or B variant).
     /// Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
     /// All time components after the date portion are optional.
     #[inline]
-    pub fn from_ccsds_str(input: &str, clock_type: ClockType) -> Result<Self, DtError> {
+    pub fn from_ccsds_str(input: &str, clock_type: ClockType) -> Result<Self, DtErr> {
         TimeParts::from_ccsds_str(input)?.to_time_point(Some(clock_type))
     }
 
@@ -28,7 +28,7 @@ impl TimePoint {
     ///
     /// Epoch: 1958-01-01 00:00:00 **UTC** (identical to CDS).
     #[inline]
-    pub fn from_ccsds_ccs(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
+    pub fn from_ccsds_ccs(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtErr> {
         TimeParts::from_ccsds_ccs(input)?.to_time_point(Some(clock_type))
     }
 
@@ -67,7 +67,7 @@ impl TimePoint {
     /// - [`DtErrKind::CCSDSBinInvalidPFieldExtension`] if the further-extension flag is set
     ///   (3+ byte P-field, unsupported).
     #[inline]
-    pub fn from_ccsds_c(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
+    pub fn from_ccsds_c(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtErr> {
         TimeParts::from_ccsds_c(input)?.to_time_point(Some(clock_type))
     }
 
@@ -101,7 +101,7 @@ impl TimePoint {
     /// - [`DtErrKind::CCSDSBinInvalidEpoch`] if the Epoch bit is set (non-Level-1 / non-1958 epoch).
     /// - [`DtErrKind::CCSDSBinInvalidSubMillisecondCode`] if bits 6-7 encode an unsupported value (0b11).
     #[inline]
-    pub fn from_ccsds_d(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
+    pub fn from_ccsds_d(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtErr> {
         TimeParts::from_ccsds_d(input)?.to_time_point(Some(clock_type))
     }
 
@@ -119,7 +119,7 @@ impl TimePoint {
     /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any other Code ID.
     #[inline]
-    pub fn from_ccsds_bin(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtError> {
+    pub fn from_ccsds_bin(input: &[u8], clock_type: ClockType) -> Result<TimePoint, DtErr> {
         TimeParts::from_ccsds_bin(input)?.to_time_point(Some(clock_type))
     }
 }

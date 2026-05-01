@@ -1,4 +1,4 @@
-use crate::{ClockType, DtErrKind, DtError, SEC_PER_DAYI64, TimePoint, an_err};
+use crate::{ClockType, DtErrKind, DtErr, SEC_PER_DAYI64, TimePoint, an_err};
 
 impl TimePoint {
     /// Maximum size needed for a CCSDS C & D (CUC) binary packet (with extended P-field).
@@ -19,7 +19,7 @@ impl TimePoint {
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
-    ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         if !(1..=7).contains(&n_coarse) {
             return Err(an_err!(DtErrKind::OutOfRange, "coarse: {}", n_coarse,));
         } else if n_frac > 10 {
@@ -97,7 +97,7 @@ impl TimePoint {
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
-    ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         if !matches!(n_day, 2 | 3) {
             return Err(an_err!(DtErrKind::InvalidNumber, "n_day: {}", n_day));
         } else if !matches!(sub_ms_code, 0 | 1 | 2) {
@@ -196,7 +196,7 @@ impl TimePoint {
         &self,
         use_doy: bool,
         n_subsec: u8,
-    ) -> Result<([u8; Self::CCSDS_CCS_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; Self::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
         if n_subsec > 6 {
             return Err(an_err!(DtErrKind::OutOfRange, "n_subsec: {}", n_subsec));
         }
@@ -280,7 +280,7 @@ impl TimePoint {
     /// - Any other `ClockType` (UTC, TT, GPS, TCG, …) → converted to UTC and uses **CDS**
     ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
     #[inline]
-    pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
+    pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         match self.clock_type() {
             ClockType::TAI => self.to_ccsds_c(4, 4, false),
             _ => self.to_clock_type(ClockType::UTC).to_ccsds_d(2, 1, false),

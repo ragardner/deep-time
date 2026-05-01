@@ -1,10 +1,10 @@
-use crate::{DtErrKind, DtError, TimeParts, an_err};
+use crate::{DtErrKind, DtErr, TimeParts, an_err};
 
 impl TimeParts {
     /// Generalized CCSDS ASCII Time Code parser (A or B variant).
     /// Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
     /// All time components after the date portion are optional.
-    pub fn from_ccsds_str(input: &str) -> Result<Self, DtError> {
+    pub fn from_ccsds_str(input: &str) -> Result<Self, DtErr> {
         let cleaned = input.trim_end_matches(|c: char| c.to_ascii_uppercase() == 'Z');
         let bytes = cleaned.as_bytes();
         let len_ = bytes.len();

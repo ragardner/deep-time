@@ -22,7 +22,7 @@ impl TimePoint {
     /// Because TT = TAI + 32.184 s, this is exactly 32.184 seconds *before* `ZERO`.
     /// This constant is provided for convenience when working with astronomical
     /// ephemerides that are natively referenced to J2000 TT.
-    pub const J2000_TAI: Self = Self::ZERO.sub_ref(&TT_TAI_OFFSET_SPAN);
+    pub const J2000_TAI: Self = Self::ZERO.sub(TT_TAI_OFFSET_SPAN);
 
     /// The J1900.0 epoch expressed in TAI (1900-01-01 12:00:00 TAI).
     pub const J1900_TAI: Self = Self::from_tai_sec(-3_155_760_000);

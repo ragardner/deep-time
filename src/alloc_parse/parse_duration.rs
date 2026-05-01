@@ -1,5 +1,5 @@
 use crate::{
-    DtErrKind, DtError, Lang, TimeSpan, an_err, natural_duration_to_iso, natural_duration_to_span,
+    DtErrKind, DtErr, Lang, TimeSpan, an_err, natural_duration_to_iso, natural_duration_to_span,
 };
 use alloc::string::String;
 
@@ -11,7 +11,7 @@ impl TimeSpan {
     /// 3. Legacy bare number, supports decimals → fractional milliseconds
     ///
     /// Returns deep_time::TimeSpan
-    pub fn from_str(s: &str, lang: Lang) -> Result<TimeSpan, DtError> {
+    pub fn from_str(s: &str, lang: Lang) -> Result<TimeSpan, DtErr> {
         if s.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -42,7 +42,7 @@ impl TimeSpan {
         Err(an_err!(DtErrKind::InvalidInput, "{}", s))
     }
 
-    pub fn natural_to_iso(s: &str, lang: Lang) -> Result<String, DtError> {
+    pub fn natural_to_iso(s: &str, lang: Lang) -> Result<String, DtErr> {
         match natural_duration_to_iso(s, lang, true) {
             Ok(iso) => Ok(iso),
             Err(e) => Err(an_err!(

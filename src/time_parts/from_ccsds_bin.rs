@@ -1,4 +1,4 @@
-use crate::{ClockType, DtErrKind, DtError, Offset, TimeParts, TimePoint, an_err};
+use crate::{ClockType, DtErrKind, DtErr, Offset, TimeParts, TimePoint, an_err};
 
 // tests are in TimePoint to_ccsds_bin
 impl TimeParts {
@@ -80,7 +80,7 @@ impl TimeParts {
     /// - 0–6 bytes: Fractional seconds (exactly 2 decimal digits per byte)
     ///
     /// Epoch: 1958-01-01 00:00:00 **UTC** (identical to CDS).
-    pub fn from_ccsds_ccs(input: &[u8]) -> Result<TimeParts, DtError> {
+    pub fn from_ccsds_ccs(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -115,7 +115,7 @@ impl TimeParts {
         }
 
         // ── BCD decoder (two decimal digits per byte) ──────────────
-        let bcd_byte = |b: u8| -> Result<u8, DtError> {
+        let bcd_byte = |b: u8| -> Result<u8, DtErr> {
             let hi = b >> 4;
             let lo = b & 0x0F;
             if hi > 9 || lo > 9 {
@@ -250,7 +250,7 @@ impl TimeParts {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] if the Code ID is not `001`.
     /// - [`DtErrKind::CCSDSBinInvalidPFieldExtension`] if the further-extension flag is set
     ///   (3+ byte P-field, unsupported).
-    pub fn from_ccsds_c(input: &[u8]) -> Result<TimeParts, DtError> {
+    pub fn from_ccsds_c(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -373,7 +373,7 @@ impl TimeParts {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] if the Code ID is not `100`.
     /// - [`DtErrKind::CCSDSBinInvalidEpoch`] if the Epoch bit is set (non-Level-1 / non-1958 epoch).
     /// - [`DtErrKind::CCSDSBinInvalidSubMillisecondCode`] if bits 6-7 encode an unsupported value (0b11).
-    pub fn from_ccsds_d(input: &[u8]) -> Result<TimeParts, DtError> {
+    pub fn from_ccsds_d(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -487,7 +487,7 @@ impl TimeParts {
     /// # Errors
     /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any Code ID other than `001` (CUC) or `100` (CDS).
-    pub fn from_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtError> {
+    pub fn from_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }

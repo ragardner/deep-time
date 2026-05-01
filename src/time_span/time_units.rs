@@ -197,12 +197,12 @@ impl TimeSpan {
     /// Returns a `TimePoint` that is this duration ago from the given clock type.
     #[inline]
     pub fn ago(self, clock_type: ClockType) -> TimePoint {
-        TimePoint::from_sec(0, clock_type).sub_ref(&self)
+        TimePoint::from_sec(0, clock_type).sub(self)
     }
 
     /// Returns a `TimePoint` that is this duration from now in the given clock type.
     #[inline]
     pub fn from_now(self, clock_type: ClockType) -> TimePoint {
-        TimePoint::from_sec(0, clock_type).add_ref(&self)
+        TimePoint::from_sec(0, clock_type).add(self)
     }
 }

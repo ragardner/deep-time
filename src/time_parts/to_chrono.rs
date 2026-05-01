@@ -1,6 +1,6 @@
 use crate::{
     ATTOSEC_PER_NANOSEC, TimePoint, an_err,
-    error::{DtErrKind, DtError},
+    error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
 use chrono::{
@@ -15,14 +15,14 @@ use crate::tzdb::offset_info_at_local;
 
 impl TimeParts {
     /// Converts `TimeParts` → Chrono’s `NaiveDateTime` (civil time, no TZ).
-    pub fn to_chrono_naive_datetime(&self) -> Result<NaiveDateTime, DtError> {
+    pub fn to_chrono_naive_datetime(&self) -> Result<NaiveDateTime, DtErr> {
         let date = self.build_naive_date()?;
         let time = self.build_naive_time()?;
 
         Ok(date.and_time(time))
     }
 
-    fn build_naive_date(&self) -> Result<NaiveDate, DtError> {
+    fn build_naive_date(&self) -> Result<NaiveDate, DtErr> {
         // YMD (highest priority, matches Jiff fast-path)
         if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
             let year_i32: i32 = y
@@ -42,7 +42,7 @@ impl TimeParts {
         }
 
         // Small helper: JDN → chrono NaiveDate
-        let jdn_to_naive_date = |jdn: i64| -> Result<NaiveDate, DtError> {
+        let jdn_to_naive_date = |jdn: i64| -> Result<NaiveDate, DtErr> {
             let days_from_ce: i32 = (jdn - 1721425)
                 .try_into()
                 .map_err(|e| an_err!(DtErrKind::InvalidInput, "jdn: {}: {}", jdn, e))?;
@@ -74,7 +74,7 @@ impl TimeParts {
         Err(an_err!(DtErrKind::InvalidInput, "failed to convert"))
     }
 
-    fn build_naive_time(&self) -> Result<NaiveTime, DtError> {
+    fn build_naive_time(&self) -> Result<NaiveTime, DtErr> {
         let mut hour = self.hour.unwrap_or(0) as u32;
         let minute = self.minute.unwrap_or(0) as u32;
         let mut second = self.second.unwrap_or(0) as u32;
@@ -128,7 +128,7 @@ impl TimeParts {
     }
 
     /// Helper: resolve fixed offset / UTC only.
-    fn to_chrono_offset(&self) -> Result<FixedOffset, DtError> {
+    fn to_chrono_offset(&self) -> Result<FixedOffset, DtErr> {
         match self.offset {
             Some(Offset::Fixed(secs)) => FixedOffset::east_opt(secs)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: {}", secs)),
@@ -137,7 +137,7 @@ impl TimeParts {
         }
     }
 
-    pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, DtError> {
+    pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, DtErr> {
         // ============================================================
         // UNIX TIMESTAMP PATH
         // Always UTC. Completely ignores offset + iana_name.
@@ -246,7 +246,7 @@ impl TimeParts {
             .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset: {:?}", offset))
     }
 
-    pub fn to_chrono_timestamp(&self) -> Result<i64, DtError> {
+    pub fn to_chrono_timestamp(&self) -> Result<i64, DtErr> {
         if let Some(secs) = self.unix_timestamp_seconds {
             return Ok(secs);
         }

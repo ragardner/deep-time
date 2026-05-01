@@ -1,5 +1,5 @@
 use crate::{
-    ATTOSEC_PER_SEC_I128, ClockType, DtErrKind, DtError, Real, SEC_PER_DAY, SEC_PER_DAYI128,
+    ATTOSEC_PER_SEC_I128, ClockType, DtErrKind, DtErr, Real, SEC_PER_DAY, SEC_PER_DAYI128,
     TimePoint, TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
 };
 use alloc::string::String;
@@ -132,7 +132,7 @@ impl Ut1Data {
         lines: impl Iterator<Item = &'a str>,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtError> {
+    ) -> Result<Vec<Ut1Row>, DtErr> {
         let mut rows = Vec::new();
 
         for line in lines {
@@ -162,7 +162,7 @@ impl Ut1Data {
         s: &str,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtError> {
+    ) -> Result<Vec<Ut1Row>, DtErr> {
         Self::parse_lines(s.lines(), format, separator)
     }
 
@@ -170,12 +170,12 @@ impl Ut1Data {
         bytes: &[u8],
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtError> {
+    ) -> Result<Vec<Ut1Row>, DtErr> {
         let s = core::str::from_utf8(bytes).unwrap_or("");
         Self::data_from_str(s, format, separator)
     }
 
-    pub fn from_str(s: &str, format: Ut1Format, separator: Separator) -> Result<Self, DtError> {
+    pub fn from_str(s: &str, format: Ut1Format, separator: Separator) -> Result<Self, DtErr> {
         let rows = Self::data_from_str(s, format, separator)?;
         Ok(Self { rows })
     }
@@ -184,7 +184,7 @@ impl Ut1Data {
         bytes: &[u8],
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Self, DtError> {
+    ) -> Result<Self, DtErr> {
         let rows = Self::data_from_bytes(bytes, format, separator)?;
         Ok(Self { rows })
     }
@@ -197,7 +197,7 @@ impl Ut1Data {
         mut reader: R,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtError> {
+    ) -> Result<Vec<Ut1Row>, DtErr> {
         let mut line_buf = String::with_capacity(256);
         let mut rows = Vec::new();
 
@@ -239,7 +239,7 @@ impl Ut1Data {
         path: P,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtError> {
+    ) -> Result<Vec<Ut1Row>, DtErr> {
         use std::fs::File;
         use std::io::BufReader;
 
@@ -256,7 +256,7 @@ impl Ut1Data {
         path: P,
         format: Ut1Format,
         separator: Separator,
-    ) -> Result<Self, DtError> {
+    ) -> Result<Self, DtErr> {
         let rows = Self::data_from_text_file(path, format, separator)?;
         Ok(Self { rows })
     }
@@ -311,7 +311,7 @@ impl TimePoint {
     /// Convert **any** `TimePoint` to the equivalent UT1 instant (stored as `Custom`).
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
-    pub fn to_ut1(&self, ut1_data: &Ut1Data) -> Result<Self, DtError> {
+    pub fn to_ut1(&self, ut1_data: &Ut1Data) -> Result<Self, DtErr> {
         let utc = self.to_clock_type(ClockType::UTC);
         let (mjd_days, mjd_frac) = utc.to_mjd_utc_exact();
 
@@ -332,7 +332,7 @@ impl TimePoint {
     /// Uses fixed-point iteration (exactly like the library’s TDB ↔ TAI,
     /// TCG ↔ TT, etc.) to solve the implicit equation  
     /// `UTC = UT1 − DUT1(MJD_UTC)` to machine precision.
-    pub fn from_ut1(ut1: Self, ut1_data: &Ut1Data) -> Result<Self, DtError> {
+    pub fn from_ut1(ut1: Self, ut1_data: &Ut1Data) -> Result<Self, DtErr> {
         if ut1_data.rows.is_empty() {
             return Err(an_err!(DtErrKind::InternalErr, "contains no data"));
         }

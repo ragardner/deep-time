@@ -1,5 +1,5 @@
 use crate::{
-    DtErrKind, DtError, SECONDS_PER_DAY, SECONDS_PER_MONTH, SECONDS_PER_WEEK, SECONDS_PER_YEAR,
+    DtErrKind, DtErr, SECONDS_PER_DAY, SECONDS_PER_MONTH, SECONDS_PER_WEEK, SECONDS_PER_YEAR,
     TimeSpan, an_err,
 };
 
@@ -11,7 +11,7 @@ struct ParsedComponent {
 }
 
 impl TimeSpan {
-    pub fn from_iso(s: &str) -> Result<TimeSpan, DtError> {
+    pub fn from_iso(s: &str) -> Result<TimeSpan, DtErr> {
         let len = s.len();
         if len == 0 {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
@@ -73,7 +73,7 @@ impl TimeSpan {
         i: &mut usize,
         sign: i64,
         has_fraction: &mut bool,
-    ) -> Result<Option<ParsedComponent>, DtError> {
+    ) -> Result<Option<ParsedComponent>, DtErr> {
         if *i >= chars.len() {
             return Ok(None);
         }
@@ -163,7 +163,7 @@ impl TimeSpan {
         is_date: bool,
         sign: i64,
         has_fraction: &mut bool,
-    ) -> Result<(), DtError> {
+    ) -> Result<(), DtErr> {
         let mut i = 0;
         while let Some(comp) = Self::parse_next_component(chars, &mut i, sign, has_fraction)? {
             let contrib_nanos = match (is_date, comp.unit) {

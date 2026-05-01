@@ -1,4 +1,4 @@
-use crate::{DtErrKind, DtError, Offset, TimeParts, an_err, parser::Parser};
+use crate::{DtErrKind, DtErr, Offset, TimeParts, an_err, parser::Parser};
 
 impl TimeParts {
     pub fn from_str(
@@ -7,7 +7,7 @@ impl TimeParts {
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
-    ) -> Result<TimeParts, DtError> {
+    ) -> Result<TimeParts, DtErr> {
         let mut tm = TimeParts::new_utc();
         let mut parser = Parser::new(
             fmt.as_bytes(),
@@ -28,7 +28,7 @@ impl TimeParts {
         }
     }
 
-    pub fn finish(&mut self, allow_partial_date: bool) -> core::result::Result<&mut Self, DtError> {
+    pub fn finish(&mut self, allow_partial_date: bool) -> core::result::Result<&mut Self, DtErr> {
         if self.unix_timestamp_seconds.is_some() {
             if self.hour.is_none() {
                 self.hour = Some(0);

@@ -1,5 +1,5 @@
 use crate::{
-    ClassifiedDate, ConnectorType, DateClassification, DateToken, DtErrKind, DtError, EndsWithExt,
+    ClassifiedDate, ConnectorType, DateClassification, DateToken, DtErrKind, DtErr, EndsWithExt,
     IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType, an_err, lang_map,
     natural_duration_to_span, to_ascii_digit,
 };
@@ -14,7 +14,7 @@ pub(crate) fn classify_date(
     s: &str,
     lang: Lang,
     ref_time: &Option<TimePoint>,
-) -> Result<ClassifiedDate, DtError> {
+) -> Result<ClassifiedDate, DtErr> {
     let Some(LangData {
         map: term_map,
         date_ac: finder,
@@ -88,8 +88,7 @@ pub(crate) fn classify_date(
                         ));
                     }
                 };
-                let span = natural_duration_to_span(s, lang, false)?;
-                now.saturating_add_ref(&span);
+                now.saturating_add(natural_duration_to_span(s, lang, false)?);
                 return Ok(ClassifiedDate::Parsed(now));
             }
             match token {

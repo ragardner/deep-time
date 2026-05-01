@@ -1,13 +1,13 @@
 use crate::tzdb::offset_info_at_local;
 use crate::{
     ClockType, TimePoint,
-    error::{DtErrKind, DtError},
+    error::{DtErrKind, DtErr},
     {Meridiem, Offset, TimeParts, Weekday},
 };
 use crate::{J2000_JD_TT, SEC_PER_DAYI64, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err};
 
 impl TimeParts {
-    pub fn to_time_point(&self, clock_type: Option<ClockType>) -> Result<TimePoint, DtError> {
+    pub fn to_time_point(&self, clock_type: Option<ClockType>) -> Result<TimePoint, DtErr> {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────

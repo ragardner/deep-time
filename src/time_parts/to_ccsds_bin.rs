@@ -1,4 +1,4 @@
-use crate::{DtError, TimeParts, TimePoint};
+use crate::{DtErr, TimeParts, TimePoint};
 
 impl TimeParts {
     /// Formats this [`TimeParts`] as a **CCSDS C (CUC)** binary time code.
@@ -17,7 +17,7 @@ impl TimeParts {
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
-    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         self.to_time_point(Some(self.clock_type))?
             .to_ccsds_c(n_coarse, n_frac, extension)
     }
@@ -32,7 +32,7 @@ impl TimeParts {
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
-    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         self.to_time_point(Some(self.clock_type))?
             .to_ccsds_d(n_day, sub_ms_code, extension)
     }
@@ -56,7 +56,7 @@ impl TimeParts {
         &self,
         use_doy: bool,
         n_subsec: u8,
-    ) -> Result<([u8; TimePoint::CCSDS_CCS_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; TimePoint::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
         self.to_time_point(Some(self.clock_type))?
             .to_ccsds_ccs(use_doy, n_subsec)
     }
@@ -71,7 +71,7 @@ impl TimeParts {
     #[inline]
     pub fn to_ccsds_bin(
         &self,
-    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtError> {
+    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         self.to_time_point(Some(self.clock_type))?.to_ccsds_bin()
     }
 }

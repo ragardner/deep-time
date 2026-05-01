@@ -1,6 +1,6 @@
 use crate::{
     ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, DtErrKind,
-    DtError, MAX_DATE_STRING_LEN, ParseCfg, TimePoint, an_err, classify_date,
+    DtErr, MAX_DATE_STRING_LEN, ParseCfg, TimePoint, an_err, classify_date,
     default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
@@ -11,7 +11,7 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 
 impl TimePoint {
-    pub fn from_str_parse(s: &str, opts: &Option<ParseCfg>) -> Result<TimePoint, DtError> {
+    pub fn from_str_parse(s: &str, opts: &Option<ParseCfg>) -> Result<TimePoint, DtErr> {
         let opts: &ParseCfg = opts
             .as_ref()
             .unwrap_or_else(|| default_date_parse_options());

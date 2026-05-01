@@ -1,5 +1,5 @@
 use crate::{
-    AsciiStr, ClockType, DtError, GregorianTime, STRFTIME_SIZE, TimePoint, TimeSpan,
+    AsciiStr, ClockType, DtErr, GregorianTime, STRFTIME_SIZE, TimePoint, TimeSpan,
     tzdb::offset_info_at_utc,
 };
 
@@ -7,7 +7,7 @@ impl TimePoint {
     /// High-level alloc version (defaults to UTC label-only formatting).
     #[cfg(feature = "alloc")]
     #[inline]
-    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtError> {
+    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
         self.to_str_with_offset(fmt, 0)
     }
 
@@ -18,7 +18,7 @@ impl TimePoint {
         &self,
         fmt: &str,
         secs: i32,
-    ) -> Result<alloc::string::String, DtError> {
+    ) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let n = self.to_u8_with_offset(fmt, &mut buf, secs)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
@@ -31,14 +31,14 @@ impl TimePoint {
         &self,
         fmt: &str,
         tz_name: &str,
-    ) -> Result<alloc::string::String, DtError> {
+    ) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let n = self.to_u8_with_tz(fmt, &mut buf, tz_name)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
     /// No-alloc label-only formatting.
-    pub fn to_str_bin(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtError> {
+    pub fn to_str_bin(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
         let mut gt = self.to_gregorian_time();
         gt.set_offset(Some(0)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
@@ -52,7 +52,7 @@ impl TimePoint {
         &self,
         fmt: &str,
         secs: i32,
-    ) -> Result<AsciiStr<STRFTIME_SIZE>, DtError> {
+    ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
         let gt = self.gregorian_time_with_offset(secs);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -65,7 +65,7 @@ impl TimePoint {
         &self,
         fmt: &str,
         tz_name: &str,
-    ) -> Result<AsciiStr<STRFTIME_SIZE>, DtError> {
+    ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
         let gt = self.gregorian_time_with_tz(tz_name);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -88,7 +88,7 @@ impl TimePoint {
         fmt: &str,
         dest: &mut [u8],
         secs: i32,
-    ) -> Result<usize, DtError> {
+    ) -> Result<usize, DtErr> {
         let gt = self.gregorian_time_with_offset(secs);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -106,7 +106,7 @@ impl TimePoint {
         fmt: &str,
         dest: &mut [u8],
         tz_name: &str,
-    ) -> Result<usize, DtError> {
+    ) -> Result<usize, DtErr> {
         let gt = self.gregorian_time_with_tz(tz_name);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;

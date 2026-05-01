@@ -1,5 +1,5 @@
 use crate::{
-    DateToken, DtErrKind, DtError, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
+    DateToken, DtErrKind, DtErr, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
     NS_PER_MONTH, NS_PER_SECOND, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, an_err,
     lang_map, to_ascii_digit,
 };
@@ -185,7 +185,7 @@ pub(crate) fn natural_duration_to_span(
     input: &str,
     lang: Lang,
     use_dur_finder: bool,
-) -> Result<TimeSpan, DtError> {
+) -> Result<TimeSpan, DtErr> {
     let Some(LangData {
         map: term_map,
         duration_ac,
@@ -345,7 +345,7 @@ pub(crate) fn natural_duration_to_iso(
     input: &str,
     lang: Lang,
     use_dur_finder: bool,
-) -> Result<String, DtError> {
+) -> Result<String, DtErr> {
     let span = natural_duration_to_span(input, lang, use_dur_finder)?;
     Ok(span.to_string())
 }

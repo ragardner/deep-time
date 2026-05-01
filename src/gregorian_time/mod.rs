@@ -45,7 +45,7 @@ pub struct GregorianTime {
     /// A stored IANA name, used within the crate, %Q.
     pub(crate) tz: Option<AsciiStr<50>>,
     /// UTC, EST, %Z
-    pub(crate) tz_abbrev: Option<AsciiStr<16>>,
+    pub(crate) tz_abbrev: Option<AsciiStr<29>>,
     /// Used for formatting (strftime).
     /// Clock type of the Time Point this UTC GregorianTime came from.
     pub(crate) clock_type: ClockType,
@@ -220,7 +220,7 @@ impl GregorianTime {
     }
 
     #[inline]
-    pub const fn tz_abbrev(&self) -> Option<&AsciiStr<16>> {
+    pub const fn tz_abbrev(&self) -> Option<&AsciiStr<29>> {
         self.tz_abbrev.as_ref()
     }
 
@@ -281,10 +281,10 @@ impl GregorianTime {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
-    /// Size of the canonical wire representation in bytes (152 bytes).
-    pub const WIRE_SIZE: usize = 152;
+    /// Size of the canonical wire representation in bytes (165 bytes).
+    pub const WIRE_SIZE: usize = 165;
 
-    /// Serializes this `GregorianTime` into a fixed 152-byte buffer.
+    /// Serializes this `GregorianTime` into a fixed 165-byte buffer.
     ///
     /// # Wire Format (Version 1)
     ///
@@ -302,8 +302,8 @@ impl GregorianTime {
     /// - Bytes `76..78`: `wk_of_yr_sun` + `wk_of_yr_mon`
     /// - Bytes `78..83`: `offset_sec` (tag byte + `i32`)
     /// - Bytes `83..134`: `tz` (tag byte + `AsciiStr<50>`)
-    /// - Bytes `134..152`: `tz_abbrev` (tag byte + `AsciiStr<16>`)
-    /// - Byte `152`: `clock_type` (`ClockType`)
+    /// - Bytes `134..164`: `tz_abbrev` (tag byte + `AsciiStr<29>`)
+    /// - Byte `164`: `clock_type` (`ClockType`)
     #[inline]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
@@ -384,15 +384,15 @@ impl GregorianTime {
         }
         offset += 1 + AsciiStr::<50>::WIRE_SIZE;
 
-        // tz_abbrev (Option<AsciiStr<16>>)
+        // tz_abbrev (Option<AsciiStr<29>>)
         if let Some(abbrev) = &self.tz_abbrev {
             buf[offset] = 1;
             let abbrev_bytes = abbrev.to_wire_bytes();
-            buf[offset + 1..offset + 1 + AsciiStr::<16>::WIRE_SIZE].copy_from_slice(&abbrev_bytes);
+            buf[offset + 1..offset + 1 + AsciiStr::<29>::WIRE_SIZE].copy_from_slice(&abbrev_bytes);
         } else {
             buf[offset] = 0;
         }
-        offset += 1 + AsciiStr::<16>::WIRE_SIZE;
+        offset += 1 + AsciiStr::<29>::WIRE_SIZE;
 
         // clock_type (final byte)
         buf[offset] = self.clock_type as u8;
@@ -400,7 +400,7 @@ impl GregorianTime {
         buf
     }
 
-    /// Deserializes a `GregorianTime` from exactly 152 bytes of wire data.
+    /// Deserializes a `GregorianTime` from exactly 165 bytes of wire data.
     ///
     /// Returns `None` if the version is unknown or any field is invalid.
     ///
@@ -492,15 +492,15 @@ impl GregorianTime {
         };
         offset += 1 + AsciiStr::<50>::WIRE_SIZE;
 
-        // tz_abbrev (Option<AsciiStr<16>>)
+        // tz_abbrev (Option<AsciiStr<29>>)
         let tz_abbrev = if bytes[offset] == 1 {
-            AsciiStr::<16>::from_wire_bytes(
-                &bytes[offset + 1..offset + 1 + AsciiStr::<16>::WIRE_SIZE],
+            AsciiStr::<29>::from_wire_bytes(
+                &bytes[offset + 1..offset + 1 + AsciiStr::<29>::WIRE_SIZE],
             )
         } else {
             None
         };
-        offset += 1 + AsciiStr::<16>::WIRE_SIZE;
+        offset += 1 + AsciiStr::<29>::WIRE_SIZE;
 
         // clock_type (final byte)
         let clock_type = ClockType::from_u8(bytes[offset])?;
