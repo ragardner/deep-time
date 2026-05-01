@@ -53,7 +53,6 @@ mod time_parts;
 mod time_point;
 mod time_range;
 mod time_span;
-mod utils;
 
 // _________________________________________
 // PUB MOD
@@ -63,6 +62,7 @@ pub mod error;
 pub mod historical_sofa_offsets;
 pub mod leap_seconds;
 pub mod tzdb;
+pub mod utils;
 
 // _________________________________________
 // FEATURE CRATE USE

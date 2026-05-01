@@ -96,7 +96,7 @@ General relativity is recovered exactly as the low-curvature projection of this 
 This formulation is production-ready for spacecraft navigation pipelines, black-hole flyby simulations, cosmological trajectories, or any mixed weak/strong-field probe adventure. All prior stages are recovered algebraically in the low-curvature limit. The engine is minimal, modular, and fully first-principles at the level of the master Lagrangian.
 */
 
-use crate::{ATTOSEC_PER_SEC_I128, C_SQUARED, PLANCK_LENGTH_4, Real, TimeSpan, Velocity};
+use crate::{ATTOSEC_PER_SEC_I128, C_SQUARED, PLANCK_LENGTH_4, Real, TimeSpan, Velocity, sqrt};
 
 /// The three local spacetime quantities that fully determine how fast an observer’s
 /// proper time advances relative to coordinate time.
@@ -230,7 +230,7 @@ impl LocalSpacetime {
     #[inline]
     pub fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
         // gravitational_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
-        libm::sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
+        sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
     }
 
     /// Kretschmann scalar from total relativity
@@ -579,12 +579,11 @@ impl ClockDrift {
         let delta = u.max(f!(0.0));
         let x = PLANCK_LENGTH_4 * kretschmann.max(f!(0.0));
 
-        // powi(2) replaced by manual square — mathematically identical, no libm needed
         let one_minus_delta = f!(1.0) - delta;
         let num = delta * (f!(1.0) + x) + x * (one_minus_delta * one_minus_delta);
         let k_eff = num / (f!(1.0) + x);
 
-        let rate_factor = libm::sqrt(k_eff).max(f!(0.0));
+        let rate_factor = sqrt(k_eff).max(f!(0.0));
         let rate_offset = rate_factor - f!(1.0);
 
         Self::from_offset_and_rate(TimeSpan::ZERO, TimeSpan::from_sec_f(rate_offset))

@@ -1,4 +1,4 @@
-use crate::{C_SQUARED, Real};
+use crate::{C_SQUARED, Real, hypot, sqrt};
 
 /// A 3-dimensional position vector expressed in Cartesian coordinates (x, y, z)
 /// with units of meters (SI).
@@ -51,7 +51,7 @@ impl Position {
     /// required for Shapiro-delay calculations.
     #[inline]
     pub fn norm(self) -> Real {
-        libm::hypot(libm::hypot(self.x, self.y), self.z)
+        hypot(hypot(self.x, self.y), self.z)
     }
 
     /// Computes the straight-line (Euclidean) distance between this position and
@@ -63,7 +63,7 @@ impl Position {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         let dz = self.z - other.z;
-        libm::hypot(libm::hypot(dx, dy), dz)
+        hypot(hypot(dx, dy), dz)
     }
 
     /// Returns a new position that lies a fraction `t` of the way along the straight
@@ -139,13 +139,13 @@ impl Velocity {
     /// Speed in m/s (Euclidean magnitude).
     #[inline]
     pub fn speed(self) -> Real {
-        libm::sqrt(self.norm_squared().max(f!(0.0)))
+        sqrt(self.norm_squared().max(f!(0.0)))
     }
 
     /// Dimensionless 3-velocity β = v/c relative to the local chrono-rest frame.
     /// This is exactly what the master Lagrangian and `LocalSpacetime` expect.
     #[inline]
     pub fn beta(self) -> Real {
-        libm::sqrt((self.norm_squared() / C_SQUARED).max(f!(0.0)))
+        sqrt((self.norm_squared() / C_SQUARED).max(f!(0.0)))
     }
 }

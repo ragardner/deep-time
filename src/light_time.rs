@@ -1,6 +1,6 @@
 use crate::{
     C, C_SQUARED, ClockDrift, LocalSpacetime, Position, Real, TWO_GM_SUN_OVER_C3, TimePoint,
-    TimeSpan, Velocity,
+    TimeSpan, Velocity, log,
 };
 
 /// Configuration for the **Shapiro delay** — the extra time light (or radio signals)
@@ -683,7 +683,7 @@ impl ObserverState {
         }
 
         let arg = (r_tx + r_rx + r_sep) / (r_tx + r_rx - r_sep).max(f!(1.0));
-        let delay_sec = context.two_grav_param_over_c3 * libm::log(arg);
+        let delay_sec = context.two_grav_param_over_c3 * log(arg);
 
         TimeSpan::from_sec_f(delay_sec)
     }
