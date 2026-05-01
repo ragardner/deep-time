@@ -1,4 +1,4 @@
-use deep_time_core::{
+use deep_time::{
     ClockDrift, ClockModel, ClockType, TimePoint, TimeSpan, constants::MARS_SOL_LENGTH_SEC,
 };
 
@@ -598,7 +598,7 @@ fn msd_at_j2000_is_correct() {
 
 #[test]
 fn utc_leap_seconds_are_handled_in_mars_time() {
-    use deep_time_core::ClockType;
+    use deep_time::ClockType;
     // One second before vs after a leap second insertion
     let utc_pre = TimePoint::new(1_485_779_199, 0, ClockType::UTC);
     let utc_post = TimePoint::new(1_485_779_200, 0, ClockType::UTC);

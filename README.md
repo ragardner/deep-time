@@ -1,1 +1,1 @@
-# deep-time-core
+# deep-time

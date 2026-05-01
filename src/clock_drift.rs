@@ -217,7 +217,7 @@ impl LocalSpacetime {
     ///
     /// This approximation is excellent for solar-system navigation, GNSS satellites,
     /// most spacecraft operations, and any environment where |Φ|/c² remains much smaller
-    /// than ~0.01. It is exported from `deep_time_core::alpha_from_weak_field_potential`
+    /// than ~0.01. It is exported from `deep_time::alpha_from_weak_field_potential`
     /// and is the recommended way to obtain the lapse factor when you have the local
     /// Newtonian potential.
     ///
@@ -289,7 +289,7 @@ impl LocalSpacetime {
     /// This approximation is excellent for solar-system navigation, GNSS
     /// satellites, most spacecraft operations, and any environment where
     /// |Φ|/c² remains much smaller than ~0.01. It is exported from
-    /// `deep_time_core::alpha_from_weak_field_potential` and is the recommended
+    /// `deep_time::alpha_from_weak_field_potential` and is the recommended
     /// way to obtain the lapse factor when you have the local Newtonian potential.
     ///
     /// The weak-field regime breaks down in strong-gravity environments where

@@ -1,7 +1,7 @@
 //! Ergonomic time-unit constructors (optional import).
 //!
 //! ```
-//! use deep_time_core::{ClockType, TimeUnits};
+//! use deep_time::{ClockType, TimeUnits};
 //!
 //! let span = 5.sec() + 250.ms() + 123_456.ns();
 //! let stamp = 3.days().ago(ClockType::UTC);
@@ -12,7 +12,7 @@ use crate::{ClockType, SEC_PER_DAY, SEC_PER_DAYI64, TimePoint, TimeSpan};
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
 /// Import it explicitly to create `TimeSpan`s directly from rust ints and floats:
-/// `use deep_time_core::TimeUnits;`
+/// `use deep_time::TimeUnits;`
 pub trait TimeUnits: Copy + Sized {
     // ── TimeSpan constructors ─────────────────────────────────────
     fn ns(self) -> TimeSpan;

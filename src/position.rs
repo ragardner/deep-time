@@ -81,7 +81,7 @@ impl Position {
     /// # Examples
     ///
     /// ```rust
-    /// use deep_time_core::Position;
+    /// use deep_time::Position;
     ///
     /// let a = Position::new(0.0, 0.0, 0.0);
     /// let b = Position::new(10.0, 20.0, 30.0);

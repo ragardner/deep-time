@@ -1,6 +1,6 @@
 #[cfg(feature = "hifitime")]
 mod tests {
-    use deep_time_core::{ClockType, TimePoint};
+    use deep_time::{ClockType, TimePoint};
     use hifitime::{Duration, Epoch, TimeScale};
     /// Seconds between hifitime's TAI reference epoch (1900-01-01 00:00:00 TAI)
     /// and our library's `ZERO` (2000-01-01 12:00:00 TAI).

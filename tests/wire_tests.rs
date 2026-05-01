@@ -5,7 +5,7 @@ extern crate alloc;
 mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
-    use deep_time_core::{
+    use deep_time::{
         ClockDrift, ClockModel, ClockType, GregorianTime, Meridiem, Offset, TimeParts, TimePoint,
         TimeRange, TimeSpan, Weekday,
     };

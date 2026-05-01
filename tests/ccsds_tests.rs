@@ -1,5 +1,5 @@
-use deep_time_core::constants::SEC_PER_DAYI64;
-use deep_time_core::{ClockType, Offset, TimeParts, TimePoint};
+use deep_time::constants::SEC_PER_DAYI64;
+use deep_time::{ClockType, Offset, TimeParts, TimePoint};
 
 #[test]
 fn test_ccsds_c_direct_frac() {

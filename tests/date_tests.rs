@@ -1,4 +1,4 @@
-use deep_time_core::{ClockType, DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
+use deep_time::{ClockType, DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers

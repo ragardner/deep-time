@@ -1,10 +1,10 @@
 [package]
-name = "deep-time-core"
+name = "deep-time"
 version = "0.1.0"
 edition = "2024"
 description = "Core high-precision time types, clocks, and flexible date/duration parser"
 license = "Apache-2.0"
-repository = "https://github.com/ragardner/deep-time-core"
+repository = "https://github.com/ragardner/deep-time"
 keywords = ["time", "date", "duration", "parser", "clock", "astronomy", "astrodynamics", "no-std"]
 categories = ["date-and-time", "no-std", "science"]
 readme = "README.md"

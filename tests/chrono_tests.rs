@@ -3,7 +3,7 @@ mod tests {
     use chrono::{
         DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
     };
-    use deep_time_core::TimeParts;
+    use deep_time::TimeParts;
 
     #[test]
     fn test_to_chrono_naive_datetime_basic_ymd_hms() {
@@ -339,7 +339,7 @@ mod tests {
         let err = parsed.to_chrono_datetime().unwrap_err();
         assert!(matches!(
             err.kind().unwrap(),
-            deep_time_core::error::DtErrKind::InvalidTimezoneOffset
+            deep_time::error::DtErrKind::InvalidTimezoneOffset
         ));
     }
 

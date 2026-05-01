@@ -167,8 +167,8 @@ impl ObserverState {
     ///
     /// # Example
     /// ```rust
-    /// use deep_time_core::{ObserverState, Position, Velocity, TimePoint};
-    /// use deep_time_core::constants::C;
+    /// use deep_time::{ObserverState, Position, Velocity, TimePoint};
+    /// use deep_time::constants::C;
     ///
     /// # let tx_time = TimePoint::default();
     /// # let rx_time = TimePoint::default();
@@ -237,7 +237,7 @@ impl ObserverState {
     /// Basic usage for a solar-system one-way light-time correction (e.g. Earth to Mars):
     ///
     /// ```no_run
-    /// use deep_time_core::{
+    /// use deep_time::{
     ///     ObserverState, Position, Velocity, TimePoint, TimeSpan, LightContext,
     ///     // Assume you have ephemeris functions or constants available
     /// };
@@ -348,7 +348,7 @@ impl ObserverState {
     /// # Examples
     ///
     /// ```no_run
-    /// use deep_time_core::{ObserverState, TimePoint, TimeSpan, LightContext, Position, Velocity};
+    /// use deep_time::{ObserverState, TimePoint, TimeSpan, LightContext, Position, Velocity};
     ///
     /// # // Assume these exist in your code (e.g. from an ephemeris library)
     /// # let tx_time: TimePoint = todo!();
@@ -464,7 +464,7 @@ impl ObserverState {
     /// (e.g. interstellar distances or strong gravitational fields):
     ///
     /// ```no_run
-    /// use deep_time_core::{
+    /// use deep_time::{
     ///     ObserverState, LocalSpacetime, Position, Velocity, TimePoint,
     ///     TimeSpan, LightContext,
     /// };
@@ -601,7 +601,7 @@ impl ObserverState {
     /// Typical usage for deep-space two-way ranging (e.g. Earth to spacecraft or planet via DSN):
     ///
     /// ```no_run
-    /// use deep_time_core::{
+    /// use deep_time::{
     ///     ObserverState, Position, Velocity, TimePoint, TimeSpan, LightContext,
     /// };
     ///

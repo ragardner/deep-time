@@ -26,7 +26,7 @@ impl TimePoint {
     ///
     /// # Example
     /// ```rust
-    /// use deep_time_core::{ClockType, TimeSpan, LocalSpacetime, TimePoint};
+    /// use deep_time::{ClockType, TimeSpan, LocalSpacetime, TimePoint};
     ///
     /// let start = TimePoint::from_tai_sec(0);
     /// let end   = TimePoint::from_tai_sec(1000);

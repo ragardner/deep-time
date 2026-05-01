@@ -1,5 +1,5 @@
 // tests/duration_tests.rs
-use deep_time_core::{Lang, TimeSpan};
+use deep_time::{Lang, TimeSpan};
 
 fn assert_duration(input: &str, expected_millis: i64) {
     let trimmed = input.trim();

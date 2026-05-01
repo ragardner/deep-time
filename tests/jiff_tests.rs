@@ -1,6 +1,6 @@
 #[cfg(feature = "jiff-tz")]
 mod tests {
-    use deep_time_core::TimePoint;
+    use deep_time::TimePoint;
     use jiff::{Zoned, civil::DateTime};
 
     #[test]
@@ -110,14 +110,14 @@ mod tests {
                 .unwrap_or_else(|e| panic!("Jiff in_tz('{}') failed: {}", iana_name, e));
 
             // CHANGED: Convert to Timestamp so Jiff prints the *same* pure UTC RFC 3339
-            // string with Z that deep_time_core::to_rfc3339() produces.
+            // string with Z that deep_time::to_rfc3339() produces.
             let jiff_rfc = jiff_zoned.timestamp().to_string();
 
             // ─── Your library ──────────────────────────────────────────────────────────
             let our_input = format!("{} {}", civil_str, iana_name);
 
             let our_dt: TimePoint = TimePoint::from_str_parse(&our_input, &None)
-                .unwrap_or_else(|e| panic!("deep_time_core failed on '{}': {}", our_input, e));
+                .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
 
             let our_rfc = our_dt.to_str_rfc3339().unwrap();
 
@@ -127,7 +127,7 @@ mod tests {
                 "\n=== IANA Historical Test FAILED: {} ===\n\
              Input string       : {}\n\
              Jiff               : {}\n\
-             deep_time_core     : {}\n",
+             deep_time     : {}\n",
                 description, our_input, jiff_rfc, our_rfc
             );
         }

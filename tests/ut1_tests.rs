@@ -1,8 +1,8 @@
 #[cfg(feature = "ut1-tests")]
 #[cfg(test)]
 mod tests {
-    use deep_time_core::constants::SEC_PER_DAY;
-    use deep_time_core::{ClockType, Separator, TimePoint, TimeSpan, Ut1Data, Ut1Format};
+    use deep_time::constants::SEC_PER_DAY;
+    use deep_time::{ClockType, Separator, TimePoint, TimeSpan, Ut1Data, Ut1Format};
 
     #[test]
     fn test_ut1_with_finals_all_iau2000_txt() {
