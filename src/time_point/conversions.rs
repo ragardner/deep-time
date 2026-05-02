@@ -1,14 +1,21 @@
+use crate::historical_sofa::{historical_sofa_offset_from_tai, historical_sofa_offset_from_unix};
 use crate::leap_seconds::leap_seconds_before;
 use crate::{
     ATTOS_PER_DAY, ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockDrift, ClockModel, ClockType,
-    J2000_JD_TT, J2000_SECONDS_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, LM_DEN, LM_NUM,
+    J2000_JD_TT, J2000_SECS_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, LM_DEN, LM_NUM,
     MARS_MSD_REF_JD_INT, MARS_MSD_REF_TOD_SEC, MARS_MSD_REF_TOD_SUBSEC, MARS_REF_SEC,
     MARS_REF_SUBSEC, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real, SEC_PER_DAY, SEC_PER_DAYI64,
-    SEC_PER_DAYI128, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS,
-    TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan, floor_f, sin_approx,
+    SEC_PER_DAYI128, TAI_SECS_AT_1972, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC,
+    TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS, TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan, floor_f,
+    sin_approx,
 };
 
 impl TimePoint {
+    #[inline]
+    pub const fn uses_leap_sec(&self) -> bool {
+        self.clock_type.uses_leap_sec()
+    }
+
     /// Converts this instant to any other [`ClockType`], representing the exact same physical moment in time.
     ///
     /// The conversion is performed through the library’s canonical TAI representation to guarantee
@@ -63,7 +70,33 @@ impl TimePoint {
                 tp
             }
 
+            // Modern UTC: normal leap second handling
             ClockType::UTC => Self::utc_to_tai(self),
+
+            // SPICE historical: add 9s for pre-1972 dates
+            ClockType::UTCSpice => {
+                if self.sec < TAI_SECS_AT_1972 - 10 {
+                    let tai = Self::utc_to_tai(self);
+                    tai.add(TimeSpan::from_sec_f(f!(9.0)))
+                } else {
+                    Self::utc_to_tai(self)
+                }
+            }
+
+            // SOFA historical: add SOFA offset for pre-1972 dates
+            ClockType::UTCSofa => {
+                if self.sec < TAI_SECS_AT_1972 - 10 {
+                    let unix = self.to_unix_sec();
+                    if let Some(offset) = historical_sofa_offset_from_unix(unix) {
+                        let tai = Self::utc_to_tai(self);
+                        tai.add(TimeSpan::from_sec_f(offset))
+                    } else {
+                        Self::utc_to_tai(self)
+                    }
+                } else {
+                    Self::utc_to_tai(self)
+                }
+            }
 
             ClockType::GPS | ClockType::QZSS | ClockType::GST => {
                 let mut tp = self.add(TimeSpan::SEC_19);
@@ -82,6 +115,7 @@ impl TimePoint {
                 tp.set_clock_type(ClockType::TAI);
                 tp
             }
+
             ClockType::TCG => Self::tcg_to_tai(self),
             ClockType::TCB => Self::tcb_to_tai(self),
 
@@ -105,7 +139,36 @@ impl TimePoint {
                 tp
             }
 
+            // Modern UTC: normal leap second handling
             ClockType::UTC => Self::tai_to_utc(self),
+
+            // SPICE historical: subtract 9s for TAI times before 1972
+            ClockType::UTCSpice => {
+                if self.sec < TAI_SECS_AT_1972 {
+                    let utc = Self::tai_to_utc(self);
+                    utc.sub(TimeSpan::from_sec_f(f!(9.0)))
+                        .with_clock_type(ClockType::UTCSpice)
+                } else {
+                    let mut tp = Self::tai_to_utc(self);
+                    tp.set_clock_type(ClockType::UTCSpice);
+                    tp
+                }
+            }
+
+            // SOFA historical: apply inverse SOFA offset for pre-1972 dates
+            ClockType::UTCSofa => {
+                if self.sec < TAI_SECS_AT_1972 {
+                    if let Some(offset) = historical_sofa_offset_from_tai(&self) {
+                        let utc = Self::tai_to_utc(self);
+                        utc.sub(TimeSpan::from_sec_f(offset))
+                            .with_clock_type(ClockType::UTCSofa)
+                    } else {
+                        Self::tai_to_utc(self).with_clock_type(ClockType::UTCSofa)
+                    }
+                } else {
+                    Self::tai_to_utc(self).with_clock_type(ClockType::UTCSofa)
+                }
+            }
 
             ClockType::GPS | ClockType::QZSS | ClockType::GST => {
                 let mut tp = self.sub(TimeSpan::SEC_19);
@@ -124,6 +187,7 @@ impl TimePoint {
                 tp.set_clock_type(target);
                 tp
             }
+
             ClockType::TCG => Self::tai_to_tcg(self),
             ClockType::TCB => Self::tai_to_tcb(self),
 
@@ -144,7 +208,7 @@ impl TimePoint {
     ///
     /// The offset can be positive or negative. Negative offsets move the time backward.
     ///
-    /// This is a zero-cost convenience wrapper around [`Self::saturating_add`] + [`Self::with_clock_type`].
+    /// This is a convenience wrapper around [`Self::saturating_add`] + [`Self::with_clock_type`].
     #[inline]
     pub const fn convert_using_offset(&mut self, target: ClockType, offset: TimeSpan) -> Self {
         self.mut_add(offset).with_clock_type(target)
@@ -213,14 +277,14 @@ impl TimePoint {
 
     #[inline]
     const fn utc_to_tai(utc: Self) -> Self {
-        let leaps = leap_seconds_before(utc);
+        let leaps = leap_seconds_before(&utc);
         utc.add(TimeSpan::from_sec(leaps))
             .with_clock_type(ClockType::TAI)
     }
 
     #[inline]
     const fn tai_to_utc(tai: Self) -> Self {
-        let leaps = leap_seconds_before(tai);
+        let leaps = leap_seconds_before(&tai);
         tai.sub(TimeSpan::from_sec(leaps))
             .with_clock_type(ClockType::UTC)
     }
@@ -275,7 +339,7 @@ impl TimePoint {
         let seconds_since_j2000_tt =
             (tt.sec as Real) + (tt.subsec as Real) / (ATTOSEC_PER_SEC as Real);
 
-        let t = seconds_since_j2000_tt / J2000_SECONDS_PER_CENTURY;
+        let t = seconds_since_j2000_tt / J2000_SECS_PER_CENTURY;
 
         // Mean anomaly of Earth (from Fairhead & Bretagnon 1990 / Simon et al. 1994)
         let g =
@@ -602,6 +666,35 @@ impl TimePoint {
         (jd - 2_400_000, frac)
     }
 
+    /// Returns the **Modified Julian Date (MJD)** in **Terrestrial Time (TT)**
+    /// as a floating-point value (`Real = f64`).
+    ///
+    /// MJD is defined as `JD − 2_400_000.5`. The conventional astronomical
+    /// reference is **J2000.0 TT ≡ MJD 51544.5 exactly**.
+    ///
+    /// This is the *standard astronomical form* used by IAU/IERS ephemerides,
+    /// pulsar timing, planetary missions, and virtually all high-precision
+    /// astrodynamics software.
+    ///
+    /// The function internally uses the exact attosecond path
+    /// ([`Self::to_jd_tt_exact`]) before converting to `f64`, so it inherits
+    /// the library’s full correctness guarantees for leap seconds and relativistic
+    /// scales.
+    ///
+    /// # Precision
+    /// Double-precision floating point (`f64`). For dates near the present the
+    /// fractional part is accurate to better than 1 microsecond; precision
+    /// degrades slowly for dates far in the past or future (as expected for `f64`).
+    ///
+    /// # See also
+    /// - [`Self::to_mjd_tt_exact`] — full attosecond exact version
+    /// - [`Self::to_jd_tt`] — Julian Date in TT
+    /// - [`Self::to_mjd_utc`] — civil/engineering form in UTC
+    #[inline]
+    pub const fn to_mjd_tt(self) -> Real {
+        self.to_jd_tt() - f!(2_400_000.5)
+    }
+
     /// Returns the **Modified Julian Date (MJD)** expressed in **UTC** with full
     /// attosecond precision.
     ///
@@ -714,6 +807,39 @@ impl TimePoint {
         Self::from_jd_utc_exact(mjd_days + 2_400_000, frac)
     }
 
+    /// Returns the **Modified Julian Date (MJD)** in **UTC** as a floating-point
+    /// value (`Real = f64`).
+    ///
+    /// This is the *civil/operational/GNSS form* used by GNSS receivers, RINEX
+    /// files, flight software, and most Earth-based timing pipelines.
+    ///
+    /// The reference epoch is **1970-01-01 00:00:00 UTC ≡ MJD 40587.0 exactly**.
+    /// The function uses the library’s canonical UTC representation, so leap
+    /// seconds are handled correctly and the proleptic Gregorian civil second
+    /// count is respected.
+    ///
+    /// # Precision
+    /// Double-precision floating point (`f64`). Near the present the fractional
+    /// part has sub-microsecond accuracy.
+    ///
+    /// # Important distinction
+    /// - Use **`to_mjd_tt`** for astronomical work (ephemerides, pulsars,
+    ///   spacecraft navigation).
+    /// - Use **`to_mjd_utc`** for civil/operational/GNSS contexts.
+    ///
+    /// The two values differ by the accumulated leap seconds plus the fixed
+    /// 32.184 s TT–TAI offset.
+    ///
+    /// # See also
+    /// - [`Self::to_mjd_utc_exact`] — full attosecond exact version
+    /// - [`Self::to_mjd_tt`] — astronomical standard
+    pub const fn to_mjd_utc(self) -> Real {
+        let (mjd_int, frac) = self.to_mjd_utc_exact();
+        let days_f = mjd_int as Real;
+        let frac_days = frac.as_sec_f() / SEC_PER_DAY;
+        days_f + frac_days
+    }
+
     /// Creates a `TimePoint` (in TT) from a floating-point Mars Sol Date.
     /// Non-exact Real.
     pub const fn from_msd(msd: Real) -> Self {
@@ -773,64 +899,63 @@ impl TimePoint {
         days_f + frac_days
     }
 
-    /// Returns the **Modified Julian Date (MJD)** in **Terrestrial Time (TT)**
-    /// as a floating-point value (`Real = f64`).
+    /// Returns the **Julian Date (JD)** expressed in **TAI** with full attosecond precision.
     ///
-    /// MJD is defined as `JD − 2_400_000.5`. The conventional astronomical
-    /// reference is **J2000.0 TT ≡ MJD 51544.5 exactly**.
-    ///
-    /// This is the *standard astronomical form* used by IAU/IERS ephemerides,
-    /// pulsar timing, planetary missions, and virtually all high-precision
-    /// astrodynamics software.
-    ///
-    /// The function internally uses the exact attosecond path
-    /// ([`Self::to_jd_tt_exact`]) before converting to `f64`, so it inherits
-    /// the library’s full correctness guarantees for leap seconds and relativistic
-    /// scales.
-    ///
-    /// # Precision
-    /// Double-precision floating point (`f64`). For dates near the present the
-    /// fractional part is accurate to better than 1 microsecond; precision
-    /// degrades slowly for dates far in the past or future (as expected for `f64`).
-    ///
-    /// # See also
-    /// - [`Self::to_mjd_tt_exact`] — full attosecond exact version
-    /// - [`Self::to_jd_tt`] — Julian Date in TT
-    /// - [`Self::to_mjd_utc`] — civil/engineering form in UTC
-    #[inline]
-    pub const fn to_mjd_tt(self) -> Real {
-        self.to_jd_tt() - f!(2_400_000.5)
+    /// Reference epoch: **2000-01-01 12:00:00 TAI ≡ JD 2451545.0 exactly**.
+    /// Fractional part is days since noon TAI (standard astronomical convention).
+    pub const fn to_jd_tai_exact(self) -> (i64, TimeSpan) {
+        let tai = self.to_clock_type(ClockType::TAI);
+
+        let days_since_j2000 = tai.sec.div_euclid(SEC_PER_DAYI64);
+        let remaining_sec = tai.sec.rem_euclid(SEC_PER_DAYI64);
+        let frac = TimeSpan::new(remaining_sec, tai.subsec);
+
+        (2_451_545i64 + days_since_j2000, frac)
     }
 
-    /// Returns the **Modified Julian Date (MJD)** in **UTC** as a floating-point
-    /// value (`Real = f64`).
+    /// Floating-point JD in TAI (for completeness).
+    #[inline]
+    pub const fn to_jd_tai(self) -> Real {
+        let (jd_days, frac) = self.to_jd_tai_exact();
+        let days_f = jd_days as Real;
+        let frac_days = frac.as_sec_f() / SEC_PER_DAY;
+        days_f + frac_days
+    }
+
+    /// Returns the **Modified Julian Date (MJD)** expressed in **TAI**
+    /// with full attosecond precision.
     ///
-    /// This is the *civil/operational/GNSS form* used by GNSS receivers, RINEX
-    /// files, flight software, and most Earth-based timing pipelines.
+    /// Reference epoch: **2000-01-01 12:00:00 TAI ≡ MJD 51544.5 exactly**.
+    /// This is exactly the TAI-based conversion you requested.
+    /// Fractional part is days since midnight TAI.
     ///
-    /// The reference epoch is **1970-01-01 00:00:00 UTC ≡ MJD 40587.0 exactly**.
-    /// The function uses the library’s canonical UTC representation, so leap
-    /// seconds are handled correctly and the proleptic Gregorian civil second
-    /// count is respected.
-    ///
-    /// # Precision
-    /// Double-precision floating point (`f64`). Near the present the fractional
-    /// part has sub-microsecond accuracy.
-    ///
-    /// # Important distinction
-    /// - Use **`to_mjd_tt`** for astronomical work (ephemerides, pulsars,
-    ///   spacecraft navigation).
-    /// - Use **`to_mjd_utc`** for civil/operational/GNSS contexts.
-    ///
-    /// The two values differ by the accumulated leap seconds plus the fixed
-    /// 32.184 s TT–TAI offset.
-    ///
-    /// # See also
-    /// - [`Self::to_mjd_utc_exact`] — full attosecond exact version
-    /// - [`Self::to_mjd_tt`] — astronomical standard
-    pub const fn to_mjd_utc(self) -> Real {
-        let (mjd_int, frac) = self.to_mjd_utc_exact();
-        let days_f = mjd_int as Real;
+    /// Pure integer arithmetic, works for negative values, exact to the attosecond.
+    pub const fn to_mjd_tai_exact(self) -> (i64, TimeSpan) {
+        let tai = self.to_clock_type(ClockType::TAI);
+
+        const ATTO_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+        const HALF_DAY_ATTO: i128 = ATTO_PER_DAY / 2;
+
+        // total attoseconds since 2000-01-01 12:00:00 TAI
+        let total_attos_since_noon =
+            (tai.sec as i128) * ATTOSEC_PER_SEC_I128 + (tai.subsec as i128);
+
+        // shift reference to midnight so MJD fraction starts at midnight
+        let offset_attos = total_attos_since_noon + HALF_DAY_ATTO;
+
+        let days_since_ref = offset_attos.div_euclid(ATTO_PER_DAY);
+        let rem_attos = offset_attos.rem_euclid(ATTO_PER_DAY);
+
+        let mjd_days = 51544i64 + (days_since_ref as i64);
+
+        (mjd_days, TimeSpan::from_total_attos(rem_attos))
+    }
+
+    /// Floating-point convenience version (exactly matches your original `tai_secs_to_mjd`).
+    #[inline]
+    pub const fn to_mjd_tai(self) -> Real {
+        let (days, frac) = self.to_mjd_tai_exact();
+        let days_f = days as Real;
         let frac_days = frac.as_sec_f() / SEC_PER_DAY;
         days_f + frac_days
     }

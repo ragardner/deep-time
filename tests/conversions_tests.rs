@@ -3,6 +3,49 @@ use deep_time::{
 };
 
 #[test]
+fn test_leap_second_roundtrip_and_sec() {
+    let test_cases = vec![
+        // (year, month, day, hour, minute, second_input, expected_sec)
+        (2016, 12, 31, 23, 59, 59, 536500799),
+        (2016, 12, 31, 23, 59, 60, 536500800),
+        (2017, 1, 1, 0, 0, 0, 536500801),
+    ];
+
+    for (yr, mo, day, hr, min, sec_input, expected_sec) in test_cases {
+        let tp =
+            TimePoint::from_gregorian_ymdhms(yr, mo, day, hr, min, sec_input, 0, ClockType::UTC);
+
+        // Verify the internal .sec() value matches what was printed
+        assert_eq!(
+            tp.sec(),
+            expected_sec,
+            "sec() mismatch for input {yr}-{mo:02}-{day:02} {hr:02}:{min:02}:{sec_input:02}"
+        );
+
+        // Round-trip test
+        let g = tp.to_gregorian_ymdhms();
+        let tp_roundtrip = TimePoint::from_gregorian_ymdhms(
+            g.yr,
+            g.mo,
+            g.day,
+            g.hr,
+            g.min,
+            g.sec,
+            g.subsec,
+            ClockType::UTC,
+        );
+
+        assert_eq!(
+            tp.sec(),
+            tp_roundtrip.sec(),
+            "roundtrip failed for input {yr}-{mo:02}-{day:02} {hr:02}:{min:02}:{sec_input:02} \
+             (to_gregorian produced sec={})",
+            g.sec
+        );
+    }
+}
+
+#[test]
 fn test_ymd_to_jdn() {
     // ── Positive years ─────────────────────────────────────────────
     assert_eq!(TimePoint::ymd_to_jdn(2025, 4, 16), 2460782);

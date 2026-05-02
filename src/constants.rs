@@ -14,10 +14,9 @@ use crate::{Real, TimeSpan};
 /// The resulting `Span` then contains only fixed time units (hours,
 /// minutes, seconds, nanoseconds) and no longer requires a reference
 /// date for `.total()` conversions.
-pub(crate) const SECONDS_PER_YEAR: i128 = 31_557_600; // 365.25 days × 86_400
-pub(crate) const SECONDS_PER_MONTH: i128 = 2_629_800; // 30.4375 days × 86_400
-pub(crate) const SECONDS_PER_WEEK: i128 = 604_800;
-pub(crate) const SECONDS_PER_DAY: i128 = 86_400;
+pub(crate) const SECS_PER_YEAR: i128 = 31_557_600; // 365.25 days × 86_400
+pub(crate) const SECS_PER_MONTH: i128 = 2_629_800; // 30.4375 days × 86_400
+pub(crate) const SECS_PER_DAY: i128 = 86_400;
 
 /// Exactly 86,400 seconds in one standard Earth day  
 /// (24 hours × 60 minutes × 60 seconds).
@@ -72,10 +71,13 @@ pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 �
 pub const TT_TAI_OFFSET_SPAN: TimeSpan = TimeSpan::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
 
 // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
-pub(crate) const J2000_SECONDS_PER_CENTURY: Real = 3_155_760_000.0;
+pub(crate) const J2000_SECS_PER_CENTURY: Real = 3_155_760_000.0;
 
 /// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
 pub const J2000_JD_TT: i64 = 2_451_545;
+/// Number of TAI seconds backwards from noon 2000-01-01 to midnight 1972-01-01
+pub const TAI_SECS_AT_1972: i64 = -883_655_990;
+
 /// Seconds from the Unix epoch (1970-01-01 00:00:00 UTC) to J2000.0 noon
 /// (2000-01-01 12:00:00 UTC).
 pub(crate) const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;

@@ -12,7 +12,9 @@
 //!
 //! - `new(0, 0, ClockType::TAI)` → exactly 2000-01-01 12:00:00 TAI
 //! - `new(0, 0, ClockType::TT)`  → 2000-01-01 12:00:32.184 TT (J2000.0 TT)
-//! - `new(0, 0, ClockType::UTC)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00
+//! - `new(0, 0, ClockType::UTC)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00 (modern IERS rules)
+//! - `new(0, 0, ClockType::UTCSpice)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00 using SPICE historical rules
+//! - `new(0, 0, ClockType::UTCSofa)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00 using full SOFA historical rules
 //! - `new(0, 0, ClockType::GPS)` → 19 s after the TAI zero
 //! - `new(0, 0, ClockType::TCG)` → the TCG instant that corresponds to the TAI zero
 //!   (rate `L_G` integrated from 1977)
@@ -42,7 +44,9 @@
 //! |--------------------|----------------------------------------------------------------------------------|
 //! | TAI                | 2000-01-01 12:00:00 TAI                                                          |
 //! | TT / ET            | 2000-01-01 12:00:32.184 TT (J2000.0 TT)                                         |
-//! | UTC                | UTC instant corresponding to TAI 2000-01-01 12:00:00                             |
+//! | UTC                | UTC instant corresponding to TAI 2000-01-01 12:00:00 (modern IERS rules)        |
+//! | UTCSpice           | UTC instant corresponding to TAI 2000-01-01 12:00:00 (SPICE historical rules)   |
+//! | UTCSofa            | UTC instant corresponding to TAI 2000-01-01 12:00:00 (full SOFA historical rules)|
 //! | GPS/QZSS/GST       | 2000-01-01 12:00:19 TAI (TAI zero + 19 s)                                       |
 //! | BDT                | 2000-01-01 12:00:33 TAI (TAI zero + 33 s)                                       |
 //! | TDB                | The TDB instant corresponding to the TAI zero                                    |
@@ -76,8 +80,14 @@ pub enum ClockType {
     ET,
     /// Barycentric Dynamical Time (TDB) — SPICE ephemeris time (ET is an alias for this).
     TDB,
-    /// Universal Coordinated Time.
+    /// Universal Coordinated Time using modern IERS leap second rules.
     UTC,
+    /// Universal Coordinated Time using the SPICE historical model
+    /// (fixed +9 s offset against TAI for all dates before 1972-01-01).
+    UTCSpice,
+    /// Universal Coordinated Time using the full SOFA historical model
+    /// (varying fractional "rubber second" offsets from 1960–1971).
+    UTCSofa,
     /// GPS Time scale whose reference epoch is UTC midnight between 05 January and
     /// 06 January 1980.
     GPS,
@@ -138,25 +148,30 @@ impl ClockType {
             2 => Some(Self::ET),
             3 => Some(Self::TDB),
             4 => Some(Self::UTC),
-            5 => Some(Self::GPS),
-            6 => Some(Self::GST),
-            7 => Some(Self::BDT),
-            8 => Some(Self::QZSS),
-            9 => Some(Self::TCG),
-            10 => Some(Self::TCB),
-            11 => Some(Self::LTC),
-            12 => Some(Self::Proper),
-            13 => Some(Self::Custom),
+            5 => Some(Self::UTCSpice),
+            6 => Some(Self::UTCSofa),
+            7 => Some(Self::GPS),
+            8 => Some(Self::GST),
+            9 => Some(Self::BDT),
+            10 => Some(Self::QZSS),
+            11 => Some(Self::TCG),
+            12 => Some(Self::TCB),
+            13 => Some(Self::LTC),
+            14 => Some(Self::Proper),
+            15 => Some(Self::Custom),
             _ => None,
         }
     }
 
-    /// Returns `true` if this clock type accounts for leap seconds.
+    /// Returns `true` if this clock type accounts for leap seconds
+    /// (or historical UTC civil time rules).
+    #[inline]
     pub const fn uses_leap_sec(&self) -> bool {
-        matches!(self, Self::UTC)
+        matches!(self, Self::UTC | Self::UTCSpice | Self::UTCSofa)
     }
 
     /// Returns `true` if this clock type is based off a GNSS constellation.
+    #[inline]
     pub const fn is_gnss(&self) -> bool {
         matches!(self, Self::GPS | Self::GST | Self::BDT | Self::QZSS)
     }
@@ -165,11 +180,9 @@ impl ClockType {
     /// Returns `None` for any non-ASCII input.
     pub fn from_abbrev(s: &str) -> Option<Self> {
         let bytes = s.as_bytes();
-        // Reject non-ASCII input immediately (clock abbreviations must be ASCII)
         if !bytes.is_ascii() {
             return None;
         }
-        // Safe to uppercase now
         let mut buf = [0u8; 8];
         let mut len = 0;
         for &byte in bytes {
@@ -190,6 +203,8 @@ impl ClockType {
             "ET" => Some(Self::ET),
             "TDB" => Some(Self::TDB),
             "UTC" => Some(Self::UTC),
+            "UTCSPICE" => Some(Self::UTCSpice),
+            "UTCSOFA" => Some(Self::UTCSofa),
             "GPS" => Some(Self::GPS),
             "GST" => Some(Self::GST),
             "BDT" => Some(Self::BDT),
@@ -203,7 +218,7 @@ impl ClockType {
         }
     }
 
-    /// Short abbreviation used for formatting / display (e.g. "TAI", "UTC", "Proper").
+    /// Short abbreviation used for formatting / display (e.g. "TAI", "UTC", "UTCSpice").
     pub const fn abbrev(&self) -> &'static str {
         match self {
             Self::TAI => "TAI",
@@ -211,6 +226,8 @@ impl ClockType {
             Self::ET => "ET",
             Self::TDB => "TDB",
             Self::UTC => "UTC",
+            Self::UTCSpice => "UTCSPICE",
+            Self::UTCSofa => "UTCSOFA",
             Self::TCG => "TCG",
             Self::TCB => "TCB",
             Self::GPS => "GPS",
@@ -224,12 +241,6 @@ impl ClockType {
     }
 
     /// Const-friendly equality comparison (does **not** rely on `==` for the enum itself).
-    ///
-    /// Uses the underlying `u8` wire representation (via the already-existing `to_wire_byte`
-    /// method). This works reliably in `const fn` contexts even on older Rust versions where
-    /// the derived `PartialEq::eq` might not be `const fn` yet.
-    ///
-    /// Zero-cost and guaranteed to match the `repr(u8)` layout.
     #[inline]
     pub const fn eq(self, other: Self) -> bool {
         self.to_wire_byte() == other.to_wire_byte()

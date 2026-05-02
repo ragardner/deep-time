@@ -23,7 +23,13 @@ impl TimePoint {
     ///   scales, including relativistic ones, GNSS, `Proper`/`Custom`, etc.
     #[inline]
     pub const fn to_attos_since(self, reference: TimePoint) -> i128 {
-        if self.clock_type.eq(ClockType::UTC) && reference.clock_type.eq(ClockType::UTC) {
+        if matches!(
+            self.clock_type,
+            ClockType::UTC | ClockType::UTCSpice | ClockType::UTCSofa
+        ) && matches!(
+            reference.clock_type,
+            ClockType::UTC | ClockType::UTCSpice | ClockType::UTCSofa
+        ) {
             self.utc_civil_canonical_attos() - reference.utc_civil_canonical_attos()
         } else {
             self.duration_since_ref(&reference).total_attos()
@@ -47,11 +53,8 @@ impl TimePoint {
 
     /// Returns this instant as **seconds** since the POSIX Unix epoch (UTC).
     pub const fn to_unix_sec(self) -> i64 {
-        let canon = self.to_attos_since(Self::UNIX_EPOCH_UTC);
-        let div = ATTOSEC_PER_SEC_I128;
-        let q = canon / div;
-        let r = canon % div;
-        if r >= 0 { q as i64 } else { (q - 1) as i64 }
+        self.to_attos_since(Self::UNIX_EPOCH_UTC)
+            .div_euclid(ATTOSEC_PER_SEC_I128) as i64
     }
 
     /// Returns this instant as **milliseconds** since the POSIX Unix epoch
@@ -78,11 +81,8 @@ impl TimePoint {
     // --------------------- GPS / QZSS (1980-01-06 00:00:00 GPS) ---------------------
 
     pub const fn to_gps_sec(self) -> i64 {
-        let canon = self.to_attos_since(Self::GPS_EPOCH);
-        let div = ATTOSEC_PER_SEC_I128;
-        let q = canon / div;
-        let r = canon % div;
-        if r >= 0 { q as i64 } else { (q - 1) as i64 }
+        self.to_attos_since(Self::GPS_EPOCH)
+            .div_euclid(ATTOSEC_PER_SEC_I128) as i64
     }
 
     #[inline]
@@ -125,11 +125,8 @@ impl TimePoint {
     // --------------------- Galileo (1999-08-22 00:00:00 GST) ---------------------
 
     pub const fn to_galileo_sec(self) -> i64 {
-        let canon = self.to_attos_since(Self::GALILEO_EPOCH);
-        let div = ATTOSEC_PER_SEC_I128;
-        let q = canon / div;
-        let r = canon % div;
-        if r >= 0 { q as i64 } else { (q - 1) as i64 }
+        self.to_attos_since(Self::GALILEO_EPOCH)
+            .div_euclid(ATTOSEC_PER_SEC_I128) as i64
     }
 
     #[inline]
@@ -150,11 +147,8 @@ impl TimePoint {
     // --------------------- BeiDou (2006-01-01 00:00:00 BDT) ---------------------
 
     pub const fn to_beidou_sec(self) -> i64 {
-        let canon = self.to_attos_since(Self::BDT_EPOCH);
-        let div = ATTOSEC_PER_SEC_I128;
-        let q = canon / div;
-        let r = canon % div;
-        if r >= 0 { q as i64 } else { (q - 1) as i64 }
+        self.to_attos_since(Self::BDT_EPOCH)
+            .div_euclid(ATTOSEC_PER_SEC_I128) as i64
     }
 
     #[inline]
@@ -185,12 +179,9 @@ impl TimePoint {
         second: u8,
     ) -> i64 {
         let jdn = Self::ymd_to_jdn(year, month, day);
-
         // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
         let days_since_1970 = jdn - 2440588;
-
         let time_of_day = (hour as i64) * 3600 + (minute as i64) * 60 + (second as i64);
-
         days_since_1970 * SEC_PER_DAYI64 + time_of_day
     }
 }

@@ -48,6 +48,7 @@ mod tests {
 
     fn assert_tp_matches_hifitime(tp: TimePoint, hi: Epoch, msg: &str) {
         let our_tai = tp.to_clock_type(ClockType::TAI);
+
         let (our_sec, our_attos) = (our_tai.sec(), our_tai.subsec());
         let (hi_sec, hi_attos) = hifitime_tai_parts(hi);
 
@@ -61,9 +62,16 @@ mod tests {
         );
     }
 
-    // ============================================================
-    //                         TEST CASES
-    // ============================================================
+    #[test]
+    fn test_utc_leap_second() {
+        let hi_utc = Epoch::from_gregorian(2016, 12, 31, 23, 59, 60, 0, TimeScale::UTC);
+        let hi_tai = hi_utc.to_time_scale(TimeScale::TAI);
+        let (hi_tai_sec, hi_tai_subsec) = hifitime_tai_parts(hi_tai);
+        let our_tai = TimePoint::new(hi_tai_sec, hi_tai_subsec, ClockType::TAI);
+        let our_utc = our_tai.to_clock_type(ClockType::UTC);
+
+        assert_tp_matches_hifitime(our_utc, hi_tai, "UTC leap second 2016-12-31");
+    }
 
     #[test]
     fn test_j2000_zero_points() {
@@ -130,18 +138,6 @@ mod tests {
                 assert_tp_matches_hifitime(our_to, hi_to, &format!("{:?} → {:?}", from, to));
             }
         }
-    }
-
-    #[test]
-    fn test_utc_leap_second() {
-        let hi_utc = Epoch::from_gregorian(2016, 12, 31, 23, 59, 60, 0, TimeScale::UTC);
-        let hi_tai = hi_utc.to_time_scale(TimeScale::TAI);
-
-        let (hi_tai_sec, hi_tai_subsec) = hifitime_tai_parts(hi_tai);
-        let our_tai = TimePoint::new(hi_tai_sec, hi_tai_subsec, ClockType::TAI);
-        let our_utc = our_tai.to_clock_type(ClockType::UTC);
-
-        assert_tp_matches_hifitime(our_utc, hi_tai, "UTC leap second 2016-12-31");
     }
 
     #[test]

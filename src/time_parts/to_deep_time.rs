@@ -1,7 +1,7 @@
 use crate::tzdb::offset_info_at_local;
 use crate::{
     ClockType, TimePoint,
-    error::{DtErrKind, DtErr},
+    error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
 use crate::{J2000_JD_TT, SEC_PER_DAYI64, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err};
@@ -254,12 +254,12 @@ mod tests {
         // • Seconds past noon TT = 12 h + 69.184 s + 0.123456789 s
         //   = 43_200 + 69.184 + 0.123456789 = 43_269.307456789
 
-        const EXPECTED_SECONDS_PAST_NOON_TT: f64 = 43269.307456789;
+        const EXPECTED_SECS_PAST_NOON_TT: f64 = 43269.307456789;
 
         assert!(
-            (seconds_in_day - EXPECTED_SECONDS_PAST_NOON_TT).abs() < 1e-9,
+            (seconds_in_day - EXPECTED_SECS_PAST_NOON_TT).abs() < 1e-9,
             "JD TT fractional seconds not preserved.\n\
-         Expected ~{EXPECTED_SECONDS_PAST_NOON_TT} s past noon (TT), got {seconds_in_day}"
+         Expected ~{EXPECTED_SECS_PAST_NOON_TT} s past noon (TT), got {seconds_in_day}"
         );
     }
 

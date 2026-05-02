@@ -58,7 +58,7 @@ mod time_span;
 // _________________________________________
 pub mod constants;
 pub mod error;
-pub mod historical_sofa_offsets;
+pub mod historical_sofa;
 pub mod leap_seconds;
 pub mod tzdb;
 pub mod utils;

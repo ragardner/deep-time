@@ -15,9 +15,12 @@ impl TimePoint {
     /// supplied `reference` epoch, on the same `ClockType` as the reference.
     #[inline]
     pub const fn from_to_attos_since(attos: i128, reference: TimePoint) -> Self {
-        if reference.clock_type.eq(ClockType::UTC) {
+        if matches!(
+            reference.clock_type,
+            ClockType::UTC | ClockType::UTCSpice | ClockType::UTCSofa
+        ) {
             let ref_canon = reference.utc_civil_canonical_attos();
-            let target_canon = ref_canon.saturating_add(attos); // or .wrapping_add() if you prefer
+            let target_canon = ref_canon.saturating_add(attos);
             Self::from_utc_civil_canonical(target_canon)
         } else {
             reference.saturating_add(TimeSpan::from_total_attos(attos))
