@@ -1,10 +1,9 @@
 use crate::tzdb::offset_info_at_local;
 use crate::{
-    ClockType, TimePoint,
+    ClockType, J2000_JD_TT, SEC_PER_DAYI64, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
-use crate::{J2000_JD_TT, SEC_PER_DAYI64, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err};
 
 impl TimeParts {
     pub fn to_time_point(&self, clock_type: Option<ClockType>) -> Result<TimePoint, DtErr> {
@@ -15,7 +14,7 @@ impl TimeParts {
             let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
             let subsec = self.attos.unwrap_or(0);
             return Ok(TimePoint::new(sec, subsec, ClockType::UTC)
-                .to_clock_type(clock_type.unwrap_or(self.clock_type)));
+                .to_type(clock_type.unwrap_or(self.clock_type)));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -140,19 +139,21 @@ impl TimeParts {
             sec_utc -= offset as i64; // local civil time → true UTC instant
         }
         Ok(TimePoint::new(sec_utc, subsec, ClockType::UTC)
-            .to_clock_type(clock_type.unwrap_or(self.clock_type)))
+            .to_type(clock_type.unwrap_or(self.clock_type)))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::TimeParts;
-    use crate::error::DtErrKind;
+    use std::eprintln;
 
-    /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_tt()`).
+    use super::*;
+    use crate::error::DtErrKind;
+    use crate::{ATTOSEC_PER_SEC_I128, Real, TimeParts};
+
+    /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd()`).
     fn jd_tt(tp: &TimePoint) -> f64 {
-        tp.to_jd_tt()
+        tp.to_type(ClockType::TT).to_jd()
     }
 
     #[test]
@@ -161,10 +162,11 @@ mod tests {
         let tp = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
 
         let jd = jd_tt(&tp);
+        eprintln!("{}", jd);
         // Unix epoch (1970-01-01 00:00:00 UTC) in TT scale:
         // 2440587.5 + 32.184 / 86400 = 2440587.5003725 exactly.
         assert!(
-            (jd - 2440587.5003725).abs() < 1e-10,
+            (jd - 2440587.5003725).abs() == 0.0,
             "Expected ~2440587.5003725 (Unix epoch in TT), got {}",
             jd
         );
@@ -210,7 +212,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(jd_tt(&ymd), jd_tt(&ordinal));
-        assert_eq!(ymd.to_jd_tt_exact(), ordinal.to_jd_tt_exact());
+        assert_eq!(ymd.to_jd_exact(), ordinal.to_jd_exact());
     }
 
     #[test]
@@ -240,26 +242,19 @@ mod tests {
             false,
         )
         .unwrap();
+
         let tp = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
+        let (_, frac_attos) = tp.to_type(ClockType::TT).to_jd_exact();
 
-        let (_, frac) = tp.to_jd_tt_exact();
-        let seconds_in_day = frac.as_sec_f();
+        // Convert attoseconds → seconds
+        let seconds_past_noon = (frac_attos as f64) / (ATTOSEC_PER_SEC_I128 as f64);
 
-        // Explanation of the expected value:
-        //
-        // • Input is 2024-04-15 00:00:00.123456789 **UTC**
-        // • to_jd_tt_exact() converts to Terrestrial Time (TT)
-        // • TT = UTC + 37 s (leap seconds) + 32.184 s (TT–TAI) = UTC + 69.184 s
-        // • Therefore midnight UTC becomes 00:01:09.184 TT
-        // • Seconds past noon TT = 12 h + 69.184 s + 0.123456789 s
-        //   = 43_200 + 69.184 + 0.123456789 = 43_269.307456789
-
-        const EXPECTED_SECS_PAST_NOON_TT: f64 = 43269.307456789;
+        const EXPECTED: f64 = 43269.307456789;
 
         assert!(
-            (seconds_in_day - EXPECTED_SECS_PAST_NOON_TT).abs() < 1e-9,
+            (seconds_past_noon - EXPECTED).abs() < 1e-9,
             "JD TT fractional seconds not preserved.\n\
-         Expected ~{EXPECTED_SECS_PAST_NOON_TT} s past noon (TT), got {seconds_in_day}"
+         Expected ~{EXPECTED} s past noon (TT), got {seconds_past_noon}"
         );
     }
 
@@ -308,6 +303,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(jd_tt(&tp_iso), jd_tt(&ymd));
-        assert_eq!(tp_iso.to_jd_tt_exact(), ymd.to_jd_tt_exact());
+        assert_eq!(tp_iso.to_jd_exact(), ymd.to_jd_exact());
     }
 }

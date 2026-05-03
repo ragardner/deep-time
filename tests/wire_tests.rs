@@ -7,7 +7,7 @@ mod tests {
     use core::fmt::Debug;
     use deep_time::{
         ClockDrift, ClockModel, ClockType, GregorianTime, Meridiem, Offset, TimeParts, TimePoint,
-        TimeRange, TimeSpan, Weekday,
+        TimeRange, TimeSpan, Weekday, constants::ATTOS_PER_HALF_DAYU,
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -101,7 +101,7 @@ mod tests {
             Weekday::Wednesday,                    // iso_wkday
             360,                                   // day_of_yr
             3,                                     // wkday
-            (2460670, TimeSpan::from_sec(43200)),  // jd_tt_exact
+            (2460670, ATTOS_PER_HALF_DAYU),        // jd_tt_exact
             51,                                    // wk_of_yr_sun
             52,                                    // wk_of_yr_mon
             ClockType::UTC,                        // clock_type

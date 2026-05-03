@@ -14,11 +14,7 @@ impl TimePoint {
     /// High-level alloc version with explicit offset (label-only).
     #[cfg(feature = "alloc")]
     #[inline]
-    pub fn to_str_with_offset(
-        &self,
-        fmt: &str,
-        secs: i32,
-    ) -> Result<alloc::string::String, DtErr> {
+    pub fn to_str_with_offset(&self, fmt: &str, secs: i32) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let n = self.to_u8_with_offset(fmt, &mut buf, secs)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
@@ -27,11 +23,7 @@ impl TimePoint {
     /// High-level alloc version for full IANA timezone formatting (with civil-time adjustment).
     #[cfg(feature = "alloc")]
     #[inline]
-    pub fn to_str_with_tz(
-        &self,
-        fmt: &str,
-        tz_name: &str,
-    ) -> Result<alloc::string::String, DtErr> {
+    pub fn to_str_with_tz(&self, fmt: &str, tz_name: &str) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let n = self.to_u8_with_tz(fmt, &mut buf, tz_name)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
@@ -83,12 +75,7 @@ impl TimePoint {
     }
 
     /// Helper for to_str.
-    pub fn to_u8_with_offset(
-        &self,
-        fmt: &str,
-        dest: &mut [u8],
-        secs: i32,
-    ) -> Result<usize, DtErr> {
+    pub fn to_u8_with_offset(&self, fmt: &str, dest: &mut [u8], secs: i32) -> Result<usize, DtErr> {
         let gt = self.gregorian_time_with_offset(secs);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -101,12 +88,7 @@ impl TimePoint {
     }
 
     /// Helper for to_str.
-    pub fn to_u8_with_tz(
-        &self,
-        fmt: &str,
-        dest: &mut [u8],
-        tz_name: &str,
-    ) -> Result<usize, DtErr> {
+    pub fn to_u8_with_tz(&self, fmt: &str, dest: &mut [u8], tz_name: &str) -> Result<usize, DtErr> {
         let gt = self.gregorian_time_with_tz(tz_name);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -120,8 +102,8 @@ impl TimePoint {
 
     /// Helper for creating an offset adjusted GregorianTime.
     pub(crate) fn gregorian_time_with_offset(&self, secs: i32) -> GregorianTime {
-        let orig_clock_type = self.clock_type;
-        let utc = self.to_clock_type(ClockType::UTC);
+        let orig_type = self.clock_type;
+        let utc = self.to_type(ClockType::UTC);
         let local_tp = if secs != 0 {
             utc + TimeSpan::new(secs as i64, 0)
         } else {
@@ -129,7 +111,7 @@ impl TimePoint {
         };
         let mut gt = local_tp.to_gregorian_time();
         gt.set_offset(Some(secs));
-        gt.set_clock_type(orig_clock_type);
+        gt.set_type(orig_type);
         gt
     }
 
@@ -139,10 +121,10 @@ impl TimePoint {
     /// in the IANA transition table. This avoids the previous bug where
     /// a non-UTC `unix_ts` was being passed to `offset_info_at_local`.
     pub(crate) fn gregorian_time_with_tz(&self, tz_name: &str) -> GregorianTime {
-        let orig_clock_type = self.clock_type;
+        let orig_type = self.clock_type;
 
         // 1. Get the true UTC Unix timestamp (this is what we search with)
-        let utc_unix = self.to_clock_type(ClockType::UTC).to_unix_sec();
+        let utc_unix = self.to_type(ClockType::UTC).to_unix_sec();
 
         // 2. Look up offset + abbrev at that exact UTC instant
         let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, utc_unix) {
@@ -152,13 +134,13 @@ impl TimePoint {
 
         // 3. Build local time = UTC + offset
         let span = TimeSpan::new(offset_secs as i64, 0);
-        let local_tp = self.to_clock_type(ClockType::UTC) + span;
+        let local_tp = self.to_type(ClockType::UTC) + span;
 
         let mut gt = local_tp.to_gregorian_time();
         gt.set_offset(Some(offset_secs));
         gt.set_tz(Some(tz_name));
         gt.set_tz_abbrev(Some(abbrev));
-        gt.set_clock_type(orig_clock_type);
+        gt.set_type(orig_type);
         gt
     }
 }

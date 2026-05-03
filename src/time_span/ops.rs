@@ -121,4 +121,32 @@ impl TimeSpan {
             _ => self,
         }
     }
+
+    /// Returns `true` if this `TimeSpan` is less than the other.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
+    pub const fn lt(self, other: Self) -> bool {
+        matches!(self.cmp(other), Ordering::Less)
+    }
+
+    /// Returns `true` if this `TimeSpan` is greater than the other.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
+    pub const fn gt(self, other: Self) -> bool {
+        matches!(self.cmp(other), Ordering::Greater)
+    }
+
+    /// Returns `true` if this `TimeSpan` is less than or equal to the other.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
+    pub const fn le(self, other: Self) -> bool {
+        !matches!(self.cmp(other), Ordering::Greater)
+    }
+
+    /// Returns `true` if this `TimeSpan` is greater than or equal to the other.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
+    pub const fn ge(self, other: Self) -> bool {
+        !matches!(self.cmp(other), Ordering::Less)
+    }
 }

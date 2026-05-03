@@ -1,6 +1,6 @@
 use {
     crate::{
-        ATTOSEC_PER_NANOSEC, Meridiem, Offset, TimeParts, TimePoint, Weekday, an_err,
+        ATTOS_PER_NS, Meridiem, Offset, TimeParts, TimePoint, Weekday, an_err,
         error::{DtErrKind, DtErr},
         tzdb::offset_info_at_local,
     },
@@ -78,7 +78,7 @@ impl TimeParts {
 
         // Subsecond precision (attoseconds → nanoseconds)
         if let Some(attos) = self.attos {
-            let ns_u64 = attos / ATTOSEC_PER_NANOSEC;
+            let ns_u64 = attos / ATTOS_PER_NS;
             let ns: i32 = if ns_u64 >= 1_000_000_000 {
                 999_999_999
             } else {
@@ -204,7 +204,7 @@ impl TimeParts {
             let second = self.second.unwrap_or(0) as i8;
 
             let subsec_nanosecond: i32 = if let Some(attos) = self.attos {
-                let ns_u64 = attos / ATTOSEC_PER_NANOSEC;
+                let ns_u64 = attos / ATTOS_PER_NS;
                 if ns_u64 > 999_999_999 {
                     999_999_999
                 } else {

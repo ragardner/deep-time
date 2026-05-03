@@ -1,5 +1,5 @@
 use crate::{
-    ATTOSEC_PER_NANOSEC, TimePoint, an_err,
+    ATTOS_PER_NS, TimePoint, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
@@ -89,7 +89,7 @@ impl TimeParts {
         }
 
         let raw_ns_u64 = if let Some(attos) = self.attos {
-            attos / ATTOSEC_PER_NANOSEC
+            attos / ATTOS_PER_NS
         } else {
             0
         };
@@ -144,7 +144,7 @@ impl TimeParts {
         // ============================================================
         if let Some(secs) = self.unix_timestamp_seconds {
             let subsec_nano = if let Some(attos) = self.attos {
-                let ns_u64 = attos / ATTOSEC_PER_NANOSEC;
+                let ns_u64 = attos / ATTOS_PER_NS;
                 if ns_u64 > 999_999_999 {
                     999_999_999
                 } else {

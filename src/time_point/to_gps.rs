@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_WEEK, ATTOSEC_PER_SEC_I128, ClockType, Real, SEC_PER_DAYI64, SECS_PER_WEEK,
-    TimePoint, TimeSpan,
+    ATTOS_PER_WEEK, ATTOSEC_PER_SEC_I128, ClockType, Real, SEC_PER_DAYI64, SEC_PER_WEEK, TimePoint,
+    TimeSpan,
 };
 
 impl TimePoint {
@@ -23,11 +23,11 @@ impl TimePoint {
     /// - The calculation is performed entirely on the **GPS** scale.
     /// - GPS has **no leap seconds** (it is a continuous time scale).
     /// - Leap seconds are automatically handled when converting from UTC or
-    ///   other scales via `to_clock_type(ClockType::GPS)`.
+    ///   other scales via `to_type(ClockType::GPS)`.
     /// - The result is **exact** (attosecond precision) and independent of any
     ///   calendar or timezone rules.
     pub const fn to_gps_wk_and_tow(self) -> (i64, TimeSpan) {
-        let gpst = self.to_clock_type(ClockType::GPS);
+        let gpst = self.to_type(ClockType::GPS);
         let elapsed = gpst.duration_since(Self::GPS_EPOCH);
         let total_attos = elapsed.total_attos();
         let wk = (total_attos / ATTOS_PER_WEEK) as i64;
@@ -41,11 +41,11 @@ impl TimePoint {
     /// This is computed directly from GPS Time and is independent of the
     /// Gregorian calendar.
     pub const fn to_gps_day_of_wk(self) -> u8 {
-        let gpst = self.to_clock_type(ClockType::GPS);
+        let gpst = self.to_type(ClockType::GPS);
         let elapsed = gpst.duration_since(Self::GPS_EPOCH);
 
         let total_sec = elapsed.total_attos() / ATTOSEC_PER_SEC_I128;
-        let secs_into_wk = total_sec.rem_euclid(SECS_PER_WEEK as i128);
+        let secs_into_wk = total_sec.rem_euclid(SEC_PER_WEEK as i128);
         (secs_into_wk / SEC_PER_DAYI64 as i128) as u8
     }
 

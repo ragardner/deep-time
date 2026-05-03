@@ -1,6 +1,6 @@
 use crate::{
-    ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ATTOSEC_PER_NANOSEC, ATTOSEC_PER_SEC_I128,
-    ClockType, TimePoint, TimeSpan,
+    ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_US, ATTOSEC_PER_SEC_I128, ClockType, TimePoint, TimeSpan,
+    UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 
 impl TimePoint {
@@ -27,6 +27,13 @@ impl TimePoint {
         }
     }
 
+    pub(crate) const fn from_utc_civil_canonical(canon: i128) -> Self {
+        let sec = canon.div_euclid(ATTOSEC_PER_SEC_I128) as i64;
+        let subsec = (canon.rem_euclid(ATTOSEC_PER_SEC_I128)) as u64;
+        let internal_sec = sec - UNIX_EPOCH_TO_J2000_NOON_UTC;
+        TimePoint::new(internal_sec, subsec, ClockType::UTC)
+    }
+
     // --------------------- UNIX / UTC (POSIX epoch) ---------------------
 
     /// Creates a `TimePoint` from **seconds** since the POSIX Unix epoch
@@ -40,21 +47,21 @@ impl TimePoint {
     /// (full `i128` range supported to match `TimePoint`’s full representable span).
     #[inline]
     pub const fn from_unix_ms(ms: i128) -> Self {
-        Self::from_to_attos_since(ms * (ATTOSEC_PER_MILLISEC as i128), Self::UNIX_EPOCH_UTC)
+        Self::from_to_attos_since(ms * (ATTOS_PER_MS as i128), Self::UNIX_EPOCH_UTC)
     }
 
     /// Creates a `TimePoint` from **microseconds** since the POSIX Unix epoch
     /// (full `i128` range supported).
     #[inline]
     pub const fn from_unix_us(us: i128) -> Self {
-        Self::from_to_attos_since(us * (ATTOSEC_PER_MICROSEC as i128), Self::UNIX_EPOCH_UTC)
+        Self::from_to_attos_since(us * (ATTOS_PER_US as i128), Self::UNIX_EPOCH_UTC)
     }
 
     /// Creates a `TimePoint` from **nanoseconds** since the POSIX Unix epoch
     /// (full `i128` range supported).
     #[inline]
     pub const fn from_unix_ns(ns: i128) -> Self {
-        Self::from_to_attos_since(ns * (ATTOSEC_PER_NANOSEC as i128), Self::UNIX_EPOCH_UTC)
+        Self::from_to_attos_since(ns * (ATTOS_PER_NS as i128), Self::UNIX_EPOCH_UTC)
     }
 
     // --------------------- GPS / QZSS (1980-01-06 00:00:00 GPS) ---------------------
@@ -68,17 +75,17 @@ impl TimePoint {
 
     #[inline]
     pub const fn from_gps_ms(ms: i128) -> Self {
-        Self::from_to_attos_since(ms * (ATTOSEC_PER_MILLISEC as i128), Self::GPS_EPOCH)
+        Self::from_to_attos_since(ms * (ATTOS_PER_MS as i128), Self::GPS_EPOCH)
     }
 
     #[inline]
     pub const fn from_gps_us(us: i128) -> Self {
-        Self::from_to_attos_since(us * (ATTOSEC_PER_MICROSEC as i128), Self::GPS_EPOCH)
+        Self::from_to_attos_since(us * (ATTOS_PER_US as i128), Self::GPS_EPOCH)
     }
 
     #[inline]
     pub const fn from_gps_ns(ns: i128) -> Self {
-        Self::from_to_attos_since(ns * (ATTOSEC_PER_NANOSEC as i128), Self::GPS_EPOCH)
+        Self::from_to_attos_since(ns * (ATTOS_PER_NS as i128), Self::GPS_EPOCH)
     }
 
     // --------------------- GALEX (1980-01-06 00:00:00, identical to GPS) ---------------------
@@ -90,17 +97,17 @@ impl TimePoint {
 
     #[inline]
     pub const fn from_galex_ms(ms: i128) -> Self {
-        Self::from_to_attos_since(ms * (ATTOSEC_PER_MILLISEC as i128), Self::GPS_EPOCH)
+        Self::from_to_attos_since(ms * (ATTOS_PER_MS as i128), Self::GPS_EPOCH)
     }
 
     #[inline]
     pub const fn from_galex_us(us: i128) -> Self {
-        Self::from_to_attos_since(us * (ATTOSEC_PER_MICROSEC as i128), Self::GPS_EPOCH)
+        Self::from_to_attos_since(us * (ATTOS_PER_US as i128), Self::GPS_EPOCH)
     }
 
     #[inline]
     pub const fn from_galex_ns(ns: i128) -> Self {
-        Self::from_to_attos_since(ns * (ATTOSEC_PER_NANOSEC as i128), Self::GPS_EPOCH)
+        Self::from_to_attos_since(ns * (ATTOS_PER_NS as i128), Self::GPS_EPOCH)
     }
 
     // --------------------- Galileo (1999-08-22 00:00:00 GST) ---------------------
@@ -112,17 +119,17 @@ impl TimePoint {
 
     #[inline]
     pub const fn from_galileo_ms(ms: i128) -> Self {
-        Self::from_to_attos_since(ms * (ATTOSEC_PER_MILLISEC as i128), Self::GALILEO_EPOCH)
+        Self::from_to_attos_since(ms * (ATTOS_PER_MS as i128), Self::GALILEO_EPOCH)
     }
 
     #[inline]
     pub const fn from_galileo_us(us: i128) -> Self {
-        Self::from_to_attos_since(us * (ATTOSEC_PER_MICROSEC as i128), Self::GALILEO_EPOCH)
+        Self::from_to_attos_since(us * (ATTOS_PER_US as i128), Self::GALILEO_EPOCH)
     }
 
     #[inline]
     pub const fn from_galileo_ns(ns: i128) -> Self {
-        Self::from_to_attos_since(ns * (ATTOSEC_PER_NANOSEC as i128), Self::GALILEO_EPOCH)
+        Self::from_to_attos_since(ns * (ATTOS_PER_NS as i128), Self::GALILEO_EPOCH)
     }
 
     // --------------------- BeiDou (2006-01-01 00:00:00 BDT) ---------------------
@@ -134,17 +141,17 @@ impl TimePoint {
 
     #[inline]
     pub const fn from_beidou_ms(ms: i128) -> Self {
-        Self::from_to_attos_since(ms * (ATTOSEC_PER_MILLISEC as i128), Self::BDT_EPOCH)
+        Self::from_to_attos_since(ms * (ATTOS_PER_MS as i128), Self::BDT_EPOCH)
     }
 
     #[inline]
     pub const fn from_beidou_us(us: i128) -> Self {
-        Self::from_to_attos_since(us * (ATTOSEC_PER_MICROSEC as i128), Self::BDT_EPOCH)
+        Self::from_to_attos_since(us * (ATTOS_PER_US as i128), Self::BDT_EPOCH)
     }
 
     #[inline]
     pub const fn from_beidou_ns(ns: i128) -> Self {
-        Self::from_to_attos_since(ns * (ATTOSEC_PER_NANOSEC as i128), Self::BDT_EPOCH)
+        Self::from_to_attos_since(ns * (ATTOS_PER_NS as i128), Self::BDT_EPOCH)
     }
 }
 

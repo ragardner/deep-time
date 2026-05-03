@@ -1,5 +1,6 @@
 use deep_time::{
-    ClockDrift, ClockModel, ClockType, TimePoint, TimeSpan, constants::MARS_SOL_LENGTH_SEC,
+    ClockDrift, ClockModel, ClockType, TimePoint, TimeSpan,
+    constants::{ATTOS_PER_HALF_DAYU, MARS_SOL_LENGTH_SEC},
 };
 
 #[test]
@@ -162,30 +163,30 @@ fn test_mjd_utc_roundtrip() {
         123_456_789_000_000_000,
         ClockType::UTC,
     );
-    let (mjd, frac) = original.to_mjd_utc_exact();
-    let roundtrip = TimePoint::from_mjd_utc_exact(mjd, frac);
+    let (mjd, frac) = original.to_mjd_exact();
+    let roundtrip = TimePoint::from_mjd_exact(mjd, frac, ClockType::UTC);
     assert_eq!(
         original, roundtrip,
         "MJD UTC round-trip failed for normal time"
     );
 
     // Also exercise the JD variant
-    let (jd, frac_jd) = original.to_jd_utc_exact();
-    let roundtrip_jd = TimePoint::from_jd_utc_exact(jd, frac_jd);
+    let (jd, frac_jd) = original.to_jd_exact();
+    let roundtrip_jd = TimePoint::from_jd_exact(jd, frac_jd, ClockType::UTC);
     assert_eq!(original, roundtrip_jd, "JD UTC round-trip failed");
 
     // Leap-second case (2015-06-30 23:59:60 UTC) — the trickiest path
     let leap = TimePoint::from_gregorian_ymdhms(2015, 6, 30, 23, 59, 60, 0, ClockType::UTC);
-    let (mjd_leap, frac_leap) = leap.to_mjd_utc_exact();
-    let roundtrip_leap = TimePoint::from_mjd_utc_exact(mjd_leap, frac_leap);
+    let (mjd_leap, frac_leap) = leap.to_mjd_exact();
+    let roundtrip_leap = TimePoint::from_mjd_exact(mjd_leap, frac_leap, ClockType::UTC);
     assert_eq!(
         leap, roundtrip_leap,
         "MJD UTC round-trip failed for leap second"
     );
 
     // Also verify JD round-trip on the leap second
-    let (jd_leap, frac_jd_leap) = leap.to_jd_utc_exact();
-    let roundtrip_jd_leap = TimePoint::from_jd_utc_exact(jd_leap, frac_jd_leap);
+    let (jd_leap, frac_jd_leap) = leap.to_jd_exact();
+    let roundtrip_jd_leap = TimePoint::from_jd_exact(jd_leap, frac_jd_leap, ClockType::UTC);
     assert_eq!(
         leap, roundtrip_jd_leap,
         "JD UTC round-trip failed for leap second"
@@ -248,30 +249,6 @@ fn test_leap_second_roundtrip_2015_06_30() {
     assert_eq!(gt.day(), 30);
 }
 
-/// Verifies that `ClockType::ET` is a true alias for `ClockType::TDB`
-/// as defined by NASA/NAIF SPICE.
-///
-/// Per the official SPICE documentation:
-/// "In the Toolkit ET Means TDB. When ephemeris time is called for by
-/// CSPICE functions, TDB is the implied time system."
-///
-/// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/time.html
-/// (section "In the Toolkit ET Means TDB")
-#[test]
-fn et_is_alias_for_tdb() {
-    let p = TimePoint::from_tai_sec(1_234_567_890);
-
-    let et = p.to_clock_type(ClockType::ET);
-    let tdb = p.to_clock_type(ClockType::TDB);
-
-    assert_eq!(
-        et, tdb,
-        "ET and TDB must represent the identical physical instant"
-    );
-    assert_eq!(et.clock_type(), ClockType::ET);
-    assert_eq!(tdb.clock_type(), ClockType::TDB);
-}
-
 /// Verifies that the TDB-TT difference produced by our implementation
 /// stays within the documented SPICE tolerance (~30 µs accuracy for
 /// the simple approximation, max amplitude ~1.658 ms).
@@ -282,8 +259,8 @@ fn et_is_alias_for_tdb() {
 fn tdb_tt_difference_matches_spice_approximation() {
     // Test at a few representative epochs
     for &tai_sec in &[0i64, 1_000_000_000, -500_000_000] {
-        let tt = TimePoint::from_tai_sec(tai_sec).to_clock_type(ClockType::TT);
-        let tdb = tt.to_clock_type(ClockType::TDB);
+        let tt = TimePoint::from_tai_sec(tai_sec).to_type(ClockType::TT);
+        let tdb = tt.to_type(ClockType::TDB);
 
         let diff = tdb.duration_since(tt).as_sec_f().abs();
         assert!(
@@ -304,7 +281,7 @@ fn tdb_tt_difference_matches_spice_approximation() {
 fn et_tai_roundtrip_is_lossless() {
     let original = TimePoint::from_tai_sec(987_654_321_098);
 
-    let et = original.to_clock_type(ClockType::ET);
+    let et = original.to_type(ClockType::ET);
     let back_to_tai = et.to_tai();
 
     assert_eq!(original, back_to_tai, "ET round-trip must be lossless");
@@ -322,8 +299,8 @@ fn tdb_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let tdb = p.to_clock_type(ClockType::TDB);
-        let back = tdb.to_clock_type(ClockType::TAI);
+        let tdb = p.to_type(ClockType::TDB);
+        let back = tdb.to_type(ClockType::TAI);
 
         let diff = back.duration_since(p).as_sec_f().abs();
         assert!(
@@ -340,7 +317,7 @@ fn tdb_tai_roundtrip_is_accurate() {
 #[test]
 fn tdb_minus_tt_at_j2000() {
     let tai = TimePoint::ZERO;
-    let tdb = tai.to_clock_type(ClockType::TDB);
+    let tdb = tai.to_type(ClockType::TDB);
     let diff_s = tdb.numerical_seconds_since(&tai); // see helper below
 
     assert!(
@@ -353,7 +330,7 @@ fn tdb_minus_tt_at_j2000() {
 #[test]
 fn tdb_minus_tt_at_j2000_2() {
     let tai = TimePoint::ZERO;
-    let tdb = tai.to_clock_type(ClockType::TDB);
+    let tdb = tai.to_type(ClockType::TDB);
     let diff_s = tdb.numerical_seconds_since(&tai);
 
     assert!((diff_s - 32.18392391273422).abs() < 1e-6, "got {}", diff_s);
@@ -369,8 +346,8 @@ fn tdb_correction_stays_within_bounds() {
     ];
 
     for &p in &points {
-        let tt = p.to_clock_type(ClockType::TT);
-        let tdb = p.to_clock_type(ClockType::TDB);
+        let tt = p.to_type(ClockType::TT);
+        let tdb = p.to_type(ClockType::TDB);
 
         // TDB - TT (periodic term only)
         let corr_s = tdb.numerical_seconds_since(&tt);
@@ -410,7 +387,7 @@ fn zero_drift_is_identity() {
     let p = TimePoint::from_tai_sec(1_234_567);
     let converted = p.convert_using_model(model);
 
-    assert_eq!(converted, p.to_clock_type(ClockType::Proper));
+    assert_eq!(converted, p.to_type(ClockType::Proper));
 }
 
 #[test]
@@ -424,7 +401,7 @@ fn constant_offset_only() {
 
     let expected = onboard
         .add(TimeSpan::from_sec_f(32.184))
-        .to_clock_type(ClockType::Proper);
+        .to_type(ClockType::Proper);
     assert_eq!(tt, expected);
 }
 
@@ -459,7 +436,7 @@ fn apply_new_model_and_create_from_model() {
     assert_eq!(tagged.clock_type(), ClockType::Proper);
     assert_eq!(
         TimePoint::create_from_model(model),
-        reference.to_clock_type(ClockType::Proper)
+        reference.to_type(ClockType::Proper)
     );
 }
 
@@ -480,8 +457,8 @@ fn ltc_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let ltc = p.to_clock_type(ClockType::LTC);
-        let back = ltc.to_clock_type(ClockType::TAI);
+        let ltc = p.to_type(ClockType::LTC);
+        let back = ltc.to_type(ClockType::TAI);
 
         let diff = back.duration_since(p).as_sec_f().abs();
         assert!(
@@ -498,7 +475,7 @@ fn ltc_tai_roundtrip_is_accurate() {
 #[test]
 fn ltc_minus_tai_at_j2000() {
     let tai = TimePoint::ZERO;
-    let ltc = tai.to_clock_type(ClockType::LTC);
+    let ltc = tai.to_type(ClockType::LTC);
 
     let diff_s = ltc.numerical_seconds_since(&tai);
 
@@ -513,7 +490,7 @@ fn ltc_minus_tai_at_j2000() {
 #[test]
 fn ltc_minus_tai_at_j2000_2() {
     let tai = TimePoint::ZERO;
-    let ltc = tai.to_clock_type(ClockType::LTC);
+    let ltc = tai.to_type(ClockType::LTC);
     let diff_s = ltc.numerical_seconds_since(&tai);
 
     assert!(
@@ -533,8 +510,8 @@ fn ltc_offset_grows_linearly() {
     ];
 
     for &p in &points {
-        let tt = p.to_clock_type(ClockType::TT);
-        let ltc = p.to_clock_type(ClockType::LTC);
+        let tt = p.to_type(ClockType::TT);
+        let ltc = p.to_type(ClockType::LTC);
 
         // LTC - TT (pure secular term)
         let corr_s = ltc.numerical_seconds_since(&tt);
@@ -661,7 +638,7 @@ fn utc_leap_seconds_are_handled_in_mars_time() {
 #[test]
 fn tt_tai_offset_exact() {
     let tai = TimePoint::ZERO;
-    let tt = tai.to_clock_type(ClockType::TT);
+    let tt = tai.to_type(ClockType::TT);
     let diff_s = tt.numerical_seconds_since(&tai);
     assert!(
         (diff_s - 32.184).abs() < 1e-12,
@@ -675,16 +652,16 @@ fn tt_tai_offset_exact() {
 fn gnss_offsets_are_correct() {
     let tai = TimePoint::ZERO;
 
-    let gpst = tai.to_clock_type(ClockType::GPS);
+    let gpst = tai.to_type(ClockType::GPS);
     assert!((gpst.numerical_seconds_since(&tai) + 19.0).abs() < 1e-12);
 
-    let qzsst = tai.to_clock_type(ClockType::QZSS);
+    let qzsst = tai.to_type(ClockType::QZSS);
     assert!((qzsst.numerical_seconds_since(&tai) + 19.0).abs() < 1e-12);
 
-    let gst = tai.to_clock_type(ClockType::GST);
+    let gst = tai.to_type(ClockType::GST);
     assert!((gst.numerical_seconds_since(&tai) + 19.0).abs() < 1e-12);
 
-    let bdt = tai.to_clock_type(ClockType::BDT);
+    let bdt = tai.to_type(ClockType::BDT);
     assert!((bdt.numerical_seconds_since(&tai) + 33.0).abs() < 1e-12);
 }
 
@@ -700,8 +677,8 @@ fn tcg_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let tcg = p.to_clock_type(ClockType::TCG);
-        let back = tcg.to_clock_type(ClockType::TAI);
+        let tcg = p.to_type(ClockType::TCG);
+        let back = tcg.to_type(ClockType::TAI);
         let diff = back.duration_since(p).as_sec_f().abs();
         assert!(
             diff < 1e-9,
@@ -724,8 +701,8 @@ fn tcb_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let tcb = p.to_clock_type(ClockType::TCB);
-        let back = tcb.to_clock_type(ClockType::TAI);
+        let tcb = p.to_type(ClockType::TCB);
+        let back = tcb.to_type(ClockType::TAI);
         let diff = back.duration_since(p).as_sec_f().abs();
         assert!(
             diff < 1e-9,
@@ -749,25 +726,29 @@ fn utc_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let utc = p.to_clock_type(ClockType::UTC);
-        let back = utc.to_clock_type(ClockType::TAI);
+        let utc = p.to_type(ClockType::UTC);
+        let back = utc.to_type(ClockType::TAI);
         assert_eq!(back, p, "UTC round-trip failed at {:?}", p);
     }
 }
 
-/// J2000.0 TT = 2000-01-01 12:00:00 TT exactly (JD 2451545.0).
-/// The library’s exact MJD convention is JD − 2_400_000 (MJD 51545.0, frac = 0).
 #[test]
 fn j2000_tt_is_jd_2451545() {
-    let j2000_tt = TimePoint::from_jd_tt_exact(2451545, TimeSpan::ZERO);
+    let j2000_tt = TimePoint::from_jd_exact(2451545, 0, ClockType::TT);
 
-    let (jd, frac) = j2000_tt.to_jd_tt_exact();
-    assert_eq!(jd, 2451545, "JD integer part wrong");
-    assert!(frac.is_zero(), "JD fractional part must be zero");
+    let (jd, frac) = j2000_tt.to_jd_exact();
+    assert_eq!(jd, 2451545);
+    assert_eq!(frac, 0);
 
-    let (mjd, mjd_frac) = j2000_tt.to_mjd_tt_exact();
-    assert_eq!(mjd, 51545, "MJD integer part wrong (library convention)");
-    assert!(mjd_frac.is_zero(), "MJD fractional part must be zero");
+    let (mjd, mjd_frac) = j2000_tt.to_mjd_exact();
+
+    // Standard MJD = JD − 2400000.5
+    // At J2000.0 (JD 2451545.0) → MJD 51544.5
+    assert_eq!(mjd, 51544, "MJD integer part (standard convention)");
+    assert_eq!(
+        mjd_frac, ATTOS_PER_HALF_DAYU,
+        "MJD fractional part should be 0.5 day"
+    );
 }
 
 /// Exact JD ↔ TimePoint round-trip (full attosecond precision).
@@ -781,8 +762,8 @@ fn jd_tt_exact_roundtrip() {
     ];
 
     for &p in &test_points {
-        let (jd, frac) = p.to_jd_tt_exact();
-        let back = TimePoint::from_jd_tt_exact(jd, frac);
+        let (jd, frac) = p.to_type(ClockType::TT).to_jd_exact();
+        let back = TimePoint::from_jd_exact(jd, frac, ClockType::TT);
         let diff = back.duration_since(p).as_sec_f().abs();
         assert!(diff < 1e-10, "JD round-trip error {} s at {:?}", diff, p);
     }
@@ -797,8 +778,8 @@ fn mjd_tt_exact_roundtrip() {
     ];
 
     for &p in &test_points {
-        let (mjd, frac) = p.to_mjd_tt_exact();
-        let back = TimePoint::from_mjd_tt_exact(mjd, frac);
+        let (mjd, frac) = p.to_type(ClockType::TT).to_mjd_exact();
+        let back = TimePoint::from_mjd_exact(mjd, frac, ClockType::TT);
         let diff = back.duration_since(p).as_sec_f().abs();
         assert!(diff < 1e-10, "MJD round-trip error {} s at {:?}", diff, p);
     }

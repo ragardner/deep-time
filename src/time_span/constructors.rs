@@ -1,6 +1,7 @@
 use crate::{
-    ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ATTOSEC_PER_NANOSEC,
-    ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, TimeSpan,
+    ATTOS_PER_FS, ATTOS_PER_US, ATTOS_PER_MS, ATTOS_PER_NS,
+    ATTOS_PER_PS, ATTOSEC_PER_SEC, ClockType, SEC_PER_DAYI64, SEC_PER_WEEK, TimePoint,
+    TimeSpan,
 };
 
 impl TimeSpan {
@@ -22,6 +23,7 @@ impl TimeSpan {
     pub const SEC_19: Self = Self::from_sec(19);
     pub const SEC_33: Self = Self::from_sec(33);
     pub const SEC_37: Self = Self::from_sec(37);
+    pub const ONE_DAY: Self = Self::from_days(1);
 
     /// Creates a new `TimeSpan` from whole seconds and a subsecond part.
     ///
@@ -42,31 +44,31 @@ impl TimeSpan {
     /// Creates a `TimeSpan` representing `ms` milliseconds.
     #[inline]
     pub const fn from_ms(ms: i128) -> Self {
-        Self::from_total_attos(ms.saturating_mul(ATTOSEC_PER_MILLISEC as i128))
+        Self::from_total_attos(ms.saturating_mul(ATTOS_PER_MS as i128))
     }
 
     /// Creates a `TimeSpan` representing `us` microseconds.
     #[inline]
     pub const fn from_us(us: i128) -> Self {
-        Self::from_total_attos(us.saturating_mul(ATTOSEC_PER_MICROSEC as i128))
+        Self::from_total_attos(us.saturating_mul(ATTOS_PER_US as i128))
     }
 
     /// Creates a `TimeSpan` representing `ns` nanoseconds.
     #[inline]
     pub const fn from_ns(ns: i128) -> Self {
-        Self::from_total_attos(ns.saturating_mul(ATTOSEC_PER_NANOSEC as i128))
+        Self::from_total_attos(ns.saturating_mul(ATTOS_PER_NS as i128))
     }
 
     /// Creates a `TimeSpan` representing `ps` picoseconds.
     #[inline]
     pub const fn from_ps(ps: i128) -> Self {
-        Self::from_total_attos(ps.saturating_mul(ATTOSEC_PER_PICOSEC as i128))
+        Self::from_total_attos(ps.saturating_mul(ATTOS_PER_PS as i128))
     }
 
     /// Creates a `TimeSpan` representing `fs` femtoseconds.
     #[inline]
     pub const fn from_fs(fs: i128) -> Self {
-        Self::from_total_attos(fs.saturating_mul(ATTOSEC_PER_FEMTOSEC as i128))
+        Self::from_total_attos(fs.saturating_mul(ATTOS_PER_FS as i128))
     }
 
     /// Creates a `TimeSpan` representing `as` attoseconds.
@@ -87,6 +89,33 @@ impl TimeSpan {
         Self::from_sec(h * 3600)
     }
 
+    #[inline]
+    pub const fn from_days(d: i64) -> TimeSpan {
+        Self::from_sec(d.saturating_mul(SEC_PER_DAYI64))
+    }
+
+    #[inline]
+    pub const fn wk(wk: i64) -> TimeSpan {
+        TimeSpan::from_sec(wk.saturating_mul(SEC_PER_WEEK))
+    }
+
+    #[inline]
+    pub const fn yr(yr: i64) -> TimeSpan {
+        TimeSpan::from_sec(yr.saturating_mul(31_557_600))
+    }
+
+    /// Returns a `TimePoint` that is this duration ago from the given clock type.
+    #[inline]
+    pub const fn ago(self, clock_type: ClockType) -> TimePoint {
+        TimePoint::from_sec(0, clock_type).sub(self)
+    }
+
+    /// Returns a `TimePoint` that is this duration from now in the given clock type.
+    #[inline]
+    pub const fn from_now(self, clock_type: ClockType) -> TimePoint {
+        TimePoint::from_sec(0, clock_type).add(self)
+    }
+
     /// Creates a `TimeSpan` from hours, minutes, seconds, milliseconds,
     /// microseconds, and nanoseconds.
     #[inline]
@@ -102,7 +131,7 @@ impl TimeSpan {
         let abs_ns = sub_ns.unsigned_abs();
         let extra_secs = (abs_ns / 1_000_000_000u64) as i64;
         let rem_ns = abs_ns % 1_000_000_000u64;
-        let frac = rem_ns * ATTOSEC_PER_NANOSEC;
+        let frac = rem_ns * ATTOS_PER_NS;
 
         let (final_secs, final_frac) = if sub_ns >= 0 {
             (total_secs + extra_secs, frac)

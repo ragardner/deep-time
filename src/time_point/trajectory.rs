@@ -39,7 +39,7 @@ impl TimePoint {
     /// assert_eq!(delta_tau, TimeSpan::from_sec(900));
     ///
     /// // Update onboard proper time clock
-    /// let onboard_tau = start.to_clock_type(ClockType::Proper).add(delta_tau);
+    /// let onboard_tau = start.to_type(ClockType::Proper).add(delta_tau);
     /// ```
     pub const fn proper_time_interval_samples(
         self,

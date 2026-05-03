@@ -1,7 +1,7 @@
 use crate::{
-    ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC, ATTOSEC_PER_NANOSEC,
-    ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ClockDrift, ClockModel, ClockType, TT_TAI_OFFSET_SPAN,
-    TimePoint, TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC,
+    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_US, ATTOSEC_PER_SEC,
+    ClockDrift, ClockModel, ClockType, TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan,
+    UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 
 impl TimePoint {
@@ -66,7 +66,11 @@ impl TimePoint {
     };
 
     /// UTC representation of the POSIX Unix epoch (1970-01-01 00:00:00 UTC).
-    pub const UNIX_EPOCH_UTC: Self = Self::UNIX_EPOCH_TAI.to_clock_type(ClockType::UTC);
+    pub const UNIX_EPOCH_UTC: Self = Self {
+        sec: -UNIX_EPOCH_TO_J2000_NOON_UTC,
+        subsec: 0,
+        clock_type: ClockType::UTC,
+    };
 
     /// Traditional GPS / QZSS reference epoch: **1980-01-06 00:00:00 GPS**
     ///
@@ -147,31 +151,31 @@ impl TimePoint {
     /// Creates a `TimePoint` representing `ms` milliseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ms(ms: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(ms.saturating_mul(ATTOSEC_PER_MILLISEC as i128), clock_type)
+        Self::from_total_attos(ms.saturating_mul(ATTOS_PER_MS as i128), clock_type)
     }
 
     /// Creates a `TimePoint` representing `us` microseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_us(us: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(us.saturating_mul(ATTOSEC_PER_MICROSEC as i128), clock_type)
+        Self::from_total_attos(us.saturating_mul(ATTOS_PER_US as i128), clock_type)
     }
 
     /// Creates a `TimePoint` representing `ns` nanoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ns(ns: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(ns.saturating_mul(ATTOSEC_PER_NANOSEC as i128), clock_type)
+        Self::from_total_attos(ns.saturating_mul(ATTOS_PER_NS as i128), clock_type)
     }
 
     /// Creates a `TimePoint` representing `ps` picoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ps(ps: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(ps.saturating_mul(ATTOSEC_PER_PICOSEC as i128), clock_type)
+        Self::from_total_attos(ps.saturating_mul(ATTOS_PER_PS as i128), clock_type)
     }
 
     /// Creates a `TimePoint` representing `fs` femtoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_fs(fs: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(fs.saturating_mul(ATTOSEC_PER_FEMTOSEC as i128), clock_type)
+        Self::from_total_attos(fs.saturating_mul(ATTOS_PER_FS as i128), clock_type)
     }
 
     /// Creates a `TimePoint` representing `as` attoseconds since the reference epoch of `clock_type`.
@@ -237,7 +241,7 @@ impl TimePoint {
         let abs_ns = sub_ns.unsigned_abs();
         let extra_sec = (abs_ns / 1_000_000_000u128) as i64;
         let rem_ns = abs_ns % 1_000_000_000u128;
-        let frac = (rem_ns as u64) * ATTOSEC_PER_NANOSEC;
+        let frac = (rem_ns as u64) * ATTOS_PER_NS;
 
         let (final_sec, final_frac) = if sub_ns >= 0 {
             (total_sec + extra_sec, frac)
@@ -256,7 +260,7 @@ impl TimePoint {
     /// relativistic clock model.
     #[inline]
     pub const fn create_from_model(model: ClockModel) -> Self {
-        model.reference.with_clock_type(model.base)
+        model.reference.with_type(model.base)
     }
 
     /// Replaces the current clock type of this `TimePoint` with the base clock type
@@ -266,7 +270,7 @@ impl TimePoint {
     /// polynomial model from ground control.
     #[inline]
     pub const fn apply_new_model(self, model: ClockModel) -> Self {
-        self.with_clock_type(model.base)
+        self.with_type(model.base)
     }
 
     /// Returns the current system time converted to the requested `ClockType`.
@@ -289,7 +293,7 @@ impl TimePoint {
         };
         crate::TimePoint::from_unix_sec(secs)
             .add(crate::TimeSpan::from_ns(nanos as i128))
-            .to_clock_type(target)
+            .to_type(target)
     }
 
     /// Returns the current system time converted to the requested `ClockType`
@@ -302,6 +306,6 @@ impl TimePoint {
         let nanos = (millis % 1000) * 1_000_000;
         crate::TimePoint::from_unix_sec(secs)
             .add(crate::TimeSpan::from_ns(nanos))
-            .to_clock_type(target)
+            .to_type(target)
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    ATTOSEC_PER_SEC_I128, ClockType, DtErrKind, DtErr, Real, SEC_PER_DAY, SEC_PER_DAYI128,
+    ATTOSEC_PER_SEC_I128, ClockType, DtErr, DtErrKind, Real, SEC_PER_DAY_F, SEC_PER_DAYI128,
     TimePoint, TimeSpan, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
 };
 use alloc::string::String;
@@ -266,10 +266,10 @@ impl Ut1Data {
     /// This avoids any early floating-point conversion in `to_mjd_utc()` and
     /// guarantees the lookup uses the same high-precision path that the rest
     /// of the library uses (`to_mjd_utc_exact` + `from_mjd_utc_exact`).
-    fn ut1_minus_utc_exact(&self, mjd_days: i64, mjd_frac: TimeSpan) -> Option<Real> {
+    fn ut1_minus_utc_exact(&self, mjd_days: i64, mjd_frac: u128) -> Option<Real> {
         // This conversion is identical to what `to_mjd_utc()` does internally,
         // but we do it explicitly here so the caller stays on the exact path.
-        let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
+        let mjd_f = f!(mjd_days) + f!(mjd_frac) / SEC_PER_DAY_F;
         self.ut1_minus_utc(mjd_f)
     }
 
@@ -312,19 +312,19 @@ impl TimePoint {
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
     pub fn to_ut1(&self, ut1_data: &Ut1Data) -> Result<Self, DtErr> {
-        let utc = self.to_clock_type(ClockType::UTC);
-        let (mjd_days, mjd_frac) = utc.to_mjd_utc_exact();
+        let utc = self.to_type(ClockType::UTC);
+        let (mjd_days, mjd_frac) = utc.to_mjd_exact();
 
         let dut1 = ut1_data
             .ut1_minus_utc_exact(mjd_days, mjd_frac)
             .ok_or_else(|| {
-                let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
+                let mjd_f = f!(mjd_days) + f!(mjd_frac) / SEC_PER_DAY_F;
                 an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
             })?;
 
         Ok(utc
             .add(TimeSpan::from_sec_f(dut1))
-            .with_clock_type(ClockType::Custom))
+            .with_type(ClockType::Custom))
     }
 
     /// Convert a UT1 `TimePoint` (normally `ClockType::Custom`) back to UTC.
@@ -337,22 +337,22 @@ impl TimePoint {
             return Err(an_err!(DtErrKind::InternalErr, "contains no data"));
         }
 
-        let mut utc_guess = ut1.with_clock_type(ClockType::UTC);
+        let mut utc_guess = ut1.with_type(ClockType::UTC);
 
         // DUT1 changes extremely slowly (< 0.1 ms/day). Four iterations are far more than enough.
         for _ in 0..4 {
-            let (mjd_days, mjd_frac) = utc_guess.to_mjd_utc_exact();
+            let (mjd_days, mjd_frac) = utc_guess.to_mjd_exact();
 
             let dut1 = ut1_data
                 .ut1_minus_utc_exact(mjd_days, mjd_frac)
                 .ok_or_else(|| {
-                    let mjd_f = (mjd_days as Real) + mjd_frac.as_sec_f() / SEC_PER_DAY;
+                    let mjd_f = f!(mjd_days) + f!(mjd_frac) / SEC_PER_DAY_F;
                     an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
                 })?;
 
             utc_guess = ut1
                 .sub(TimeSpan::from_sec_f(dut1))
-                .with_clock_type(ClockType::UTC);
+                .with_type(ClockType::UTC);
         }
 
         Ok(utc_guess)
@@ -420,7 +420,7 @@ impl TimePoint {
     #[inline]
     pub const fn to_jd_ut1(self) -> Real {
         let (jd_days, frac) = self.to_jd_ut1_exact();
-        (jd_days as Real) + (frac.as_sec_f() / SEC_PER_DAY)
+        (jd_days as Real) + (frac.as_sec_f() / SEC_PER_DAY_F)
     }
 
     /// Returns the **Modified Julian Date in UT1** as a floating-point value (`f64`).

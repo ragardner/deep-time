@@ -1,7 +1,6 @@
 use crate::{
-    ATTOSEC_PER_ATTOSEC, ATTOSEC_PER_FEMTOSEC, ATTOSEC_PER_MICROSEC, ATTOSEC_PER_MILLISEC,
-    ATTOSEC_PER_NANOSEC, ATTOSEC_PER_PICOSEC, ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockDrift,
-    LocalSpacetime, Real, TimePoint, TimeSpan,
+    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_US, ATTOSEC_PER_SEC,
+    ATTOSEC_PER_SEC_I128, ClockDrift, LocalSpacetime, Real, TimePoint, TimeSpan,
 };
 
 impl TimePoint {
@@ -341,7 +340,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ms(&mut self) {
-        self._add_subsec(ATTOSEC_PER_MILLISEC);
+        self._add_subsec(ATTOS_PER_MS);
     }
 
     /// Adds exactly 1 microsecond to this time value.
@@ -349,7 +348,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1us(&mut self) {
-        self._add_subsec(ATTOSEC_PER_MICROSEC);
+        self._add_subsec(ATTOS_PER_US);
     }
 
     /// Adds exactly 1 nanosecond to this time value.
@@ -357,7 +356,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ns(&mut self) {
-        self._add_subsec(ATTOSEC_PER_NANOSEC);
+        self._add_subsec(ATTOS_PER_NS);
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
@@ -383,7 +382,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ms(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOSEC_PER_MILLISEC);
+        self.add_subsec_span(n, ATTOS_PER_MS);
     }
 
     /// Adds the specified number of microseconds to this time value.
@@ -391,7 +390,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_us(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOSEC_PER_MICROSEC);
+        self.add_subsec_span(n, ATTOS_PER_US);
     }
 
     /// Adds the specified number of nanoseconds to this time value.
@@ -399,7 +398,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ns(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOSEC_PER_NANOSEC);
+        self.add_subsec_span(n, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of picoseconds to this time value.
@@ -407,7 +406,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ps(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOSEC_PER_PICOSEC);
+        self.add_subsec_span(n, ATTOS_PER_PS);
     }
 
     /// Adds the specified number of femtoseconds to this time value.
@@ -415,7 +414,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_fs(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOSEC_PER_FEMTOSEC);
+        self.add_subsec_span(n, ATTOS_PER_FS);
     }
 
     /// Adds the specified number of attoseconds to this time value.
@@ -423,7 +422,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_attos(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOSEC_PER_ATTOSEC);
+        self.add_subsec_span(n, 1);
     }
 
     // =====================================================================
@@ -453,7 +452,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ms(&mut self) {
-        self.add_subsec_span(-1, ATTOSEC_PER_MILLISEC);
+        self.add_subsec_span(-1, ATTOS_PER_MS);
     }
 
     /// Subtracts exactly 1 microsecond from this time value.
@@ -461,7 +460,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1us(&mut self) {
-        self.add_subsec_span(-1, ATTOSEC_PER_MICROSEC);
+        self.add_subsec_span(-1, ATTOS_PER_US);
     }
 
     /// Subtracts exactly 1 nanosecond from this time value.
@@ -469,7 +468,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ns(&mut self) {
-        self.add_subsec_span(-1, ATTOSEC_PER_NANOSEC);
+        self.add_subsec_span(-1, ATTOS_PER_NS);
     }
 
     // =====================================================================
@@ -499,7 +498,7 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ms(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_MILLISEC);
+        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_MS);
     }
 
     /// Subtracts the specified number of microseconds from this time value.
@@ -507,7 +506,7 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_us(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_MICROSEC);
+        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_US);
     }
 
     /// Subtracts the specified number of nanoseconds from this time value.
@@ -515,7 +514,7 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ns(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_NANOSEC);
+        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_NS);
     }
 
     /// Subtracts the specified number of picoseconds from this time value.
@@ -523,7 +522,7 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ps(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_PICOSEC);
+        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_PS);
     }
 
     /// Subtracts the specified number of femtoseconds from this time value.
@@ -531,7 +530,7 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_fs(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_FEMTOSEC);
+        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_FS);
     }
 
     /// Subtracts the specified number of attoseconds from this time value.
@@ -539,7 +538,7 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_attos(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOSEC_PER_ATTOSEC);
+        self.add_subsec_span(n.saturating_neg(), 1);
     }
 
     // =====================================================================
@@ -617,30 +616,30 @@ impl TimePoint {
     /// Returns the total duration in milliseconds.
     #[inline]
     pub const fn total_ms(self) -> i128 {
-        self.total_attos() / (ATTOSEC_PER_MILLISEC as i128)
+        self.total_attos() / (ATTOS_PER_MS as i128)
     }
 
     /// Returns the total duration in microseconds.
     #[inline]
     pub const fn total_us(self) -> i128 {
-        self.total_attos() / (ATTOSEC_PER_MICROSEC as i128)
+        self.total_attos() / (ATTOS_PER_US as i128)
     }
 
     /// Returns the total duration in nanoseconds.
     #[inline]
     pub const fn total_ns(self) -> i128 {
-        self.total_attos() / (ATTOSEC_PER_NANOSEC as i128)
+        self.total_attos() / (ATTOS_PER_NS as i128)
     }
 
     /// Returns the total duration in picoseconds.
     #[inline]
     pub const fn total_ps(self) -> i128 {
-        self.total_attos() / (ATTOSEC_PER_PICOSEC as i128)
+        self.total_attos() / (ATTOS_PER_PS as i128)
     }
 
     /// Returns the total duration in femtoseconds.
     #[inline]
     pub const fn total_fs(self) -> i128 {
-        self.total_attos() / (ATTOSEC_PER_FEMTOSEC as i128)
+        self.total_attos() / (ATTOS_PER_FS as i128)
     }
 }

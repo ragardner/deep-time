@@ -7,7 +7,7 @@
 //! let stamp = 3.days().ago(ClockType::UTC);
 //! ```
 
-use crate::{ClockType, SEC_PER_DAY, SEC_PER_DAYI64, TimePoint, TimeSpan};
+use crate::{ClockType, SEC_PER_DAY, SEC_PER_DAY_F, SEC_PER_DAYI64, TimePoint, TimeSpan};
 
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
@@ -112,7 +112,7 @@ impl TimeUnits for f64 {
 
     #[inline]
     fn days(self) -> TimeSpan {
-        (self * SEC_PER_DAY).sec()
+        (self * SEC_PER_DAY_F).sec()
     }
 
     #[inline]
@@ -190,19 +190,5 @@ impl TimeUnits for f32 {
     #[inline]
     fn from_now(self, clock_type: ClockType) -> TimePoint {
         TimePoint::from_sec(0, clock_type).add(self.sec())
-    }
-}
-
-impl TimeSpan {
-    /// Returns a `TimePoint` that is this duration ago from the given clock type.
-    #[inline]
-    pub const fn ago(self, clock_type: ClockType) -> TimePoint {
-        TimePoint::from_sec(0, clock_type).sub(self)
-    }
-
-    /// Returns a `TimePoint` that is this duration from now in the given clock type.
-    #[inline]
-    pub const fn from_now(self, clock_type: ClockType) -> TimePoint {
-        TimePoint::from_sec(0, clock_type).add(self)
     }
 }

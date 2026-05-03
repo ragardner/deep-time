@@ -6,29 +6,30 @@ use crate::{Real, TimeSpan};
 /// 365.25 days per year) rather than the slightly more precise Gregorian
 /// average (365.2425 days). This is the traditional astronomical standard
 /// used by Julian Day (JD) and Modified Julian Date (MJD) systems, and it
-/// matches the `NS_PER_YEAR` / `NS_PER_MONTH` constants already defined
-/// elsewhere in the crate.
+/// matches the `NS_PER_YEAR` / `NS_PER_MONTH` constants.
 ///
 /// They exist so that years/months/weeks/days can be converted to a
 /// **fixed number of seconds**.
 /// The resulting `Span` then contains only fixed time units (hours,
 /// minutes, seconds, nanoseconds) and no longer requires a reference
 /// date for `.total()` conversions.
-pub(crate) const SECS_PER_YEAR: i128 = 31_557_600; // 365.25 days × 86_400
-pub(crate) const SECS_PER_MONTH: i128 = 2_629_800; // 30.4375 days × 86_400
-pub(crate) const SECS_PER_DAY: i128 = 86_400;
+pub(crate) const SEC_PER_YEAR: i128 = 31_557_600; // 365.25 days × 86_400
+pub(crate) const SEC_PER_MONTH: i128 = 2_629_800; // 30.4375 days × 86_400
+pub(crate) const SEC_PER_DAY: i128 = 86_400;
 
 /// Exactly 86,400 seconds in one standard Earth day  
 /// (24 hours × 60 minutes × 60 seconds).
-pub const SEC_PER_DAY: Real = 86_400.0;
+pub const SEC_PER_DAY_F: Real = 86_400.0;
 pub const SEC_PER_DAYI64: i64 = 86_400;
 pub(crate) const SEC_PER_DAYI128: i128 = 86_400;
 pub(crate) const SEC_PER_HALF_DAYI64: i64 = 43_200;
 /// Seconds in one GPS week (exactly 7 days).
-pub(crate) const SECS_PER_WEEK: i64 = 7 * SEC_PER_DAYI64;
+pub(crate) const SEC_PER_WEEK: i64 = 7 * SEC_PER_DAYI64;
 /// Attoseconds in one GPS week.
-pub(crate) const ATTOS_PER_WEEK: i128 = SECS_PER_WEEK as i128 * ATTOSEC_PER_SEC_I128;
+pub(crate) const ATTOS_PER_WEEK: i128 = SEC_PER_WEEK as i128 * ATTOSEC_PER_SEC_I128;
 pub const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+pub const ATTOS_PER_HALF_DAY: i128 = ATTOS_PER_DAY / 2;
+pub const ATTOS_PER_HALF_DAYU: u128 = ATTOS_PER_HALF_DAY as u128;
 
 /// Solar gravitational parameter GM☉ in m³ s⁻²  
 /// (exact nominal value from IAU 2015 Resolution B3)
@@ -48,20 +49,19 @@ pub const TWO_GM_SUN_OVER_C3: Real = 2.0 * GM_SUN_OVER_C3;
 
 /// Attoseconds per second.
 pub const ATTOSEC_PER_SEC: u64 = 1_000_000_000_000_000_000;
-pub(crate) const ATTOSEC_PER_SEC_I128: i128 = 1_000_000_000_000_000_000;
+pub(crate) const ATTOSEC_PER_SEC_I128: i128 = ATTOSEC_PER_SEC as i128;
+pub(crate) const ATTOSEC_PER_SEC_U128: u128 = ATTOSEC_PER_SEC as u128;
 
 /// Attoseconds per millisecond (10⁻³ s).
-pub const ATTOSEC_PER_MILLISEC: u64 = 1_000_000_000_000_000;
+pub const ATTOS_PER_MS: u64 = 1_000_000_000_000_000;
 /// Attoseconds per microsecond (10⁻⁶ s).
-pub const ATTOSEC_PER_MICROSEC: u64 = 1_000_000_000_000;
+pub const ATTOS_PER_US: u64 = 1_000_000_000_000;
 /// Attoseconds per nanosecond (10⁻⁹ s).
-pub const ATTOSEC_PER_NANOSEC: u64 = 1_000_000_000;
+pub const ATTOS_PER_NS: u64 = 1_000_000_000;
 /// Attoseconds per picosecond (10⁻¹² s).
-pub const ATTOSEC_PER_PICOSEC: u64 = 1_000_000;
+pub const ATTOS_PER_PS: u64 = 1_000_000;
 /// Attoseconds per femtosecond (10⁻¹⁵ s).
-pub const ATTOSEC_PER_FEMTOSEC: u64 = 1_000;
-/// Attoseconds per attosecond (by definition).
-pub const ATTOSEC_PER_ATTOSEC: u64 = 1;
+pub const ATTOS_PER_FS: u64 = 1_000;
 
 /// TT = TAI + exactly 32.184 s
 pub(crate) const TT_TAI_OFFSET_SEC: i64 = 32;
@@ -71,25 +71,36 @@ pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 �
 pub const TT_TAI_OFFSET_SPAN: TimeSpan = TimeSpan::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
 
 // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
-pub(crate) const J2000_SECS_PER_CENTURY: Real = 3_155_760_000.0;
+pub(crate) const J2000_SEC_PER_CENTURY: Real = 3_155_760_000.0;
 
 /// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
 pub const J2000_JD_TT: i64 = 2_451_545;
+/// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC
+pub const MJD_1970: i64 = 40_587;
 /// Number of TAI seconds backwards from noon 2000-01-01 to midnight 1972-01-01
-pub const TAI_SECS_AT_1972: i64 = -883_655_990;
+pub const TAI_SEC_AT_1972: i64 = -883_655_990;
 
 /// Seconds from the Unix epoch (1970-01-01 00:00:00 UTC) to J2000.0 noon
 /// (2000-01-01 12:00:00 UTC).
 pub(crate) const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;
 
-/// Exact mean length of one Martian sol in Earth seconds (NASA GISS / AM2000)
-pub const MARS_SOL_LENGTH_SEC: Real = 88775.244;
+pub(crate) const NS_PER_YEAR: i128 = 31_557_600_000_000_000; // 365.25 days
+pub(crate) const NS_PER_MONTH: i128 = 2_629_800_000_000_000; // 30.4375 days
+pub(crate) const NS_PER_WEEK: i128 = 604_800_000_000_000;
+pub(crate) const NS_PER_DAY: i128 = 86_400_000_000_000;
+pub(crate) const NS_PER_HALF_DAY: i128 = 43_200_000_000_000;
+pub(crate) const NS_PER_HOUR: i128 = 3_600_000_000_000;
+pub(crate) const NS_PER_MINUTE: i128 = 60_000_000_000;
+pub(crate) const NS_PER_SECOND: i128 = 1_000_000_000;
+
+/// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC
+pub(crate) const MJD_EPOCH_NANOS: i128 = 40_587_i128 * NS_PER_DAY;
+/// JD 2440587.5 exactly = 1970-01-01 00:00:00 UTC
+pub(crate) const JD_EPOCH_NANOS: i128 = 2_440_587_i128 * NS_PER_DAY + NS_PER_HALF_DAY;
 
 pub(crate) const PLANCK_LENGTH: Real = 1.616255e-35; // meters (standard value)
 pub(crate) const PLANCK_LENGTH_4: Real =
     PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;
-
-//
 
 /// L_G = 6.969290134 × 10^{-10} (exact IAU) as fixed-point fraction.
 pub(crate) const LG_NUM: i128 = 6_969_290_134;
@@ -111,6 +122,9 @@ pub(crate) const TDB0_ATTOS: i128 = -65_500_000_000_000;
 /// as fixed-point fraction.
 pub(crate) const LM_NUM: i128 = 648_378;
 pub(crate) const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
+
+/// Exact mean length of one Martian sol in Earth seconds (NASA GISS / AM2000)
+pub const MARS_SOL_LENGTH_SEC: Real = 88775.244;
 
 /// Mars MSD reference epoch (JD 2405522.0028779 TT) broken into integer parts for exact math.
 pub(crate) const MARS_MSD_REF_JD_INT: i64 = 2_405_522;

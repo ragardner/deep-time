@@ -1,7 +1,7 @@
 #[cfg(feature = "ut1-tests")]
 #[cfg(test)]
 mod tests {
-    use deep_time::constants::SEC_PER_DAY;
+    use deep_time::constants::SEC_PER_DAY_F;
     use deep_time::{ClockType, Separator, TimePoint, TimeSpan, Ut1Data, Ut1Format};
 
     #[test]
@@ -26,7 +26,7 @@ mod tests {
         );
 
         // Create a UTC TimePoint at exactly that MJD (midnight)
-        let utc = TimePoint::from_mjd_utc_exact(56879, TimeSpan::ZERO);
+        let utc = TimePoint::from_mjd_exact(56879, 0, ClockType::UTC);
 
         // === Test to_ut1 ===
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
@@ -39,7 +39,7 @@ mod tests {
         // The numerical value of the Custom TimePoint is UTC + DUT1.
         // duration_since() computes physical time (via TAI), so we re-interpret
         // the Custom value as UTC to see the clock difference (DUT1).
-        let diff = ut1.with_clock_type(ClockType::UTC).duration_since(utc);
+        let diff = ut1.with_type(ClockType::UTC).duration_since(utc);
         assert!(
             (diff.as_sec_f() - dut1_expected).abs() < 1e-9,
             "to_ut1 applied wrong DUT1: expected {}, got {}",
@@ -85,7 +85,7 @@ mod tests {
         );
 
         // 2. Create exact UTC TimePoint at MJD 60961.0 00:00:00 (midnight)
-        let utc = TimePoint::from_mjd_utc_exact(60961, TimeSpan::ZERO);
+        let utc = TimePoint::from_mjd_exact(60961, 0, ClockType::UTC);
 
         // 3. to_ut1 (uses exact MJD path internally)
         let ut1 = utc
@@ -99,7 +99,7 @@ mod tests {
         );
 
         // Verify the numerical difference is exactly the DUT1 we expect
-        let diff = ut1.with_clock_type(ClockType::UTC).duration_since(utc);
+        let diff = ut1.with_type(ClockType::UTC).duration_since(utc);
         assert!(
             (diff.as_sec_f() - dut1_expected).abs() < 1e-10,
             "to_ut1 applied wrong DUT1: expected {}, got {}",
@@ -143,7 +143,7 @@ mod tests {
         );
 
         // 2. Create exact UTC midnight
-        let utc = TimePoint::from_mjd_utc_exact(57259, TimeSpan::ZERO);
+        let utc = TimePoint::from_mjd_exact(57259, 0, ClockType::UTC);
 
         // 3. User-style round-trip (the way real code uses it)
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
@@ -175,7 +175,7 @@ mod tests {
         let provider = load_finals2000a();
 
         // Use a known good row (MJD 56879.00, DUT1 ≈ -0.3170554)
-        let utc = TimePoint::from_mjd_utc_exact(56879, TimeSpan::ZERO);
+        let utc = TimePoint::from_mjd_exact(56879, 0, ClockType::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
         // Round-trip through JD_UT1
@@ -203,7 +203,7 @@ mod tests {
     fn test_full_pipeline_jd_ut1_roundtrip() {
         let provider = load_finals2000a();
 
-        let original_utc = TimePoint::from_mjd_utc_exact(60961, TimeSpan::ZERO); // known row
+        let original_utc = TimePoint::from_mjd_exact(60961, 0, ClockType::UTC); // known row
         let ut1 = original_utc.to_ut1(&provider).expect("to_ut1 failed");
 
         // Convert to JD in UT1
@@ -229,7 +229,7 @@ mod tests {
     fn test_mjd_ut1_exact_roundtrip() {
         let provider = load_finals2000a();
 
-        let utc = TimePoint::from_mjd_utc_exact(57259, TimeSpan::ZERO);
+        let utc = TimePoint::from_mjd_exact(57259, 0, ClockType::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
         let (mjd_days, frac) = ut1.to_mjd_ut1_exact();
@@ -252,18 +252,18 @@ mod tests {
         let provider = load_finals2000a();
         let dut1_expected = -0.3170554; // known value for MJD 56879.00
 
-        let utc = TimePoint::from_mjd_utc_exact(56879, TimeSpan::ZERO);
+        let utc = TimePoint::from_mjd_exact(56879, 0, ClockType::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
         let (jd_ut1, frac_ut1) = ut1.to_jd_ut1_exact();
-        let (jd_utc, frac_utc) = utc.to_jd_utc_exact();
+        let (jd_utc, frac_utc) = utc.to_jd_exact();
 
         // Compute total JD (integer + fraction) as f64
-        let total_jd_ut1 = jd_ut1 as f64 + frac_ut1.as_sec_f() / SEC_PER_DAY;
-        let total_jd_utc = jd_utc as f64 + frac_utc.as_sec_f() / SEC_PER_DAY;
+        let total_jd_ut1 = jd_ut1 as f64 + frac_ut1.as_sec_f() / SEC_PER_DAY_F;
+        let total_jd_utc = jd_utc as f64 + frac_utc as f64 / SEC_PER_DAY_F;
 
         let diff_days = total_jd_ut1 - total_jd_utc;
-        let expected_diff = dut1_expected / SEC_PER_DAY;
+        let expected_diff = dut1_expected / SEC_PER_DAY_F;
 
         assert!(
             (diff_days - expected_diff).abs() < 1e-9,
@@ -281,8 +281,7 @@ mod tests {
         let provider = load_finals2000a();
 
         // 12:00:00 UTC on a known day
-        let frac = TimeSpan::from_sec_f(12.0 * 3600.0);
-        let utc = TimePoint::from_mjd_utc_exact(60961, frac);
+        let utc = TimePoint::from_mjd_exact(60961, 12 * 3600, ClockType::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
         let (jd_days, frac2) = ut1.to_jd_ut1_exact();

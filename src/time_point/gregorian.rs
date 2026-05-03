@@ -1,6 +1,6 @@
 use crate::{
-    ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockType, GregorianTime, SEC_PER_DAYI64, TimePoint,
-    TimeSpan, Weekday, leap_seconds::is_leap_second,
+    ATTOS_PER_HALF_DAYU, ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ATTOSEC_PER_SEC_U128, ClockType,
+    GregorianTime, SEC_PER_DAYI64, TimePoint, TimeSpan, Weekday, leap_seconds::is_leap_second,
 };
 
 /// Combined Gregorian date + wall time with subsecond precision.
@@ -34,7 +34,7 @@ impl TimePoint {
         let unix_attosec = self.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
 
         // Still needed for weekday, wk_sun, wk_mon, and the jd_tt_exact field
-        let (jd_days, frac) = self.to_jd_tt_exact();
+        let (jd_days, frac) = self.to_type(ClockType::TT).to_jd_exact();
 
         let (iso_yr, iso_wk, iso_wkday) =
             self.to_iso_week_date(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
@@ -126,24 +126,28 @@ impl TimePoint {
 
     /// Non-UTC path (uses the existing TT-based JD machinery)
     const fn to_gregorian_ymdhms_non_utc(self) -> GregorianYmdHms {
-        let (jd_days, frac) = self.to_jd_tt_exact();
+        let (jd_days, frac_attos) = self.to_jd_exact();
 
-        // Date
-        let jdn = if frac.sec >= 43200 {
+        // Date: adjust if we're past noon (astronomical day rollover)
+        let jdn = if frac_attos >= ATTOS_PER_HALF_DAYU {
             jd_days + 1
         } else {
             jd_days
         };
         let (yr, mo, day) = Self::jdn_to_ymd(jdn);
 
-        // Time
-        let tt = self.to_clock_type(ClockType::TT);
-        let (_, tt_frac) = tt.to_jd_tt_exact();
+        // Time of day in TT (fraction since noon)
+        let tt = self.to_type(ClockType::TT);
+        let (_, tt_frac_attos) = tt.to_jd_exact();
 
-        let seconds_since_midnight = if tt_frac.sec >= 43200 {
-            tt_frac.sec - 43200
+        // Convert attoseconds since noon → seconds since midnight
+        let seconds_since_noon = (tt_frac_attos / ATTOSEC_PER_SEC_U128) as i64;
+        let subsec = tt_frac_attos.rem_euclid(ATTOSEC_PER_SEC_U128) as u64;
+
+        let seconds_since_midnight = if seconds_since_noon >= 43200 {
+            seconds_since_noon - 43200
         } else {
-            tt_frac.sec + 43200
+            seconds_since_noon + 43200
         };
 
         let hr = (seconds_since_midnight / 3600) as u8;
@@ -157,7 +161,7 @@ impl TimePoint {
             hr,
             min,
             sec,
-            subsec: tt_frac.subsec,
+            subsec,
         }
     }
 
@@ -265,18 +269,18 @@ impl TimePoint {
 
         // let mut tp = Self::from_unix_sec(unix_sec)
         //     .add(TimeSpan::from_total_attos(final_attos as i128))
-        //     .to_clock_type(clock_type);
+        //     .to_type(clock_type);
 
         let mut tp = if matches!(clock_type, ClockType::UTCSofa | ClockType::UTCSpice) {
-            // For historical civil scales, use with_clock_type so we don't
+            // For historical civil scales, use with_type so we don't
             // trigger premature offset application during creation
             Self::from_unix_sec(unix_sec)
                 .add(TimeSpan::from_total_attos(final_attos as i128))
-                .with_clock_type(clock_type)
+                .with_type(clock_type)
         } else {
             Self::from_unix_sec(unix_sec)
                 .add(TimeSpan::from_total_attos(final_attos as i128))
-                .to_clock_type(clock_type)
+                .to_type(clock_type)
         };
 
         // Only bump the midnight that immediately follows a leap second.
@@ -297,7 +301,13 @@ impl TimePoint {
     #[inline]
     pub const fn from_gregorian_ymd(yr: i64, mo: u8, day: u8, clock_type: ClockType) -> Self {
         let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, 0, 0, 0);
-        Self::from_unix_sec(unix_sec).to_clock_type(clock_type)
+        let mut tp = Self::from_unix_sec(unix_sec);
+        if matches!(clock_type, ClockType::UTCSofa | ClockType::UTCSpice) {
+            tp.set_type(clock_type);
+            tp
+        } else {
+            tp.to_type(clock_type)
+        }
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
@@ -409,17 +419,20 @@ impl TimePoint {
     ///
     /// The result is computed from the civil (proleptic Gregorian) date of this
     /// `TimePoint`, matching the convention used by [`Self::jdn_to_weekday`].
-    pub const fn weekday(self, jd_tt_exact: Option<(i64, TimeSpan)>) -> u8 {
-        let (jd_days, frac) = if let Some(jd_tt_exact) = jd_tt_exact {
-            jd_tt_exact
+    pub const fn weekday(self, jd_tt_exact: Option<(i64, u128)>) -> u8 {
+        let (jd_days, frac_attos) = if let Some(jd) = jd_tt_exact {
+            jd
         } else {
-            self.to_jd_tt_exact()
+            self.to_type(ClockType::TT).to_jd_exact()
         };
-        let jdn = if frac.sec >= 43200 {
+
+        // If the time is 12:00 or later, the astronomical day has already rolled over
+        let jdn = if frac_attos >= ATTOS_PER_HALF_DAYU {
             jd_days + 1
         } else {
             jd_days
         };
+
         Self::jdn_to_weekday(jdn)
     }
 

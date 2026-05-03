@@ -112,7 +112,7 @@ impl ClockModel {
     /// from ground control.
     #[inline]
     pub const fn attach_to(self, point: TimePoint) -> TimePoint {
-        point.with_clock_type(self.base)
+        point.with_type(self.base)
     }
 
     /// Returns a new `ClockModel` with the same base type and reference epoch,
@@ -129,6 +129,6 @@ impl ClockModel {
     /// Convenience: creates a `TimePoint` in this scale from a TAI instant.
     #[inline]
     pub const fn from_tai(self, tai: TimePoint) -> TimePoint {
-        tai.with_clock_type(self.base)
+        tai.with_type(self.base)
     }
 }

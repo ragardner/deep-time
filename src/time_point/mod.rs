@@ -6,6 +6,7 @@ mod from_ccsds;
 mod from_gps;
 mod from_str;
 mod gregorian;
+mod julian_date;
 mod ops;
 mod to_attos_since;
 mod to_ccsds_bin;

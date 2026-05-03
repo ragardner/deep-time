@@ -1,5 +1,5 @@
 use crate::{
-    DtErr, DtErrKind, SECS_PER_DAY, SECS_PER_MONTH, SECS_PER_WEEK, SECS_PER_YEAR, TimeSpan, an_err,
+    DtErr, DtErrKind, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK, SEC_PER_YEAR, TimeSpan, an_err,
 };
 
 struct ParsedComponent {
@@ -168,25 +168,25 @@ impl TimeSpan {
             let contrib_nanos = match (is_date, comp.unit) {
                 (true, b'Y' | b'y') => {
                     let total_secs = (comp.signed_int as i128)
-                        .checked_mul(SECS_PER_YEAR)
+                        .checked_mul(SEC_PER_YEAR)
                         .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "year"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'M' | b'm') => {
                     let total_secs = (comp.signed_int as i128)
-                        .checked_mul(SECS_PER_MONTH)
+                        .checked_mul(SEC_PER_MONTH)
                         .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "month"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'W' | b'w') => {
                     let total_secs = (comp.signed_int as i128)
-                        .checked_mul(SECS_PER_WEEK as i128)
+                        .checked_mul(SEC_PER_WEEK as i128)
                         .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "week"))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'D' | b'd') => {
                     let total_secs = (comp.signed_int as i128)
-                        .checked_mul(SECS_PER_DAY)
+                        .checked_mul(SEC_PER_DAY)
                         .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "day"))?;
                     total_secs * 1_000_000_000i128
                 }
