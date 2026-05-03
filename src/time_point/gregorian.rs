@@ -267,21 +267,9 @@ impl TimePoint {
         // Naive civil-time → unix seconds (same for 23:59:60 and next midnight)
         let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, h, m, s) + extra_sec;
 
-        // let mut tp = Self::from_unix_sec(unix_sec)
-        //     .add(TimeSpan::from_total_attos(final_attos as i128))
-        //     .to_type(clock_type);
-
-        let mut tp = if matches!(clock_type, ClockType::UTCSofa | ClockType::UTCSpice) {
-            // For historical civil scales, use with_type so we don't
-            // trigger premature offset application during creation
-            Self::from_unix_sec(unix_sec)
-                .add(TimeSpan::from_total_attos(final_attos as i128))
-                .with_type(clock_type)
-        } else {
-            Self::from_unix_sec(unix_sec)
-                .add(TimeSpan::from_total_attos(final_attos as i128))
-                .to_type(clock_type)
-        };
+        let mut tp = Self::from_unix_sec(unix_sec)
+            .add(TimeSpan::from_total_attos(final_attos as i128))
+            .to_type(clock_type);
 
         // Only bump the midnight that immediately follows a leap second.
         // This keeps all three instants distinct while preserving the existing
@@ -301,13 +289,7 @@ impl TimePoint {
     #[inline]
     pub const fn from_gregorian_ymd(yr: i64, mo: u8, day: u8, clock_type: ClockType) -> Self {
         let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, 0, 0, 0);
-        let mut tp = Self::from_unix_sec(unix_sec);
-        if matches!(clock_type, ClockType::UTCSofa | ClockType::UTCSpice) {
-            tp.set_type(clock_type);
-            tp
-        } else {
-            tp.to_type(clock_type)
-        }
+        Self::from_unix_sec(unix_sec).to_type(clock_type)
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
