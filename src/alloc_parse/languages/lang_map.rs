@@ -14,6 +14,11 @@ pub(crate) fn lang_map() -> &'static HashMap<Lang, &'static LangData> {
 
         m.insert(Lang::En, en_lang_data());
 
+        #[cfg(feature = "de")]
+        {
+            m.insert(Lang::De, de::de_lang_data());
+        }
+
         #[cfg(feature = "fr")]
         {
             m.insert(Lang::Fr, fr::fr_lang_data());

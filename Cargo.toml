@@ -58,9 +58,17 @@ parse = [
     "dep:hashbrown",
 ]
 
+de = ["parse"]
 fr = ["parse"]
-euro = ["parse", "fr"]
-lang = ["parse", "euro"]
+euro = [
+    "parse",
+    "de",
+    "fr",
+]
+lang = [
+    "parse",
+    "euro",
+]
 
 # ──────────────────────────────────────────────────────────────
 # LOCALE
