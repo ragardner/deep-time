@@ -4,8 +4,28 @@ use crate::{
 };
 
 impl TimePoint {
-    /// Returns `(integer_days, fractional_attoseconds)`.
+    /// Returns the exact Julian Date of this instant as `(integer_days, fractional_attoseconds)`.
+    ///
     /// The fractional part is always in `[0, ATTOS_PER_DAY)`.
+    ///
+    /// ### Behavior by `clock_type`
+    ///
+    /// - **`UTC`, `UTCSofa`, `UTCSpice`**: Computes **JD(UTC)** using the Unix epoch
+    ///   (1970-01-01 00:00:00 UTC) as reference. This produces the Julian Date that
+    ///   corresponds to the civil UTC clock reading (the value used by IERS C04 tables,
+    ///   most astronomy software, and online JD calculators).
+    ///
+    /// - **All other types** (TAI, TT, TDB, GPS, TCG, etc.): Computes **JD(TT)** (or
+    ///   equivalent uniform scale) using the J2000.0 TT epoch (`J2000_JD_TT = 2451545`).
+    ///   This is the continuous, leap-second-free value used for ephemerides and
+    ///   dynamical calculations.
+    ///
+    /// The returned value therefore depends on both the physical instant *and* the
+    /// declared time scale of `self`.
+    ///
+    /// # Precision
+    /// Exact (attosecond resolution). Use [`to_jd`](Self::to_jd) for the floating-point
+    /// version.
     pub const fn to_jd_exact(self) -> (i64, u128) {
         match self.clock_type {
             ClockType::UTC | ClockType::UTCSofa | ClockType::UTCSpice => {
@@ -29,12 +49,31 @@ impl TimePoint {
         }
     }
 
+    /// Returns the Julian Date of this instant as a floating-point `Real` (`f64`).
+    ///
+    /// This is the lossy counterpart to [`to_jd_exact`](Self::to_jd_exact).
+    /// See that method for the exact scale-dependent behavior (JD(UTC) vs JD(TT)).
     #[inline]
     pub const fn to_jd(self) -> Real {
         let (days, attos) = self.to_jd_exact();
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
 
+    /// Returns the exact Modified Julian Date of this instant as `(integer_days, fractional_attoseconds)`.
+    ///
+    /// The fractional part is always in `[0, ATTOS_PER_DAY)`.
+    ///
+    /// ### Behavior by `clock_type`
+    ///
+    /// - **`UTC`, `UTCSofa`, `UTCSpice`**: Computes **MJD(UTC)** using the Unix epoch
+    ///   (1970-01-01 00:00:00 UTC). This matches the MJD column in IERS C04 / Bulletin A
+    ///   tables (0h UTC epochs) and most civil/UTC-labeled data products.
+    ///
+    /// - **All other types**: Computes the MJD equivalent of the uniform-scale JD
+    ///   (normally JD(TT) – 2_400_000.5) with proper half-day adjustment.
+    ///
+    /// # Precision
+    /// Exact (attosecond resolution). Use [`to_mjd`](Self::to_mjd) for the floating-point version.
     pub const fn to_mjd_exact(self) -> (i64, u128) {
         match self.clock_type {
             ClockType::UTC | ClockType::UTCSofa | ClockType::UTCSpice => {
@@ -59,12 +98,30 @@ impl TimePoint {
         }
     }
 
+    /// Returns the Modified Julian Date of this instant as a floating-point `Real` (`f64`).
+    ///
+    /// This is the lossy counterpart to [`to_mjd_exact`](Self::to_mjd_exact).
+    /// See that method for the exact scale-dependent behavior (MJD(UTC) vs uniform MJD).
     #[inline]
     pub const fn to_mjd(self) -> Real {
         let (days, attos) = self.to_mjd_exact();
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
 
+    /// Creates a `TimePoint` from an exact Julian Date, interpreting the JD in the
+    /// scale indicated by `orig_type`.
+    ///
+    /// - If `orig_type` is `UTC` / `UTCSofa` / `UTCSpice`, the input JD is treated as
+    ///   **JD(UTC)** and the resulting `TimePoint` will have the corresponding UTC
+    ///   civil time (leap-second aware).
+    /// - For all other types the input JD is treated as the uniform-scale JD
+    ///   (normally JD(TT)) and the resulting `TimePoint` is constructed on that scale.
+    ///
+    /// The returned `TimePoint` represents the physical instant whose JD (in the
+    /// requested scale) matches the input.
+    ///
+    /// # Precision
+    /// Exact (attosecond resolution).
     pub const fn from_jd_exact(jd_days: i64, frac_attos: u128, orig_type: ClockType) -> Self {
         match orig_type {
             ClockType::UTC | ClockType::UTCSofa | ClockType::UTCSpice => {
@@ -87,6 +144,14 @@ impl TimePoint {
         }
     }
 
+    /// Creates a `TimePoint` from an exact Modified Julian Date, interpreting the MJD
+    /// in the scale indicated by `orig_type`.
+    ///
+    /// This is the inverse of [`to_mjd_exact`](Self::to_mjd_exact). See that method
+    /// and [`from_jd_exact`](Self::from_jd_exact) for scale-specific behavior.
+    ///
+    /// # Precision
+    /// Exact (attosecond resolution).
     pub const fn from_mjd_exact(mjd_days: i64, frac_attos: u128, orig_type: ClockType) -> Self {
         let jd_days = mjd_days + 2_400_000;
         let jd_attos = frac_attos + ATTOS_PER_HALF_DAY as u128;
