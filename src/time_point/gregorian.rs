@@ -34,7 +34,11 @@ impl TimePoint {
         let unix_attosec = self.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
 
         // Still needed for weekday, wk_sun, wk_mon, and the jd_tt_exact field
-        let (jd_days, frac) = self.to_type(ClockType::TT).to_jd_exact();
+        let (jd_days, frac) = if self.uses_leap_sec() {
+            self.to_type(ClockType::TT).to_jd_exact()
+        } else {
+            self.to_jd_exact()
+        };
 
         let (iso_yr, iso_wk, iso_wkday) =
             self.to_iso_week_date(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
