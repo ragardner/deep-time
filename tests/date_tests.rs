@@ -21,21 +21,21 @@ use deep_time::{
 
 #[test]
 fn print_stuff() {
-    // let x = TimePoint::from_gregorian_ymd(1961, 1, 1, ClockType::UTC);
+    // let x = TimePoint::from_ymd(1961, 1, 1, ClockType::UTC);
     // eprintln!("UTC lower 61 {:?}", x);
-    // let x = TimePoint::from_gregorian_ymd(1972, 1, 1, ClockType::UTC);
+    // let x = TimePoint::from_ymd(1972, 1, 1, ClockType::UTC);
     // eprintln!("UTC upper 72 {:?}", x);
 
-    // let utc_tp = TimePoint::from_gregorian_ymd(1961, 1, 1, ClockType::UTC);
+    // let utc_tp = TimePoint::from_ymd(1961, 1, 1, ClockType::UTC);
     // let sofa_tp = utc_tp.with_type(ClockType::UTCSofa);
     // let tai_tp = sofa_tp.to_tai();
     // println!("TAI lower 61 {:?}", tai_tp);
 
-    // let utc_tp = TimePoint::from_gregorian_ymd(1972, 1, 1, ClockType::UTC);
+    // let utc_tp = TimePoint::from_ymd(1972, 1, 1, ClockType::UTC);
     // let tai_tp = utc_tp.to_tai();
     // println!("TAI upper 72 {:?}", tai_tp);
 
-    // let tp = TimePoint::from_gregorian_ymdhms(
+    // let tp = TimePoint::from_ymdhms(
     //     1960,
     //     12,
     //     31,
@@ -52,7 +52,7 @@ fn print_stuff() {
     //     tp.to_jd()
     // );
 
-    // let tp = TimePoint::from_gregorian_ymdhms(
+    // let tp = TimePoint::from_ymdhms(
     //     1960,
     //     12,
     //     31,
@@ -69,7 +69,7 @@ fn print_stuff() {
     //     tp.to_jd()
     // );
 
-    // let tp = TimePoint::from_gregorian_ymdhms(1961, 1, 1, 0, 0, 0, 0, ClockType::UTCSofa);
+    // let tp = TimePoint::from_ymdhms(1961, 1, 1, 0, 0, 0, 0, ClockType::UTCSofa);
     // let tp = tp.to_type(ClockType::TAI);
     // eprintln!(
     //     "SOFA TEST 1961-01-01 00:00:00: TIMEPOINT: {:?}, TIMEPOINT JD: {:?}",
@@ -77,7 +77,7 @@ fn print_stuff() {
     //     tp.to_jd()
     // );
 
-    // let tp = TimePoint::from_gregorian_ymdhms(1965, 1, 1, 12, 0, 0, 0, ClockType::UTCSofa);
+    // let tp = TimePoint::from_ymdhms(1965, 1, 1, 12, 0, 0, 0, ClockType::UTCSofa);
     // let tp = tp.to_type(ClockType::TAI);
     // eprintln!(
     //     "SOFA TEST 1965-01-01 12:00:00: TIMEPOINT: {:?}, TIMEPOINT JD: {:?}",
@@ -121,11 +121,11 @@ fn print_stuff() {
     // for &(year, month, day, _) in dates {
     //     // Create UTC TimePoint at 00:00:00 on the insertion date
     //     let utc_tp =
-    //         TimePoint::from_gregorian_ymd(year as i64, month as u8, day as u8, ClockType::UTC);
+    //         TimePoint::from_ymd(year as i64, month as u8, day as u8, ClockType::UTC);
 
     //     // Create TAI TimePoint at the same civil date (for comparison)
     //     let tai_tp =
-    //         TimePoint::from_gregorian_ymd(year as i64, month as u8, day as u8, ClockType::TAI);
+    //         TimePoint::from_ymd(year as i64, month as u8, day as u8, ClockType::TAI);
 
     //     println!(
     //         "{:04}-{:02}-{:02}: UTC sec = {}, TAI sec = {}",
@@ -145,35 +145,35 @@ fn print_stuff() {
     // println!("TAI sec: {}", tai.sec());
     // println!("TAI subsec: {}", tai.subsec());
 
-    // let utc1900 = TimePoint::from_gregorian_ymd(1900, 1, 1, ClockType::UTC);
+    // let utc1900 = TimePoint::from_ymd(1900, 1, 1, ClockType::UTC);
     // eprintln!(
     //     "UTC SEC 1900: {} SUBSEC: {}",
     //     utc1900.sec(),
     //     utc1900.subsec()
     // );
 
-    // let tai1972 = TimePoint::from_gregorian_ymd(1972, 1, 1, ClockType::TAI);
+    // let tai1972 = TimePoint::from_ymd(1972, 1, 1, ClockType::TAI);
     // eprintln!(
     //     "TAI SEC 1972: {} SUBSEC: {}",
     //     tai1972.sec(),
     //     tai1972.subsec()
     // );
 
-    // let utc1972 = TimePoint::from_gregorian_ymd(1972, 1, 1, ClockType::UTC);
+    // let utc1972 = TimePoint::from_ymd(1972, 1, 1, ClockType::UTC);
     // eprintln!(
     //     "UTC SEC 1972: {} SUBSEC: {}",
     //     utc1972.sec(),
     //     utc1972.subsec()
     // );
 
-    // let tai1971 = TimePoint::from_gregorian_ymdhms(1971, 12, 31, 23, 59, 59, 0, ClockType::TAI);
+    // let tai1971 = TimePoint::from_ymdhms(1971, 12, 31, 23, 59, 59, 0, ClockType::TAI);
     // eprintln!(
     //     "TAI SEC 1971: {} SUBSEC: {}",
     //     tai1971.sec(),
     //     tai1971.subsec()
     // );
 
-    // let utc1971 = TimePoint::from_gregorian_ymdhms(1971, 12, 31, 23, 59, 59, 0, ClockType::UTC);
+    // let utc1971 = TimePoint::from_ymdhms(1971, 12, 31, 23, 59, 59, 0, ClockType::UTC);
     // eprintln!(
     //     "UTC SEC 1971: {} SUBSEC: {}",
     //     utc1971.sec(),
@@ -185,12 +185,12 @@ fn print_stuff() {
     // let tai_1972 = tp_1972.to_type(ClockType::TAI);
     // eprintln!("1972-01-01 TAI sec (for cutoff): {}", tai_1972.sec());
 
-    // let x = TimePoint::from_gregorian_ymd(1972, 1, 1, ClockType::TAI).to_jd();
+    // let x = TimePoint::from_ymd(1972, 1, 1, ClockType::TAI).to_jd();
     // eprintln!("{}", x);
 
     // for e in SOFA_TAI_UTC_PRE_1972.iter() {
     //     // Create the UTC instant for this table row
-    //     let utc_tp = TimePoint::from_gregorian_ymd(e.yr as i64, e.mo, e.day, ClockType::UTC);
+    //     let utc_tp = TimePoint::from_ymd(e.yr as i64, e.mo, e.day, ClockType::UTC);
 
     //     // Turn it into a UTCSofa TimePoint (preserves the numerical unix_sec)
     //     let sofa_tp = utc_tp.with_type(ClockType::UTCSofa);
@@ -496,7 +496,7 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
             "Dec 31 23:59:59".to_string(),
             "2025-12-31T23:59:59Z".to_string(),
             Some(ParseCfg {
-                ref_time: Some(TimePoint::from_gregorian_ymdhms(
+                ref_time: Some(TimePoint::from_ymdhms(
                     2025,
                     12,
                     31,
@@ -1104,7 +1104,7 @@ fn date_parser_comprehensive() {
             "Dec 31 23:59:59",
             "2025-12-31T23:59:59Z",
             Some(ParseCfg {
-                ref_time: Some(TimePoint::from_gregorian_ymdhms(
+                ref_time: Some(TimePoint::from_ymdhms(
                     2025,
                     12,
                     31,

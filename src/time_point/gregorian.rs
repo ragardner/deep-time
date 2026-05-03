@@ -5,7 +5,7 @@ use crate::{
 
 /// Combined Gregorian date + wall time with subsecond precision.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct GregorianYmdHms {
+pub struct YmdHms {
     pub yr: i64,
     pub mo: u8,
     pub day: u8,
@@ -30,7 +30,7 @@ impl TimePoint {
         let clock_type = self.clock_type;
 
         // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
-        let ymdhms = self.to_gregorian_ymdhms();
+        let ymdhms = self.to_ymdhms();
         let unix_attosec = self.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
 
         // Still needed for weekday, wk_sun, wk_mon, and the jd_tt_exact field
@@ -78,18 +78,16 @@ impl TimePoint {
     /// - For `ClockType::UTC`: Uses a direct Unix-timestamp-based path (fast and clean).
     /// - For all other clock types: Uses the standard TT-based JD path.
     #[inline]
-    pub const fn to_gregorian_ymdhms(self) -> GregorianYmdHms {
+    pub const fn to_ymdhms(self) -> YmdHms {
         match self.clock_type {
-            ClockType::UTC | ClockType::UTCSofa | ClockType::UTCSpice => {
-                self.to_gregorian_ymdhms_utc()
-            }
-            _ => self.to_gregorian_ymdhms_non_utc(),
+            ClockType::UTC | ClockType::UTCSofa | ClockType::UTCSpice => self.to_ymdhms_utc(),
+            _ => self.to_ymdhms_non_utc(),
         }
     }
 
     /// Direct UTC civil time path (no TT/JD conversion).
     /// Correctly handles leap seconds (23:59:60 stays on the correct day).
-    const fn to_gregorian_ymdhms_utc(self) -> GregorianYmdHms {
+    const fn to_ymdhms_utc(self) -> YmdHms {
         let unix_sec = self.to_unix_sec();
         let canon = self.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
         let subsec = (canon.rem_euclid(ATTOSEC_PER_SEC_I128)) as u64;
@@ -117,7 +115,7 @@ impl TimePoint {
             (hr, min, sec)
         };
 
-        GregorianYmdHms {
+        YmdHms {
             yr,
             mo,
             day,
@@ -129,7 +127,7 @@ impl TimePoint {
     }
 
     /// Non-UTC path (uses the existing TT-based JD machinery)
-    const fn to_gregorian_ymdhms_non_utc(self) -> GregorianYmdHms {
+    const fn to_ymdhms_non_utc(self) -> YmdHms {
         let (jd_days, frac_attos) = self.to_jd_exact();
 
         // Date: adjust if we're past noon (astronomical day rollover)
@@ -158,7 +156,7 @@ impl TimePoint {
         let min = ((seconds_since_midnight % 3600) / 60) as u8;
         let sec = (seconds_since_midnight % 60) as u8;
 
-        GregorianYmdHms {
+        YmdHms {
             yr,
             mo,
             day,
@@ -247,7 +245,7 @@ impl TimePoint {
     /// - `min`  → 0..=59
     /// - `sec`  → 0..=60 (permits leap seconds)
     /// - `attos` → values ≥ 10¹⁸ are carried into the seconds field
-    pub const fn from_gregorian_ymdhms(
+    pub const fn from_ymdhms(
         yr: i64,
         mo: u8,
         day: u8,
@@ -277,7 +275,7 @@ impl TimePoint {
 
         // Only bump the midnight that immediately follows a leap second.
         // This keeps all three instants distinct while preserving the existing
-        // leap-second encoding that is_leap_second() and to_gregorian_ymdhms_utc expect.
+        // leap-second encoding that is_leap_second() and to_ymdhms_utc expect.
         if s != 60 && is_leap_second(&tp) {
             tp = tp.add(TimeSpan::from_sec(1));
         }
@@ -291,7 +289,7 @@ impl TimePoint {
     /// The date components are interpreted according to POSIX civil time
     /// (leap seconds are not inserted into the day count).
     #[inline]
-    pub const fn from_gregorian_ymd(yr: i64, mo: u8, day: u8, clock_type: ClockType) -> Self {
+    pub const fn from_ymd(yr: i64, mo: u8, day: u8, clock_type: ClockType) -> Self {
         let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, 0, 0, 0);
         Self::from_unix_sec(unix_sec).to_type(clock_type)
     }
@@ -430,7 +428,7 @@ impl TimePoint {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
-            let g = self.to_gregorian_ymdhms();
+            let g = self.to_ymdhms();
             (g.yr, g.mo, g.day)
         };
         let jdn = Self::ymd_to_jdn(year, month, day);
@@ -451,7 +449,7 @@ impl TimePoint {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
-            let g = self.to_gregorian_ymdhms();
+            let g = self.to_ymdhms();
             (g.yr, g.mo, g.day)
         };
         let doy = if let Some(doy) = doy {
@@ -483,7 +481,7 @@ impl TimePoint {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
-            let g = self.to_gregorian_ymdhms();
+            let g = self.to_ymdhms();
             (g.yr, g.mo, g.day)
         };
         let doy = if let Some(doy) = doy {
@@ -521,7 +519,7 @@ impl TimePoint {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
-            let g = self.to_gregorian_ymdhms();
+            let g = self.to_ymdhms();
             (g.yr, g.mo, g.day)
         };
         let jdn = Self::ymd_to_jdn(year, month, day);

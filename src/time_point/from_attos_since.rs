@@ -157,8 +157,8 @@ impl TimePoint {
 
 #[test]
 fn test_1972_leap_second_canonical_roundtrip() {
-    // Create the leap second the "normal" way (using from_gregorian_ymdhms)
-    let original = TimePoint::from_gregorian_ymdhms(1972, 6, 30, 23, 59, 60, 0, ClockType::UTC);
+    // Create the leap second the "normal" way (using from_ymdhms)
+    let original = TimePoint::from_ymdhms(1972, 6, 30, 23, 59, 60, 0, ClockType::UTC);
 
     // Round-trip through attoseconds since the Unix epoch
     // (this exercises the exact civil/POSIX UTC path in to_attos_since/from_to_attos_since)
@@ -172,7 +172,7 @@ fn test_1972_leap_second_canonical_roundtrip() {
     );
 
     // Also verify civil time is still correct
-    let g = roundtrip.to_gregorian_ymdhms();
+    let g = roundtrip.to_ymdhms();
     assert_eq!(g.yr, 1972);
     assert_eq!(g.mo, 6);
     assert_eq!(g.day, 30);

@@ -1,6 +1,6 @@
 use crate::{
-    AsciiStr, ClockType, DtErrKind, DtErr, GregorianTime, MONTHS_ABBR, MONTHS_FULL,
-    STRFTIME_SIZE, TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
+    AsciiStr, ClockType, DtErr, DtErrKind, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE,
+    TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
 };
 
 impl GregorianTime {
@@ -932,14 +932,14 @@ mod format_tests {
     /// This now correctly matches the new direct Unix-based civil time path.
     fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
         // Use the existing civil-time constructor (recommended)
-        TimePoint::from_gregorian_ymdhms(y, m, d, h, min, s, attos, ClockType::UTC)
+        TimePoint::from_ymdhms(y, m, d, h, min, s, attos, ClockType::UTC)
     }
 
     #[test]
     fn test_leap_second_gotcha_2016_12_31() {
         // 2016-12-31 23:59:60 UTC — the last leap second in the current table
         // (TAI-UTC offset becomes 37 seconds at this instant)
-        let leap = TimePoint::from_gregorian_ymdhms(
+        let leap = TimePoint::from_ymdhms(
             2016,
             12,
             31,
@@ -951,7 +951,7 @@ mod format_tests {
         );
 
         // === Gotcha 1: Civil time must show sec=60 (not roll over to next day) ===
-        let g = leap.to_gregorian_ymdhms();
+        let g = leap.to_ymdhms();
         assert_eq!(g.yr, 2016);
         assert_eq!(g.mo, 12);
         assert_eq!(g.day, 31);
@@ -964,7 +964,7 @@ mod format_tests {
         assert_eq!(g.subsec, 123_456_789_000_000_000);
 
         // === Gotcha 2: Round-trip must be exact ===
-        let roundtrip = TimePoint::from_gregorian_ymdhms(
+        let roundtrip = TimePoint::from_ymdhms(
             2016,
             12,
             31,
@@ -993,7 +993,7 @@ mod format_tests {
         // In this library, the leap second (23:59:60) is represented internally
         // by the Unix timestamp of the *following* midnight (1483228800),
         // while civil time correctly displays 23:59:60 on 2016-12-31.
-        // This matches the design in is_leap_second_at_unix and from_gregorian_ymdhms.
+        // This matches the design in is_leap_second_at_unix and from_ymdhms.
         let unix = leap.to_unix_sec();
         assert_eq!(unix, 1483228800);
     }

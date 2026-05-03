@@ -7,7 +7,7 @@ use deep_time::{
 #[test]
 fn test_sofa_historical_offsets() {
     // Start with a UTCSofa instant in the rubber era
-    let original = TimePoint::from_gregorian_ymd(1971, 12, 31, ClockType::UTCSofa);
+    let original = TimePoint::from_ymd(1971, 12, 31, ClockType::UTCSofa);
 
     // Convert to TAI (applies historical rubber offset)
     let tai = original.to_type(ClockType::TAI);
@@ -34,27 +34,26 @@ fn test_sofa_historical_offsets() {
 
     // SHOULD RETURN NONE
     // 1960-12-31 (one day before first entry)
-    let tp = TimePoint::from_gregorian_ymd(1960, 12, 31, ClockType::UTC);
+    let tp = TimePoint::from_ymd(1960, 12, 31, ClockType::UTC);
     assert!(
         historical_sofa_for_utc_to_tai(&tp).is_none(),
         "1960-12-31 should return None"
     );
 
-    let tp =
-        TimePoint::from_gregorian_ymd(1960, 12, 31, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1960, 12, 31, ClockType::UTCSofa).to_type(ClockType::TAI);
     assert!(
         historical_sofa_for_tai_to_utc(&tp).is_none(),
         "1960-12-31 TAI should return None for inverse"
     );
 
     // 1972-01-01 (first day of modern leap-second system)
-    let tp = TimePoint::from_gregorian_ymd(1972, 1, 1, ClockType::UTC);
+    let tp = TimePoint::from_ymd(1972, 1, 1, ClockType::UTC);
     assert!(
         historical_sofa_for_utc_to_tai(&tp).is_none(),
         "1972-01-01 should return None (use normal leap second path)"
     );
 
-    let tp = TimePoint::from_gregorian_ymd(1972, 1, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1972, 1, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
     assert!(
         historical_sofa_for_tai_to_utc(&tp).is_none(),
         "1972-01-01 TAI should return None for inverse"
@@ -65,7 +64,7 @@ fn test_sofa_historical_offsets() {
     // Verified against erfa.dat() at runtime.
 
     // 1961-01-01 00:00:00 UTC → uses 1961-01-01 entry
-    let tp = TimePoint::from_gregorian_ymd(1961, 1, 1, ClockType::UTC);
+    let tp = TimePoint::from_ymd(1961, 1, 1, ClockType::UTC);
     let offset = historical_sofa_for_utc_to_tai(&tp).unwrap();
     assert!(
         (offset - 1.422818000000).abs() < 1e-12,
@@ -74,7 +73,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1966-05-01 00:00:00 UTC → uses 1966-01-01 entry (drift continues)
-    let tp = TimePoint::from_gregorian_ymd(1966, 5, 1, ClockType::UTC);
+    let tp = TimePoint::from_ymd(1966, 5, 1, ClockType::UTC);
     let offset = historical_sofa_for_utc_to_tai(&tp).unwrap();
     assert!(
         (offset - 4.624210000000).abs() < 1e-12,
@@ -83,7 +82,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1971-12-31 00:00:00 UTC → uses 1968-02-01 entry (last rubber-era entry)
-    let tp = TimePoint::from_gregorian_ymd(1971, 12, 31, ClockType::UTC);
+    let tp = TimePoint::from_ymd(1971, 12, 31, ClockType::UTC);
     let offset = historical_sofa_for_utc_to_tai(&tp).unwrap();
     assert!(
         (offset - 9.889650000000).abs() < 1e-12,
@@ -92,7 +91,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1961-01-01
-    let tp = TimePoint::from_gregorian_ymd(1961, 1, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1961, 1, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 1.422818000000).abs() < 1e-6,
@@ -101,7 +100,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1966-05-01
-    let tp = TimePoint::from_gregorian_ymd(1966, 5, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1966, 5, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 4.624210000000).abs() < 1e-6,
@@ -110,8 +109,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1971-12-31
-    let tp =
-        TimePoint::from_gregorian_ymd(1971, 12, 31, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1971, 12, 31, ClockType::UTCSofa).to_type(ClockType::TAI);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 9.889650000000).abs() < 1e-6,
@@ -130,8 +128,7 @@ fn test_leap_second_roundtrip_and_sec() {
     ];
 
     for (yr, mo, day, hr, min, sec_input, expected_sec) in test_cases {
-        let tp =
-            TimePoint::from_gregorian_ymdhms(yr, mo, day, hr, min, sec_input, 0, ClockType::UTC);
+        let tp = TimePoint::from_ymdhms(yr, mo, day, hr, min, sec_input, 0, ClockType::UTC);
 
         // Verify the internal .sec() value matches what was printed
         assert_eq!(
@@ -141,8 +138,8 @@ fn test_leap_second_roundtrip_and_sec() {
         );
 
         // Round-trip test
-        let g = tp.to_gregorian_ymdhms();
-        let tp_roundtrip = TimePoint::from_gregorian_ymdhms(
+        let g = tp.to_ymdhms();
+        let tp_roundtrip = TimePoint::from_ymdhms(
             g.yr,
             g.mo,
             g.day,
@@ -270,7 +267,7 @@ fn roundtrip_gap_boundary_new_york() {
 #[test]
 fn test_mjd_utc_roundtrip() {
     // Normal instant (non-leap)
-    let original = TimePoint::from_gregorian_ymdhms(
+    let original = TimePoint::from_ymdhms(
         2025,
         4,
         27,
@@ -293,7 +290,7 @@ fn test_mjd_utc_roundtrip() {
     assert_eq!(original, roundtrip_jd, "JD UTC round-trip failed");
 
     // Leap-second case (2015-06-30 23:59:60 UTC) — the trickiest path
-    let leap = TimePoint::from_gregorian_ymdhms(2015, 6, 30, 23, 59, 60, 0, ClockType::UTC);
+    let leap = TimePoint::from_ymdhms(2015, 6, 30, 23, 59, 60, 0, ClockType::UTC);
     let (mjd_leap, frac_leap) = leap.to_mjd_exact();
     let roundtrip_leap = TimePoint::from_mjd_exact(mjd_leap, frac_leap, ClockType::UTC);
     assert_eq!(
@@ -312,8 +309,8 @@ fn test_mjd_utc_roundtrip() {
 
 #[test]
 fn test_leap_second_gotcha_1972_06_30() {
-    let leap = TimePoint::from_gregorian_ymdhms(1972, 6, 30, 23, 59, 60, 0, ClockType::UTC);
-    let g = leap.to_gregorian_ymdhms();
+    let leap = TimePoint::from_ymdhms(1972, 6, 30, 23, 59, 60, 0, ClockType::UTC);
+    let g = leap.to_ymdhms();
     assert_eq!(g.sec, 60);
     assert_eq!(g.day, 30);
 }
@@ -321,7 +318,7 @@ fn test_leap_second_gotcha_1972_06_30() {
 #[test]
 fn test_leap_second_roundtrip_2015_06_30() {
     // A leap second from the middle of the table (36 leap seconds accumulated)
-    let original = TimePoint::from_gregorian_ymdhms(
+    let original = TimePoint::from_ymdhms(
         2015,
         6,
         30,
@@ -341,13 +338,13 @@ fn test_leap_second_roundtrip_2015_06_30() {
     // === Multiple Gregorian round-trips ===
     let mut current = original;
     for i in 0..5 {
-        let g = current.to_gregorian_ymdhms();
+        let g = current.to_ymdhms();
         assert_eq!(g.sec, 60, "Leap second lost on iteration {}", i);
         assert_eq!(g.day, 30);
         assert_eq!(g.mo, 6);
         assert_eq!(g.yr, 2015);
 
-        current = TimePoint::from_gregorian_ymdhms(
+        current = TimePoint::from_ymdhms(
             g.yr,
             g.mo,
             g.day,

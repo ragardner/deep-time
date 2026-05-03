@@ -33,7 +33,7 @@ pub(crate) fn parse_syslog_no_year(
         }
     };
 
-    let g = now.to_gregorian_ymdhms();
+    let g = now.to_ymdhms();
     let this_year = g.yr;
 
     let try_with_year = |year: i64| -> Option<TimePoint> {

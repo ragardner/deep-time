@@ -192,7 +192,7 @@ fn roundtrip_ccs(tp: TimePoint, use_doy: bool, n_subsec: u8, expected_pfield: u8
 #[test]
 fn test_ccsds_ccs_month_day_variant() {
     // 2025-04-17 14:30:45.123456789 UTC (Month/Day)
-    let tp = TimePoint::from_gregorian_ymdhms(
+    let tp = TimePoint::from_ymdhms(
         2025,
         4,
         17,
@@ -209,7 +209,7 @@ fn test_ccsds_ccs_month_day_variant() {
 #[test]
 fn test_ccsds_ccs_day_of_year_variant() {
     // 2025-107 (April 17 is DOY 107 in 2025) 14:30:45.123456789 UTC
-    let tp = TimePoint::from_gregorian_ymdhms(
+    let tp = TimePoint::from_ymdhms(
         2025,
         4,
         17,
@@ -226,14 +226,14 @@ fn test_ccsds_ccs_day_of_year_variant() {
 #[test]
 fn test_ccsds_ccs_leap_second() {
     // 2025-06-30 23:59:60.000000000 UTC (leap second)
-    let tp = TimePoint::from_gregorian_ymdhms(2025, 6, 30, 23, 59, 60, 0, ClockType::UTC);
+    let tp = TimePoint::from_ymdhms(2025, 6, 30, 23, 59, 60, 0, ClockType::UTC);
 
     roundtrip_ccs(tp, false, 0, 0b0101_0000); // P-field with 0 subsec
 }
 
 #[test]
 fn test_ccsds_ccs_various_precisions() {
-    let base = TimePoint::from_gregorian_ymdhms(
+    let base = TimePoint::from_ymdhms(
         2025,
         4,
         17,
@@ -252,15 +252,15 @@ fn test_ccsds_ccs_various_precisions() {
 #[test]
 fn test_ccsds_ccs_edge_cases() {
     // Epoch day
-    let epoch = TimePoint::from_gregorian_ymdhms(1958, 1, 1, 0, 0, 0, 0, ClockType::UTC);
+    let epoch = TimePoint::from_ymdhms(1958, 1, 1, 0, 0, 0, 0, ClockType::UTC);
     roundtrip_ccs(epoch, false, 0, 0b0101_0000);
 
     // Year 9999, DOY 366 (leap year)
-    let y9999 = TimePoint::from_gregorian_ymdhms(9999, 12, 31, 23, 59, 59, 0, ClockType::UTC);
+    let y9999 = TimePoint::from_ymdhms(9999, 12, 31, 23, 59, 59, 0, ClockType::UTC);
     roundtrip_ccs(y9999, true, 2, 0b0101_1010);
 
     // Subsecond rounding test (exactly halfway case)
-    let half = TimePoint::from_gregorian_ymdhms(
+    let half = TimePoint::from_ymdhms(
         2025,
         4,
         17,
