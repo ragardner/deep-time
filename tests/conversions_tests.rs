@@ -32,6 +32,28 @@ fn test_sofa_historical_offsets() {
         "Round-trip changed the integer seconds!"
     );
 
+    let tp = TimePoint::from_ymdhms(
+        1960,
+        12,
+        31,
+        23,
+        59,
+        59,
+        999_999_999_999_999_999,
+        ClockType::UTCSofa,
+    );
+    let tp2 = tp.to_type(ClockType::TAI).to_type(ClockType::UTCSofa);
+    assert_eq!(
+        tp.sec(),
+        tp2.sec(),
+        "Round trip just before SOFA start changed integer seconds"
+    );
+    assert_eq!(
+        tp.subsec(),
+        tp2.subsec(),
+        "Round trip just before SOFA start changed attoseconds"
+    );
+
     // SHOULD RETURN NONE
     // 1960-12-31 (one day before first entry)
     let tp = TimePoint::from_ymd(1960, 12, 31, ClockType::UTC);
