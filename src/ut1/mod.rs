@@ -1,7 +1,5 @@
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_HALF_DAYU, ATTOSEC_PER_SEC_I128, ClockType, DtErr,
-    DtErrKind, Real, SEC_PER_DAY_F, SEC_PER_DAYI128, TimePoint, TimeSpan,
-    UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
+    ATTOS_PER_DAY, ClockType, DtErr, DtErrKind, Real, SEC_PER_DAY_F, TimePoint, TimeSpan, an_err,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -308,7 +306,7 @@ impl Ut1Data {
 }
 
 impl TimePoint {
-    /// Convert **any** `TimePoint` to the equivalent UT1 instant (stored as `Custom`).
+    /// Convert **any** `TimePoint` to the equivalent UT1 instant.
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
     pub fn to_ut1(&self, ut1_data: &Ut1Data) -> Result<Self, DtErr> {
@@ -324,10 +322,10 @@ impl TimePoint {
 
         Ok(utc
             .add(TimeSpan::from_sec_f(dut1))
-            .with_type(ClockType::Custom))
+            .with_type(ClockType::UT1))
     }
 
-    /// Convert a UT1 `TimePoint` (normally `ClockType::Custom`) back to UTC.
+    /// Convert a UT1 `TimePoint` back to UTC.
     ///
     /// Uses fixed-point iteration (exactly like the library’s TDB ↔ TAI,
     /// TCG ↔ TT, etc.) to solve the implicit equation  
@@ -339,8 +337,7 @@ impl TimePoint {
 
         let mut utc_guess = ut1.with_type(ClockType::UTC);
 
-        // DUT1 changes extremely slowly (< 0.1 ms/day). Four iterations are far more than enough.
-        for _ in 0..4 {
+        for _ in 0..8 {
             let (mjd_days, mjd_frac) = utc_guess.to_mjd_exact();
 
             let dut1 = ut1_data
@@ -356,88 +353,5 @@ impl TimePoint {
         }
 
         Ok(utc_guess)
-    }
-
-    #[inline]
-    pub const fn to_jd_ut1_exact(self) -> (i64, u128) {
-        const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
-
-        // Restore the epoch conversion that was present in the working version.
-        // The internal (sec, subsec) is relative to the library's internal epoch,
-        // not Unix 1970. We must apply the same offset used by to_canonical().
-        let canon_attos = ((self.sec as i128) + (UNIX_EPOCH_TO_J2000_NOON_UTC as i128))
-            * ATTOSEC_PER_SEC_I128
-            + (self.subsec as i128);
-
-        let total_attos = canon_attos + ATTOS_PER_HALF_DAY;
-        let days_since_1970 = total_attos.div_euclid(ATTOS_PER_DAY);
-        let frac_attos = total_attos.rem_euclid(ATTOS_PER_DAY) as u128;
-
-        let jd_int = 2_440_587i64 + (days_since_1970 as i64);
-        (jd_int, frac_attos)
-    }
-
-    #[inline]
-    pub const fn to_mjd_ut1_exact(self) -> (i64, u128) {
-        let (jd_days, frac_attos) = self.to_jd_ut1_exact();
-
-        // Standard convention: MJD = JD − 2400000.5
-        let mjd_days = jd_days - 2_400_001;
-        let mjd_attos = frac_attos + ATTOS_PER_HALF_DAY as u128;
-
-        if mjd_attos >= ATTOS_PER_DAY as u128 {
-            (mjd_days + 1, mjd_attos - ATTOS_PER_DAY as u128)
-        } else {
-            (mjd_days, mjd_attos)
-        }
-    }
-
-    #[inline]
-    pub const fn from_jd_ut1_exact(jd_days: i64, frac_attos: u128) -> Self {
-        const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
-
-        let days_since_1970 = jd_days - 2_440_587i64;
-
-        // we must subtract ATTOS_PER_HALF_DAY here because
-        // to_jd_ut1_exact added it. Without this, we get +12h error on roundtrip.
-        let total_attos =
-            (days_since_1970 as i128) * ATTOS_PER_DAY + (frac_attos as i128) - ATTOS_PER_HALF_DAY;
-
-        let internal_sec =
-            ((total_attos / ATTOSEC_PER_SEC_I128) as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
-        let subsec = (total_attos % ATTOSEC_PER_SEC_I128) as u64;
-
-        TimePoint::new(internal_sec, subsec, ClockType::Custom)
-    }
-
-    #[inline]
-    pub const fn from_mjd_ut1_exact(mjd_days: i64, frac_attos: u128) -> Self {
-        // Correct inverse of MJD = JD − 2400000.5
-        let (jd_days, jd_frac) = if frac_attos < ATTOS_PER_HALF_DAY as u128 {
-            (
-                mjd_days + 2_400_000,
-                frac_attos + ATTOS_PER_HALF_DAY as u128,
-            )
-        } else {
-            (
-                mjd_days + 2_400_001,
-                frac_attos - ATTOS_PER_HALF_DAY as u128,
-            )
-        };
-
-        Self::from_jd_ut1_exact(jd_days, jd_frac)
-    }
-
-    // Float versions
-    #[inline]
-    pub const fn to_jd_ut1(self) -> Real {
-        let (jd_days, frac_attos) = self.to_jd_ut1_exact();
-        (jd_days as Real) + (frac_attos as Real) / (ATTOS_PER_DAY as Real)
-    }
-
-    #[inline]
-    pub const fn to_mjd_ut1(self) -> Real {
-        let (mjd_days, frac_attos) = self.to_mjd_ut1_exact();
-        (mjd_days as Real) + (frac_attos as Real) / (ATTOS_PER_DAY as Real)
     }
 }
