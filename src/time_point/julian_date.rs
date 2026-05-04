@@ -122,7 +122,7 @@ impl TimePoint {
                 + (frac_attos as i128)
                 - ATTOS_PER_HALF_DAY;
 
-            Self::from_to_attos_since(canon_attos, TimePoint::UNIX_EPOCH_UTC).with_type(orig_type)
+            Self::from_attos_since(canon_attos, TimePoint::UNIX_EPOCH_UTC).with_type(orig_type)
         } else {
             let days_since_j2000 = jd_days - J2000_JD_TT;
             let total_sec = days_since_j2000 * SEC_PER_DAYI64

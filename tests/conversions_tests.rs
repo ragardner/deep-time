@@ -353,7 +353,7 @@ fn test_leap_second_roundtrip_2015_06_30() {
 
     // === Round-trip through canonical attoseconds ===
     let canon = original.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
-    let roundtrip1 = TimePoint::from_to_attos_since(canon, TimePoint::UNIX_EPOCH_UTC);
+    let roundtrip1 = TimePoint::from_attos_since(canon, TimePoint::UNIX_EPOCH_UTC);
 
     assert_eq!(original, roundtrip1, "Canonical round-trip failed");
 
