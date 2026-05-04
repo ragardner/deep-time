@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_US, ATTOSEC_PER_SEC_I128, ClockType, SEC_PER_DAYI64,
-    TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC,
+    ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_US, ATTOSEC_PER_SEC_I128, SEC_PER_DAYI64, TimePoint,
+    UNIX_EPOCH_TO_J2000_NOON_UTC,
 };
 
 impl TimePoint {
@@ -23,13 +23,7 @@ impl TimePoint {
     ///   scales, including relativistic ones, GNSS, `Proper`/`Custom`, etc.
     #[inline]
     pub const fn to_attos_since(self, reference: TimePoint) -> i128 {
-        if matches!(
-            self.clock_type,
-            ClockType::UTC | ClockType::UTCSpice | ClockType::UTCSofa
-        ) && matches!(
-            reference.clock_type,
-            ClockType::UTC | ClockType::UTCSpice | ClockType::UTCSofa
-        ) {
+        if self.clock_type.is_ut() && reference.clock_type.is_ut() {
             self.utc_civil_canonical_attos() - reference.utc_civil_canonical_attos()
         } else {
             self.duration_since_ref(&reference).total_attos()

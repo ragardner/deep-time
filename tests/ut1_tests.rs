@@ -1,7 +1,7 @@
 #[cfg(feature = "ut1-tests")]
 #[cfg(test)]
 mod tests {
-    use deep_time::constants::SEC_PER_DAY_F;
+    use deep_time::constants::{ATTOS_PER_DAY, SEC_PER_DAY_F};
     use deep_time::{ClockType, Separator, TimePoint, TimeSpan, Ut1Data, Ut1Format};
 
     #[test]
@@ -252,15 +252,17 @@ mod tests {
         let provider = load_finals2000a();
         let dut1_expected = -0.3170554; // known value for MJD 56879.00
 
+        // Create exact UTC midnight using the modern constructor
         let utc = TimePoint::from_mjd_exact(56879, 0, ClockType::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
-        let (jd_ut1, frac_ut1) = ut1.to_jd_ut1_exact();
-        let (jd_utc, frac_utc) = utc.to_jd_exact();
+        // Get JD in both time scales (now both return (i64, u128))
+        let (jd_ut1, frac_ut1_attos) = ut1.to_jd_ut1_exact();
+        let (jd_utc, frac_utc_attos) = utc.to_jd_exact(); // modern main API
 
-        // Compute total JD (integer + fraction) as f64
-        let total_jd_ut1 = jd_ut1 as f64 + frac_ut1.as_sec_f() / SEC_PER_DAY_F;
-        let total_jd_utc = jd_utc as f64 + frac_utc as f64 / SEC_PER_DAY_F;
+        // Convert attoseconds → fraction of day
+        let total_jd_ut1 = jd_ut1 as f64 + (frac_ut1_attos as f64) / (ATTOS_PER_DAY as f64);
+        let total_jd_utc = jd_utc as f64 + (frac_utc_attos as f64) / (ATTOS_PER_DAY as f64);
 
         let diff_days = total_jd_ut1 - total_jd_utc;
         let expected_diff = dut1_expected / SEC_PER_DAY_F;

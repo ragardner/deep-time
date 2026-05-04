@@ -79,9 +79,9 @@ impl TimePoint {
     /// - For all other clock types: Uses the standard TT-based JD path.
     #[inline]
     pub const fn to_ymdhms(self) -> YmdHms {
-        match self.clock_type {
-            ClockType::UTC | ClockType::UTCSofa | ClockType::UTCSpice => self.to_ymdhms_utc(),
-            _ => self.to_ymdhms_non_utc(),
+        match self.is_ut() {
+            true => self.to_ymdhms_utc(),
+            false => self.to_ymdhms_non_utc(),
         }
     }
 

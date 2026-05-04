@@ -15,6 +15,11 @@ impl TimePoint {
         self.clock_type.uses_leap_sec()
     }
 
+    #[inline]
+    pub const fn is_ut(&self) -> bool {
+        self.clock_type.is_ut()
+    }
+
     /// Returns a copy of this `TimePoint` with the specified [`ClockType`]
     /// **while preserving the exact numerical `sec` and `subsec` values**.
     ///
@@ -115,7 +120,7 @@ impl TimePoint {
 
             ClockType::LTC => Self::ltc_to_tt(self).to_tai(),
 
-            ClockType::Proper | ClockType::Custom => self,
+            ClockType::Proper | ClockType::Custom | ClockType::UT1 => self,
         }
     }
 
@@ -185,7 +190,7 @@ impl TimePoint {
 
             ClockType::LTC => Self::tt_to_ltc(self.from_tai(ClockType::TT)),
 
-            ClockType::Proper | ClockType::Custom => {
+            ClockType::Proper | ClockType::Custom | ClockType::UT1 => {
                 let mut tp = self;
                 tp.set_type(target);
                 tp

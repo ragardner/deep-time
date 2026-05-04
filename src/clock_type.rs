@@ -45,6 +45,7 @@
 //! | TAI                | 2000-01-01 12:00:00 TAI                                                          |
 //! | TT / ET            | 2000-01-01 12:00:32.184 TT (J2000.0 TT)                                         |
 //! | UTC                | UTC instant corresponding to TAI 2000-01-01 12:00:00 (modern IERS rules)        |
+//! | UT1                | ?                                                                               |
 //! | UTCSpice           | UTC instant corresponding to TAI 2000-01-01 12:00:00 (SPICE historical rules)   |
 //! | UTCSofa            | UTC instant corresponding to TAI 2000-01-01 12:00:00 (full SOFA historical rules)|
 //! | GPS/QZSS/GST       | 2000-01-01 12:00:19 TAI (TAI zero + 19 s)                                       |
@@ -82,6 +83,8 @@ pub enum ClockType {
     TDB,
     /// Universal Coordinated Time using modern IERS leap second rules.
     UTC,
+    /// UT1
+    UT1,
     /// Universal Coordinated Time using the SPICE historical model
     /// (fixed +9 s offset against TAI for all dates before 1972-01-01).
     UTCSpice,
@@ -125,49 +128,18 @@ pub enum ClockType {
 }
 
 impl ClockType {
-    /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize = 1;
-
-    /// Returns the wire representation of this `ClockType` as a single byte.
-    ///
-    /// The returned byte is the `repr(u8)` discriminant of the enum.
-    /// This is the canonical on-wire form used by [`TimePoint`] and [`ClockModel`].
-    #[inline]
-    pub const fn to_wire_byte(self) -> u8 {
-        self as u8
-    }
-
-    /// Attempts to reconstruct a `ClockType` from its wire byte representation.
-    ///
-    /// Returns `None` for any value that does not correspond to a known variant.
-    /// This provides safe deserialization from untrusted sources.
-    pub const fn from_u8(v: u8) -> Option<Self> {
-        match v {
-            0 => Some(Self::TAI),
-            1 => Some(Self::TT),
-            2 => Some(Self::ET),
-            3 => Some(Self::TDB),
-            4 => Some(Self::UTC),
-            5 => Some(Self::UTCSpice),
-            6 => Some(Self::UTCSofa),
-            7 => Some(Self::GPS),
-            8 => Some(Self::GST),
-            9 => Some(Self::BDT),
-            10 => Some(Self::QZSS),
-            11 => Some(Self::TCG),
-            12 => Some(Self::TCB),
-            13 => Some(Self::LTC),
-            14 => Some(Self::Proper),
-            15 => Some(Self::Custom),
-            _ => None,
-        }
-    }
-
     /// Returns `true` if this clock type accounts for leap seconds
     /// (or historical UTC civil time rules).
     #[inline]
     pub const fn uses_leap_sec(&self) -> bool {
         matches!(self, Self::UTC | Self::UTCSpice | Self::UTCSofa)
+    }
+
+    /// Returns `true` if this clock type accounts for leap seconds
+    /// (or historical UTC civil time rules).
+    #[inline]
+    pub const fn is_ut(&self) -> bool {
+        matches!(self, Self::UTC | Self::UTCSpice | Self::UTCSofa | Self::UT1)
     }
 
     /// Returns `true` if this clock type is based off a GNSS constellation.
@@ -203,6 +175,7 @@ impl ClockType {
             "ET" => Some(Self::ET),
             "TDB" => Some(Self::TDB),
             "UTC" => Some(Self::UTC),
+            "UT1" => Some(Self::UT1),
             "UTCSPICE" => Some(Self::UTCSpice),
             "UTCSOFA" => Some(Self::UTCSofa),
             "GPS" => Some(Self::GPS),
@@ -226,6 +199,7 @@ impl ClockType {
             Self::ET => "ET",
             Self::TDB => "TDB",
             Self::UTC => "UTC",
+            Self::UT1 => "UT1",
             Self::UTCSpice => "UTCSPICE",
             Self::UTCSofa => "UTCSOFA",
             Self::TCG => "TCG",
@@ -251,6 +225,45 @@ impl ClockType {
     #[inline]
     pub const fn reference_epoch(self) -> TimePoint {
         TimePoint::new(0, 0, self)
+    }
+
+    /// Size of the canonical wire representation in bytes.
+    pub const WIRE_SIZE: usize = 1;
+
+    /// Attempts to reconstruct a `ClockType` from its wire byte representation.
+    ///
+    /// Returns `None` for any value that does not correspond to a known variant.
+    /// This provides safe deserialization from untrusted sources.
+    pub const fn from_u8(v: u8) -> Option<Self> {
+        match v {
+            0 => Some(Self::TAI),
+            1 => Some(Self::TT),
+            2 => Some(Self::ET),
+            3 => Some(Self::TDB),
+            4 => Some(Self::UTC),
+            5 => Some(Self::UT1),
+            6 => Some(Self::UTCSpice),
+            7 => Some(Self::UTCSofa),
+            8 => Some(Self::GPS),
+            9 => Some(Self::GST),
+            10 => Some(Self::BDT),
+            11 => Some(Self::QZSS),
+            12 => Some(Self::TCG),
+            13 => Some(Self::TCB),
+            14 => Some(Self::LTC),
+            15 => Some(Self::Proper),
+            16 => Some(Self::Custom),
+            _ => None,
+        }
+    }
+
+    /// Returns the wire representation of this `ClockType` as a single byte.
+    ///
+    /// The returned byte is the `repr(u8)` discriminant of the enum.
+    /// This is the canonical on-wire form used by [`TimePoint`] and [`ClockModel`].
+    #[inline]
+    pub const fn to_wire_byte(self) -> u8 {
+        self as u8
     }
 }
 
