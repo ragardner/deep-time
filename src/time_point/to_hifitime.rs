@@ -7,8 +7,7 @@ impl TimePoint {
     /// Round-trips perfectly with `from_hifitime` thanks to the
     /// runtime-computed offset that matches hifitime's calendar math.
     pub fn to_hifitime(self) -> Epoch {
-        let tai = self.to_tai();
-        let ns_since_zero = tai.total_attos() / 1_000_000_000;
+        let ns_since_zero = self.to_attos() / 1_000_000_000;
 
         let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);
         let j2000 = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);

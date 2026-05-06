@@ -1,94 +1,34 @@
 use crate::{
-    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_US, ATTOSEC_PER_SEC,
-    ClockDrift, ClockModel, ClockType, TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan,
-    UNIX_EPOCH_TO_J2000_NOON_UTC,
+    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_US,
+    ClockDrift, ClockModel, ClockType, FS_PER_SEC, MS_PER_SEC, NS_PER_SEC, PS_PER_SEC,
+    TT_TAI_OFFSET_SPAN, TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC, US_PER_SEC,
 };
 
 impl TimePoint {
     /// The library’s reference zero instant: exactly **2000-01-01 12:00:00 TAI**.
-    ///
-    /// This is the common zero point for **all built-in clock types** (except `Proper`/`Custom`).
-    /// `TimePoint::new(0, 0, ClockType::XXX)` represents this exact same physical instant
-    /// on every built-in scale.
-    pub const ZERO: Self = Self {
-        sec: 0,
-        subsec: 0,
-        clock_type: ClockType::TAI,
-    };
+    pub const ZERO: Self = Self::new(0, 0, ClockType::TAI);
 
     /// The TAI instant that corresponds to the conventional **J2000.0 epoch**
     /// (2000-01-01 12:00:00 **TT**, JD 2451545.0 TT).
-    ///
-    /// Because TT = TAI + 32.184 s, this is exactly 32.184 seconds *before* `ZERO`.
-    /// This constant is provided for convenience when working with astronomical
-    /// ephemerides that are natively referenced to J2000 TT.
     pub const J2000_TAI: Self = Self::ZERO.sub(TT_TAI_OFFSET_SPAN);
 
     /// The J1900.0 epoch expressed in TAI (1900-01-01 12:00:00 TAI).
-    pub const J1900_TAI: Self = Self::from_tai_sec(-3_155_760_000);
+    pub const J1900_TAI: Self = Self::new(-3_155_760_000, 0, ClockType::TAI);
 
-    /// The library’s common reference zero instant expressed in GPS Time (GPS).
-    ///
-    /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI),
-    /// but represented on the GPS scale.
-    ///
-    /// **Note**: This is *not* the traditional GPS reference epoch (1980-01-06 00:00:00 GPS).
-    pub const GPS_ZERO: Self = Self::new(0, 0, ClockType::GPS);
+    /// Library zero points (same physical instant as ZERO, different tags)
+    pub const GPS_ZERO: Self = Self::new(19, 0, ClockType::GPS);
+    pub const GST_ZERO: Self = Self::new(19, 0, ClockType::GST);
+    pub const QZSS_ZERO: Self = Self::new(19, 0, ClockType::QZSS);
+    pub const BDT_ZERO: Self = Self::new(33, 0, ClockType::BDT);
 
-    /// The library’s common reference zero instant expressed in Galileo Time (GST).
-    ///
-    /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI),
-    /// but represented on the GST scale.
-    ///
-    /// **Note**: This is *not* the traditional Galileo reference epoch (1999-08-22 00:00:00 GST).
-    pub const GST_ZERO: Self = Self::new(0, 0, ClockType::GST);
+    /// TAI time between 1970-01-01 midnight and 2000-01-01 noon
+    pub const UNIX_EPOCH: Self = Self::new(-UNIX_EPOCH_TO_J2000_NOON_UTC, 0, ClockType::UTC);
 
-    /// The library’s common reference zero instant expressed in BeiDou Time (BDT).
-    ///
-    /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI),
-    /// but represented on the BDT scale.
-    ///
-    /// **Note**: This is *not* the traditional BeiDou reference epoch (2006-01-01 00:00:00 BDT).
-    pub const BDT_ZERO: Self = Self::new(0, 0, ClockType::BDT);
-
-    /// The library’s common reference zero instant expressed in QZSS Time (QZSS).
-    ///
-    /// This is **the same physical moment** as [`Self::ZERO`] (2000-01-01 12:00:00 TAI)
-    /// and is identical to [`Self::GPS_ZERO`] (QZSS uses the same timescale as GPS).
-    pub const QZSS_ZERO: Self = Self::new(0, 0, ClockType::QZSS);
-
-    /// The TAI instant corresponding to the POSIX Unix epoch
-    /// (1970-01-01 00:00:00 UTC).
-    pub const UNIX_EPOCH_TAI: Self = Self {
-        sec: -UNIX_EPOCH_TO_J2000_NOON_UTC,
-        subsec: 0,
-        clock_type: ClockType::TAI,
-    };
-
-    /// UTC representation of the POSIX Unix epoch (1970-01-01 00:00:00 UTC).
-    pub const UNIX_EPOCH_UTC: Self = Self {
-        sec: -UNIX_EPOCH_TO_J2000_NOON_UTC,
-        subsec: 0,
-        clock_type: ClockType::UTC,
-    };
-
-    /// Traditional GPS / QZSS reference epoch: **1980-01-06 00:00:00 GPS**
-    ///
-    /// This is the epoch that GNSS receivers, navigation software, RINEX files,
-    /// and the vast majority of the world expect when working with GPS/QZSS.
-    pub const GPS_EPOCH: Self = Self::new(-630_763_200, 0, ClockType::GPS);
-
-    /// GALEX epoch (identical to GPS_EPOCH)
-    ///
-    /// Used by Astropy's `TimeGalexSec` format and GALEX mission data products.
-    /// Seconds since **1980-01-06 00:00:00** (continuous, no leap seconds).
+    /// Traditional GNSS epochs
+    pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0, ClockType::GPS);
     pub const GALEX_EPOCH: Self = Self::GPS_EPOCH;
-
-    /// Traditional Galileo reference epoch: **1999-08-22 00:00:00 GST**
-    pub const GALILEO_EPOCH: Self = Self::new(-11_448_000, 0, ClockType::GST);
-
-    /// Traditional BeiDou reference epoch: **2006-01-01 00:00:00 BDT**
-    pub const BDT_EPOCH: Self = Self::new(189_345_600, 0, ClockType::BDT);
+    pub const GALILEO_EPOCH: Self = Self::new(-11_448_000 + 19, 0, ClockType::GST);
+    pub const BDT_EPOCH: Self = Self::new(189_345_600 + 33, 0, ClockType::BDT);
 
     /// Creates a new `TimePoint` from whole seconds, a subsecond part in attoseconds,
     /// and a clock type, automatically normalizing the representation.
@@ -130,93 +70,65 @@ impl TimePoint {
     }
 
     #[inline]
-    pub const fn from_sec(s: i64, clock_type: ClockType) -> Self {
-        Self::new(s, 0, clock_type)
+    pub const fn from_tai_sec(sec: i64) -> Self {
+        Self::from(sec, 0, ClockType::TAI)
     }
 
-    /// Reconstruct `TimePoint` from total attoseconds since the reference epoch of the given `clock_type`.
-    ///
-    /// Handles saturation at the `MAX`/`MIN` bounds and negative values correctly
-    /// (reuses `TimeSpan::from_total_attos` for normalization).
     #[inline]
-    pub const fn from_total_attos(attos: i128, clock_type: ClockType) -> Self {
-        let span = TimeSpan::from_total_attos(attos);
-        Self {
-            sec: span.sec,
-            subsec: span.subsec,
-            clock_type,
-        }
+    pub const fn from_attos(attos: i128, clock_type: ClockType) -> Self {
+        let sec = (attos / ATTOS_PER_SEC as i128) as i64;
+        let subsec = (attos % ATTOS_PER_SEC as i128) as u64;
+        Self::from(sec, subsec, clock_type)
     }
 
-    /// Creates a `TimePoint` representing `ms` milliseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ms(ms: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(ms.saturating_mul(ATTOS_PER_MS as i128), clock_type)
+        let sec = ms.div_euclid(MS_PER_SEC) as i64;
+        let remaining_ms = ms.rem_euclid(MS_PER_SEC);
+        let subsec = (remaining_ms as u64) * ATTOS_PER_MS;
+        Self::from(sec, subsec, clock_type)
     }
 
-    /// Creates a `TimePoint` representing `us` microseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_us(us: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(us.saturating_mul(ATTOS_PER_US as i128), clock_type)
+        let sec = us.div_euclid(US_PER_SEC) as i64;
+        let remaining_us = us.rem_euclid(US_PER_SEC);
+        let subsec = (remaining_us as u64) * ATTOS_PER_US;
+        Self::from(sec, subsec, clock_type)
     }
 
-    /// Creates a `TimePoint` representing `ns` nanoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ns(ns: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(ns.saturating_mul(ATTOS_PER_NS as i128), clock_type)
+        let sec = ns.div_euclid(NS_PER_SEC) as i64;
+        let remaining_ns = ns.rem_euclid(NS_PER_SEC);
+        let subsec = (remaining_ns as u64) * ATTOS_PER_NS;
+        Self::from(sec, subsec, clock_type)
     }
 
-    /// Creates a `TimePoint` representing `ps` picoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_ps(ps: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(ps.saturating_mul(ATTOS_PER_PS as i128), clock_type)
+        let sec = ps.div_euclid(PS_PER_SEC) as i64;
+        let remaining_ps = ps.rem_euclid(PS_PER_SEC);
+        let subsec = (remaining_ps as u64) * ATTOS_PER_PS;
+        Self::from(sec, subsec, clock_type)
     }
 
-    /// Creates a `TimePoint` representing `fs` femtoseconds since the reference epoch of `clock_type`.
     #[inline]
     pub const fn from_fs(fs: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(fs.saturating_mul(ATTOS_PER_FS as i128), clock_type)
-    }
-
-    /// Creates a `TimePoint` representing `as` attoseconds since the reference epoch of `clock_type`.
-    #[inline]
-    pub const fn from_as(as_: i128, clock_type: ClockType) -> Self {
-        Self::from_total_attos(as_, clock_type)
+        let sec = fs.div_euclid(FS_PER_SEC) as i64;
+        let remaining_fs = fs.rem_euclid(FS_PER_SEC);
+        let subsec = (remaining_fs as u64) * ATTOS_PER_FS;
+        Self::from(sec, subsec, clock_type)
     }
 
     #[inline]
     pub const fn from_min(m: i64, clock_type: ClockType) -> Self {
-        Self::from_sec(m * 60, clock_type)
+        Self::from(m * 60, 0, clock_type)
     }
 
     #[inline]
     pub const fn from_hr(h: i64, clock_type: ClockType) -> Self {
-        Self::from_sec(h * 3600, clock_type)
-    }
-
-    #[inline]
-    pub const fn new_tai(sec: i64, subsec: u64) -> Self {
-        Self::new(sec, subsec, ClockType::TAI)
-    }
-
-    #[inline]
-    pub const fn from_tai_sec(s: i64) -> Self {
-        Self::from_sec(s, ClockType::TAI)
-    }
-
-    #[inline]
-    pub const fn from_tai_ms(ms: i128) -> Self {
-        Self::from_ms(ms, ClockType::TAI)
-    }
-
-    #[inline]
-    pub const fn from_tai_us(us: i128) -> Self {
-        Self::from_us(us, ClockType::TAI)
-    }
-
-    #[inline]
-    pub const fn from_tai_ns(ns: i128) -> Self {
-        Self::from_ns(ns, ClockType::TAI)
+        Self::from(h * 3600, 0, clock_type)
     }
 
     /// Creates a `TimePoint` from hours, minutes, seconds, milliseconds, microseconds,
@@ -248,10 +160,10 @@ impl TimePoint {
         } else if frac == 0 {
             (total_sec - extra_sec, 0)
         } else {
-            (total_sec - extra_sec - 1, ATTOSEC_PER_SEC - frac)
+            (total_sec - extra_sec - 1, ATTOS_PER_SEC - frac)
         };
 
-        Self::new(final_sec, final_frac, clock_type)
+        Self::from(final_sec, final_frac, clock_type)
     }
 
     /// Creates a `TimePoint` from a fully self-describing `ClockModel`.
@@ -260,7 +172,7 @@ impl TimePoint {
     /// relativistic clock model.
     #[inline]
     pub const fn create_from_model(model: ClockModel) -> Self {
-        model.reference.with_type(model.base)
+        model.reference.to_type(model.base)
     }
 
     /// Replaces the current clock type of this `TimePoint` with the base clock type
@@ -270,7 +182,7 @@ impl TimePoint {
     /// polynomial model from ground control.
     #[inline]
     pub const fn apply_new_model(self, model: ClockModel) -> Self {
-        self.with_type(model.base)
+        self.to_type(model.base)
     }
 
     /// Returns the current system time converted to the requested `ClockType`.
@@ -280,6 +192,8 @@ impl TimePoint {
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     #[inline]
     pub fn now(target: ClockType) -> Self {
+        use crate::TimeSpan;
+
         let now = std::time::SystemTime::now();
         let (secs, nanos) = match now.duration_since(std::time::UNIX_EPOCH) {
             Ok(dur) => (dur.as_secs() as i64, dur.subsec_nanos() as i64),
@@ -291,9 +205,13 @@ impl TimePoint {
                 (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
             }
         };
-        crate::TimePoint::from_unix_sec(secs)
-            .add(crate::TimeSpan::from_ns(nanos as i128))
-            .to_type(target)
+        crate::TimePoint::from_epoch(
+            TimeSpan::new(secs, 0),
+            TimePoint::UNIX_EPOCH,
+            ClockType::UTC,
+        )
+        .add(crate::TimeSpan::from_ns(nanos as i128))
+        .to_type(target)
     }
 
     /// Returns the current system time converted to the requested `ClockType`

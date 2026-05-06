@@ -13,7 +13,7 @@ impl TimeParts {
         if let Some(unix_secs) = self.unix_timestamp_seconds {
             let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
             let subsec = self.attos.unwrap_or(0);
-            return Ok(TimePoint::new(sec, subsec, ClockType::UTC)
+            return Ok(TimePoint::from(sec, subsec, ClockType::UTC)
                 .to_type(clock_type.unwrap_or(self.clock_type)));
         }
 
@@ -138,22 +138,20 @@ impl TimeParts {
         } else if let Some(Offset::Fixed(offset)) = self.offset {
             sec_utc -= offset as i64; // local civil time → true UTC instant
         }
-        Ok(TimePoint::new(sec_utc, subsec, ClockType::UTC)
+        Ok(TimePoint::from(sec_utc, subsec, ClockType::UTC)
             .to_type(clock_type.unwrap_or(self.clock_type)))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::eprintln;
-
     use super::*;
     use crate::error::DtErrKind;
-    use crate::{ATTOSEC_PER_SEC_I128, TimeParts};
+    use crate::{ATTOS_PER_SEC_I128, TimeParts};
 
     /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd()`).
     fn jd_tt(tp: &TimePoint) -> f64 {
-        tp.to_type(ClockType::TT).to_jd()
+        tp.to_jd(ClockType::TT)
     }
 
     #[test]
@@ -162,7 +160,6 @@ mod tests {
         let tp = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
 
         let jd = jd_tt(&tp);
-        eprintln!("{}", jd);
         // Unix epoch (1970-01-01 00:00:00 UTC) in TT scale:
         // 2440587.5 + 32.184 / 86400 = 2440587.5003725 exactly.
         assert!(
@@ -212,7 +209,10 @@ mod tests {
         .unwrap();
 
         assert_eq!(jd_tt(&ymd), jd_tt(&ordinal));
-        assert_eq!(ymd.to_jd_exact(), ordinal.to_jd_exact());
+        assert_eq!(
+            ymd.to_jd_exact(ClockType::TT),
+            ordinal.to_jd_exact(ClockType::TT)
+        );
     }
 
     #[test]
@@ -244,10 +244,10 @@ mod tests {
         .unwrap();
 
         let tp = parsed.to_time_point(Some(ClockType::TAI)).unwrap();
-        let (_, frac_attos) = tp.to_type(ClockType::TT).to_jd_exact();
+        let (_, frac_attos) = tp.to_jd_exact(ClockType::TT);
 
         // Convert attoseconds → seconds
-        let seconds_past_noon = (frac_attos as f64) / (ATTOSEC_PER_SEC_I128 as f64);
+        let seconds_past_noon = (frac_attos as f64) / (ATTOS_PER_SEC_I128 as f64);
 
         const EXPECTED: f64 = 43269.307456789;
 
@@ -303,6 +303,9 @@ mod tests {
             .unwrap();
 
         assert_eq!(jd_tt(&tp_iso), jd_tt(&ymd));
-        assert_eq!(tp_iso.to_jd_exact(), ymd.to_jd_exact());
+        assert_eq!(
+            tp_iso.to_jd_exact(ClockType::TT),
+            ymd.to_jd_exact(ClockType::TT)
+        );
     }
 }

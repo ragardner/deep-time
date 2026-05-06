@@ -112,10 +112,10 @@ impl GregorianTime {
     /// - The fractional part (`attoseconds`) is always in the range `0..=999_999_999_999_999_999`.
     #[inline]
     pub const fn unix_timestamp(&self) -> (i64, u64) {
-        const ATTOSEC_PER_SEC_I128: i128 = 1_000_000_000_000_000_000;
+        const ATTOS_PER_SEC_I128: i128 = 1_000_000_000_000_000_000;
         let total = self.unix_attosec;
-        let secs = (total / ATTOSEC_PER_SEC_I128) as i64;
-        let frac = (total % ATTOSEC_PER_SEC_I128).unsigned_abs() as u64;
+        let secs = (total / ATTOS_PER_SEC_I128) as i64;
+        let frac = (total % ATTOS_PER_SEC_I128).unsigned_abs() as u64;
         (secs, frac)
     }
 

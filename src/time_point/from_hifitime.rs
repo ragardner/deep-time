@@ -1,4 +1,4 @@
-use crate::TimePoint;
+use crate::{ClockType, TimePoint};
 use hifitime::Epoch;
 
 impl TimePoint {
@@ -16,6 +16,6 @@ impl TimePoint {
             - j1900.to_tai_duration().total_nanoseconds();
 
         let ns_since_zero_tai = ns_since_j1900 - offset_ns;
-        Self::from_tai_ns(ns_since_zero_tai)
+        Self::from_ns(ns_since_zero_tai, ClockType::TAI)
     }
 }

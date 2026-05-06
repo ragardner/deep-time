@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_WEEK, ATTOSEC_PER_SEC_I128, ClockType, Real, SEC_PER_DAYI64, SEC_PER_WEEK, TimePoint,
+    ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, ClockType, Real, SEC_PER_DAYI64, SEC_PER_WEEK, TimePoint,
     TimeSpan,
 };
 
@@ -28,12 +28,12 @@ impl TimePoint {
     ///   calendar or timezone rules.
     pub const fn to_gps_wk_and_tow(self) -> (i64, TimeSpan) {
         let gpst = self.to_type(ClockType::GPS);
-        let elapsed = gpst.duration_since(Self::GPS_EPOCH);
-        let total_attos = elapsed.total_attos();
+        let elapsed = gpst.to_tai_since_ref(&Self::GPS_EPOCH);
+        let total_attos = elapsed.to_attos();
         let wk = (total_attos / ATTOS_PER_WEEK) as i64;
         let tow_attos = total_attos % ATTOS_PER_WEEK;
 
-        (wk, TimeSpan::from_total_attos(tow_attos))
+        (wk, TimeSpan::from_attos(tow_attos))
     }
 
     /// Returns the day of the GPS week (0 = Sunday, 1 = Monday, …, 6 = Saturday).
@@ -42,9 +42,9 @@ impl TimePoint {
     /// Gregorian calendar.
     pub const fn to_gps_day_of_wk(self) -> u8 {
         let gpst = self.to_type(ClockType::GPS);
-        let elapsed = gpst.duration_since(Self::GPS_EPOCH);
+        let elapsed = gpst.to_tai_since_ref(&Self::GPS_EPOCH);
 
-        let total_sec = elapsed.total_attos() / ATTOSEC_PER_SEC_I128;
+        let total_sec = elapsed.to_attos() / ATTOS_PER_SEC_I128;
         let secs_into_wk = total_sec.rem_euclid(SEC_PER_WEEK as i128);
         (secs_into_wk / SEC_PER_DAYI64 as i128) as u8
     }
@@ -56,7 +56,7 @@ impl TimePoint {
     #[inline]
     pub const fn to_gps_tow_f(self) -> Real {
         let (_, tow) = self.to_gps_wk_and_tow();
-        tow.as_sec_f()
+        tow.to_sec_f()
     }
 
     /// Returns only the GPS week number (full, untruncated).

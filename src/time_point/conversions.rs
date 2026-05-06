@@ -1,15 +1,23 @@
 use crate::historical_sofa::{historical_sofa_for_tai_to_utc, historical_sofa_for_utc_to_tai};
-use crate::leap_seconds::leap_seconds_before;
+use crate::leap_seconds::get_leap_seconds;
 use crate::{
-    ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ClockDrift, ClockModel, ClockType, J2000_JD_TT,
+    ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ClockDrift, ClockModel, ClockType, J2000_JD_TT,
     J2000_SEC_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, LM_DEN, LM_NUM, MARS_MSD_REF_JD_INT,
-    MARS_MSD_REF_TOD_SEC, MARS_MSD_REF_TOD_SUBSEC, MARS_REF_SEC, MARS_REF_SUBSEC, MARS_SOL_ATTOS,
+    MARS_MSD_REF_TOD_SEC, MARS_MSD_REF_TOD_SUBSEC, MARS_REF_TT, MARS_SOL_ATTOS,
     MARS_SOL_LENGTH_SEC, Real, SEC_PER_DAYI64, SEC_PER_DAYI128, TAI_SEC_AT_1972,
     TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS,
-    TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan, floor_f, sin_approx,
+    TT_TAI_OFFSET_SPAN, TimePoint, TimeSpan, floor_f, sin_approx, to_sec_f,
 };
 
 impl TimePoint {
+    #[inline(always)]
+    pub const fn to_span(&self) -> TimeSpan {
+        TimeSpan {
+            sec: self.sec,
+            subsec: self.subsec,
+        }
+    }
+
     #[inline]
     pub const fn uses_leap_sec(&self) -> bool {
         self.clock_type.uses_leap_sec()
@@ -20,214 +28,138 @@ impl TimePoint {
         self.clock_type.is_ut()
     }
 
-    /// Returns a copy of this `TimePoint` with the specified [`ClockType`]
-    /// **while preserving the exact numerical `sec` and `subsec` values**.
-    ///
-    /// ### Warning:
-    ///
-    /// This performs **no time-scale conversion** and does **not** change the physical instant.
-    #[inline]
-    pub const fn with_type(self, clock_type: ClockType) -> Self {
-        Self {
-            sec: self.sec,
-            subsec: self.subsec,
-            clock_type,
-        }
-    }
-
-    /// Sets the [`ClockType`] of this `TimePoint` in place while preserving the exact numerical seconds
+    /// Mutates and sets the [`ClockType`] of this `TimePoint` in place while preserving the exact numerical seconds
     /// and attoseconds values.
-    ///
-    /// This is the mutable counterpart to [`Self::with_type`] and remains zero-cost.
     #[inline]
-    pub(crate) const fn set_type(&mut self, clock_type: ClockType) -> &Self {
+    pub const fn set_type(&mut self, clock_type: ClockType) -> &Self {
         self.clock_type = clock_type;
         self
     }
 
-    /// Converts this instant to any other [`ClockType`], representing the exact same physical moment in time.
-    ///
-    /// The conversion is performed through the library’s canonical TAI representation to guarantee
-    /// consistency across all supported time scales, including leap-second corrections and relativistic
-    /// transformations where applicable.
+    /// Copies and sets the [`ClockType`] of this `TimePoint` in place while preserving the exact numerical seconds
+    /// and attoseconds values.
     #[inline]
-    pub const fn to_type(self, target: ClockType) -> Self {
+    pub const fn to_type(self, target: ClockType) -> TimePoint {
         if (self.clock_type as u8) == (target as u8) {
             return self;
         }
-        let tai = self.to_tai();
-        tai.from_tai(target)
+        Self {
+            sec: self.sec,
+            subsec: self.subsec,
+            clock_type: target,
+        }
     }
 
-    /// Converts this `TimePoint` (in any clock type) to TAI, the library’s internal canonical time scale.
-    ///
-    /// All other supported scales are defined relative to TAI. Leap-second corrections (for UTC) and
-    /// relativistic transformations (for TT, TDB, TCG, TCB, LTC) are applied exactly as defined by the
-    /// relevant IAU and NIST standards.
-    pub const fn to_tai(self) -> Self {
-        match self.clock_type {
-            ClockType::TAI => self,
+    pub const fn from(sec: i64, subsec: u64, clock_type: ClockType) -> TimePoint {
+        // Create a raw TimePoint with the input numbers on the requested scale
+        let raw = TimePoint::new(sec, subsec, clock_type);
 
-            ClockType::TT => {
-                let mut tp = self.sub(TT_TAI_OFFSET_SPAN);
-                tp.set_type(ClockType::TAI);
-                tp
-            }
+        match clock_type {
+            ClockType::TAI | ClockType::Proper | ClockType::Custom | ClockType::UT1 => raw,
 
-            // Modern UTC: normal leap second handling
-            ClockType::UTC => Self::utc_to_tai(self),
+            ClockType::TT => raw.sub(TT_TAI_OFFSET_SPAN),
 
-            // SPICE historical: add 9s for pre-1972 dates
+            ClockType::UTC => raw.add(TimeSpan::from_sec(get_leap_seconds(&raw, true).offset)),
+
             ClockType::UTCSpice => {
-                if self.sec < TAI_SEC_AT_1972 - 10 {
-                    let tai = Self::utc_to_tai(self);
+                let tai = raw.add(TimeSpan::from_sec(get_leap_seconds(&raw, true).offset));
+                if sec < TAI_SEC_AT_1972 - 10 {
                     tai.add(TimeSpan::from_sec_f(f!(9.0)))
                 } else {
-                    Self::utc_to_tai(self)
+                    tai
                 }
             }
-
-            // SOFA historical: add SOFA offset for pre-1972 dates
             ClockType::UTCSofa => {
-                if let Some(offset) = historical_sofa_for_utc_to_tai(&self) {
-                    let tai = Self::utc_to_tai(self);
+                let tai = raw.add(TimeSpan::from_sec(get_leap_seconds(&raw, true).offset));
+                if let Some(offset) = historical_sofa_for_utc_to_tai(&raw) {
                     tai.add(TimeSpan::from_sec_f(offset))
                 } else {
-                    Self::utc_to_tai(self)
+                    tai
                 }
             }
 
-            ClockType::GPS | ClockType::QZSS | ClockType::GST => {
-                let mut tp = self.add(TimeSpan::SEC_19);
-                tp.set_type(ClockType::TAI);
-                tp
+            ClockType::GPS | ClockType::QZSS | ClockType::GST => raw.add(TimeSpan::SEC_19),
+
+            ClockType::BDT => raw.add(TimeSpan::SEC_33),
+
+            ClockType::TDB | ClockType::ET => Self::tdb_to_tai(raw),
+
+            ClockType::TCG => {
+                let tt = Self::tcg_to_tt(raw);
+                tt.sub(TT_TAI_OFFSET_SPAN).to_type(ClockType::TCG)
             }
 
-            ClockType::BDT => {
-                let mut tp = self.add(TimeSpan::SEC_33);
-                tp.set_type(ClockType::TAI);
-                tp
+            ClockType::TCB => {
+                let tdb = Self::tcb_to_tdb(raw);
+                let tai = Self::tdb_to_tai(tdb);
+                TimePoint::new(tai.sec, tai.subsec, ClockType::TCB)
             }
 
-            ClockType::TDB | ClockType::ET => {
-                let mut tp = Self::tdb_to_tai(self);
-                tp.set_type(ClockType::TAI);
-                tp
+            ClockType::LTC => {
+                let tt = Self::ltc_to_tt(raw);
+                let tai = tt.sub(TT_TAI_OFFSET_SPAN);
+                TimePoint::new(tai.sec, tai.subsec, ClockType::LTC)
             }
-
-            ClockType::TCG => Self::tcg_to_tai(self),
-            ClockType::TCB => Self::tcb_to_tai(self),
-
-            ClockType::LTC => Self::ltc_to_tt(self).to_tai(),
-
-            ClockType::Proper | ClockType::Custom | ClockType::UT1 => self,
         }
     }
 
-    /// Converts a TAI `TimePoint` to any other requested [`ClockType`].
+    /// Returns a bare [`TimeSpan`] containing the numerical `sec`/`subsec` values
+    /// of this instant **on its own [`ClockType`]** (same physical moment).
     ///
-    /// This is the inverse operation of [`Self::to_tai`] and completes a round-trip conversion while
-    /// preserving the exact physical instant.
-    pub const fn from_tai(self, target: ClockType) -> Self {
-        match target {
-            ClockType::TAI => self,
-
-            ClockType::TT => {
-                let mut tp = self.add(TT_TAI_OFFSET_SPAN);
-                tp.set_type(target);
-                tp
+    /// This is the recommended way for callers to obtain the representation on
+    /// a particular scale after construction via [`Self::from`].
+    pub const fn to(self) -> TimeSpan {
+        match self.clock_type {
+            ClockType::TAI | ClockType::Proper | ClockType::Custom | ClockType::UT1 => {
+                self.to_span()
             }
 
-            // Modern UTC: normal leap second handling
-            ClockType::UTC => Self::tai_to_utc(self),
+            ClockType::TT => self.add(TT_TAI_OFFSET_SPAN).to_span(),
 
-            // SPICE historical: subtract 9s for TAI times before 1972
+            ClockType::UTC => self
+                .sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset))
+                .to_span(),
+
             ClockType::UTCSpice => {
                 if self.sec < TAI_SEC_AT_1972 {
-                    let mut utc = Self::tai_to_utc(self);
+                    let mut utc =
+                        self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset));
                     utc.mut_sub(TimeSpan::from_sec_f(f!(9.0)));
-                    utc.set_type(ClockType::UTCSpice);
-                    utc
+                    utc.to_span()
                 } else {
-                    let mut tp = Self::tai_to_utc(self);
-                    tp.set_type(ClockType::UTCSpice);
-                    tp
+                    self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset))
+                        .to_span()
                 }
             }
-
-            // SOFA historical: apply inverse SOFA offset for pre-1972 dates
             ClockType::UTCSofa => {
                 if let Some(offset) = historical_sofa_for_tai_to_utc(&self) {
-                    let mut utc = Self::tai_to_utc(self);
+                    let mut utc =
+                        self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset));
                     utc.mut_sub(TimeSpan::from_sec_f(offset));
-                    utc.set_type(ClockType::UTCSofa);
-                    utc
+                    utc.to_span()
                 } else {
-                    Self::tai_to_utc(self).with_type(ClockType::UTCSofa)
+                    self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset))
+                        .to_span()
                 }
             }
 
             ClockType::GPS | ClockType::QZSS | ClockType::GST => {
-                let mut tp = self.sub(TimeSpan::SEC_19);
-                tp.set_type(target);
-                tp
+                self.sub(TimeSpan::SEC_19).to_span()
             }
 
-            ClockType::BDT => {
-                let mut tp = self.sub(TimeSpan::SEC_33);
-                tp.set_type(target);
-                tp
-            }
+            ClockType::BDT => self.sub(TimeSpan::SEC_33).to_span(),
 
-            ClockType::TDB | ClockType::ET => {
-                let mut tp = Self::tai_to_tdb(self);
-                tp.set_type(target);
-                tp
-            }
+            ClockType::TDB | ClockType::ET => Self::tai_to_tdb(self).to_span(),
 
-            ClockType::TCG => Self::tai_to_tcg(self),
-            ClockType::TCB => Self::tai_to_tcb(self),
+            ClockType::TCG => Self::tai_to_tcg(self).to_span(),
 
-            ClockType::LTC => Self::tt_to_ltc(self.from_tai(ClockType::TT)),
+            ClockType::TCB => Self::tai_to_tcb(self).to_span(),
 
-            ClockType::Proper | ClockType::Custom | ClockType::UT1 => {
-                let mut tp = self;
-                tp.set_type(target);
-                tp
+            ClockType::LTC => {
+                let tt = self.add(TT_TAI_OFFSET_SPAN).to_type(ClockType::TT);
+                Self::tt_to_ltc(tt).to_span()
             }
         }
-    }
-
-    #[inline]
-    const fn utc_to_tai(utc: Self) -> Self {
-        let leaps = leap_seconds_before(&utc);
-        utc.add(TimeSpan::from_sec(leaps)).with_type(ClockType::TAI)
-    }
-
-    #[inline]
-    const fn tai_to_utc(tai: Self) -> Self {
-        let leaps = leap_seconds_before(&tai);
-        tai.sub(TimeSpan::from_sec(leaps)).with_type(ClockType::UTC)
-    }
-
-    /// Converts this instant to another [`ClockType`] by applying a constant time offset.
-    ///
-    /// This is the recommended method for the common case of a fixed offset between two time scales
-    /// (e.g. applying a DUT1 value when converting to a UT1-like custom scale, or any other constant bias).
-    ///
-    /// The offset can be positive or negative. Negative offsets move the time backward.
-    ///
-    /// This is a convenience wrapper around [`Self::saturating_add`] + [`Self::with_type`].
-    #[inline]
-    pub const fn convert_using_offset(&mut self, target: ClockType, offset: TimeSpan) -> Self {
-        self.mut_add(offset).with_type(target)
-    }
-
-    /// Same as [`Self::convert_using_offset`], but accepts the offset as an `f64` (in seconds) for convenience.
-    #[inline]
-    pub const fn convert_using_offset_f(&mut self, target: ClockType, offset_sec: Real) -> Self {
-        self.mut_add(TimeSpan::from_sec_f(offset_sec))
-            .with_type(target)
     }
 
     /// Converts this instant to any other [`ClockType`] while applying an exact quadratic relativistic
@@ -239,9 +171,9 @@ impl TimePoint {
         reference: Self,
         drift: ClockDrift,
     ) -> Self {
-        let span = self.duration_since(reference);
+        let span = self.to_tai_since(reference);
         let correction = drift.time_diff_after(&span);
-        self.add(correction).with_type(target)
+        self.add(correction).to_type(target)
     }
 
     /// Performs the inverse conversion of [`Self::convert_using_drift`], recovering the original proper
@@ -256,17 +188,17 @@ impl TimePoint {
         drift: ClockDrift,
     ) -> Self {
         if drift.rate().is_zero() && drift.accel().is_zero() {
-            return self.sub(*drift.constant()).with_type(source);
+            return self.sub(*drift.constant()).to_type(source);
         }
         let mut guess = self;
         let mut i = 0u32;
         while i < 16 {
-            let span = guess.duration_since(reference);
+            let span = guess.to_tai_since(reference);
             let correction = drift.time_diff_after(&span);
             guess = self.sub(correction);
             i += 1;
         }
-        guess.with_type(source)
+        guess.to_type(source)
     }
 
     /// Converts this instant using a self-describing [`ClockModel`].
@@ -330,10 +262,8 @@ impl TimePoint {
     ///
     /// - SOFA/ERFA `eraDtdb` implementation (2021 May 11 revision):
     ///   https://raw.githubusercontent.com/liberfa/erfa/master/src/dtdb.c
-    const fn tdb_minus_tt(tt: Self) -> TimeSpan {
-        let seconds_since_j2000_tt =
-            (tt.sec as Real) + (tt.subsec as Real) / (ATTOSEC_PER_SEC as Real);
-
+    const fn tdb_minus_tt(sec: i64, subsec: u64) -> TimeSpan {
+        let seconds_since_j2000_tt = f!(sec) + f!(subsec) / f!(ATTOS_PER_SEC);
         let t = seconds_since_j2000_tt / J2000_SEC_PER_CENTURY;
 
         // Mean anomaly of Earth (from Fairhead & Bretagnon 1990 / Simon et al. 1994)
@@ -361,41 +291,28 @@ impl TimePoint {
     }
 
     const fn tai_to_tdb(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN).with_type(ClockType::TT);
-        let span = Self::tdb_minus_tt(tt);
-        tt.add(span).with_type(ClockType::TDB)
+        let tt = tai.add(TT_TAI_OFFSET_SPAN).to_type(ClockType::TT);
+        let span = Self::tdb_minus_tt(tt.sec, tt.subsec);
+        tt.add(span).to_type(ClockType::TDB)
     }
 
     const fn tdb_to_tai(tdb: Self) -> Self {
-        let mut tt = tdb.with_type(ClockType::TT);
+        let mut tt = tdb;
         let mut i = 0u32;
-
         while i < 8 {
-            let span = Self::tdb_minus_tt(tt);
-            tt = tdb.with_type(ClockType::TT).sub(span);
+            tt = tdb.sub(Self::tdb_minus_tt(tt.sec, tt.subsec));
             i += 1;
         }
-
-        tt.sub(TT_TAI_OFFSET_SPAN).with_type(ClockType::TAI)
-    }
-
-    const fn tcg_to_tai(tcg: Self) -> Self {
-        let tt = Self::tcg_to_tt(tcg);
-        tt.to_tai()
+        tt.sub(TT_TAI_OFFSET_SPAN)
     }
 
     const fn tai_to_tcg(tai: Self) -> Self {
-        let tt = tai.from_tai(ClockType::TT);
+        let tt = tai.add(TT_TAI_OFFSET_SPAN).to_type(ClockType::TT);
         Self::tt_to_tcg(tt)
     }
 
-    const fn tcb_to_tai(tcb: Self) -> Self {
-        let tdb = Self::tcb_to_tdb(tcb);
-        tdb.to_tai()
-    }
-
     const fn tai_to_tcb(tai: Self) -> Self {
-        let tdb = tai.from_tai(ClockType::TDB);
+        let tdb = Self::tai_to_tdb(tai);
         Self::tdb_to_tcb(tdb)
     }
 
@@ -413,11 +330,11 @@ impl TimePoint {
         let mut attos_diff = (numerical.subsec as i128) - (TCG_TCB_REF_TOD_SUBSEC as i128);
 
         if attos_diff < 0 {
-            attos_diff += ATTOSEC_PER_SEC_I128;
+            attos_diff += ATTOS_PER_SEC_I128;
             sec_diff -= 1;
         }
 
-        sec_diff * ATTOSEC_PER_SEC_I128 + attos_diff
+        sec_diff * ATTOS_PER_SEC_I128 + attos_diff
     }
 
     /// Exact fixed-point multiplication: `attos * num / den` (handles negative values safely, no overflow for library time range).
@@ -450,49 +367,49 @@ impl TimePoint {
     const fn tt_to_tcg(tt: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_ref(tt);
         let span_attos = Self::mul_lg(elapsed);
-        tt.add(TimeSpan::from_total_attos(span_attos))
-            .with_type(ClockType::TCG)
+        tt.add(TimeSpan::from_attos(span_attos))
+            .to_type(ClockType::TCG)
     }
 
     const fn tcg_to_tt(tcg: Self) -> Self {
         let elapsed_cg = Self::elapsed_to_attos_since_ref(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
-        tcg.sub(TimeSpan::from_total_attos(span_attos))
-            .with_type(ClockType::TT)
+        tcg.sub(TimeSpan::from_attos(span_attos))
+            .to_type(ClockType::TT)
     }
 
     const fn tcb_to_tdb(tcb: Self) -> Self {
         let elapsed_cg = Self::elapsed_to_attos_since_ref(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
-        tcb.sub(TimeSpan::from_total_attos(span_attos))
-            .sub(TimeSpan::from_total_attos(TDB0_ATTOS))
-            .with_type(ClockType::TDB)
+        tcb.sub(TimeSpan::from_attos(span_attos))
+            .sub(TimeSpan::from_attos(TDB0_ATTOS))
+            .to_type(ClockType::TDB)
     }
 
     const fn tdb_to_tcb(tdb: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(tdb.with_type(ClockType::TT));
+        let elapsed = Self::elapsed_to_attos_since_ref(tdb.to_type(ClockType::TT));
         let span_attos = Self::mul_lb(elapsed);
-        tdb.add(TimeSpan::from_total_attos(span_attos))
-            .add(TimeSpan::from_total_attos(TDB0_ATTOS))
-            .with_type(ClockType::TCB)
+        tdb.add(TimeSpan::from_attos(span_attos))
+            .add(TimeSpan::from_attos(TDB0_ATTOS))
+            .to_type(ClockType::TCB)
     }
 
     const fn tt_to_ltc(tt: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_ref(tt);
         let span_attos = Self::mul_lm(elapsed);
-        tt.add(TimeSpan::from_total_attos(span_attos))
-            .with_type(ClockType::LTC)
+        tt.add(TimeSpan::from_attos(span_attos))
+            .to_type(ClockType::LTC)
     }
 
     const fn ltc_to_tt(ltc: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_ref(ltc);
         let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
-        ltc.sub(TimeSpan::from_total_attos(span_attos))
-            .with_type(ClockType::TT)
+        ltc.sub(TimeSpan::from_attos(span_attos))
+            .to_type(ClockType::TT)
     }
 
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
-    const fn elapsed_to_attos_since_mars_ref(numerical_tt: Self) -> i128 {
+    const fn elapsed_to_attos_since_mars_ref(numerical_tt: TimeSpan) -> i128 {
         let days_since_j2000 = numerical_tt.sec.div_euclid(SEC_PER_DAYI64);
         let tod_sec = numerical_tt.sec.rem_euclid(SEC_PER_DAYI64);
 
@@ -504,59 +421,51 @@ impl TimePoint {
         let mut attos_diff = (numerical_tt.subsec as i128) - (MARS_MSD_REF_TOD_SUBSEC as i128);
 
         if attos_diff < 0 {
-            attos_diff += ATTOSEC_PER_SEC_I128;
+            attos_diff += ATTOS_PER_SEC_I128;
             sec_diff -= 1;
         }
 
-        sec_diff * ATTOSEC_PER_SEC_I128 + attos_diff
-    }
-
-    #[inline]
-    const fn mars_ref_tt() -> Self {
-        TimePoint::new(MARS_REF_SEC, MARS_REF_SUBSEC, ClockType::TT)
+        sec_diff * ATTOS_PER_SEC_I128 + attos_diff
     }
 
     /// Returns the exact Mars Sol Date (MSD) as a tuple of integer sols and the fractional part of a sol.
     ///
     /// The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
     /// [`ClockType`]. Leap seconds are automatically accounted for when converting from UTC.
-    pub const fn to_msd_exact(self) -> (i64, TimeSpan) {
-        let tt = self.to_type(ClockType::TT);
+    pub const fn to_msd_exact(self) -> (i64, u128) {
+        let tt = self.to_type(ClockType::TT).to();
         let elapsed = Self::elapsed_to_attos_since_mars_ref(tt);
         let attos_per_sol = MARS_SOL_ATTOS;
 
         let whole_sols = elapsed.div_euclid(attos_per_sol) as i64;
-        let frac_attos = elapsed.rem_euclid(attos_per_sol);
-        let frac_sol = TimeSpan::from_total_attos(frac_attos);
+        let frac_attos = elapsed.rem_euclid(attos_per_sol) as u128;
 
-        (whole_sols, frac_sol)
+        (whole_sols, frac_attos)
     }
 
-    /// Returns Mars Coordinated Time (MTC) as a [`TimeSpan`] representing seconds into the current sol
-    /// (range [0, one Martian sol)).
+    /// Returns Mars Coordinated Time (MTC) as a [`TimeSpan`] representing
+    /// seconds into the current sol (range `[0, one Martian sol)`).
     #[inline]
     pub const fn to_mtc(self) -> TimeSpan {
-        let (_, frac_sol) = self.to_msd_exact();
-        frac_sol
+        let (_, frac_attos) = self.to_msd_exact();
+        TimeSpan::from_attos(frac_attos as i128)
     }
 
     /// Creates a `TimePoint` (in TT) from an exact Mars Sol Date using full library precision.
-    pub const fn from_msd_exact(whole_sols: i64, frac_sol: TimeSpan) -> Self {
-        let frac_attos = frac_sol.total_attos();
-        let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos;
+    pub const fn from_msd_exact(whole_sols: i64, frac_attos: u128) -> Self {
+        let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
 
-        let ref_tt = Self::mars_ref_tt();
-        let tt = ref_tt.add(TimeSpan::from_total_attos(elapsed_attos));
-        tt.to_tai()
+        let tt = MARS_REF_TT.add(TimeSpan::from_attos(elapsed_attos));
+        Self::from(tt.sec, tt.subsec, ClockType::TT)
     }
 
     /// Creates a `TimePoint` (in TT) from a floating-point Mars Sol Date.
     /// Non-exact Real.
     pub const fn from_msd(msd: Real) -> Self {
         let whole = floor_f(msd) as i64;
-        let frac = msd - (whole as Real);
+        let frac = msd - f!(whole);
         let frac_span = TimeSpan::from_sec_f(frac * MARS_SOL_LENGTH_SEC);
-        Self::from_msd_exact(whole, frac_span)
+        Self::from_msd_exact(whole, frac_span.to_attos() as u128)
     }
 
     /// Returns the Mars Sol Date (MSD) as a floating-point value (matches NASA Mars24 output).
@@ -564,6 +473,6 @@ impl TimePoint {
     #[inline]
     pub const fn to_msd(self) -> Real {
         let (whole, frac) = self.to_msd_exact();
-        whole as Real + frac.as_sec_f() / MARS_SOL_LENGTH_SEC
+        f!(whole) + to_sec_f(frac) / MARS_SOL_LENGTH_SEC
     }
 }

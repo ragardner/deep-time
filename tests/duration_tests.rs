@@ -6,7 +6,7 @@ fn assert_duration(input: &str, expected_millis: i64) {
     let dur = TimeSpan::from_str(trimmed, Lang::default())
         .unwrap_or_else(|e| panic!("Failed '{}': {}", input, e));
 
-    let actual_millis = dur.total_ms() as i64;
+    let actual_millis = dur.to_ms() as i64;
 
     assert_eq!(actual_millis, expected_millis, "Input: '{}'", input);
 }

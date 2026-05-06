@@ -75,19 +75,19 @@ mod tests {
 
     #[test]
     fn test_j2000_zero_points() {
-        let our = TimePoint::new(0, 0, ClockType::TAI);
+        let our = TimePoint::from(0, 0, ClockType::TAI);
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
         assert_tp_matches_hifitime(our, hi, "J2000 TAI zero");
 
-        let our = TimePoint::new(0, 0, ClockType::TT);
+        let our = TimePoint::from(0, 0, ClockType::TT);
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 11, 59, 27, 816_000_000);
         assert_tp_matches_hifitime(our, hi, "J2000 TT zero");
 
-        let our = TimePoint::new(0, 0, ClockType::GPS);
+        let our = TimePoint::from(0, 0, ClockType::GPS);
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::GPST);
         assert_tp_matches_hifitime(our, hi, "J2000 GPST zero");
 
-        let our = TimePoint::new(0, 0, ClockType::BDT);
+        let our = TimePoint::from(0, 0, ClockType::BDT);
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::BDT);
         assert_tp_matches_hifitime(our, hi, "J2000 BDT zero");
     }
@@ -143,7 +143,7 @@ mod tests {
     #[test]
     fn test_negative_and_subsecond() {
         // Use a smaller negative value that hifitime handles cleanly
-        let our = TimePoint::new(-1_000_000_000i64, 123_456_789_012_345_678, ClockType::GPS);
+        let our = TimePoint::from(-1_000_000_000i64, 123_456_789_012_345_678, ClockType::GPS);
 
         let delta = Duration::from_seconds(-1_000_000_000f64)
             + Duration::from_nanoseconds(123_456_789_012_345_678u64 as f64 / 1_000_000_000.0);
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn roundtrip_unix_epoch() {
-        let tp = TimePoint::UNIX_EPOCH_TAI;
+        let tp = TimePoint::UNIX_EPOCH;
         let h = tp.to_hifitime();
         let tp2 = TimePoint::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);

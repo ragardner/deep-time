@@ -12,7 +12,7 @@ impl TimeSpan {
     ///   if the value is out of range.
     ///   Never returns an error.
     pub fn to_jiff_span(self) -> Span {
-        let total_nanos = self.total_attos() / 1_000_000_000i128;
+        let total_nanos = self.to_attos() / 1_000_000_000i128;
 
         let seconds = (total_nanos / 1_000_000_000) as i64;
         let nanoseconds = (total_nanos % 1_000_000_000) as i64;
@@ -42,19 +42,19 @@ impl TimeSpan {
     /// - Supports the **entire** range of `TimeSpan` (never saturates).
     #[inline]
     pub fn to_jiff_signed_duration(self) -> SignedDuration {
-        let total_nanos = self.total_attos() / 1_000_000_000i128;
+        let total_nanos = self.to_attos() / 1_000_000_000i128;
         SignedDuration::from_nanos_i128(total_nanos)
     }
 
     /// Converts this `TimeSpan` to a [`jiff::Timestamp`].
     ///
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
-    /// - The conversion assumes `total_attos()` returns attoseconds since the Unix epoch
+    /// - The conversion assumes `to_attos()` returns attoseconds since the Unix epoch
     ///   (UTC). Leap-second handling is already performed by `TimePoint` arithmetic.
     /// - **Saturates** at [`Timestamp::MAX`] / [`Timestamp::MIN`] if the value is out of range.
     ///   Never returns an error.
     pub fn to_jiff_timestamp(self) -> Timestamp {
-        let total_nanos = self.total_attos() / 1_000_000_000i128;
+        let total_nanos = self.to_attos() / 1_000_000_000i128;
 
         match Timestamp::from_nanosecond(total_nanos) {
             Ok(ts) => ts,

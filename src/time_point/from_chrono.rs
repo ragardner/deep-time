@@ -15,14 +15,14 @@ impl TimePoint {
     ///   `i64::MIN` ns) rather than saturating to `TimePoint` extremes.
     pub fn from_chrono_datetime_utc(dt: DateTime<Utc>) -> Self {
         match dt.timestamp_nanos_opt() {
-            Some(ns) => TimePoint::UNIX_EPOCH_TAI.add(TimeSpan::from_ns(ns as i128)),
+            Some(ns) => TimePoint::UNIX_EPOCH.add(TimeSpan::from_ns(ns as i128)),
             None => {
                 let ns = if dt > DateTime::<Utc>::UNIX_EPOCH {
                     i64::MAX
                 } else {
                     i64::MIN
                 };
-                TimePoint::UNIX_EPOCH_TAI.add(TimeSpan::from_ns(ns as i128))
+                TimePoint::UNIX_EPOCH.add(TimeSpan::from_ns(ns as i128))
             }
         }
     }

@@ -72,3 +72,17 @@ pub(crate) const MJD_RANGE: RangeInclusive<i64> = 40_000..=85_000;
 /// Julian Day (JD) range for 7-digit pure-numeric input.
 /// Covers ~5000 BC to ~10,700 AD
 pub(crate) const JD_RANGE: RangeInclusive<i64> = 1_400_000..=4_000_000;
+
+pub(crate) const SEC_PER_HALF_DAYI64: i64 = 43_200;
+pub(crate) const NS_PER_YEAR: i128 = 31_557_600_000_000_000; // 365.25 days
+pub(crate) const NS_PER_MONTH: i128 = 2_629_800_000_000_000; // 30.4375 days
+pub(crate) const NS_PER_WEEK: i128 = 604_800_000_000_000;
+pub(crate) const NS_PER_HOUR: i128 = 3_600_000_000_000;
+pub(crate) const NS_PER_MINUTE: i128 = 60_000_000_000;
+pub(crate) const NS_PER_DAY: i128 = 86_400_000_000_000;
+pub(crate) const NS_PER_HALF_DAY: i128 = 43_200_000_000_000;
+
+/// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC
+pub(crate) const MJD_EPOCH_NANOS: i128 = 40_587_i128 * NS_PER_DAY;
+/// JD 2440587.5 exactly = 1970-01-01 00:00:00 UTC
+pub(crate) const JD_EPOCH_NANOS: i128 = 2_440_587_i128 * NS_PER_DAY + NS_PER_HALF_DAY;

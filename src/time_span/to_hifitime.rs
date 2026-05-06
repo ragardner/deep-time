@@ -12,7 +12,7 @@ impl TimeSpan {
     ///   (±32,768 centuries).
     #[inline]
     pub fn to_hifitime_duration(self) -> Duration {
-        Duration::from_total_nanoseconds(self.total_attos() / 1_000_000_000i128)
+        Duration::from_total_nanoseconds(self.to_attos() / 1_000_000_000i128)
     }
 
     /// Converts this `TimeSpan` to a [`hifitime::Epoch`] using the given `TimeScale`.

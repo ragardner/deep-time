@@ -1,77 +1,31 @@
 use crate::{
-    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_US, ATTOSEC_PER_SEC,
-    ATTOSEC_PER_SEC_I128, Real, TimeSpan, floor_f,
+    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
+    ATTOS_PER_SECF, ATTOS_PER_US, Real, TimePoint, TimeSpan, floor_f,
 };
 
 impl TimeSpan {
-    /// Returns the sum of `self` and `rhs`.
-    ///
-    /// Both positive and negative `rhs` are supported. Adding a negative value
-    /// is equivalent to subtraction. The result is normalized so the fractional
-    /// part lies in `[0, ATTOSEC_PER_SEC)`.
-    pub const fn add(self, rhs: Self) -> Self {
-        let mut sec = self.sec + rhs.sec;
-        let mut subsec = self.subsec as i64 + rhs.subsec as i64;
-
-        if subsec >= ATTOSEC_PER_SEC as i64 {
-            sec += 1;
-            subsec -= ATTOSEC_PER_SEC as i64;
-        } else if subsec < 0 {
-            sec -= 1;
-            subsec += ATTOSEC_PER_SEC as i64;
-        }
-
-        Self {
-            sec,
-            subsec: subsec as u64,
-        }
-    }
-
-    /// Returns the difference `self - rhs`.
-    ///
-    /// Both positive and negative `rhs` are supported. Subtracting a negative value
-    /// is equivalent to addition. The result is normalized so the fractional part
-    /// lies in `[0, ATTOSEC_PER_SEC)`.
-    pub const fn sub(self, rhs: Self) -> Self {
-        let mut sec = self.sec - rhs.sec;
-        let mut subsec = self.subsec as i64 - rhs.subsec as i64;
-
-        if subsec < 0 {
-            sec -= 1;
-            subsec += ATTOSEC_PER_SEC as i64;
-        } else if subsec >= ATTOSEC_PER_SEC as i64 {
-            sec += 1;
-            subsec -= ATTOSEC_PER_SEC as i64;
-        }
-
-        Self {
-            sec,
-            subsec: subsec as u64,
-        }
-    }
-
     /// Returns the sum of `self` and `rhs`, saturating at [`TimeSpan::MAX`] or
     /// [`TimeSpan::MIN`] on overflow.
     ///
     /// Both positive and negative `rhs` are supported.
-    pub const fn saturating_add(self, rhs: Self) -> Self {
+    pub const fn add(self, rhs: Self) -> Self {
         let mut sec = self.sec.saturating_add(rhs.sec);
         let mut subsec = self.subsec as i64 + rhs.subsec as i64;
 
-        if subsec >= ATTOSEC_PER_SEC as i64 {
+        if subsec >= ATTOS_PER_SEC as i64 {
             if sec < i64::MAX {
                 sec = sec.saturating_add(1);
             }
-            subsec -= ATTOSEC_PER_SEC as i64;
+            subsec -= ATTOS_PER_SEC as i64;
         } else if subsec < 0 {
             if sec > i64::MIN {
                 sec = sec.saturating_sub(1);
             }
-            subsec += ATTOSEC_PER_SEC as i64;
+            subsec += ATTOS_PER_SEC as i64;
         }
 
         let subsec = if sec == i64::MAX {
-            ATTOSEC_PER_SEC - 1
+            ATTOS_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
@@ -85,7 +39,7 @@ impl TimeSpan {
     /// [`TimeSpan::MIN`] on overflow.
     ///
     /// Both positive and negative `rhs` are supported.
-    pub const fn saturating_sub(self, rhs: Self) -> Self {
+    pub const fn sub(self, rhs: Self) -> Self {
         let mut sec = self.sec.saturating_sub(rhs.sec);
         let mut subsec = self.subsec as i64 - rhs.subsec as i64;
 
@@ -93,16 +47,16 @@ impl TimeSpan {
             if sec > i64::MIN {
                 sec = sec.saturating_sub(1);
             }
-            subsec += ATTOSEC_PER_SEC as i64;
-        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            subsec += ATTOS_PER_SEC as i64;
+        } else if subsec >= ATTOS_PER_SEC as i64 {
             if sec < i64::MAX {
                 sec = sec.saturating_add(1);
             }
-            subsec -= ATTOSEC_PER_SEC as i64;
+            subsec -= ATTOS_PER_SEC as i64;
         }
 
         let subsec = if sec == i64::MAX {
-            ATTOSEC_PER_SEC - 1
+            ATTOS_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
@@ -118,64 +72,12 @@ impl TimeSpan {
         self.sec == 0 && self.subsec == 0
     }
 
-    /// Reconstruct `TimeSpan` from total attoseconds (exact, handles negative values correctly).
-    pub const fn from_total_attos(mut attos: i128) -> Self {
-        if attos > (i64::MAX as i128) * ATTOSEC_PER_SEC_I128 {
-            return Self::MAX;
-        }
-        if attos < (i64::MIN as i128) * ATTOSEC_PER_SEC_I128 {
-            return Self::MIN;
-        }
-
-        if attos >= 0 {
-            let sec = (attos / ATTOSEC_PER_SEC_I128) as i64;
-            let subsec = (attos % ATTOSEC_PER_SEC_I128) as u64;
-            Self { sec, subsec }
-        } else {
-            attos = -attos;
-            let sec_pos = (attos / ATTOSEC_PER_SEC_I128) as i64;
-            let rem = (attos % ATTOSEC_PER_SEC_I128) as u64;
-            if rem == 0 {
-                Self {
-                    sec: -sec_pos,
-                    subsec: 0,
-                }
-            } else {
-                Self {
-                    sec: -sec_pos - 1,
-                    subsec: ATTOSEC_PER_SEC - rem,
-                }
-            }
-        }
-    }
-
     /// Converts this duration to a floating-point number of seconds.
     /// It computes `sec + subsec / 10¹⁸` using `f64`.
     /// It is lossy by design (f64 only has ~15.95 decimal digits of precision).
     #[inline]
-    pub const fn as_sec_f(self) -> Real {
-        self.sec as Real + (self.subsec as Real) / (ATTOSEC_PER_SEC as Real)
-    }
-
-    /// Creates a `TimeSpan` from a floating-point number of seconds.
-    pub const fn from_sec_f(sec_f: Real) -> Self {
-        if sec_f.is_nan() {
-            return Self::ZERO;
-        }
-        if sec_f.is_infinite() {
-            return if sec_f.is_sign_positive() {
-                Self::MAX
-            } else {
-                Self::MIN
-            };
-        }
-
-        let floor_val = floor_f(sec_f);
-        let frac = sec_f - floor_val;
-        let attos_frac = (frac * (ATTOSEC_PER_SEC as Real)) as i128;
-
-        let total = (floor_val as i128) * ATTOSEC_PER_SEC_I128 + attos_frac;
-        Self::from_total_attos(total)
+    pub const fn to_sec_f(self) -> Real {
+        f!(self.sec) + f!(self.subsec) / ATTOS_PER_SECF
     }
 
     /// Multiplies this duration by an integer scalar (exact).
@@ -185,8 +87,8 @@ impl TimeSpan {
         if rhs == 0 || self.is_zero() {
             return Self::ZERO;
         }
-        let total: i128 = self.total_attos().saturating_mul(rhs as i128);
-        Self::from_total_attos(total)
+        let total: i128 = self.to_attos().saturating_mul(rhs as i128);
+        Self::from_attos(total)
     }
 
     /// Divides this duration by an integer scalar (exact floor division).
@@ -198,9 +100,9 @@ impl TimeSpan {
         if rhs == 0 || self.is_zero() {
             return Self::ZERO;
         }
-        let total = self.total_attos();
+        let total = self.to_attos();
         let result = total.div_euclid(rhs as i128);
-        Self::from_total_attos(result)
+        Self::from_attos(result)
     }
 
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
@@ -209,11 +111,11 @@ impl TimeSpan {
         if unit.is_zero() {
             return self;
         }
-        let a = self.total_attos();
-        let b = unit.total_attos();
+        let a = self.to_attos();
+        let b = unit.to_attos();
         let q = a.div_euclid(b);
         let result = q.wrapping_mul(b);
-        Self::from_total_attos(result)
+        Self::from_attos(result)
     }
 
     /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
@@ -222,14 +124,14 @@ impl TimeSpan {
         if unit.is_zero() {
             return self;
         }
-        let a = self.total_attos();
-        let b = unit.total_attos();
+        let a = self.to_attos();
+        let b = unit.to_attos();
         // ceil(a/b) ≡ −floor(−a/b)
         let neg_a = a.wrapping_neg();
         let q = neg_a.div_euclid(b);
         let q_ceil = q.wrapping_neg();
         let result = q_ceil.wrapping_mul(b);
-        Self::from_total_attos(result)
+        Self::from_attos(result)
     }
 
     /// Returns the nearest multiple of `unit`.
@@ -239,8 +141,8 @@ impl TimeSpan {
         if unit.is_zero() {
             return self;
         }
-        let a = self.total_attos();
-        let b = unit.total_attos();
+        let a = self.to_attos();
+        let b = unit.to_attos();
 
         let q = a.div_euclid(b);
         let r = a.rem_euclid(b);
@@ -255,10 +157,10 @@ impl TimeSpan {
             let one = 1i128;
             let q_rounded = if a < 0 { q - one } else { q + one };
             let result = q_rounded.wrapping_mul(b);
-            Self::from_total_attos(result)
+            Self::from_attos(result)
         } else {
             let result = q.wrapping_mul(b);
-            Self::from_total_attos(result)
+            Self::from_attos(result)
         }
     }
 
@@ -269,8 +171,8 @@ impl TimeSpan {
         if unit.is_zero() {
             return 0;
         }
-        let a = self.total_attos().wrapping_abs();
-        let b = unit.total_attos().wrapping_abs();
+        let a = self.to_attos().wrapping_abs();
+        let b = unit.to_attos().wrapping_abs();
         let q = a.div_euclid(b);
 
         if q > (usize::MAX as i128) {
@@ -302,19 +204,19 @@ impl TimeSpan {
         }
 
         let int_part = floor_f(rhs) as i128; // exact integer part
-        let frac_part = rhs - (int_part as Real); // always in [0, 1)
+        let frac_part = rhs - f!(int_part); // always in [0, 1)
 
         // Integer part
-        let int_result = Self::from_total_attos(self.total_attos().saturating_mul(int_part));
+        let int_result = Self::from_attos(self.to_attos().saturating_mul(int_part));
 
         // Fractional part: scaling is safe (|frac_part| < 1)
         const SCALE: i128 = 1_000_000_000_000_000; // 10¹⁵
         let frac_scaled = (frac_part * (SCALE as Real)) as i128;
-        let frac_product = self.total_attos().saturating_mul(frac_scaled);
+        let frac_product = self.to_attos().saturating_mul(frac_scaled);
         let frac_attos = frac_product / SCALE;
-        let frac_result = Self::from_total_attos(frac_attos);
+        let frac_result = Self::from_attos(frac_attos);
 
-        int_result.saturating_add(frac_result)
+        int_result.add(frac_result)
     }
 
     /// Divides by a real number (routes through the high-precision `mul_by_f`).
@@ -330,30 +232,6 @@ impl TimeSpan {
     #[inline]
     pub const fn div_by_2(self) -> TimeSpan {
         self.div_by_f(2.0)
-    }
-
-    // common
-
-    /// Seconds field getter.
-    #[inline]
-    pub const fn sec(&self) -> i64 {
-        self.sec
-    }
-
-    /// Subseconds field getter (attoseconds).
-    #[inline]
-    pub const fn subsec(&self) -> u64 {
-        self.subsec
-    }
-
-    /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOSEC_PER_SEC)`.
-    #[inline]
-    pub const fn carry_over(&mut self) -> &mut Self {
-        if self.subsec >= ATTOSEC_PER_SEC {
-            self.sec += (self.subsec / ATTOSEC_PER_SEC) as i64;
-            self.subsec %= ATTOSEC_PER_SEC;
-        }
-        self
     }
 
     /// Adds exactly 1 second to this time value using saturating arithmetic.
@@ -572,10 +450,6 @@ impl TimeSpan {
         self.add_subsec_span(n.saturating_neg(), 1);
     }
 
-    // =====================================================================
-    // Internal helper methods
-    // =====================================================================
-
     /// Internal method to add or subtract a subsecond span in a given unit.
     ///
     /// This is the core implementation for all subsecond addition and subtraction
@@ -588,7 +462,7 @@ impl TimeSpan {
             return;
         }
 
-        let mps = ATTOSEC_PER_SEC;
+        let mps = ATTOS_PER_SEC;
 
         if n >= 0 {
             // Positive direction
@@ -633,44 +507,80 @@ impl TimeSpan {
     #[inline]
     const fn _add_subsec(&mut self, amount: u64) {
         let total = self.subsec + amount;
-        let carry_sec = total / ATTOSEC_PER_SEC;
-        self.subsec = total % ATTOSEC_PER_SEC;
+        let carry_sec = total / ATTOS_PER_SEC;
+        self.subsec = total % ATTOS_PER_SEC;
         self.sec = self.sec.saturating_add(carry_sec as i64);
     }
 
     /// Total attoseconds (exact i128 representation within the representable range).
     #[inline]
-    pub const fn total_attos(self) -> i128 {
-        (self.sec as i128) * ATTOSEC_PER_SEC_I128 + (self.subsec as i128)
+    pub const fn to_attos(self) -> i128 {
+        (self.sec as i128) * ATTOS_PER_SEC_I128 + (self.subsec as i128)
+    }
+
+    /// Returns the total duration in seconds.
+    #[inline]
+    pub const fn to_sec(&mut self) -> i64 {
+        self.carry_over();
+        self.sec
     }
 
     /// Returns the total duration in milliseconds.
     #[inline]
-    pub const fn total_ms(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_MS as i128)
+    pub const fn to_ms(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_MS as i128)
     }
 
     /// Returns the total duration in microseconds.
     #[inline]
-    pub const fn total_us(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_US as i128)
+    pub const fn to_us(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_US as i128)
     }
 
     /// Returns the total duration in nanoseconds.
     #[inline]
-    pub const fn total_ns(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_NS as i128)
+    pub const fn to_ns(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_NS as i128)
     }
 
     /// Returns the total duration in picoseconds.
     #[inline]
-    pub const fn total_ps(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_PS as i128)
+    pub const fn to_ps(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_PS as i128)
     }
 
     /// Returns the total duration in femtoseconds.
     #[inline]
-    pub const fn total_fs(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_FS as i128)
+    pub const fn to_fs(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_FS as i128)
+    }
+
+    /// Returns `self - rhs` exactly.
+    ///
+    /// This is the normal case when subtracting two durations.
+    #[inline]
+    pub const fn to_diff(self, rhs: Self) -> Self {
+        Self::diff_raw(self.sec, self.subsec, rhs.sec, rhs.subsec)
+    }
+
+    /// Returns `self - rhs` exactly, where `rhs` is a `TimePoint`.
+    #[inline]
+    pub const fn to_diff_tp(self, rhs: TimePoint) -> Self {
+        Self::diff_raw(self.sec, self.subsec, rhs.sec, rhs.subsec)
+    }
+
+    #[inline]
+    pub(crate) const fn diff_raw(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> Self {
+        let mut sec = sec_a - sec_b;
+        let mut subsec = sub_a;
+
+        if subsec >= sub_b {
+            subsec -= sub_b;
+        } else {
+            sec -= 1;
+            subsec += ATTOS_PER_SEC - sub_b;
+        }
+
+        Self { sec, subsec }
     }
 }

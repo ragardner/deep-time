@@ -34,7 +34,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let total_subsec_nanos = (rem_millis as u64) * 1_000_000 + (frac_nanos as u64);
             let subsec_attos = total_subsec_nanos * 1_000_000_000;
 
-            TimePoint::new(secs, subsec_attos, ClockType::UTC)
+            TimePoint::from(secs, subsec_attos, ClockType::UTC)
         }
 
         // 16–18 digits → microseconds
@@ -50,7 +50,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let total_subsec_nanos = (rem_micros as u64) * 1_000 + (frac_nanos as u64);
             let subsec_attos = total_subsec_nanos * 1_000_000_000;
 
-            TimePoint::new(secs, subsec_attos, ClockType::UTC)
+            TimePoint::from(secs, subsec_attos, ClockType::UTC)
         }
 
         // 19+ digits → nanoseconds (uses existing `frac_to_nanos` for perfect precision)
@@ -72,7 +72,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
                 let secs: i64 = secs_i128.try_into().ok()?;
 
                 let subsec_attos = rem_nanos * 1_000_000_000;
-                TimePoint::new(secs, subsec_attos, ClockType::UTC)
+                TimePoint::from(secs, subsec_attos, ClockType::UTC)
             } else {
                 // Extremely rare fallback
                 let unix_secs = ts_f64.trunc() as i64;
@@ -80,7 +80,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
                 let nanos = ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32)
                     .min(999_999_999) as u64;
                 let subsec_attos = nanos * 1_000_000_000;
-                TimePoint::new(secs, subsec_attos, ClockType::UTC)
+                TimePoint::from(secs, subsec_attos, ClockType::UTC)
             }
         }
 
@@ -91,7 +91,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let nanos =
                 ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32).min(999_999_999) as u64;
             let subsec_attos = nanos * 1_000_000_000;
-            TimePoint::new(secs, subsec_attos, ClockType::UTC)
+            TimePoint::from(secs, subsec_attos, ClockType::UTC)
         }
     };
 

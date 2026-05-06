@@ -49,7 +49,7 @@ mod tests {
         let drift = ClockDrift::new(
             TimeSpan::from_sec(5),
             TimeSpan::from_ns(1),
-            TimeSpan::from_as(2),
+            TimeSpan::from_attos(2),
         );
         assert_roundtrip(
             &drift,

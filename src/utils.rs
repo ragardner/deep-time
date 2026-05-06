@@ -129,7 +129,7 @@ pub(crate) const fn floor_f(x: Real) -> Real {
         x // preserves +0.0 or -0.0
     } else {
         let i = x as i64;
-        let truncated = i as Real;
+        let truncated = f!(i);
         if x >= f!(0.0) || truncated == x {
             truncated
         } else {

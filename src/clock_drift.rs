@@ -96,7 +96,7 @@ General relativity is recovered exactly as the low-curvature projection of this 
 This formulation is production-ready for spacecraft navigation pipelines, black-hole flyby simulations, cosmological trajectories, or any mixed weak/strong-field probe adventure. All prior stages are recovered algebraically in the low-curvature limit. The engine is minimal, modular, and fully first-principles at the level of the master Lagrangian.
 */
 
-use crate::{ATTOSEC_PER_SEC_I128, C_SQUARED, PLANCK_LENGTH_4, Real, TimeSpan, Velocity, sqrt};
+use crate::{ATTOS_PER_SEC_I128, C_SQUARED, PLANCK_LENGTH_4, Real, TimeSpan, Velocity, sqrt};
 
 /// The three local spacetime quantities that fully determine how fast an observer’s
 /// proper time advances relative to coordinate time.
@@ -141,49 +141,6 @@ impl LocalSpacetime {
             beta,
             kretschmann,
         }
-    }
-
-    /// Size of the canonical wire representation in bytes (24 bytes).
-    pub const WIRE_SIZE: usize = 24;
-
-    /// Serializes this `LocalSpacetime` snapshot into a fixed 24-byte buffer.
-    ///
-    /// All fields are stored as little-endian IEEE 754 `f64`.
-    #[cfg(feature = "wire")]
-    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
-        let mut buf = [0u8; Self::WIRE_SIZE];
-        buf[0..8].copy_from_slice(&self.alpha.to_le_bytes());
-        buf[8..16].copy_from_slice(&self.beta.to_le_bytes());
-        buf[16..24].copy_from_slice(&self.kretschmann.to_le_bytes());
-        buf
-    }
-
-    /// Deserializes a `LocalSpacetime` from exactly 24 bytes.
-    ///
-    /// ## Security
-    ///
-    /// Accepts any `f64` bit pattern (including `NaN`/`Inf`) to match the
-    /// type’s own invariants. Fixed size makes it immune to length-based
-    /// attacks. Safe for untrusted input.
-    #[cfg(feature = "wire")]
-    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != Self::WIRE_SIZE {
-            return None;
-        }
-        let alpha = f64::from_le_bytes([
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-        ]);
-        let beta = f64::from_le_bytes([
-            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
-        ]);
-        let kretschmann = f64::from_le_bytes([
-            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
-        ]);
-        Some(Self {
-            alpha,
-            beta,
-            kretschmann,
-        })
     }
 
     /// Returns the instantaneous proper-time rate `dτ/dt` from this snapshot.
@@ -328,6 +285,50 @@ impl LocalSpacetime {
     }
 }
 
+#[cfg(feature = "wire")]
+impl LocalSpacetime {
+    /// Size of the canonical wire representation in bytes (24 bytes).
+    pub const WIRE_SIZE: usize = 24;
+
+    /// Serializes this `LocalSpacetime` snapshot into a fixed 24-byte buffer.
+    ///
+    /// All fields are stored as little-endian IEEE 754 `f64`.
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0..8].copy_from_slice(&self.alpha.to_le_bytes());
+        buf[8..16].copy_from_slice(&self.beta.to_le_bytes());
+        buf[16..24].copy_from_slice(&self.kretschmann.to_le_bytes());
+        buf
+    }
+
+    /// Deserializes a `LocalSpacetime` from exactly 24 bytes.
+    ///
+    /// ## Security
+    ///
+    /// Accepts any `f64` bit pattern (including `NaN`/`Inf`) to match the
+    /// type’s own invariants. Fixed size makes it immune to length-based
+    /// attacks. Safe for untrusted input.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+        let alpha = f64::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]);
+        let beta = f64::from_le_bytes([
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        ]);
+        let kretschmann = f64::from_le_bytes([
+            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
+        ]);
+        Some(Self {
+            alpha,
+            beta,
+            kretschmann,
+        })
+    }
+}
+
 /// Quadratic polynomial that describes the accumulated difference between an
 /// observer’s proper time (the time measured by a real clock moving through
 /// spacetime) and a chosen coordinate time such as TT, TAI, or any other
@@ -373,54 +374,6 @@ impl ClockDrift {
             rate,
             accel,
         }
-    }
-
-    /// Current wire format version.
-    pub const WIRE_VERSION: u8 = 1;
-
-    /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize = 3 * TimeSpan::WIRE_SIZE; // 3 × 17 = 51
-
-    /// Serializes this `ClockDrift` polynomial into a fixed buffer.
-    ///
-    /// The layout is the concatenation of the three `TimeSpan` fields.
-    #[cfg(feature = "wire")]
-    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
-        let mut buf = [0u8; Self::WIRE_SIZE];
-        let c = self.constant.to_wire_bytes();
-        let r = self.rate.to_wire_bytes();
-        let a = self.accel.to_wire_bytes();
-
-        buf[0..TimeSpan::WIRE_SIZE].copy_from_slice(&c);
-        buf[TimeSpan::WIRE_SIZE..2 * TimeSpan::WIRE_SIZE].copy_from_slice(&r);
-        buf[2 * TimeSpan::WIRE_SIZE..].copy_from_slice(&a);
-        buf
-    }
-
-    /// Deserializes a `ClockDrift` from exactly `WIRE_SIZE` bytes of wire data.
-    ///
-    /// Returns `None` if any nested `TimeSpan` fails validation or if the version
-    /// byte is unknown.
-    ///
-    /// ## Security
-    ///
-    /// Composes the safety guarantees of [`TimeSpan::from_wire_bytes`].
-    /// Fixed size and layered validation make it safe for untrusted input.
-    #[cfg(feature = "wire")]
-    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != Self::WIRE_SIZE {
-            return None;
-        }
-
-        if bytes[0] != Self::WIRE_VERSION {
-            return None;
-        }
-
-        let constant = TimeSpan::from_wire_bytes(&bytes[0..TimeSpan::WIRE_SIZE])?;
-        let rate = TimeSpan::from_wire_bytes(&bytes[TimeSpan::WIRE_SIZE..2 * TimeSpan::WIRE_SIZE])?;
-        let accel = TimeSpan::from_wire_bytes(&bytes[2 * TimeSpan::WIRE_SIZE..])?;
-
-        Some(Self::new(constant, rate, accel))
     }
 
     /// The zero polynomial representing no correction at all.  
@@ -507,7 +460,7 @@ impl ClockDrift {
     /// time dilation, and the library’s built-in Planck-scale saturation term.
     #[inline]
     pub const fn proper_time_rate(&self) -> Real {
-        f!(1.0) + self.rate.as_sec_f()
+        f!(1.0) + self.rate.to_sec_f()
     }
 
     /// Evaluates the polynomial at the given elapsed coordinate time span.  
@@ -517,23 +470,23 @@ impl ClockDrift {
     /// arithmetic is performed with full 36-digit precision, ensuring no loss of
     /// accuracy even for multi-year integrations.
     pub const fn time_diff_after(&self, span: &TimeSpan) -> TimeSpan {
-        let dt_attos = span.total_attos();
-        let mut total_attos = self.constant.total_attos();
+        let dt_attos = span.to_attos();
+        let mut total_attos = self.constant.to_attos();
 
         if !self.rate.is_zero() || !self.accel.is_zero() {
             // Linear term: rate * dt
-            let rate_attos = self.rate.total_attos();
-            let rate_term = rate_attos.wrapping_mul(dt_attos) / ATTOSEC_PER_SEC_I128;
+            let rate_attos = self.rate.to_attos();
+            let rate_term = rate_attos.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
             total_attos = total_attos.wrapping_add(rate_term);
 
             // Quadratic term: accel * dt²
-            let accel_attos = self.accel.total_attos();
-            let accel_dt = accel_attos.wrapping_mul(dt_attos) / ATTOSEC_PER_SEC_I128;
-            let accel_term = accel_dt.wrapping_mul(dt_attos) / ATTOSEC_PER_SEC_I128;
+            let accel_attos = self.accel.to_attos();
+            let accel_dt = accel_attos.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
+            let accel_term = accel_dt.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
             total_attos = total_attos.saturating_add(accel_term);
         }
 
-        TimeSpan::from_total_attos(total_attos)
+        TimeSpan::from_attos(total_attos)
     }
 
     /// Creates a `ClockDrift` directly from an observer’s velocity and total
@@ -611,6 +564,55 @@ impl ClockDrift {
     }
 }
 
+#[cfg(feature = "wire")]
+impl ClockDrift {
+    /// Current wire format version.
+    pub const WIRE_VERSION: u8 = 1;
+
+    /// Size of the canonical wire representation in bytes.
+    pub const WIRE_SIZE: usize = 3 * TimeSpan::WIRE_SIZE; // 3 × 17 = 51
+
+    /// Serializes this `ClockDrift` polynomial into a fixed buffer.
+    ///
+    /// The layout is the concatenation of the three `TimeSpan` fields.
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        let c = self.constant.to_wire_bytes();
+        let r = self.rate.to_wire_bytes();
+        let a = self.accel.to_wire_bytes();
+
+        buf[0..TimeSpan::WIRE_SIZE].copy_from_slice(&c);
+        buf[TimeSpan::WIRE_SIZE..2 * TimeSpan::WIRE_SIZE].copy_from_slice(&r);
+        buf[2 * TimeSpan::WIRE_SIZE..].copy_from_slice(&a);
+        buf
+    }
+
+    /// Deserializes a `ClockDrift` from exactly `WIRE_SIZE` bytes of wire data.
+    ///
+    /// Returns `None` if any nested `TimeSpan` fails validation or if the version
+    /// byte is unknown.
+    ///
+    /// ## Security
+    ///
+    /// Composes the safety guarantees of [`TimeSpan::from_wire_bytes`].
+    /// Fixed size and layered validation make it safe for untrusted input.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+
+        if bytes[0] != Self::WIRE_VERSION {
+            return None;
+        }
+
+        let constant = TimeSpan::from_wire_bytes(&bytes[0..TimeSpan::WIRE_SIZE])?;
+        let rate = TimeSpan::from_wire_bytes(&bytes[TimeSpan::WIRE_SIZE..2 * TimeSpan::WIRE_SIZE])?;
+        let accel = TimeSpan::from_wire_bytes(&bytes[2 * TimeSpan::WIRE_SIZE..])?;
+
+        Some(Self::new(constant, rate, accel))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -641,8 +643,8 @@ mod tests {
     fn evaluate_full_quadratic() {
         let drift = ClockDrift::new(
             TimeSpan::from_sec(2),
-            TimeSpan::from_ns(1), // exactly 1e-9 s/s
-            TimeSpan::from_as(2), // exactly 2e-18 s/s²
+            TimeSpan::from_ns(1),    // exactly 1e-9 s/s
+            TimeSpan::from_attos(2), // exactly 2e-18 s/s²
         );
         let dt = TimeSpan::from_sec(1_000_000);
 
@@ -659,8 +661,8 @@ mod tests {
     fn evaluate_negative_dt() {
         let drift = ClockDrift::new(
             TimeSpan::from_sec(5),
-            TimeSpan::from_ns(1), // exactly 1e-9 s/s
-            TimeSpan::from_as(1), // exactly 1e-18 s/s²
+            TimeSpan::from_ns(1),    // exactly 1e-9 s/s
+            TimeSpan::from_attos(1), // exactly 1e-18 s/s²
         );
         let dt = TimeSpan::from_sec(-500_000);
 
@@ -745,12 +747,12 @@ mod tests {
         // Negative inputs must be clamped (u.max(0), kretschmann.max(0))
         let drift_neg_u = ClockDrift::from_unified_proper_time_rate(-0.5, 0.0);
 
-        // Semantic check using .as_sec_f() — this is the robust way.
+        // Semantic check using .to_sec_f() — this is the robust way.
         // (TimeSpan::from_sec_f(-1.0) currently produces a non-canonical internal
         // representation while the unified function produces the canonical one.
         // The two TimeSpans are mathematically identical but not ==.)
         assert_eq!(
-            drift_neg_u.rate.as_sec_f(),
+            drift_neg_u.rate.to_sec_f(),
             -1.0,
             "Negative u should clamp to dτ/dt = 0.0 → rate_offset = -1.0"
         );
@@ -812,7 +814,7 @@ mod tests {
         let k_values = [0.0, 1e5, 1e15, 1e30];
         for &k in &k_values {
             let drift = ClockDrift::from_unified_proper_time_rate(u, k);
-            let rate_factor = 1.0 + drift.rate.as_sec_f(); // internal f64 value
+            let rate_factor = 1.0 + drift.rate.to_sec_f(); // internal f64 value
             assert!(rate_factor > 0.0, "proper-time rate became non-positive");
             // monotonicity / bound check
             assert!(

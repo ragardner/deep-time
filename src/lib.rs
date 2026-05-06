@@ -27,6 +27,47 @@ macro_rules! f {
     };
 }
 
+#[inline(always)]
+pub const fn to_sec_f(attos: u128) -> Real {
+    f!(attos) / ATTOS_PER_SECF
+}
+
+/// Converts attoseconds → seconds (s)
+#[inline(always)]
+pub fn to_sec(attos: i128) -> i128 {
+    attos / ATTOS_PER_SEC_I128
+}
+
+/// Converts attoseconds → milliseconds (ms)
+#[inline(always)]
+pub fn to_ms(attos: i128) -> i128 {
+    attos / ATTOS_PER_MS_I128
+}
+
+/// Converts attoseconds → microseconds (us)
+#[inline(always)]
+pub fn to_us(attos: i128) -> i128 {
+    attos / ATTOS_PER_US_I128
+}
+
+/// Converts attoseconds → nanoseconds (ns)
+#[inline(always)]
+pub fn to_ns(attos: i128) -> i128 {
+    attos / ATTOS_PER_NS_I128
+}
+
+/// Converts attoseconds → picoseconds (ps)
+#[inline(always)]
+pub fn to_ps(attos: i128) -> i128 {
+    attos / ATTOS_PER_PS_I128
+}
+
+/// Converts attoseconds → femtoseconds (fs)
+#[inline(always)]
+pub fn to_fs(attos: i128) -> i128 {
+    attos / ATTOS_PER_FS_I128
+}
+
 // _________________________________________
 // FEATURE MOD
 // _________________________________________
@@ -109,4 +150,4 @@ pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
 pub use time_point::TimePoint;
 pub use time_range::{Every, TimeRange};
 pub use time_span::TimeSpan;
-pub use time_span::time_units::TimeUnits;
+pub use time_span::time_units::{AttosUnits, TimeUnits};

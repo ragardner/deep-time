@@ -297,7 +297,7 @@ impl ObserverState {
         rx: ObserverState,
         context: LightContext,
     ) -> TimeSpan {
-        let span = rx.time.duration_since_ref(&self.time);
+        let span = rx.time.to_tai_since_ref(&self.time);
 
         let tx_drift = ClockDrift::from_velocity_potential_and_scale(
             self.velocity.speed(),
@@ -411,7 +411,7 @@ impl ObserverState {
             let full_delay = geometric.add(rel_correction);
 
             let new_rx_time = self.time.add(full_delay);
-            let change = new_rx_time.duration_since_ref(&rx.time);
+            let change = new_rx_time.to_tai_since_ref(&rx.time);
 
             rx = rx_provider(new_rx_time);
             rx.time = new_rx_time;
@@ -545,10 +545,10 @@ impl ObserverState {
             return self.one_way_relativistic_delay_to(rx, context);
         }
 
-        let dt_sec = rx.time.duration_since_ref(&self.time).as_sec_f();
+        let dt_sec = rx.time.to_tai_since_ref(&self.time).to_sec_f();
 
         let num_samples = samples.len();
-        let n = num_samples as Real;
+        let n = f!(num_samples);
         let h = f!(1.0) / n;
         let mut s = f!(0.0);
 
@@ -556,7 +556,7 @@ impl ObserverState {
         while i < num_samples {
             let local = samples[i];
             let drift = ClockDrift::from_local_spacetime(&local);
-            let rate_offset = drift.rate().as_sec_f();
+            let rate_offset = drift.rate().to_sec_f();
 
             let coeff = if i == 0 || i == num_samples - 1 {
                 f!(1.0)
@@ -695,7 +695,7 @@ impl ObserverState {
 #[cfg(test)]
 mod relativistic_tests {
     use super::*;
-    use crate::{ObserverState, Position, TimePoint, TimeSpan, Velocity};
+    use crate::{ClockType, ObserverState, Position, TimePoint, TimeSpan, Velocity};
 
     /// Small helper to build a `ObserverState` quickly.
     fn make_state(
@@ -706,7 +706,7 @@ mod relativistic_tests {
         char_scale: f64,
     ) -> ObserverState {
         ObserverState {
-            time: TimePoint::from_tai_sec(tai_sec),
+            time: TimePoint::from(tai_sec, 0, ClockType::TAI),
             position: pos,
             velocity: vel,
             grav_potential_m2_s2: phi_m2_s2,
@@ -738,7 +738,7 @@ mod relativistic_tests {
         let rx = make_state(520, rx_pos, Velocity::from_speed(0.0), -8.87e8, 0.0);
 
         let correction = tx.one_way_relativistic_delay_to(rx, LightContext::SOLAR);
-        let got_us = correction.as_sec_f() * 1_000_000.0;
+        let got_us = correction.to_sec_f() * 1_000_000.0;
 
         assert!(
             (got_us - 119.45).abs() < 0.5,
@@ -756,7 +756,7 @@ mod relativistic_tests {
         let rx = make_state(520, rx_pos, Velocity::from_speed(29_000.0), -8.80e8, 0.0);
 
         let correction = tx.one_way_relativistic_delay_to(rx, LightContext::SOLAR);
-        let corr_sec = correction.as_sec_f();
+        let corr_sec = correction.to_sec_f();
 
         assert!(
             corr_sec.abs() < 1e-5,
@@ -792,10 +792,10 @@ mod relativistic_tests {
             12,
         );
 
-        assert!(correction.as_sec_f().abs() < 1e-5);
+        assert!(correction.to_sec_f().abs() < 1e-5);
 
         let geometric_sec = tx_pos.distance_to(rx_pos) / C;
-        let total_sec = final_rx_time.duration_since_ref(&tx.time).as_sec_f();
+        let total_sec = final_rx_time.to_tai_since_ref(&tx.time).to_sec_f();
         assert!(
             (total_sec - geometric_sec).abs() < 1e-4,
             "Converged receive time deviates from geometric light time by {:.6} s",
@@ -815,7 +815,7 @@ mod relativistic_tests {
 
         let correction =
             tx.round_trip_relativistic_correction(round_trip_measured, rx, LightContext::SOLAR);
-        let corr_sec = correction.as_sec_f();
+        let corr_sec = correction.to_sec_f();
 
         assert!(corr_sec > 0.0);
         assert!(corr_sec < 1e-3);
@@ -836,7 +836,7 @@ mod relativistic_tests {
         let integrated =
             tx.one_way_relativistic_delay_integrated(rx, LightContext::SOLAR, &samples);
 
-        let diff = (trapezoidal.as_sec_f() - integrated.as_sec_f()).abs();
+        let diff = (trapezoidal.to_sec_f() - integrated.to_sec_f()).abs();
         assert!(
             diff < 2e-7, // small numerical difference is expected when going through LocalSpacetime
             "n=2 mismatch: {}",
@@ -857,7 +857,7 @@ mod relativistic_tests {
 
         let integrated = tx.one_way_relativistic_delay_integrated(rx, LightContext::FLAT, &samples);
 
-        let corr_sec = integrated.as_sec_f();
+        let corr_sec = integrated.to_sec_f();
         assert!(corr_sec.abs() < 1e-3);
     }
 }

@@ -14,6 +14,6 @@ impl TimePoint {
     /// - Sub-nanosecond attoseconds are set to zero.
     #[inline]
     pub fn from_jiff_timestamp(ts: Timestamp) -> Self {
-        TimePoint::UNIX_EPOCH_TAI.add(TimeSpan::from_ns(ts.as_nanosecond()))
+        TimePoint::UNIX_EPOCH.add(TimeSpan::from_ns(ts.as_nanosecond()))
     }
 }

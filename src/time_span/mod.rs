@@ -1,3 +1,5 @@
+use crate::ATTOS_PER_SEC;
+
 mod arithmetic;
 mod constructors;
 mod formatting;
@@ -38,11 +40,42 @@ mod to_jiff;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TimeSpan {
     /// Signed whole seconds.
-    pub(crate) sec: i64,
+    pub sec: i64,
     /// Fractional part in attoseconds (`0 ≤ attos < 10¹⁸`).
-    pub(crate) subsec: u64,
+    pub subsec: u64,
 }
 
+impl TimeSpan {
+    /// Seconds field getter.
+    #[inline]
+    pub const fn sec(&self) -> i64 {
+        self.sec
+    }
+
+    /// Subseconds field getter (attoseconds).
+    #[inline]
+    pub const fn subsec(&self) -> u64 {
+        self.subsec
+    }
+
+    /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOS_PER_SEC)`.
+    #[inline]
+    pub const fn carry_over(&mut self) -> &mut Self {
+        if self.subsec >= ATTOS_PER_SEC {
+            self.sec += (self.subsec / ATTOS_PER_SEC) as i64;
+            self.subsec %= ATTOS_PER_SEC;
+        }
+        self
+    }
+}
+
+impl Default for TimeSpan {
+    fn default() -> Self {
+        Self::ZERO
+    }
+}
+
+#[cfg(feature = "wire")]
 impl TimeSpan {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
@@ -57,7 +90,6 @@ impl TimeSpan {
     /// - Byte `0`: Version (`WIRE_VERSION`)
     /// - Bytes `[1..9]`: `sec` as little-endian `i64`
     /// - Bytes `[9..17]`: `subsec` as little-endian `u64`
-    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -77,7 +109,6 @@ impl TimeSpan {
     ///
     /// Safe to call with completely untrusted input. Fixed-size format,
     /// no allocation, no `unsafe`, and no possibility of code execution.
-    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -96,11 +127,5 @@ impl TimeSpan {
         ]);
 
         Some(Self::new(sec, subsec))
-    }
-}
-
-impl Default for TimeSpan {
-    fn default() -> Self {
-        Self::ZERO
     }
 }

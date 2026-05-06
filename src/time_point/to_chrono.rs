@@ -15,9 +15,9 @@ impl TimePoint {
     ///   (roughly years 1678–2262) if the instant is out of range.
     ///   Never returns an error.
     pub fn to_chrono_datetime_utc(self) -> DateTime<Utc> {
-        let span_since_epoch = self.duration_since_ref(&TimePoint::UNIX_EPOCH_TAI);
+        let span_since_epoch = self.to_tai_since_ref(&TimePoint::UNIX_EPOCH);
 
-        let total_nanos = span_since_epoch.total_attos() / 1_000_000_000i128;
+        let total_nanos = span_since_epoch.to_attos() / 1_000_000_000i128;
 
         let nanos = if total_nanos > i64::MAX as i128 {
             i64::MAX

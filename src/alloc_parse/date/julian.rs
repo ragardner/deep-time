@@ -25,7 +25,7 @@ pub(crate) fn parse_mjd(s: &str) -> Option<TimePoint> {
     let sec = (secs_since_unix as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
     let subsec = rem_nanos * 1_000_000_000;
 
-    Some(TimePoint::new(sec, subsec, ClockType::UTC))
+    Some(TimePoint::from(sec, subsec, ClockType::UTC))
 }
 
 /// Julian Day (JD) interpreted as UTC
@@ -58,5 +58,5 @@ pub(crate) fn parse_jd(s: &str, astronomical_noon: bool) -> Option<TimePoint> {
     let sec = (secs_since_unix as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
     let subsec = rem_nanos * 1_000_000_000;
 
-    Some(TimePoint::new(sec, subsec, ClockType::UTC))
+    Some(TimePoint::from(sec, subsec, ClockType::UTC))
 }

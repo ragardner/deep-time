@@ -31,6 +31,47 @@ impl ClockModel {
         }
     }
 
+    /// Convenience constructor for a pure Proper-time scale with relativistic correction.
+    #[inline]
+    pub const fn proper(reference: TimePoint, drift: ClockDrift) -> Self {
+        Self::new(ClockType::Proper, reference, drift)
+    }
+
+    /// Convenience constructor for a custom scale.
+    #[inline]
+    pub const fn custom(reference: TimePoint, drift: ClockDrift) -> Self {
+        Self::new(ClockType::Custom, reference, drift)
+    }
+
+    /// Attaches this self-describing scale to an existing `TimePoint`.
+    ///
+    /// Useful when you have a raw onboard reading and the latest polynomial update
+    /// from ground control.
+    #[inline]
+    pub const fn attach_to(self, point: TimePoint) -> TimePoint {
+        point.to_type(self.base)
+    }
+
+    /// Returns a new `ClockModel` with the same base type and reference epoch,
+    /// but with an updated `ClockDrift`.
+    #[inline]
+    pub const fn with_drift(self, new_drift: ClockDrift) -> Self {
+        Self {
+            base: self.base,
+            reference: self.reference,
+            drift: new_drift,
+        }
+    }
+
+    /// Convenience: creates a `TimePoint` in this scale from a TAI instant.
+    #[inline]
+    pub const fn from_tai(self, tai: TimePoint) -> TimePoint {
+        tai.to_type(self.base)
+    }
+}
+
+#[cfg(feature = "wire")]
+impl ClockModel {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
@@ -46,7 +87,6 @@ impl ClockModel {
     /// - Byte `1`: `base` (`ClockType`)
     /// - Bytes `2..20`: `reference` (`TimePoint`)
     /// - Bytes `20..71`: `drift` (`ClockDrift`)
-    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -73,7 +113,6 @@ impl ClockModel {
     /// - Validation is performed at every layer
     /// - No allocation, no `unsafe`, no possibility of code execution
     /// - Returns `None` on any invalid or malicious input
-    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -92,43 +131,5 @@ impl ClockModel {
             reference,
             drift,
         })
-    }
-
-    /// Convenience constructor for a pure Proper-time scale with relativistic correction.
-    #[inline]
-    pub const fn proper(reference: TimePoint, drift: ClockDrift) -> Self {
-        Self::new(ClockType::Proper, reference, drift)
-    }
-
-    /// Convenience constructor for a custom scale.
-    #[inline]
-    pub const fn custom(reference: TimePoint, drift: ClockDrift) -> Self {
-        Self::new(ClockType::Custom, reference, drift)
-    }
-
-    /// Attaches this self-describing scale to an existing `TimePoint`.
-    ///
-    /// Useful when you have a raw onboard reading and the latest polynomial update
-    /// from ground control.
-    #[inline]
-    pub const fn attach_to(self, point: TimePoint) -> TimePoint {
-        point.with_type(self.base)
-    }
-
-    /// Returns a new `ClockModel` with the same base type and reference epoch,
-    /// but with an updated `ClockDrift`.
-    #[inline]
-    pub const fn with_drift(self, new_drift: ClockDrift) -> Self {
-        Self {
-            base: self.base,
-            reference: self.reference,
-            drift: new_drift,
-        }
-    }
-
-    /// Convenience: creates a `TimePoint` in this scale from a TAI instant.
-    #[inline]
-    pub const fn from_tai(self, tai: TimePoint) -> TimePoint {
-        tai.with_type(self.base)
     }
 }

@@ -10,7 +10,7 @@ impl TimeSpan {
     ///   (roughly ±292 million years) if the value is out of range.
     ///   Never returns an error.
     pub fn to_chrono_duration(self) -> Duration {
-        let total_nanos = self.total_attos() / 1_000_000_000i128;
+        let total_nanos = self.to_attos() / 1_000_000_000i128;
 
         let nanos = if total_nanos > i64::MAX as i128 {
             i64::MAX
@@ -28,14 +28,14 @@ impl TimeSpan {
     /// Converts this `TimeSpan` to a `chrono::DateTime<chrono::Utc>`.
     ///
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
-    /// - The conversion assumes `total_attos()` returns attoseconds since the
+    /// - The conversion assumes `to_attos()` returns attoseconds since the
     ///   Unix epoch (1970-01-01 00:00:00 UTC). Leap-second handling is already
     ///   performed by `TimePoint` arithmetic.
     /// - **Saturates** at the minimum/maximum representable `DateTime<Utc>`
     ///   (roughly years 1678–2262) if the value is out of range.
     ///   Never returns an error.
     pub fn to_chrono_datetime_utc(self) -> DateTime<Utc> {
-        let total_nanos = self.total_attos() / 1_000_000_000i128;
+        let total_nanos = self.to_attos() / 1_000_000_000i128;
 
         let nanos = if total_nanos > i64::MAX as i128 {
             i64::MAX

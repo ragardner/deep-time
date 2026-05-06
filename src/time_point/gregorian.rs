@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_HALF_DAYU, ATTOSEC_PER_SEC, ATTOSEC_PER_SEC_I128, ATTOSEC_PER_SEC_U128, ClockType,
-    GregorianTime, SEC_PER_DAYI64, TimePoint, TimeSpan, Weekday, leap_seconds::is_leap_second,
+    ATTOS_PER_HALF_DAYU, ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ATTOS_PER_SEC_U128, ClockType,
+    GregorianTime, SEC_PER_DAYI64, TimePoint, TimeSpan, Weekday, leap_seconds::get_leap_seconds,
 };
 
 /// Combined Gregorian date + wall time with subsecond precision.
@@ -31,13 +31,15 @@ impl TimePoint {
 
         // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
         let ymdhms = self.to_ymdhms();
-        let unix_attosec = self.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
+        let unix_attosec = self
+            .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
+            .to_attos();
 
         // Still needed for weekday, wk_sun, wk_mon, and the jd_tt_exact field
         let (jd_days, frac) = if self.uses_leap_sec() {
-            self.to_type(ClockType::TT).to_jd_exact()
+            self.to_jd_exact(ClockType::TT)
         } else {
-            self.to_jd_exact()
+            self.to_jd_exact(self.clock_type)
         };
 
         let (iso_yr, iso_wk, iso_wkday) =
@@ -88,11 +90,16 @@ impl TimePoint {
     /// Direct UTC civil time path (no TT/JD conversion).
     /// Correctly handles leap seconds (23:59:60 stays on the correct day).
     const fn to_ymdhms_utc(self) -> YmdHms {
-        let unix_sec = self.to_unix_sec();
-        let canon = self.to_attos_since(TimePoint::UNIX_EPOCH_UTC);
-        let subsec = (canon.rem_euclid(ATTOSEC_PER_SEC_I128)) as u64;
+        // Single call gets us the full civil attos since Unix epoch (POSIX style).
+        // This replaces both to_unix_sec() + the old to_attos_since(UNIX_EPOCH).
+        let canon = self
+            .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
+            .to_attos();
 
-        let is_leap_second = is_leap_second(&self);
+        let unix_sec = canon.div_euclid(ATTOS_PER_SEC_I128) as i64;
+        let subsec = (canon.rem_euclid(ATTOS_PER_SEC_I128)) as u64;
+
+        let is_leap_second = get_leap_seconds(&self, false).is_leap_second;
 
         // For the date we always use the previous second when on a leap second
         // (so 23:59:60 stays on the correct civil day).
@@ -128,7 +135,7 @@ impl TimePoint {
 
     /// Non-UTC path (uses the existing TT-based JD machinery)
     const fn to_ymdhms_non_utc(self) -> YmdHms {
-        let (jd_days, frac_attos) = self.to_jd_exact();
+        let (jd_days, frac_attos) = self.to_jd_exact(ClockType::TT);
 
         // Date: adjust if we're past noon (astronomical day rollover)
         let jdn = if frac_attos >= ATTOS_PER_HALF_DAYU {
@@ -139,12 +146,11 @@ impl TimePoint {
         let (yr, mo, day) = Self::jdn_to_ymd(jdn);
 
         // Time of day in TT (fraction since noon)
-        let tt = self.to_type(ClockType::TT);
-        let (_, tt_frac_attos) = tt.to_jd_exact();
+        let (_, tt_frac_attos) = self.to_jd_exact(ClockType::TT);
 
         // Convert attoseconds since noon → seconds since midnight
-        let seconds_since_noon = (tt_frac_attos / ATTOSEC_PER_SEC_U128) as i64;
-        let subsec = tt_frac_attos.rem_euclid(ATTOSEC_PER_SEC_U128) as u64;
+        let seconds_since_noon = (tt_frac_attos / ATTOS_PER_SEC_U128) as i64;
+        let subsec = tt_frac_attos.rem_euclid(ATTOS_PER_SEC_U128) as u64;
 
         let seconds_since_midnight = if seconds_since_noon >= 43200 {
             seconds_since_noon - 43200
@@ -165,6 +171,25 @@ impl TimePoint {
             sec,
             subsec,
         }
+    }
+
+    /// Converts a proleptic Gregorian calendar date+time to a Unix timestamp
+    /// (seconds since 1970-01-01 00:00:00 UTC).
+    ///
+    /// This version is correct for the full i64 range, including negative years.
+    pub const fn ymdhms_to_unix_sec(
+        year: i64,
+        month: u8,
+        day: u8,
+        hour: u8,
+        minute: u8,
+        second: u8,
+    ) -> i64 {
+        let jdn = Self::ymd_to_jdn(year, month, day);
+        // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
+        let days_since_1970 = jdn - 2440588;
+        let time_of_day = (hour as i64) * 3600 + (minute as i64) * 60 + (second as i64);
+        days_since_1970 * SEC_PER_DAYI64 + time_of_day
     }
 
     /// Converts a Julian Day Number (JDN) to a proleptic Gregorian calendar date.
@@ -255,32 +280,37 @@ impl TimePoint {
         attos: u64,
         clock_type: ClockType,
     ) -> Self {
-        // Clamp inputs to valid ranges
         let mo = if mo > 12 { 12 } else { mo };
         let day = if day > 31 { 31 } else { day };
         let h = if hr > 23 { 23 } else { hr };
         let m = if min > 59 { 59 } else { min };
         let s = if sec > 60 { 60 } else { sec };
 
-        // Carry excess attoseconds into whole seconds
-        let extra_sec = (attos / ATTOSEC_PER_SEC) as i64;
-        let final_attos = attos % ATTOSEC_PER_SEC;
+        let extra_sec = (attos / ATTOS_PER_SEC) as i64;
+        let final_attos = attos % ATTOS_PER_SEC;
 
-        // Naive civil-time → unix seconds (same for 23:59:60 and next midnight)
-        let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, h, m, s) + extra_sec;
+        // For an exact leap second (sec==60 with no sub-second carry), compute
+        // the civil Unix timestamp using 23:59:59, create that instant, then
+        // add exactly 1 physical second. This lands on the correct internal TAI
+        // slot (matching LEAP_SECS.tai_sec) while preserving the library's
+        // convention that to_epoch_attos(UTC) for the leap second returns the
+        // "following midnight" civil value. On non-leap days or with carry,
+        // the normal rollover path is used and to_ymdhms_utc will display
+        // correctly because is_leap_second only triggers on exact tai_sec match.
+        let is_exact_leap_second = s == 60 && extra_sec == 0;
+        let s_for_unix = if is_exact_leap_second { 59 } else { s };
 
-        let mut tp = Self::from_unix_sec(unix_sec)
-            .add(TimeSpan::from_total_attos(final_attos as i128))
-            .to_type(clock_type);
+        let civil_unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, h, m, s_for_unix) + extra_sec;
 
-        // Only bump the midnight that immediately follows a leap second.
-        // This keeps all three instants distinct while preserving the existing
-        // leap-second encoding that is_leap_second() and to_ymdhms_utc expect.
-        if s != 60 && is_leap_second(&tp) {
+        let mut tp = Self::from_epoch(
+            TimeSpan::new(civil_unix_sec, final_attos),
+            TimePoint::UNIX_EPOCH,
+            clock_type.to_ut(),
+        );
+        if is_exact_leap_second {
             tp = tp.add(TimeSpan::from_sec(1));
         }
-
-        tp
+        tp.to_type(clock_type)
     }
 
     /// Creates a `TimePoint` representing **00:00:00 UTC** on the given proleptic
@@ -288,10 +318,15 @@ impl TimePoint {
     ///
     /// The date components are interpreted according to POSIX civil time
     /// (leap seconds are not inserted into the day count).
-    #[inline]
     pub const fn from_ymd(yr: i64, mo: u8, day: u8, clock_type: ClockType) -> Self {
-        let unix_sec = Self::ymdhms_to_unix_timestamp(yr, mo, day, 0, 0, 0);
-        Self::from_unix_sec(unix_sec).to_type(clock_type)
+        let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
+
+        Self::from_epoch(
+            TimeSpan::new(unix_sec, 0),
+            TimePoint::UNIX_EPOCH,
+            clock_type.to_ut(),
+        )
+        .to_type(clock_type)
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
@@ -407,7 +442,7 @@ impl TimePoint {
         let (jd_days, frac_attos) = if let Some(jd) = jd_tt_exact {
             jd
         } else {
-            self.to_type(ClockType::TT).to_jd_exact()
+            self.to_jd_exact(ClockType::TT)
         };
 
         // If the time is 12:00 or later, the astronomical day has already rolled over

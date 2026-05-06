@@ -1,4 +1,4 @@
-use crate::{ATTOSEC_PER_SEC, TimeSpan};
+use crate::{ATTOS_PER_SEC, TimeSpan};
 
 impl TimeSpan {
     /// Converts this `TimeSpan` to an ISO 8601 duration string
@@ -11,7 +11,7 @@ impl TimeSpan {
             return alloc::string::String::from("PT0S");
         }
 
-        let total = self.total_attos();
+        let total = self.to_attos();
         let negative = total < 0;
         let mut attos = total.unsigned_abs() as u128;
 
@@ -21,7 +21,7 @@ impl TimeSpan {
         }
         s.push_str("PT");
 
-        const A_PER_S: u128 = ATTOSEC_PER_SEC as u128;
+        const A_PER_S: u128 = ATTOS_PER_SEC as u128;
         const A_PER_M: u128 = A_PER_S * 60;
         const A_PER_H: u128 = A_PER_M * 60;
 

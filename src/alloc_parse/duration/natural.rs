@@ -1,6 +1,6 @@
 use crate::{
-    DateToken, DtErrKind, DtErr, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
-    NS_PER_MONTH, NS_PER_SECOND, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, an_err,
+    DateToken, DtErr, DtErrKind, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
+    NS_PER_MONTH, NS_PER_SEC, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, an_err,
     lang_map, to_ascii_digit,
 };
 use alloc::{
@@ -286,10 +286,10 @@ pub(crate) fn natural_duration_to_span(
                 }
                 DateToken::Second => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, NS_PER_SECOND, overall_multiplier);
+                        add_to_total(&mut total_nanos, num, NS_PER_SEC, overall_multiplier);
                         has_duration = true;
                     } else if pending_unit.is_none() {
-                        pending_unit = Some(NS_PER_SECOND);
+                        pending_unit = Some(NS_PER_SEC);
                     }
                 }
                 DateToken::Millisecond => {
@@ -338,7 +338,7 @@ pub(crate) fn natural_duration_to_span(
     // Convert total nanoseconds → attoseconds and build TimeSpan
     // (TimeSpan supports the full representable range, so no size checks are needed)
     let total_attos = total_nanos * 1_000_000_000i128;
-    Ok(TimeSpan::from_total_attos(total_attos))
+    Ok(TimeSpan::from_attos(total_attos))
 }
 
 pub(crate) fn natural_duration_to_iso(

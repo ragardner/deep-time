@@ -1,5 +1,5 @@
 use crate::{
-    ClassifiedDate, ConnectorType, DateClassification, DateToken, DtErrKind, DtErr, EndsWithExt,
+    ClassifiedDate, ConnectorType, DateClassification, DateToken, DtErr, DtErrKind, EndsWithExt,
     IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType, an_err, lang_map,
     natural_duration_to_span, to_ascii_digit,
 };
@@ -88,7 +88,7 @@ pub(crate) fn classify_date(
                         ));
                     }
                 };
-                now.saturating_add(natural_duration_to_span(s, lang, false)?);
+                now.add(natural_duration_to_span(s, lang, false)?);
                 return Ok(ClassifiedDate::Parsed(now));
             }
             match token {

@@ -50,13 +50,13 @@ impl TimePoint {
             return TimeSpan::ZERO;
         }
 
-        let mut dt = end.duration_since(self);
+        let mut dt = end.to_tai_since_ref(&self);
         let sign = if dt.sec < 0 { f!(-1.0) } else { f!(1.0) };
         if sign < f!(0.0) {
             dt = dt.neg();
         }
 
-        let dt_sec = dt.as_sec_f();
+        let dt_sec = dt.to_sec_f();
         let num_intervals = samples.len() - 1;
 
         if num_intervals <= 1 {
@@ -68,7 +68,7 @@ impl TimePoint {
         }
 
         // Simpson’s rule quadrature (high-order accuracy)
-        let n = num_intervals as Real;
+        let n = f!(num_intervals);
         let h = dt_sec / n;
         let mut s = f!(0.0);
 
@@ -111,7 +111,7 @@ impl TimePoint {
         samples: &[LocalSpacetime],
     ) -> TimeSpan {
         let dtau = self.proper_time_interval_samples(end, samples);
-        let dt = end.duration_since(self);
+        let dt = end.to_tai_since_ref(&self);
         dtau.sub(dt)
     }
 
@@ -119,17 +119,17 @@ impl TimePoint {
     #[inline]
     const fn rate_from_local(spacetime: &LocalSpacetime) -> Real {
         let drift = ClockDrift::from_local_spacetime(spacetime);
-        f!(1.0) + drift.rate().as_sec_f()
+        f!(1.0) + drift.rate().to_sec_f()
     }
 }
 
 #[cfg(test)]
 mod proper_time_samples_tests {
     use super::*;
-    use crate::{LocalSpacetime, TimeSpan};
+    use crate::{ClockType, LocalSpacetime, TimeSpan};
 
     fn make_state(tai_sec: i64) -> TimePoint {
-        TimePoint::from_tai_sec(tai_sec)
+        TimePoint::from(tai_sec, 0, ClockType::TAI)
     }
 
     #[test]

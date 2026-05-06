@@ -7,7 +7,71 @@
 //! let stamp = 3.days().ago(ClockType::UTC);
 //! ```
 
-use crate::{ClockType, SEC_PER_DAY, SEC_PER_DAY_F, SEC_PER_DAYI64, TimePoint, TimeSpan};
+use crate::{
+    ATTOS_PER_FS_I128, ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128,
+    ATTOS_PER_SECF, ATTOS_PER_US_I128, ClockType, SEC_PER_DAY, SEC_PER_DAY_F, SEC_PER_DAYI64,
+    TimePoint, TimeSpan,
+};
+
+pub trait AttosUnits: Copy + Sized {
+    /// attoseconds → seconds (s)
+    fn to_sec(self) -> i64;
+
+    /// attoseconds → milliseconds (ms)
+    fn to_ms(self) -> i128;
+
+    /// attoseconds → microseconds (us)
+    fn to_us(self) -> i128;
+
+    /// attoseconds → nanoseconds (ns)
+    fn to_ns(self) -> i128;
+
+    /// attoseconds → picoseconds (ps)
+    fn to_ps(self) -> i128;
+
+    /// attoseconds → femtoseconds (fs)
+    fn to_fs(self) -> i128;
+
+    /// attoseconds → float seconds (s)
+    fn to_sec_f(self) -> f64;
+}
+
+impl AttosUnits for i128 {
+    #[inline(always)]
+    fn to_sec_f(self) -> f64 {
+        self as f64 / ATTOS_PER_SECF
+    }
+
+    #[inline(always)]
+    fn to_sec(self) -> i64 {
+        (self / ATTOS_PER_SEC_I128) as i64
+    }
+
+    #[inline(always)]
+    fn to_ms(self) -> i128 {
+        self / ATTOS_PER_MS_I128
+    }
+
+    #[inline(always)]
+    fn to_us(self) -> i128 {
+        self / ATTOS_PER_US_I128
+    }
+
+    #[inline(always)]
+    fn to_ns(self) -> i128 {
+        self / ATTOS_PER_NS_I128
+    }
+
+    #[inline(always)]
+    fn to_ps(self) -> i128 {
+        self / ATTOS_PER_PS_I128
+    }
+
+    #[inline(always)]
+    fn to_fs(self) -> i128 {
+        self / ATTOS_PER_FS_I128
+    }
+}
 
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
@@ -64,12 +128,12 @@ macro_rules! impl_time_units_int {
 
                 #[inline]
                 fn ago(self, clock_type: ClockType) -> TimePoint {
-                    TimePoint::from_sec(0, clock_type).sub(self.sec())
+                    TimePoint::from(0, 0,clock_type).sub(self.sec())
                 }
 
                 #[inline]
                 fn from_now(self, clock_type: ClockType) -> TimePoint {
-                    TimePoint::from_sec(0, clock_type).add(self.sec())
+                    TimePoint::from(0, 0, clock_type).add(self.sec())
                 }
             }
         )*
@@ -127,12 +191,12 @@ impl TimeUnits for f64 {
 
     #[inline]
     fn ago(self, clock_type: ClockType) -> TimePoint {
-        TimePoint::from_sec(0, clock_type).sub(self.sec())
+        TimePoint::from(0, 0, clock_type).sub(self.sec())
     }
 
     #[inline]
     fn from_now(self, clock_type: ClockType) -> TimePoint {
-        TimePoint::from_sec(0, clock_type).add(self.sec())
+        TimePoint::from(0, 0, clock_type).add(self.sec())
     }
 }
 
@@ -184,11 +248,11 @@ impl TimeUnits for f32 {
 
     #[inline]
     fn ago(self, clock_type: ClockType) -> TimePoint {
-        TimePoint::from_sec(0, clock_type).sub(self.sec())
+        TimePoint::from(0, 0, clock_type).sub(self.sec())
     }
 
     #[inline]
     fn from_now(self, clock_type: ClockType) -> TimePoint {
-        TimePoint::from_sec(0, clock_type).add(self.sec())
+        TimePoint::from(0, 0, clock_type).add(self.sec())
     }
 }

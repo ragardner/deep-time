@@ -62,7 +62,7 @@ impl TimeSpan {
 
         // Convert accumulated nanoseconds to attoseconds and build TimeSpan
         let total_attos = total_nanos * 1_000_000_000i128;
-        Ok(TimeSpan::from_total_attos(total_attos))
+        Ok(TimeSpan::from_attos(total_attos))
     }
 
     /// Parses a single component (number + optional fraction + unit) from the slice,

@@ -70,7 +70,7 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<TimePoint> {
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // midnight = -12h from noon
 
-    Some(TimePoint::new(sec, 0, ClockType::UTC))
+    Some(TimePoint::from(sec, 0, ClockType::UTC))
 }
 
 /// 6-digit year-month: "202403" or "-202403"

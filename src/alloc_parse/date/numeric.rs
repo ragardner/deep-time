@@ -16,7 +16,7 @@ pub(crate) fn parse_i32_year(input: &str) -> Option<TimePoint> {
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
-    Some(TimePoint::new(sec_utc, 0, ClockType::UTC))
+    Some(TimePoint::from(sec_utc, 0, ClockType::UTC))
 }
 
 #[inline]
@@ -32,7 +32,7 @@ pub(crate) fn parse_two_digit_year(input: &str) -> Option<TimePoint> {
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
-    Some(TimePoint::new(sec_utc, 0, ClockType::UTC))
+    Some(TimePoint::from(sec_utc, 0, ClockType::UTC))
 }
 
 /// Fractional day string → nanoseconds (exact integer math, max 9 digits)

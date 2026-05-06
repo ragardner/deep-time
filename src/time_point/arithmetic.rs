@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_US, ATTOSEC_PER_SEC,
-    ATTOSEC_PER_SEC_I128, ClockDrift, LocalSpacetime, Real, TimePoint, TimeSpan,
+    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
+    ATTOS_PER_SECF, ATTOS_PER_US, ClockDrift, LocalSpacetime, Real, TimePoint, TimeSpan,
 };
 
 impl TimePoint {
@@ -9,56 +9,8 @@ impl TimePoint {
     /// The conversion is lossy by design, as `f64` (`Real`) provides approximately 15.95 decimal digits of precision.
     /// For full exactness, use the integer components `sec` and `subsec` directly or higher-precision arithmetic when available.
     #[inline]
-    pub const fn as_sec_f(self) -> Real {
-        self.sec as Real + (self.subsec as Real) / (ATTOSEC_PER_SEC as Real)
-    }
-
-    /// Performs an exact addition of any `TimeSpan` (positive or negative) to this `TimePoint`.
-    ///
-    /// Adding a negative `TimeSpan` moves the time point backward in time.
-    /// The resulting `TimePoint` retains the original [`ClockType`].
-    /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
-    pub const fn add(self, span: TimeSpan) -> Self {
-        let mut sec = self.sec + span.sec;
-        let mut subsec = self.subsec as i64 + span.subsec as i64;
-
-        if subsec >= ATTOSEC_PER_SEC as i64 {
-            sec += 1;
-            subsec -= ATTOSEC_PER_SEC as i64;
-        } else if subsec < 0 {
-            sec -= 1;
-            subsec += ATTOSEC_PER_SEC as i64;
-        }
-
-        Self {
-            sec,
-            subsec: subsec as u64,
-            clock_type: self.clock_type,
-        }
-    }
-
-    /// Performs an exact subtraction of any `TimeSpan` (positive or negative) from this `TimePoint`.
-    ///
-    /// Subtracting a negative `TimeSpan` moves the time point forward in time.
-    /// The resulting `TimePoint` retains the original [`ClockType`].
-    /// This operation can overflow (wrapping around) if the result exceeds `i64` bounds.
-    pub const fn sub(self, span: TimeSpan) -> Self {
-        let mut sec = self.sec - span.sec;
-        let mut subsec = self.subsec as i64 - span.subsec as i64;
-
-        if subsec < 0 {
-            sec -= 1;
-            subsec += ATTOSEC_PER_SEC as i64;
-        } else if subsec >= ATTOSEC_PER_SEC as i64 {
-            sec += 1;
-            subsec -= ATTOSEC_PER_SEC as i64;
-        }
-
-        Self {
-            sec,
-            subsec: subsec as u64,
-            clock_type: self.clock_type,
-        }
+    pub const fn to_sec_f(self) -> Real {
+        f!(self.sec) + f!(self.subsec) / ATTOS_PER_SECF
     }
 
     /// Performs a saturating addition of any `TimeSpan` (positive or negative) to this `TimePoint`.
@@ -66,24 +18,24 @@ impl TimePoint {
     /// Adding a negative `TimeSpan` moves the time point backward in time.
     /// The resulting `TimePoint` retains the original [`ClockType`] and saturates at the
     /// representable extremes (`i64::MIN` / `i64::MAX`) rather than wrapping.
-    pub const fn saturating_add(self, span: TimeSpan) -> Self {
+    pub const fn add(self, span: TimeSpan) -> Self {
         let mut sec = self.sec.saturating_add(span.sec);
         let mut subsec = self.subsec as i64 + span.subsec as i64;
 
-        if subsec >= ATTOSEC_PER_SEC as i64 {
+        if subsec >= ATTOS_PER_SEC as i64 {
             if sec < i64::MAX {
                 sec = sec.saturating_add(1);
             }
-            subsec -= ATTOSEC_PER_SEC as i64;
+            subsec -= ATTOS_PER_SEC as i64;
         } else if subsec < 0 {
             if sec > i64::MIN {
                 sec = sec.saturating_sub(1);
             }
-            subsec += ATTOSEC_PER_SEC as i64;
+            subsec += ATTOS_PER_SEC as i64;
         }
 
         let subsec = if sec == i64::MAX {
-            ATTOSEC_PER_SEC - 1
+            ATTOS_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
@@ -102,7 +54,7 @@ impl TimePoint {
     /// Subtracting a negative `TimeSpan` moves the time point forward in time.
     /// The resulting `TimePoint` retains the original [`ClockType`] and saturates at the
     /// representable extremes (`i64::MIN` / `i64::MAX`) rather than wrapping.
-    pub const fn saturating_sub(self, span: TimeSpan) -> Self {
+    pub const fn sub(self, span: TimeSpan) -> Self {
         let mut sec = self.sec.saturating_sub(span.sec);
         let mut subsec = self.subsec as i64 - span.subsec as i64;
 
@@ -110,16 +62,16 @@ impl TimePoint {
             if sec > i64::MIN {
                 sec = sec.saturating_sub(1);
             }
-            subsec += ATTOSEC_PER_SEC as i64;
-        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            subsec += ATTOS_PER_SEC as i64;
+        } else if subsec >= ATTOS_PER_SEC as i64 {
             if sec < i64::MAX {
                 sec = sec.saturating_add(1);
             }
-            subsec -= ATTOSEC_PER_SEC as i64;
+            subsec -= ATTOS_PER_SEC as i64;
         }
 
         let subsec = if sec == i64::MAX {
-            ATTOSEC_PER_SEC - 1
+            ATTOS_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
@@ -142,16 +94,16 @@ impl TimePoint {
         let mut sec = self.sec.saturating_add(span.sec);
         let mut subsec = self.subsec as i64 + span.subsec as i64;
 
-        if subsec >= ATTOSEC_PER_SEC as i64 {
+        if subsec >= ATTOS_PER_SEC as i64 {
             if sec < i64::MAX {
                 sec = sec.saturating_add(1);
             }
-            subsec -= ATTOSEC_PER_SEC as i64;
+            subsec -= ATTOS_PER_SEC as i64;
         } else if subsec < 0 {
             if sec > i64::MIN {
                 sec = sec.saturating_sub(1);
             }
-            subsec += ATTOSEC_PER_SEC as i64;
+            subsec += ATTOS_PER_SEC as i64;
         }
 
         self.sec = if sec == i64::MAX {
@@ -163,7 +115,7 @@ impl TimePoint {
         };
 
         self.subsec = if self.sec == i64::MAX {
-            ATTOSEC_PER_SEC - 1
+            ATTOS_PER_SEC - 1
         } else if self.sec == i64::MIN {
             0
         } else {
@@ -185,12 +137,12 @@ impl TimePoint {
             if sec > i64::MIN {
                 sec = sec.saturating_sub(1);
             }
-            subsec += ATTOSEC_PER_SEC as i64;
-        } else if subsec >= ATTOSEC_PER_SEC as i64 {
+            subsec += ATTOS_PER_SEC as i64;
+        } else if subsec >= ATTOS_PER_SEC as i64 {
             if sec < i64::MAX {
                 sec = sec.saturating_add(1);
             }
-            subsec -= ATTOSEC_PER_SEC as i64;
+            subsec -= ATTOS_PER_SEC as i64;
         }
 
         self.sec = if sec == i64::MAX {
@@ -202,7 +154,7 @@ impl TimePoint {
         };
 
         self.subsec = if self.sec == i64::MAX {
-            ATTOSEC_PER_SEC - 1
+            ATTOS_PER_SEC - 1
         } else if self.sec == i64::MIN {
             0
         } else {
@@ -234,87 +186,28 @@ impl TimePoint {
         *self = self.add(dtau);
     }
 
-    /// Computes the signed duration between this `TimePoint` and an earlier instant.
-    ///
-    /// The duration is always calculated after converting both instants to the TAI timescale internally,
-    /// ensuring correctness even when the two `TimePoint`s belong to different clock types.
-    pub const fn duration_since(self, earlier: Self) -> TimeSpan {
-        let self_tai = self.to_tai();
-        let earlier_tai = earlier.to_tai();
-
-        let mut sec = self_tai.sec - earlier_tai.sec;
-        let mut subsec = self_tai.subsec;
-
-        if subsec >= earlier_tai.subsec {
-            subsec -= earlier_tai.subsec;
-        } else {
-            sec -= 1;
-            subsec += ATTOSEC_PER_SEC - earlier_tai.subsec;
-        }
-
-        TimeSpan { sec, subsec }
+    /// Computes the TAI signed duration between this `TimePoint` and an earlier instant.
+    #[inline]
+    pub const fn to_tai_since(self, earlier: Self) -> TimeSpan {
+        TimeSpan::diff_raw(self.sec, self.subsec, earlier.sec, earlier.subsec)
     }
 
     /// Computes the signed duration between this `TimePoint` and an earlier instant (by reference).
     ///
     /// The duration is always calculated after converting both instants to the TAI timescale internally,
     /// ensuring correctness even when the two `TimePoint`s belong to different clock types.
-    pub const fn duration_since_ref(self, earlier: &Self) -> TimeSpan {
-        let self_tai = self.to_tai();
-        let earlier_tai = earlier.to_tai();
-
-        let mut sec = self_tai.sec - earlier_tai.sec;
-        let mut subsec = self_tai.subsec;
-
-        if subsec >= earlier_tai.subsec {
-            subsec -= earlier_tai.subsec;
-        } else {
-            sec -= 1;
-            subsec += ATTOSEC_PER_SEC - earlier_tai.subsec;
-        }
-
-        TimeSpan { sec, subsec }
+    #[inline]
+    pub const fn to_tai_since_ref(self, earlier: &Self) -> TimeSpan {
+        TimeSpan::diff_raw(self.sec, self.subsec, earlier.sec, earlier.subsec)
     }
 
     /// Returns the numerical difference in seconds between this `TimePoint` and another (ignores `ClockType`).
     ///
     /// This method is lossy by design and is provided for testing and debugging purposes only.
     /// For the exact duration, use `duration_since` or `duration_since_ref`.
-    pub const fn numerical_seconds_since(&self, other: &Self) -> Real {
-        TimeSpan {
-            sec: self.sec,
-            subsec: self.subsec,
-        }
-        .as_sec_f()
-            - TimeSpan {
-                sec: other.sec,
-                subsec: other.subsec,
-            }
-            .as_sec_f()
-    }
-
-    // common
-
-    /// Seconds field getter.
     #[inline]
-    pub const fn sec(&self) -> i64 {
-        self.sec
-    }
-
-    /// Subseconds field getter (attoseconds).
-    #[inline]
-    pub const fn subsec(&self) -> u64 {
-        self.subsec
-    }
-
-    /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOSEC_PER_SEC)`.
-    #[inline]
-    pub const fn carry_over(&mut self) -> &mut Self {
-        if self.subsec >= ATTOSEC_PER_SEC {
-            self.sec += (self.subsec / ATTOSEC_PER_SEC) as i64;
-            self.subsec %= ATTOSEC_PER_SEC;
-        }
-        self
+    pub const fn to_tai_since_f(&self, other: &Self) -> Real {
+        self.to().to_sec_f() - other.to().to_sec_f()
     }
 
     /// Adds exactly 1 second to this time value using saturating arithmetic.
@@ -557,7 +450,7 @@ impl TimePoint {
             return;
         }
 
-        let mps = ATTOSEC_PER_SEC;
+        let mps = ATTOS_PER_SEC;
 
         if n >= 0 {
             // Positive direction
@@ -602,44 +495,44 @@ impl TimePoint {
     #[inline]
     const fn _add_subsec(&mut self, amount: u64) {
         let total = self.subsec + amount;
-        let carry_sec = total / ATTOSEC_PER_SEC;
-        self.subsec = total % ATTOSEC_PER_SEC;
+        let carry_sec = total / ATTOS_PER_SEC;
+        self.subsec = total % ATTOS_PER_SEC;
         self.sec = self.sec.saturating_add(carry_sec as i64);
     }
 
     /// Total attoseconds (exact i128 representation within the representable range).
     #[inline]
-    pub const fn total_attos(self) -> i128 {
-        (self.sec as i128) * ATTOSEC_PER_SEC_I128 + (self.subsec as i128)
+    pub const fn to_attos(self) -> i128 {
+        (self.sec as i128) * ATTOS_PER_SEC_I128 + (self.subsec as i128)
     }
 
     /// Returns the total duration in milliseconds.
     #[inline]
-    pub const fn total_ms(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_MS as i128)
+    pub const fn to_ms(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_MS as i128)
     }
 
     /// Returns the total duration in microseconds.
     #[inline]
-    pub const fn total_us(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_US as i128)
+    pub const fn to_us(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_US as i128)
     }
 
     /// Returns the total duration in nanoseconds.
     #[inline]
-    pub const fn total_ns(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_NS as i128)
+    pub const fn to_ns(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_NS as i128)
     }
 
     /// Returns the total duration in picoseconds.
     #[inline]
-    pub const fn total_ps(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_PS as i128)
+    pub const fn to_ps(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_PS as i128)
     }
 
     /// Returns the total duration in femtoseconds.
     #[inline]
-    pub const fn total_fs(self) -> i128 {
-        self.total_attos() / (ATTOS_PER_FS as i128)
+    pub const fn to_fs(self) -> i128 {
+        self.to_attos() / (ATTOS_PER_FS as i128)
     }
 }

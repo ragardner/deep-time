@@ -39,7 +39,7 @@ impl Sub<TimePoint> for TimePoint {
 
     #[inline]
     fn sub(self, rhs: TimePoint) -> TimeSpan {
-        self.duration_since(rhs)
+        self.to_tai_since(rhs)
     }
 }
 
@@ -55,18 +55,13 @@ impl TimePoint {
     /// leap-second, relativistic, and scale conversions) compare as `Equal`, even if
     /// they were constructed with different [`ClockType`]s.
     pub const fn cmp(self, other: Self) -> Ordering {
-        let self_tai = self.to_tai();
-        let other_tai = other.to_tai();
-
-        // We cannot call `.cmp()` on i64/u64 yet because `Ord` is not stable as a const trait.
-        // Manual comparison is fully `const fn` on primitives and does exactly the same thing.
-        if self_tai.sec < other_tai.sec {
+        if self.sec < other.sec {
             Ordering::Less
-        } else if self_tai.sec > other_tai.sec {
+        } else if self.sec > other.sec {
             Ordering::Greater
-        } else if self_tai.subsec < other_tai.subsec {
+        } else if self.subsec < other.subsec {
             Ordering::Less
-        } else if self_tai.subsec > other_tai.subsec {
+        } else if self.subsec > other.subsec {
             Ordering::Greater
         } else {
             Ordering::Equal
@@ -104,7 +99,6 @@ impl TimePoint {
     #[inline]
     pub const fn eq(&self, other: &Self) -> bool {
         match TimePoint::cmp(*self, *other) {
-            // ← explicit + const
             Ordering::Equal => true,
             _ => false,
         }
@@ -139,8 +133,7 @@ impl core::hash::Hash for TimePoint {
     /// physically equal (after conversion) produce the same hash, regardless of
     /// the original [`ClockType`].
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        let tai = self.to_tai();
-        tai.sec.hash(state);
-        tai.subsec.hash(state);
+        self.sec.hash(state);
+        self.subsec.hash(state);
     }
 }

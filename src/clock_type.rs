@@ -1,71 +1,5 @@
-//! # Time scales and reference epochs — the heart of the library
-//!
-//! This crate provides a **single `TimePoint` type** that can represent an
-//! instant in **any supported time scale** while preserving exact physical
-//! meaning across conversions.
-//!
-//! ## The single most important fact
-//!
-//! For **every built-in clock type except `Proper` and `Custom`**,
-//! `TimePoint::new(0, 0, ClockType::XXX)` represents **the exact same physical
-//! instant** — **2000-01-01 12:00:00 TAI**.
-//!
-//! - `new(0, 0, ClockType::TAI)` → exactly 2000-01-01 12:00:00 TAI
-//! - `new(0, 0, ClockType::TT)`  → 2000-01-01 12:00:32.184 TT (J2000.0 TT)
-//! - `new(0, 0, ClockType::UTC)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00 (modern IERS rules)
-//! - `new(0, 0, ClockType::UTCSpice)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00 using SPICE historical rules
-//! - `new(0, 0, ClockType::UTCSofa)` → the UTC instant corresponding to TAI 2000-01-01 12:00:00 using full SOFA historical rules
-//! - `new(0, 0, ClockType::GPS)` → 19 s after the TAI zero
-//! - `new(0, 0, ClockType::TCG)` → the TCG instant that corresponds to the TAI zero
-//!   (rate `L_G` integrated from 1977)
-//! - `new(0, 0, ClockType::TCB)` → the TCB instant that corresponds to the TAI zero
-//!   (rate `L_B` + `TDB0` integrated from 1977)
-//! - `new(0, 0, ClockType::LTC)` → the LTC instant that corresponds to the TAI zero
-//!   (rate `L_M` integrated from 1977)
-//!
-//! Only `Proper` and `Custom` have **user-chosen** reference epochs (via
-//! `ClockModel`).
-//!
-//! ## Why TAI 2000-01-01 12:00:00 as the common anchor?
-//!
-//! TAI is the canonical internal hub used by all `to_tai`/`from_tai` conversions.
-//! Anchoring every built-in scale at this exact TAI instant makes the zero point
-//! simple and intuitive for engineering, GNSS, and most practical use cases
-//! while still giving perfect round-tripping to the astronomical standard
-//! J2000.0 TT (via the fixed +32.184 s TT–TAI offset).
-//!
-//! The relativistic scales (TCG, TCB, LTC) still integrate their linear rates
-//! from the IAU 1977 reference epoch internally — only the storage zero point
-//! is now aligned to TAI 2000-01-01 12:00:00.
-//!
-//! ## Exact zero points for every clock type
-//!
-//! | ClockType          | Zero point of `new(0, 0, ClockType::X)`                                      |
-//! |--------------------|----------------------------------------------------------------------------------|
-//! | TAI                | 2000-01-01 12:00:00 TAI                                                          |
-//! | TT / ET            | 2000-01-01 12:00:32.184 TT (J2000.0 TT)                                         |
-//! | UTC                | UTC instant corresponding to TAI 2000-01-01 12:00:00 (modern IERS rules)        |
-//! | UT1                | ?                                                                               |
-//! | UTCSpice           | UTC instant corresponding to TAI 2000-01-01 12:00:00 (SPICE historical rules)   |
-//! | UTCSofa            | UTC instant corresponding to TAI 2000-01-01 12:00:00 (full SOFA historical rules)|
-//! | GPS/QZSS/GST       | 2000-01-01 12:00:19 TAI (TAI zero + 19 s)                                       |
-//! | BDT                | 2000-01-01 12:00:33 TAI (TAI zero + 33 s)                                       |
-//! | TDB                | The TDB instant corresponding to the TAI zero                                    |
-//! | TCG                | The TCG instant corresponding to the TAI zero (L_G integrated from 1977)        |
-//! | TCB                | The TCB instant corresponding to the TAI zero (L_B + TDB0 integrated from 1977) |
-//! | LTC                | The LTC instant corresponding to the TAI zero (L_M integrated from 1977)        |
-//! | Proper             | User-chosen (via `ClockModel`)                                                   |
-//! | Custom             | User-chosen (via `ClockModel`)                                                   |
-//!
-//! See `conversions.rs` for the exact implementation of each mapping.
-
-use crate::TimePoint;
 use core::fmt;
 
-/// Enum of the different time systems/clocks available.
-///
-/// - `Proper` – relativistic proper time (τ) experienced by a moving observer.
-/// - `Custom` – user-defined / arbitrary time scale
 #[non_exhaustive]
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -128,6 +62,15 @@ pub enum ClockType {
 }
 
 impl ClockType {
+    #[inline]
+    pub const fn to_ut(&self) -> Self {
+        if self.is_ut() {
+            return *self;
+        } else {
+            return ClockType::UTC;
+        }
+    }
+
     /// Returns `true` if this clock type accounts for leap seconds
     /// (or historical UTC civil time rules).
     #[inline]
@@ -218,13 +161,6 @@ impl ClockType {
     #[inline]
     pub const fn eq(self, other: Self) -> bool {
         self.to_wire_byte() == other.to_wire_byte()
-    }
-
-    /// Returns the reference epoch (zero instant) of this clock type,
-    /// expressed as a zero-duration [`TimePoint`] in this exact clock type.
-    #[inline]
-    pub const fn reference_epoch(self) -> TimePoint {
-        TimePoint::new(0, 0, self)
     }
 
     /// Size of the canonical wire representation in bytes.

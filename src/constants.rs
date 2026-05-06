@@ -22,12 +22,12 @@ pub(crate) const SEC_PER_DAY: i128 = 86_400;
 pub const SEC_PER_DAY_F: Real = 86_400.0;
 pub const SEC_PER_DAYI64: i64 = 86_400;
 pub(crate) const SEC_PER_DAYI128: i128 = 86_400;
-pub(crate) const SEC_PER_HALF_DAYI64: i64 = 43_200;
+
 /// Seconds in one GPS week (exactly 7 days).
 pub(crate) const SEC_PER_WEEK: i64 = 7 * SEC_PER_DAYI64;
 /// Attoseconds in one GPS week.
-pub(crate) const ATTOS_PER_WEEK: i128 = SEC_PER_WEEK as i128 * ATTOSEC_PER_SEC_I128;
-pub const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOSEC_PER_SEC_I128;
+pub(crate) const ATTOS_PER_WEEK: i128 = SEC_PER_WEEK as i128 * ATTOS_PER_SEC_I128;
+pub const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOS_PER_SEC_I128;
 pub const ATTOS_PER_HALF_DAY: i128 = ATTOS_PER_DAY / 2;
 pub const ATTOS_PER_HALF_DAYU: u128 = ATTOS_PER_HALF_DAY as u128;
 
@@ -48,9 +48,10 @@ pub const GM_SUN_OVER_C3: Real = GM_SUN / (C * C_SQUARED);
 pub const TWO_GM_SUN_OVER_C3: Real = 2.0 * GM_SUN_OVER_C3;
 
 /// Attoseconds per second.
-pub const ATTOSEC_PER_SEC: u64 = 1_000_000_000_000_000_000;
-pub(crate) const ATTOSEC_PER_SEC_I128: i128 = ATTOSEC_PER_SEC as i128;
-pub(crate) const ATTOSEC_PER_SEC_U128: u128 = ATTOSEC_PER_SEC as u128;
+pub const ATTOS_PER_SEC: u64 = 1_000_000_000_000_000_000;
+pub const ATTOS_PER_SECF: Real = f!(1_000_000_000_000_000_000.0);
+pub const ATTOS_PER_SEC_I128: i128 = ATTOS_PER_SEC as i128;
+pub const ATTOS_PER_SEC_U128: u128 = ATTOS_PER_SEC as u128;
 
 /// Attoseconds per millisecond (10⁻³ s).
 pub const ATTOS_PER_MS: u64 = 1_000_000_000_000_000;
@@ -62,6 +63,16 @@ pub const ATTOS_PER_NS: u64 = 1_000_000_000;
 pub const ATTOS_PER_PS: u64 = 1_000_000;
 /// Attoseconds per femtosecond (10⁻¹⁵ s).
 pub const ATTOS_PER_FS: u64 = 1_000;
+/// Attoseconds per millisecond (10⁻³ s).
+pub const ATTOS_PER_MS_I128: i128 = ATTOS_PER_MS as i128;
+/// Attoseconds per microsecond (10⁻⁶ s).
+pub const ATTOS_PER_US_I128: i128 = ATTOS_PER_US as i128;
+/// Attoseconds per nanosecond (10⁻⁹ s).
+pub const ATTOS_PER_NS_I128: i128 = ATTOS_PER_NS as i128;
+/// Attoseconds per picosecond (10⁻¹² s).
+pub const ATTOS_PER_PS_I128: i128 = ATTOS_PER_PS as i128;
+/// Attoseconds per femtosecond (10⁻¹⁵ s).
+pub const ATTOS_PER_FS_I128: i128 = ATTOS_PER_FS as i128;
 
 /// TT = TAI + exactly 32.184 s
 pub(crate) const TT_TAI_OFFSET_SEC: i64 = 32;
@@ -84,19 +95,14 @@ pub const TAI_SEC_AT_1972: i64 = -883_655_990;
 /// (2000-01-01 12:00:00 UTC).
 pub(crate) const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;
 
-pub(crate) const NS_PER_YEAR: i128 = 31_557_600_000_000_000; // 365.25 days
-pub(crate) const NS_PER_MONTH: i128 = 2_629_800_000_000_000; // 30.4375 days
-pub(crate) const NS_PER_WEEK: i128 = 604_800_000_000_000;
-pub(crate) const NS_PER_DAY: i128 = 86_400_000_000_000;
-pub(crate) const NS_PER_HALF_DAY: i128 = 43_200_000_000_000;
-pub(crate) const NS_PER_HOUR: i128 = 3_600_000_000_000;
-pub(crate) const NS_PER_MINUTE: i128 = 60_000_000_000;
-pub(crate) const NS_PER_SECOND: i128 = 1_000_000_000;
+pub(crate) const FS_PER_SEC: i128 = 1_000_000_000_000_000;
+pub(crate) const PS_PER_SEC: i128 = 1_000_000_000_000;
+pub(crate) const NS_PER_SEC: i128 = 1_000_000_000;
+pub(crate) const US_PER_SEC: i128 = 1_000_000;
+pub(crate) const MS_PER_SEC: i128 = 1_000;
 
-/// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC
-pub(crate) const MJD_EPOCH_NANOS: i128 = 40_587_i128 * NS_PER_DAY;
-/// JD 2440587.5 exactly = 1970-01-01 00:00:00 UTC
-pub(crate) const JD_EPOCH_NANOS: i128 = 2_440_587_i128 * NS_PER_DAY + NS_PER_HALF_DAY;
+// JD 2440587.5 = 1970-01-01 00:00:00 UTC (the .5 is handled by ATTOS_PER_HALF_DAY)
+pub(crate) const JD_EPOCH_DAYS: i128 = 2_440_587;
 
 pub(crate) const PLANCK_LENGTH: Real = 1.616255e-35; // meters (standard value)
 pub(crate) const PLANCK_LENGTH_4: Real =
@@ -135,8 +141,7 @@ pub(crate) const MARS_MSD_REF_TOD_SUBSEC: u64 = 650_560_000_000_000_000;
 pub const MARS_SOL_ATTOS: i128 = 88_775_244_000_000_000_000_000;
 
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
-pub(crate) const MARS_REF_SEC: i64 = -3_976_386_952;
-pub(crate) const MARS_REF_SUBSEC: u64 = 650_560_000_000_000_000;
+pub(crate) const MARS_REF_TT: TimeSpan = TimeSpan::new(-3_976_386_952, 650_560_000_000_000_000);
 
 pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
     b"Sunday",
@@ -167,4 +172,4 @@ pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
     b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec",
 ];
 
-pub(crate) const STRFTIME_SIZE: usize = 512;
+pub const STRFTIME_SIZE: usize = 512;

@@ -13,8 +13,8 @@ impl TimePoint {
     /// The resulting `TimePoint` is always in `ClockType::GPS`.
     #[inline]
     pub const fn from_gps_wk_and_tow(wk: i64, tow: TimeSpan) -> Self {
-        let total_attos = (wk as i128) * ATTOS_PER_WEEK + tow.total_attos();
-        Self::GPS_EPOCH.add(TimeSpan::from_total_attos(total_attos))
+        let total_attos = (wk as i128) * ATTOS_PER_WEEK + tow.to_attos();
+        Self::GPS_EPOCH.add(TimeSpan::from_attos(total_attos))
     }
 
     /// Creates a `TimePoint` in GPS Time from a GPS week number and

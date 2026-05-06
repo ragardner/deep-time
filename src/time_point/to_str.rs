@@ -124,7 +124,10 @@ impl TimePoint {
         let orig_type = self.clock_type;
 
         // 1. Get the true UTC Unix timestamp (this is what we search with)
-        let utc_unix = self.to_type(ClockType::UTC).to_unix_sec();
+        let utc_unix = self
+            .to_type(ClockType::UTC)
+            .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
+            .to_sec();
 
         // 2. Look up offset + abbrev at that exact UTC instant
         let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, utc_unix) {
