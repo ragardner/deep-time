@@ -1,9 +1,29 @@
 use crate::{
-    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, ClockDrift, LocalSpacetime, Real, TimePoint, TimeSpan,
+    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC_I128, ATTOS_PER_SECF,
+    ATTOS_PER_US, ClockDrift, LocalSpacetime, Real, TimePoint, TimeSpan,
 };
 
 impl TimePoint {
+    #[inline]
+    pub const fn add(self, span: TimeSpan) -> Self {
+        let (sec, subsec) = TimeSpan::add_time(self.sec, self.subsec, span.sec, span.subsec);
+        Self {
+            sec,
+            subsec,
+            clock_type: self.clock_type,
+        }
+    }
+
+    #[inline]
+    pub const fn sub(self, span: TimeSpan) -> Self {
+        let (sec, subsec) = TimeSpan::sub_time(self.sec, self.subsec, span.sec, span.subsec);
+        Self {
+            sec,
+            subsec,
+            clock_type: self.clock_type,
+        }
+    }
+
     /// Converts this `TimePoint` to a floating-point number of seconds since the reference epoch of its associated clock type.
     ///
     /// The conversion is lossy by design, as `f64` (`Real`) provides approximately 15.95 decimal digits of precision.
@@ -11,156 +31,6 @@ impl TimePoint {
     #[inline]
     pub const fn to_sec_f(self) -> Real {
         f!(self.sec) + f!(self.subsec) / ATTOS_PER_SECF
-    }
-
-    /// Performs a saturating addition of any `TimeSpan` (positive or negative) to this `TimePoint`.
-    ///
-    /// Adding a negative `TimeSpan` moves the time point backward in time.
-    /// The resulting `TimePoint` retains the original [`ClockType`] and saturates at the
-    /// representable extremes (`i64::MIN` / `i64::MAX`) rather than wrapping.
-    pub const fn add(self, span: TimeSpan) -> Self {
-        let mut sec = self.sec.saturating_add(span.sec);
-        let mut subsec = self.subsec as i64 + span.subsec as i64;
-
-        if subsec >= ATTOS_PER_SEC as i64 {
-            if sec < i64::MAX {
-                sec = sec.saturating_add(1);
-            }
-            subsec -= ATTOS_PER_SEC as i64;
-        } else if subsec < 0 {
-            if sec > i64::MIN {
-                sec = sec.saturating_sub(1);
-            }
-            subsec += ATTOS_PER_SEC as i64;
-        }
-
-        let subsec = if sec == i64::MAX {
-            ATTOS_PER_SEC - 1
-        } else if sec == i64::MIN {
-            0
-        } else {
-            subsec as u64
-        };
-
-        Self {
-            sec,
-            subsec,
-            clock_type: self.clock_type,
-        }
-    }
-
-    /// Performs a saturating subtraction of any `TimeSpan` (positive or negative) from this `TimePoint`.
-    ///
-    /// Subtracting a negative `TimeSpan` moves the time point forward in time.
-    /// The resulting `TimePoint` retains the original [`ClockType`] and saturates at the
-    /// representable extremes (`i64::MIN` / `i64::MAX`) rather than wrapping.
-    pub const fn sub(self, span: TimeSpan) -> Self {
-        let mut sec = self.sec.saturating_sub(span.sec);
-        let mut subsec = self.subsec as i64 - span.subsec as i64;
-
-        if subsec < 0 {
-            if sec > i64::MIN {
-                sec = sec.saturating_sub(1);
-            }
-            subsec += ATTOS_PER_SEC as i64;
-        } else if subsec >= ATTOS_PER_SEC as i64 {
-            if sec < i64::MAX {
-                sec = sec.saturating_add(1);
-            }
-            subsec -= ATTOS_PER_SEC as i64;
-        }
-
-        let subsec = if sec == i64::MAX {
-            ATTOS_PER_SEC - 1
-        } else if sec == i64::MIN {
-            0
-        } else {
-            subsec as u64
-        };
-
-        Self {
-            sec,
-            subsec,
-            clock_type: self.clock_type,
-        }
-    }
-
-    /// Mutably adds the given `TimeSpan` (positive or negative) to this `TimePoint` using saturating arithmetic.
-    ///
-    /// Adding a negative `TimeSpan` moves the time point backward in time.
-    /// The `clock_type` is left unchanged. The operation saturates at the representable extremes
-    /// (`i64::MIN` / `i64::MAX`) rather than wrapping.
-    pub const fn mut_add(&mut self, span: TimeSpan) -> &mut Self {
-        let mut sec = self.sec.saturating_add(span.sec);
-        let mut subsec = self.subsec as i64 + span.subsec as i64;
-
-        if subsec >= ATTOS_PER_SEC as i64 {
-            if sec < i64::MAX {
-                sec = sec.saturating_add(1);
-            }
-            subsec -= ATTOS_PER_SEC as i64;
-        } else if subsec < 0 {
-            if sec > i64::MIN {
-                sec = sec.saturating_sub(1);
-            }
-            subsec += ATTOS_PER_SEC as i64;
-        }
-
-        self.sec = if sec == i64::MAX {
-            i64::MAX
-        } else if sec == i64::MIN {
-            i64::MIN
-        } else {
-            sec
-        };
-
-        self.subsec = if self.sec == i64::MAX {
-            ATTOS_PER_SEC - 1
-        } else if self.sec == i64::MIN {
-            0
-        } else {
-            subsec as u64
-        };
-        self
-    }
-
-    /// Mutably subtracts the given `TimeSpan` (positive or negative) from this `TimePoint` using saturating arithmetic.
-    ///
-    /// Subtracting a negative `TimeSpan` moves the time point forward in time.
-    /// The `clock_type` is left unchanged. The operation saturates at the representable extremes
-    /// (`i64::MIN` / `i64::MAX`) rather than wrapping.
-    pub const fn mut_sub(&mut self, span: TimeSpan) -> &mut Self {
-        let mut sec = self.sec.saturating_sub(span.sec);
-        let mut subsec = self.subsec as i64 - span.subsec as i64;
-
-        if subsec < 0 {
-            if sec > i64::MIN {
-                sec = sec.saturating_sub(1);
-            }
-            subsec += ATTOS_PER_SEC as i64;
-        } else if subsec >= ATTOS_PER_SEC as i64 {
-            if sec < i64::MAX {
-                sec = sec.saturating_add(1);
-            }
-            subsec -= ATTOS_PER_SEC as i64;
-        }
-
-        self.sec = if sec == i64::MAX {
-            i64::MAX
-        } else if sec == i64::MIN {
-            i64::MIN
-        } else {
-            sec
-        };
-
-        self.subsec = if self.sec == i64::MAX {
-            ATTOS_PER_SEC - 1
-        } else if self.sec == i64::MIN {
-            0
-        } else {
-            subsec as u64
-        };
-        self
     }
 
     /// Advances this `TimePoint` by the given elapsed duration while applying the relativistic proper-time correction
@@ -224,7 +94,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ms(&mut self) {
-        self._add_subsec(ATTOS_PER_MS);
+        TimeSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_MS);
     }
 
     /// Adds exactly 1 microsecond to this time value.
@@ -232,7 +102,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1us(&mut self) {
-        self._add_subsec(ATTOS_PER_US);
+        TimeSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_US);
     }
 
     /// Adds exactly 1 nanosecond to this time value.
@@ -240,7 +110,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ns(&mut self) {
-        self._add_subsec(ATTOS_PER_NS);
+        TimeSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
@@ -266,7 +136,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ms(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOS_PER_MS);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_MS);
     }
 
     /// Adds the specified number of microseconds to this time value.
@@ -274,7 +144,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_us(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOS_PER_US);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_US);
     }
 
     /// Adds the specified number of nanoseconds to this time value.
@@ -282,7 +152,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ns(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOS_PER_NS);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of picoseconds to this time value.
@@ -290,7 +160,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ps(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOS_PER_PS);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_PS);
     }
 
     /// Adds the specified number of femtoseconds to this time value.
@@ -298,7 +168,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_fs(&mut self, n: i64) {
-        self.add_subsec_span(n, ATTOS_PER_FS);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_FS);
     }
 
     /// Adds the specified number of attoseconds to this time value.
@@ -306,7 +176,7 @@ impl TimePoint {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_attos(&mut self, n: i64) {
-        self.add_subsec_span(n, 1);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, 1);
     }
 
     // =====================================================================
@@ -336,7 +206,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ms(&mut self) {
-        self.add_subsec_span(-1, ATTOS_PER_MS);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_MS);
     }
 
     /// Subtracts exactly 1 microsecond from this time value.
@@ -344,7 +214,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1us(&mut self) {
-        self.add_subsec_span(-1, ATTOS_PER_US);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_US);
     }
 
     /// Subtracts exactly 1 nanosecond from this time value.
@@ -352,7 +222,7 @@ impl TimePoint {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ns(&mut self) {
-        self.add_subsec_span(-1, ATTOS_PER_NS);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_NS);
     }
 
     // =====================================================================
@@ -382,7 +252,12 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ms(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_MS);
+        TimeSpan::add_subsec_span(
+            &mut self.sec,
+            &mut self.subsec,
+            n.saturating_neg(),
+            ATTOS_PER_MS,
+        );
     }
 
     /// Subtracts the specified number of microseconds from this time value.
@@ -390,7 +265,12 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_us(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_US);
+        TimeSpan::add_subsec_span(
+            &mut self.sec,
+            &mut self.subsec,
+            n.saturating_neg(),
+            ATTOS_PER_US,
+        );
     }
 
     /// Subtracts the specified number of nanoseconds from this time value.
@@ -398,7 +278,12 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ns(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_NS);
+        TimeSpan::add_subsec_span(
+            &mut self.sec,
+            &mut self.subsec,
+            n.saturating_neg(),
+            ATTOS_PER_NS,
+        );
     }
 
     /// Subtracts the specified number of picoseconds from this time value.
@@ -406,7 +291,12 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ps(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_PS);
+        TimeSpan::add_subsec_span(
+            &mut self.sec,
+            &mut self.subsec,
+            n.saturating_neg(),
+            ATTOS_PER_PS,
+        );
     }
 
     /// Subtracts the specified number of femtoseconds from this time value.
@@ -414,7 +304,12 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_fs(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), ATTOS_PER_FS);
+        TimeSpan::add_subsec_span(
+            &mut self.sec,
+            &mut self.subsec,
+            n.saturating_neg(),
+            ATTOS_PER_FS,
+        );
     }
 
     /// Subtracts the specified number of attoseconds from this time value.
@@ -422,63 +317,7 @@ impl TimePoint {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_attos(&mut self, n: i64) {
-        self.add_subsec_span(n.saturating_neg(), 1);
-    }
-
-    #[doc(hidden)]
-    const fn add_subsec_span(&mut self, n: i64, unit: u64) {
-        if n == 0 {
-            return;
-        }
-
-        let mps = ATTOS_PER_SEC;
-
-        if n >= 0 {
-            // Positive direction
-            let amount = (n as u64).saturating_mul(unit);
-            let total = self.subsec.saturating_add(amount);
-
-            let carry = total / mps;
-            let new_frac = total % mps;
-
-            self.sec = self.sec.saturating_add(carry as i64);
-            self.subsec = new_frac;
-        } else {
-            // Negative direction
-            let amount = n.unsigned_abs().saturating_mul(unit);
-            let borrow_sec = amount / mps;
-            let borrow_frac = amount % mps;
-
-            self.sec = self.sec.saturating_sub(borrow_sec as i64);
-
-            if self.subsec >= borrow_frac {
-                self.subsec -= borrow_frac;
-            } else {
-                self.subsec += mps - borrow_frac;
-                self.sec = self.sec.saturating_sub(1);
-            }
-        }
-
-        // Final saturation clamp to maintain invariants at extreme values
-        if self.sec == i64::MAX {
-            self.subsec = mps - 1;
-        } else if self.sec == i64::MIN {
-            self.subsec = 0;
-        }
-    }
-
-    /// Internal fast-path method for adding a small positive subsecond amount.
-    ///
-    /// Used by the single-unit `add_1ms`, `add_1us`, and `add_1ns` methods.
-    /// This is intentionally simpler and faster than the general `add_subsec_span`
-    /// when the span is known to be positive and small.
-    #[doc(hidden)]
-    #[inline]
-    const fn _add_subsec(&mut self, amount: u64) {
-        let total = self.subsec + amount;
-        let carry_sec = total / ATTOS_PER_SEC;
-        self.subsec = total % ATTOS_PER_SEC;
-        self.sec = self.sec.saturating_add(carry_sec as i64);
+        TimeSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n.saturating_neg(), 1);
     }
 
     /// Total attoseconds (exact i128 representation within the representable range).

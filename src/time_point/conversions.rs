@@ -120,10 +120,9 @@ impl TimePoint {
 
             ClockType::UTCSpice => {
                 if self.sec < TAI_SEC_AT_1972 {
-                    let mut utc =
-                        self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset));
-                    utc.mut_sub(TimeSpan::from_sec_f(f!(9.0)));
-                    utc.to_span()
+                    self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset))
+                        .sub(TimeSpan::from_sec_f(f!(9.0)))
+                        .to_span()
                 } else {
                     self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset))
                         .to_span()
@@ -131,10 +130,9 @@ impl TimePoint {
             }
             ClockType::UTCSofa => {
                 if let Some(offset) = historical_sofa_for_tai_to_utc(&self) {
-                    let mut utc =
-                        self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset));
-                    utc.mut_sub(TimeSpan::from_sec_f(offset));
-                    utc.to_span()
+                    self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset))
+                        .sub(TimeSpan::from_sec_f(offset))
+                        .to_span()
                 } else {
                     self.sub(TimeSpan::from_sec(get_leap_seconds(&self, false).offset))
                         .to_span()

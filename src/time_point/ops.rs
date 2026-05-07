@@ -14,7 +14,7 @@ impl Add<TimeSpan> for TimePoint {
 impl AddAssign<TimeSpan> for TimePoint {
     #[inline]
     fn add_assign(&mut self, rhs: TimeSpan) {
-        self.mut_add(rhs);
+        *self = self.add(rhs);
     }
 }
 
@@ -30,7 +30,7 @@ impl Sub<TimeSpan> for TimePoint {
 impl SubAssign<TimeSpan> for TimePoint {
     #[inline]
     fn sub_assign(&mut self, rhs: TimeSpan) {
-        self.mut_sub(rhs);
+        *self = self.sub(rhs);
     }
 }
 
