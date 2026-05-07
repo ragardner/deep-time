@@ -96,7 +96,6 @@ mod tests {
             3,                                     // wkday
             51,                                    // wk_of_yr_sun
             52,                                    // wk_of_yr_mon
-            Scale::UTC,                            // scale
         );
 
         assert_roundtrip(

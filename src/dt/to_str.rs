@@ -30,7 +30,7 @@ impl Dt {
 
     /// No-alloc label-only formatting.
     pub fn to_str_bin(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let mut gt = self.to_gregorian_time(Scale::TAI);
+        let mut gt = self.to_gregorian_time();
         gt.set_offset(Some(0)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -106,9 +106,8 @@ impl Dt {
         } else {
             *self
         };
-        let mut gt = local_tp.to_gregorian_time(Scale::TAI);
+        let mut gt = local_tp.to_gregorian_time();
         gt.set_offset(Some(secs));
-        gt.set_type(Scale::TAI);
         gt
     }
 
@@ -131,11 +130,10 @@ impl Dt {
         let span = TSpan::new(offset_secs as i64, 0);
         let local_tp = *self + span;
 
-        let mut gt = local_tp.to_gregorian_time(Scale::TAI);
+        let mut gt = local_tp.to_gregorian_time();
         gt.set_offset(Some(offset_secs));
         gt.set_tz(Some(tz_name));
         gt.set_tz_abbrev(Some(abbrev));
-        gt.set_type(Scale::TAI);
         gt
     }
 }

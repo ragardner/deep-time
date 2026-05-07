@@ -44,9 +44,6 @@ pub struct GregorianTime {
     pub(crate) tz: Option<AsciiStr<50>>,
     /// UTC, EST, %Z
     pub(crate) tz_abbrev: Option<AsciiStr<29>>,
-    /// Used for formatting (strftime).
-    /// Clock type of the Time Point this UTC GregorianTime came from.
-    pub(crate) scale: Scale,
 }
 
 impl GregorianTime {
@@ -70,7 +67,6 @@ impl GregorianTime {
         wkday: u8,
         wk_of_yr_sun: u8,
         wk_of_yr_mon: u8,
-        scale: Scale,
     ) -> Self {
         Self {
             unix_attosec,
@@ -91,7 +87,6 @@ impl GregorianTime {
             offset_sec: None,
             tz: None,
             tz_abbrev: None,
-            scale,
         }
     }
 
@@ -221,11 +216,6 @@ impl GregorianTime {
     }
 
     #[inline]
-    pub const fn scale(&self) -> Scale {
-        self.scale
-    }
-
-    #[inline]
     pub(crate) fn set_offset(&mut self, offset_sec: Option<i32>) -> &mut Self {
         self.offset_sec = offset_sec;
         self
@@ -240,12 +230,6 @@ impl GregorianTime {
     #[inline]
     pub(crate) fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) -> &mut Self {
         self.tz_abbrev = tz_abbrev.and_then(|s| AsciiStr::try_from_str(s).ok());
-        self
-    }
-
-    #[inline]
-    pub fn set_type(&mut self, scale: Scale) -> &mut Self {
-        self.scale = scale;
         self
     }
 
@@ -271,10 +255,10 @@ impl GregorianTime {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
-    /// Size of the canonical wire representation in bytes (140 bytes).
-    pub const WIRE_SIZE: usize = 140;
+    /// Size of the canonical wire representation in bytes (139 bytes).
+    pub const WIRE_SIZE: usize = 139;
 
-    /// Serializes this `GregorianTime` into a fixed 140-byte buffer.
+    /// Serializes this `GregorianTime` into a fixed 139-byte buffer.
     ///
     /// # Wire Format (Version 1)
     ///
@@ -291,7 +275,6 @@ impl GregorianTime {
     /// - Bytes `53..58`: `offset_sec` (tag byte + `i32`)
     /// - Bytes `58..109`: `tz` (tag byte + `AsciiStr<50>`)
     /// - Bytes `109..139`: `tz_abbrev` (tag byte + `AsciiStr<29>`)
-    /// - Byte `139`: `scale` (`Scale`)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -372,15 +355,12 @@ impl GregorianTime {
         } else {
             buf[offset] = 0;
         }
-        offset += 1 + AsciiStr::<29>::WIRE_SIZE;
-
-        // scale (final byte)
-        buf[offset] = self.scale as u8;
+        // No scale byte — field removed from GregorianTime
 
         buf
     }
 
-    /// Deserializes a `GregorianTime` from exactly 140 bytes of wire data.
+    /// Deserializes a `GregorianTime` from exactly 139 bytes of wire data.
     ///
     /// Returns `None` if the version is unknown or any field is invalid.
     ///
@@ -474,10 +454,7 @@ impl GregorianTime {
         } else {
             None
         };
-        offset += 1 + AsciiStr::<29>::WIRE_SIZE;
-
-        // scale (final byte)
-        let scale = Scale::from_u8(bytes[offset])?;
+        // No scale byte to read — field was removed from GregorianTime
 
         Some(Self {
             unix_attosec,
@@ -498,7 +475,6 @@ impl GregorianTime {
             offset_sec,
             tz,
             tz_abbrev,
-            scale,
         })
     }
 }

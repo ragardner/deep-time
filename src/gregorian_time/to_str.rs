@@ -1,6 +1,6 @@
 use crate::{
-    AsciiStr, Scale, DtErr, DtErrKind, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE,
-    Dt, WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
+    AsciiStr, Dt, DtErr, DtErrKind, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE, Scale,
+    WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
 };
 
 impl GregorianTime {
@@ -223,22 +223,7 @@ impl GregorianTime {
                         }
                     }
                 }
-                b'L' => {
-                    // skip writing UTC scale because the default is UTC
-                    // and avoid issues with iana overlap and offsets
-                    match self.scale {
-                        Scale::UTC => {
-                            if i >= fmt.len() {
-                                while *pos > 0
-                                    && matches!(buf[*pos - 1], b' ' | b'\t' | b'\n' | b'\r')
-                                {
-                                    *pos -= 1;
-                                }
-                            }
-                        }
-                        _ => Self::write_bytes(buf, pos, self.scale().abbrev().as_bytes()),
-                    }
-                }
+                b'L' => Self::write_bytes(buf, pos, Scale::TAI.abbrev().as_bytes()),
 
                 b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
 

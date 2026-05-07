@@ -200,7 +200,7 @@ impl Dt {
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
-        let gt = self.to_gregorian_time(Scale::UTC);
+        let gt = self.to_gregorian_time();
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
         let mut pos = 0usize;

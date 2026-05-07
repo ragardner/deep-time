@@ -26,7 +26,7 @@ impl Dt {
         Self::jdn_to_ymd(jdn)
     }
 
-    pub const fn to_gregorian_time(&self, scale: Scale) -> GregorianTime {
+    pub const fn to_gregorian_time(&self) -> GregorianTime {
         // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
         let ymdhms = self.to_ymdhms();
         let unix_attosec = self.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_attos();
@@ -58,7 +58,6 @@ impl Dt {
             offset_sec: None,
             tz: None,
             tz_abbrev: None,
-            scale,
         }
     }
 

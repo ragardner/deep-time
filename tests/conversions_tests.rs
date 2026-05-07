@@ -448,7 +448,7 @@ fn test_leap_second_roundtrip_2015_06_30() {
     assert_eq!(original, current, "Multiple Gregorian round-trips failed");
 
     // Final sanity check via to_gregorian_time
-    let gt = original.to_gregorian_time(Scale::TAI);
+    let gt = original.to_gregorian_time();
     assert_eq!(gt.sec(), 60);
     assert_eq!(gt.day(), 30);
 }
