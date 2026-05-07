@@ -103,11 +103,10 @@ impl TimePoint {
     /// Helper for creating an offset adjusted GregorianTime.
     pub(crate) fn gregorian_time_with_offset(&self, secs: i32) -> GregorianTime {
         let orig_type = self.clock_type;
-        let utc = self.with_type(ClockType::UTC);
         let local_tp = if secs != 0 {
-            utc + TimeSpan::new(secs as i64, 0)
+            *self + TimeSpan::new(secs as i64, 0)
         } else {
-            utc
+            *self
         };
         let mut gt = local_tp.to_gregorian_time();
         gt.set_offset(Some(secs));
@@ -137,7 +136,7 @@ impl TimePoint {
 
         // 3. Build local time = UTC + offset
         let span = TimeSpan::new(offset_secs as i64, 0);
-        let local_tp = self.with_type(ClockType::UTC) + span;
+        let local_tp = *self + span;
 
         let mut gt = local_tp.to_gregorian_time();
         gt.set_offset(Some(offset_secs));

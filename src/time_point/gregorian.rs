@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_HALF_DAYU, ATTOS_PER_SEC, ClockType, GregorianTime, SEC_PER_DAYI64, TimePoint,
-    TimeSpan, Weekday, leap_seconds::get_leap_seconds,
+    ATTOS_PER_SEC, ClockType, GregorianTime, SEC_PER_DAYI64, TimePoint, TimeSpan, Weekday,
+    leap_seconds::get_leap_seconds,
 };
 
 /// Combined Gregorian date + wall time with subsecond precision.
@@ -374,27 +374,6 @@ impl TimePoint {
         let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
         wd_jan1 == 4 || (Self::is_leap_year(year) && wd_jan1 == 3)
-    }
-
-    /// Returns the weekday number: `0 = Sunday`, `1 = Monday`, …, `6 = Saturday`.
-    ///
-    /// The result is computed from the civil (proleptic Gregorian) date of this
-    /// `TimePoint`, matching the convention used by [`Self::jdn_to_weekday`].
-    pub const fn weekday(self, jd_tt_exact: Option<(i64, u128)>) -> u8 {
-        let (jd_days, frac_attos) = if let Some(jd) = jd_tt_exact {
-            jd
-        } else {
-            self.to_jd_exact(ClockType::TT)
-        };
-
-        // If the time is 12:00 or later, the astronomical day has already rolled over
-        let jdn = if frac_attos >= ATTOS_PER_HALF_DAYU {
-            jd_days + 1
-        } else {
-            jd_days
-        };
-
-        Self::jdn_to_weekday(jdn)
     }
 
     /// Returns the ordinal day of the year (1-based).
