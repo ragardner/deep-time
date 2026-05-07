@@ -270,11 +270,10 @@ impl Dt {
     }
 
     /// Convenience method that automatically selects the most appropriate
-    /// CCSDS binary time code based on this `Dt`’s [`Scale`].
+    /// CCSDS binary time code based on `scale`.
     ///
-    /// # Automatic selection (matches common mission practice)
     /// - `Scale::TAI` → **CUC** (4 coarse + 4 fractional bytes)
-    /// - Any other `Scale` (UTC, TT, GPS, TCG, …) → converted to UTC and uses **CDS**
+    /// - Any other `Scale` (UTC, TT, GPS, TCG, …) → uses **CDS**
     ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
     #[inline]
     pub fn to_ccsds_bin(

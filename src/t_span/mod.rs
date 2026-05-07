@@ -28,10 +28,7 @@ mod to_jiff;
 /// A high-precision **duration** (time span) expressed as **seconds + attoseconds**
 /// (where 1 attosecond = 10⁻¹⁸ s).
 ///
-/// `TSpan` is the span counterpart of `Dt`. It does **not** carry a [`Scale`]
-/// because durations are scale-independent (they can be added to or subtracted from any
-/// `Dt` regardless of its scale; any scale-specific adjustments like leap seconds
-/// are handled by the `Dt` arithmetic).
+/// `TSpan` is the time span counterpart of `Dt`.
 ///
 /// - Precision: 10⁻¹⁸ s
 /// - Range: ±~292 billion years (i64 seconds limit).

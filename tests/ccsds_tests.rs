@@ -1,5 +1,171 @@
 use deep_time::constants::SEC_PER_DAYI64;
-use deep_time::{Dt, Offset, Scale, TimeParts};
+use deep_time::{Dt, DtErrKind, Offset, Scale, TimeParts};
+
+#[cfg(test)]
+mod ccsds_tests {
+    use super::*;
+
+    const CUC_EPOCH_OFFSET: i64 = 1_325_419_167;
+    const CDS_EPOCH_OFFSET: i64 = 1_325_419_135;
+
+    // ====================== Helpers ======================
+
+    fn tai_epoch() -> Dt {
+        Dt::new(-CUC_EPOCH_OFFSET, 0)
+    }
+
+    fn j2000() -> Dt {
+        Dt::new(0, 0)
+    }
+
+    fn utc_epoch() -> Dt {
+        Dt::new(-CDS_EPOCH_OFFSET, 0)
+    }
+
+    fn y2k() -> Dt {
+        Dt::from_ymd(2000, 1, 1, Scale::UTC)
+    }
+
+    // ====================== CUC ======================
+
+    #[test]
+    fn cuc_epoch() {
+        let dt = tai_epoch();
+        let (buf, len) = dt.to_ccsds_c(4, 0, false).unwrap();
+        assert_eq!(len, 5);
+        assert_eq!(&buf[..len], &[0x1C, 0x00, 0x00, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn cuc_one_second_after() {
+        let dt = tai_epoch();
+        let dt = Dt::new(dt.sec() + 1, dt.attos());
+        let (buf, len) = dt.to_ccsds_c(4, 0, false).unwrap();
+        assert_eq!(len, 5);
+        assert_eq!(&buf[..len], &[0x1C, 0x00, 0x00, 0x00, 0x01]);
+    }
+
+    #[test]
+    fn cuc_fractional() {
+        let dt = tai_epoch();
+        let dt = Dt::new(dt.sec(), 500_000_000_000_000_000);
+        let (buf, len) = dt.to_ccsds_c(1, 3, false).unwrap();
+        assert_eq!(len, 5);
+        assert_eq!(&buf[..len], &[0x13, 0x00, 0x80, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn cuc_extension() {
+        let dt = j2000();
+        let (buf, len) = dt.to_ccsds_c(5, 0, false).unwrap();
+        assert_eq!(len, 7);
+        assert_eq!(buf[0], 0x9C);
+        assert_eq!(buf[1], 0x20);
+    }
+
+    // ====================== CDS ======================
+
+    #[test]
+    fn cds_epoch() {
+        let dt = utc_epoch();
+        let (buf, len) = dt.to_ccsds_d(2, 0, false).unwrap();
+        assert_eq!(len, 7);
+        assert_eq!(&buf[..len], &[0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn cds_n_day3_extension() {
+        let dt = utc_epoch();
+        let (buf, len) = dt.to_ccsds_d(3, 0, true).unwrap();
+        assert_eq!(len, 9);
+        assert_eq!(buf[0], 0xC4);
+        assert_eq!(buf[1], 0x00);
+    }
+
+    #[test]
+    fn cds_submillisecond() {
+        let dt = utc_epoch();
+        let dt = Dt::new(dt.sec(), 123_456_789_012_345_678);
+        let (buf, len) = dt.to_ccsds_d(2, 1, false).unwrap();
+        assert_eq!(len, 9);
+        assert_eq!(buf[0], 0x41);
+    }
+
+    // ====================== CCS ======================
+
+    #[test]
+    fn ccs_y2k_month_day() {
+        let dt = y2k();
+        let (buf, len) = dt.to_ccsds_ccs(false, 0).unwrap();
+        assert_eq!(len, 8);
+        let expected = [0x50, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00];
+        assert_eq!(&buf[..len], &expected[..]);
+    }
+
+    #[test]
+    fn ccs_doy() {
+        let dt = y2k();
+        let (buf, len) = dt.to_ccsds_ccs(true, 0).unwrap();
+        assert_eq!(len, 8);
+        assert_eq!(buf[0], 0x58);
+        assert_eq!(buf[3], 0x00);
+        assert_eq!(buf[4], 0x01);
+    }
+
+    #[test]
+    fn ccs_subsecond() {
+        let dt = y2k();
+        let dt = Dt::new(dt.sec(), 123_456_789_012_345_678);
+        let (buf, len) = dt.to_ccsds_ccs(false, 2).unwrap();
+        assert_eq!(len, 10);
+        assert_eq!(buf[0], 0x52);
+    }
+
+    // ====================== Error Cases (fixed for Option) ======================
+
+    #[test]
+    fn invalid_parameters() {
+        let dt = j2000();
+
+        assert!(matches!(
+            dt.to_ccsds_c(0, 0, false),
+            Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
+        ));
+
+        assert!(matches!(
+            dt.to_ccsds_c(4, 11, false),
+            Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
+        ));
+
+        assert!(matches!(
+            dt.to_ccsds_d(1, 0, false),
+            Err(e) if e.kind() == Some(DtErrKind::InvalidNumber)
+        ));
+
+        assert!(matches!(
+            dt.to_ccsds_d(2, 3, false),
+            Err(e) if e.kind() == Some(DtErrKind::InvalidItem)
+        ));
+
+        assert!(matches!(
+            dt.to_ccsds_ccs(false, 7),
+            Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
+        ));
+    }
+
+    // ====================== Convenience ======================
+
+    #[test]
+    fn to_ccsds_bin() {
+        let tai = j2000();
+        let (buf, _) = tai.to_ccsds_bin(Scale::TAI).unwrap();
+        assert_eq!(buf[0] & 0b0111_0000, 0b0001_0000);
+
+        let utc = y2k();
+        let (buf, _) = utc.to_ccsds_bin(Scale::UTC).unwrap();
+        assert_eq!(buf[0] & 0b0111_0000, 0b0100_0000);
+    }
+}
 
 #[test]
 fn test_ccsds_c_direct_frac() {

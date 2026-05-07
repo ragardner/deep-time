@@ -1,8 +1,6 @@
 use deep_time::{
-    ClockDrift, ClockModel, Dt, Scale, TSpan,
-    constants::{ATTOS_PER_HALF_DAYU, MARS_SOL_LENGTH_SEC},
+    Dt, Scale, TSpan,
     historical_sofa::{historical_sofa_for_tai_to_utc, historical_sofa_for_utc_to_tai},
-    to_sec_f,
 };
 
 #[test]
