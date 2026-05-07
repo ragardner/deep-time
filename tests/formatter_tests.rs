@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod format_tests {
-    use deep_time::{Scale, Dt, constants::STRFTIME_SIZE};
+    use deep_time::{Dt, Scale, constants::STRFTIME_SIZE};
 
     /// Creates a UTC Dt from civil Gregorian components.
     /// This now correctly matches the new direct Unix-based civil time path.
@@ -23,11 +23,9 @@ mod format_tests {
             123_456_789_000_000_000,
             Scale::UTC,
         );
-        eprintln!("{:?}", leap);
 
         // === Gotcha 1: Civil time must show sec=60 (not roll over to next day) ===
         let g = leap.to_ymdhms();
-        eprintln!("{:?}", g);
         assert_eq!(g.yr, 2016);
         assert_eq!(g.mo, 12);
         assert_eq!(g.day, 31);
@@ -66,9 +64,7 @@ mod format_tests {
         assert_eq!(&buf[0..n], b"2016-12-31T23:59:60.123456789Z");
 
         // === Gotcha 5: leap second Unix timestamp (POSIX convention) ===
-        let unix = leap
-            .to_epoch(Dt::UNIX_EPOCH, Scale::UTC)
-            .to_sec();
+        let unix = leap.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_sec();
         assert_eq!(unix, 1483228799); // same as 23:59:59 — the leap second "replays" the previous second
     }
 

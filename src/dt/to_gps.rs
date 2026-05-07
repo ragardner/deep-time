@@ -1,7 +1,4 @@
-use crate::{
-    ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Scale, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Dt,
-    TSpan,
-};
+use crate::{ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, TSpan};
 
 impl Dt {
     /// Returns the GPS week number and exact Time of Week (TOW) for this instant
@@ -26,13 +23,11 @@ impl Dt {
     ///   other scales via `to_type(Scale::GPS)`.
     /// - The result is **exact** (attosecond precision) and independent of any
     ///   calendar or timezone rules.
-    pub const fn to_gps_wk_and_tow(self) -> (i64, TSpan) {
-        let gpst = self.with_type(Scale::GPS);
-        let elapsed = gpst.to_tai_since(Self::GPS_EPOCH);
+    pub const fn to_gps_wk_and_tow(&self) -> (i64, TSpan) {
+        let elapsed = self.to_tai_since(Self::GPS_EPOCH);
         let total_attos = elapsed.to_attos();
         let wk = (total_attos / ATTOS_PER_WEEK) as i64;
         let tow_attos = total_attos % ATTOS_PER_WEEK;
-
         (wk, TSpan::from_attos(tow_attos))
     }
 
@@ -40,10 +35,8 @@ impl Dt {
     ///
     /// This is computed directly from GPS Time and is independent of the
     /// Gregorian calendar.
-    pub const fn to_gps_day_of_wk(self) -> u8 {
-        let gpst = self.with_type(Scale::GPS);
-        let elapsed = gpst.to_tai_since(Self::GPS_EPOCH);
-
+    pub const fn to_gps_day_of_wk(&self) -> u8 {
+        let elapsed = self.to_tai_since(Self::GPS_EPOCH);
         let total_sec = elapsed.to_attos() / ATTOS_PER_SEC_I128;
         let secs_into_wk = total_sec.rem_euclid(SEC_PER_WEEK as i128);
         (secs_into_wk / SEC_PER_DAYI64 as i128) as u8
@@ -54,14 +47,14 @@ impl Dt {
     /// This is a convenience method for code that prefers `f64` / `Real`.
     /// For full attosecond precision use [`Self::to_gps_wk_and_tow`].
     #[inline]
-    pub const fn to_gps_tow_f(self) -> Real {
+    pub const fn to_gps_tow_f(&self) -> Real {
         let (_, tow) = self.to_gps_wk_and_tow();
         tow.to_sec_f()
     }
 
     /// Returns only the GPS week number (full, untruncated).
     #[inline]
-    pub const fn to_gps_week_number(self) -> i64 {
+    pub const fn to_gps_week_number(&self) -> i64 {
         self.to_gps_wk_and_tow().0
     }
 }

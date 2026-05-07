@@ -1,6 +1,6 @@
 #[cfg(feature = "hifitime")]
 mod tests {
-    use deep_time::{Scale, Dt};
+    use deep_time::{Dt, Scale};
     use hifitime::{Duration, Epoch, TimeScale};
     /// Seconds between hifitime's TAI reference epoch (1900-01-01 00:00:00 TAI)
     /// and our library's `ZERO` (2000-01-01 12:00:00 TAI).
@@ -65,7 +65,7 @@ mod tests {
         let hi_utc = Epoch::from_gregorian(2016, 12, 31, 23, 59, 60, 0, TimeScale::UTC);
         let hi_tai = hi_utc.to_time_scale(TimeScale::TAI);
         let (hi_tai_sec, hi_tai_subsec) = hifitime_tai_parts(hi_tai);
-        let our_tai = Dt::new(hi_tai_sec, hi_tai_subsec, Scale::TAI);
+        let our_tai = Dt::new(hi_tai_sec, hi_tai_subsec);
         let our_utc = our_tai.to(Scale::UTC).to_tai(Scale::UTC);
 
         assert_tp_matches_hifitime(our_utc, hi_tai, "UTC leap second 2016-12-31");
@@ -95,7 +95,7 @@ mod tests {
         let base_tai_sec = 123_456_789_i64;
         let base_attos = 987_654_321_000_000_000u64;
 
-        let our_base = Dt::new(base_tai_sec, base_attos, Scale::TAI);
+        let our_base = Dt::new(base_tai_sec, base_attos);
 
         let scales: &[Scale] = &[
             Scale::TAI,
@@ -167,7 +167,7 @@ mod tests {
         ];
 
         for &(tai_sec, label) in cases {
-            let our = Dt::new(tai_sec, 0, Scale::TAI);
+            let our = Dt::new(tai_sec, 0);
             let hi = Epoch::from_tai_seconds((HIFITIME_TAI_EPOCH_TO_OUR_ZERO + tai_sec) as f64);
             assert_tp_matches_hifitime(our, hi, label);
         }

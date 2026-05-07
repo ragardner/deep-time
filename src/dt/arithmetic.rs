@@ -1,27 +1,19 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC_I128, ATTOS_PER_SECF,
-    ATTOS_PER_US, ClockDrift, LocalSpacetime, Real, Dt, TSpan,
+    ATTOS_PER_US, ClockDrift, Dt, LocalSpacetime, Real, TSpan,
 };
 
 impl Dt {
     #[inline]
     pub const fn add(self, span: TSpan) -> Self {
         let (sec, subsec) = TSpan::add_time(self.sec, self.subsec, span.sec, span.subsec);
-        Self {
-            sec,
-            subsec,
-            scale: self.scale,
-        }
+        Self { sec, subsec }
     }
 
     #[inline]
     pub const fn sub(self, span: TSpan) -> Self {
         let (sec, subsec) = TSpan::sub_time(self.sec, self.subsec, span.sec, span.subsec);
-        Self {
-            sec,
-            subsec,
-            scale: self.scale,
-        }
+        Self { sec, subsec }
     }
 
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
@@ -62,13 +54,11 @@ impl Dt {
         TSpan::diff_raw(self.sec, self.subsec, earlier.sec, earlier.subsec)
     }
 
-    /// Returns the numerical difference in seconds between this `Dt` and another (ignores `Scale`).
-    ///
     /// This method is lossy by design and is provided for testing and debugging purposes only.
     /// For the exact duration, use `duration_since` or `duration_since_ref`.
     #[inline]
     pub const fn to_tai_since_f(&self, other: Self) -> Real {
-        self.to(self.scale).to_sec_f() - other.to(other.scale).to_sec_f()
+        self.to_sec_f() - other.to_sec_f()
     }
 
     /// Adds exactly 1 second to this time value using saturating arithmetic.

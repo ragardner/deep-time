@@ -1,13 +1,10 @@
 use crate::{
-    ClassifiedDate, ConnectorType, DateClassification, DateToken, DtErr, DtErrKind, EndsWithExt,
-    IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, Dt, TimeType, an_err, lang_map,
+    ClassifiedDate, ConnectorType, DateClassification, DateToken, Dt, DtErr, DtErrKind,
+    EndsWithExt, IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, TimeType, an_err, lang_map,
     natural_duration_to_span, to_ascii_digit,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
-
-#[cfg(feature = "std")]
-use crate::Scale;
 
 /// Expects s to be lowercase.
 pub(crate) fn classify_date(
@@ -78,7 +75,7 @@ pub(crate) fn classify_date(
                 } else {
                     #[cfg(feature = "std")]
                     {
-                        Dt::now(Scale::UTC)
+                        Dt::now()
                     }
                     #[cfg(not(feature = "std"))]
                     {

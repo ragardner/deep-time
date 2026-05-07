@@ -6,8 +6,8 @@ mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
     use deep_time::{
-        ClockDrift, ClockModel, Scale, GregorianTime, Meridiem, Offset, TimeParts, Dt,
-        TimeRange, TSpan, Weekday,
+        ClockDrift, ClockModel, Dt, GregorianTime, Meridiem, Offset, Scale, TSpan, TimeParts,
+        TimeRange, Weekday,
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -36,21 +36,13 @@ mod tests {
 
     #[test]
     fn test_timepoint_roundtrip() {
-        let tp = Dt::new(9876543210, 123456789012345678, Scale::TAI);
-        assert_roundtrip(
-            &tp,
-            |t| t.to_wire_bytes().to_vec(),
-            Dt::from_wire_bytes,
-        );
+        let tp = Dt::new(9876543210, 123456789012345678);
+        assert_roundtrip(&tp, |t| t.to_wire_bytes().to_vec(), Dt::from_wire_bytes);
     }
 
     #[test]
     fn test_clockdrift_roundtrip() {
-        let drift = ClockDrift::new(
-            TSpan::from_sec(5),
-            TSpan::from_ns(1),
-            TSpan::from_attos(2),
-        );
+        let drift = ClockDrift::new(TSpan::from_sec(5), TSpan::from_ns(1), TSpan::from_attos(2));
         assert_roundtrip(
             &drift,
             |d| d.to_wire_bytes().to_vec(),
@@ -62,7 +54,7 @@ mod tests {
     fn test_clockmodel_roundtrip() {
         let model = ClockModel::new(
             Scale::Proper,
-            Dt::new(0, 0, Scale::TAI),
+            Dt::new(0, 0),
             ClockDrift::from_offset_and_rate(TSpan::from_sec(42), TSpan::from_ns(1)),
         );
         assert_roundtrip(
@@ -74,7 +66,7 @@ mod tests {
 
     #[test]
     fn test_timerange_roundtrip() {
-        let start = Dt::new(1000000000, 0, Scale::TAI);
+        let start = Dt::new(1000000000, 0);
         let end = start + TSpan::from_hr(24);
         let step = TSpan::from_hr(1);
         let range = start.range_to(end, step);
@@ -104,7 +96,7 @@ mod tests {
             3,                                     // wkday
             51,                                    // wk_of_yr_sun
             52,                                    // wk_of_yr_mon
-            Scale::UTC,                        // scale
+            Scale::UTC,                            // scale
         );
 
         assert_roundtrip(

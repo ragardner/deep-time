@@ -18,36 +18,9 @@ impl Dt {
         }
     }
 
-    #[inline]
-    pub const fn is_ut(&self) -> bool {
-        self.scale.is_ut()
-    }
-
-    /// Mutates and sets the [`Scale`] of this `Dt` in place while preserving the exact numerical seconds
-    /// and attoseconds values.
-    #[inline]
-    pub const fn set_type(&mut self, scale: Scale) -> &Self {
-        self.scale = scale;
-        self
-    }
-
-    /// Copies and sets the [`Scale`] of this `Dt` in place while preserving the exact numerical seconds
-    /// and attoseconds values.
-    #[inline]
-    pub const fn with_type(self, target: Scale) -> Dt {
-        if (self.scale as u8) == (target as u8) {
-            return self;
-        }
-        Self {
-            sec: self.sec,
-            subsec: self.subsec,
-            scale: target,
-        }
-    }
-
     pub const fn from(sec: i64, subsec: u64, scale: Scale) -> Dt {
         // Create a raw Dt with the input numbers on the requested scale
-        let raw = Dt::new(sec, subsec, scale);
+        let raw = Dt::new(sec, subsec);
 
         match scale {
             Scale::TAI | Scale::Proper | Scale::Custom | Scale::UT1 => raw,
@@ -81,17 +54,17 @@ impl Dt {
 
             Scale::TCG => {
                 let tt = Self::tcg_to_tt(raw);
-                tt.sub(TT_TAI_OFFSET_SPAN).with_type(Scale::TCG)
+                tt.sub(TT_TAI_OFFSET_SPAN)
             }
 
             Scale::TCB => {
                 let tdb = Self::tcb_to_tdb(raw);
-                Self::tdb_to_tai(tdb).with_type(Scale::TCB)
+                Self::tdb_to_tai(tdb)
             }
 
             Scale::LTC => {
                 let tt = Self::ltc_to_tt(raw);
-                tt.sub(TT_TAI_OFFSET_SPAN).with_type(Scale::LTC)
+                tt.sub(TT_TAI_OFFSET_SPAN)
             }
         }
     }
@@ -143,7 +116,7 @@ impl Dt {
             Scale::TCB => Self::tai_to_tcb(*self).to_span(),
 
             Scale::LTC => {
-                let tt = self.add(TT_TAI_OFFSET_SPAN).with_type(Scale::TT);
+                let tt = self.add(TT_TAI_OFFSET_SPAN);
                 Self::tt_to_ltc(tt).to_span()
             }
         }
@@ -268,9 +241,9 @@ impl Dt {
     }
 
     const fn tai_to_tdb(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN).with_type(Scale::TT);
+        let tt = tai.add(TT_TAI_OFFSET_SPAN);
         let span = Self::tdb_minus_tt(tt.sec, tt.subsec);
-        tt.add(span).with_type(Scale::TDB)
+        tt.add(span)
     }
 
     const fn tdb_to_tai(tdb: Self) -> Self {
@@ -284,7 +257,7 @@ impl Dt {
     }
 
     const fn tai_to_tcg(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN).with_type(Scale::TT);
+        let tt = tai.add(TT_TAI_OFFSET_SPAN);
         Self::tt_to_tcg(tt)
     }
 
@@ -344,13 +317,13 @@ impl Dt {
     const fn tt_to_tcg(tt: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_ref(tt);
         let span_attos = Self::mul_lg(elapsed);
-        tt.add(TSpan::from_attos(span_attos)).with_type(Scale::TCG)
+        tt.add(TSpan::from_attos(span_attos))
     }
 
     const fn tcg_to_tt(tcg: Self) -> Self {
         let elapsed_cg = Self::elapsed_to_attos_since_ref(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
-        tcg.sub(TSpan::from_attos(span_attos)).with_type(Scale::TT)
+        tcg.sub(TSpan::from_attos(span_attos))
     }
 
     const fn tcb_to_tdb(tcb: Self) -> Self {
@@ -358,27 +331,25 @@ impl Dt {
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
         tcb.sub(TSpan::from_attos(span_attos))
             .sub(TSpan::from_attos(TDB0_ATTOS))
-            .with_type(Scale::TDB)
     }
 
     const fn tdb_to_tcb(tdb: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(tdb.with_type(Scale::TT));
+        let elapsed = Self::elapsed_to_attos_since_ref(tdb);
         let span_attos = Self::mul_lb(elapsed);
         tdb.add(TSpan::from_attos(span_attos))
             .add(TSpan::from_attos(TDB0_ATTOS))
-            .with_type(Scale::TCB)
     }
 
     const fn tt_to_ltc(tt: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_ref(tt);
         let span_attos = Self::mul_lm(elapsed);
-        tt.add(TSpan::from_attos(span_attos)).with_type(Scale::LTC)
+        tt.add(TSpan::from_attos(span_attos))
     }
 
     const fn ltc_to_tt(ltc: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_ref(ltc);
         let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
-        ltc.sub(TSpan::from_attos(span_attos)).with_type(Scale::TT)
+        ltc.sub(TSpan::from_attos(span_attos))
     }
 
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).

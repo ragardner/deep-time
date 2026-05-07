@@ -1,10 +1,10 @@
-use crate::{Scale, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimeParts, Dt};
+use crate::{Dt, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Scale, TimeParts};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline]
 pub(crate) fn parse_yymmdd(input: &str) -> Option<Dt> {
     let parsed = TimeParts::from_str("%y%m%d", input, true, true, false).ok()?;
-    parsed.to_time_point(Some(Scale::UTC)).ok()
+    parsed.to_time_point().ok()
 }
 
 /// Parses year-month formats with flexible separators and optional sign:
@@ -94,7 +94,7 @@ pub(crate) fn parse_yyyymm(s: &str) -> Option<Dt> {
         if (1..=12).contains(&m) && (crate::MIN_YEAR..=crate::MAX_YEAR).contains(&y) {
             let parsed =
                 TimeParts::from_str("%Y%m", s.trim_start_matches('-'), true, true, true).ok()?;
-            return parsed.to_time_point(Some(Scale::UTC)).ok();
+            return parsed.to_time_point().ok();
         }
     }
     None

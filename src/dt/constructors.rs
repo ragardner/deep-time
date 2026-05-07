@@ -6,35 +6,35 @@ use crate::{
 
 impl Dt {
     /// The library’s reference zero instant: exactly **2000-01-01 12:00:00 TAI**.
-    pub const ZERO: Self = Self::new(0, 0, Scale::TAI);
+    pub const ZERO: Self = Self::new(0, 0);
 
     /// The TAI instant that corresponds to the conventional **J2000.0 epoch**
     /// (2000-01-01 12:00:00 **TT**, JD 2451545.0 TT).
     pub const J2000_TAI: Self = Self::ZERO.sub(TT_TAI_OFFSET_SPAN);
 
     /// The J1900.0 epoch expressed in TAI (1900-01-01 12:00:00 TAI).
-    pub const J1900_TAI: Self = Self::new(-3_155_760_000, 0, Scale::TAI);
+    pub const J1900_TAI: Self = Self::new(-3_155_760_000, 0);
 
     /// Library zero points (same physical instant as ZERO, different tags)
-    pub const GPS_ZERO: Self = Self::new(19, 0, Scale::GPS);
-    pub const GST_ZERO: Self = Self::new(19, 0, Scale::GST);
-    pub const QZSS_ZERO: Self = Self::new(19, 0, Scale::QZSS);
-    pub const BDT_ZERO: Self = Self::new(33, 0, Scale::BDT);
+    pub const GPS_ZERO: Self = Self::new(19, 0);
+    pub const GST_ZERO: Self = Self::new(19, 0);
+    pub const QZSS_ZERO: Self = Self::new(19, 0);
+    pub const BDT_ZERO: Self = Self::new(33, 0);
 
     /// TAI time between 1970-01-01 midnight and 2000-01-01 noon
-    pub const UNIX_EPOCH: Self = Self::new(-UNIX_EPOCH_TO_J2000_NOON_UTC, 0, Scale::UTC);
+    pub const UNIX_EPOCH: Self = Self::new(-UNIX_EPOCH_TO_J2000_NOON_UTC, 0);
 
     /// Traditional GNSS epochs
-    pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0, Scale::GPS);
+    pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0);
     pub const GALEX_EPOCH: Self = Self::GPS_EPOCH;
-    pub const GALILEO_EPOCH: Self = Self::new(-11_448_000 + 19, 0, Scale::GST);
-    pub const BDT_EPOCH: Self = Self::new(189_345_600 + 33, 0, Scale::BDT);
+    pub const GALILEO_EPOCH: Self = Self::new(-11_448_000 + 19, 0);
+    pub const BDT_EPOCH: Self = Self::new(189_345_600 + 33, 0);
 
     /// Creates a new `Dt` from whole seconds, a subsecond part in attoseconds,
     /// and a scale, automatically normalizing the representation.
     #[inline]
-    pub const fn new(sec: i64, subsec: u64, scale: Scale) -> Self {
-        let mut tp = Self { sec, subsec, scale };
+    pub const fn new(sec: i64, subsec: u64) -> Self {
+        let mut tp = Self { sec, subsec };
         tp.carry_over();
         tp
     }
@@ -135,7 +135,7 @@ impl Dt {
         let sub_ns = ms * 1_000_000i128 + us * 1_000i128 + ns;
 
         if sub_ns == 0 {
-            return Self::new(total_sec, 0, scale);
+            return Self::from(total_sec, 0, scale);
         }
 
         let abs_ns = sub_ns.unsigned_abs();
@@ -154,13 +154,13 @@ impl Dt {
         Self::from(final_sec, final_frac, scale)
     }
 
-    /// Returns the current system time converted to the requested `Scale`.
+    /// Returns the current system time as TAI from 2000-01-01 noon.
     ///
     /// This method is only available when the `std` feature is enabled and the target
     /// is not WASM with the `js` feature.
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     #[inline]
-    pub fn now(target: Scale) -> Self {
+    pub fn now() -> Self {
         use crate::TSpan;
 
         let now = std::time::SystemTime::now();
@@ -176,19 +176,17 @@ impl Dt {
         };
         crate::Dt::from_epoch(TSpan::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
             .add(crate::TSpan::from_ns(nanos as i128))
-            .with_type(target)
     }
 
-    /// Returns the current system time converted to the requested `Scale`
+    /// Returns the current system time as TAI from 2000-01-01 noon.
     /// (browser WASM version using JavaScript’s `Date.now()`).
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
     #[inline]
-    pub fn now(target: Scale) -> Self {
+    pub fn now() -> Self {
         let millis = js_sys::Date::now() as i64;
         let secs = millis / 1000;
         let nanos = (millis % 1000) * 1_000_000;
         crate::Dt::from_epoch(TSpan::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
             .add(crate::TSpan::from_ns(nanos))
-            .with_type(target)
     }
 }

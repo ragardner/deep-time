@@ -1,4 +1,4 @@
-use deep_time::{Scale, DateOrder, DateParseMode, Lang, ParseCfg, Dt};
+use deep_time::{DateOrder, DateParseMode, Dt, Lang, ParseCfg, Scale};
 
 #[test]
 fn print_stuff() {
@@ -359,16 +359,7 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
             "Dec 31 23:59:59".to_string(),
             "2025-12-31T23:59:59Z".to_string(),
             Some(ParseCfg {
-                ref_time: Some(Dt::from_ymdhms(
-                    2025,
-                    12,
-                    31,
-                    23,
-                    59,
-                    59,
-                    0,
-                    Scale::UTC,
-                )),
+                ref_time: Some(Dt::from_ymdhms(2025, 12, 31, 23, 59, 59, 0, Scale::UTC)),
                 ..Default::default()
             }),
         ),
@@ -379,28 +370,20 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
 }
 
 #[test]
-fn date_parser_keeps_scale() {
+fn date_parser_roundtrip() {
     let tp1 = Dt::from(5, 0, Scale::LTC);
-    let tpxx = tp1.to(Scale::LTC);
-    let tptest = tpxx.to_tai(Scale::LTC);
-    eprintln!("ROUNDTRIP: {:?}, {:?}", tp1, tptest);
-
     let tp2 = Dt::from(5, 0, Scale::GPS);
     let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
     let res_tp2 = Dt::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
-    eprintln!("{:}, {:}", tp1, res_tp1);
-    assert!(tp1 == res_tp1 && tp1.scale() == res_tp1.scale());
-    assert!(tp2 == res_tp2 && tp2.scale() == res_tp2.scale());
+    assert!(tp1 == res_tp1);
+    assert!(tp2 == res_tp2);
 }
 
 #[test]
 fn round_trip_fixed_offsets() {
-    for tp in [
-        Dt::new(5, 0, Scale::TAI),
-        Dt::new(5, 0, Scale::UTC),
-    ] {
+    for tp in [Dt::new(5, 0), Dt::new(5, 0)] {
         let xp1 = tp
             .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
             .unwrap();
@@ -972,16 +955,7 @@ fn date_parser_comprehensive() {
             "Dec 31 23:59:59",
             "2025-12-31T23:59:59Z",
             Some(ParseCfg {
-                ref_time: Some(Dt::from_ymdhms(
-                    2025,
-                    12,
-                    31,
-                    23,
-                    59,
-                    59,
-                    0,
-                    Scale::UTC,
-                )),
+                ref_time: Some(Dt::from_ymdhms(2025, 12, 31, 23, 59, 59, 0, Scale::UTC)),
                 ..Default::default()
             }),
         ),
@@ -1084,7 +1058,7 @@ fn generate_relative_date_test_cases() -> Vec<String> {
 fn relative_date_parser_comprehensive() {
     let cases = generate_relative_date_test_cases();
     let opts = Some(ParseCfg {
-        ref_time: Some(Dt::new(5_000_000, 0, Scale::UTC)),
+        ref_time: Some(Dt::new(5_000_000, 0)),
         ..Default::default()
     });
 

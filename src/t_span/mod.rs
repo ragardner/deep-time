@@ -80,7 +80,7 @@ impl TSpan {
 
     #[inline]
     pub const fn to_gregorian_time(&self, current: Scale) -> GregorianTime {
-        Dt::from(self.sec, self.subsec, current).to_gregorian_time()
+        Dt::from(self.sec, self.subsec, current).to_gregorian_time(Scale::TAI)
     }
 
     #[inline]

@@ -1,4 +1,4 @@
-use crate::{Scale, DtErr, DtErrKind, SEC_PER_DAYI64, Dt, an_err};
+use crate::{Dt, DtErr, DtErrKind, SEC_PER_DAYI64, Scale, an_err};
 
 impl Dt {
     /// Maximum size needed for a CCSDS C & D (CUC) binary packet (with extended P-field).
@@ -200,7 +200,7 @@ impl Dt {
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
-        let gt = self.to_gregorian_time();
+        let gt = self.to_gregorian_time(Scale::UTC);
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
         let mut pos = 0usize;
@@ -277,8 +277,11 @@ impl Dt {
     /// - Any other `Scale` (UTC, TT, GPS, TCG, …) → converted to UTC and uses **CDS**
     ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
     #[inline]
-    pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        match self.scale() {
+    pub fn to_ccsds_bin(
+        &self,
+        scale: Scale,
+    ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
+        match scale {
             Scale::TAI => self.to_ccsds_c(4, 4, false),
             _ => self.to_ccsds_d(2, 1, false),
         }

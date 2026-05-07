@@ -1,6 +1,5 @@
 use crate::{
-    AsciiStr, Scale, DtErr, GregorianTime, STRFTIME_SIZE, Dt, TSpan,
-    tzdb::offset_info_at_utc,
+    AsciiStr, Dt, DtErr, GregorianTime, STRFTIME_SIZE, Scale, TSpan, tzdb::offset_info_at_utc,
 };
 
 impl Dt {
@@ -31,7 +30,7 @@ impl Dt {
 
     /// No-alloc label-only formatting.
     pub fn to_str_bin(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let mut gt = self.to_gregorian_time();
+        let mut gt = self.to_gregorian_time(Scale::TAI);
         gt.set_offset(Some(0)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -102,15 +101,14 @@ impl Dt {
 
     /// Helper for creating an offset adjusted GregorianTime.
     pub(crate) fn gregorian_time_with_offset(&self, secs: i32) -> GregorianTime {
-        let orig_type = self.scale;
         let local_tp = if secs != 0 {
             *self + TSpan::new(secs as i64, 0)
         } else {
             *self
         };
-        let mut gt = local_tp.to_gregorian_time();
+        let mut gt = local_tp.to_gregorian_time(Scale::TAI);
         gt.set_offset(Some(secs));
-        gt.set_type(orig_type);
+        gt.set_type(Scale::TAI);
         gt
     }
 
@@ -120,13 +118,8 @@ impl Dt {
     /// in the IANA transition table. This avoids the previous bug where
     /// a non-UTC `unix_ts` was being passed to `offset_info_at_local`.
     pub(crate) fn gregorian_time_with_tz(&self, tz_name: &str) -> GregorianTime {
-        let orig_type = self.scale;
-
         // 1. Get the true UTC Unix timestamp (this is what we search with)
-        let utc_unix = self
-            .with_type(Scale::UTC)
-            .to_epoch(Dt::UNIX_EPOCH, Scale::UTC)
-            .to_sec();
+        let utc_unix = self.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_sec();
 
         // 2. Look up offset + abbrev at that exact UTC instant
         let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, utc_unix) {
@@ -138,11 +131,11 @@ impl Dt {
         let span = TSpan::new(offset_secs as i64, 0);
         let local_tp = *self + span;
 
-        let mut gt = local_tp.to_gregorian_time();
+        let mut gt = local_tp.to_gregorian_time(Scale::TAI);
         gt.set_offset(Some(offset_secs));
         gt.set_tz(Some(tz_name));
         gt.set_tz_abbrev(Some(abbrev));
-        gt.set_type(orig_type);
+        gt.set_type(Scale::TAI);
         gt
     }
 }

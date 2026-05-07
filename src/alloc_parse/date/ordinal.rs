@@ -1,7 +1,6 @@
-use crate::Scale;
+use crate::Dt;
 use crate::LEGACY_ORDINAL_YEAR_RANGE;
 use crate::TimeParts;
-use crate::Dt;
 
 /// 5-digit legacy ordinal: YYDDD
 #[inline]
@@ -15,7 +14,7 @@ pub(crate) fn parse_yyddd(s: &str) -> Option<Dt> {
             return None;
         }
     }
-    parsed.to_time_point(Some(Scale::UTC)).ok()
+    parsed.to_time_point().ok()
 }
 
 /// 7-digit legacy ordinal: YYYYDDD (only accepted inside LEGACY_ORDINAL_YEAR_RANGE)
@@ -27,5 +26,5 @@ pub(crate) fn parse_yyyyjjj(s: &str) -> Option<Dt> {
             return None;
         }
     }
-    parsed.to_time_point(Some(Scale::UTC)).ok()
+    parsed.to_time_point().ok()
 }

@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, Scale, J2000_JD_TT, JD_EPOCH_DAYS,
-    MJD_1970, Real, SEC_PER_DAYI64, Dt, TSpan,
+    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, Dt, J2000_JD_TT, JD_EPOCH_DAYS,
+    MJD_1970, Real, SEC_PER_DAYI64, Scale, TSpan,
 };
 
 impl Dt {
@@ -73,7 +73,7 @@ impl Dt {
     /// # Precision
     /// Exact (attosecond resolution). Use [`to_mjd`](Self::to_mjd) for the floating-point version.
     pub const fn to_mjd_exact(self, target: Scale) -> (i64, u128) {
-        if self.scale.is_ut() {
+        if target.is_ut() {
             let canon_attos = self.to_tai_attos_since(Dt::UNIX_EPOCH);
             let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
             let frac_attos = canon_attos.rem_euclid(ATTOS_PER_DAY) as u128;
@@ -123,7 +123,7 @@ impl Dt {
                 + (frac_attos as i128)
                 - ATTOS_PER_HALF_DAY;
 
-            Self::from_tai_attos_since(canon_attos, Dt::UNIX_EPOCH).with_type(orig_type)
+            Self::from_tai_attos_since(canon_attos, Dt::UNIX_EPOCH)
         } else {
             let days_since_j2000 = jd_days - J2000_JD_TT;
             let total_sec = days_since_j2000 * SEC_PER_DAYI64

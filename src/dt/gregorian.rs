@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_SEC, Scale, GregorianTime, SEC_PER_DAYI64, Dt, TSpan, Weekday,
+    ATTOS_PER_SEC, Dt, GregorianTime, SEC_PER_DAYI64, Scale, TSpan, Weekday,
     leap_seconds::get_leap_seconds,
 };
 
@@ -26,14 +26,10 @@ impl Dt {
         Self::jdn_to_ymd(jdn)
     }
 
-    pub const fn to_gregorian_time(&self) -> GregorianTime {
-        let scale = self.scale;
-
+    pub const fn to_gregorian_time(&self, scale: Scale) -> GregorianTime {
         // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
         let ymdhms = self.to_ymdhms();
-        let unix_attosec = self
-            .to_epoch(Dt::UNIX_EPOCH, Scale::UTC)
-            .to_attos();
+        let unix_attosec = self.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_attos();
 
         let (iso_yr, iso_wk, iso_wkday) =
             self.to_iso_week_date(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
@@ -244,15 +240,16 @@ impl Dt {
 
         let civil_unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, h, m, s_for_unix) + extra_sec;
 
-        let mut tp = Self::from_epoch(
+        let tp = Self::from_epoch(
             TSpan::new(civil_unix_sec, final_attos),
             Dt::UNIX_EPOCH,
             scale.to_ut(),
         );
         if is_exact_leap_second {
-            tp = tp.add(TSpan::from_sec(1));
+            tp.add(TSpan::from_sec(1))
+        } else {
+            tp
         }
-        tp.with_type(scale)
     }
 
     /// Creates a `Dt` representing **00:00:00 UTC** on the given proleptic
@@ -263,12 +260,7 @@ impl Dt {
     pub const fn from_ymd(yr: i64, mo: u8, day: u8, scale: Scale) -> Self {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
 
-        Self::from_epoch(
-            TSpan::new(unix_sec, 0),
-            Dt::UNIX_EPOCH,
-            scale.to_ut(),
-        )
-        .with_type(scale)
+        Self::from_epoch(TSpan::new(unix_sec, 0), Dt::UNIX_EPOCH, scale.to_ut())
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.

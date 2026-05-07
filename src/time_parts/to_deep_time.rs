@@ -1,20 +1,19 @@
 use crate::tzdb::offset_info_at_local;
 use crate::{
-    Scale, J2000_JD_TT, SEC_PER_DAYI64, Dt, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
+    Dt, J2000_JD_TT, SEC_PER_DAYI64, Scale, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
 
 impl TimeParts {
-    pub fn to_time_point(&self, scale: Option<Scale>) -> Result<Dt, DtErr> {
+    pub fn to_time_point(&self) -> Result<Dt, DtErr> {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
             let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
             let subsec = self.attos.unwrap_or(0);
-            return Ok(Dt::from(sec, subsec, Scale::UTC)
-                .with_type(scale.unwrap_or(self.scale)));
+            return Ok(Dt::from(sec, subsec, Scale::UTC));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -138,8 +137,7 @@ impl TimeParts {
         } else if let Some(Offset::Fixed(offset)) = self.offset {
             sec_utc -= offset as i64; // local civil time → true UTC instant
         }
-        Ok(Dt::from(sec_utc, subsec, Scale::UTC)
-            .with_type(scale.unwrap_or(self.scale)))
+        Ok(Dt::from(sec_utc, subsec, Scale::UTC))
     }
 }
 
@@ -157,7 +155,7 @@ mod tests {
     #[test]
     fn test_unix_epoch_1970() {
         let parsed = TimeParts::from_str("%s", "0", false, false, false).unwrap();
-        let tp = parsed.to_time_point(Some(Scale::TAI)).unwrap();
+        let tp = parsed.to_time_point().unwrap();
 
         let jd = jd_tt(&tp);
         // Unix epoch (1970-01-01 00:00:00 UTC) in TT scale:
@@ -172,7 +170,7 @@ mod tests {
     #[test]
     fn test_j2000_noon_via_unix_timestamp() {
         let parsed = TimeParts::from_str("%s", "946728000", false, false, false).unwrap();
-        let tp = parsed.to_time_point(Some(Scale::TAI)).unwrap();
+        let tp = parsed.to_time_point().unwrap();
 
         let jd = jd_tt(&tp);
         // J2000.0 = JD 2451545.0 in TT. Tiny deviation expected due to leap seconds + TAI→TT.
@@ -194,7 +192,7 @@ mod tests {
             false,
         )
         .unwrap()
-        .to_time_point(Some(Scale::TAI))
+        .to_time_point()
         .unwrap();
 
         let ordinal = TimeParts::from_str(
@@ -205,14 +203,11 @@ mod tests {
             false,
         )
         .unwrap()
-        .to_time_point(Some(Scale::TAI))
+        .to_time_point()
         .unwrap();
 
         assert_eq!(jd_tt(&ymd), jd_tt(&ordinal));
-        assert_eq!(
-            ymd.to_jd_exact(Scale::TT),
-            ordinal.to_jd_exact(Scale::TT)
-        );
+        assert_eq!(ymd.to_jd_exact(Scale::TT), ordinal.to_jd_exact(Scale::TT));
     }
 
     #[test]
@@ -225,7 +220,7 @@ mod tests {
             false,
         )
         .unwrap();
-        let tp = parsed.to_time_point(Some(Scale::TAI)).unwrap();
+        let tp = parsed.to_time_point().unwrap();
 
         // 0.123456789 s = 123456789 × 10¹⁸ attoseconds
         let expected = 123_456_789u64 * 1_000_000_000;
@@ -243,7 +238,7 @@ mod tests {
         )
         .unwrap();
 
-        let tp = parsed.to_time_point(Some(Scale::TAI)).unwrap();
+        let tp = parsed.to_time_point().unwrap();
         let (_, frac_attos) = tp.to_jd_exact(Scale::TT);
 
         // Convert attoseconds → seconds
@@ -262,7 +257,7 @@ mod tests {
     fn test_incomplete_date_error() {
         // Default TimeParts has no year → early failure in to_time_point.
         let pd = TimeParts::default();
-        let err = pd.to_time_point(Some(Scale::TAI)).unwrap_err();
+        let err = pd.to_time_point().unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::Incomplete));
     }
 
@@ -274,7 +269,7 @@ mod tests {
         let mut pd = TimeParts::default();
         pd.year = Some(2023);
         pd.day_of_year = Some(366);
-        let err = pd.to_time_point(Some(Scale::TAI)).unwrap_err();
+        let err = pd.to_time_point().unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::OutOfRange));
     }
 
@@ -285,7 +280,7 @@ mod tests {
         pd.iso_week_year = Some(2024);
         pd.iso_week = Some(54);
         pd.weekday = Some(Weekday::Monday); // required for the ISO path
-        let err = pd.to_time_point(Some(Scale::TAI)).unwrap_err();
+        let err = pd.to_time_point().unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::OutOfRange));
     }
 
@@ -294,18 +289,15 @@ mod tests {
         // Pure ISO week date (%G/%V/%u) is now fully supported in to_time_point
         // via the iso_week_year + iso_week + weekday path (no regular .year required).
         let parsed = TimeParts::from_str("%G-W%V-%u", "2024-W16-1", false, false, false).unwrap();
-        let tp_iso = parsed.to_time_point(Some(Scale::TAI)).unwrap();
+        let tp_iso = parsed.to_time_point().unwrap();
 
         // 2024-W16-1 is Monday, April 15, 2024
         let ymd = TimeParts::from_str("%Y-%m-%d", "2024-04-15", false, false, false)
             .unwrap()
-            .to_time_point(Some(Scale::TAI))
+            .to_time_point()
             .unwrap();
 
         assert_eq!(jd_tt(&tp_iso), jd_tt(&ymd));
-        assert_eq!(
-            tp_iso.to_jd_exact(Scale::TT),
-            ymd.to_jd_exact(Scale::TT)
-        );
+        assert_eq!(tp_iso.to_jd_exact(Scale::TT), ymd.to_jd_exact(Scale::TT));
     }
 }

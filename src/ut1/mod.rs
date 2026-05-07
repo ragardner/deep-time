@@ -1,6 +1,4 @@
-use crate::{
-    ATTOS_PER_DAY, Scale, DtErr, DtErrKind, Real, SEC_PER_DAY_F, Dt, TSpan, an_err,
-};
+use crate::{ATTOS_PER_DAY, Dt, DtErr, DtErrKind, Real, SEC_PER_DAY_F, Scale, TSpan, an_err};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
@@ -310,8 +308,7 @@ impl Dt {
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
     pub fn to_ut1(&self, ut1_data: &Ut1Data) -> Result<Self, DtErr> {
-        let ut1 = self.with_type(Scale::UT1);
-        let (mjd_days, mjd_frac) = ut1.to_mjd_exact(Scale::UT1);
+        let (mjd_days, mjd_frac) = self.to_mjd_exact(Scale::UT1);
 
         let dut1 = ut1_data
             .ut1_minus_utc_exact(mjd_days, mjd_frac)
@@ -320,7 +317,7 @@ impl Dt {
                 an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
             })?;
 
-        Ok(ut1.add(TSpan::from_sec_f(dut1)))
+        Ok(self.add(TSpan::from_sec_f(dut1)))
     }
 
     /// Convert a UT1 `Dt` back to UTC.
@@ -348,6 +345,6 @@ impl Dt {
             utc_guess = ut1.sub(TSpan::from_sec_f(dut1));
         }
 
-        Ok(utc_guess.with_type(Scale::UTC))
+        Ok(utc_guess)
     }
 }

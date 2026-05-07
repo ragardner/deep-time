@@ -1,5 +1,5 @@
 use deep_time::constants::SEC_PER_DAYI64;
-use deep_time::{Scale, Offset, TimeParts, Dt};
+use deep_time::{Dt, Offset, Scale, TimeParts};
 
 #[test]
 fn test_ccsds_c_direct_frac() {
@@ -83,7 +83,7 @@ fn test_ccsds_c_roundtrip() {
     const EPOCH_OFFSET: i64 = 1_325_419_167;
     let tai_sec = total_tai_seconds - EPOCH_OFFSET;
 
-    let t = Dt::new(tai_sec, 123_456_789_000_000_000, Scale::TAI);
+    let t = Dt::new(tai_sec, 123_456_789_000_000_000);
 
     let (buf, len) = t.to_ccsds_c(4, 3, false).unwrap();
     let parsed = TimeParts::from_ccsds_c(&buf[0..len]).unwrap();
@@ -155,9 +155,8 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     let parsed_via_bin = TimeParts::from_ccsds_bin(bytes).unwrap();
     assert_eq!(parsed_parts, parsed_via_bin, "auto-detector failed");
 
-    let recovered_tp = parsed_parts.to_time_point(Some(Scale::UTC)).unwrap();
+    let recovered_tp = parsed_parts.to_time_point().unwrap();
 
-    assert_eq!(tp.scale(), recovered_tp.scale());
     assert_eq!(tp.sec(), recovered_tp.sec());
 
     // Special case for n_subsec == 0: fractional seconds are intentionally dropped
@@ -192,16 +191,7 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
 #[test]
 fn test_ccsds_ccs_month_day_variant() {
     // 2025-04-17 14:30:45.123456789 UTC (Month/Day)
-    let tp = Dt::from_ymdhms(
-        2025,
-        4,
-        17,
-        14,
-        30,
-        45,
-        123_456_789_000_000_000,
-        Scale::UTC,
-    );
+    let tp = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000, Scale::UTC);
 
     roundtrip_ccs(tp, false, 4, 0b0101_0100); // P-field: 01010100 (Code 101, MD, 4 subsec)
 }
@@ -209,16 +199,7 @@ fn test_ccsds_ccs_month_day_variant() {
 #[test]
 fn test_ccsds_ccs_day_of_year_variant() {
     // 2025-107 (April 17 is DOY 107 in 2025) 14:30:45.123456789 UTC
-    let tp = Dt::from_ymdhms(
-        2025,
-        4,
-        17,
-        14,
-        30,
-        45,
-        123_456_789_000_000_000,
-        Scale::UTC,
-    );
+    let tp = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000, Scale::UTC);
 
     roundtrip_ccs(tp, true, 3, 0b0101_1011); // P-field: 01011011 (Code 101, DOY, 3 subsec)
 }
@@ -233,16 +214,7 @@ fn test_ccsds_ccs_leap_second() {
 
 #[test]
 fn test_ccsds_ccs_various_precisions() {
-    let base = Dt::from_ymdhms(
-        2025,
-        4,
-        17,
-        14,
-        30,
-        45,
-        123_456_789_012_345_678,
-        Scale::UTC,
-    );
+    let base = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_012_345_678, Scale::UTC);
 
     for n in 0..=6 {
         roundtrip_ccs(base, false, n, 0b0101_0000 | n); // P-field varies only in low 3 bits
@@ -260,16 +232,7 @@ fn test_ccsds_ccs_edge_cases() {
     roundtrip_ccs(y9999, true, 2, 0b0101_1010);
 
     // Subsecond rounding test (exactly halfway case)
-    let half = Dt::from_ymdhms(
-        2025,
-        4,
-        17,
-        0,
-        0,
-        0,
-        500_000_000_000_000_000,
-        Scale::UTC,
-    );
+    let half = Dt::from_ymdhms(2025, 4, 17, 0, 0, 0, 500_000_000_000_000_000, Scale::UTC);
     let (buf, _) = half.to_ccsds_ccs(false, 1).unwrap();
     // Should round to 50 (i.e. 0.5 s)
     assert_eq!(buf[8], 0x50); // last BCD byte should be 0x50 for "50"

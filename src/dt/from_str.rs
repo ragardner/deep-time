@@ -1,4 +1,4 @@
-use crate::{TimeParts, Dt};
+use crate::{Dt, TimeParts};
 
 impl Dt {
     #[inline]
@@ -16,7 +16,7 @@ impl Dt {
             fmt_can_end_before_inp,
             allow_partial_date,
         )
-        .and_then(|p| p.to_time_point(None))
+        .and_then(|p| p.to_time_point())
         .ok()
     }
 }
