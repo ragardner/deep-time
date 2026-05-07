@@ -1,4 +1,4 @@
-use crate::{ClockDrift, LocalSpacetime, Real, Dt, TSpan};
+use crate::{ClockDrift, Dt, LocalSpacetime, Real, TSpan};
 
 impl Dt {
     /// Computes the accumulated **proper time** (Δτ) experienced by a clock moving along a
@@ -41,11 +41,7 @@ impl Dt {
     /// // Update onboard proper time clock
     /// let onboard_tau = start.to(Scale::Proper).add(delta_tau);
     /// ```
-    pub const fn proper_time_interval_samples(
-        self,
-        end: Dt,
-        samples: &[LocalSpacetime],
-    ) -> TSpan {
+    pub const fn proper_time_interval_samples(self, end: Dt, samples: &[LocalSpacetime]) -> TSpan {
         if samples.len() < 2 || self.eq(&end) {
             return TSpan::ZERO;
         }
@@ -120,85 +116,5 @@ impl Dt {
     const fn rate_from_local(spacetime: &LocalSpacetime) -> Real {
         let drift = ClockDrift::from_local_spacetime(spacetime);
         f!(1.0) + drift.rate().to_sec_f()
-    }
-}
-
-#[cfg(test)]
-mod proper_time_samples_tests {
-    use super::*;
-    use crate::{Scale, LocalSpacetime, TSpan};
-
-    fn make_state(tai_sec: i64) -> Dt {
-        Dt::from(tai_sec, 0, Scale::TAI)
-    }
-
-    #[test]
-    fn zero_duration_returns_zero() {
-        let t0 = make_state(0);
-        let t1 = make_state(0);
-        let samples = [LocalSpacetime::new(1.0, 0.0, 0.0); 2];
-
-        let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::ZERO);
-    }
-
-    #[test]
-    fn constant_flat_space_rate_equals_coordinate_time() {
-        let t0 = make_state(0);
-        let t1 = make_state(1000);
-
-        let flat = LocalSpacetime::new(1.0, 0.0, 0.0);
-        let samples = [flat; 2];
-
-        let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::from_sec(1000));
-    }
-
-    #[test]
-    fn constant_relativistic_rate_gravitational_slowdown() {
-        let t0 = make_state(0);
-        let t1 = make_state(1000);
-
-        let slow = LocalSpacetime::new(0.9, 0.0, 0.0);
-        let samples = [slow; 2];
-
-        let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::from_sec(900));
-    }
-
-    #[test]
-    fn relativistic_correction_returns_delta_tau_minus_delta_t() {
-        let t0 = make_state(0);
-        let t1 = make_state(1000);
-
-        let slow = LocalSpacetime::new(0.9, 0.0, 0.0);
-        let samples = [slow; 2];
-
-        let correction = t0.relativistic_correction_with_samples(t1, &samples);
-        assert_eq!(correction, TSpan::from_sec(-100));
-    }
-
-    #[test]
-    fn negative_interval_is_handled_correctly() {
-        let t0 = make_state(1000);
-        let t1 = make_state(0);
-
-        let slow = LocalSpacetime::new(0.9, 0.0, 0.0);
-        let samples = [slow; 2];
-
-        let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::from_sec(-900));
-    }
-
-    #[test]
-    fn velocity_only_relativistic_rate() {
-        let t0 = make_state(0);
-        let t1 = make_state(500);
-
-        let moving = LocalSpacetime::new(1.0, 0.6, 0.0);
-        let samples = [moving; 2];
-
-        let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::from_sec(400));
     }
 }

@@ -104,9 +104,8 @@ pub(crate) const MS_PER_SEC: i128 = 1_000;
 // JD 2440587.5 = 1970-01-01 00:00:00 UTC (the .5 is handled by ATTOS_PER_HALF_DAY)
 pub(crate) const JD_EPOCH_DAYS: i128 = 2_440_587;
 
-pub(crate) const PLANCK_LENGTH: Real = 1.616255e-35; // meters (standard value)
-pub(crate) const PLANCK_LENGTH_4: Real =
-    PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;
+pub const PLANCK_LENGTH: Real = 1.616255e-35; // meters (standard value)
+pub const PLANCK_LENGTH_4: Real = PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;
 
 /// L_G = 6.969290134 × 10^{-10} (exact IAU) as fixed-point fraction.
 pub(crate) const LG_NUM: i128 = 6_969_290_134;
