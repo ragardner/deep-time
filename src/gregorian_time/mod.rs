@@ -33,8 +33,6 @@ pub struct GregorianTime {
     pub(crate) day_of_yr: u16,
     /// Weekday number (0 = Sunday … 6 = Saturday).
     pub(crate) wkday: u8,
-    /// Output from jd_tt_exact() on TimePoint.
-    pub(crate) jd_tt_exact: (i64, u128),
     /// Sunday based week of year (Range: `0..=53`).
     pub(crate) wk_of_yr_sun: u8,
     /// Monday based week of year (Range: `0..=53`).
@@ -70,7 +68,6 @@ impl GregorianTime {
         iso_wkday: Weekday,
         day_of_yr: u16,
         wkday: u8,
-        jd_tt_exact: (i64, u128),
         wk_of_yr_sun: u8,
         wk_of_yr_mon: u8,
         clock_type: ClockType,
@@ -89,7 +86,6 @@ impl GregorianTime {
             iso_wkday,
             day_of_yr,
             wkday,
-            jd_tt_exact,
             wk_of_yr_sun,
             wk_of_yr_mon,
             offset_sec: None,
@@ -246,20 +242,7 @@ impl GregorianTime {
         self.tz_abbrev = tz_abbrev.and_then(|s| AsciiStr::try_from_str(s).ok());
         self
     }
-    /// Sets the clock type label that will be used when formatting with `%L`.
-    ///
-    /// This is useful when you want to reuse the same `GregorianTime` multiple times
-    /// with different clock scale labels (e.g. once as `TAI`, once as `LTC`, once as `Proper`).
-    ///
-    /// # Example
-    /// ```ignore
-    /// let gp = time_point.to_gregorian_time();
-    ///
-    /// let s1 = gp.set_type(ClockType::LTC)
-    ///            .to_str("%Y-%m-%d %H:%M:%S %L")?;
-    /// let s2 = gp.set_type(ClockType::TAI)
-    ///            .to_str("%Y-%m-%d %H:%M:%S %L")?;
-    /// ```
+
     #[inline]
     pub fn set_type(&mut self, clock_type: ClockType) -> &mut Self {
         self.clock_type = clock_type;
@@ -275,16 +258,23 @@ impl GregorianTime {
         let seconds_from_noon =
             (self.hr as i64 - 12) * 3600i64 + (self.min as i64) * 60i64 + (self.sec as i64);
         let sec = days_since_j2000 * SEC_PER_DAYI64 + seconds_from_noon;
-        TimePoint::new(sec, self.attos, ClockType::UTC).to_type(clock_type)
-    }
+        TimePoint::from(sec, self.attos, ClockType::UTC).with_type(clock_type)
 
+        // TimePoint::from_ymdhms(
+        //     self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0, clock_type,
+        // )
+    }
+}
+
+#[cfg(feature = "wire")]
+impl GregorianTime {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
-    /// Size of the canonical wire representation in bytes (165 bytes).
-    pub const WIRE_SIZE: usize = 164;
+    /// Size of the canonical wire representation in bytes (140 bytes).
+    pub const WIRE_SIZE: usize = 140;
 
-    /// Serializes this `GregorianTime` into a fixed 164-byte buffer.
+    /// Serializes this `GregorianTime` into a fixed 140-byte buffer.
     ///
     /// # Wire Format (Version 1)
     ///
@@ -294,17 +284,14 @@ impl GregorianTime {
     /// - Bytes `25..30`: `mo`, `day`, `hr`, `min`, `sec` (`u8` × 5)
     /// - Bytes `30..38`: `attos` (`u64`)
     /// - Bytes `38..46`: `iso_yr` (`i64`)
-    /// - Bytes `46..48`: `iso_wk` + `iso_wkday`
+    /// - Bytes `46..48`: `iso_wk` + `iso_wkday` (`u8` × 2)
     /// - Bytes `48..50`: `day_of_yr` (`u16`)
     /// - Byte `50`: `wkday` (`u8`)
-    /// - Bytes `51..59`: `jd_tt_exact.0` (`i64`)
-    /// - Bytes `59..75`: `jd_tt_exact.1` (`u128`)
-    /// - Bytes `75..77`: `wk_of_yr_sun` + `wk_of_yr_mon`
-    /// - Bytes `77..82`: `offset_sec` (tag byte + `i32`)
-    /// - Bytes `82..133`: `tz` (tag byte + `AsciiStr<50>`)
-    /// - Bytes `133..163`: `tz_abbrev` (tag byte + `AsciiStr<29>`)
-    /// - Byte `163`: `clock_type` (`ClockType`)
-    #[cfg(feature = "wire")]
+    /// - Bytes `51..53`: `wk_of_yr_sun` + `wk_of_yr_mon` (`u8` × 2)
+    /// - Bytes `53..58`: `offset_sec` (tag byte + `i32`)
+    /// - Bytes `58..109`: `tz` (tag byte + `AsciiStr<50>`)
+    /// - Bytes `109..139`: `tz_abbrev` (tag byte + `AsciiStr<29>`)
+    /// - Byte `139`: `clock_type` (`ClockType`)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -352,12 +339,6 @@ impl GregorianTime {
         buf[offset] = self.wkday;
         offset += 1;
 
-        // jd_tt_exact: (i64, u128) — 8 + 16 = 24 bytes
-        buf[offset..offset + 8].copy_from_slice(&self.jd_tt_exact.0.to_le_bytes());
-        offset += 8;
-        buf[offset..offset + 16].copy_from_slice(&self.jd_tt_exact.1.to_le_bytes());
-        offset += 16;
-
         // wk_of_yr_sun + wk_of_yr_mon (2 bytes)
         buf[offset] = self.wk_of_yr_sun;
         offset += 1;
@@ -399,7 +380,7 @@ impl GregorianTime {
         buf
     }
 
-    /// Deserializes a `GregorianTime` from exactly 164 bytes of wire data.
+    /// Deserializes a `GregorianTime` from exactly 140 bytes of wire data.
     ///
     /// Returns `None` if the version is unknown or any field is invalid.
     ///
@@ -407,7 +388,6 @@ impl GregorianTime {
     ///
     /// Safe for untrusted input. Fixed-size format with strict validation.
     /// No allocation or `unsafe` code used.
-    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -459,12 +439,6 @@ impl GregorianTime {
         // wkday (1 byte)
         let wkday = bytes[offset];
         offset += 1;
-
-        // jd_tt_exact: (i64, u128) — 8 + 16 = 24 bytes
-        let jd0 = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
-        offset += 8;
-        let jd1 = u128::from_le_bytes(bytes[offset..offset + 16].try_into().ok()?);
-        offset += 16;
 
         // wk_of_yr_sun + wk_of_yr_mon (2 bytes)
         let wk_of_yr_sun = bytes[offset];
@@ -519,7 +493,6 @@ impl GregorianTime {
             iso_wkday,
             day_of_yr,
             wkday,
-            jd_tt_exact: (jd0, jd1),
             wk_of_yr_sun,
             wk_of_yr_mon,
             offset_sec,

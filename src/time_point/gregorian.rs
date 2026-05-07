@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_HALF_DAYU, ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ATTOS_PER_SEC_U128, ClockType,
-    GregorianTime, SEC_PER_DAYI64, TimePoint, TimeSpan, Weekday, leap_seconds::get_leap_seconds,
+    ATTOS_PER_HALF_DAYU, ATTOS_PER_SEC, ClockType, GregorianTime, SEC_PER_DAYI64, TimePoint,
+    TimeSpan, Weekday, leap_seconds::get_leap_seconds,
 };
 
 /// Combined Gregorian date + wall time with subsecond precision.
@@ -11,8 +11,8 @@ pub struct YmdHms {
     pub day: u8,
     pub hr: u8,
     pub min: u8,
-    pub sec: u8,     // 0–60 (60 only during leap seconds)
-    pub subsec: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
+    pub sec: u8,    // 0–60 (60 only during leap seconds)
+    pub attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
 }
 
 impl TimePoint {
@@ -26,7 +26,7 @@ impl TimePoint {
         Self::jdn_to_ymd(jdn)
     }
 
-    pub const fn to_gregorian_time(self) -> GregorianTime {
+    pub const fn to_gregorian_time(&self) -> GregorianTime {
         let clock_type = self.clock_type;
 
         // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
@@ -35,17 +35,11 @@ impl TimePoint {
             .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
             .to_attos();
 
-        // Still needed for weekday, wk_sun, wk_mon, and the jd_tt_exact field
-        let (jd_days, frac) = if self.uses_leap_sec() {
-            self.to_jd_exact(ClockType::TT)
-        } else {
-            self.to_jd_exact(self.clock_type)
-        };
-
         let (iso_yr, iso_wk, iso_wkday) =
             self.to_iso_week_date(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
         let day_of_yr = self.day_of_year(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
-        let wkday = self.weekday(Some((jd_days, frac)));
+        let jdn = Self::ymd_to_jdn(ymdhms.yr, ymdhms.mo, ymdhms.day);
+        let wkday = Self::jdn_to_weekday(jdn);
         let wk_of_yr_sun = self.wk_sun(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
         let wk_of_yr_mon = self.wk_mon(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
 
@@ -57,7 +51,7 @@ impl TimePoint {
             hr: ymdhms.hr,
             min: ymdhms.min,
             sec: ymdhms.sec,
-            attos: ymdhms.subsec,
+            attos: ymdhms.attos,
             iso_yr,
             iso_wk,
             iso_wkday,
@@ -65,7 +59,6 @@ impl TimePoint {
             wkday,
             wk_of_yr_sun,
             wk_of_yr_mon,
-            jd_tt_exact: (jd_days, frac),
             offset_sec: None,
             tz: None,
             tz_abbrev: None,
@@ -80,24 +73,13 @@ impl TimePoint {
     /// - For `ClockType::UTC`: Uses a direct Unix-timestamp-based path (fast and clean).
     /// - For all other clock types: Uses the standard TT-based JD path.
     #[inline]
-    pub const fn to_ymdhms(self) -> YmdHms {
-        match self.is_ut() {
-            true => self.to_ymdhms_utc(),
-            false => self.to_ymdhms_non_utc(),
-        }
-    }
-
-    /// Direct UTC civil time path (no TT/JD conversion).
-    /// Correctly handles leap seconds (23:59:60 stays on the correct day).
-    const fn to_ymdhms_utc(self) -> YmdHms {
+    pub const fn to_ymdhms(&self) -> YmdHms {
         // Single call gets us the full civil attos since Unix epoch (POSIX style).
         // This replaces both to_unix_sec() + the old to_attos_since(UNIX_EPOCH).
-        let canon = self
-            .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
-            .to_attos();
+        let canon = self.to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC);
 
-        let unix_sec = canon.div_euclid(ATTOS_PER_SEC_I128) as i64;
-        let subsec = (canon.rem_euclid(ATTOS_PER_SEC_I128)) as u64;
+        let unix_sec = canon.sec;
+        let subsec = canon.subsec;
 
         let is_leap_second = get_leap_seconds(&self, false).is_leap_second;
 
@@ -129,47 +111,7 @@ impl TimePoint {
             hr,
             min,
             sec,
-            subsec,
-        }
-    }
-
-    /// Non-UTC path (uses the existing TT-based JD machinery)
-    const fn to_ymdhms_non_utc(self) -> YmdHms {
-        let (jd_days, frac_attos) = self.to_jd_exact(ClockType::TT);
-
-        // Date: adjust if we're past noon (astronomical day rollover)
-        let jdn = if frac_attos >= ATTOS_PER_HALF_DAYU {
-            jd_days + 1
-        } else {
-            jd_days
-        };
-        let (yr, mo, day) = Self::jdn_to_ymd(jdn);
-
-        // Time of day in TT (fraction since noon)
-        let (_, tt_frac_attos) = self.to_jd_exact(ClockType::TT);
-
-        // Convert attoseconds since noon → seconds since midnight
-        let seconds_since_noon = (tt_frac_attos / ATTOS_PER_SEC_U128) as i64;
-        let subsec = tt_frac_attos.rem_euclid(ATTOS_PER_SEC_U128) as u64;
-
-        let seconds_since_midnight = if seconds_since_noon >= 43200 {
-            seconds_since_noon - 43200
-        } else {
-            seconds_since_noon + 43200
-        };
-
-        let hr = (seconds_since_midnight / 3600) as u8;
-        let min = ((seconds_since_midnight % 3600) / 60) as u8;
-        let sec = (seconds_since_midnight % 60) as u8;
-
-        YmdHms {
-            yr,
-            mo,
-            day,
-            hr,
-            min,
-            sec,
-            subsec,
+            attos: subsec,
         }
     }
 
@@ -310,7 +252,7 @@ impl TimePoint {
         if is_exact_leap_second {
             tp = tp.add(TimeSpan::from_sec(1));
         }
-        tp.to_type(clock_type)
+        tp.with_type(clock_type)
     }
 
     /// Creates a `TimePoint` representing **00:00:00 UTC** on the given proleptic
@@ -326,7 +268,7 @@ impl TimePoint {
             TimePoint::UNIX_EPOCH,
             clock_type.to_ut(),
         )
-        .to_type(clock_type)
+        .with_type(clock_type)
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
@@ -459,7 +401,7 @@ impl TimePoint {
     ///
     /// January 1 is day `1`; December 31 is day `365` or `366` (in leap years).
     /// Uses the proleptic Gregorian calendar.
-    pub const fn day_of_year(self, ymd: Option<(i64, u8, u8)>) -> u16 {
+    pub const fn day_of_year(&self, ymd: Option<(i64, u8, u8)>) -> u16 {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
@@ -480,7 +422,7 @@ impl TimePoint {
     /// The optional `ymd` and `doy` arguments are performance optimisations
     /// (same pattern used throughout the file for `day_of_year`, `to_iso_week_date`, etc.).
     /// Pass whichever you already have; the function will use the fastest path.
-    pub const fn wk_sun(self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
+    pub const fn wk_sun(&self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
@@ -512,7 +454,7 @@ impl TimePoint {
     ///
     /// The optional `ymd` and `doy` arguments are performance optimisations
     /// (same pattern as `wk_sun`, `day_of_year`, `to_iso_week_date`, etc.).
-    pub const fn wk_mon(self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
+    pub const fn wk_mon(&self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
@@ -550,7 +492,7 @@ impl TimePoint {
     /// The optional `ymd` argument is a performance optimization. If provided,
     /// it is used directly; otherwise [`to_gregorian_ymd`](Self::to_gregorian_ymd)
     /// is called internally.
-    pub const fn to_iso_week_date(self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
+    pub const fn to_iso_week_date(&self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {

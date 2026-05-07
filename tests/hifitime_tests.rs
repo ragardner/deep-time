@@ -46,9 +46,7 @@ mod tests {
         }
     }
 
-    fn assert_tp_matches_hifitime(tp: TimePoint, hi: Epoch, msg: &str) {
-        let our_tai = tp.to_type(ClockType::TAI);
-
+    fn assert_tp_matches_hifitime(our_tai: TimePoint, hi: Epoch, msg: &str) {
         let (our_sec, our_attos) = (our_tai.sec(), our_tai.subsec());
         let (hi_sec, hi_attos) = hifitime_tai_parts(hi);
 
@@ -68,7 +66,7 @@ mod tests {
         let hi_tai = hi_utc.to_time_scale(TimeScale::TAI);
         let (hi_tai_sec, hi_tai_subsec) = hifitime_tai_parts(hi_tai);
         let our_tai = TimePoint::new(hi_tai_sec, hi_tai_subsec, ClockType::TAI);
-        let our_utc = our_tai.to_type(ClockType::UTC);
+        let our_utc = our_tai.to(ClockType::UTC).to_tai(ClockType::UTC);
 
         assert_tp_matches_hifitime(our_utc, hi_tai, "UTC leap second 2016-12-31");
     }
@@ -114,14 +112,16 @@ mod tests {
             if to_hifitime(from).is_none() {
                 continue;
             }
-            let our_from = our_base.to_type(from);
+            // tai to scale timespan
+            let our_from = our_base.to(from);
 
             for &to in scales {
                 if to_hifitime(to).is_none() {
                     continue;
                 }
 
-                let our_to = our_from.to_type(to);
+                // scale time span to some other scale
+                let our_to = our_from.to(from, to);
 
                 let ns_since_our_zero = (base_tai_sec as i128) * 1_000_000_000i128
                     + (base_attos / 1_000_000_000) as i128;
@@ -135,7 +135,12 @@ mod tests {
                 let hi_from = hi_base.to_time_scale(to_hifitime(from).unwrap());
                 let hi_to = hi_from.to_time_scale(to_hifitime(to).unwrap());
 
-                assert_tp_matches_hifitime(our_to, hi_to, &format!("{:?} → {:?}", from, to));
+                // make a tai
+                assert_tp_matches_hifitime(
+                    our_to.to_tai(to),
+                    hi_to,
+                    &format!("{:?} → {:?}", from, to),
+                );
             }
         }
     }
@@ -252,7 +257,7 @@ mod tests {
 
     #[test]
     fn roundtrip_traditional_gps_epoch() {
-        let tp = TimePoint::GPS_EPOCH.to_type(ClockType::TAI);
+        let tp = TimePoint::GPS_EPOCH;
         let h = tp.to_hifitime();
         let tp2 = TimePoint::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);

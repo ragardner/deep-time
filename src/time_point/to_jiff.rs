@@ -15,7 +15,7 @@ impl TimePoint {
     ///   is outside the range supported by Jiff (roughly years 0000–9999).
     ///   Never returns an error.
     pub fn to_jiff_timestamp(self) -> Timestamp {
-        let span_since_epoch = self.to_tai_since_ref(&TimePoint::UNIX_EPOCH);
+        let span_since_epoch = self.to_tai_since(TimePoint::UNIX_EPOCH);
         let total_nanos = span_since_epoch.to_attos() / 1_000_000_000i128;
 
         match Timestamp::from_nanosecond(total_nanos) {

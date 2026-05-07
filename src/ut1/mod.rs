@@ -310,8 +310,8 @@ impl TimePoint {
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
     pub fn to_ut1(&self, ut1_data: &Ut1Data) -> Result<Self, DtErr> {
-        let utc = self.to_type(ClockType::UTC);
-        let (mjd_days, mjd_frac) = utc.to_mjd_exact(utc.clock_type);
+        let ut1 = self.with_type(ClockType::UT1);
+        let (mjd_days, mjd_frac) = ut1.to_mjd_exact(ClockType::UT1);
 
         let dut1 = ut1_data
             .ut1_minus_utc_exact(mjd_days, mjd_frac)
@@ -320,7 +320,7 @@ impl TimePoint {
                 an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
             })?;
 
-        Ok(utc.add(TimeSpan::from_sec_f(dut1)).to_type(ClockType::UT1))
+        Ok(ut1.add(TimeSpan::from_sec_f(dut1)))
     }
 
     /// Convert a UT1 `TimePoint` back to UTC.
@@ -333,10 +333,10 @@ impl TimePoint {
             return Err(an_err!(DtErrKind::InternalErr, "contains no data"));
         }
 
-        let mut utc_guess = ut1.to_type(ClockType::UTC);
+        let mut utc_guess = ut1.clone();
 
         for _ in 0..8 {
-            let (mjd_days, mjd_frac) = utc_guess.to_mjd_exact(utc_guess.clock_type);
+            let (mjd_days, mjd_frac) = utc_guess.to_mjd_exact(ClockType::UT1);
 
             let dut1 = ut1_data
                 .ut1_minus_utc_exact(mjd_days, mjd_frac)
@@ -345,9 +345,9 @@ impl TimePoint {
                     an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
                 })?;
 
-            utc_guess = ut1.sub(TimeSpan::from_sec_f(dut1)).to_type(ClockType::UTC);
+            utc_guess = ut1.sub(TimeSpan::from_sec_f(dut1));
         }
 
-        Ok(utc_guess)
+        Ok(utc_guess.with_type(ClockType::UTC))
     }
 }

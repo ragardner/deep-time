@@ -39,7 +39,7 @@ mod tests {
         // The numerical value of the UT1 TimePoint is UTC + DUT1.
         // to_tai_since() computes physical time (via TAI), so we re-interpret
         // the UT1 value as UTC to see the clock difference (DUT1).
-        let diff = ut1.to_type(ClockType::UTC).to_tai_since(utc);
+        let diff = ut1.to_tai_since(utc);
         assert!(
             (diff.to_sec_f() - dut1_expected).abs() < 1e-9,
             "to_ut1 applied wrong DUT1: expected {}, got {}",
@@ -99,7 +99,7 @@ mod tests {
         );
 
         // Verify the numerical difference is exactly the DUT1 we expect
-        let diff = ut1.to_type(ClockType::UTC).to_tai_since(utc);
+        let diff = ut1.with_type(ClockType::UTC).to_tai_since(utc);
         assert!(
             (diff.to_sec_f() - dut1_expected).abs() < 1e-10,
             "to_ut1 applied wrong DUT1: expected {}, got {}",

@@ -117,7 +117,7 @@ fn test_ccsds_d_roundtrip() {
     const EPOCH_OFFSET: i64 = 1_325_419_135;
     let utc_sec = total_utc_seconds - EPOCH_OFFSET;
 
-    let t = TimePoint::new(utc_sec, 400_000_000_000, ClockType::UTC);
+    let t = TimePoint::from(utc_sec, 400_000_000_000, ClockType::UTC);
 
     let (buf, len) = t.to_ccsds_d(2, 1, false).unwrap();
     let parsed = TimeParts::from_ccsds_d(&buf[0..len]).unwrap();

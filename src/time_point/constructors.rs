@@ -58,7 +58,7 @@ impl TimePoint {
     /// even after the observer has left the original reference frame.
     #[inline]
     pub const fn new_custom_clock(self, drift: ClockDrift) -> ClockModel {
-        ClockModel::custom(self, drift)
+        ClockModel::new(ClockType::Custom, self, drift)
     }
 
     /// Creates a new local clock model with zero drift using this instant as the reference epoch.
@@ -70,15 +70,15 @@ impl TimePoint {
     }
 
     #[inline]
-    pub const fn from_tai_sec(sec: i64) -> Self {
-        Self::from(sec, 0, ClockType::TAI)
-    }
-
-    #[inline]
     pub const fn from_attos(attos: i128, clock_type: ClockType) -> Self {
         let sec = (attos / ATTOS_PER_SEC as i128) as i64;
         let subsec = (attos % ATTOS_PER_SEC as i128) as u64;
         Self::from(sec, subsec, clock_type)
+    }
+
+    #[inline]
+    pub const fn from_sec(sec: i64, clock_type: ClockType) -> Self {
+        Self::from(sec, 0, clock_type)
     }
 
     #[inline]
@@ -166,25 +166,6 @@ impl TimePoint {
         Self::from(final_sec, final_frac, clock_type)
     }
 
-    /// Creates a `TimePoint` from a fully self-describing `ClockModel`.
-    ///
-    /// This is the recommended constructor when a spacecraft already carries its own
-    /// relativistic clock model.
-    #[inline]
-    pub const fn create_from_model(model: ClockModel) -> Self {
-        model.reference.to_type(model.base)
-    }
-
-    /// Replaces the current clock type of this `TimePoint` with the base clock type
-    /// of the supplied `ClockModel`.
-    ///
-    /// This is the standard operation performed when a spacecraft receives an updated
-    /// polynomial model from ground control.
-    #[inline]
-    pub const fn apply_new_model(self, model: ClockModel) -> Self {
-        self.to_type(model.base)
-    }
-
     /// Returns the current system time converted to the requested `ClockType`.
     ///
     /// This method is only available when the `std` feature is enabled and the target
@@ -211,7 +192,7 @@ impl TimePoint {
             ClockType::UTC,
         )
         .add(crate::TimeSpan::from_ns(nanos as i128))
-        .to_type(target)
+        .with_type(target)
     }
 
     /// Returns the current system time converted to the requested `ClockType`
@@ -222,8 +203,12 @@ impl TimePoint {
         let millis = js_sys::Date::now() as i64;
         let secs = millis / 1000;
         let nanos = (millis % 1000) * 1_000_000;
-        crate::TimePoint::from_unix_sec(secs)
-            .add(crate::TimeSpan::from_ns(nanos))
-            .to_type(target)
+        crate::TimePoint::from_epoch(
+            TimeSpan::new(secs, 0),
+            TimePoint::UNIX_EPOCH,
+            ClockType::UTC,
+        )
+        .add(crate::TimeSpan::from_ns(nanos))
+        .with_type(target)
     }
 }

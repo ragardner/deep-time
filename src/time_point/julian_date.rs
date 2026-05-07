@@ -37,7 +37,7 @@ impl TimePoint {
             let jd_int = 2_440_587i64 + days_since_1970 as i64;
             (jd_int, frac_attos)
         } else {
-            let TimeSpan { sec, subsec } = self.to_type(target).to();
+            let TimeSpan { sec, subsec } = self.to(target);
             let days_since_j2000 = sec.div_euclid(SEC_PER_DAYI64);
             let remaining_sec = sec.rem_euclid(SEC_PER_DAYI64);
             let frac_attos =
@@ -123,7 +123,7 @@ impl TimePoint {
                 + (frac_attos as i128)
                 - ATTOS_PER_HALF_DAY;
 
-            Self::from_tai_attos_since(canon_attos, TimePoint::UNIX_EPOCH).to_type(orig_type)
+            Self::from_tai_attos_since(canon_attos, TimePoint::UNIX_EPOCH).with_type(orig_type)
         } else {
             let days_since_j2000 = jd_days - J2000_JD_TT;
             let total_sec = days_since_j2000 * SEC_PER_DAYI64

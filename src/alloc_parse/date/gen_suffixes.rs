@@ -64,7 +64,7 @@ fn get_offset_suffix(class: &DateClassification) -> Option<String> {
                     s.push_str(offset_spec(colon, true));
                     s.push_str("[%Q]");
                 }
-                _ => unreachable!(),
+                _ => return None,
             }
             Some(s)
         }
@@ -79,7 +79,7 @@ fn build_time_bases(class: &DateClassification) -> Vec<String> {
     let (preferred_has_seconds, time_colons) = match class.time {
         TimeType::Hm { colons } => (false, colons),
         TimeType::HmS { colons } => (true, colons),
-        TimeType::None => unreachable!(),
+        TimeType::None => return suffixes,
     };
     let time_sep = if time_colons { ":" } else { "" };
     let is_12h = class.has_ampm;

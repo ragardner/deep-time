@@ -297,7 +297,7 @@ impl ObserverState {
         rx: ObserverState,
         context: LightContext,
     ) -> TimeSpan {
-        let span = rx.time.to_tai_since_ref(&self.time);
+        let span = rx.time.to_tai_since(self.time);
 
         let tx_drift = ClockDrift::from_velocity_potential_and_scale(
             self.velocity.speed(),
@@ -411,7 +411,7 @@ impl ObserverState {
             let full_delay = geometric.add(rel_correction);
 
             let new_rx_time = self.time.add(full_delay);
-            let change = new_rx_time.to_tai_since_ref(&rx.time);
+            let change = new_rx_time.to_tai_since(rx.time);
 
             rx = rx_provider(new_rx_time);
             rx.time = new_rx_time;
@@ -545,7 +545,7 @@ impl ObserverState {
             return self.one_way_relativistic_delay_to(rx, context);
         }
 
-        let dt_sec = rx.time.to_tai_since_ref(&self.time).to_sec_f();
+        let dt_sec = rx.time.to_tai_since(self.time).to_sec_f();
 
         let num_samples = samples.len();
         let n = f!(num_samples);
@@ -795,7 +795,7 @@ mod relativistic_tests {
         assert!(correction.to_sec_f().abs() < 1e-5);
 
         let geometric_sec = tx_pos.distance_to(rx_pos) / C;
-        let total_sec = final_rx_time.to_tai_since_ref(&tx.time).to_sec_f();
+        let total_sec = final_rx_time.to_tai_since(tx.time).to_sec_f();
         assert!(
             (total_sec - geometric_sec).abs() < 1e-4,
             "Converged receive time deviates from geometric light time by {:.6} s",

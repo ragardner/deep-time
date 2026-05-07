@@ -177,7 +177,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
 /// The offset is computed using:
 /// `offset = entry.offset + (MJD − entry.mjd_ref) × entry.drift`
 pub const fn historical_sofa_for_utc_to_tai(utc: &TimePoint) -> Option<Real> {
-    let TimeSpan { sec, .. } = utc.to();
+    let TimeSpan { sec, .. } = utc.to(ClockType::UTCSofa);
     // < 1961-1-1 midnight, or >= utc 1972-1-1 midnight
     if sec < -1230724800 || sec >= -883656990 {
         return None;

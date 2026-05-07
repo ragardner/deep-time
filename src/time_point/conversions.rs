@@ -39,7 +39,7 @@ impl TimePoint {
     /// Copies and sets the [`ClockType`] of this `TimePoint` in place while preserving the exact numerical seconds
     /// and attoseconds values.
     #[inline]
-    pub const fn to_type(self, target: ClockType) -> TimePoint {
+    pub const fn with_type(self, target: ClockType) -> TimePoint {
         if (self.clock_type as u8) == (target as u8) {
             return self;
         }
@@ -86,19 +86,17 @@ impl TimePoint {
 
             ClockType::TCG => {
                 let tt = Self::tcg_to_tt(raw);
-                tt.sub(TT_TAI_OFFSET_SPAN).to_type(ClockType::TCG)
+                tt.sub(TT_TAI_OFFSET_SPAN).with_type(ClockType::TCG)
             }
 
             ClockType::TCB => {
                 let tdb = Self::tcb_to_tdb(raw);
-                let tai = Self::tdb_to_tai(tdb);
-                TimePoint::new(tai.sec, tai.subsec, ClockType::TCB)
+                Self::tdb_to_tai(tdb).with_type(ClockType::TCB)
             }
 
             ClockType::LTC => {
                 let tt = Self::ltc_to_tt(raw);
-                let tai = tt.sub(TT_TAI_OFFSET_SPAN);
-                TimePoint::new(tai.sec, tai.subsec, ClockType::LTC)
+                tt.sub(TT_TAI_OFFSET_SPAN).with_type(ClockType::LTC)
             }
         }
     }
@@ -108,8 +106,8 @@ impl TimePoint {
     ///
     /// This is the recommended way for callers to obtain the representation on
     /// a particular scale after construction via [`Self::from`].
-    pub const fn to(self) -> TimeSpan {
-        match self.clock_type {
+    pub const fn to(&self, clock_type: ClockType) -> TimeSpan {
+        match clock_type {
             ClockType::TAI | ClockType::Proper | ClockType::Custom | ClockType::UT1 => {
                 self.to_span()
             }
@@ -149,14 +147,14 @@ impl TimePoint {
 
             ClockType::BDT => self.sub(TimeSpan::SEC_33).to_span(),
 
-            ClockType::TDB | ClockType::ET => Self::tai_to_tdb(self).to_span(),
+            ClockType::TDB | ClockType::ET => Self::tai_to_tdb(*self).to_span(),
 
-            ClockType::TCG => Self::tai_to_tcg(self).to_span(),
+            ClockType::TCG => Self::tai_to_tcg(*self).to_span(),
 
-            ClockType::TCB => Self::tai_to_tcb(self).to_span(),
+            ClockType::TCB => Self::tai_to_tcb(*self).to_span(),
 
             ClockType::LTC => {
-                let tt = self.add(TT_TAI_OFFSET_SPAN).to_type(ClockType::TT);
+                let tt = self.add(TT_TAI_OFFSET_SPAN).with_type(ClockType::TT);
                 Self::tt_to_ltc(tt).to_span()
             }
         }
@@ -165,15 +163,10 @@ impl TimePoint {
     /// Converts this instant to any other [`ClockType`] while applying an exact quadratic relativistic
     /// or clock-drift correction defined by a [`ClockDrift`] model relative to a reference instant.
     #[inline]
-    pub const fn convert_using_drift(
-        self,
-        target: ClockType,
-        reference: Self,
-        drift: ClockDrift,
-    ) -> Self {
+    pub const fn convert_using_drift(self, reference: Self, drift: ClockDrift) -> Self {
         let span = self.to_tai_since(reference);
         let correction = drift.time_diff_after(&span);
-        self.add(correction).to_type(target)
+        self.add(correction)
     }
 
     /// Performs the inverse conversion of [`Self::convert_using_drift`], recovering the original proper
@@ -181,14 +174,9 @@ impl TimePoint {
     ///
     /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
     /// case of a pure constant offset the function returns immediately without iteration.
-    pub const fn convert_back_using_drift(
-        self,
-        source: ClockType,
-        reference: Self,
-        drift: ClockDrift,
-    ) -> Self {
+    pub const fn convert_back_using_drift(self, reference: Self, drift: ClockDrift) -> Self {
         if drift.rate().is_zero() && drift.accel().is_zero() {
-            return self.sub(*drift.constant()).to_type(source);
+            return self.sub(*drift.constant());
         }
         let mut guess = self;
         let mut i = 0u32;
@@ -198,7 +186,7 @@ impl TimePoint {
             guess = self.sub(correction);
             i += 1;
         }
-        guess.to_type(source)
+        guess
     }
 
     /// Converts this instant using a self-describing [`ClockModel`].
@@ -207,13 +195,13 @@ impl TimePoint {
     /// or any model with a defined base and drift).
     #[inline]
     pub const fn convert_using_model(self, model: ClockModel) -> Self {
-        self.convert_using_drift(model.base, model.reference, model.drift)
+        self.convert_using_drift(model.reference, model.drift)
     }
 
     /// Performs the inverse conversion of [`Self::convert_using_model`].
     #[inline]
     pub const fn convert_back_using_model(self, model: ClockModel) -> Self {
-        self.convert_back_using_drift(model.base, model.reference, model.drift)
+        self.convert_back_using_drift(model.reference, model.drift)
     }
 
     /// Computes the difference TDB − TT (in seconds) using the four dominant
@@ -291,9 +279,9 @@ impl TimePoint {
     }
 
     const fn tai_to_tdb(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN).to_type(ClockType::TT);
+        let tt = tai.add(TT_TAI_OFFSET_SPAN).with_type(ClockType::TT);
         let span = Self::tdb_minus_tt(tt.sec, tt.subsec);
-        tt.add(span).to_type(ClockType::TDB)
+        tt.add(span).with_type(ClockType::TDB)
     }
 
     const fn tdb_to_tai(tdb: Self) -> Self {
@@ -307,7 +295,7 @@ impl TimePoint {
     }
 
     const fn tai_to_tcg(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN).to_type(ClockType::TT);
+        let tt = tai.add(TT_TAI_OFFSET_SPAN).with_type(ClockType::TT);
         Self::tt_to_tcg(tt)
     }
 
@@ -368,14 +356,14 @@ impl TimePoint {
         let elapsed = Self::elapsed_to_attos_since_ref(tt);
         let span_attos = Self::mul_lg(elapsed);
         tt.add(TimeSpan::from_attos(span_attos))
-            .to_type(ClockType::TCG)
+            .with_type(ClockType::TCG)
     }
 
     const fn tcg_to_tt(tcg: Self) -> Self {
         let elapsed_cg = Self::elapsed_to_attos_since_ref(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
         tcg.sub(TimeSpan::from_attos(span_attos))
-            .to_type(ClockType::TT)
+            .with_type(ClockType::TT)
     }
 
     const fn tcb_to_tdb(tcb: Self) -> Self {
@@ -383,29 +371,29 @@ impl TimePoint {
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
         tcb.sub(TimeSpan::from_attos(span_attos))
             .sub(TimeSpan::from_attos(TDB0_ATTOS))
-            .to_type(ClockType::TDB)
+            .with_type(ClockType::TDB)
     }
 
     const fn tdb_to_tcb(tdb: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(tdb.to_type(ClockType::TT));
+        let elapsed = Self::elapsed_to_attos_since_ref(tdb.with_type(ClockType::TT));
         let span_attos = Self::mul_lb(elapsed);
         tdb.add(TimeSpan::from_attos(span_attos))
             .add(TimeSpan::from_attos(TDB0_ATTOS))
-            .to_type(ClockType::TCB)
+            .with_type(ClockType::TCB)
     }
 
     const fn tt_to_ltc(tt: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_ref(tt);
         let span_attos = Self::mul_lm(elapsed);
         tt.add(TimeSpan::from_attos(span_attos))
-            .to_type(ClockType::LTC)
+            .with_type(ClockType::LTC)
     }
 
     const fn ltc_to_tt(ltc: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_ref(ltc);
         let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
         ltc.sub(TimeSpan::from_attos(span_attos))
-            .to_type(ClockType::TT)
+            .with_type(ClockType::TT)
     }
 
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
@@ -433,7 +421,7 @@ impl TimePoint {
     /// The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
     /// [`ClockType`]. Leap seconds are automatically accounted for when converting from UTC.
     pub const fn to_msd_exact(self) -> (i64, u128) {
-        let tt = self.to_type(ClockType::TT).to();
+        let tt = self.to(ClockType::TT);
         let elapsed = Self::elapsed_to_attos_since_mars_ref(tt);
         let attos_per_sol = MARS_SOL_ATTOS;
 

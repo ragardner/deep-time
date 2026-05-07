@@ -1,4 +1,4 @@
-use crate::ATTOS_PER_SEC;
+use crate::{ATTOS_PER_SEC, ClockType, GregorianTime, TimePoint};
 
 mod arithmetic;
 mod constructors;
@@ -66,6 +66,26 @@ impl TimeSpan {
             self.subsec %= ATTOS_PER_SEC;
         }
         self
+    }
+
+    #[inline]
+    pub const fn to_tai(&self, current: ClockType) -> TimePoint {
+        TimePoint::from(self.sec, self.subsec, current)
+    }
+
+    #[inline]
+    pub const fn to(&self, current: ClockType, target: ClockType) -> TimeSpan {
+        TimePoint::from(self.sec, self.subsec, current).to(target)
+    }
+
+    #[inline]
+    pub const fn to_gregorian_time(&self, clock_type: ClockType) -> GregorianTime {
+        TimePoint::from(self.sec, self.subsec, clock_type).to_gregorian_time()
+    }
+
+    #[inline]
+    pub const fn to_epoch(&self, epoch: TimePoint, clock_type: ClockType) -> Self {
+        TimePoint::from(self.sec, self.subsec, clock_type).to_epoch(epoch, clock_type)
     }
 }
 

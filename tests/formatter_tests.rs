@@ -23,9 +23,11 @@ mod format_tests {
             123_456_789_000_000_000,
             ClockType::UTC,
         );
+        eprintln!("{:?}", leap);
 
         // === Gotcha 1: Civil time must show sec=60 (not roll over to next day) ===
         let g = leap.to_ymdhms();
+        eprintln!("{:?}", g);
         assert_eq!(g.yr, 2016);
         assert_eq!(g.mo, 12);
         assert_eq!(g.day, 31);
@@ -35,7 +37,7 @@ mod format_tests {
             g.sec, 60,
             "Leap second must be represented as 60, not rolled over"
         );
-        assert_eq!(g.subsec, 123_456_789_000_000_000);
+        assert_eq!(g.attos, 123_456_789_000_000_000);
 
         // === Gotcha 2: Round-trip must be exact ===
         let roundtrip = TimePoint::from_ymdhms(

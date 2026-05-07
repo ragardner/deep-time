@@ -7,7 +7,7 @@ mod tests {
     use core::fmt::Debug;
     use deep_time::{
         ClockDrift, ClockModel, ClockType, GregorianTime, Meridiem, Offset, TimeParts, TimePoint,
-        TimeRange, TimeSpan, Weekday, constants::ATTOS_PER_HALF_DAYU,
+        TimeRange, TimeSpan, Weekday,
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -60,7 +60,8 @@ mod tests {
 
     #[test]
     fn test_clockmodel_roundtrip() {
-        let model = ClockModel::proper(
+        let model = ClockModel::new(
+            ClockType::Proper,
             TimePoint::new(0, 0, ClockType::TAI),
             ClockDrift::from_offset_and_rate(TimeSpan::from_sec(42), TimeSpan::from_ns(1)),
         );
@@ -101,7 +102,6 @@ mod tests {
             Weekday::Wednesday,                    // iso_wkday
             360,                                   // day_of_yr
             3,                                     // wkday
-            (2460670, ATTOS_PER_HALF_DAYU),        // jd_tt_exact
             51,                                    // wk_of_yr_sun
             52,                                    // wk_of_yr_mon
             ClockType::UTC,                        // clock_type

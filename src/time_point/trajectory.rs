@@ -28,8 +28,8 @@ impl TimePoint {
     /// ```rust
     /// use deep_time::{ClockType, TimeSpan, LocalSpacetime, TimePoint};
     ///
-    /// let start = TimePoint::from_tai_sec(0);
-    /// let end   = TimePoint::from_tai_sec(1000);
+    /// let start = TimePoint::from_sec(0, ClockType::TAI);
+    /// let end   = TimePoint::from_sec(1000, ClockType::TAI);
     ///
     /// // Constant metric example (α = 0.9 → dτ/dt = 0.9)
     /// let slow = LocalSpacetime::new(0.9, 0.0, 0.0);
@@ -39,7 +39,7 @@ impl TimePoint {
     /// assert_eq!(delta_tau, TimeSpan::from_sec(900));
     ///
     /// // Update onboard proper time clock
-    /// let onboard_tau = start.to_type(ClockType::Proper).add(delta_tau);
+    /// let onboard_tau = start.to(ClockType::Proper).add(delta_tau);
     /// ```
     pub const fn proper_time_interval_samples(
         self,
@@ -50,7 +50,7 @@ impl TimePoint {
             return TimeSpan::ZERO;
         }
 
-        let mut dt = end.to_tai_since_ref(&self);
+        let mut dt = end.to_tai_since(self);
         let sign = if dt.sec < 0 { f!(-1.0) } else { f!(1.0) };
         if sign < f!(0.0) {
             dt = dt.neg();
@@ -111,7 +111,7 @@ impl TimePoint {
         samples: &[LocalSpacetime],
     ) -> TimeSpan {
         let dtau = self.proper_time_interval_samples(end, samples);
-        let dt = end.to_tai_since_ref(&self);
+        let dt = end.to_tai_since(self);
         dtau.sub(dt)
     }
 

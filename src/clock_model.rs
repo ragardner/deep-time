@@ -31,27 +31,6 @@ impl ClockModel {
         }
     }
 
-    /// Convenience constructor for a pure Proper-time scale with relativistic correction.
-    #[inline]
-    pub const fn proper(reference: TimePoint, drift: ClockDrift) -> Self {
-        Self::new(ClockType::Proper, reference, drift)
-    }
-
-    /// Convenience constructor for a custom scale.
-    #[inline]
-    pub const fn custom(reference: TimePoint, drift: ClockDrift) -> Self {
-        Self::new(ClockType::Custom, reference, drift)
-    }
-
-    /// Attaches this self-describing scale to an existing `TimePoint`.
-    ///
-    /// Useful when you have a raw onboard reading and the latest polynomial update
-    /// from ground control.
-    #[inline]
-    pub const fn attach_to(self, point: TimePoint) -> TimePoint {
-        point.to_type(self.base)
-    }
-
     /// Returns a new `ClockModel` with the same base type and reference epoch,
     /// but with an updated `ClockDrift`.
     #[inline]
@@ -61,12 +40,6 @@ impl ClockModel {
             reference: self.reference,
             drift: new_drift,
         }
-    }
-
-    /// Convenience: creates a `TimePoint` in this scale from a TAI instant.
-    #[inline]
-    pub const fn from_tai(self, tai: TimePoint) -> TimePoint {
-        tai.to_type(self.base)
     }
 }
 

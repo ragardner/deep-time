@@ -14,7 +14,7 @@ impl TimeParts {
             let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
             let subsec = self.attos.unwrap_or(0);
             return Ok(TimePoint::from(sec, subsec, ClockType::UTC)
-                .to_type(clock_type.unwrap_or(self.clock_type)));
+                .with_type(clock_type.unwrap_or(self.clock_type)));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ impl TimeParts {
             sec_utc -= offset as i64; // local civil time → true UTC instant
         }
         Ok(TimePoint::from(sec_utc, subsec, ClockType::UTC)
-            .to_type(clock_type.unwrap_or(self.clock_type)))
+            .with_type(clock_type.unwrap_or(self.clock_type)))
     }
 }
 

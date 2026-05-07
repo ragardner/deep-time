@@ -188,16 +188,7 @@ impl TimePoint {
 
     /// Computes the TAI signed duration between this `TimePoint` and an earlier instant.
     #[inline]
-    pub const fn to_tai_since(self, earlier: Self) -> TimeSpan {
-        TimeSpan::diff_raw(self.sec, self.subsec, earlier.sec, earlier.subsec)
-    }
-
-    /// Computes the signed duration between this `TimePoint` and an earlier instant (by reference).
-    ///
-    /// The duration is always calculated after converting both instants to the TAI timescale internally,
-    /// ensuring correctness even when the two `TimePoint`s belong to different clock types.
-    #[inline]
-    pub const fn to_tai_since_ref(self, earlier: &Self) -> TimeSpan {
+    pub const fn to_tai_since(&self, earlier: Self) -> TimeSpan {
         TimeSpan::diff_raw(self.sec, self.subsec, earlier.sec, earlier.subsec)
     }
 
@@ -206,8 +197,8 @@ impl TimePoint {
     /// This method is lossy by design and is provided for testing and debugging purposes only.
     /// For the exact duration, use `duration_since` or `duration_since_ref`.
     #[inline]
-    pub const fn to_tai_since_f(&self, other: &Self) -> Real {
-        self.to().to_sec_f() - other.to().to_sec_f()
+    pub const fn to_tai_since_f(&self, other: Self) -> Real {
+        self.to(self.clock_type).to_sec_f() - other.to(other.clock_type).to_sec_f()
     }
 
     /// Adds exactly 1 second to this time value using saturating arithmetic.
@@ -434,16 +425,6 @@ impl TimePoint {
         self.add_subsec_span(n.saturating_neg(), 1);
     }
 
-    // =====================================================================
-    // Internal helper methods
-    // =====================================================================
-
-    /// Internal method to add or subtract a subsecond span in a given unit.
-    ///
-    /// This is the core implementation for all subsecond addition and subtraction
-    /// operations. It properly handles carry and borrow between the fractional
-    /// part (`subsec`) and the whole seconds (`sec`), using saturating arithmetic
-    /// throughout.
     #[doc(hidden)]
     const fn add_subsec_span(&mut self, n: i64, unit: u64) {
         if n == 0 {

@@ -27,8 +27,8 @@ impl TimePoint {
     /// - The result is **exact** (attosecond precision) and independent of any
     ///   calendar or timezone rules.
     pub const fn to_gps_wk_and_tow(self) -> (i64, TimeSpan) {
-        let gpst = self.to_type(ClockType::GPS);
-        let elapsed = gpst.to_tai_since_ref(&Self::GPS_EPOCH);
+        let gpst = self.with_type(ClockType::GPS);
+        let elapsed = gpst.to_tai_since(Self::GPS_EPOCH);
         let total_attos = elapsed.to_attos();
         let wk = (total_attos / ATTOS_PER_WEEK) as i64;
         let tow_attos = total_attos % ATTOS_PER_WEEK;
@@ -41,8 +41,8 @@ impl TimePoint {
     /// This is computed directly from GPS Time and is independent of the
     /// Gregorian calendar.
     pub const fn to_gps_day_of_wk(self) -> u8 {
-        let gpst = self.to_type(ClockType::GPS);
-        let elapsed = gpst.to_tai_since_ref(&Self::GPS_EPOCH);
+        let gpst = self.with_type(ClockType::GPS);
+        let elapsed = gpst.to_tai_since(Self::GPS_EPOCH);
 
         let total_sec = elapsed.to_attos() / ATTOS_PER_SEC_I128;
         let secs_into_wk = total_sec.rem_euclid(SEC_PER_WEEK as i128);

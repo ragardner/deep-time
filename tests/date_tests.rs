@@ -380,12 +380,17 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
 
 #[test]
 fn date_parser_keeps_clock_type() {
-    let tp1 = TimePoint::new(5, 0, ClockType::LTC);
-    let tp2 = TimePoint::new(5, 0, ClockType::GPS);
+    let tp1 = TimePoint::from(5, 0, ClockType::LTC);
+    let tpxx = tp1.to(ClockType::LTC);
+    let tptest = tpxx.to_tai(ClockType::LTC);
+    eprintln!("ROUNDTRIP: {:?}, {:?}", tp1, tptest);
+
+    let tp2 = TimePoint::from(5, 0, ClockType::GPS);
     let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let res_tp1 = TimePoint::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
     let res_tp2 = TimePoint::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
+    eprintln!("{:}, {:}", tp1, res_tp1);
     assert!(tp1 == res_tp1 && tp1.clock_type() == res_tp1.clock_type());
     assert!(tp2 == res_tp2 && tp2.clock_type() == res_tp2.clock_type());
 }

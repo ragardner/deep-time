@@ -26,16 +26,14 @@ impl TimePoint {
             return Err(an_err!(DtErrKind::OutOfRange, "frac: {}", n_frac));
         }
 
-        let tai = self.to_type(ClockType::TAI);
-
         const EPOCH_OFFSET: i64 = 1_325_419_167;
-        let total_tai_seconds = tai.sec + EPOCH_OFFSET;
+        let total_tai_seconds = self.sec + EPOCH_OFFSET;
 
         let frac_scaled = if n_frac == 0 {
             0u128
         } else {
             let scale = 1u128 << (8 * n_frac as u32);
-            (tai.subsec as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
+            (self.subsec as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
         };
 
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
@@ -104,7 +102,7 @@ impl TimePoint {
             return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
         }
 
-        let utc = self.to_type(ClockType::UTC);
+        let utc = self.to(ClockType::UTC);
 
         // UTC seconds since 1958-01-01 00:00:00 UTC (exact offset to library UTC zero,
         // accounting for all leap seconds up to the library epoch)
@@ -129,7 +127,7 @@ impl TimePoint {
                 const PS_SCALE: u128 = 1u128 << 32;
                 ((remaining_attos_in_ms * PS_SCALE) / 1_000_000_000_000_000u128) as u64
             }
-            _ => unreachable!(),
+            _ => return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code")),
         };
 
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
@@ -165,7 +163,7 @@ impl TimePoint {
             0 => 0,
             1 => 2,
             2 => 4,
-            _ => unreachable!(),
+            _ => return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code")),
         };
         for i in (0..n_frac).rev() {
             buf[pos] = (frac_scaled >> (i * 8)) as u8;
@@ -202,8 +200,7 @@ impl TimePoint {
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
-        let utc = self.to_type(ClockType::UTC);
-        let gt = utc.to_gregorian_time();
+        let gt = self.to_gregorian_time();
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
         let mut pos = 0usize;
@@ -283,7 +280,7 @@ impl TimePoint {
     pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         match self.clock_type() {
             ClockType::TAI => self.to_ccsds_c(4, 4, false),
-            _ => self.to_type(ClockType::UTC).to_ccsds_d(2, 1, false),
+            _ => self.to_ccsds_d(2, 1, false),
         }
     }
 }

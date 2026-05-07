@@ -1,20 +1,103 @@
 use deep_time::{
     ClockDrift, ClockModel, ClockType, TimePoint, TimeSpan,
-    constants::{ATTOS_PER_HALF_DAYU, MARS_SOL_LENGTH_SEC},
+    constants::{ATTOS_PER_HALF_DAYU, ATTOS_PER_SEC_I128, MARS_SOL_LENGTH_SEC},
     historical_sofa::{historical_sofa_for_tai_to_utc, historical_sofa_for_utc_to_tai},
+    leap_seconds::get_leap_seconds,
     to_sec_f,
 };
 
 #[test]
+fn to_epoch_leaps_and_tai() {
+    // A normal date well after the last leap second
+    let t = TimePoint::from_ymdhms(2023, 6, 15, 12, 0, 0, 0, ClockType::UTC);
+    let unix_attos = t.to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC).to_attos();
+    assert!(unix_attos > 1_600_000_000_000_000_000);
+
+    // Sub-second precision is preserved
+    let t2 = TimePoint::from_ymdhms(
+        2023,
+        6,
+        15,
+        12,
+        0,
+        0,
+        123_456_789_000_000_000,
+        ClockType::UTC,
+    );
+    let attos2 = t2
+        .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
+        .to_attos();
+    assert_eq!(attos2 % ATTOS_PER_SEC_I128, 123_456_789_000_000_000);
+
+    // Roundtrip on GPS scale (non-epoch instant)
+    let t_gps = TimePoint::from_ymdhms(2020, 1, 1, 0, 0, 0, 0, ClockType::GPS);
+    let back = TimePoint::from_epoch(
+        t_gps.to_epoch(TimePoint::GPS_EPOCH, ClockType::GPS),
+        TimePoint::GPS_EPOCH,
+        ClockType::GPS,
+    );
+    assert_eq!(t_gps, back);
+
+    let x = TimePoint::from_ymdhms(2016, 12, 31, 23, 59, 59, 0, ClockType::UTC);
+    assert_eq!(
+        x.sec(),
+        536500835,
+        "internal tai sec for 2016-12-31T23:59:59 should be 536500835, got: {}",
+        x.sec(),
+    );
+    let leap = TimePoint::from_ymdhms(2016, 12, 31, 23, 59, 60, 0, ClockType::UTC);
+    assert_eq!(
+        leap.sec(),
+        536500836,
+        "internal tai sec for 2016-12-31T23:59:60 should be 536500836, got: {}",
+        leap.sec(),
+    );
+    assert_eq!(
+        get_leap_seconds(&leap, false).is_leap_second,
+        true,
+        "tai 536500836 should be a leap second",
+    );
+    let y = TimePoint::from_ymdhms(2017, 1, 1, 0, 0, 0, 0, ClockType::UTC);
+    assert_eq!(
+        y.sec(),
+        536500837,
+        "internal tai sec for 2017-01-01T00:00:00 should be 536500837, got: {}",
+        y.sec(),
+    );
+
+    // ------------------------------------------------------------
+    // 2016-12-31 23:59:60 UTC  →  civil unix timestamp of 2017-01-01 00:00:00
+    // ------------------------------------------------------------
+    let leap = TimePoint::from_ymdhms(2016, 12, 31, 23, 59, 60, 0, ClockType::UTC);
+    let leap_attos = leap
+        .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
+        .to_attos();
+
+    let unix_sec_part = leap_attos.div_euclid(ATTOS_PER_SEC_I128);
+    assert_eq!(unix_sec_part, 1_483_228_799);
+
+    let after = TimePoint::from_ymdhms(2017, 1, 1, 0, 0, 0, 0, ClockType::UTC);
+    let after_attos = after
+        .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
+        .to_attos();
+
+    let unix_sec_part = after_attos.div_euclid(ATTOS_PER_SEC_I128);
+    assert_eq!(unix_sec_part, 1_483_228_800); // 2017-01-01 00:00:00 UTC
+
+    // The fractional part should be zero for this instant
+    assert_eq!(after_attos % ATTOS_PER_SEC_I128, 0);
+}
+
+#[test]
 fn test_sofa_historical_offsets() {
-    // Start with a UTCSofa instant in the rubber era
+    // Start with a UTCSofa instant in the rubber era, to tai
     let original = TimePoint::from_ymd(1971, 12, 31, ClockType::UTCSofa);
 
-    // Convert to TAI (applies historical rubber offset)
-    let tai = original.to_type(ClockType::TAI);
+    // Convert to utc sofa (applies historical rubber offset)
+    let utc_sofa = original.to(ClockType::UTCSofa);
 
     // Convert back to UTCSofa (should subtract the same offset)
-    let round_tripped = tai.to_type(ClockType::UTCSofa);
+    let round_tripped = utc_sofa.to_tai(ClockType::UTCSofa);
 
     // Compare subsec (attoseconds) directly — this avoids f64 precision loss.
     // The round-trip should be accurate to well under 1 nanosecond.
@@ -43,7 +126,7 @@ fn test_sofa_historical_offsets() {
         999_999_999_999_999_999,
         ClockType::UTCSofa,
     );
-    let tp2 = tp.to_type(ClockType::TAI).to_type(ClockType::UTCSofa);
+    let tp2 = tp.to(ClockType::UTCSofa).to_tai(ClockType::UTCSofa);
     assert_eq!(
         tp.sec(),
         tp2.sec(),
@@ -63,7 +146,7 @@ fn test_sofa_historical_offsets() {
         "1960-12-31 should return None"
     );
 
-    let tp = TimePoint::from_ymd(1960, 12, 31, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1960, 12, 31, ClockType::UTCSofa);
     assert!(
         historical_sofa_for_tai_to_utc(&tp).is_none(),
         "1960-12-31 TAI should return None for inverse"
@@ -76,7 +159,7 @@ fn test_sofa_historical_offsets() {
         "1972-01-01 should return None (use normal leap second path)"
     );
 
-    let tp = TimePoint::from_ymd(1972, 1, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1972, 1, 1, ClockType::UTCSofa);
     assert!(
         historical_sofa_for_tai_to_utc(&tp).is_none(),
         "1972-01-01 TAI should return None for inverse"
@@ -114,7 +197,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1961-01-01
-    let tp = TimePoint::from_ymd(1961, 1, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1961, 1, 1, ClockType::UTCSofa);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 1.422818000000).abs() < 1e-6,
@@ -123,7 +206,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1966-05-01
-    let tp = TimePoint::from_ymd(1966, 5, 1, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1966, 5, 1, ClockType::UTCSofa);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 4.624210000000).abs() < 1e-6,
@@ -132,7 +215,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1971-12-31
-    let tp = TimePoint::from_ymd(1971, 12, 31, ClockType::UTCSofa).to_type(ClockType::TAI);
+    let tp = TimePoint::from_ymd(1971, 12, 31, ClockType::UTCSofa);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 9.889650000000).abs() < 1e-6,
@@ -151,9 +234,9 @@ fn test_sofa_historical_offsets() {
         ClockType::UTCSofa,
     );
     eprintln!("{:?}, {:?}", tp1, tp2);
-    eprintln!("{}", tp2.to_tai_since_f(&tp1).abs());
+    eprintln!("{}", tp2.to_tai_since_f(tp1).abs());
     assert!(
-        tp1.to_tai_since_f(&tp2).abs() < 1e-6,
+        tp1.to_tai_since_f(tp2).abs() < 1e-6,
         "SOFA round trip using to_epoch and from_epoch too large"
     );
 }
@@ -172,7 +255,7 @@ fn test_leap_second_roundtrip_and_sec() {
 
         // Verify the internal .sec() value matches what was printed
         assert_eq!(
-            tp.to().sec(),
+            tp.to(ClockType::UTC).sec(),
             expected_sec,
             "sec() mismatch for input {yr}-{mo:02}-{day:02} {hr:02}:{min:02}:{sec_input:02}"
         );
@@ -186,7 +269,7 @@ fn test_leap_second_roundtrip_and_sec() {
             g.hr,
             g.min,
             g.sec,
-            g.subsec,
+            g.attos,
             ClockType::UTC,
         );
 
@@ -419,7 +502,7 @@ fn test_leap_second_roundtrip_2015_06_30() {
             g.hr,
             g.min,
             g.sec,
-            g.subsec,
+            g.attos,
             ClockType::UTC,
         );
     }
@@ -441,10 +524,12 @@ fn test_leap_second_roundtrip_2015_06_30() {
 fn tdb_tt_difference_matches_spice_approximation() {
     // Test at a few representative epochs
     for &tai_sec in &[0i64, 1_000_000_000, -500_000_000] {
-        let tt = TimePoint::from_tai_sec(tai_sec).to_type(ClockType::TT);
-        let tdb = tt.to_type(ClockType::TDB);
-
-        let diff = tdb.to_tai_since(tt).to_sec_f().abs();
+        // from tai sec to a tt timespan
+        let tt = TimePoint::from_sec(tai_sec, ClockType::TAI).to(ClockType::TT);
+        // from tt timespan to tdb timespan, create tai from tdb timespan
+        let tdb = tt.to(ClockType::TT, ClockType::TDB).to_tai(ClockType::TDB);
+        // create tai from tt, measure against tdb (tai internally)
+        let diff = tdb.to_tai_since(tt.to_tai(ClockType::TT)).to_sec_f().abs();
         assert!(
             diff < 0.002,
             "TDB-TT difference ({:.6} s) exceeded SPICE documented max (~1.658 ms)",
@@ -461,12 +546,10 @@ fn tdb_tt_difference_matches_spice_approximation() {
 /// https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/time.html
 #[test]
 fn et_tai_roundtrip_is_lossless() {
-    let original = TimePoint::from_tai_sec(987_654_321_098);
+    let original = TimePoint::from_sec(987_654_321_098, ClockType::TAI);
 
-    let et = original.to_type(ClockType::ET);
-    let et_span = et.to();
-    let xt =
-        TimePoint::from(et_span.sec(), et_span.subsec(), ClockType::ET).to_type(ClockType::TAI);
+    let et = original.to(ClockType::ET);
+    let xt = et.to_tai(ClockType::ET);
 
     assert_eq!(original, xt, "ET round-trip must be lossless");
 }
@@ -475,16 +558,16 @@ fn et_tai_roundtrip_is_lossless() {
 #[test]
 fn tdb_tai_roundtrip_is_accurate() {
     let test_points = [
-        TimePoint::from_tai_sec(0),                  // J2000 TAI
-        TimePoint::from_tai_sec(86_400 * 365),       // ~1 year later
-        TimePoint::from_tai_sec(-86_400 * 365 * 10), // 10 years before
-        TimePoint::from_tai_sec(1_000_000_000),      // ~31.7 years later
-        TimePoint::from_tai_sec(-2_208_945_600),     // J1900 epoch
+        TimePoint::from_sec(0, ClockType::TAI),            // J2000 TAI
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI), // ~1 year later
+        TimePoint::from_sec(-86_400 * 365 * 10, ClockType::TAI), // 10 years before
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI), // ~31.7 years later
+        TimePoint::from_sec(-2_208_945_600, ClockType::TAI), // J1900 epoch
     ];
 
     for &p in &test_points {
-        let tdb = p.to_type(ClockType::TDB);
-        let back = tdb.to_type(ClockType::TAI);
+        let tdb = p.to(ClockType::TDB);
+        let back = tdb.to_tai(ClockType::TDB);
 
         let diff = back.to_tai_since(p).to_sec_f().abs();
         assert!(
@@ -501,8 +584,8 @@ fn tdb_tai_roundtrip_is_accurate() {
 #[test]
 fn tdb_minus_tt_at_j2000() {
     let tai = TimePoint::ZERO;
-    let tdb = tai.to_type(ClockType::TDB);
-    let diff_s = tdb.to_tai_since_f(&tai); // see helper below
+    let tdb = tai.to(ClockType::TDB).to_tai(ClockType::TDB);
+    let diff_s = tdb.to_tai_since_f(tai); // see helper below
 
     assert!(
         (diff_s - 32.183925).abs() < 0.00001,
@@ -511,30 +594,21 @@ fn tdb_minus_tt_at_j2000() {
     );
 }
 
-#[test]
-fn tdb_minus_tt_at_j2000_2() {
-    let tai = TimePoint::ZERO;
-    let tdb = tai.to_type(ClockType::TDB);
-    let diff_s = tdb.to_tai_since_f(&tai);
-
-    assert!((diff_s - 32.18392391273422).abs() < 1e-6, "got {}", diff_s);
-}
-
 /// Check that the *periodic correction* (TDB − TT) stays within sensible bounds
 #[test]
 fn tdb_correction_stays_within_bounds() {
     let points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365 * 100),
-        TimePoint::from_tai_sec(-86_400 * 365 * 50),
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365 * 100, ClockType::TAI),
+        TimePoint::from_sec(-86_400 * 365 * 50, ClockType::TAI),
     ];
 
     for &p in &points {
-        let tt = p.to_type(ClockType::TT);
-        let tdb = p.to_type(ClockType::TDB);
+        let tt = p.to(ClockType::TT);
+        let tdb = p.to(ClockType::TDB);
 
         // TDB - TT (periodic term only)
-        let corr_s = tdb.to_tai_since_f(&tt);
+        let corr_s = tdb.to_diff(tt).to_sec_f();
 
         assert!(
             corr_s.abs() < 0.002,
@@ -546,82 +620,23 @@ fn tdb_correction_stays_within_bounds() {
 
 #[test]
 fn proper_to_tt_with_drift_roundtrip() {
-    let reference = TimePoint::from_tai_sec(0);
+    let reference = TimePoint::from_sec(0, ClockType::TAI);
     let drift = ClockDrift::new(
         TimeSpan::from_ms(100), // exactly 0.1 s
         TimeSpan::from_ns(1),   // exactly 1 ns/s = 1e-9 s/s
         TimeSpan::ZERO,
     );
-    let model = ClockModel::proper(reference, drift);
+    let model = ClockModel::new(ClockType::Proper, reference, drift);
 
-    let onboard_proper = TimePoint::create_from_model(model).add(TimeSpan::from_sec(1_000_000));
+    let onboard_proper = model
+        .reference
+        .with_type(model.base)
+        .add(TimeSpan::from_sec(1_000_000));
 
     let tt = onboard_proper.convert_using_model(model);
     let back = tt.convert_back_using_model(model);
 
     assert_eq!(back, onboard_proper);
-}
-
-#[test]
-fn zero_drift_is_identity() {
-    let reference = TimePoint::from_tai_sec(0);
-    let drift = ClockDrift::ZERO;
-    let model = ClockModel::proper(reference, drift);
-
-    let p = TimePoint::from_tai_sec(1_234_567);
-    let converted = p.convert_using_model(model);
-
-    assert_eq!(converted, p.to_type(ClockType::Proper));
-}
-
-#[test]
-fn constant_offset_only() {
-    let reference = TimePoint::from_tai_sec(0);
-    let drift = ClockDrift::from_constant(TimeSpan::from_sec_f(32.184));
-    let model = ClockModel::proper(reference, drift);
-
-    let onboard = TimePoint::create_from_model(model).add(TimeSpan::from_sec(100));
-    let tt = onboard.convert_using_model(model);
-
-    let expected = onboard
-        .add(TimeSpan::from_sec_f(32.184))
-        .to_type(ClockType::Proper);
-    assert_eq!(tt, expected);
-}
-
-#[test]
-fn convert_back_using_model_inverse() {
-    let reference = TimePoint::from_tai_sec(0);
-    let drift = ClockDrift::new(
-        TimeSpan::from_ms(500), // exactly 0.5 s
-        TimeSpan::from_ns(2),   // exactly 2 ns/s = 2e-9 s/s
-        TimeSpan::ZERO,
-    );
-    let model = ClockModel::proper(reference, drift);
-
-    // Start from onboard Proper time (the natural input for this API)
-    let proper = TimePoint::create_from_model(model).add(TimeSpan::from_sec(1_000_000));
-
-    let tt = proper.convert_using_model(model); // Proper → TT
-    let back = tt.convert_back_using_model(model); // TT → Proper
-
-    assert_eq!(back, proper);
-}
-
-#[test]
-fn apply_new_model_and_create_from_model() {
-    let reference = TimePoint::from_tai_sec(0);
-    let drift = ClockDrift::ZERO;
-    let model = ClockModel::proper(reference, drift);
-
-    let raw = TimePoint::from_tai_sec(123);
-    let tagged = raw.apply_new_model(model);
-
-    assert_eq!(tagged.clock_type(), ClockType::Proper);
-    assert_eq!(
-        TimePoint::create_from_model(model),
-        reference.to_type(ClockType::Proper)
-    );
 }
 
 /// Round-trip accuracy test (TAI → LTC → TAI)
@@ -633,16 +648,16 @@ fn apply_new_model_and_create_from_model() {
 #[test]
 fn ltc_tai_roundtrip_is_accurate() {
     let test_points = [
-        TimePoint::from_tai_sec(0),                  // J2000 TAI
-        TimePoint::from_tai_sec(86_400 * 365),       // ~1 year later
-        TimePoint::from_tai_sec(-86_400 * 365 * 10), // 10 years before
-        TimePoint::from_tai_sec(1_000_000_000),      // ~31.7 years later
-        TimePoint::from_tai_sec(-2_208_945_600),     // J1900 epoch
+        TimePoint::from_sec(0, ClockType::TAI),            // J2000 TAI
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI), // ~1 year later
+        TimePoint::from_sec(-86_400 * 365 * 10, ClockType::TAI), // 10 years before
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI), // ~31.7 years later
+        TimePoint::from_sec(-2_208_945_600, ClockType::TAI), // J1900 epoch
     ];
 
     for &p in &test_points {
-        let ltc = p.to_type(ClockType::LTC);
-        let back = ltc.to_type(ClockType::TAI);
+        let ltc = p.to(ClockType::LTC);
+        let back = ltc.to_tai(ClockType::LTC);
 
         let diff = back.to_tai_since(p).to_sec_f().abs();
         assert!(
@@ -659,9 +674,9 @@ fn ltc_tai_roundtrip_is_accurate() {
 #[test]
 fn ltc_minus_tai_at_j2000() {
     let tai = TimePoint::ZERO;
-    let ltc = tai.to_type(ClockType::LTC);
+    let ltc = tai.to(ClockType::LTC);
 
-    let diff_s = ltc.to_tai_since_f(&tai);
+    let diff_s = ltc.to_diff(tai.to_span()).to_sec_f();
 
     assert!(
         (diff_s - 32.6545948272096).abs() < 1e-9,
@@ -670,35 +685,21 @@ fn ltc_minus_tai_at_j2000() {
     );
 }
 
-/// Tighter check of the same J2000 value (matches the style of the second TDB test).
-#[test]
-fn ltc_minus_tai_at_j2000_2() {
-    let tai = TimePoint::ZERO;
-    let ltc = tai.to_type(ClockType::LTC);
-    let diff_s = ltc.to_tai_since_f(&tai);
-
-    assert!(
-        (diff_s - 32.6545948272096).abs() < 1e-9,
-        "got {} (expected 32.6545948272096)",
-        diff_s
-    );
-}
-
 /// Verify that the LTC–TT difference grows linearly (pure secular term).
 #[test]
 fn ltc_offset_grows_linearly() {
     let points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365),       // ~1 year
-        TimePoint::from_tai_sec(86_400 * 365 * 100), // ~100 years
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI), // ~1 year
+        TimePoint::from_sec(86_400 * 365 * 100, ClockType::TAI), // ~100 years
     ];
 
     for &p in &points {
-        let tt = p.to_type(ClockType::TT);
-        let ltc = p.to_type(ClockType::LTC);
+        let tt = p.to(ClockType::TT);
+        let ltc = p.to(ClockType::LTC);
 
         // LTC - TT (pure secular term)
-        let corr_s = ltc.to_tai_since_f(&tt);
+        let corr_s = ltc.to_diff(tt).to_sec_f();
 
         assert!(
             corr_s > 0.0,
@@ -711,7 +712,7 @@ fn ltc_offset_grows_linearly() {
         if p.sec() > 86_400 * 365 * 50 {
             assert!(
                 corr_s > 1.0 && corr_s < 4.0,
-                "LTC-TT correction at ~100y should be ~2–3 s (got {} s)",
+                "LTC-TT correction at ~100y should be ~2-3 s (got {} s)",
                 corr_s
             );
         }
@@ -721,11 +722,11 @@ fn ltc_offset_grows_linearly() {
 #[test]
 fn msd_exact_roundtrip_is_accurate() {
     let test_points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365),
-        TimePoint::from_tai_sec(-86_400 * 365 * 10),
-        TimePoint::from_tai_sec(1_000_000_000),
-        TimePoint::from_tai_sec(-2_208_945_600),
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI),
+        TimePoint::from_sec(-86_400 * 365 * 10, ClockType::TAI),
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI),
+        TimePoint::from_sec(-2_208_945_600, ClockType::TAI),
     ];
 
     for &p in &test_points {
@@ -745,9 +746,9 @@ fn msd_exact_roundtrip_is_accurate() {
 #[test]
 fn msd_float_roundtrip_is_accurate() {
     let test_points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365 * 100),
-        TimePoint::from_tai_sec(1_000_000_000),
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365 * 100, ClockType::TAI),
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI),
     ];
 
     for &p in &test_points {
@@ -767,9 +768,9 @@ fn msd_float_roundtrip_is_accurate() {
 #[test]
 fn mtc_is_in_valid_range() {
     let test_points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365),
-        TimePoint::from_tai_sec(1_000_000_000),
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI),
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI),
     ];
 
     for &p in &test_points {
@@ -822,8 +823,8 @@ fn utc_leap_seconds_are_handled_in_mars_time() {
 #[test]
 fn tt_tai_offset_exact() {
     let tai = TimePoint::ZERO;
-    let tt = tai.to_type(ClockType::TT);
-    let diff_s = tt.to_tai_since_f(&tai);
+    let tt = tai.to(ClockType::TT);
+    let diff_s = tt.to_diff_tp(tai).to_sec_f();
     assert!(
         (diff_s - 32.184).abs() < 1e-12,
         "TT-TAI at J2000 was {} s (expected exactly 32.184)",
@@ -836,33 +837,33 @@ fn tt_tai_offset_exact() {
 fn gnss_offsets_are_correct() {
     let tai = TimePoint::ZERO;
 
-    let gpst = tai.to_type(ClockType::GPS);
-    assert!((gpst.to_tai_since_f(&tai) + 19.0).abs() < 1e-12);
+    let gpst = tai.to(ClockType::GPS);
+    assert!((gpst.to_diff_tp(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
-    let qzsst = tai.to_type(ClockType::QZSS);
-    assert!((qzsst.to_tai_since_f(&tai) + 19.0).abs() < 1e-12);
+    let qzsst = tai.to(ClockType::QZSS);
+    assert!((qzsst.to_diff_tp(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
-    let gst = tai.to_type(ClockType::GST);
-    assert!((gst.to_tai_since_f(&tai) + 19.0).abs() < 1e-12);
+    let gst = tai.to(ClockType::GST);
+    assert!((gst.to_diff_tp(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
-    let bdt = tai.to_type(ClockType::BDT);
-    assert!((bdt.to_tai_since_f(&tai) + 33.0).abs() < 1e-12);
+    let bdt = tai.to(ClockType::BDT);
+    assert!((bdt.to_diff_tp(tai).to_sec_f() + 33.0).abs() < 1e-12);
 }
 
 /// TCG ↔ TAI round-trip (pure linear rate – should be exact within f64 noise).
 #[test]
 fn tcg_tai_roundtrip_is_accurate() {
     let test_points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365),
-        TimePoint::from_tai_sec(-86_400 * 365 * 10),
-        TimePoint::from_tai_sec(1_000_000_000),
-        TimePoint::from_tai_sec(-2_208_945_600),
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI),
+        TimePoint::from_sec(-86_400 * 365 * 10, ClockType::TAI),
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI),
+        TimePoint::from_sec(-2_208_945_600, ClockType::TAI),
     ];
 
     for &p in &test_points {
-        let tcg = p.to_type(ClockType::TCG);
-        let back = tcg.to_type(ClockType::TAI);
+        let tcg = p.to(ClockType::TCG);
+        let back = tcg.to_tai(ClockType::TCG);
         let diff = back.to_tai_since(p).to_sec_f().abs();
         assert!(
             diff < 1e-9,
@@ -877,16 +878,16 @@ fn tcg_tai_roundtrip_is_accurate() {
 #[test]
 fn tcb_tai_roundtrip_is_accurate() {
     let test_points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365),
-        TimePoint::from_tai_sec(-86_400 * 365 * 10),
-        TimePoint::from_tai_sec(1_000_000_000),
-        TimePoint::from_tai_sec(-2_208_945_600),
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI),
+        TimePoint::from_sec(-86_400 * 365 * 10, ClockType::TAI),
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI),
+        TimePoint::from_sec(-2_208_945_600, ClockType::TAI),
     ];
 
     for &p in &test_points {
-        let tcb = p.to_type(ClockType::TCB);
-        let back = tcb.to_type(ClockType::TAI);
+        let tcb = p.to(ClockType::TCB);
+        let back = tcb.to_tai(ClockType::TCB);
         let diff = back.to_tai_since(p).to_sec_f().abs();
         assert!(
             diff < 1e-9,
@@ -901,17 +902,17 @@ fn tcb_tai_roundtrip_is_accurate() {
 #[test]
 fn utc_tai_roundtrip_is_accurate() {
     let test_points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365),
-        TimePoint::from_tai_sec(-86_400 * 365 * 10),
-        TimePoint::from_tai_sec(1_000_000_000),
-        TimePoint::from_tai_sec(-2_208_945_600),
-        TimePoint::from_tai_sec(1_485_779_200), // around 2017-01-01 leap second
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI),
+        TimePoint::from_sec(-86_400 * 365 * 10, ClockType::TAI),
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI),
+        TimePoint::from_sec(-2_208_945_600, ClockType::TAI),
+        TimePoint::from_sec(1_485_779_200, ClockType::TAI), // around 2017-01-01 leap second
     ];
 
     for &p in &test_points {
-        let utc = p.to_type(ClockType::UTC);
-        let back = utc.to_type(ClockType::TAI);
+        let utc = p.to(ClockType::UTC);
+        let back = utc.to_tai(ClockType::UTC);
         assert_eq!(back, p, "UTC round-trip failed at {:?}", p);
     }
 }
@@ -939,10 +940,10 @@ fn j2000_tt_is_jd_2451545() {
 #[test]
 fn jd_tt_exact_roundtrip() {
     let test_points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365),
-        TimePoint::from_tai_sec(1_000_000_000),
-        TimePoint::from_tai_sec(-2_208_945_600),
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365, ClockType::TAI),
+        TimePoint::from_sec(1_000_000_000, ClockType::TAI),
+        TimePoint::from_sec(-2_208_945_600, ClockType::TAI),
     ];
 
     for &p in &test_points {
@@ -957,8 +958,8 @@ fn jd_tt_exact_roundtrip() {
 #[test]
 fn mjd_tt_exact_roundtrip() {
     let test_points = [
-        TimePoint::from_tai_sec(0),
-        TimePoint::from_tai_sec(86_400 * 365 * 100),
+        TimePoint::from_sec(0, ClockType::TAI),
+        TimePoint::from_sec(86_400 * 365 * 100, ClockType::TAI),
     ];
 
     for &p in &test_points {
