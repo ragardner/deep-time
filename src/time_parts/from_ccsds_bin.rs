@@ -96,7 +96,7 @@ impl TimeParts {
         if (p1 & 0b1000_0000) != 0 {
             return Err(an_err!(
                 DtErrKind::InvalidInput,
-                "P-field extension not supported"
+                "p-field ext. not supported"
             ));
         }
 
@@ -114,14 +114,14 @@ impl TimeParts {
 
         let min_len = 1 + 2 + 2 + 3 + n_subsec;
         if input.len() < min_len {
-            return Err(an_err!(DtErrKind::InvalidSyntax, "T-field too short"));
+            return Err(an_err!(DtErrKind::InvalidSyntax, "t-field too short"));
         }
 
         let bcd_byte = |b: u8| -> Result<u8, DtErr> {
             let hi = b >> 4;
             let lo = b & 0x0F;
             if hi > 9 || lo > 9 {
-                Err(an_err!(DtErrKind::InvalidBytes, "invalid BCD digit"))
+                Err(an_err!(DtErrKind::InvalidBytes, "invalid bcd digit"))
             } else {
                 Ok(hi * 10 + lo)
             }
@@ -185,7 +185,7 @@ impl TimeParts {
             let hi = (b >> 4) as u128;
             let lo = (b & 0x0F) as u128;
             if hi > 9 || lo > 9 {
-                return Err(an_err!(DtErrKind::InvalidBytes, "invalid subsecond BCD"));
+                return Err(an_err!(DtErrKind::InvalidBytes, "invalid subsecond bcd"));
             }
             frac_value = frac_value * 100 + hi * 10 + lo;
             idx += 1;
@@ -262,7 +262,7 @@ impl TimeParts {
 
         let (n_coarse, n_frac) = if extension {
             if input.len() < 2 {
-                return Err(an_err!(DtErrKind::InvalidInput, "P-field too short"));
+                return Err(an_err!(DtErrKind::InvalidInput, "p-field too short"));
             }
             let p2 = input[1];
             idx += 1;
@@ -270,7 +270,7 @@ impl TimeParts {
             if (p2 & 0b1000_0000) != 0 {
                 return Err(an_err!(
                     DtErrKind::InvalidInput,
-                    "further P-field extension not supported"
+                    "further p-field ext. not supported"
                 ));
             }
 
@@ -283,7 +283,7 @@ impl TimeParts {
         };
 
         if n_coarse == 0 || input.len() < idx + n_coarse + n_frac {
-            return Err(an_err!(DtErrKind::InvalidSyntax, "T-field too short"));
+            return Err(an_err!(DtErrKind::InvalidSyntax, "t-field too short"));
         }
 
         // Read coarse time (big-endian)
@@ -373,7 +373,7 @@ impl TimeParts {
         let extension = (p1 & 0b1000_0000) != 0;
         if extension {
             if input.len() < 2 {
-                return Err(an_err!(DtErrKind::InvalidInput, "P-field too short"));
+                return Err(an_err!(DtErrKind::InvalidInput, "p-field too short"));
             }
             idx += 1;
         }
@@ -386,7 +386,7 @@ impl TimeParts {
         if (p1 & 0b0000_1000) != 0 {
             return Err(an_err!(
                 DtErrKind::InvalidItem,
-                "non-Level-1 epoch not supported"
+                "non-level-1 epoch not supported"
             ));
         }
 
@@ -401,7 +401,7 @@ impl TimeParts {
         };
 
         if input.len() < idx + n_day + 4 + n_subsec {
-            return Err(an_err!(DtErrKind::InvalidSyntax, "T-field too short"));
+            return Err(an_err!(DtErrKind::InvalidSyntax, "t-field too short"));
         }
 
         // Read fields
