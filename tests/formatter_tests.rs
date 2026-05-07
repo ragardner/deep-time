@@ -1,19 +1,19 @@
 #[cfg(test)]
 mod format_tests {
-    use deep_time::{ClockType, TimePoint, constants::STRFTIME_SIZE};
+    use deep_time::{Scale, Dt, constants::STRFTIME_SIZE};
 
-    /// Creates a UTC TimePoint from civil Gregorian components.
+    /// Creates a UTC Dt from civil Gregorian components.
     /// This now correctly matches the new direct Unix-based civil time path.
-    fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> TimePoint {
+    fn tp(y: i64, m: u8, d: u8, h: u8, min: u8, s: u8, attos: u64) -> Dt {
         // Use the existing civil-time constructor (recommended)
-        TimePoint::from_ymdhms(y, m, d, h, min, s, attos, ClockType::UTC)
+        Dt::from_ymdhms(y, m, d, h, min, s, attos, Scale::UTC)
     }
 
     #[test]
     fn test_leap_second_gotcha_2016_12_31() {
         // 2016-12-31 23:59:60 UTC — the last leap second in the current table
         // (TAI-UTC offset becomes 37 seconds at this instant)
-        let leap = TimePoint::from_ymdhms(
+        let leap = Dt::from_ymdhms(
             2016,
             12,
             31,
@@ -21,7 +21,7 @@ mod format_tests {
             59,
             60,
             123_456_789_000_000_000,
-            ClockType::UTC,
+            Scale::UTC,
         );
         eprintln!("{:?}", leap);
 
@@ -40,7 +40,7 @@ mod format_tests {
         assert_eq!(g.attos, 123_456_789_000_000_000);
 
         // === Gotcha 2: Round-trip must be exact ===
-        let roundtrip = TimePoint::from_ymdhms(
+        let roundtrip = Dt::from_ymdhms(
             2016,
             12,
             31,
@@ -48,7 +48,7 @@ mod format_tests {
             59,
             60,
             123_456_789_000_000_000,
-            ClockType::UTC,
+            Scale::UTC,
         );
         assert_eq!(leap, roundtrip);
 
@@ -67,7 +67,7 @@ mod format_tests {
 
         // === Gotcha 5: leap second Unix timestamp (POSIX convention) ===
         let unix = leap
-            .to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC)
+            .to_epoch(Dt::UNIX_EPOCH, Scale::UTC)
             .to_sec();
         assert_eq!(unix, 1483228799); // same as 23:59:59 — the leap second "replays" the previous second
     }

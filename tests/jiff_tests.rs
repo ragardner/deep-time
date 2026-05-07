@@ -1,6 +1,6 @@
 #[cfg(feature = "jiff-tz")]
 mod tests {
-    use deep_time::TimePoint;
+    use deep_time::Dt;
     use jiff::{Zoned, civil::DateTime};
 
     #[test]
@@ -116,7 +116,7 @@ mod tests {
             // ─── Your library ──────────────────────────────────────────────────────────
             let our_input = format!("{} {}", civil_str, iana_name);
 
-            let our_dt: TimePoint = TimePoint::from_str_parse(&our_input, &None)
+            let our_dt: Dt = Dt::from_str_parse(&our_input, &None)
                 .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
 
             let our_rfc = our_dt.to_str_rfc3339().unwrap();

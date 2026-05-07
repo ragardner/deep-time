@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_DAY, ClockType, DtErr, DtErrKind, Real, SEC_PER_DAY_F, TimePoint, TimeSpan, an_err,
+    ATTOS_PER_DAY, Scale, DtErr, DtErrKind, Real, SEC_PER_DAY_F, Dt, TSpan, an_err,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -305,13 +305,13 @@ impl Ut1Data {
     }
 }
 
-impl TimePoint {
-    /// Convert **any** `TimePoint` to the equivalent UT1 instant.
+impl Dt {
+    /// Convert **any** `Dt` to the equivalent UT1 instant.
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
     pub fn to_ut1(&self, ut1_data: &Ut1Data) -> Result<Self, DtErr> {
-        let ut1 = self.with_type(ClockType::UT1);
-        let (mjd_days, mjd_frac) = ut1.to_mjd_exact(ClockType::UT1);
+        let ut1 = self.with_type(Scale::UT1);
+        let (mjd_days, mjd_frac) = ut1.to_mjd_exact(Scale::UT1);
 
         let dut1 = ut1_data
             .ut1_minus_utc_exact(mjd_days, mjd_frac)
@@ -320,10 +320,10 @@ impl TimePoint {
                 an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
             })?;
 
-        Ok(ut1.add(TimeSpan::from_sec_f(dut1)))
+        Ok(ut1.add(TSpan::from_sec_f(dut1)))
     }
 
-    /// Convert a UT1 `TimePoint` back to UTC.
+    /// Convert a UT1 `Dt` back to UTC.
     ///
     /// Uses fixed-point iteration (exactly like the library’s TDB ↔ TAI,
     /// TCG ↔ TT, etc.) to solve the implicit equation  
@@ -336,7 +336,7 @@ impl TimePoint {
         let mut utc_guess = ut1.clone();
 
         for _ in 0..8 {
-            let (mjd_days, mjd_frac) = utc_guess.to_mjd_exact(ClockType::UT1);
+            let (mjd_days, mjd_frac) = utc_guess.to_mjd_exact(Scale::UT1);
 
             let dut1 = ut1_data
                 .ut1_minus_utc_exact(mjd_days, mjd_frac)
@@ -345,9 +345,9 @@ impl TimePoint {
                     an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
                 })?;
 
-            utc_guess = ut1.sub(TimeSpan::from_sec_f(dut1));
+            utc_guess = ut1.sub(TSpan::from_sec_f(dut1));
         }
 
-        Ok(utc_guess.with_type(ClockType::UTC))
+        Ok(utc_guess.with_type(Scale::UTC))
     }
 }

@@ -84,15 +84,15 @@ mod an_err;
 mod ascii_str;
 mod clock_drift;
 mod clock_model;
-mod clock_type;
+mod dt;
 mod gregorian_time;
 mod light_time;
 mod parser;
 mod position;
+mod scale;
+mod t_span;
 mod time_parts;
-mod time_point;
 mod time_range;
-mod time_span;
 
 // _________________________________________
 // PUB MOD
@@ -141,13 +141,13 @@ pub use an_err::AnErr;
 pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
-pub use clock_type::ClockType;
+pub use dt::Dt;
 pub use error::{DtErr, DtErrKind};
 pub use gregorian_time::GregorianTime;
 pub use light_time::{LightContext, ObserverState};
 pub use position::{Position, Velocity};
+pub use scale::Scale;
+pub use t_span::TSpan;
+pub use t_span::time_units::{AttosUnits, TimeUnits};
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
-pub use time_point::TimePoint;
 pub use time_range::{Every, TimeRange};
-pub use time_span::TimeSpan;
-pub use time_span::time_units::{AttosUnits, TimeUnits};

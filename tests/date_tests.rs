@@ -1,29 +1,29 @@
-use deep_time::{ClockType, DateOrder, DateParseMode, Lang, ParseCfg, TimePoint};
+use deep_time::{Scale, DateOrder, DateParseMode, Lang, ParseCfg, Dt};
 
 #[test]
 fn print_stuff() {
-    // let x = TimePoint::from_ymd(1961, 1, 1, ClockType::UTC);
+    // let x = Dt::from_ymd(1961, 1, 1, Scale::UTC);
     // eprintln!("UTC lower 61 {:?}", x);
-    // let x = TimePoint::from_ymd(1972, 1, 1, ClockType::UTC);
+    // let x = Dt::from_ymd(1972, 1, 1, Scale::UTC);
     // eprintln!("UTC upper 72 {:?}", x);
 
-    // let utc_tp = TimePoint::from_ymd(1961, 1, 1, ClockType::UTC);
-    // let sofa_tp = utc_tp.with_type(ClockType::UTCSofa);
+    // let utc_tp = Dt::from_ymd(1961, 1, 1, Scale::UTC);
+    // let sofa_tp = utc_tp.with_type(Scale::UTCSofa);
     // let tai_tp = sofa_tp.to_tai();
     // println!("TAI lower 61 {:?}", tai_tp);
 
-    // let utc_tp = TimePoint::from_ymd(1972, 1, 1, ClockType::UTC);
+    // let utc_tp = Dt::from_ymd(1972, 1, 1, Scale::UTC);
     // let tai_tp = utc_tp.to_tai();
     // println!("TAI upper 72 {:?}", tai_tp);
 
     // for &(year, month, day, _) in dates {
-    //     // Create UTC TimePoint at 00:00:00 on the insertion date
+    //     // Create UTC Dt at 00:00:00 on the insertion date
     //     let utc_tp =
-    //         TimePoint::from_ymd(year as i64, month as u8, day as u8, ClockType::UTC);
+    //         Dt::from_ymd(year as i64, month as u8, day as u8, Scale::UTC);
 
-    //     // Create TAI TimePoint at the same civil date (for comparison)
+    //     // Create TAI Dt at the same civil date (for comparison)
     //     let tai_tp =
-    //         TimePoint::from_ymd(year as i64, month as u8, day as u8, ClockType::TAI);
+    //         Dt::from_ymd(year as i64, month as u8, day as u8, Scale::TAI);
 
     //     println!(
     //         "{:04}-{:02}-{:02}: UTC sec = {}, TAI sec = {}",
@@ -37,26 +37,26 @@ fn print_stuff() {
 
     // let unix_sec = -283996800i64;
 
-    // let tp = TimePoint::from_unix_sec(unix_sec);
-    // let tai = tp.to_type(ClockType::TAI); // or tp.to_tai() if you have that method
+    // let tp = Dt::from_unix_sec(unix_sec);
+    // let tai = tp.to_type(Scale::TAI); // or tp.to_tai() if you have that method
 
     // println!("TAI sec: {}", tai.sec());
     // println!("TAI subsec: {}", tai.subsec());
 
     // let unix_1972 = 63072000i64;
-    // let tp_1972 = TimePoint::from_unix_sec(unix_1972);
-    // let tai_1972 = tp_1972.to_type(ClockType::TAI);
+    // let tp_1972 = Dt::from_unix_sec(unix_1972);
+    // let tai_1972 = tp_1972.to_type(Scale::TAI);
     // eprintln!("1972-01-01 TAI sec (for cutoff): {}", tai_1972.sec());
 
-    // let x = TimePoint::from_ymd(1972, 1, 1, ClockType::TAI).to_jd();
+    // let x = Dt::from_ymd(1972, 1, 1, Scale::TAI).to_jd();
     // eprintln!("{}", x);
 
     // for e in SOFA_TAI_UTC_PRE_1972.iter() {
     //     // Create the UTC instant for this table row
-    //     let utc_tp = TimePoint::from_ymd(e.yr as i64, e.mo, e.day, ClockType::UTC);
+    //     let utc_tp = Dt::from_ymd(e.yr as i64, e.mo, e.day, Scale::UTC);
 
-    //     // Turn it into a UTCSofa TimePoint (preserves the numerical unix_sec)
-    //     let sofa_tp = utc_tp.with_type(ClockType::UTCSofa);
+    //     // Turn it into a UTCSofa Dt (preserves the numerical unix_sec)
+    //     let sofa_tp = utc_tp.with_type(Scale::UTCSofa);
 
     //     // This calls your to_tai for UTCSofa, which does:
     //     //   utc_to_tai(...) + add(sofa_offset)
@@ -77,7 +77,7 @@ fn print_stuff() {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
-    let dt = TimePoint::from_str_parse(input.trim(), &opts)
+    let dt = Dt::from_str_parse(input.trim(), &opts)
         .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
     let actual = dt.to_str_rfc3339().unwrap();
 
@@ -85,14 +85,14 @@ fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
 }
 
 fn assert_millis(input: &str, expected_millis: i128, opts: Option<ParseCfg>) {
-    let millis = TimePoint::str_to_unix_ms(input, &opts)
+    let millis = Dt::str_to_unix_ms(input, &opts)
         .unwrap_or_else(|| panic!("Failed millis parse: {}", input));
     assert_eq!(millis, expected_millis, "Input: {}", input);
 }
 
 fn assert_fails(input: &str, opts: Option<ParseCfg>) {
     assert!(
-        TimePoint::from_str_parse(input, &opts).is_err(),
+        Dt::from_str_parse(input, &opts).is_err(),
         "Expected failure: {}",
         input
     );
@@ -359,7 +359,7 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
             "Dec 31 23:59:59".to_string(),
             "2025-12-31T23:59:59Z".to_string(),
             Some(ParseCfg {
-                ref_time: Some(TimePoint::from_ymdhms(
+                ref_time: Some(Dt::from_ymdhms(
                     2025,
                     12,
                     31,
@@ -367,7 +367,7 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
                     59,
                     59,
                     0,
-                    ClockType::UTC,
+                    Scale::UTC,
                 )),
                 ..Default::default()
             }),
@@ -379,36 +379,36 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
 }
 
 #[test]
-fn date_parser_keeps_clock_type() {
-    let tp1 = TimePoint::from(5, 0, ClockType::LTC);
-    let tpxx = tp1.to(ClockType::LTC);
-    let tptest = tpxx.to_tai(ClockType::LTC);
+fn date_parser_keeps_scale() {
+    let tp1 = Dt::from(5, 0, Scale::LTC);
+    let tpxx = tp1.to(Scale::LTC);
+    let tptest = tpxx.to_tai(Scale::LTC);
     eprintln!("ROUNDTRIP: {:?}, {:?}", tp1, tptest);
 
-    let tp2 = TimePoint::from(5, 0, ClockType::GPS);
+    let tp2 = Dt::from(5, 0, Scale::GPS);
     let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
     let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
-    let res_tp1 = TimePoint::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
-    let res_tp2 = TimePoint::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
+    let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
+    let res_tp2 = Dt::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
     eprintln!("{:}, {:}", tp1, res_tp1);
-    assert!(tp1 == res_tp1 && tp1.clock_type() == res_tp1.clock_type());
-    assert!(tp2 == res_tp2 && tp2.clock_type() == res_tp2.clock_type());
+    assert!(tp1 == res_tp1 && tp1.scale() == res_tp1.scale());
+    assert!(tp2 == res_tp2 && tp2.scale() == res_tp2.scale());
 }
 
 #[test]
 fn round_trip_fixed_offsets() {
     for tp in [
-        TimePoint::new(5, 0, ClockType::TAI),
-        TimePoint::new(5, 0, ClockType::UTC),
+        Dt::new(5, 0, Scale::TAI),
+        Dt::new(5, 0, Scale::UTC),
     ] {
         let xp1 = tp
             .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
             .unwrap();
-        let tp2 = TimePoint::from_str_parse(&xp1, &None).unwrap();
+        let tp2 = Dt::from_str_parse(&xp1, &None).unwrap();
         let xp2 = tp2
             .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
             .unwrap();
-        let tp3 = TimePoint::from_str_parse(&xp2, &None).unwrap();
+        let tp3 = Dt::from_str_parse(&xp2, &None).unwrap();
         assert_eq!(tp, tp3);
     }
 }
@@ -972,7 +972,7 @@ fn date_parser_comprehensive() {
             "Dec 31 23:59:59",
             "2025-12-31T23:59:59Z",
             Some(ParseCfg {
-                ref_time: Some(TimePoint::from_ymdhms(
+                ref_time: Some(Dt::from_ymdhms(
                     2025,
                     12,
                     31,
@@ -980,7 +980,7 @@ fn date_parser_comprehensive() {
                     59,
                     59,
                     0,
-                    ClockType::UTC,
+                    Scale::UTC,
                 )),
                 ..Default::default()
             }),
@@ -1084,12 +1084,12 @@ fn generate_relative_date_test_cases() -> Vec<String> {
 fn relative_date_parser_comprehensive() {
     let cases = generate_relative_date_test_cases();
     let opts = Some(ParseCfg {
-        ref_time: Some(TimePoint::new(5_000_000, 0, ClockType::UTC)),
+        ref_time: Some(Dt::new(5_000_000, 0, Scale::UTC)),
         ..Default::default()
     });
 
     for input in cases {
-        let result = TimePoint::from_str_parse(input.trim(), &opts);
+        let result = Dt::from_str_parse(input.trim(), &opts);
         // eprintln!("Tried: {}, got result: {:?}", &input, result);
         assert!(result.is_ok(), "Failed to parse relative date: '{}'", input);
     }

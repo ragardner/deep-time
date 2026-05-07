@@ -1,4 +1,4 @@
-use crate::{DtErr, TimeParts, TimePoint};
+use crate::{DtErr, TimeParts, Dt};
 
 impl TimeParts {
     /// Formats this [`TimeParts`] as a **CCSDS C (CUC)** binary time code.
@@ -17,8 +17,8 @@ impl TimeParts {
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
-    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_time_point(Some(self.clock_type))?
+    ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
+        self.to_time_point(Some(self.scale))?
             .to_ccsds_c(n_coarse, n_frac, extension)
     }
 
@@ -32,8 +32,8 @@ impl TimeParts {
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
-    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_time_point(Some(self.clock_type))?
+    ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
+        self.to_time_point(Some(self.scale))?
             .to_ccsds_d(n_day, sub_ms_code, extension)
     }
 
@@ -56,22 +56,22 @@ impl TimeParts {
         &self,
         use_doy: bool,
         n_subsec: u8,
-    ) -> Result<([u8; TimePoint::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
-        self.to_time_point(Some(self.clock_type))?
+    ) -> Result<([u8; Dt::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
+        self.to_time_point(Some(self.scale))?
             .to_ccsds_ccs(use_doy, n_subsec)
     }
 
     /// Convenience method that automatically selects the most appropriate
-    /// CCSDS binary time code based on this `TimeParts`’s [`ClockType`].
+    /// CCSDS binary time code based on this `TimeParts`’s [`Scale`].
     ///
     /// # Automatic selection (matches common mission practice)
-    /// - `ClockType::TAI` → **CUC** (4 coarse + 4 fractional bytes)
-    /// - Any other `ClockType` (UTC, TT, GPS, TCG, …) → converted to UTC and uses **CDS**
+    /// - `Scale::TAI` → **CUC** (4 coarse + 4 fractional bytes)
+    /// - Any other `Scale` (UTC, TT, GPS, TCG, …) → converted to UTC and uses **CDS**
     ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
     #[inline]
     pub fn to_ccsds_bin(
         &self,
-    ) -> Result<([u8; TimePoint::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_time_point(Some(self.clock_type))?.to_ccsds_bin()
+    ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
+        self.to_time_point(Some(self.scale))?.to_ccsds_bin()
     }
 }

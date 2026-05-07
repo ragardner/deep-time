@@ -1,21 +1,21 @@
 #[cfg(feature = "hifitime")]
 mod tests {
-    use deep_time::{ClockType, TimePoint};
+    use deep_time::{Scale, Dt};
     use hifitime::{Duration, Epoch, TimeScale};
     /// Seconds between hifitime's TAI reference epoch (1900-01-01 00:00:00 TAI)
     /// and our library's `ZERO` (2000-01-01 12:00:00 TAI).
     const HIFITIME_TAI_EPOCH_TO_OUR_ZERO: i64 = 3_155_716_800;
 
-    /// Map our `ClockType` to the equivalent `hifitime::TimeScale`.
-    fn to_hifitime(ct: ClockType) -> Option<TimeScale> {
+    /// Map our `Scale` to the equivalent `hifitime::TimeScale`.
+    fn to_hifitime(ct: Scale) -> Option<TimeScale> {
         match ct {
-            ClockType::TAI => Some(TimeScale::TAI),
-            ClockType::TT => Some(TimeScale::TT),
-            ClockType::TDB => Some(TimeScale::TDB),
-            ClockType::UTC => Some(TimeScale::UTC),
-            ClockType::GPS | ClockType::QZSS => Some(TimeScale::GPST),
-            ClockType::GST => Some(TimeScale::GST),
-            ClockType::BDT => Some(TimeScale::BDT),
+            Scale::TAI => Some(TimeScale::TAI),
+            Scale::TT => Some(TimeScale::TT),
+            Scale::TDB => Some(TimeScale::TDB),
+            Scale::UTC => Some(TimeScale::UTC),
+            Scale::GPS | Scale::QZSS => Some(TimeScale::GPST),
+            Scale::GST => Some(TimeScale::GST),
+            Scale::BDT => Some(TimeScale::BDT),
             _ => None,
         }
     }
@@ -46,7 +46,7 @@ mod tests {
         }
     }
 
-    fn assert_tp_matches_hifitime(our_tai: TimePoint, hi: Epoch, msg: &str) {
+    fn assert_tp_matches_hifitime(our_tai: Dt, hi: Epoch, msg: &str) {
         let (our_sec, our_attos) = (our_tai.sec(), our_tai.subsec());
         let (hi_sec, hi_attos) = hifitime_tai_parts(hi);
 
@@ -65,27 +65,27 @@ mod tests {
         let hi_utc = Epoch::from_gregorian(2016, 12, 31, 23, 59, 60, 0, TimeScale::UTC);
         let hi_tai = hi_utc.to_time_scale(TimeScale::TAI);
         let (hi_tai_sec, hi_tai_subsec) = hifitime_tai_parts(hi_tai);
-        let our_tai = TimePoint::new(hi_tai_sec, hi_tai_subsec, ClockType::TAI);
-        let our_utc = our_tai.to(ClockType::UTC).to_tai(ClockType::UTC);
+        let our_tai = Dt::new(hi_tai_sec, hi_tai_subsec, Scale::TAI);
+        let our_utc = our_tai.to(Scale::UTC).to_tai(Scale::UTC);
 
         assert_tp_matches_hifitime(our_utc, hi_tai, "UTC leap second 2016-12-31");
     }
 
     #[test]
     fn test_j2000_zero_points() {
-        let our = TimePoint::from(0, 0, ClockType::TAI);
+        let our = Dt::from(0, 0, Scale::TAI);
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
         assert_tp_matches_hifitime(our, hi, "J2000 TAI zero");
 
-        let our = TimePoint::from(0, 0, ClockType::TT);
+        let our = Dt::from(0, 0, Scale::TT);
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 11, 59, 27, 816_000_000);
         assert_tp_matches_hifitime(our, hi, "J2000 TT zero");
 
-        let our = TimePoint::from(0, 0, ClockType::GPS);
+        let our = Dt::from(0, 0, Scale::GPS);
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::GPST);
         assert_tp_matches_hifitime(our, hi, "J2000 GPST zero");
 
-        let our = TimePoint::from(0, 0, ClockType::BDT);
+        let our = Dt::from(0, 0, Scale::BDT);
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::BDT);
         assert_tp_matches_hifitime(our, hi, "J2000 BDT zero");
     }
@@ -95,17 +95,17 @@ mod tests {
         let base_tai_sec = 123_456_789_i64;
         let base_attos = 987_654_321_000_000_000u64;
 
-        let our_base = TimePoint::new(base_tai_sec, base_attos, ClockType::TAI);
+        let our_base = Dt::new(base_tai_sec, base_attos, Scale::TAI);
 
-        let scales: &[ClockType] = &[
-            ClockType::TAI,
-            ClockType::TT,
-            ClockType::TDB,
-            ClockType::UTC,
-            ClockType::GPS,
-            ClockType::GST,
-            ClockType::BDT,
-            ClockType::QZSS,
+        let scales: &[Scale] = &[
+            Scale::TAI,
+            Scale::TT,
+            Scale::TDB,
+            Scale::UTC,
+            Scale::GPS,
+            Scale::GST,
+            Scale::BDT,
+            Scale::QZSS,
         ];
 
         for &from in scales {
@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn test_negative_and_subsecond() {
         // Use a smaller negative value that hifitime handles cleanly
-        let our = TimePoint::from(-1_000_000_000i64, 123_456_789_012_345_678, ClockType::GPS);
+        let our = Dt::from(-1_000_000_000i64, 123_456_789_012_345_678, Scale::GPS);
 
         let delta = Duration::from_seconds(-1_000_000_000f64)
             + Duration::from_nanoseconds(123_456_789_012_345_678u64 as f64 / 1_000_000_000.0);
@@ -167,7 +167,7 @@ mod tests {
         ];
 
         for &(tai_sec, label) in cases {
-            let our = TimePoint::new(tai_sec, 0, ClockType::TAI);
+            let our = Dt::new(tai_sec, 0, Scale::TAI);
             let hi = Epoch::from_tai_seconds((HIFITIME_TAI_EPOCH_TO_OUR_ZERO + tai_sec) as f64);
             assert_tp_matches_hifitime(our, hi, label);
         }
@@ -241,32 +241,32 @@ mod tests {
 
     #[test]
     fn roundtrip_j2000() {
-        let tp = TimePoint::ZERO;
+        let tp = Dt::ZERO;
         let h = tp.to_hifitime();
-        let tp2 = TimePoint::from_hifitime_epoch(h);
+        let tp2 = Dt::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);
     }
 
     #[test]
     fn roundtrip_unix_epoch() {
-        let tp = TimePoint::UNIX_EPOCH;
+        let tp = Dt::UNIX_EPOCH;
         let h = tp.to_hifitime();
-        let tp2 = TimePoint::from_hifitime_epoch(h);
+        let tp2 = Dt::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);
     }
 
     #[test]
     fn roundtrip_traditional_gps_epoch() {
-        let tp = TimePoint::GPS_EPOCH;
+        let tp = Dt::GPS_EPOCH;
         let h = tp.to_hifitime();
-        let tp2 = TimePoint::from_hifitime_epoch(h);
+        let tp2 = Dt::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);
     }
 
     #[test]
     fn hifitime_different_scales() {
         let h_utc = Epoch::from_gregorian_utc(2024, 4, 26, 3, 28, 0, 0);
-        let tp = TimePoint::from_hifitime_epoch(h_utc);
+        let tp = Dt::from_hifitime_epoch(h_utc);
         let h_tai = tp.to_hifitime();
         assert_eq!(
             h_utc.to_tai_duration().total_nanoseconds(),
@@ -277,7 +277,7 @@ mod tests {
     #[test]
     fn large_positive_time() {
         let h = Epoch::from_gregorian_tai(3000, 1, 1, 12, 0, 0, 0);
-        let tp = TimePoint::from_hifitime_epoch(h);
+        let tp = Dt::from_hifitime_epoch(h);
         let h2 = tp.to_hifitime();
         assert_eq!(
             h.to_tai_duration().total_nanoseconds(),
@@ -288,7 +288,7 @@ mod tests {
     #[test]
     fn leap_second_boundary() {
         let h = Epoch::from_gregorian_str("2016-12-31T23:59:60 UTC").unwrap();
-        let tp = TimePoint::from_hifitime_epoch(h);
+        let tp = Dt::from_hifitime_epoch(h);
         let h2 = tp.to_hifitime();
         assert_eq!(
             h.to_tai_duration().total_nanoseconds(),
@@ -301,14 +301,14 @@ mod tests {
         let h = Epoch::from_tai_duration(hifitime::Duration::from_total_nanoseconds(
             1_234_567_890_123_456_789i128,
         ));
-        let tp = TimePoint::from_hifitime_epoch(h);
+        let tp = Dt::from_hifitime_epoch(h);
         assert_eq!(tp.subsec() % 1_000_000_000, 0);
     }
 
     // #[test]
     // fn large_negative_time() {
     //     let h = Epoch::from_gregorian_tai(-1000, 1, 1, 12, 0, 0, 0);
-    //     let tp = TimePoint::from_hifitime(h);
+    //     let tp = Dt::from_hifitime(h);
     //     let h2 = tp.to_hifitime();
     //     assert_eq!(
     //         h.to_tai_duration().total_nanoseconds(),

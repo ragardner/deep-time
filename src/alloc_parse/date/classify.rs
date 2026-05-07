@@ -1,19 +1,19 @@
 use crate::{
     ClassifiedDate, ConnectorType, DateClassification, DateToken, DtErr, DtErrKind, EndsWithExt,
-    IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, TimePoint, TimeType, an_err, lang_map,
+    IndexIn, Lang, LangData, OffsetType, SplitKeepWithPos, Dt, TimeType, an_err, lang_map,
     natural_duration_to_span, to_ascii_digit,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
 
 #[cfg(feature = "std")]
-use crate::ClockType;
+use crate::Scale;
 
 /// Expects s to be lowercase.
 pub(crate) fn classify_date(
     s: &str,
     lang: Lang,
-    ref_time: &Option<TimePoint>,
+    ref_time: &Option<Dt>,
 ) -> Result<ClassifiedDate, DtErr> {
     let Some(LangData {
         map: term_map,
@@ -73,12 +73,12 @@ pub(crate) fn classify_date(
         if let Some((norm_part, token)) = term_map.get(part) {
             if token.is_relative() {
                 // ── Use the reference time (or fall back to real system time) ──
-                let now: TimePoint = if let Some(tp) = ref_time {
+                let now: Dt = if let Some(tp) = ref_time {
                     *tp
                 } else {
                     #[cfg(feature = "std")]
                     {
-                        TimePoint::now(ClockType::UTC)
+                        Dt::now(Scale::UTC)
                     }
                     #[cfg(not(feature = "std"))]
                     {

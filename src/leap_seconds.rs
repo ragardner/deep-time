@@ -4,7 +4,7 @@
 //! Last leap second: 2017-01-01 (TAI-UTC = 37 s)
 //! File expires: 28 December 2026
 
-use crate::TimePoint;
+use crate::Dt;
 
 pub struct LeapSecond {
     pub ntp_timestamp: i64,
@@ -191,7 +191,7 @@ pub struct LeapInfo {
     pub is_leap_second: bool,
 }
 
-pub const fn get_leap_seconds(tp: &TimePoint, from_civil: bool) -> LeapInfo {
+pub const fn get_leap_seconds(tp: &Dt, from_civil: bool) -> LeapInfo {
     let mut offset = 0i64;
     let mut leaps_inserted = 0i64;
     let mut i = 0usize;

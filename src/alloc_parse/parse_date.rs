@@ -1,6 +1,6 @@
 use crate::{
-    ClassifiedDate, ClockType, DateClassification, DateOrder, DateParseMode, DetectedDateOrder,
-    DtErr, DtErrKind, MAX_DATE_STRING_LEN, ParseCfg, TimePoint, an_err, classify_date,
+    ClassifiedDate, Scale, DateClassification, DateOrder, DateParseMode, DetectedDateOrder,
+    DtErr, DtErrKind, MAX_DATE_STRING_LEN, ParseCfg, Dt, an_err, classify_date,
     default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
     generate_unambiguous_candidates, is_week_date_missing_weekday,
@@ -10,8 +10,8 @@ use crate::{
 use alloc::borrow::Cow;
 use alloc::string::String;
 
-impl TimePoint {
-    pub fn from_str_parse(s: &str, opts: &Option<ParseCfg>) -> Result<TimePoint, DtErr> {
+impl Dt {
+    pub fn from_str_parse(s: &str, opts: &Option<ParseCfg>) -> Result<Dt, DtErr> {
         let opts: &ParseCfg = opts
             .as_ref()
             .unwrap_or_else(|| default_date_parse_options());
@@ -112,7 +112,7 @@ impl TimePoint {
         if let Some(dt) = match date_order {
             DateOrder::Smart => {
                 let order = smart_detect_date_order(&normalized, &classification);
-                let mut result: Option<TimePoint>;
+                let mut result: Option<Dt>;
 
                 match order {
                     DetectedDateOrder::DayFirst => {
@@ -215,26 +215,26 @@ impl TimePoint {
         Err(an_err!(DtErrKind::InvalidInput, "{}", s))
     }
 
-    /// Same parsing logic as `TimePoint::from_str`, but returns milliseconds since
-    /// the library epoch: 2000-01-01 12:00:00 UTC (on the UTC clock type).
+    /// Same parsing logic as `Dt::from_str`, but returns milliseconds since
+    /// the library epoch: 2000-01-01 12:00:00 UTC (on the UTC scale).
     ///
     /// Returns `Some(millis)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
     #[inline]
     pub fn str_to_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        TimePoint::from_str_parse(s, opts).ok().map(|tp| tp.to_ms())
+        Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_ms())
     }
 
-    /// Same parsing logic as `TimePoint::from_str`, but returns milliseconds since
+    /// Same parsing logic as `Dt::from_str`, but returns milliseconds since
     /// the UNIX epoch: (1970-01-01 00:00:00 UTC).
     ///
     /// Returns `Some(millis)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
     #[inline]
     pub fn str_to_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        TimePoint::from_str_parse(s, opts)
+        Dt::from_str_parse(s, opts)
             .ok()
-            .map(|tp| tp.to_epoch(TimePoint::UNIX_EPOCH, ClockType::UTC).to_ms())
+            .map(|tp| tp.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_ms())
     }
 }
 
@@ -243,17 +243,17 @@ impl TimePoint {
 /// The `fmt` we get from the iterator is still `'static`, but it coerces automatically
 /// to `&str`, so everything continues to work.
 #[inline]
-pub(crate) fn try_compatible_formats<'a, I>(s: &str, formats: I) -> Option<TimePoint>
+pub(crate) fn try_compatible_formats<'a, I>(s: &str, formats: I) -> Option<Dt>
 where
     I: IntoIterator<Item = String>,
 {
     formats
         .into_iter()
-        .find_map(|fmt| TimePoint::from_str(s, &fmt, true, true, false))
+        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false))
 }
 
 #[inline]
-pub(crate) fn try_unambiguous(s: &str, classification: &DateClassification) -> Option<TimePoint> {
+pub(crate) fn try_unambiguous(s: &str, classification: &DateClassification) -> Option<Dt> {
     if matches!(classification.ascii_len, 6 | 7 | 8) {
         if let Some(dt) = parse_yyyy_mm(&s.as_bytes()) {
             return Some(dt);

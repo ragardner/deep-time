@@ -1,10 +1,10 @@
 use crate::{
-    ClockType, JD_EPOCH_NANOS, JD_RANGE, MJD_EPOCH_NANOS, MJD_RANGE, NS_PER_DAY, NS_PER_HALF_DAY,
-    TimePoint, UNIX_EPOCH_TO_J2000_NOON_UTC, frac_to_nanos,
+    Scale, JD_EPOCH_NANOS, JD_RANGE, MJD_EPOCH_NANOS, MJD_RANGE, NS_PER_DAY, NS_PER_HALF_DAY,
+    Dt, UNIX_EPOCH_TO_J2000_NOON_UTC, frac_to_nanos,
 };
 
 /// Modified Julian Date (MJD) interpreted as UTC
-pub(crate) fn parse_mjd(s: &str) -> Option<TimePoint> {
+pub(crate) fn parse_mjd(s: &str) -> Option<Dt> {
     let (int_part, frac_part) = if let Some(dot) = s.find('.') {
         (&s[..dot], &s[dot + 1..])
     } else {
@@ -25,11 +25,11 @@ pub(crate) fn parse_mjd(s: &str) -> Option<TimePoint> {
     let sec = (secs_since_unix as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
     let subsec = rem_nanos * 1_000_000_000;
 
-    Some(TimePoint::from(sec, subsec, ClockType::UTC))
+    Some(Dt::from(sec, subsec, Scale::UTC))
 }
 
 /// Julian Day (JD) interpreted as UTC
-pub(crate) fn parse_jd(s: &str, astronomical_noon: bool) -> Option<TimePoint> {
+pub(crate) fn parse_jd(s: &str, astronomical_noon: bool) -> Option<Dt> {
     let (int_part, frac_part) = if let Some(dot) = s.find('.') {
         (&s[..dot], &s[dot + 1..])
     } else {
@@ -58,5 +58,5 @@ pub(crate) fn parse_jd(s: &str, astronomical_noon: bool) -> Option<TimePoint> {
     let sec = (secs_since_unix as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
     let subsec = rem_nanos * 1_000_000_000;
 
-    Some(TimePoint::from(sec, subsec, ClockType::UTC))
+    Some(Dt::from(sec, subsec, Scale::UTC))
 }

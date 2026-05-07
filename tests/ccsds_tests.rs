@@ -1,5 +1,5 @@
 use deep_time::constants::SEC_PER_DAYI64;
-use deep_time::{ClockType, Offset, TimeParts, TimePoint};
+use deep_time::{Scale, Offset, TimeParts, Dt};
 
 #[test]
 fn test_ccsds_c_direct_frac() {
@@ -17,7 +17,7 @@ fn test_ccsds_c_direct_frac() {
     assert_eq!(parsed.minute, Some(0));
     assert_eq!(parsed.second, Some(1));
     assert!(parsed.attos.unwrap() > 499_000_000_000_000_000); // ~0.5 s
-    assert_eq!(parsed.clock_type, ClockType::TAI);
+    assert_eq!(parsed.scale, Scale::TAI);
 }
 
 #[test]
@@ -52,7 +52,7 @@ fn test_ccsds_d_direct() {
     assert_eq!(parsed.minute, Some(0));
     assert_eq!(parsed.second, Some(0));
     assert_eq!(parsed.attos, Some(1_000_000_000_000_000)); // 1 ms
-    assert_eq!(parsed.clock_type, ClockType::UTC);
+    assert_eq!(parsed.scale, Scale::UTC);
 }
 
 #[test]
@@ -83,7 +83,7 @@ fn test_ccsds_c_roundtrip() {
     const EPOCH_OFFSET: i64 = 1_325_419_167;
     let tai_sec = total_tai_seconds - EPOCH_OFFSET;
 
-    let t = TimePoint::new(tai_sec, 123_456_789_000_000_000, ClockType::TAI);
+    let t = Dt::new(tai_sec, 123_456_789_000_000_000, Scale::TAI);
 
     let (buf, len) = t.to_ccsds_c(4, 3, false).unwrap();
     let parsed = TimeParts::from_ccsds_c(&buf[0..len]).unwrap();
@@ -94,7 +94,7 @@ fn test_ccsds_c_roundtrip() {
     assert_eq!(parsed.hour, Some(14));
     assert_eq!(parsed.minute, Some(30));
     assert_eq!(parsed.second, Some(45));
-    assert_eq!(parsed.clock_type, ClockType::TAI);
+    assert_eq!(parsed.scale, Scale::TAI);
 
     // 3 fractional bytes → max ~59.6 ns quantization error
     let diff = (parsed.attos.unwrap() as i64 - 123_456_789_000_000_000i64).abs();
@@ -117,7 +117,7 @@ fn test_ccsds_d_roundtrip() {
     const EPOCH_OFFSET: i64 = 1_325_419_135;
     let utc_sec = total_utc_seconds - EPOCH_OFFSET;
 
-    let t = TimePoint::from(utc_sec, 400_000_000_000, ClockType::UTC);
+    let t = Dt::from(utc_sec, 400_000_000_000, Scale::UTC);
 
     let (buf, len) = t.to_ccsds_d(2, 1, false).unwrap();
     let parsed = TimeParts::from_ccsds_d(&buf[0..len]).unwrap();
@@ -128,7 +128,7 @@ fn test_ccsds_d_roundtrip() {
     assert_eq!(parsed.hour, Some(14));
     assert_eq!(parsed.minute, Some(30));
     assert_eq!(parsed.second, Some(45));
-    assert_eq!(parsed.clock_type, ClockType::UTC);
+    assert_eq!(parsed.scale, Scale::UTC);
 
     let diff = (parsed.attos.unwrap() as i64 - 400_000_000_000i64).abs();
     assert!(
@@ -142,7 +142,7 @@ fn test_ccsds_d_roundtrip() {
 /// and the recovered TimeParts are correct.
 /// Helper that performs a full round-trip and verifies both the binary bytes
 /// and the recovered TimeParts are correct.
-fn roundtrip_ccs(tp: TimePoint, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
+fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     // to_ccsds_ccs
     let (buf, len) = tp.to_ccsds_ccs(use_doy, n_subsec).unwrap();
     let bytes = &buf[0..len];
@@ -155,9 +155,9 @@ fn roundtrip_ccs(tp: TimePoint, use_doy: bool, n_subsec: u8, expected_pfield: u8
     let parsed_via_bin = TimeParts::from_ccsds_bin(bytes).unwrap();
     assert_eq!(parsed_parts, parsed_via_bin, "auto-detector failed");
 
-    let recovered_tp = parsed_parts.to_time_point(Some(ClockType::UTC)).unwrap();
+    let recovered_tp = parsed_parts.to_time_point(Some(Scale::UTC)).unwrap();
 
-    assert_eq!(tp.clock_type(), recovered_tp.clock_type());
+    assert_eq!(tp.scale(), recovered_tp.scale());
     assert_eq!(tp.sec(), recovered_tp.sec());
 
     // Special case for n_subsec == 0: fractional seconds are intentionally dropped
@@ -182,7 +182,7 @@ fn roundtrip_ccs(tp: TimePoint, use_doy: bool, n_subsec: u8, expected_pfield: u8
     }
 
     // Verify other fields
-    assert_eq!(parsed_parts.clock_type, ClockType::UTC);
+    assert_eq!(parsed_parts.scale, Scale::UTC);
     assert_eq!(parsed_parts.offset, Some(Offset::Utc));
     if parsed_parts.is_leap_second {
         assert_eq!(parsed_parts.second, Some(59));
@@ -192,7 +192,7 @@ fn roundtrip_ccs(tp: TimePoint, use_doy: bool, n_subsec: u8, expected_pfield: u8
 #[test]
 fn test_ccsds_ccs_month_day_variant() {
     // 2025-04-17 14:30:45.123456789 UTC (Month/Day)
-    let tp = TimePoint::from_ymdhms(
+    let tp = Dt::from_ymdhms(
         2025,
         4,
         17,
@@ -200,7 +200,7 @@ fn test_ccsds_ccs_month_day_variant() {
         30,
         45,
         123_456_789_000_000_000,
-        ClockType::UTC,
+        Scale::UTC,
     );
 
     roundtrip_ccs(tp, false, 4, 0b0101_0100); // P-field: 01010100 (Code 101, MD, 4 subsec)
@@ -209,7 +209,7 @@ fn test_ccsds_ccs_month_day_variant() {
 #[test]
 fn test_ccsds_ccs_day_of_year_variant() {
     // 2025-107 (April 17 is DOY 107 in 2025) 14:30:45.123456789 UTC
-    let tp = TimePoint::from_ymdhms(
+    let tp = Dt::from_ymdhms(
         2025,
         4,
         17,
@@ -217,7 +217,7 @@ fn test_ccsds_ccs_day_of_year_variant() {
         30,
         45,
         123_456_789_000_000_000,
-        ClockType::UTC,
+        Scale::UTC,
     );
 
     roundtrip_ccs(tp, true, 3, 0b0101_1011); // P-field: 01011011 (Code 101, DOY, 3 subsec)
@@ -226,14 +226,14 @@ fn test_ccsds_ccs_day_of_year_variant() {
 #[test]
 fn test_ccsds_ccs_leap_second() {
     // 2025-06-30 23:59:60.000000000 UTC (leap second)
-    let tp = TimePoint::from_ymdhms(2025, 6, 30, 23, 59, 60, 0, ClockType::UTC);
+    let tp = Dt::from_ymdhms(2025, 6, 30, 23, 59, 60, 0, Scale::UTC);
 
     roundtrip_ccs(tp, false, 0, 0b0101_0000); // P-field with 0 subsec
 }
 
 #[test]
 fn test_ccsds_ccs_various_precisions() {
-    let base = TimePoint::from_ymdhms(
+    let base = Dt::from_ymdhms(
         2025,
         4,
         17,
@@ -241,7 +241,7 @@ fn test_ccsds_ccs_various_precisions() {
         30,
         45,
         123_456_789_012_345_678,
-        ClockType::UTC,
+        Scale::UTC,
     );
 
     for n in 0..=6 {
@@ -252,15 +252,15 @@ fn test_ccsds_ccs_various_precisions() {
 #[test]
 fn test_ccsds_ccs_edge_cases() {
     // Epoch day
-    let epoch = TimePoint::from_ymdhms(1958, 1, 1, 0, 0, 0, 0, ClockType::UTC);
+    let epoch = Dt::from_ymdhms(1958, 1, 1, 0, 0, 0, 0, Scale::UTC);
     roundtrip_ccs(epoch, false, 0, 0b0101_0000);
 
     // Year 9999, DOY 366 (leap year)
-    let y9999 = TimePoint::from_ymdhms(9999, 12, 31, 23, 59, 59, 0, ClockType::UTC);
+    let y9999 = Dt::from_ymdhms(9999, 12, 31, 23, 59, 59, 0, Scale::UTC);
     roundtrip_ccs(y9999, true, 2, 0b0101_1010);
 
     // Subsecond rounding test (exactly halfway case)
-    let half = TimePoint::from_ymdhms(
+    let half = Dt::from_ymdhms(
         2025,
         4,
         17,
@@ -268,7 +268,7 @@ fn test_ccsds_ccs_edge_cases() {
         0,
         0,
         500_000_000_000_000_000,
-        ClockType::UTC,
+        Scale::UTC,
     );
     let (buf, _) = half.to_ccsds_ccs(false, 1).unwrap();
     // Should round to 50 (i.e. 0.5 s)

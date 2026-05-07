@@ -1,26 +1,26 @@
 use crate::{
-    ClockType, DateParseMode, J2000_JD_TT, MAX_YEAR, MIN_YEAR, NS_PER_DAY,
-    PLAUSIBLE_YYYYMM_YEAR_RANGE, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimePoint, parse_jd,
+    Scale, DateParseMode, J2000_JD_TT, MAX_YEAR, MIN_YEAR, NS_PER_DAY,
+    PLAUSIBLE_YYYYMM_YEAR_RANGE, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Dt, parse_jd,
     parse_mjd, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
 };
 
 #[inline]
-pub(crate) fn parse_i32_year(input: &str) -> Option<TimePoint> {
+pub(crate) fn parse_i32_year(input: &str) -> Option<Dt> {
     let year: i32 = input.parse().ok()?;
     if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
         return None;
     }
     let year_i64 = year as i64;
 
-    let jdn = TimePoint::ymd_to_jdn(year_i64, 1, 1);
+    let jdn = Dt::ymd_to_jdn(year_i64, 1, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
-    Some(TimePoint::from(sec_utc, 0, ClockType::UTC))
+    Some(Dt::from(sec_utc, 0, Scale::UTC))
 }
 
 #[inline]
-pub(crate) fn parse_two_digit_year(input: &str) -> Option<TimePoint> {
+pub(crate) fn parse_two_digit_year(input: &str) -> Option<Dt> {
     let y: i32 = input.parse().ok()?;
     let full_year = if y <= 68 { 2000 + y } else { 1900 + y };
     if !(MIN_YEAR..=MAX_YEAR).contains(&full_year) {
@@ -28,11 +28,11 @@ pub(crate) fn parse_two_digit_year(input: &str) -> Option<TimePoint> {
     }
     let year_i64 = full_year as i64;
 
-    let jdn = TimePoint::ymd_to_jdn(year_i64, 1, 1);
+    let jdn = Dt::ymd_to_jdn(year_i64, 1, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
-    Some(TimePoint::from(sec_utc, 0, ClockType::UTC))
+    Some(Dt::from(sec_utc, 0, Scale::UTC))
 }
 
 /// Fractional day string → nanoseconds (exact integer math, max 9 digits)
@@ -61,7 +61,7 @@ pub(crate) fn try_pure_numeric(
     integer_digits: u8,
     is_decimal: bool,
     mode: DateParseMode,
-) -> Option<TimePoint> {
+) -> Option<Dt> {
     // Year-only (1-4 digits)
     if (1..=4).contains(&total_digits) {
         return match mode {

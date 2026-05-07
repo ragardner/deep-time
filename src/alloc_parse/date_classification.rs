@@ -1,4 +1,4 @@
-use crate::TimePoint;
+use crate::Dt;
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -40,7 +40,7 @@ impl DateClassification {
 /// Or a DateClassification for use with parsing.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum ClassifiedDate {
-    Parsed(TimePoint),
+    Parsed(Dt),
     Cls(DateClassification),
 }
 

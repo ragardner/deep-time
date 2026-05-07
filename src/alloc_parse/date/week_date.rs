@@ -1,5 +1,5 @@
 use crate::{
-    ClassifiedDate, DateClassification, DateToken, Lang, TimePoint, classify_date,
+    ClassifiedDate, DateClassification, DateToken, Lang, Dt, classify_date,
     generate_unambiguous_candidates, try_compatible_formats,
 };
 use alloc::string::ToString;
@@ -17,8 +17,8 @@ pub(crate) fn is_week_date_missing_weekday(cls: &DateClassification) -> bool {
 pub(crate) fn parse_week_date_no_weekday(
     normalized: &str,
     lang: Lang,
-    ref_time: &Option<TimePoint>,
-) -> Option<TimePoint> {
+    ref_time: &Option<Dt>,
+) -> Option<Dt> {
     // Insert "-1" (Monday) right after the week number.
     // This works whether the string is pure date or date+time.
     let Some(w_pos) = normalized.find("-W") else {

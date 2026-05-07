@@ -1,9 +1,9 @@
 // tests/duration_tests.rs
-use deep_time::{Lang, TimeSpan};
+use deep_time::{Lang, TSpan};
 
 fn assert_duration(input: &str, expected_millis: i64) {
     let trimmed = input.trim();
-    let dur = TimeSpan::from_str(trimmed, Lang::default())
+    let dur = TSpan::from_str(trimmed, Lang::default())
         .unwrap_or_else(|e| panic!("Failed '{}': {}", input, e));
 
     let actual_millis = dur.to_ms() as i64;

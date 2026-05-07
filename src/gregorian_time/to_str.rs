@@ -1,6 +1,6 @@
 use crate::{
-    AsciiStr, ClockType, DtErr, DtErrKind, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE,
-    TimePoint, WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
+    AsciiStr, Scale, DtErr, DtErrKind, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE,
+    Dt, WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
 };
 
 impl GregorianTime {
@@ -224,10 +224,10 @@ impl GregorianTime {
                     }
                 }
                 b'L' => {
-                    // skip writing UTC clock type because the default is UTC
+                    // skip writing UTC scale because the default is UTC
                     // and avoid issues with iana overlap and offsets
-                    match self.clock_type {
-                        ClockType::UTC => {
+                    match self.scale {
+                        Scale::UTC => {
                             if i >= fmt.len() {
                                 while *pos > 0
                                     && matches!(buf[*pos - 1], b' ' | b'\t' | b'\n' | b'\r')
@@ -236,7 +236,7 @@ impl GregorianTime {
                                 }
                             }
                         }
-                        _ => Self::write_bytes(buf, pos, self.clock_type().abbrev().as_bytes()),
+                        _ => Self::write_bytes(buf, pos, self.scale().abbrev().as_bytes()),
                     }
                 }
 
@@ -820,7 +820,7 @@ impl GregorianTime {
         let Some(offset_sec) = self.offset_sec() else {
             return;
         };
-        let (negative, hours, minutes) = TimePoint::sec_as_hhmm(offset_sec);
+        let (negative, hours, minutes) = Dt::sec_as_hhmm(offset_sec);
         let sign = if negative { b'-' } else { b'+' };
 
         // seconds component — only used by %::z

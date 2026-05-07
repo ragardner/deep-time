@@ -1,6 +1,6 @@
 use {
     crate::{
-        ATTOS_PER_NS, Meridiem, Offset, TimeParts, TimePoint, Weekday, an_err,
+        ATTOS_PER_NS, Meridiem, Offset, TimeParts, Dt, Weekday, an_err,
         error::{DtErr, DtErrKind},
         tzdb::offset_info_at_local,
     },
@@ -259,7 +259,7 @@ impl TimeParts {
                 let probe_ts = if let Some(ts) = self.unix_timestamp_seconds {
                     ts
                 } else if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
-                    TimePoint::ymdhms_to_unix_sec(
+                    Dt::ymdhms_to_unix_sec(
                         y,
                         m,
                         d,

@@ -1,4 +1,4 @@
-use crate::{Lang, TimePoint};
+use crate::{Lang, Dt};
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -87,11 +87,11 @@ pub struct ParseCfg {
     /// - "tomorrow", "next Friday", "in 3 days", "next week"
     /// - dates missing a year/month ("March 15", "15th of next month")
     ///
-    /// - If `Some(tp)`, this `TimePoint` is used as "now" (overrides everything).
+    /// - If `Some(tp)`, this `Dt` is used as "now" (overrides everything).
     /// - If `None` + `std` feature enabled: automatically uses real system time.
     /// - If `None` + no `std`: parsing relative dates will fail with a clear error.
     #[cfg_attr(feature = "serde", serde(default))]
-    pub ref_time: Option<TimePoint>,
+    pub ref_time: Option<Dt>,
 }
 
 #[cfg(feature = "serde")]

@@ -2,7 +2,7 @@
 #[cfg(test)]
 mod tests {
     use deep_time::constants::{ATTOS_PER_DAY, SEC_PER_DAY_F};
-    use deep_time::{ClockType, Separator, TimePoint, Ut1Data, Ut1Format};
+    use deep_time::{Scale, Separator, Dt, Ut1Data, Ut1Format};
 
     #[test]
     fn test_ut1_with_finals_all_iau2000_txt() {
@@ -25,18 +25,18 @@ mod tests {
             "provider.ut1_minus_utc(56879.0) should be ≈ -0.3170554, got {dut1}"
         );
 
-        // Create a UTC TimePoint at exactly that MJD (midnight)
-        let utc = TimePoint::from_mjd_exact(56879, 0, ClockType::UTC);
+        // Create a UTC Dt at exactly that MJD (midnight)
+        let utc = Dt::from_mjd_exact(56879, 0, Scale::UTC);
 
         // === Test to_ut1 ===
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
         assert_eq!(
-            ut1.clock_type(),
-            ClockType::UT1,
+            ut1.scale(),
+            Scale::UT1,
             "UT1 should be stored as UT1"
         );
 
-        // The numerical value of the UT1 TimePoint is UTC + DUT1.
+        // The numerical value of the UT1 Dt is UTC + DUT1.
         // to_tai_since() computes physical time (via TAI), so we re-interpret
         // the UT1 value as UTC to see the clock difference (DUT1).
         let diff = ut1.to_tai_since(utc);
@@ -48,8 +48,8 @@ mod tests {
         );
 
         // === Test from_ut1 (full round-trip) ===
-        let back_to_utc = TimePoint::from_ut1(ut1, &provider).expect("from_ut1 failed");
-        assert_eq!(back_to_utc.clock_type(), ClockType::UTC);
+        let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
+        assert_eq!(back_to_utc.scale(), Scale::UTC);
 
         let roundtrip_diff = utc.to_tai_since(back_to_utc);
         assert!(
@@ -84,8 +84,8 @@ mod tests {
             "provider.ut1_minus_utc(60961.0) should be ≈ 0.0933562, got {dut1}"
         );
 
-        // 2. Create exact UTC TimePoint at MJD 60961.0 00:00:00 (midnight)
-        let utc = TimePoint::from_mjd_exact(60961, 0, ClockType::UTC);
+        // 2. Create exact UTC Dt at MJD 60961.0 00:00:00 (midnight)
+        let utc = Dt::from_mjd_exact(60961, 0, Scale::UTC);
 
         // 3. to_ut1 (uses exact MJD path internally)
         let ut1 = utc
@@ -93,13 +93,13 @@ mod tests {
             .expect("to_ut1 failed for MJD 60961.00");
 
         assert_eq!(
-            ut1.clock_type(),
-            ClockType::UT1,
+            ut1.scale(),
+            Scale::UT1,
             "UT1 should be stored as UT1"
         );
 
         // Verify the numerical difference is exactly the DUT1 we expect
-        let diff = ut1.with_type(ClockType::UTC).to_tai_since(utc);
+        let diff = ut1.with_type(Scale::UTC).to_tai_since(utc);
         assert!(
             (diff.to_sec_f() - dut1_expected).abs() < 1e-10,
             "to_ut1 applied wrong DUT1: expected {}, got {}",
@@ -108,9 +108,9 @@ mod tests {
         );
 
         // 4. Round-trip back to UTC using the exact fixed-point iteration version
-        let back_to_utc = TimePoint::from_ut1(ut1, &provider).expect("from_ut1 failed");
+        let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
 
-        assert_eq!(back_to_utc.clock_type(), ClockType::UTC);
+        assert_eq!(back_to_utc.scale(), Scale::UTC);
 
         let roundtrip_diff = utc.to_tai_since(back_to_utc);
         assert!(
@@ -143,11 +143,11 @@ mod tests {
         );
 
         // 2. Create exact UTC midnight
-        let utc = TimePoint::from_mjd_exact(57259, 0, ClockType::UTC);
+        let utc = Dt::from_mjd_exact(57259, 0, Scale::UTC);
 
         // 3. User-style round-trip (the way real code uses it)
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
-        let back_to_utc = TimePoint::from_ut1(ut1, &provider).expect("from_ut1 failed");
+        let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
 
         // 4. Verify round-trip is exact (within floating-point tolerance)
         let roundtrip_error = utc.to_tai_since(back_to_utc).to_sec_f();
@@ -175,14 +175,14 @@ mod tests {
         let provider = load_finals2000a();
 
         // Use a known good row (MJD 56879.00, DUT1 ≈ -0.3170554)
-        let utc = TimePoint::from_mjd_exact(56879, 0, ClockType::UTC);
+        let utc = Dt::from_mjd_exact(56879, 0, Scale::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
         // Round-trip through JD_UT1
-        let (jd_days, frac) = ut1.to_jd_exact(ut1.clock_type());
-        let roundtrip = TimePoint::from_jd_exact(jd_days, frac, ClockType::UT1);
+        let (jd_days, frac) = ut1.to_jd_exact(ut1.scale());
+        let roundtrip = Dt::from_jd_exact(jd_days, frac, Scale::UT1);
 
-        assert_eq!(roundtrip.clock_type(), ClockType::UT1);
+        assert_eq!(roundtrip.scale(), Scale::UT1);
         assert_eq!(ut1.sec(), roundtrip.sec());
         assert_eq!(ut1.subsec(), roundtrip.subsec());
 
@@ -203,15 +203,15 @@ mod tests {
     fn test_full_pipeline_jd_ut1_roundtrip() {
         let provider = load_finals2000a();
 
-        let original_utc = TimePoint::from_mjd_exact(60961, 0, ClockType::UTC); // known row
+        let original_utc = Dt::from_mjd_exact(60961, 0, Scale::UTC); // known row
         let ut1 = original_utc.to_ut1(&provider).expect("to_ut1 failed");
 
         // Convert to JD in UT1
-        let (jd_days, frac) = ut1.to_jd_exact(ut1.clock_type());
+        let (jd_days, frac) = ut1.to_jd_exact(ut1.scale());
 
         // Go back
-        let ut1_back = TimePoint::from_jd_exact(jd_days, frac, ClockType::UT1);
-        let utc_back = TimePoint::from_ut1(ut1_back, &provider).expect("from_ut1 failed");
+        let ut1_back = Dt::from_jd_exact(jd_days, frac, Scale::UT1);
+        let utc_back = Dt::from_ut1(ut1_back, &provider).expect("from_ut1 failed");
 
         // Final check: should be extremely close to original UTC
         let error = original_utc.to_tai_since(utc_back).to_sec_f();
@@ -229,13 +229,13 @@ mod tests {
     fn test_mjd_ut1_exact_roundtrip() {
         let provider = load_finals2000a();
 
-        let utc = TimePoint::from_mjd_exact(57259, 0, ClockType::UTC);
+        let utc = Dt::from_mjd_exact(57259, 0, Scale::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
-        let (mjd_days, frac) = ut1.to_mjd_exact(ut1.clock_type());
-        let roundtrip = TimePoint::from_mjd_exact(mjd_days, frac, ClockType::UT1);
+        let (mjd_days, frac) = ut1.to_mjd_exact(ut1.scale());
+        let roundtrip = Dt::from_mjd_exact(mjd_days, frac, Scale::UT1);
 
-        assert_eq!(roundtrip.clock_type(), ClockType::UT1);
+        assert_eq!(roundtrip.scale(), Scale::UT1);
         assert_eq!(ut1.sec(), roundtrip.sec());
         assert_eq!(ut1.subsec(), roundtrip.subsec());
 
@@ -253,12 +253,12 @@ mod tests {
         let dut1_expected = -0.3170554; // known value for MJD 56879.00
 
         // Create exact UTC midnight using the modern constructor
-        let utc = TimePoint::from_mjd_exact(56879, 0, ClockType::UTC);
+        let utc = Dt::from_mjd_exact(56879, 0, Scale::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
         // Get JD in both time scales (now both return (i64, u128))
-        let (jd_ut1, frac_ut1_attos) = ut1.to_jd_exact(ut1.clock_type());
-        let (jd_utc, frac_utc_attos) = utc.to_jd_exact(utc.clock_type()); // modern main API
+        let (jd_ut1, frac_ut1_attos) = ut1.to_jd_exact(ut1.scale());
+        let (jd_utc, frac_utc_attos) = utc.to_jd_exact(utc.scale()); // modern main API
 
         // Convert attoseconds → fraction of day
         let total_jd_ut1 = jd_ut1 as f64 + (frac_ut1_attos as f64) / (ATTOS_PER_DAY as f64);
@@ -283,11 +283,11 @@ mod tests {
         let provider = load_finals2000a();
 
         // 12:00:00 UTC on a known day
-        let utc = TimePoint::from_mjd_exact(60961, 12 * 3600, ClockType::UTC);
+        let utc = Dt::from_mjd_exact(60961, 12 * 3600, Scale::UTC);
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
-        let (jd_days, frac2) = ut1.to_jd_exact(ut1.clock_type());
-        let roundtrip = TimePoint::from_jd_exact(jd_days, frac2, ClockType::UT1);
+        let (jd_days, frac2) = ut1.to_jd_exact(ut1.scale());
+        let roundtrip = Dt::from_jd_exact(jd_days, frac2, Scale::UT1);
 
         let diff = ut1.to_tai_since(roundtrip).to_sec_f();
         assert!(

@@ -1,15 +1,15 @@
-use crate::{ClockType, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimeParts, TimePoint};
+use crate::{Scale, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, TimeParts, Dt};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline]
-pub(crate) fn parse_yymmdd(input: &str) -> Option<TimePoint> {
+pub(crate) fn parse_yymmdd(input: &str) -> Option<Dt> {
     let parsed = TimeParts::from_str("%y%m%d", input, true, true, false).ok()?;
-    parsed.to_time_point(Some(ClockType::UTC)).ok()
+    parsed.to_time_point(Some(Scale::UTC)).ok()
 }
 
 /// Parses year-month formats with flexible separators and optional sign:
 /// "2024-03", "2024/3", "2024.03", "-2024-03", "-2024/3", "-2025.1", "+2024-05", etc.
-pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<TimePoint> {
+pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<Dt> {
     let len = bytes.len();
 
     // Parse optional leading sign for the year
@@ -65,16 +65,16 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<TimePoint> {
         return None;
     }
 
-    // Build TimePoint at day 1, 00:00:00 UTC using the same J2000 logic
-    let jdn = TimePoint::ymd_to_jdn(year as i64, month as u8, 1);
+    // Build Dt at day 1, 00:00:00 UTC using the same J2000 logic
+    let jdn = Dt::ymd_to_jdn(year as i64, month as u8, 1);
     let days_since_j2000 = jdn - J2000_JD_TT;
     let sec = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // midnight = -12h from noon
 
-    Some(TimePoint::from(sec, 0, ClockType::UTC))
+    Some(Dt::from(sec, 0, Scale::UTC))
 }
 
 /// 6-digit year-month: "202403" or "-202403"
-pub(crate) fn parse_yyyymm(s: &str) -> Option<TimePoint> {
+pub(crate) fn parse_yyyymm(s: &str) -> Option<Dt> {
     let (y_str, m_str) = if let Some(rest) = s.strip_prefix('-') {
         if rest.len() != 6 {
             return None;
@@ -94,7 +94,7 @@ pub(crate) fn parse_yyyymm(s: &str) -> Option<TimePoint> {
         if (1..=12).contains(&m) && (crate::MIN_YEAR..=crate::MAX_YEAR).contains(&y) {
             let parsed =
                 TimeParts::from_str("%Y%m", s.trim_start_matches('-'), true, true, true).ok()?;
-            return parsed.to_time_point(Some(ClockType::UTC)).ok();
+            return parsed.to_time_point(Some(Scale::UTC)).ok();
         }
     }
     None

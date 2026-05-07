@@ -1,4 +1,4 @@
-use crate::{ClockType, Real, TimePoint, TimeSpan};
+use crate::{Dt, Real, Scale, TSpan};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct TaiUtcPre1972 {
@@ -176,14 +176,14 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
 ///
 /// The offset is computed using:
 /// `offset = entry.offset + (MJD − entry.mjd_ref) × entry.drift`
-pub const fn historical_sofa_for_utc_to_tai(utc: &TimePoint) -> Option<Real> {
-    let TimeSpan { sec, .. } = utc.to(ClockType::UTCSofa);
+pub const fn historical_sofa_for_utc_to_tai(utc: &Dt) -> Option<Real> {
+    let TSpan { sec, .. } = utc.to(Scale::UTCSofa);
     // < 1961-1-1 midnight, or >= utc 1972-1-1 midnight
     if sec < -1230724800 || sec >= -883656990 {
         return None;
     }
-    let jd = utc.to_jd(ClockType::UTC);
-    let mjd = utc.to_mjd(ClockType::UTC);
+    let jd = utc.to_jd(Scale::UTC);
+    let mjd = utc.to_mjd(Scale::UTC);
     let len = SOFA_TAI_UTC_PRE_1972.len();
     let mut i = len;
     while i > 0 {
@@ -204,7 +204,7 @@ pub const fn historical_sofa_for_utc_to_tai(utc: &TimePoint) -> Option<Real> {
 ///
 /// The offset is computed using the same piecewise linear formula as the forward direction:
 /// `offset = entry.offset + (MJD − entry.mjd_ref) × entry.drift`
-pub const fn historical_sofa_for_tai_to_utc(tai: &TimePoint) -> Option<Real> {
+pub const fn historical_sofa_for_tai_to_utc(tai: &Dt) -> Option<Real> {
     // < 1961-01-01 after SOFA offset applied, or >= tai 1972-1-1 midnight
     if (tai.sec() < -1230724800 || (tai.sec() == -1230724800 && tai.subsec() < 422817999999999936))
         || tai.sec() >= -883655990
@@ -212,8 +212,8 @@ pub const fn historical_sofa_for_tai_to_utc(tai: &TimePoint) -> Option<Real> {
         return None;
     }
 
-    let jd = tai.to_jd(ClockType::TAI);
-    let mjd = tai.to_mjd(ClockType::TAI);
+    let jd = tai.to_jd(Scale::TAI);
+    let mjd = tai.to_mjd(Scale::TAI);
 
     let len = SOFA_TAI_UTC_PRE_1972.len();
     let mut i = len;

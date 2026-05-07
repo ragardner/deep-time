@@ -1,4 +1,4 @@
-use crate::{ClockType, TimePoint};
+use crate::{Scale, Dt};
 use crate::{UNIX_EPOCH_TO_J2000_NOON_UTC, frac_to_nanos};
 
 /// Pure-numeric Unix timestamp fallback with automatic unit detection.
@@ -11,13 +11,13 @@ use crate::{UNIX_EPOCH_TO_J2000_NOON_UTC, frac_to_nanos};
 /// `div_euclid`/`rem_euclid` everywhere for correct negative-timestamp handling.
 ///
 /// All paths correctly convert from Unix epoch to the library's internal epoch
-/// (2000-01-01 12:00:00 UTC) before constructing the `TimePoint`.
+/// (2000-01-01 12:00:00 UTC) before constructing the `Dt`.
 ///
-/// Returns a `TimePoint` in `ClockType::UTC`.
+/// Returns a `Dt` in `Scale::UTC`.
 pub(crate) fn parse_pure_numeric_unix_timestamp(
     trimmed: &str,
     integer_digits: usize,
-) -> Option<TimePoint> {
+) -> Option<Dt> {
     let ts_f64: f64 = trimmed.parse().ok()?;
 
     let tp = match integer_digits {
@@ -34,7 +34,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let total_subsec_nanos = (rem_millis as u64) * 1_000_000 + (frac_nanos as u64);
             let subsec_attos = total_subsec_nanos * 1_000_000_000;
 
-            TimePoint::from(secs, subsec_attos, ClockType::UTC)
+            Dt::from(secs, subsec_attos, Scale::UTC)
         }
 
         // 16–18 digits → microseconds
@@ -50,7 +50,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let total_subsec_nanos = (rem_micros as u64) * 1_000 + (frac_nanos as u64);
             let subsec_attos = total_subsec_nanos * 1_000_000_000;
 
-            TimePoint::from(secs, subsec_attos, ClockType::UTC)
+            Dt::from(secs, subsec_attos, Scale::UTC)
         }
 
         // 19+ digits → nanoseconds (uses existing `frac_to_nanos` for perfect precision)
@@ -72,7 +72,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
                 let secs: i64 = secs_i128.try_into().ok()?;
 
                 let subsec_attos = rem_nanos * 1_000_000_000;
-                TimePoint::from(secs, subsec_attos, ClockType::UTC)
+                Dt::from(secs, subsec_attos, Scale::UTC)
             } else {
                 // Extremely rare fallback
                 let unix_secs = ts_f64.trunc() as i64;
@@ -80,7 +80,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
                 let nanos = ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32)
                     .min(999_999_999) as u64;
                 let subsec_attos = nanos * 1_000_000_000;
-                TimePoint::from(secs, subsec_attos, ClockType::UTC)
+                Dt::from(secs, subsec_attos, Scale::UTC)
             }
         }
 
@@ -91,7 +91,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let nanos =
                 ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32).min(999_999_999) as u64;
             let subsec_attos = nanos * 1_000_000_000;
-            TimePoint::from(secs, subsec_attos, ClockType::UTC)
+            Dt::from(secs, subsec_attos, Scale::UTC)
         }
     };
 

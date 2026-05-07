@@ -1,6 +1,6 @@
-use crate::{ClockType, DtErrKind, DtErr, Offset, TimeParts, TimePoint, an_err};
+use crate::{Scale, DtErrKind, DtErr, Offset, TimeParts, Dt, an_err};
 
-// tests are in TimePoint to_ccsds_bin
+// tests are in Dt to_ccsds_bin
 impl TimeParts {
     /// Helper: converts days since 1958-01-01 (midnight) into Gregorian Y/M/D.
     /// Pure integer arithmetic, matches the exact CCSDS Level 1 epoch
@@ -10,7 +10,7 @@ impl TimeParts {
         let mut remaining = days_since_epoch;
 
         while remaining >= 0 {
-            let days_in_year = if TimePoint::is_leap_year(year) {
+            let days_in_year = if Dt::is_leap_year(year) {
                 366
             } else {
                 365
@@ -22,7 +22,7 @@ impl TimeParts {
             year += 1;
         }
 
-        let month_days = if TimePoint::is_leap_year(year) {
+        let month_days = if Dt::is_leap_year(year) {
             [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
         } else {
             [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -48,10 +48,10 @@ impl TimeParts {
         let mut days = 0i64;
         let mut y = 1958i64;
         while y < year {
-            days += if TimePoint::is_leap_year(y) { 366 } else { 365 };
+            days += if Dt::is_leap_year(y) { 366 } else { 365 };
             y += 1;
         }
-        let month_days = if TimePoint::is_leap_year(year) {
+        let month_days = if Dt::is_leap_year(year) {
             [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
         } else {
             [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -150,7 +150,7 @@ impl TimeParts {
             let d2 = bcd_byte(input[idx + 1])?;
             idx += 2;
             let doy = (d1 as u16) * 100 + (d2 as u16);
-            if doy == 0 || doy > 366 || (doy == 366 && !TimePoint::is_leap_year(year)) {
+            if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_year(year)) {
                 return Err(an_err!(DtErrKind::OutOfRange, "day of year: {}", doy));
             }
             (None, None, Some(doy))
@@ -207,7 +207,7 @@ impl TimeParts {
             second: Some(second),
             attos: Some(attos),
             is_leap_second,
-            clock_type: ClockType::UTC,
+            scale: Scale::UTC,
             offset: Some(Offset::Utc),
             ..TimeParts::default()
         };
@@ -241,7 +241,7 @@ impl TimeParts {
     /// with 10 fractional bytes).
     ///
     /// # Returns
-    /// A [`TimeParts`] with `clock_type = TAI` and `tz = Utc`.
+    /// A [`TimeParts`] with `scale = TAI` and `tz = Utc`.
     ///
     /// # Errors
     /// - [`DtErrKind::CCSDSBinEmpty`] if the input is empty.
@@ -336,7 +336,7 @@ impl TimeParts {
             minute: Some(minute),
             second: Some(second),
             attos: Some(frac_attos),
-            clock_type: ClockType::TAI,
+            scale: Scale::TAI,
             offset: Some(Offset::Utc),
             ..TimeParts::default()
         };
@@ -471,7 +471,7 @@ impl TimeParts {
             minute: Some(minute),
             second: Some(second),
             attos: Some(frac_attos as u64),
-            clock_type: ClockType::UTC,
+            scale: Scale::UTC,
             offset: Some(Offset::Utc),
             ..TimeParts::default()
         };

@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_NS, TimePoint, an_err,
+    ATTOS_PER_NS, Dt, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
@@ -53,21 +53,21 @@ impl TimeParts {
         // ISO week date (%G/%V + weekday)
         if let (Some(iso_y), Some(w)) = (self.iso_week_year, self.iso_week) {
             let wd = self.weekday.unwrap_or(Weekday::Monday);
-            let jdn = TimePoint::ymd_to_jdn_from_iso_week(iso_y, w, wd);
+            let jdn = Dt::ymd_to_jdn_from_iso_week(iso_y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 
         // Sunday-based week number (%U)
         if let (Some(y), Some(w)) = (self.year, self.week_sun) {
             let wd = self.weekday.unwrap_or(Weekday::Sunday);
-            let jdn = TimePoint::ymd_to_jdn_from_week_sun(y, w, wd);
+            let jdn = Dt::ymd_to_jdn_from_week_sun(y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 
         // Monday-based week number (%W)
         if let (Some(y), Some(w)) = (self.year, self.week_mon) {
             let wd = self.weekday.unwrap_or(Weekday::Monday);
-            let jdn = TimePoint::ymd_to_jdn_from_week_mon(y, w, wd);
+            let jdn = Dt::ymd_to_jdn_from_week_mon(y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 

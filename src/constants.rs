@@ -1,4 +1,4 @@
-use crate::{Real, TimeSpan};
+use crate::{Real, TSpan};
 
 /// Fixed-length second equivalents for ISO 8601 calendar units (Y, M, W, D).
 ///
@@ -78,8 +78,8 @@ pub const ATTOS_PER_FS_I128: i128 = ATTOS_PER_FS as i128;
 pub(crate) const TT_TAI_OFFSET_SEC: i64 = 32;
 pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 × 10¹⁸
 
-/// Helper that returns the exact TT–TAI offset as a `TimeSpan`.
-pub const TT_TAI_OFFSET_SPAN: TimeSpan = TimeSpan::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
+/// Helper that returns the exact TT–TAI offset as a `TSpan`.
+pub const TT_TAI_OFFSET_SPAN: TSpan = TSpan::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
 
 // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
 pub(crate) const J2000_SEC_PER_CENTURY: Real = 3_155_760_000.0;
@@ -141,7 +141,7 @@ pub(crate) const MARS_MSD_REF_TOD_SUBSEC: u64 = 650_560_000_000_000_000;
 pub const MARS_SOL_ATTOS: i128 = 88_775_244_000_000_000_000_000;
 
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
-pub(crate) const MARS_REF_TT: TimeSpan = TimeSpan::new(-3_976_386_952, 650_560_000_000_000_000);
+pub(crate) const MARS_REF_TT: TSpan = TSpan::new(-3_976_386_952, 650_560_000_000_000_000);
 
 pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
     b"Sunday",

@@ -1,8 +1,8 @@
-use crate::{AsciiStr, ClockType, J2000_JD_TT, SEC_PER_DAYI64, TimePoint, Weekday};
+use crate::{AsciiStr, Scale, J2000_JD_TT, SEC_PER_DAYI64, Dt, Weekday};
 
 mod to_str;
 
-/// UTC Civil calendar and time-of-day components of a `TimePoint`.
+/// UTC Civil calendar and time-of-day components of a `Dt`.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -46,13 +46,13 @@ pub struct GregorianTime {
     pub(crate) tz_abbrev: Option<AsciiStr<29>>,
     /// Used for formatting (strftime).
     /// Clock type of the Time Point this UTC GregorianTime came from.
-    pub(crate) clock_type: ClockType,
+    pub(crate) scale: Scale,
 }
 
 impl GregorianTime {
     /// Creates a new `GregorianTime` with all fields specified.
     /// This isn't the recommended way to make a `GregorianTime`.
-    /// It's safer to use `TimePoint::to_gregorian_time()`.
+    /// It's safer to use `Dt::to_gregorian_time()`.
     #[inline]
     pub const fn new(
         unix_attosec: i128,
@@ -70,7 +70,7 @@ impl GregorianTime {
         wkday: u8,
         wk_of_yr_sun: u8,
         wk_of_yr_mon: u8,
-        clock_type: ClockType,
+        scale: Scale,
     ) -> Self {
         Self {
             unix_attosec,
@@ -91,7 +91,7 @@ impl GregorianTime {
             offset_sec: None,
             tz: None,
             tz_abbrev: None,
-            clock_type,
+            scale,
         }
     }
 
@@ -221,8 +221,8 @@ impl GregorianTime {
     }
 
     #[inline]
-    pub const fn clock_type(&self) -> ClockType {
-        self.clock_type
+    pub const fn scale(&self) -> Scale {
+        self.scale
     }
 
     #[inline]
@@ -244,24 +244,24 @@ impl GregorianTime {
     }
 
     #[inline]
-    pub fn set_type(&mut self, clock_type: ClockType) -> &mut Self {
-        self.clock_type = clock_type;
+    pub fn set_type(&mut self, scale: Scale) -> &mut Self {
+        self.scale = scale;
         self
     }
 
-    /// Reconstructs a [`TimePoint`] from these **UTC** civil components.
+    /// Reconstructs a [`Dt`] from these **UTC** civil components.
     ///
-    /// Round-tripping with `TimePoint::to_gregorian_time`.
-    pub const fn to_time_point(self, clock_type: ClockType) -> TimePoint {
-        let jdn = TimePoint::ymd_to_jdn(self.yr, self.mo, self.day);
+    /// Round-tripping with `Dt::to_gregorian_time`.
+    pub const fn to_time_point(self, scale: Scale) -> Dt {
+        let jdn = Dt::ymd_to_jdn(self.yr, self.mo, self.day);
         let days_since_j2000 = jdn - J2000_JD_TT;
         let seconds_from_noon =
             (self.hr as i64 - 12) * 3600i64 + (self.min as i64) * 60i64 + (self.sec as i64);
         let sec = days_since_j2000 * SEC_PER_DAYI64 + seconds_from_noon;
-        TimePoint::from(sec, self.attos, ClockType::UTC).with_type(clock_type)
+        Dt::from(sec, self.attos, Scale::UTC).with_type(scale)
 
-        // TimePoint::from_ymdhms(
-        //     self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0, clock_type,
+        // Dt::from_ymdhms(
+        //     self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0, scale,
         // )
     }
 }
@@ -291,7 +291,7 @@ impl GregorianTime {
     /// - Bytes `53..58`: `offset_sec` (tag byte + `i32`)
     /// - Bytes `58..109`: `tz` (tag byte + `AsciiStr<50>`)
     /// - Bytes `109..139`: `tz_abbrev` (tag byte + `AsciiStr<29>`)
-    /// - Byte `139`: `clock_type` (`ClockType`)
+    /// - Byte `139`: `scale` (`Scale`)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -374,8 +374,8 @@ impl GregorianTime {
         }
         offset += 1 + AsciiStr::<29>::WIRE_SIZE;
 
-        // clock_type (final byte)
-        buf[offset] = self.clock_type as u8;
+        // scale (final byte)
+        buf[offset] = self.scale as u8;
 
         buf
     }
@@ -476,8 +476,8 @@ impl GregorianTime {
         };
         offset += 1 + AsciiStr::<29>::WIRE_SIZE;
 
-        // clock_type (final byte)
-        let clock_type = ClockType::from_u8(bytes[offset])?;
+        // scale (final byte)
+        let scale = Scale::from_u8(bytes[offset])?;
 
         Some(Self {
             unix_attosec,
@@ -498,7 +498,7 @@ impl GregorianTime {
             offset_sec,
             tz,
             tz_abbrev,
-            clock_type,
+            scale,
         })
     }
 }

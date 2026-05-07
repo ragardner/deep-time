@@ -1,21 +1,21 @@
-//! High-precision evenly-spaced `TimePoint` iterator (the "linspace" for time).
+//! High-precision evenly-spaced `Dt` iterator (the "linspace" for time).
 
-use crate::{TimePoint, TimeSpan};
+use crate::{Dt, TSpan};
 
 /// Builder type that enables the ergonomic `start.every(step)` syntax.
 ///
-/// This struct is created by [`TimePoint::every`] and is used to
+/// This struct is created by [`Dt::every`] and is used to
 /// construct a [`TimeRange`] via either `.until(end)` (inclusive) or
 /// `.up_to(end)` (exclusive).
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Debug)]
 pub struct Every {
-    start: TimePoint,
-    step: TimeSpan,
+    start: Dt,
+    step: TSpan,
 }
 
-impl TimePoint {
+impl Dt {
     /// Starts building an evenly-spaced time range.
     ///
     /// This method returns an [`Every`] builder that can be chained with
@@ -24,8 +24,8 @@ impl TimePoint {
     /// # Example
     ///
     /// ```ignore
-    /// let start = TimePoint::from_gregorian(2025, 1, 1, 0, 0, 0, 0, ClockType::TAI);
-    /// let step = TimeSpan::from_hours(1);
+    /// let start = Dt::from_gregorian(2025, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// let step = TSpan::from_hours(1);
     ///
     /// // Inclusive range: yields 25 points (including both start and end)
     /// for t in start.every(step).until(end) { ... }
@@ -34,7 +34,7 @@ impl TimePoint {
     /// for t in start.every(step).up_to(end) { ... }
     /// ```
     #[inline]
-    pub const fn every(self, step: TimeSpan) -> Every {
+    pub const fn every(self, step: TSpan) -> Every {
         Every { start: self, step }
     }
 
@@ -42,7 +42,7 @@ impl TimePoint {
     ///
     /// Equivalent to `self.every(step).until(end)`.
     #[inline]
-    pub const fn range_to(self, end: TimePoint, step: TimeSpan) -> TimeRange {
+    pub const fn range_to(self, end: Dt, step: TSpan) -> TimeRange {
         TimeRange::inclusive(self, end, step)
     }
 
@@ -50,32 +50,32 @@ impl TimePoint {
     ///
     /// Equivalent to `self.every(step).up_to(end)`.
     #[inline]
-    pub const fn range_until(self, end: TimePoint, step: TimeSpan) -> TimeRange {
+    pub const fn range_until(self, end: Dt, step: TSpan) -> TimeRange {
         TimeRange::exclusive(self, end, step)
     }
 
     /// Creates a range stepping by whole seconds.
     #[inline]
     pub const fn every_second(self) -> Every {
-        self.every(TimeSpan::from_sec(1))
+        self.every(TSpan::from_sec(1))
     }
 
     /// Creates a range stepping by whole minutes.
     #[inline]
     pub const fn every_minute(self) -> Every {
-        self.every(TimeSpan::from_min(1))
+        self.every(TSpan::from_min(1))
     }
 
     /// Creates a range stepping by whole hours.
     #[inline]
     pub const fn every_hour(self) -> Every {
-        self.every(TimeSpan::from_hr(1))
+        self.every(TSpan::from_hr(1))
     }
 
     /// Creates a range stepping by whole days.
     #[inline]
     pub const fn every_day(self) -> Every {
-        self.every(TimeSpan::from_hr(24))
+        self.every(TSpan::from_hr(24))
     }
 
     /// Returns the next `n` points **after** `self` (exclusive of `self`)
@@ -83,7 +83,7 @@ impl TimePoint {
     ///
     /// This is a convenient way to get future points without including the start.
     #[inline]
-    pub fn next_n(self, n: usize, step: TimeSpan) -> impl Iterator<Item = TimePoint> {
+    pub fn next_n(self, n: usize, step: TSpan) -> impl Iterator<Item = Dt> {
         (self + step).for_n_steps(n, step)
     }
 
@@ -92,7 +92,7 @@ impl TimePoint {
     ///
     /// This is a convenient one-liner for the common "next N steps" pattern.
     #[inline]
-    pub fn for_n_steps(self, n: usize, step: TimeSpan) -> impl Iterator<Item = TimePoint> {
+    pub fn for_n_steps(self, n: usize, step: TSpan) -> impl Iterator<Item = Dt> {
         // We create an exclusive range long enough for n steps, then limit it
         let end = self + step * (n as i64);
         TimeRange::exclusive(self, end, step).take(n)
@@ -105,7 +105,7 @@ impl Every {
     /// The resulting iterator will yield `end` as the final element
     /// (provided `end` is reachable from `start` with the given step).
     #[inline]
-    pub fn until(self, end: TimePoint) -> TimeRange {
+    pub fn until(self, end: Dt) -> TimeRange {
         TimeRange::new(self.start, end, self.step, true)
     }
 
@@ -113,7 +113,7 @@ impl Every {
     ///
     /// The resulting iterator will **not** yield `end`.
     #[inline]
-    pub fn up_to(self, end: TimePoint) -> TimeRange {
+    pub fn up_to(self, end: Dt) -> TimeRange {
         TimeRange::new(self.start, end, self.step, false)
     }
 
@@ -121,7 +121,7 @@ impl Every {
     ///
     /// Example: `start.every(-1.hour()).down_to(earlier_time)`
     #[inline]
-    pub fn down_to(self, end: TimePoint) -> TimeRange {
+    pub fn down_to(self, end: Dt) -> TimeRange {
         TimeRange::new(self.start, end, self.step, true)
     }
 }
@@ -129,7 +129,7 @@ impl Every {
 #[cfg(feature = "wire")]
 impl Every {
     /// Size of the canonical wire representation in bytes (33 bytes).
-    pub const WIRE_SIZE: usize = TimePoint::WIRE_SIZE + TimeSpan::WIRE_SIZE;
+    pub const WIRE_SIZE: usize = Dt::WIRE_SIZE + TSpan::WIRE_SIZE;
 
     /// Serializes this `Every` builder into a fixed 33-byte buffer.
     ///
@@ -148,18 +148,18 @@ impl Every {
     /// ## Security
     ///
     /// Safe for untrusted input. Fixed size with strict validation
-    /// of the inner `TimePoint` and `TimeSpan`.
+    /// of the inner `Dt` and `TSpan`.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
         }
-        let start = TimePoint::from_wire_bytes(&bytes[0..17])?;
-        let step = TimeSpan::from_wire_bytes(&bytes[17..33])?;
+        let start = Dt::from_wire_bytes(&bytes[0..17])?;
+        let step = TSpan::from_wire_bytes(&bytes[17..33])?;
         Some(Self { start, step })
     }
 }
 
-/// An iterator over evenly spaced [`TimePoint`] values.
+/// An iterator over evenly spaced [`Dt`] values.
 ///
 /// `TimeRange` is the time-domain equivalent of `std::iter::StepBy` or
 /// NumPy's `linspace` / `arange`. It supports both forward and backward
@@ -191,10 +191,10 @@ impl Every {
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TimeRange {
-    start: TimePoint,
-    current: TimePoint,
-    end: TimePoint,
-    step: TimeSpan,
+    start: Dt,
+    current: Dt,
+    end: Dt,
+    step: TSpan,
     inclusive: bool,
     finished: bool,
 }
@@ -204,7 +204,7 @@ impl TimeRange {
     ///
     /// The iterator will yield `end` if it is exactly reachable.
     #[inline]
-    pub const fn inclusive(start: TimePoint, end: TimePoint, step: TimeSpan) -> Self {
+    pub const fn inclusive(start: Dt, end: Dt, step: TSpan) -> Self {
         Self::new(start, end, step, true)
     }
 
@@ -212,13 +212,13 @@ impl TimeRange {
     ///
     /// The iterator will **not** yield `end`.
     #[inline]
-    pub const fn exclusive(start: TimePoint, end: TimePoint, step: TimeSpan) -> Self {
+    pub const fn exclusive(start: Dt, end: Dt, step: TSpan) -> Self {
         Self::new(start, end, step, false)
     }
 
     /// Internal constructor.
     #[inline]
-    const fn new(start: TimePoint, end: TimePoint, step: TimeSpan, inclusive: bool) -> Self {
+    const fn new(start: Dt, end: Dt, step: TSpan, inclusive: bool) -> Self {
         Self {
             start,
             current: start,
@@ -231,9 +231,9 @@ impl TimeRange {
 }
 
 impl Iterator for TimeRange {
-    type Item = TimePoint;
+    type Item = Dt;
 
-    /// Advances the iterator and returns the next [`TimePoint`].
+    /// Advances the iterator and returns the next [`Dt`].
     ///
     /// Returns `None` once the range has been exhausted.
     fn next(&mut self) -> Option<Self::Item> {
@@ -247,9 +247,9 @@ impl Iterator for TimeRange {
         let passed = if self.step.is_zero() {
             true
         } else if self.step.sec > 0 || (self.step.sec == 0 && self.step.subsec > 0) {
-            to_end > TimeSpan::ZERO
+            to_end > TSpan::ZERO
         } else {
-            to_end < TimeSpan::ZERO
+            to_end < TSpan::ZERO
         };
 
         if passed {
@@ -319,7 +319,7 @@ impl TimeRange {
 
     /// Size of the canonical wire representation in bytes.
     /// Only the logical definition is stored (runtime state is not serialized).
-    pub const WIRE_SIZE: usize = 1 + 2 * TimePoint::WIRE_SIZE + TimeSpan::WIRE_SIZE + 1;
+    pub const WIRE_SIZE: usize = 1 + 2 * Dt::WIRE_SIZE + TSpan::WIRE_SIZE + 1;
 
     /// Serializes this `TimeRange` into a fixed buffer.
     ///
@@ -335,8 +335,8 @@ impl TimeRange {
         let end = self.end.to_wire_bytes();
         let step = self.step.to_wire_bytes();
 
-        let tp_size = TimePoint::WIRE_SIZE;
-        let span_size = TimeSpan::WIRE_SIZE;
+        let tp_size = Dt::WIRE_SIZE;
+        let span_size = TSpan::WIRE_SIZE;
 
         buf[1..1 + tp_size].copy_from_slice(&start);
         buf[1 + tp_size..1 + 2 * tp_size].copy_from_slice(&end);
@@ -366,12 +366,12 @@ impl TimeRange {
             return None;
         }
 
-        let tp_size = TimePoint::WIRE_SIZE;
-        let span_size = TimeSpan::WIRE_SIZE;
+        let tp_size = Dt::WIRE_SIZE;
+        let span_size = TSpan::WIRE_SIZE;
 
-        let start = TimePoint::from_wire_bytes(&bytes[1..1 + tp_size])?;
-        let end = TimePoint::from_wire_bytes(&bytes[1 + tp_size..1 + 2 * tp_size])?;
-        let step = TimeSpan::from_wire_bytes(&bytes[1 + 2 * tp_size..1 + 2 * tp_size + span_size])?;
+        let start = Dt::from_wire_bytes(&bytes[1..1 + tp_size])?;
+        let end = Dt::from_wire_bytes(&bytes[1 + tp_size..1 + 2 * tp_size])?;
+        let step = TSpan::from_wire_bytes(&bytes[1 + 2 * tp_size..1 + 2 * tp_size + span_size])?;
         let inclusive = bytes[1 + 2 * tp_size + span_size] != 0;
 
         Some(Self::new(start, end, step, inclusive))

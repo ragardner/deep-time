@@ -1,8 +1,8 @@
-use crate::{ClockDrift, ClockType, TimePoint};
+use crate::{ClockDrift, Dt, Scale};
 
 /// A fully self-describing relativistic time scale.
 ///
-/// Bundles a base `ClockType` (normally `Proper` or `Custom`) with the quadratic
+/// Bundles a base `Scale` (normally `Proper` or `Custom`) with the quadratic
 /// polynomial and reference epoch needed for exact conversion to any other scale
 /// (typically TT or TDB).
 ///
@@ -13,9 +13,9 @@ use crate::{ClockDrift, ClockType, TimePoint};
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct ClockModel {
     /// Base scale (usually `Proper` or `Custom`)
-    pub base: ClockType,
+    pub base: Scale,
     /// Epoch at which the polynomial was defined (e.g. last ground contact)
-    pub reference: TimePoint,
+    pub reference: Dt,
     /// Quadratic correction model (exact 36-digit precision)
     pub drift: ClockDrift,
 }
@@ -23,7 +23,7 @@ pub struct ClockModel {
 impl ClockModel {
     /// Creates a new self-describing scale (most common for Proper time).
     #[inline]
-    pub const fn new(base: ClockType, reference: TimePoint, drift: ClockDrift) -> Self {
+    pub const fn new(base: Scale, reference: Dt, drift: ClockDrift) -> Self {
         Self {
             base,
             reference,
@@ -49,16 +49,15 @@ impl ClockModel {
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize =
-        1 + ClockType::WIRE_SIZE + TimePoint::WIRE_SIZE + ClockDrift::WIRE_SIZE;
+    pub const WIRE_SIZE: usize = 1 + Scale::WIRE_SIZE + Dt::WIRE_SIZE + ClockDrift::WIRE_SIZE;
 
     /// Serializes this self-describing `ClockModel` into a fixed buffer.
     ///
     /// # Wire Format
     ///
     /// - Byte `0`: Version (`WIRE_VERSION`)
-    /// - Byte `1`: `base` (`ClockType`)
-    /// - Bytes `2..20`: `reference` (`TimePoint`)
+    /// - Byte `1`: `base` (`Scale`)
+    /// - Bytes `2..20`: `reference` (`Dt`)
     /// - Bytes `20..71`: `drift` (`ClockDrift`)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
@@ -66,10 +65,10 @@ impl ClockModel {
         buf[1] = self.base as u8;
 
         let tp = self.reference.to_wire_bytes();
-        buf[2..2 + TimePoint::WIRE_SIZE].copy_from_slice(&tp);
+        buf[2..2 + Dt::WIRE_SIZE].copy_from_slice(&tp);
 
         let cd = self.drift.to_wire_bytes();
-        buf[2 + TimePoint::WIRE_SIZE..].copy_from_slice(&cd);
+        buf[2 + Dt::WIRE_SIZE..].copy_from_slice(&cd);
 
         buf
     }
@@ -95,9 +94,9 @@ impl ClockModel {
             return None;
         }
 
-        let base = ClockType::from_u8(bytes[1])?;
-        let reference = TimePoint::from_wire_bytes(&bytes[2..2 + TimePoint::WIRE_SIZE])?;
-        let drift = ClockDrift::from_wire_bytes(&bytes[2 + TimePoint::WIRE_SIZE..])?;
+        let base = Scale::from_u8(bytes[1])?;
+        let reference = Dt::from_wire_bytes(&bytes[2..2 + Dt::WIRE_SIZE])?;
+        let drift = ClockDrift::from_wire_bytes(&bytes[2 + Dt::WIRE_SIZE..])?;
 
         Some(Self {
             base,

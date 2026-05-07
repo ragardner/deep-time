@@ -1,10 +1,10 @@
 use crate::{
-    ClassifiedDate, Lang, TimePoint, TimeUnits, classify_date, generate_syslog_candidates,
+    ClassifiedDate, Lang, Dt, TimeUnits, classify_date, generate_syslog_candidates,
     try_compatible_formats,
 };
 
 #[cfg(feature = "std")]
-use crate::ClockType;
+use crate::Scale;
 
 /// Parses syslog-style dates missing the year (e.g. "Mar  5 10:23:45", "Dec 31 23:59:59").
 ///
@@ -18,14 +18,14 @@ use crate::ClockType;
 pub(crate) fn parse_syslog_no_year(
     input: &str,
     lang: Lang,
-    ref_time: &Option<TimePoint>,
-) -> Option<TimePoint> {
+    ref_time: &Option<Dt>,
+) -> Option<Dt> {
     let now = if let Some(tp) = ref_time {
         *tp
     } else {
         #[cfg(feature = "std")]
         {
-            TimePoint::now(ClockType::UTC)
+            Dt::now(Scale::UTC)
         }
         #[cfg(not(feature = "std"))]
         {
@@ -36,7 +36,7 @@ pub(crate) fn parse_syslog_no_year(
     let g = now.to_ymdhms();
     let this_year = g.yr;
 
-    let try_with_year = |year: i64| -> Option<TimePoint> {
+    let try_with_year = |year: i64| -> Option<Dt> {
         let s = alloc::format!("{} {}", year, input);
 
         // Pass the same reference time down to classify_date

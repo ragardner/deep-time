@@ -6,8 +6,8 @@ mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
     use deep_time::{
-        ClockDrift, ClockModel, ClockType, GregorianTime, Meridiem, Offset, TimeParts, TimePoint,
-        TimeRange, TimeSpan, Weekday,
+        ClockDrift, ClockModel, Scale, GregorianTime, Meridiem, Offset, TimeParts, Dt,
+        TimeRange, TSpan, Weekday,
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -26,30 +26,30 @@ mod tests {
 
     #[test]
     fn test_span_roundtrip() {
-        let span = TimeSpan::from_sec(123456789) + TimeSpan::from_ns(987654321);
+        let span = TSpan::from_sec(123456789) + TSpan::from_ns(987654321);
         assert_roundtrip(
             &span,
             |d| d.to_wire_bytes().to_vec(),
-            TimeSpan::from_wire_bytes,
+            TSpan::from_wire_bytes,
         );
     }
 
     #[test]
     fn test_timepoint_roundtrip() {
-        let tp = TimePoint::new(9876543210, 123456789012345678, ClockType::TAI);
+        let tp = Dt::new(9876543210, 123456789012345678, Scale::TAI);
         assert_roundtrip(
             &tp,
             |t| t.to_wire_bytes().to_vec(),
-            TimePoint::from_wire_bytes,
+            Dt::from_wire_bytes,
         );
     }
 
     #[test]
     fn test_clockdrift_roundtrip() {
         let drift = ClockDrift::new(
-            TimeSpan::from_sec(5),
-            TimeSpan::from_ns(1),
-            TimeSpan::from_attos(2),
+            TSpan::from_sec(5),
+            TSpan::from_ns(1),
+            TSpan::from_attos(2),
         );
         assert_roundtrip(
             &drift,
@@ -61,9 +61,9 @@ mod tests {
     #[test]
     fn test_clockmodel_roundtrip() {
         let model = ClockModel::new(
-            ClockType::Proper,
-            TimePoint::new(0, 0, ClockType::TAI),
-            ClockDrift::from_offset_and_rate(TimeSpan::from_sec(42), TimeSpan::from_ns(1)),
+            Scale::Proper,
+            Dt::new(0, 0, Scale::TAI),
+            ClockDrift::from_offset_and_rate(TSpan::from_sec(42), TSpan::from_ns(1)),
         );
         assert_roundtrip(
             &model,
@@ -74,9 +74,9 @@ mod tests {
 
     #[test]
     fn test_timerange_roundtrip() {
-        let start = TimePoint::new(1000000000, 0, ClockType::TAI);
-        let end = start + TimeSpan::from_hr(24);
-        let step = TimeSpan::from_hr(1);
+        let start = Dt::new(1000000000, 0, Scale::TAI);
+        let end = start + TSpan::from_hr(24);
+        let step = TSpan::from_hr(1);
         let range = start.range_to(end, step);
 
         assert_roundtrip(
@@ -104,7 +104,7 @@ mod tests {
             3,                                     // wkday
             51,                                    // wk_of_yr_sun
             52,                                    // wk_of_yr_mon
-            ClockType::UTC,                        // clock_type
+            Scale::UTC,                        // scale
         );
 
         assert_roundtrip(
@@ -124,7 +124,7 @@ mod tests {
         dc.minute = Some(30);
         dc.second = Some(0);
         dc.attos = Some(0);
-        dc.clock_type = ClockType::TAI;
+        dc.scale = Scale::TAI;
         dc.offset = Some(Offset::Utc);
 
         assert_roundtrip(

@@ -13,7 +13,7 @@ mod to_chrono;
 #[cfg(feature = "jiff")]
 mod to_jiff;
 
-use crate::{AsciiStr, ClockType};
+use crate::{AsciiStr, Scale};
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
@@ -29,7 +29,7 @@ pub struct TimeParts {
     pub offset: Option<Offset>,
     pub iana_name: Option<AsciiStr<50>>,
     pub is_leap_second: bool,
-    pub clock_type: ClockType,
+    pub scale: Scale,
     pub weekday: Option<Weekday>,
     pub day_of_year: Option<u16>,   // 1-366 (%j)
     pub iso_week_year: Option<i64>, // %G / %g
@@ -44,7 +44,7 @@ impl TimeParts {
     #[inline]
     pub fn new_utc() -> Self {
         Self {
-            clock_type: ClockType::UTC,
+            scale: Scale::UTC,
             ..Default::default()
         }
     }
@@ -123,8 +123,8 @@ impl TimeParts {
         buf[offset] = if self.is_leap_second { 1 } else { 0 };
         offset += 1;
 
-        // clock_type
-        buf[offset] = self.clock_type as u8;
+        // scale
+        buf[offset] = self.scale as u8;
         offset += 1;
 
         // weekday
@@ -247,9 +247,9 @@ impl TimeParts {
         dc.is_leap_second = bytes[offset] != 0;
         offset += 1;
 
-        // clock_type (1 byte)
-        if let Some(ct) = ClockType::from_u8(bytes[offset]) {
-            dc.clock_type = ct;
+        // scale (1 byte)
+        if let Some(ct) = Scale::from_u8(bytes[offset]) {
+            dc.scale = ct;
         }
         offset += 1;
 

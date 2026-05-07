@@ -1,6 +1,6 @@
 use crate::{
     DateToken, DtErr, DtErrKind, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
-    NS_PER_MONTH, NS_PER_SEC, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TimeSpan, an_err,
+    NS_PER_MONTH, NS_PER_SEC, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TSpan, an_err,
     lang_map, to_ascii_digit,
 };
 use alloc::{
@@ -185,7 +185,7 @@ pub(crate) fn natural_duration_to_span(
     input: &str,
     lang: Lang,
     use_dur_finder: bool,
-) -> Result<TimeSpan, DtErr> {
+) -> Result<TSpan, DtErr> {
     let Some(LangData {
         map: term_map,
         duration_ac,
@@ -222,17 +222,17 @@ pub(crate) fn natural_duration_to_span(
                 DateToken::Past => overall_multiplier = -1,
                 DateToken::Now | DateToken::Today => {
                     if !has_duration {
-                        return Ok(TimeSpan::ZERO);
+                        return Ok(TSpan::ZERO);
                     }
                 }
                 DateToken::Tomorrow => {
                     if !has_duration {
-                        return Ok(TimeSpan::from_ns(NS_PER_DAY));
+                        return Ok(TSpan::from_ns(NS_PER_DAY));
                     }
                 }
                 DateToken::Yesterday => {
                     if !has_duration {
-                        return Ok(TimeSpan::from_ns(-NS_PER_DAY));
+                        return Ok(TSpan::from_ns(-NS_PER_DAY));
                     }
                 }
 
@@ -335,10 +335,10 @@ pub(crate) fn natural_duration_to_span(
         return Err(an_err!(DtErrKind::InvalidInput, "{}", input));
     }
 
-    // Convert total nanoseconds → attoseconds and build TimeSpan
-    // (TimeSpan supports the full representable range, so no size checks are needed)
+    // Convert total nanoseconds → attoseconds and build TSpan
+    // (TSpan supports the full representable range, so no size checks are needed)
     let total_attos = total_nanos * 1_000_000_000i128;
-    Ok(TimeSpan::from_attos(total_attos))
+    Ok(TSpan::from_attos(total_attos))
 }
 
 pub(crate) fn natural_duration_to_iso(

@@ -1,5 +1,5 @@
 #[cfg(feature = "perf-tests")]
-use deep_time::TimePoint;
+use deep_time::Dt;
 #[cfg(feature = "perf-tests")]
 use std::time::Instant;
 
@@ -42,7 +42,7 @@ fn date_alloc_parser_perf() {
     let start = Instant::now();
     for _ in 0..ITERATIONS {
         for &input in &corpus {
-            let _ = TimePoint::from_str_parse(input, &None);
+            let _ = Dt::from_str_parse(input, &None);
             // if let Err(x) = x {
             //     eprintln!("{}", x);
             //     return;
@@ -71,7 +71,7 @@ fn date_from_str_perf() {
 
     let start = Instant::now();
     for _ in 0..ITERATIONS {
-        let _ = TimePoint::from_str(
+        let _ = Dt::from_str(
             "2024-03-14T00:00:00",
             "%Y-%m-%dT%H:%M:%S",
             true,
