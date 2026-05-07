@@ -2,7 +2,7 @@ use crate::{ClockDrift, Dt, Scale};
 
 /// A fully self-describing relativistic time scale.
 ///
-/// Bundles a base `Scale` (normally `Proper` or `Custom`) with the quadratic
+/// Bundles a base `Scale` (`Custom`) with the quadratic
 /// polynomial and reference epoch needed for exact conversion to any other scale
 /// (typically TT or TDB).
 ///
@@ -12,7 +12,7 @@ use crate::{ClockDrift, Dt, Scale};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct ClockModel {
-    /// Base scale (usually `Proper` or `Custom`)
+    /// Base scale (usually `Custom`)
     pub base: Scale,
     /// Epoch at which the polynomial was defined (e.g. last ground contact)
     pub reference: Dt,

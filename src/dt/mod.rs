@@ -46,7 +46,7 @@ use core::fmt;
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct Dt {
     pub(crate) sec: i64,
-    pub(crate) subsec: u64,
+    pub(crate) attos: u64,
 }
 
 impl Dt {
@@ -58,16 +58,16 @@ impl Dt {
 
     /// Subseconds field getter (attoseconds).
     #[inline]
-    pub const fn subsec(&self) -> u64 {
-        self.subsec
+    pub const fn attos(&self) -> u64 {
+        self.attos
     }
 
     /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOS_PER_SEC)`.
     #[inline]
     pub const fn carry_over(&mut self) -> &mut Self {
-        if self.subsec >= ATTOS_PER_SEC {
-            self.sec += (self.subsec / ATTOS_PER_SEC) as i64;
-            self.subsec %= ATTOS_PER_SEC;
+        if self.attos >= ATTOS_PER_SEC {
+            self.sec += (self.attos / ATTOS_PER_SEC) as i64;
+            self.attos %= ATTOS_PER_SEC;
         }
         self
     }
@@ -82,7 +82,7 @@ impl Default for Dt {
 impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let sec = self.sec();
-        let subsec = self.subsec();
+        let attos = self.attos();
 
         // Default to nanosecond precision (9 digits) — most useful for everyday use
         let precision = f.precision().unwrap_or(9);
@@ -97,7 +97,7 @@ impl fmt::Display for Dt {
         if precision > 0 {
             let prec = precision.min(18);
             let scale = 10u64.pow(18 - prec as u32);
-            let value = subsec / scale;
+            let value = attos / scale;
             write!(f, ".{:0>width$}", value, width = prec)?;
         }
 
@@ -107,11 +107,11 @@ impl fmt::Display for Dt {
 
 impl fmt::Debug for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let approx_sec = self.sec() as f64 + (self.subsec() as f64 / 1_000_000_000_000_000_000.0);
+        let approx_sec = self.sec() as f64 + (self.attos() as f64 / 1_000_000_000_000_000_000.0);
 
         f.debug_struct("Dt")
             .field("sec", &self.sec())
-            .field("subsec", &self.subsec())
+            .field("attos", &self.attos())
             .field("approx_sec", &approx_sec)
             .finish()
     }
@@ -139,7 +139,7 @@ impl Dt {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
         buf[1..9].copy_from_slice(&self.sec.to_le_bytes());
-        buf[9..17].copy_from_slice(&self.subsec.to_le_bytes());
+        buf[9..17].copy_from_slice(&self.attos.to_le_bytes());
         buf
     }
 

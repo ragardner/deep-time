@@ -51,11 +51,6 @@ pub enum Scale {
     /// The periodic term is **not** part of the defining LTC conversion; it is
     /// handled via `ClockModel` / `ClockDrift` when utmost precision is required.
     LTC,
-    /// **Proper Time (τ)** – the relativistic proper time experienced by a moving
-    /// observer (spacecraft, etc.).  
-    /// Onboard clocks run this type. Use `convert_using_drift(Scale::TT, …)`  
-    /// with a `ClockDrift` to convert to Earth coordinate time.
-    Proper,
     /// **Custom / user-defined type** – for experimental or mission-specific timescales.
     /// Most powerful when paired with `ClockModel` (self-describing polynomial).
     Custom,
@@ -121,7 +116,6 @@ impl Scale {
             "TCG" => Some(Self::TCG),
             "TCB" => Some(Self::TCB),
             "LTC" => Some(Self::LTC),
-            "PROPER" => Some(Self::Proper),
             "CUSTOM" => Some(Self::Custom),
             _ => None,
         }
@@ -145,7 +139,6 @@ impl Scale {
             Self::BDT => "BDT",
             Self::QZSS => "QZSS",
             Self::LTC => "LTC",
-            Self::Proper => "PROPER",
             Self::Custom => "CUSTOM",
         }
     }
@@ -180,8 +173,7 @@ impl Scale {
             12 => Some(Self::TCG),
             13 => Some(Self::TCB),
             14 => Some(Self::LTC),
-            15 => Some(Self::Proper),
-            16 => Some(Self::Custom),
+            15 => Some(Self::Custom),
             _ => None,
         }
     }

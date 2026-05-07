@@ -373,10 +373,10 @@ fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
 fn date_parser_roundtrip() {
     let tp1 = Dt::from(5, 0, Scale::LTC);
     let tp2 = Dt::from(5, 0, Scale::GPS);
-    let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
-    let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f %L").unwrap();
-    let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
-    let res_tp2 = Dt::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f %L", true, true, false).unwrap();
+    let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f").unwrap();
+    let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f").unwrap();
+    let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
+    let res_tp2 = Dt::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
     assert!(tp1 == res_tp1);
     assert!(tp2 == res_tp2);
 }
@@ -385,11 +385,11 @@ fn date_parser_roundtrip() {
 fn round_trip_fixed_offsets() {
     for tp in [Dt::new(5, 0), Dt::new(5, 0)] {
         let xp1 = tp
-            .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
+            .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
             .unwrap();
         let tp2 = Dt::from_str_parse(&xp1, &None).unwrap();
         let xp2 = tp2
-            .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z %L", 3600)
+            .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
             .unwrap();
         let tp3 = Dt::from_str_parse(&xp2, &None).unwrap();
         assert_eq!(tp, tp3);

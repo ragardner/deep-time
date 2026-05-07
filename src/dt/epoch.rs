@@ -25,6 +25,6 @@ impl Dt {
     #[inline]
     pub const fn from_epoch(offset: TSpan, epoch: Dt, scale: Scale) -> Self {
         let total = epoch.to_span().add(offset);
-        Dt::from(total.sec, total.subsec, scale)
+        Dt::from(total.sec, total.attos, scale)
     }
 }

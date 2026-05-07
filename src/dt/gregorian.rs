@@ -74,7 +74,7 @@ impl Dt {
         let canon = self.to_epoch(Dt::UNIX_EPOCH, Scale::UTC);
 
         let unix_sec = canon.sec;
-        let subsec = canon.subsec;
+        let attos = canon.attos;
 
         let is_leap_second = get_leap_seconds(&self, false).is_leap_second;
 
@@ -106,7 +106,7 @@ impl Dt {
             hr,
             min,
             sec,
-            attos: subsec,
+            attos,
         }
     }
 

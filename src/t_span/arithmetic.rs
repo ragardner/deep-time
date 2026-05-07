@@ -1,89 +1,89 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, Real, Dt, TSpan, floor_f,
+    ATTOS_PER_SECF, ATTOS_PER_US, Dt, Real, TSpan, floor_f,
 };
 
 impl TSpan {
     #[inline]
     pub const fn add(self, rhs: Self) -> Self {
-        let (sec, subsec) = Self::add_time(self.sec, self.subsec, rhs.sec, rhs.subsec);
-        Self { sec, subsec }
+        let (sec, attos) = Self::add_time(self.sec, self.attos, rhs.sec, rhs.attos);
+        Self { sec, attos }
     }
 
     #[inline]
     pub const fn sub(self, rhs: Self) -> Self {
-        let (sec, subsec) = Self::sub_time(self.sec, self.subsec, rhs.sec, rhs.subsec);
-        Self { sec, subsec }
+        let (sec, attos) = Self::sub_time(self.sec, self.attos, rhs.sec, rhs.attos);
+        Self { sec, attos }
     }
 
-    /// Core saturating add for (sec, subsec) pairs.
+    /// Core saturating add for (sec, attos) pairs.
     pub(crate) const fn add_time(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> (i64, u64) {
         let mut sec = sec_a.saturating_add(sec_b);
-        let mut subsec = sub_a as i64 + sub_b as i64;
+        let mut attos = sub_a as i64 + sub_b as i64;
 
-        if subsec >= ATTOS_PER_SEC as i64 {
+        if attos >= ATTOS_PER_SEC as i64 {
             if sec < i64::MAX {
                 sec = sec.saturating_add(1);
             }
-            subsec -= ATTOS_PER_SEC as i64;
-        } else if subsec < 0 {
+            attos -= ATTOS_PER_SEC as i64;
+        } else if attos < 0 {
             if sec > i64::MIN {
                 sec = sec.saturating_sub(1);
             }
-            subsec += ATTOS_PER_SEC as i64;
+            attos += ATTOS_PER_SEC as i64;
         }
 
-        let subsec = if sec == i64::MAX {
+        let attos = if sec == i64::MAX {
             ATTOS_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
-            subsec as u64
+            attos as u64
         };
 
-        (sec, subsec)
+        (sec, attos)
     }
 
-    /// Core saturating sub for (sec, subsec) pairs.
+    /// Core saturating sub for (sec, attos) pairs.
     pub(crate) const fn sub_time(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> (i64, u64) {
         let mut sec = sec_a.saturating_sub(sec_b);
-        let mut subsec = sub_a as i64 - sub_b as i64;
+        let mut attos = sub_a as i64 - sub_b as i64;
 
-        if subsec < 0 {
+        if attos < 0 {
             if sec > i64::MIN {
                 sec = sec.saturating_sub(1);
             }
-            subsec += ATTOS_PER_SEC as i64;
-        } else if subsec >= ATTOS_PER_SEC as i64 {
+            attos += ATTOS_PER_SEC as i64;
+        } else if attos >= ATTOS_PER_SEC as i64 {
             if sec < i64::MAX {
                 sec = sec.saturating_add(1);
             }
-            subsec -= ATTOS_PER_SEC as i64;
+            attos -= ATTOS_PER_SEC as i64;
         }
 
-        let subsec = if sec == i64::MAX {
+        let attos = if sec == i64::MAX {
             ATTOS_PER_SEC - 1
         } else if sec == i64::MIN {
             0
         } else {
-            subsec as u64
+            attos as u64
         };
 
-        (sec, subsec)
+        (sec, attos)
     }
 
     /// Returns `true` if this duration is exactly zero.
     #[inline]
     pub const fn is_zero(self) -> bool {
-        self.sec == 0 && self.subsec == 0
+        self.sec == 0 && self.attos == 0
     }
 
     /// Converts this duration to a floating-point number of seconds.
-    /// It computes `sec + subsec / 10¹⁸` using `f64`.
+    /// It computes `sec + attos / 10¹⁸` using `f64`.
     /// It is lossy by design (f64 only has ~15.95 decimal digits of precision).
     #[inline]
     pub const fn to_sec_f(self) -> Real {
-        f!(self.sec) + f!(self.subsec) / ATTOS_PER_SECF
+        f!(self.sec) + f!(self.attos) / ATTOS_PER_SECF
     }
 
     /// Multiplies this duration by an integer scalar (exact).
@@ -198,7 +198,7 @@ impl TSpan {
             if self.is_zero() {
                 return Self::ZERO;
             }
-            let self_pos = self.sec > 0 || (self.sec == 0 && self.subsec != 0);
+            let self_pos = self.sec > 0 || (self.sec == 0 && self.attos != 0);
             return if (rhs > 0.0) == self_pos {
                 Self::MAX
             } else {
@@ -263,7 +263,7 @@ impl TSpan {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ms(&mut self) {
-        TSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_MS);
+        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_MS);
     }
 
     /// Adds exactly 1 microsecond to this time value.
@@ -271,7 +271,7 @@ impl TSpan {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1us(&mut self) {
-        TSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_US);
+        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_US);
     }
 
     /// Adds exactly 1 nanosecond to this time value.
@@ -279,7 +279,7 @@ impl TSpan {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ns(&mut self) {
-        TSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_NS);
+        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
@@ -305,7 +305,7 @@ impl TSpan {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ms(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_MS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_MS);
     }
 
     /// Adds the specified number of microseconds to this time value.
@@ -313,7 +313,7 @@ impl TSpan {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_us(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_US);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_US);
     }
 
     /// Adds the specified number of nanoseconds to this time value.
@@ -321,7 +321,7 @@ impl TSpan {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ns(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_NS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of picoseconds to this time value.
@@ -329,7 +329,7 @@ impl TSpan {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ps(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_PS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_PS);
     }
 
     /// Adds the specified number of femtoseconds to this time value.
@@ -337,7 +337,7 @@ impl TSpan {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_fs(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_FS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_FS);
     }
 
     /// Adds the specified number of attoseconds to this time value.
@@ -345,7 +345,7 @@ impl TSpan {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_attos(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, 1);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, 1);
     }
 
     /// Subtracts exactly 1 hour (3600 seconds) from this time value using saturating arithmetic.
@@ -371,7 +371,7 @@ impl TSpan {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ms(&mut self) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_MS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_MS);
     }
 
     /// Subtracts exactly 1 microsecond from this time value.
@@ -379,7 +379,7 @@ impl TSpan {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1us(&mut self) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_US);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_US);
     }
 
     /// Subtracts exactly 1 nanosecond from this time value.
@@ -387,7 +387,7 @@ impl TSpan {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ns(&mut self) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_NS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_NS);
     }
 
     /// Subtracts the specified number of seconds from this time value using saturating arithmetic.
@@ -413,9 +413,9 @@ impl TSpan {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ms(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_MS,
         );
@@ -426,9 +426,9 @@ impl TSpan {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_us(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_US,
         );
@@ -439,9 +439,9 @@ impl TSpan {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ns(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_NS,
         );
@@ -452,9 +452,9 @@ impl TSpan {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ps(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_PS,
         );
@@ -465,9 +465,9 @@ impl TSpan {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_fs(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_FS,
         );
@@ -478,15 +478,15 @@ impl TSpan {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_attos(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n.saturating_neg(), 1);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n.saturating_neg(), 1);
     }
 
     /// Internal helper used by add_1ms / add_1us / add_1ns.
     #[doc(hidden)]
-    pub(crate) const fn add_subsec_to(sec: &mut i64, subsec: &mut u64, amount: u64) {
-        let total = *subsec + amount;
+    pub(crate) const fn add_attos_to(sec: &mut i64, attos: &mut u64, amount: u64) {
+        let total = *attos + amount;
         let carry_sec = total / ATTOS_PER_SEC;
-        *subsec = total % ATTOS_PER_SEC;
+        *attos = total % ATTOS_PER_SEC;
         *sec = sec.saturating_add(carry_sec as i64);
     }
 
@@ -494,10 +494,10 @@ impl TSpan {
     ///
     /// This is the core implementation for all subsecond addition and subtraction
     /// operations. It properly handles carry and borrow between the fractional
-    /// part (`subsec`) and the whole seconds (`sec`), using saturating arithmetic
+    /// part (`attos`) and the whole seconds (`sec`), using saturating arithmetic
     /// throughout.
     #[doc(hidden)]
-    pub(crate) const fn add_subsec_span(sec: &mut i64, subsec: &mut u64, n: i64, unit: u64) {
+    pub(crate) const fn add_attos_span(sec: &mut i64, attos: &mut u64, n: i64, unit: u64) {
         if n == 0 {
             return;
         }
@@ -506,13 +506,13 @@ impl TSpan {
 
         if n >= 0 {
             let amount = (n as u64).saturating_mul(unit);
-            let total = subsec.saturating_add(amount);
+            let total = attos.saturating_add(amount);
 
             let carry = total / mps;
             let new_frac = total % mps;
 
             *sec = sec.saturating_add(carry as i64);
-            *subsec = new_frac;
+            *attos = new_frac;
         } else {
             let amount = n.unsigned_abs().saturating_mul(unit);
             let borrow_sec = amount / mps;
@@ -520,26 +520,26 @@ impl TSpan {
 
             *sec = sec.saturating_sub(borrow_sec as i64);
 
-            if *subsec >= borrow_frac {
-                *subsec -= borrow_frac;
+            if *attos >= borrow_frac {
+                *attos -= borrow_frac;
             } else {
-                *subsec += mps - borrow_frac;
+                *attos += mps - borrow_frac;
                 *sec = sec.saturating_sub(1);
             }
         }
 
         // Final saturation clamp
         if *sec == i64::MAX {
-            *subsec = mps - 1;
+            *attos = mps - 1;
         } else if *sec == i64::MIN {
-            *subsec = 0;
+            *attos = 0;
         }
     }
 
     /// Total attoseconds (exact i128 representation within the representable range).
     #[inline]
     pub const fn to_attos(self) -> i128 {
-        (self.sec as i128) * ATTOS_PER_SEC_I128 + (self.subsec as i128)
+        (self.sec as i128) * ATTOS_PER_SEC_I128 + (self.attos as i128)
     }
 
     /// Returns the total duration in seconds.
@@ -584,27 +584,27 @@ impl TSpan {
     /// This is the normal case when subtracting two durations.
     #[inline]
     pub const fn to_diff(self, rhs: Self) -> Self {
-        Self::diff_raw(self.sec, self.subsec, rhs.sec, rhs.subsec)
+        Self::diff_raw(self.sec, self.attos, rhs.sec, rhs.attos)
     }
 
     /// Returns `self - rhs` exactly, where `rhs` is a `Dt`.
     #[inline]
     pub const fn to_diff_tp(self, rhs: Dt) -> Self {
-        Self::diff_raw(self.sec, self.subsec, rhs.sec, rhs.subsec)
+        Self::diff_raw(self.sec, self.attos, rhs.sec, rhs.attos)
     }
 
     #[inline]
     pub(crate) const fn diff_raw(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> Self {
         let mut sec = sec_a - sec_b;
-        let mut subsec = sub_a;
+        let mut attos = sub_a;
 
-        if subsec >= sub_b {
-            subsec -= sub_b;
+        if attos >= sub_b {
+            attos -= sub_b;
         } else {
             sec -= 1;
-            subsec += ATTOS_PER_SEC - sub_b;
+            attos += ATTOS_PER_SEC - sub_b;
         }
 
-        Self { sec, subsec }
+        Self { sec, attos }
     }
 }

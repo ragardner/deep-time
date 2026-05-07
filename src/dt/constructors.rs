@@ -33,8 +33,8 @@ impl Dt {
     /// Creates a new `Dt` from whole seconds, a subsecond part in attoseconds,
     /// and a scale, automatically normalizing the representation.
     #[inline]
-    pub const fn new(sec: i64, subsec: u64) -> Self {
-        let mut tp = Self { sec, subsec };
+    pub const fn new(sec: i64, attos: u64) -> Self {
+        let mut tp = Self { sec, attos };
         tp.carry_over();
         tp
     }
@@ -47,14 +47,6 @@ impl Dt {
     #[inline]
     pub const fn new_custom_clock(self, drift: ClockDrift) -> ClockModel {
         ClockModel::new(Scale::Custom, self, drift)
-    }
-
-    /// Creates a new local clock model with zero drift using this instant as the reference epoch.
-    ///
-    /// The drift value can be updated later if relativistic effects are incorporated.
-    #[inline]
-    pub const fn new_local_clock(self) -> ClockModel {
-        self.new_custom_clock(ClockDrift::ZERO)
     }
 
     #[inline]

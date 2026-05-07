@@ -87,7 +87,7 @@ fn test_sofa_historical_offsets() {
     // Compare subsec (attoseconds) directly — this avoids f64 precision loss.
     // The round-trip should be accurate to well under 1 nanosecond.
     // (We allow up to 1 ns = 1_000_000_000_000 attoseconds of tolerance.)
-    let subsec_diff = (round_tripped.subsec() as i128 - original.subsec() as i128).abs();
+    let subsec_diff = (round_tripped.attos() as i128 - original.attos() as i128).abs();
     assert!(
         subsec_diff < 1_000_000_000_000,
         "Round-trip 1971-12-31 subsec diff was {} attoseconds (expected < 1 ns)",
@@ -118,8 +118,8 @@ fn test_sofa_historical_offsets() {
         "Round trip just before SOFA start changed integer seconds"
     );
     assert_eq!(
-        tp.subsec(),
-        tp2.subsec(),
+        tp.attos(),
+        tp2.attos(),
         "Round trip just before SOFA start changed attoseconds"
     );
 
@@ -566,7 +566,7 @@ fn proper_to_tt_with_drift_roundtrip() {
         TSpan::from_ns(1),   // exactly 1 ns/s = 1e-9 s/s
         TSpan::ZERO,
     );
-    let model = ClockModel::new(Scale::Proper, reference, drift);
+    let model = ClockModel::new(Scale::Custom, reference, drift);
 
     let onboard_proper = model.reference.add(TSpan::from_sec(1_000_000));
 

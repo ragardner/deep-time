@@ -14,16 +14,16 @@ impl Dt {
     pub const fn to_span(&self) -> TSpan {
         TSpan {
             sec: self.sec,
-            subsec: self.subsec,
+            attos: self.attos,
         }
     }
 
-    pub const fn from(sec: i64, subsec: u64, scale: Scale) -> Dt {
+    pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
         // Create a raw Dt with the input numbers on the requested scale
-        let raw = Dt::new(sec, subsec);
+        let raw = Dt::new(sec, attos);
 
         match scale {
-            Scale::TAI | Scale::Proper | Scale::Custom | Scale::UT1 => raw,
+            Scale::TAI | Scale::Custom | Scale::UT1 => raw,
 
             Scale::TT => raw.sub(TT_TAI_OFFSET_SPAN),
 
@@ -69,14 +69,14 @@ impl Dt {
         }
     }
 
-    /// Returns a bare [`TSpan`] containing the numerical `sec`/`subsec` values
+    /// Returns a bare [`TSpan`] containing the numerical `sec`/`attos` values
     /// of this instant **on its own [`Scale`]** (same physical moment).
     ///
     /// This is the recommended way for callers to obtain the representation on
     /// a particular scale after construction via [`Self::from`].
     pub const fn to(&self, scale: Scale) -> TSpan {
         match scale {
-            Scale::TAI | Scale::Proper | Scale::Custom | Scale::UT1 => self.to_span(),
+            Scale::TAI | Scale::Custom | Scale::UT1 => self.to_span(),
 
             Scale::TT => self.add(TT_TAI_OFFSET_SPAN).to_span(),
 
@@ -212,8 +212,8 @@ impl Dt {
     ///
     /// - SOFA/ERFA `eraDtdb` implementation (2021 May 11 revision):
     ///   https://raw.githubusercontent.com/liberfa/erfa/master/src/dtdb.c
-    const fn tdb_minus_tt(sec: i64, subsec: u64) -> TSpan {
-        let seconds_since_j2000_tt = f!(sec) + f!(subsec) / f!(ATTOS_PER_SEC);
+    const fn tdb_minus_tt(sec: i64, attos: u64) -> TSpan {
+        let seconds_since_j2000_tt = f!(sec) + f!(attos) / f!(ATTOS_PER_SEC);
         let t = seconds_since_j2000_tt / J2000_SEC_PER_CENTURY;
 
         // Mean anomaly of Earth (from Fairhead & Bretagnon 1990 / Simon et al. 1994)
@@ -242,7 +242,7 @@ impl Dt {
 
     const fn tai_to_tdb(tai: Self) -> Self {
         let tt = tai.add(TT_TAI_OFFSET_SPAN);
-        let span = Self::tdb_minus_tt(tt.sec, tt.subsec);
+        let span = Self::tdb_minus_tt(tt.sec, tt.attos);
         tt.add(span)
     }
 
@@ -250,7 +250,7 @@ impl Dt {
         let mut tt = tdb;
         let mut i = 0u32;
         while i < 8 {
-            tt = tdb.sub(Self::tdb_minus_tt(tt.sec, tt.subsec));
+            tt = tdb.sub(Self::tdb_minus_tt(tt.sec, tt.attos));
             i += 1;
         }
         tt.sub(TT_TAI_OFFSET_SPAN)
@@ -267,7 +267,7 @@ impl Dt {
     }
 
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
-    /// using only the numerical `sec`/`subsec` of the supplied `Dt` (scale is ignored).
+    /// using only the numerical `sec`/`attos` of the supplied `Dt` (scale is ignored).
     const fn elapsed_to_attos_since_ref(numerical: Self) -> i128 {
         let days_since_j2000 = numerical.sec.div_euclid(SEC_PER_DAYI64);
         let tod_sec = numerical.sec.rem_euclid(SEC_PER_DAYI64);
@@ -277,7 +277,7 @@ impl Dt {
 
         let mut sec_diff =
             (days_diff as i128) * SEC_PER_DAYI128 + (tod_sec as i128 - TCG_TCB_REF_TOD_SEC as i128);
-        let mut attos_diff = (numerical.subsec as i128) - (TCG_TCB_REF_TOD_SUBSEC as i128);
+        let mut attos_diff = (numerical.attos as i128) - (TCG_TCB_REF_TOD_SUBSEC as i128);
 
         if attos_diff < 0 {
             attos_diff += ATTOS_PER_SEC_I128;
@@ -362,7 +362,7 @@ impl Dt {
 
         let mut sec_diff = (days_diff as i128) * SEC_PER_DAYI128
             + (tod_sec as i128 - MARS_MSD_REF_TOD_SEC as i128);
-        let mut attos_diff = (numerical_tt.subsec as i128) - (MARS_MSD_REF_TOD_SUBSEC as i128);
+        let mut attos_diff = (numerical_tt.attos as i128) - (MARS_MSD_REF_TOD_SUBSEC as i128);
 
         if attos_diff < 0 {
             attos_diff += ATTOS_PER_SEC_I128;
@@ -400,7 +400,7 @@ impl Dt {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
 
         let tt = MARS_REF_TT.add(TSpan::from_attos(elapsed_attos));
-        Self::from(tt.sec, tt.subsec, Scale::TT)
+        Self::from(tt.sec, tt.attos, Scale::TT)
     }
 
     /// Creates a `Dt` (in TT) from a floating-point Mars Sol Date.

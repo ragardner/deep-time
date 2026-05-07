@@ -162,7 +162,7 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     // Special case for n_subsec == 0: fractional seconds are intentionally dropped
     if n_subsec == 0 {
         assert_eq!(
-            recovered_tp.subsec(),
+            recovered_tp.attos(),
             0,
             "When n_subsec=0 the fractional part must be exactly zero"
         );
@@ -170,7 +170,7 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
         // Allowed quantization error = half the smallest representable unit at this precision
         let unit = 1_000_000_000_000_000_000u64 / 10u64.pow((2 * n_subsec) as u32);
         let max_error = unit / 2;
-        let diff = (tp.subsec() as i64 - recovered_tp.subsec() as i64).abs() as u64;
+        let diff = (tp.attos() as i64 - recovered_tp.attos() as i64).abs() as u64;
         assert!(
             diff <= max_error,
             "Fractional round-trip error too large for n_subsec={}: {} attos (max allowed {})",

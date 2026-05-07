@@ -169,7 +169,7 @@ mod tests {
         let roundtrip = Dt::from_jd_exact(jd_days, frac, Scale::UT1);
 
         assert_eq!(ut1.sec(), roundtrip.sec());
-        assert_eq!(ut1.subsec(), roundtrip.subsec());
+        assert_eq!(ut1.attos(), roundtrip.attos());
 
         // Physical round-trip check (via TAI)
         let diff = ut1.to_tai_since(roundtrip);
@@ -221,7 +221,7 @@ mod tests {
         let roundtrip = Dt::from_mjd_exact(mjd_days, frac, Scale::UT1);
 
         assert_eq!(ut1.sec(), roundtrip.sec());
-        assert_eq!(ut1.subsec(), roundtrip.subsec());
+        assert_eq!(ut1.attos(), roundtrip.attos());
 
         let diff = ut1.to_tai_since(roundtrip).to_sec_f();
         assert!(diff.abs() < 1e-12, "MJD_UT1 round-trip error: {} s", diff);

@@ -85,7 +85,7 @@ impl DivAssign<i64> for TSpan {
 }
 
 impl TSpan {
-    /// Compares two `TSpan`s by their `(sec, subsec)` representation.
+    /// Compares two `TSpan`s by their `(sec, attos)` representation.
     ///
     /// This is a `const fn` so it can be used in const contexts.
     pub const fn cmp(self, other: Self) -> Ordering {
@@ -93,9 +93,9 @@ impl TSpan {
             Ordering::Less
         } else if self.sec > other.sec {
             Ordering::Greater
-        } else if self.subsec < other.subsec {
+        } else if self.attos < other.attos {
             Ordering::Less
-        } else if self.subsec > other.subsec {
+        } else if self.attos > other.attos {
             Ordering::Greater
         } else {
             Ordering::Equal

@@ -1,5 +1,5 @@
 use crate::{
-    AsciiStr, Dt, DtErr, DtErrKind, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE, Scale,
+    AsciiStr, Dt, DtErr, DtErrKind, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE,
     WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
 };
 
@@ -223,8 +223,7 @@ impl GregorianTime {
                         }
                     }
                 }
-                b'L' => Self::write_bytes(buf, pos, Scale::TAI.abbrev().as_bytes()),
-
+                // b'L' => Self::write_bytes(buf, pos, Scale::TAI.abbrev().as_bytes()),
                 b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
 
                 b'c' | b'r' | b'X' | b'x' => self.write_unsupported(buf, pos),

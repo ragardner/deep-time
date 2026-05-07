@@ -53,7 +53,7 @@ mod tests {
     #[test]
     fn test_clockmodel_roundtrip() {
         let model = ClockModel::new(
-            Scale::Proper,
+            Scale::Custom,
             Dt::new(0, 0),
             ClockDrift::from_offset_and_rate(TSpan::from_sec(42), TSpan::from_ns(1)),
         );

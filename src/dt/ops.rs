@@ -46,7 +46,7 @@ impl Sub<Dt> for Dt {
 impl Dt {
     /// Compares this `Dt` with another by converting both to the TAI timescale
     /// (the library's canonical physical-time reference) and then comparing their
-    /// `(sec, subsec)` pairs.
+    /// `(sec, attos)` pairs.
     ///
     /// This is a `const fn` so it can be used in const contexts and is allocation-free.
     /// It provides the total order used by `<`, `>`, `<=`, `>=`, `cmp`, etc.
@@ -59,9 +59,9 @@ impl Dt {
             Ordering::Less
         } else if self.sec > other.sec {
             Ordering::Greater
-        } else if self.subsec < other.subsec {
+        } else if self.attos < other.attos {
             Ordering::Less
-        } else if self.subsec > other.subsec {
+        } else if self.attos > other.attos {
             Ordering::Greater
         } else {
             Ordering::Equal
@@ -134,6 +134,6 @@ impl core::hash::Hash for Dt {
     /// the original [`Scale`].
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.sec.hash(state);
-        self.subsec.hash(state);
+        self.attos.hash(state);
     }
 }

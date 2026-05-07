@@ -206,7 +206,7 @@ pub const fn historical_sofa_for_utc_to_tai(utc: &Dt) -> Option<Real> {
 /// `offset = entry.offset + (MJD − entry.mjd_ref) × entry.drift`
 pub const fn historical_sofa_for_tai_to_utc(tai: &Dt) -> Option<Real> {
     // < 1961-01-01 after SOFA offset applied, or >= tai 1972-1-1 midnight
-    if (tai.sec() < -1230724800 || (tai.sec() == -1230724800 && tai.subsec() < 422817999999999936))
+    if (tai.sec() < -1230724800 || (tai.sec() == -1230724800 && tai.attos() < 422817999999999936))
         || tai.sec() >= -883655990
     {
         return None;

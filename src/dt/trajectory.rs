@@ -39,7 +39,7 @@ impl Dt {
     /// assert_eq!(delta_tau, TSpan::from_sec(900));
     ///
     /// // Update onboard proper time clock
-    /// let onboard_tau = start.to(Scale::Proper).add(delta_tau);
+    /// let onboard_tau = start.to(Scale::Custom).add(delta_tau);
     /// ```
     pub const fn proper_time_interval_samples(self, end: Dt, samples: &[LocalSpacetime]) -> TSpan {
         if samples.len() < 2 || self.eq(&end) {

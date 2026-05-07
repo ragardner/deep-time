@@ -6,23 +6,23 @@ use crate::{
 impl Dt {
     #[inline]
     pub const fn add(self, span: TSpan) -> Self {
-        let (sec, subsec) = TSpan::add_time(self.sec, self.subsec, span.sec, span.subsec);
-        Self { sec, subsec }
+        let (sec, attos) = TSpan::add_time(self.sec, self.attos, span.sec, span.attos);
+        Self { sec, attos }
     }
 
     #[inline]
     pub const fn sub(self, span: TSpan) -> Self {
-        let (sec, subsec) = TSpan::sub_time(self.sec, self.subsec, span.sec, span.subsec);
-        Self { sec, subsec }
+        let (sec, attos) = TSpan::sub_time(self.sec, self.attos, span.sec, span.attos);
+        Self { sec, attos }
     }
 
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
     ///
     /// The conversion is lossy by design, as `f64` (`Real`) provides approximately 15.95 decimal digits of precision.
-    /// For full exactness, use the integer components `sec` and `subsec` directly or higher-precision arithmetic when available.
+    /// For full exactness, use the integer components `sec` and `attos` directly or higher-precision arithmetic when available.
     #[inline]
     pub const fn to_sec_f(self) -> Real {
-        f!(self.sec) + f!(self.subsec) / ATTOS_PER_SECF
+        f!(self.sec) + f!(self.attos) / ATTOS_PER_SECF
     }
 
     /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
@@ -51,7 +51,7 @@ impl Dt {
     /// Computes the TAI signed duration between this `Dt` and an earlier instant.
     #[inline]
     pub const fn to_tai_since(&self, earlier: Self) -> TSpan {
-        TSpan::diff_raw(self.sec, self.subsec, earlier.sec, earlier.subsec)
+        TSpan::diff_raw(self.sec, self.attos, earlier.sec, earlier.attos)
     }
 
     /// This method is lossy by design and is provided for testing and debugging purposes only.
@@ -84,7 +84,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ms(&mut self) {
-        TSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_MS);
+        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_MS);
     }
 
     /// Adds exactly 1 microsecond to this time value.
@@ -92,7 +92,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1us(&mut self) {
-        TSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_US);
+        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_US);
     }
 
     /// Adds exactly 1 nanosecond to this time value.
@@ -100,7 +100,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ns(&mut self) {
-        TSpan::add_subsec_to(&mut self.sec, &mut self.subsec, ATTOS_PER_NS);
+        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
@@ -126,7 +126,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ms(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_MS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_MS);
     }
 
     /// Adds the specified number of microseconds to this time value.
@@ -134,7 +134,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_us(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_US);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_US);
     }
 
     /// Adds the specified number of nanoseconds to this time value.
@@ -142,7 +142,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ns(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_NS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of picoseconds to this time value.
@@ -150,7 +150,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ps(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_PS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_PS);
     }
 
     /// Adds the specified number of femtoseconds to this time value.
@@ -158,7 +158,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_fs(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, ATTOS_PER_FS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_FS);
     }
 
     /// Adds the specified number of attoseconds to this time value.
@@ -166,7 +166,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_attos(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n, 1);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, 1);
     }
 
     // =====================================================================
@@ -196,7 +196,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ms(&mut self) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_MS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_MS);
     }
 
     /// Subtracts exactly 1 microsecond from this time value.
@@ -204,7 +204,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1us(&mut self) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_US);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_US);
     }
 
     /// Subtracts exactly 1 nanosecond from this time value.
@@ -212,12 +212,8 @@ impl Dt {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ns(&mut self) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, -1, ATTOS_PER_NS);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_NS);
     }
-
-    // =====================================================================
-    // Multi-unit subtraction methods (saturating)
-    // =====================================================================
 
     /// Subtracts the specified number of seconds from this time value using saturating arithmetic.
     #[inline]
@@ -242,9 +238,9 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ms(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_MS,
         );
@@ -255,9 +251,9 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_us(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_US,
         );
@@ -268,9 +264,9 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ns(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_NS,
         );
@@ -281,9 +277,9 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ps(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_PS,
         );
@@ -294,9 +290,9 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_fs(&mut self, n: i64) {
-        TSpan::add_subsec_span(
+        TSpan::add_attos_span(
             &mut self.sec,
-            &mut self.subsec,
+            &mut self.attos,
             n.saturating_neg(),
             ATTOS_PER_FS,
         );
@@ -307,13 +303,13 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_attos(&mut self, n: i64) {
-        TSpan::add_subsec_span(&mut self.sec, &mut self.subsec, n.saturating_neg(), 1);
+        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n.saturating_neg(), 1);
     }
 
     /// Total attoseconds (exact i128 representation within the representable range).
     #[inline]
     pub const fn to_attos(self) -> i128 {
-        (self.sec as i128) * ATTOS_PER_SEC_I128 + (self.subsec as i128)
+        (self.sec as i128) * ATTOS_PER_SEC_I128 + (self.attos as i128)
     }
 
     /// Returns the total duration in milliseconds.

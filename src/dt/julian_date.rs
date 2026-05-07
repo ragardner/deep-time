@@ -37,11 +37,10 @@ impl Dt {
             let jd_int = 2_440_587i64 + days_since_1970 as i64;
             (jd_int, frac_attos)
         } else {
-            let TSpan { sec, subsec } = self.to(target);
+            let TSpan { sec, attos } = self.to(target);
             let days_since_j2000 = sec.div_euclid(SEC_PER_DAYI64);
             let remaining_sec = sec.rem_euclid(SEC_PER_DAYI64);
-            let frac_attos =
-                (remaining_sec as u128) * ATTOS_PER_SEC_I128 as u128 + (subsec as u128);
+            let frac_attos = (remaining_sec as u128) * ATTOS_PER_SEC_I128 as u128 + (attos as u128);
 
             (J2000_JD_TT + days_since_j2000, frac_attos)
         }
@@ -128,9 +127,9 @@ impl Dt {
             let days_since_j2000 = jd_days - J2000_JD_TT;
             let total_sec = days_since_j2000 * SEC_PER_DAYI64
                 + (frac_attos / ATTOS_PER_SEC_I128 as u128) as i64;
-            let subsec = (frac_attos % ATTOS_PER_SEC_I128 as u128) as u64;
+            let attos = (frac_attos % ATTOS_PER_SEC_I128 as u128) as u64;
 
-            Dt::from(total_sec, subsec, orig_type)
+            Dt::from(total_sec, attos, orig_type)
         }
     }
 

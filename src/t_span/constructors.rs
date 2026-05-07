@@ -1,23 +1,22 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, Scale, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Dt,
-    TSpan, floor_f,
+    ATTOS_PER_SECF, ATTOS_PER_US, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale, TSpan, floor_f,
 };
 
 impl TSpan {
     /// Zero duration (`0 s`).
-    pub const ZERO: Self = Self { sec: 0, subsec: 0 };
+    pub const ZERO: Self = Self { sec: 0, attos: 0 };
 
     /// Maximum representable duration (`i64::MAX` seconds + 999... attoseconds).
     pub const MAX: Self = Self {
         sec: i64::MAX,
-        subsec: ATTOS_PER_SEC - 1,
+        attos: ATTOS_PER_SEC - 1,
     };
 
     /// Minimum (most negative) representable duration (`i64::MIN` seconds).
     pub const MIN: Self = Self {
         sec: i64::MIN,
-        subsec: 0,
+        attos: 0,
     };
 
     pub const SEC_19: Self = Self::from_sec(19);
@@ -36,8 +35,8 @@ impl TSpan {
 
         if attos >= 0 {
             let sec = (attos / ATTOS_PER_SEC_I128) as i64;
-            let subsec = (attos % ATTOS_PER_SEC_I128) as u64;
-            Self { sec, subsec }
+            let attos = (attos % ATTOS_PER_SEC_I128) as u64;
+            Self { sec, attos }
         } else {
             attos = -attos;
             let sec_pos = (attos / ATTOS_PER_SEC_I128) as i64;
@@ -45,12 +44,12 @@ impl TSpan {
             if rem == 0 {
                 Self {
                     sec: -sec_pos,
-                    subsec: 0,
+                    attos: 0,
                 }
             } else {
                 Self {
                     sec: -sec_pos - 1,
-                    subsec: ATTOS_PER_SEC - rem,
+                    attos: ATTOS_PER_SEC - rem,
                 }
             }
         }
@@ -58,10 +57,10 @@ impl TSpan {
 
     /// Creates a new `TSpan` from whole seconds and a subsecond part.
     ///
-    /// The result is automatically normalized so `subsec` lies in `[0, 10¹⁸)`.
+    /// The result is automatically normalized so `attos` lies in `[0, 10¹⁸)`.
     #[inline]
-    pub const fn new(sec: i64, subsec: u64) -> Self {
-        let mut dt = Self { sec, subsec };
+    pub const fn new(sec: i64, attos: u64) -> Self {
+        let mut dt = Self { sec, attos };
         dt.carry_over();
         dt
     }
@@ -172,15 +171,15 @@ impl TSpan {
     /// Returns the negation of this duration.
     #[inline]
     pub const fn neg(self) -> Self {
-        if self.subsec == 0 {
+        if self.attos == 0 {
             Self {
                 sec: -self.sec,
-                subsec: 0,
+                attos: 0,
             }
         } else {
             Self {
                 sec: -self.sec - 1,
-                subsec: ATTOS_PER_SEC - self.subsec,
+                attos: ATTOS_PER_SEC - self.attos,
             }
         }
     }

@@ -33,7 +33,7 @@ impl Dt {
             0u128
         } else {
             let scale = 1u128 << (8 * n_frac as u32);
-            (self.subsec as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
+            (self.attos as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
         };
 
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
@@ -114,11 +114,11 @@ impl Dt {
 
         // Round to nearest millisecond (CORRECT 10^15 scaling)
         let additional_ms =
-            ((utc.subsec as u128 + 500_000_000_000_000) / 1_000_000_000_000_000) as u64;
+            ((utc.attos as u128 + 500_000_000_000_000) / 1_000_000_000_000_000) as u64;
         let millis_of_day = sec_of_day * 1000 + additional_ms;
 
         // Remaining attoseconds inside the current millisecond
-        let remaining_attos_in_ms = (utc.subsec as u128) % 1_000_000_000_000_000;
+        let remaining_attos_in_ms = (utc.attos as u128) % 1_000_000_000_000_000;
 
         let frac_scaled = match sub_ms_code {
             0 => 0u64,

@@ -1,5 +1,5 @@
 use crate::{
-    CLOCK_TYPES, DateToken, EN_DAYS, EN_DURATIONS, EN_MONTHS, EN_RELATIVES, EN_SPECIAL, LangData,
+    DateToken, EN_DAYS, EN_DURATIONS, EN_MONTHS, EN_RELATIVES, EN_SPECIAL, LangData,
     tz_lowered_keys, tzdb::TZ_ENTRIES,
 };
 use aho_corasick::{AhoCorasick, MatchKind};
@@ -209,7 +209,6 @@ pub(crate) fn fr_date_ac() -> &'static AhoCorasick {
         terms.extend(FR_MONTHS.iter().map(|&(k, _, _)| k));
         terms.extend(FR_DAYS.iter().map(|&(k, _, _)| k));
         terms.extend(FR_SPECIAL.iter().map(|&(k, _, _)| k));
-        terms.extend(CLOCK_TYPES.iter().map(|&(k, _, _)| k));
         terms.extend(tz_lowered_keys());
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
@@ -270,9 +269,6 @@ pub(crate) fn fr() -> &'static HashMap<&'static str, (&'static str, DateToken)> 
             m.insert(k, (v, token));
         }
         for &(k, v, token) in FR_SPECIAL {
-            m.insert(k, (v, token));
-        }
-        for &(k, v, token) in CLOCK_TYPES {
             m.insert(k, (v, token));
         }
         for (&lowered_key, &(original_name, _, _)) in
