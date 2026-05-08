@@ -44,9 +44,7 @@ pub struct Ut1Data {
 impl Ut1Data {
     pub const MAX_LINE_LEN: usize = 8192;
 
-    // ============================================================
     // Small helper — parses ONE row (shared by all paths)
-    // ============================================================
     fn try_parse_row(trimmed: &str, format: Ut1Format, separator: Separator) -> Option<Ut1Row> {
         let parts: Vec<&str> = match separator {
             Separator::Whitespace => trimmed.split_whitespace().collect(),
@@ -122,9 +120,6 @@ impl Ut1Data {
         }
     }
 
-    // ============================================================
-    // CORE PARSER (no_std + alloc)
-    // ============================================================
     fn parse_lines<'a>(
         lines: impl Iterator<Item = &'a str>,
         format: Ut1Format,
@@ -152,9 +147,6 @@ impl Ut1Data {
         Ok(rows)
     }
 
-    // ============================================================
-    // no_std constructors
-    // ============================================================
     pub fn data_from_str(
         s: &str,
         format: Ut1Format,
@@ -183,78 +175,6 @@ impl Ut1Data {
         separator: Separator,
     ) -> Result<Self, DtErr> {
         let rows = Self::data_from_bytes(bytes, format, separator)?;
-        Ok(Self { rows })
-    }
-
-    // ============================================================
-    // std-only constructors (streaming)
-    // ============================================================
-    #[cfg(feature = "std")]
-    pub fn data_from_reader<R: std::io::BufRead>(
-        mut reader: R,
-        format: Ut1Format,
-        separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtErr> {
-        let mut line_buf = String::with_capacity(256);
-        let mut rows = Vec::new();
-
-        loop {
-            line_buf.clear();
-
-            let bytes_read = match reader.read_line(&mut line_buf) {
-                Ok(0) => break,
-                Ok(n) => n,
-                Err(e) => {
-                    return Err(an_err!(DtErrKind::IOErr, "read line: {}", e));
-                }
-            };
-
-            if bytes_read > Self::MAX_LINE_LEN {
-                continue;
-            }
-
-            let trimmed = line_buf.trim();
-            if trimmed.is_empty() || trimmed.starts_with('#') {
-                continue;
-            }
-
-            if let Some(row) = Self::try_parse_row(trimmed, format, separator) {
-                rows.push(row);
-            }
-        }
-
-        if rows.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "no valid rows"));
-        }
-
-        rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
-        Ok(rows)
-    }
-
-    #[cfg(feature = "std")]
-    pub fn data_from_text_file<P: AsRef<std::path::Path>>(
-        path: P,
-        format: Ut1Format,
-        separator: Separator,
-    ) -> Result<Vec<Ut1Row>, DtErr> {
-        use std::fs::File;
-        use std::io::BufReader;
-
-        let path = path.as_ref();
-        let file = File::open(path)
-            .map_err(|e| an_err!(DtErrKind::IOErr, "open file: '{}': {}", path.display(), e))?;
-
-        let reader = BufReader::new(file);
-        Self::data_from_reader(reader, format, separator)
-    }
-
-    #[cfg(feature = "std")]
-    pub fn from_text_file<P: AsRef<std::path::Path>>(
-        path: P,
-        format: Ut1Format,
-        separator: Separator,
-    ) -> Result<Self, DtErr> {
-        let rows = Self::data_from_text_file(path, format, separator)?;
         Ok(Self { rows })
     }
 
@@ -300,6 +220,75 @@ impl Ut1Data {
         } else {
             Some(self.rows[idx].ut1_minus_utc)
         }
+    }
+}
+
+#[cfg(feature = "std")]
+impl Ut1Data {
+    pub fn data_from_reader<R: std::io::BufRead>(
+        mut reader: R,
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Vec<Ut1Row>, DtErr> {
+        let mut line_buf = String::with_capacity(256);
+        let mut rows = Vec::new();
+
+        loop {
+            line_buf.clear();
+
+            let bytes_read = match reader.read_line(&mut line_buf) {
+                Ok(0) => break,
+                Ok(n) => n,
+                Err(e) => {
+                    return Err(an_err!(DtErrKind::IOErr, "read line: {}", e));
+                }
+            };
+
+            if bytes_read > Self::MAX_LINE_LEN {
+                continue;
+            }
+
+            let trimmed = line_buf.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+
+            if let Some(row) = Self::try_parse_row(trimmed, format, separator) {
+                rows.push(row);
+            }
+        }
+
+        if rows.is_empty() {
+            return Err(an_err!(DtErrKind::Incomplete, "no valid rows"));
+        }
+
+        rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
+        Ok(rows)
+    }
+
+    pub fn data_from_text_file<P: AsRef<std::path::Path>>(
+        path: P,
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Vec<Ut1Row>, DtErr> {
+        use std::fs::File;
+        use std::io::BufReader;
+
+        let path = path.as_ref();
+        let file = File::open(path)
+            .map_err(|e| an_err!(DtErrKind::IOErr, "open file: '{}': {}", path.display(), e))?;
+
+        let reader = BufReader::new(file);
+        Self::data_from_reader(reader, format, separator)
+    }
+
+    pub fn from_text_file<P: AsRef<std::path::Path>>(
+        path: P,
+        format: Ut1Format,
+        separator: Separator,
+    ) -> Result<Self, DtErr> {
+        let rows = Self::data_from_text_file(path, format, separator)?;
+        Ok(Self { rows })
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::TSpan;
+use crate::{TSpan, clamp_i128_to_i64};
 use chrono::{DateTime, Duration, TimeDelta, Utc};
 
 impl TSpan {
@@ -11,14 +11,7 @@ impl TSpan {
     ///   Never returns an error.
     pub fn to_chrono_duration(self) -> Duration {
         let total_nanos = self.to_attos() / 1_000_000_000i128;
-
-        let nanos = if total_nanos > i64::MAX as i128 {
-            i64::MAX
-        } else if total_nanos < i64::MIN as i128 {
-            i64::MIN
-        } else {
-            total_nanos as i64
-        };
+        let nanos = clamp_i128_to_i64(total_nanos);
 
         // `TimeDelta::nanoseconds` is infallible and returns exactly the
         // `chrono::Duration` alias.
@@ -36,14 +29,7 @@ impl TSpan {
     ///   Never returns an error.
     pub fn to_chrono_datetime_utc(self) -> DateTime<Utc> {
         let total_nanos = self.to_attos() / 1_000_000_000i128;
-
-        let nanos = if total_nanos > i64::MAX as i128 {
-            i64::MAX
-        } else if total_nanos < i64::MIN as i128 {
-            i64::MIN
-        } else {
-            total_nanos as i64
-        };
+        let nanos = clamp_i128_to_i64(total_nanos);
 
         DateTime::<Utc>::from_timestamp_nanos(nanos)
     }

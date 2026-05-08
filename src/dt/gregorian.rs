@@ -162,6 +162,10 @@ impl Dt {
         let day = (e - floor_div(153 * m + 2, 5) + 1) as u8;
         let month = (m + 3 - 12 * floor_div(m, 10)) as u8;
         let year = b * 100 + d - 4800 + floor_div(m, 10);
+
+        debug_assert!(day >= 1 && day <= 31);
+        debug_assert!(month >= 1 && month <= 12);
+
         (year as i64, month, day)
     }
 

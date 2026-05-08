@@ -58,7 +58,174 @@ impl TimeParts {
         self.iana_name = name.and_then(|s| AsciiStr::try_from_str(s).ok());
         self
     }
+}
 
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Meridiem {
+    #[default]
+    AM,
+    PM,
+}
+
+#[cfg(feature = "wire")]
+impl Meridiem {
+    pub const WIRE_SIZE: usize = 1;
+
+    #[inline]
+    pub const fn to_wire_byte(self) -> u8 {
+        match self {
+            Meridiem::AM => 0,
+            Meridiem::PM => 1,
+        }
+    }
+
+    #[inline]
+    pub const fn from_wire_byte(b: u8) -> Option<Self> {
+        match b {
+            0 => Some(Meridiem::AM),
+            1 => Some(Meridiem::PM),
+            _ => None,
+        }
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Weekday {
+    #[default]
+    Sunday,
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+}
+
+impl Weekday {
+    /// Converts a Sunday-based weekday number (0 = Sunday … 6 = Saturday) to `Weekday`.
+    #[inline]
+    pub const fn from_sunday_zero_offset(n: i8) -> Option<Self> {
+        match n {
+            0 => Some(Weekday::Sunday),
+            1 => Some(Weekday::Monday),
+            2 => Some(Weekday::Tuesday),
+            3 => Some(Weekday::Wednesday),
+            4 => Some(Weekday::Thursday),
+            5 => Some(Weekday::Friday),
+            6 => Some(Weekday::Saturday),
+            _ => None,
+        }
+    }
+
+    /// Converts a Monday-based weekday number (1 = Monday … 7 = Sunday) to `Weekday`.
+    #[inline]
+    pub const fn from_monday_one_offset(n: i8) -> Option<Self> {
+        match n {
+            1 => Some(Weekday::Monday),
+            2 => Some(Weekday::Tuesday),
+            3 => Some(Weekday::Wednesday),
+            4 => Some(Weekday::Thursday),
+            5 => Some(Weekday::Friday),
+            6 => Some(Weekday::Saturday),
+            7 => Some(Weekday::Sunday),
+            _ => None,
+        }
+    }
+
+    /// Sunday-based weekday number (0 = Sunday … 6 = Saturday).
+    #[inline]
+    pub const fn wk_sun(self) -> u8 {
+        match self {
+            Weekday::Sunday => 0,
+            Weekday::Monday => 1,
+            Weekday::Tuesday => 2,
+            Weekday::Wednesday => 3,
+            Weekday::Thursday => 4,
+            Weekday::Friday => 5,
+            Weekday::Saturday => 6,
+        }
+    }
+
+    /// Monday-based weekday number (1 = Monday … 7 = Sunday).
+    #[inline]
+    pub const fn wk_mon(self) -> u8 {
+        match self {
+            Weekday::Monday => 1,
+            Weekday::Tuesday => 2,
+            Weekday::Wednesday => 3,
+            Weekday::Thursday => 4,
+            Weekday::Friday => 5,
+            Weekday::Saturday => 6,
+            Weekday::Sunday => 7,
+        }
+    }
+}
+
+#[cfg(feature = "wire")]
+impl Weekday {
+    pub const WIRE_SIZE: usize = 1;
+
+    #[inline]
+    pub const fn to_wire_byte(self) -> u8 {
+        self.wk_sun()
+    }
+
+    #[inline]
+    pub const fn from_wire_byte(b: u8) -> Option<Self> {
+        Self::from_sunday_zero_offset(b as i8)
+    }
+}
+
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Offset {
+    #[default]
+    Utc,
+    None,
+    /// Fixed offset from UTC in seconds
+    Fixed(i32),
+}
+
+#[cfg(feature = "wire")]
+impl Offset {
+    pub const WIRE_SIZE: usize = 5; // tag (1) + i32 (4)
+
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        match self {
+            Offset::Utc => buf[0] = 0,
+            Offset::None => buf[0] = 1,
+            Offset::Fixed(offset) => {
+                buf[0] = 2;
+                buf[1..5].copy_from_slice(&offset.to_le_bytes());
+            }
+        }
+        buf
+    }
+
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+        match bytes[0] {
+            0 => Some(Offset::Utc),
+            1 => Some(Offset::None),
+            2 => {
+                let offset = i32::from_le_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]);
+                Some(Offset::Fixed(offset))
+            }
+            _ => None,
+        }
+    }
+}
+
+#[cfg(feature = "wire")]
+impl TimeParts {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
@@ -70,7 +237,6 @@ impl TimeParts {
     /// Layout:
     /// - Byte 0: Version (`WIRE_VERSION`)
     /// - Bytes 1..121: Data (120 bytes)
-    #[cfg(feature = "wire")]
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -167,7 +333,6 @@ impl TimeParts {
     /// Deserializes `TimeParts` from exactly 121 bytes.
     ///
     /// Returns `None` if the version byte is unknown or the data is invalid.
-    #[cfg(feature = "wire")]
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -313,166 +478,5 @@ impl TimeParts {
         }
 
         Some(dc)
-    }
-}
-
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Meridiem {
-    #[default]
-    AM,
-    PM,
-}
-
-impl Meridiem {
-    pub const WIRE_SIZE: usize = 1;
-
-    #[inline]
-    pub const fn to_wire_byte(self) -> u8 {
-        match self {
-            Meridiem::AM => 0,
-            Meridiem::PM => 1,
-        }
-    }
-
-    #[inline]
-    pub const fn from_wire_byte(b: u8) -> Option<Self> {
-        match b {
-            0 => Some(Meridiem::AM),
-            1 => Some(Meridiem::PM),
-            _ => None,
-        }
-    }
-}
-
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Weekday {
-    #[default]
-    Sunday,
-    Monday,
-    Tuesday,
-    Wednesday,
-    Thursday,
-    Friday,
-    Saturday,
-}
-
-impl Weekday {
-    pub const WIRE_SIZE: usize = 1;
-
-    #[inline]
-    pub const fn to_wire_byte(self) -> u8 {
-        self.wk_sun()
-    }
-
-    #[inline]
-    pub const fn from_wire_byte(b: u8) -> Option<Self> {
-        Self::from_sunday_zero_offset(b as i8)
-    }
-
-    /// Converts a Sunday-based weekday number (0 = Sunday … 6 = Saturday) to `Weekday`.
-    #[inline]
-    pub const fn from_sunday_zero_offset(n: i8) -> Option<Self> {
-        match n {
-            0 => Some(Weekday::Sunday),
-            1 => Some(Weekday::Monday),
-            2 => Some(Weekday::Tuesday),
-            3 => Some(Weekday::Wednesday),
-            4 => Some(Weekday::Thursday),
-            5 => Some(Weekday::Friday),
-            6 => Some(Weekday::Saturday),
-            _ => None,
-        }
-    }
-
-    /// Converts a Monday-based weekday number (1 = Monday … 7 = Sunday) to `Weekday`.
-    #[inline]
-    pub const fn from_monday_one_offset(n: i8) -> Option<Self> {
-        match n {
-            1 => Some(Weekday::Monday),
-            2 => Some(Weekday::Tuesday),
-            3 => Some(Weekday::Wednesday),
-            4 => Some(Weekday::Thursday),
-            5 => Some(Weekday::Friday),
-            6 => Some(Weekday::Saturday),
-            7 => Some(Weekday::Sunday),
-            _ => None,
-        }
-    }
-
-    /// Sunday-based weekday number (0 = Sunday … 6 = Saturday).
-    #[inline]
-    pub const fn wk_sun(self) -> u8 {
-        match self {
-            Weekday::Sunday => 0,
-            Weekday::Monday => 1,
-            Weekday::Tuesday => 2,
-            Weekday::Wednesday => 3,
-            Weekday::Thursday => 4,
-            Weekday::Friday => 5,
-            Weekday::Saturday => 6,
-        }
-    }
-
-    /// Monday-based weekday number (1 = Monday … 7 = Sunday).
-    #[inline]
-    pub const fn wk_mon(self) -> u8 {
-        match self {
-            Weekday::Monday => 1,
-            Weekday::Tuesday => 2,
-            Weekday::Wednesday => 3,
-            Weekday::Thursday => 4,
-            Weekday::Friday => 5,
-            Weekday::Saturday => 6,
-            Weekday::Sunday => 7,
-        }
-    }
-}
-
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum Offset {
-    #[default]
-    Utc,
-    None,
-    /// Fixed offset from UTC in seconds
-    Fixed(i32),
-}
-
-impl Offset {
-    pub const WIRE_SIZE: usize = 5; // tag (1) + i32 (4)
-
-    #[cfg(feature = "wire")]
-    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
-        let mut buf = [0u8; Self::WIRE_SIZE];
-        match self {
-            Offset::Utc => buf[0] = 0,
-            Offset::None => buf[0] = 1,
-            Offset::Fixed(offset) => {
-                buf[0] = 2;
-                buf[1..5].copy_from_slice(&offset.to_le_bytes());
-            }
-        }
-        buf
-    }
-
-    #[cfg(feature = "wire")]
-    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != Self::WIRE_SIZE {
-            return None;
-        }
-        match bytes[0] {
-            0 => Some(Offset::Utc),
-            1 => Some(Offset::None),
-            2 => {
-                let offset = i32::from_le_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]);
-                Some(Offset::Fixed(offset))
-            }
-            _ => None,
-        }
     }
 }

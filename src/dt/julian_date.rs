@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, Dt, J2000_JD_TT, JD_EPOCH_DAYS,
-    MJD_1970, Real, SEC_PER_DAYI64, Scale, TSpan,
+    MJD_1970, Real, SEC_PER_DAYI64, Scale, TSpan, clamp_i128_to_i64,
 };
 
 impl Dt {
@@ -33,14 +33,7 @@ impl Dt {
 
             let days_since_1970 = total_attos.div_euclid(ATTOS_PER_DAY);
             let frac_attos = total_attos.rem_euclid(ATTOS_PER_DAY) as u128;
-
-            let days_i64 = if days_since_1970 > i64::MAX as i128 {
-                i64::MAX
-            } else if days_since_1970 < i64::MIN as i128 {
-                i64::MIN
-            } else {
-                days_since_1970 as i64
-            };
+            let days_i64 = clamp_i128_to_i64(days_since_1970);
 
             let jd_int = 2_440_587i64.saturating_add(days_i64);
             (jd_int, frac_attos)
@@ -86,14 +79,7 @@ impl Dt {
             let canon_attos = self.to_tai_attos_since(Dt::UNIX_EPOCH);
             let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
             let frac_attos = canon_attos.rem_euclid(ATTOS_PER_DAY) as u128;
-
-            let days_i64 = if days_since_1970 > i64::MAX as i128 {
-                i64::MAX
-            } else if days_since_1970 < i64::MIN as i128 {
-                i64::MIN
-            } else {
-                days_since_1970 as i64
-            };
+            let days_i64 = clamp_i128_to_i64(days_since_1970);
 
             let mjd_days = MJD_1970.saturating_add(days_i64);
             (mjd_days, frac_attos)

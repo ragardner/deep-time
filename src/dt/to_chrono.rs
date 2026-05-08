@@ -1,4 +1,4 @@
-use crate::Dt;
+use crate::{Dt, clamp_i128_to_i64};
 use chrono::{DateTime, Utc};
 
 impl Dt {
@@ -16,16 +16,8 @@ impl Dt {
     ///   Never returns an error.
     pub fn to_chrono_datetime_utc(self) -> DateTime<Utc> {
         let span_since_epoch = self.to_tai_since(Dt::UNIX_EPOCH);
-
         let total_nanos = span_since_epoch.to_attos() / 1_000_000_000i128;
-
-        let nanos = if total_nanos > i64::MAX as i128 {
-            i64::MAX
-        } else if total_nanos < i64::MIN as i128 {
-            i64::MIN
-        } else {
-            total_nanos as i64
-        };
+        let nanos = clamp_i128_to_i64(total_nanos);
 
         DateTime::<Utc>::from_timestamp_nanos(nanos)
     }

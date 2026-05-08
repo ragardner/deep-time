@@ -11,7 +11,7 @@ readme = "README.md"
 rust-version = "1.90"
 
 [lib]
-crate-type = ["rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 hashbrown = { version = "0.17", optional = true }
@@ -28,10 +28,12 @@ js-sys = { version = "0.3", optional = true }
 sys-locale = { version = "0.3", optional = true }
 
 [features]
+
 # ──────────────────────────────────────────────────────────────
 # CORE FEATURES
 # ──────────────────────────────────────────────────────────────
-default = ["std", "parse"]
+
+default = ["parse", "std"]
 panic-handler = []
 tz = []
 wire = []
@@ -51,6 +53,7 @@ std = [
 # ──────────────────────────────────────────────────────────────
 # PARSER / LANGUAGES (no_std friendly)
 # ──────────────────────────────────────────────────────────────
+
 parse = [
     "alloc",
     "dep:aho-corasick",
@@ -73,13 +76,9 @@ lang = [
 ]
 
 # ──────────────────────────────────────────────────────────────
-# LOCALE
+# SERIALIZATION FEATURES
 # ──────────────────────────────────────────────────────────────
-locale = ["alloc", "std", "dep:sys-locale"]
 
-# ──────────────────────────────────────────────────────────────
-# SERIALIZATION
-# ──────────────────────────────────────────────────────────────
 serde = [
     "dep:serde",
     "jiff?/serde",
@@ -88,8 +87,9 @@ serde = [
 ]
 
 # ──────────────────────────────────────────────────────────────
-# DATETIME (std is optional)
+# DATETIME FEATURES
 # ──────────────────────────────────────────────────────────────
+
 ut1 = [
     "alloc",
 ]
@@ -120,8 +120,9 @@ hifitime = [
 ]
 
 # ──────────────────────────────────────────────────────────────
-# WEB / WASM / TYPESCRIPT
+# WEB FEATURES
 # ──────────────────────────────────────────────────────────────
+
 js = [
     "std",
     "serde",
@@ -141,8 +142,14 @@ tsify = [
 ]
 
 # ──────────────────────────────────────────────────────────────
-# ALL
+# OTHER FEATURES
 # ──────────────────────────────────────────────────────────────
+
+locale = [
+    "alloc",
+    "std",
+    "dep:sys-locale",
+]
 all = [
     "parse",
     "tz",
@@ -154,7 +161,5 @@ all = [
     "hifitime",
     "serde",
 ]
-
-# Internal tests
-perf-tests = []
+perf-tests = ["parse", "std"]
 ut1-tests = ["ut1", "std"]
