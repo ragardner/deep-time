@@ -1,12 +1,12 @@
 [package]
 name = "deep-time"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 authors = ["ragardner <github@ragardner.simplelogin.com>"]
 edition = "2024"
 description = "High-precision time types, time scale conversions, relativistic time, and a flexible date and duration parser"
 license = "Apache-2.0"
 repository = "https://github.com/ragardner/deep-time"
-keywords = ["time", "date", "duration", "parser", "clock", "astronomy", "astrodynamics", "no-std"]
+keywords = ["time", "date", "duration", "astronomy", "parser"]
 categories = ["date-and-time", "science"]
 readme = "README.md"
 rust-version = "1.90"
