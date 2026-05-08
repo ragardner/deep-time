@@ -1,31 +1,29 @@
 [package]
 name = "deep-time"
 version = "0.1.0"
+authors = ["ragardner <github@ragardner.simplelogin.com>"]
 edition = "2024"
-description = "Core high-precision time types, clocks, and flexible date/duration parser"
+description = "High-precision time types, time scale conversions, relativistic time, and a flexible date and duration parser"
 license = "Apache-2.0"
 repository = "https://github.com/ragardner/deep-time"
 keywords = ["time", "date", "duration", "parser", "clock", "astronomy", "astrodynamics", "no-std"]
-categories = ["date-and-time", "no-std", "science"]
+categories = ["date-and-time", "science"]
 readme = "README.md"
 rust-version = "1.90"
 
-[lib]
-crate-type = ["cdylib", "rlib"]
-
 [dependencies]
-hashbrown = { version = "0.17", optional = true }
+hashbrown    = { version = "0.17",  optional = true }
 aho-corasick = { version = "1.1.4", optional = true }
-once_cell = { version = "1.21", optional = true, default-features = false, features = ["alloc"] }
-jiff = { version = "0.2.23", optional = true, default-features = false }
-chrono = { version = "0.4", optional = true, default-features = false }
-chrono-tz = { version = "0.10", optional = true, default-features = false }
-hifitime = { version = "4.2", optional = true, default-features = false }
-serde = { version = "1.0", optional = true, default-features = false, features = ["derive", "rc"] }
-tsify = { version = "=0.5.6", optional = true }
-wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
-js-sys = { version = "0.3", optional = true }
-sys-locale = { version = "0.3", optional = true }
+once_cell    = { version = "1.21",  optional = true, default-features = false, features = ["alloc"] }
+jiff         = { version = "0.2.23", optional = true, default-features = false }
+chrono       = { version = "0.4",   optional = true, default-features = false }
+chrono-tz    = { version = "0.10",  optional = true, default-features = false }
+hifitime     = { version = "4.2",   optional = true, default-features = false }
+serde        = { version = "1.0",   optional = true, default-features = false, features = ["derive", "rc"] }
+tsify        = { version = "=0.5.6", optional = true }
+wasm-bindgen = { version = "0.2",   optional = true, features = ["serde-serialize"] }
+js-sys       = { version = "0.3",   optional = true }
+sys-locale   = { version = "0.3",   optional = true }
 
 [features]
 
@@ -33,7 +31,7 @@ sys-locale = { version = "0.3", optional = true }
 # CORE FEATURES
 # ──────────────────────────────────────────────────────────────
 
-default = ["parse", "std"]
+default = []
 panic-handler = []
 tz = []
 wire = []

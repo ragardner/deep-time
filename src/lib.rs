@@ -1,4 +1,5 @@
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
+
 #[cfg(feature = "alloc")]
 extern crate alloc;
 #[cfg(feature = "std")]
@@ -109,7 +110,7 @@ pub mod utils;
 // _________________________________________
 #[cfg(feature = "parse")]
 pub(crate) use alloc_parse::{
-    alloc_constants::*, date::*, date_classification::*, duration::*, lang::*, lang_map::*,
+    alloc_constants::*, date::*, date_classification::*, duration::*, lang_data::*, lang_map::*,
     languages::en::*, parse_date::*, types::*,
 };
 
@@ -123,10 +124,7 @@ pub(crate) use utils::*;
 // FEATURE PUB USE
 // _________________________________________
 #[cfg(feature = "parse")]
-pub use alloc_parse::{
-    lang::Lang,
-    types::{DateOrder, DateParseMode, ParseCfg},
-};
+pub use alloc_parse::types::{DateOrder, DateParseMode, Lang, ParseCfg};
 
 #[cfg(feature = "ut1")]
 pub use ut1::{Separator, Ut1Columns, Ut1Data, Ut1Format, Ut1Row};
