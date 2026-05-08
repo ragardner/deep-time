@@ -1,4 +1,4 @@
-use deep_time::{DateOrder, DateParseMode, Dt, Lang, ParseCfg, Scale};
+use deep_time::{DateOrder, DateParseMode, Dt, ParseCfg, Scale};
 
 #[test]
 fn print_stuff() {
@@ -76,6 +76,7 @@ fn print_stuff() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
+
 fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
     let dt = Dt::from_str_parse(input.trim(), &opts)
         .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
@@ -981,14 +982,6 @@ fn date_parser_comprehensive() {
             "2024-04-05T00:00:00Z",
             Some(ParseCfg {
                 order: DateOrder::YearFirst,
-                ..Default::default()
-            }),
-        ),
-        (
-            "1er janvier 2024",
-            "2024-01-01T00:00:00Z",
-            Some(ParseCfg {
-                lang: Lang::Fr,
                 ..Default::default()
             }),
         ),

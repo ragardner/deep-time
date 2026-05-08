@@ -595,16 +595,16 @@ impl TSpan {
 
     #[inline]
     pub(crate) const fn diff_raw(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> Self {
-        let mut sec = sec_a - sec_b;
-        let mut attos = sub_a;
-
-        if attos >= sub_b {
-            attos -= sub_b;
+        if sub_a >= sub_b {
+            Self {
+                sec: sec_a.saturating_sub(sec_b),
+                attos: sub_a - sub_b,
+            }
         } else {
-            sec -= 1;
-            attos += ATTOS_PER_SEC - sub_b;
+            Self {
+                sec: sec_a.saturating_sub(sec_b).saturating_sub(1),
+                attos: sub_a.saturating_add(ATTOS_PER_SEC.saturating_sub(sub_b)),
+            }
         }
-
-        Self { sec, attos }
     }
 }

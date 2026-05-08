@@ -572,6 +572,7 @@ impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
     }
 }
 
+#[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
     use super::*;

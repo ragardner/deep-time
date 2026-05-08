@@ -70,6 +70,7 @@ fn test_ymd_to_jdn() {
     assert_eq!(Dt::jdn_to_ymd(-34802825), (-100000, 12, 31));
 }
 
+#[cfg(feature = "tz")]
 #[test]
 fn roundtrip_gap_boundary_new_york() {
     let our_input = "2023-03-12 02:00:00 America/New_York";

@@ -11,7 +11,7 @@ readme = "README.md"
 rust-version = "1.90"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [dependencies]
 hashbrown = { version = "0.17", optional = true }
@@ -31,7 +31,7 @@ sys-locale = { version = "0.3", optional = true }
 # ──────────────────────────────────────────────────────────────
 # CORE FEATURES
 # ──────────────────────────────────────────────────────────────
-default = []
+default = ["std", "parse"]
 panic-handler = []
 tz = []
 wire = []
@@ -158,9 +158,3 @@ all = [
 # Internal tests
 perf-tests = []
 ut1-tests = ["ut1", "std"]
-
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"

@@ -7,10 +7,10 @@ extern crate std;
 // ──────────────────────────────────────────────────────────────
 // Optional panic handler (opt-in via feature)
 // ──────────────────────────────────────────────────────────────
-#[cfg(all(feature = "panic-handler", not(feature = "std")))]
+#[cfg(all(feature = "panic-handler", not(feature = "std"), not(test)))]
 use core::panic::PanicInfo;
 
-#[cfg(all(feature = "panic-handler", not(feature = "std")))]
+#[cfg(all(feature = "panic-handler", not(feature = "std"), not(test)))]
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {
     // Uses spin_loop() for better power characteristics than plain loop{}

@@ -22,7 +22,7 @@ impl Dt {
     pub const fn unix_sec_to_gregorian_ymd(unix_sec: i64) -> (i64, u8, u8) {
         let days_since_1970 = unix_sec.div_euclid(SEC_PER_DAYI64);
         // 1970-01-01 00:00:00 UTC is JD 2440588.0
-        let jdn = days_since_1970 + 2440588;
+        let jdn = days_since_1970.saturating_add(2440588);
         Self::jdn_to_ymd(jdn)
     }
 
@@ -124,9 +124,11 @@ impl Dt {
     ) -> i64 {
         let jdn = Self::ymd_to_jdn(year, month, day);
         // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
-        let days_since_1970 = jdn - 2440588;
+        let days_since_1970 = jdn.saturating_sub(2440588);
         let time_of_day = (hour as i64) * 3600 + (minute as i64) * 60 + (second as i64);
-        days_since_1970 * SEC_PER_DAYI64 + time_of_day
+        days_since_1970
+            .saturating_mul(SEC_PER_DAYI64)
+            .saturating_add(time_of_day)
     }
 
     /// Converts a Julian Day Number (JDN) to a proleptic Gregorian calendar date.
@@ -169,10 +171,9 @@ impl Dt {
     /// (`ymd_to_jdn(2000, 1, 1) == 2451545`).
     pub const fn ymd_to_jdn(year: i64, month: u8, day: u8) -> i64 {
         let a = (14 - month as i64) / 12;
-        let y = year + 4800 - a;
+        let y = year.saturating_add(4800).saturating_sub(a);
         let m = month as i64 + 12 * a - 3;
 
-        // Floor division helper (must be const fn, not a closure)
         const fn floor_div(a: i64, b: i64) -> i64 {
             let q = a / b;
             let r = a % b;
@@ -187,7 +188,15 @@ impl Dt {
         let y100 = floor_div(y, 100);
         let y400 = floor_div(y, 400);
 
-        day as i64 + (153 * m + 2) / 5 + 365 * y + y4 - y100 + y400 - 32045
+        let result = (day as i64)
+            .saturating_add((153i64 * m + 2) / 5)
+            .saturating_add(365i64 * y)
+            .saturating_add(y4)
+            .saturating_sub(y100)
+            .saturating_add(y400)
+            .saturating_sub(32045);
+
+        result
     }
 
     /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.
@@ -266,22 +275,32 @@ impl Dt {
     #[inline]
     pub const fn ydoy_to_jdn(year: i64, day_of_year: u16) -> i64 {
         let jdn_jan1 = Self::ymd_to_jdn(year, 1, 1);
-        jdn_jan1 + (day_of_year as i64 - 1)
+        jdn_jan1.saturating_add(day_of_year as i64 - 1)
     }
 
     /// Converts a Julian Day Number to the corresponding weekday number (0 = Sunday … 6 = Saturday).
     #[inline]
     pub const fn jdn_to_weekday(jdn: i64) -> u8 {
-        ((jdn + 1) % 7) as u8
+        let rem = ((jdn as i128) + 1) % 7;
+        let positive = if rem < 0 { rem + 7 } else { rem };
+        positive as u8
     }
 
     /// Computes the Julian Day Number from an ISO week date (Monday-based week).
     pub const fn ymd_to_jdn_from_iso_week(iso_year: i64, iso_week: u8, weekday: Weekday) -> i64 {
         let jan4_jdn = Self::ymd_to_jdn(iso_year, 1, 4);
         let wd_jan4 = Self::jdn_to_weekday(jan4_jdn);
-        let days_to_monday = (wd_jan4 + 6) % 7;
-        let monday_week1 = jan4_jdn - (days_to_monday as i64);
-        let monday_requested = monday_week1 + (iso_week as i64 - 1) * 7;
+
+        let days_to_monday = {
+            let tmp = (wd_jan4 as i64).saturating_add(6);
+            let rem = tmp % 7;
+            if rem < 0 { rem + 7 } else { rem }
+        };
+
+        let monday_week1 = jan4_jdn.saturating_sub(days_to_monday);
+
+        let monday_requested =
+            monday_week1.saturating_add(((iso_week as i64).saturating_sub(1)).saturating_mul(7));
 
         let wd_offset = match weekday {
             Weekday::Monday => 0,
@@ -293,7 +312,7 @@ impl Dt {
             Weekday::Sunday => 6,
         };
 
-        monday_requested + (wd_offset as i64)
+        monday_requested.saturating_add(wd_offset as i64)
     }
 
     /// Computes the Julian Day Number from a Sunday-based week-of-year (`%U`).
@@ -302,9 +321,10 @@ impl Dt {
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
 
         let days_to_first_sunday = ((7u8 - wd_jan1) % 7u8) as i64;
-        let first_sunday_jdn = jan1_jdn + days_to_first_sunday;
+        let first_sunday_jdn = jan1_jdn.saturating_add(days_to_first_sunday);
 
-        let sunday_of_week = first_sunday_jdn + (week as i64 - 1) * 7;
+        let sunday_of_week =
+            first_sunday_jdn.saturating_add(((week as i64).saturating_sub(1)).saturating_mul(7));
 
         let wd_offset = match weekday {
             Weekday::Sunday => 0,
@@ -315,7 +335,8 @@ impl Dt {
             Weekday::Friday => 5,
             Weekday::Saturday => 6,
         };
-        sunday_of_week + (wd_offset as i64)
+
+        sunday_of_week.saturating_add(wd_offset as i64)
     }
 
     /// Computes the Julian Day Number from a Monday-based week-of-year (`%W`).
@@ -324,9 +345,10 @@ impl Dt {
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
 
         let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
-        let first_monday_jdn = jan1_jdn + days_to_first_monday;
+        let first_monday_jdn = jan1_jdn.saturating_add(days_to_first_monday);
 
-        let monday_of_week = first_monday_jdn + (week as i64 - 1) * 7;
+        let monday_of_week =
+            first_monday_jdn.saturating_add(((week as i64).saturating_sub(1)).saturating_mul(7));
 
         let wd_offset = match weekday {
             Weekday::Monday => 0,
@@ -337,7 +359,8 @@ impl Dt {
             Weekday::Saturday => 5,
             Weekday::Sunday => 6,
         };
-        monday_of_week + (wd_offset as i64)
+
+        monday_of_week.saturating_add(wd_offset as i64)
     }
 
     /// Returns `true` if the supplied values form a valid proleptic Gregorian calendar date.
@@ -380,7 +403,9 @@ impl Dt {
         };
         let jdn = Self::ymd_to_jdn(year, month, day);
         let jdn_jan1 = Self::ymd_to_jdn(year, 1, 1);
-        (jdn - jdn_jan1 + 1) as u16
+
+        let doy = jdn.saturating_sub(jdn_jan1).saturating_add(1);
+        doy as u16
     }
 
     /// Sunday-based week number (`%U` in strftime).
@@ -411,7 +436,7 @@ impl Dt {
         if doy < first_sunday_doy {
             0
         } else {
-            let days_since_first_sunday = doy - first_sunday_doy;
+            let days_since_first_sunday = doy.saturating_sub(first_sunday_doy);
             ((days_since_first_sunday / 7) + 1) as u8
         }
     }
@@ -443,7 +468,7 @@ impl Dt {
         if doy < first_monday_doy {
             0
         } else {
-            let days_since_first_monday = doy - first_monday_doy;
+            let days_since_first_monday = doy.saturating_sub(first_monday_doy);
             ((days_since_first_monday / 7) + 1) as u8
         }
     }
@@ -475,8 +500,13 @@ impl Dt {
 
         let jan4_jdn = Self::ymd_to_jdn(year, 1, 4);
         let wd_jan4 = Self::jdn_to_weekday(jan4_jdn);
-        let days_to_monday = (wd_jan4 + 6) % 7;
-        let monday_week1 = jan4_jdn - (days_to_monday as i64);
+        let days_to_monday = {
+            let tmp = (wd_jan4 as i64) + 6;
+            let rem = tmp % 7;
+            if rem < 0 { rem + 7 } else { rem }
+        };
+
+        let monday_week1 = jan4_jdn - days_to_monday;
 
         let days_since = jdn - monday_week1;
 

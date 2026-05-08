@@ -29,20 +29,30 @@ impl Dt {
     pub const fn to_jd_exact(self, target: Scale) -> (i64, u128) {
         if target.is_ut() {
             let canon_attos = self.to_tai_attos_since(Dt::UNIX_EPOCH);
-            let total_attos = canon_attos + ATTOS_PER_HALF_DAY;
+            let total_attos = canon_attos.saturating_add(ATTOS_PER_HALF_DAY);
 
             let days_since_1970 = total_attos.div_euclid(ATTOS_PER_DAY);
             let frac_attos = total_attos.rem_euclid(ATTOS_PER_DAY) as u128;
 
-            let jd_int = 2_440_587i64 + days_since_1970 as i64;
+            let days_i64 = if days_since_1970 > i64::MAX as i128 {
+                i64::MAX
+            } else if days_since_1970 < i64::MIN as i128 {
+                i64::MIN
+            } else {
+                days_since_1970 as i64
+            };
+
+            let jd_int = 2_440_587i64.saturating_add(days_i64);
             (jd_int, frac_attos)
         } else {
             let TSpan { sec, attos } = self.to(target);
             let days_since_j2000 = sec.div_euclid(SEC_PER_DAYI64);
             let remaining_sec = sec.rem_euclid(SEC_PER_DAYI64);
+
             let frac_attos = (remaining_sec as u128) * ATTOS_PER_SEC_I128 as u128 + (attos as u128);
 
-            (J2000_JD_TT + days_since_j2000, frac_attos)
+            let jd_int = J2000_JD_TT.saturating_add(days_since_j2000);
+            (jd_int, frac_attos)
         }
     }
 
@@ -77,15 +87,27 @@ impl Dt {
             let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
             let frac_attos = canon_attos.rem_euclid(ATTOS_PER_DAY) as u128;
 
-            (MJD_1970 + (days_since_1970 as i64), frac_attos)
+            let days_i64 = if days_since_1970 > i64::MAX as i128 {
+                i64::MAX
+            } else if days_since_1970 < i64::MIN as i128 {
+                i64::MIN
+            } else {
+                days_since_1970 as i64
+            };
+
+            let mjd_days = MJD_1970.saturating_add(days_i64);
+            (mjd_days, frac_attos)
         } else {
             let (jd_days, frac_attos) = self.to_jd_exact(target);
 
-            let mjd_days = jd_days - 2_400_001;
-            let mjd_attos = frac_attos + ATTOS_PER_HALF_DAY as u128;
+            let mjd_days = jd_days.saturating_sub(2_400_001);
+            let mjd_attos = frac_attos.saturating_add(ATTOS_PER_HALF_DAY as u128);
 
             if mjd_attos >= ATTOS_PER_DAY as u128 {
-                (mjd_days + 1, mjd_attos - ATTOS_PER_DAY as u128)
+                (
+                    mjd_days.saturating_add(1),
+                    mjd_attos.saturating_sub(ATTOS_PER_DAY as u128),
+                )
             } else {
                 (mjd_days, mjd_attos)
             }
@@ -118,16 +140,35 @@ impl Dt {
     /// Exact (attosecond resolution).
     pub const fn from_jd_exact(jd_days: i64, frac_attos: u128, orig_type: Scale) -> Self {
         if orig_type.is_ut() {
-            let canon_attos = (jd_days as i128 - JD_EPOCH_DAYS) * ATTOS_PER_DAY
-                + (frac_attos as i128)
-                - ATTOS_PER_HALF_DAY;
+            let delta_days = (jd_days as i128).saturating_sub(JD_EPOCH_DAYS);
+
+            let frac_clamped = if frac_attos > i128::MAX as u128 {
+                i128::MAX
+            } else {
+                frac_attos as i128
+            };
+
+            let canon_attos = delta_days
+                .saturating_mul(ATTOS_PER_DAY)
+                .saturating_add(frac_clamped)
+                .saturating_sub(ATTOS_PER_HALF_DAY);
 
             Self::from_tai_attos_since(canon_attos, Dt::UNIX_EPOCH)
         } else {
-            let days_since_j2000 = jd_days - J2000_JD_TT;
-            let total_sec = days_since_j2000 * SEC_PER_DAYI64
-                + (frac_attos / ATTOS_PER_SEC_I128 as u128) as i64;
-            let attos = (frac_attos % ATTOS_PER_SEC_I128 as u128) as u64;
+            let days_since_j2000 = jd_days.saturating_sub(J2000_JD_TT);
+            let seconds_from_days = days_since_j2000.saturating_mul(SEC_PER_DAYI64);
+
+            let extra_seconds = {
+                let quot = frac_attos / (ATTOS_PER_SEC_I128 as u128);
+                if quot > i64::MAX as u128 {
+                    i64::MAX
+                } else {
+                    quot as i64
+                }
+            };
+
+            let total_sec = seconds_from_days.saturating_add(extra_seconds);
+            let attos = (frac_attos % (ATTOS_PER_SEC_I128 as u128)) as u64;
 
             Dt::from(total_sec, attos, orig_type)
         }
@@ -142,11 +183,15 @@ impl Dt {
     /// # Precision
     /// Exact (attosecond resolution).
     pub const fn from_mjd_exact(mjd_days: i64, frac_attos: u128, orig_type: Scale) -> Self {
-        let jd_days = mjd_days + 2_400_000;
-        let jd_attos = frac_attos + ATTOS_PER_HALF_DAY as u128;
+        let jd_days = mjd_days.saturating_add(2_400_000);
+        let jd_attos = frac_attos.saturating_add(ATTOS_PER_HALF_DAY as u128);
 
         if jd_attos >= ATTOS_PER_DAY as u128 {
-            Self::from_jd_exact(jd_days + 1, jd_attos - ATTOS_PER_DAY as u128, orig_type)
+            Self::from_jd_exact(
+                jd_days.saturating_add(1),
+                jd_attos.saturating_sub(ATTOS_PER_DAY as u128),
+                orig_type,
+            )
         } else {
             Self::from_jd_exact(jd_days, jd_attos, orig_type)
         }
