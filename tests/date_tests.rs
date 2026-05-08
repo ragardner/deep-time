@@ -362,7 +362,7 @@ mod tests {
                 "Dec 31 23:59:59".to_string(),
                 "2025-12-31T23:59:59Z".to_string(),
                 Some(ParseCfg {
-                    ref_time: Some(Dt::from_ymdhms(2025, 12, 31, 23, 59, 59, 0, Scale::UTC)),
+                    ref_time: Some(Dt::from_ymdhms(2025, 12, 31, 23, 59, 59, 0)),
                     ..Default::default()
                 }),
             ),
@@ -958,7 +958,7 @@ mod tests {
                 "Dec 31 23:59:59",
                 "2025-12-31T23:59:59Z",
                 Some(ParseCfg {
-                    ref_time: Some(Dt::from_ymdhms(2025, 12, 31, 23, 59, 59, 0, Scale::UTC)),
+                    ref_time: Some(Dt::from_ymdhms(2025, 12, 31, 23, 59, 59, 0)),
                     ..Default::default()
                 }),
             ),

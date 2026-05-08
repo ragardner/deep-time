@@ -23,7 +23,7 @@ mod ccsds_tests {
     }
 
     fn y2k() -> Dt {
-        Dt::from_ymd(2000, 1, 1, Scale::UTC)
+        Dt::from_ymd(2000, 1, 1)
     }
 
     // ====================== CUC ======================
@@ -357,7 +357,7 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
 #[test]
 fn test_ccsds_ccs_month_day_variant() {
     // 2025-04-17 14:30:45.123456789 UTC (Month/Day)
-    let tp = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000, Scale::UTC);
+    let tp = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000);
 
     roundtrip_ccs(tp, false, 4, 0b0101_0100); // P-field: 01010100 (Code 101, MD, 4 subsec)
 }
@@ -365,7 +365,7 @@ fn test_ccsds_ccs_month_day_variant() {
 #[test]
 fn test_ccsds_ccs_day_of_year_variant() {
     // 2025-107 (April 17 is DOY 107 in 2025) 14:30:45.123456789 UTC
-    let tp = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000, Scale::UTC);
+    let tp = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000);
 
     roundtrip_ccs(tp, true, 3, 0b0101_1011); // P-field: 01011011 (Code 101, DOY, 3 subsec)
 }
@@ -373,14 +373,14 @@ fn test_ccsds_ccs_day_of_year_variant() {
 #[test]
 fn test_ccsds_ccs_leap_second() {
     // 2025-06-30 23:59:60.000000000 UTC (leap second)
-    let tp = Dt::from_ymdhms(2025, 6, 30, 23, 59, 60, 0, Scale::UTC);
+    let tp = Dt::from_ymdhms(2025, 6, 30, 23, 59, 60, 0);
 
     roundtrip_ccs(tp, false, 0, 0b0101_0000); // P-field with 0 subsec
 }
 
 #[test]
 fn test_ccsds_ccs_various_precisions() {
-    let base = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_012_345_678, Scale::UTC);
+    let base = Dt::from_ymdhms(2025, 4, 17, 14, 30, 45, 123_456_789_012_345_678);
 
     for n in 0..=6 {
         roundtrip_ccs(base, false, n, 0b0101_0000 | n); // P-field varies only in low 3 bits
@@ -390,15 +390,15 @@ fn test_ccsds_ccs_various_precisions() {
 #[test]
 fn test_ccsds_ccs_edge_cases() {
     // Epoch day
-    let epoch = Dt::from_ymdhms(1958, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    let epoch = Dt::from_ymdhms(1958, 1, 1, 0, 0, 0, 0);
     roundtrip_ccs(epoch, false, 0, 0b0101_0000);
 
     // Year 9999, DOY 366 (leap year)
-    let y9999 = Dt::from_ymdhms(9999, 12, 31, 23, 59, 59, 0, Scale::UTC);
+    let y9999 = Dt::from_ymdhms(9999, 12, 31, 23, 59, 59, 0);
     roundtrip_ccs(y9999, true, 2, 0b0101_1010);
 
     // Subsecond rounding test (exactly halfway case)
-    let half = Dt::from_ymdhms(2025, 4, 17, 0, 0, 0, 500_000_000_000_000_000, Scale::UTC);
+    let half = Dt::from_ymdhms(2025, 4, 17, 0, 0, 0, 500_000_000_000_000_000);
     let (buf, _) = half.to_ccsds_ccs(false, 1).unwrap();
     // Should round to 50 (i.e. 0.5 s)
     assert_eq!(buf[8], 0x50); // last BCD byte should be 0x50 for "50"

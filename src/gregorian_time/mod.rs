@@ -2,6 +2,18 @@ use crate::{AsciiStr, Dt, J2000_JD_TT, SEC_PER_DAYI64, Scale, Weekday};
 
 mod to_str;
 
+/// Combined Gregorian date + wall time with subsecond precision.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct YmdHms {
+    pub yr: i64,
+    pub mo: u8,
+    pub day: u8,
+    pub hr: u8,
+    pub min: u8,
+    pub sec: u8,    // 0–60 (60 only during leap seconds)
+    pub attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
+}
+
 /// UTC Civil calendar and time-of-day components of a `Dt`.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]

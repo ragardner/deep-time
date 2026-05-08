@@ -39,7 +39,6 @@ impl fmt::Display for TSpan {
         f.write_str(" s")?;
 
         if f.alternate() {
-            // # flag → raw internal representation (excellent for debugging)
             write!(f, " [sec={} subsec={}]", self.sec, self.attos)?;
         }
 
@@ -49,12 +48,9 @@ impl fmt::Display for TSpan {
 
 impl fmt::Debug for TSpan {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let approx_sec_f = self.sec as f64 + (self.attos as f64 / 1e18_f64);
-
         f.debug_struct("TSpan")
             .field("sec", &self.sec)
             .field("subsec", &self.attos)
-            .field("as_sec_f", &approx_sec_f)
             .finish()
     }
 }

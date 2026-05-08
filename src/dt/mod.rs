@@ -39,8 +39,7 @@ use core::fmt;
 /// Dt, and the library, is in the process of being switched from the sec
 /// and subsec fields being related to the scale, TO the sec and subsec fields
 /// always being TAI Epoch 2000-01-01 noon.
-/// Much of the documentation is outdated and should be ignored. But this docstring
-/// will hopefully help you understand Grok. Thanks.
+/// Much of the documentation is outdated and should be ignored.
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
@@ -107,12 +106,9 @@ impl fmt::Display for Dt {
 
 impl fmt::Debug for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let approx_sec = self.sec() as f64 + (self.attos() as f64 / 1_000_000_000_000_000_000.0);
-
         f.debug_struct("Dt")
             .field("sec", &self.sec())
             .field("attos", &self.attos())
-            .field("approx_sec", &approx_sec)
             .finish()
     }
 }

@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC, Dt, GregorianTime, Scale};
+use crate::{ATTOS_PER_SEC, Dt, GregorianTime, Scale, YmdHms};
 
 mod arithmetic;
 mod constructors;
@@ -83,6 +83,11 @@ impl TSpan {
     #[inline]
     pub const fn to_epoch(&self, epoch: Dt, current: Scale) -> Self {
         Dt::from(self.sec, self.attos, current).to_epoch(epoch, current)
+    }
+
+    #[inline]
+    pub const fn to_ymdhms(&self) -> YmdHms {
+        Dt::new(self.sec, self.attos).to_ymdhms()
     }
 }
 

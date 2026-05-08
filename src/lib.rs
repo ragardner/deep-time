@@ -141,7 +141,7 @@ pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
 pub use dt::Dt;
 pub use error::{DtErr, DtErrKind};
-pub use gregorian_time::GregorianTime;
+pub use gregorian_time::{GregorianTime, YmdHms};
 pub use light_time::{LightContext, ObserverState};
 pub use position::{Position, Velocity};
 pub use scale::Scale;

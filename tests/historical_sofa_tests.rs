@@ -5,8 +5,11 @@ use deep_time::{
 
 #[test]
 fn test_sofa_historical_offsets() {
+    let x = Dt::from_ymd_on(2025, 4, 16, Scale::TT);
+    eprintln!("TAI FOR 2025-4-16 TT: {:?}", x);
+
     // Start with a UTCSofa instant in the rubber era, to tai
-    let original = Dt::from_ymd(1971, 12, 31, Scale::UTCSofa);
+    let original = Dt::from_ymd_on(1971, 12, 31, Scale::UTCSofa);
 
     // Convert to utc sofa (applies historical rubber offset)
     let utc_sofa = original.to(Scale::UTCSofa);
@@ -31,7 +34,7 @@ fn test_sofa_historical_offsets() {
         "Round-trip changed the integer seconds!"
     );
 
-    let tp = Dt::from_ymdhms(
+    let tp = Dt::from_ymdhms_on(
         1960,
         12,
         31,
@@ -55,26 +58,26 @@ fn test_sofa_historical_offsets() {
 
     // SHOULD RETURN NONE
     // 1960-12-31 (one day before first entry)
-    let tp = Dt::from_ymd(1960, 12, 31, Scale::UTC);
+    let tp = Dt::from_ymd_on(1960, 12, 31, Scale::UTC);
     assert!(
         historical_sofa_for_utc_to_tai(&tp).is_none(),
         "1960-12-31 should return None"
     );
 
-    let tp = Dt::from_ymd(1960, 12, 31, Scale::UTCSofa);
+    let tp = Dt::from_ymd_on(1960, 12, 31, Scale::UTCSofa);
     assert!(
         historical_sofa_for_tai_to_utc(&tp).is_none(),
         "1960-12-31 TAI should return None for inverse"
     );
 
     // 1972-01-01 (first day of modern leap-second system)
-    let tp = Dt::from_ymd(1972, 1, 1, Scale::UTCSofa);
+    let tp = Dt::from_ymd_on(1972, 1, 1, Scale::UTCSofa);
     assert!(
         historical_sofa_for_utc_to_tai(&tp).is_none(),
         "1972-01-01 should return None (use normal leap second path)"
     );
 
-    let tp = Dt::from_ymd(1972, 1, 1, Scale::UTCSofa);
+    let tp = Dt::from_ymd_on(1972, 1, 1, Scale::UTCSofa);
     assert!(
         historical_sofa_for_tai_to_utc(&tp).is_none(),
         "1972-01-01 TAI should return None for inverse"
@@ -85,7 +88,7 @@ fn test_sofa_historical_offsets() {
     // Verified against erfa.dat() at runtime.
 
     // 1961-01-01 00:00:00 UTC → uses 1961-01-01 entry
-    let tp = Dt::from_ymd(1961, 1, 1, Scale::UTC);
+    let tp = Dt::from_ymd_on(1961, 1, 1, Scale::UTC);
     let offset = historical_sofa_for_utc_to_tai(&tp).unwrap();
     assert!(
         (offset - 1.422818000000).abs() < 1e-12,
@@ -94,7 +97,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1966-05-01 00:00:00 UTC → uses 1966-01-01 entry (drift continues)
-    let tp = Dt::from_ymd(1966, 5, 1, Scale::UTC);
+    let tp = Dt::from_ymd_on(1966, 5, 1, Scale::UTC);
     let offset = historical_sofa_for_utc_to_tai(&tp).unwrap();
     assert!(
         (offset - 4.624210000000).abs() < 1e-12,
@@ -103,7 +106,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1971-12-31 00:00:00 UTC → uses 1968-02-01 entry (last rubber-era entry)
-    let tp = Dt::from_ymd(1971, 12, 31, Scale::UTC);
+    let tp = Dt::from_ymd_on(1971, 12, 31, Scale::UTC);
     let offset = historical_sofa_for_utc_to_tai(&tp).unwrap();
     assert!(
         (offset - 9.889650000000).abs() < 1e-12,
@@ -112,7 +115,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1961-01-01
-    let tp = Dt::from_ymd(1961, 1, 1, Scale::UTCSofa);
+    let tp = Dt::from_ymd_on(1961, 1, 1, Scale::UTCSofa);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 1.422818000000).abs() < 1e-6,
@@ -121,7 +124,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1966-05-01
-    let tp = Dt::from_ymd(1966, 5, 1, Scale::UTCSofa);
+    let tp = Dt::from_ymd_on(1966, 5, 1, Scale::UTCSofa);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 4.624210000000).abs() < 1e-6,
@@ -130,7 +133,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1971-12-31
-    let tp = Dt::from_ymd(1971, 12, 31, Scale::UTCSofa);
+    let tp = Dt::from_ymd_on(1971, 12, 31, Scale::UTCSofa);
     let offset = historical_sofa_for_tai_to_utc(&tp).unwrap();
     assert!(
         (offset - 9.889650000000).abs() < 1e-6,
@@ -139,11 +142,16 @@ fn test_sofa_historical_offsets() {
     );
 
     // Sofa from/to attos
-    let tp1 = Dt::from_ymd(1971, 12, 31, Scale::UTCSofa);
+    let tp1 = Dt::from_ymd_on(1971, 12, 31, Scale::UTCSofa);
     let out_attos = tp1.to_epoch(Dt::UNIX_EPOCH, Scale::UTCSofa).to_attos();
     let tp2 = Dt::from_epoch(TSpan::from_attos(out_attos), Dt::UNIX_EPOCH, Scale::UTCSofa);
     assert!(
         tp1.to_tai_since_f(tp2).abs() < 1e-6,
         "SOFA round trip using to_epoch and from_epoch too large"
     );
+
+    let tp1 = Dt::from_ymd(1961, 1, 1);
+    let sp = tp1.to(Scale::UTCSofa);
+    let tp2 = Dt::from(sp.sec(), sp.attos(), Scale::UTCSofa);
+    eprintln!("{:?}, {:?}, {:?}", tp1, sp, tp2);
 }
