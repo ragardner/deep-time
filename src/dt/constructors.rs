@@ -1,26 +1,79 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_US,
-    ClockDrift, ClockModel, Dt, FS_PER_SEC, MS_PER_SEC, NS_PER_SEC, PS_PER_SEC, Scale,
-    UNIX_EPOCH_TO_J2000_NOON_UTC, US_PER_SEC,
+    ClockDrift, ClockModel, Dt, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, TSpan,
 };
 
 impl Dt {
-    /// The library’s reference zero instant: exactly **2000-01-01 12:00:00 TAI**.
+    /// The library’s internal reference epoch: exactly **2000-01-01 12:00:00 TAI**.
+    ///
+    /// (`Dt::new(0, 0)`).
     pub const ZERO: Self = Self::new(0, 0);
 
-    /// Library zero points (same physical instant as ZERO, different tags)
+    /// Zero-point offset for GPS Time (GPST) relative to [`Self::ZERO`].
+    ///
+    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
+    /// constant +19 s TAI-to-GPST offset used by all GPS-related conversions.
     pub const GPS_ZERO: Self = Self::new(19, 0);
+
+    /// Zero-point offset for Galileo System Time (GST) relative to [`Self::ZERO`].
+    ///
+    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
+    /// constant +19 s TAI-to-GST offset.
     pub const GST_ZERO: Self = Self::new(19, 0);
+
+    /// Zero-point offset for QZSS Time relative to [`Self::ZERO`].
+    ///
+    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
+    /// constant +19 s TAI-to-QZSS offset.
     pub const QZSS_ZERO: Self = Self::new(19, 0);
+
+    /// Zero-point offset for BeiDou Time (BDT) relative to [`Self::ZERO`].
+    ///
+    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
+    /// constant +33 s TAI-to-BDT offset.
     pub const BDT_ZERO: Self = Self::new(33, 0);
 
-    /// TAI time between 1970-01-01 midnight and 2000-01-01 noon
-    pub const UNIX_EPOCH: Self = Self::new(-UNIX_EPOCH_TO_J2000_NOON_UTC, 0);
+    /// The Unix epoch (**1970-01-01 00:00:00 UTC**) expressed as a signed
+    /// TAI-second offset from [`Self::ZERO`].
+    ///
+    /// This is computed as `-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON`, i.e. the exact
+    /// number of TAI seconds from 1970-01-01 00:00:00 TAI to 2000-01-01 12:00:00 TAI
+    /// (the value of the private constant `TAI_SECS_1970_MIDNIGHT_TO_2000_NOON`).
+    pub const UNIX_EPOCH: Self = Self::new(-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, 0);
 
-    /// Traditional GNSS epochs
+    /// Canonical reference epoch for modern relativistic time scales:
+    /// exactly **1977-01-01 00:00:00 TAI**.
+    ///
+    /// This is the defining instant (per IAU recommendations) where:
+    /// - Terrestrial Time (TT) = TAI + 32.184 s exactly,
+    /// - TT, TCG, TCB, and TCL are synchronized by definition,
+    /// - Lunar Coordinate Time (TCL) and the proposed TL use this as their official zero point.
+    ///
+    /// It is **-725_803_200 TAI seconds** before [`Self::ZERO`].
+    pub const TAI_1977_EPOCH: Self = Self::new(-725_803_200, 0);
+
+    /// GPS Time epoch: exactly **1980-01-06 00:00:00 UTC**.
+    ///
+    /// This is the zero point of the continuous GPS Time scale (GPST).
+    /// At this epoch, GPST was exactly 19 seconds behind TAI.
     pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0);
+
+    /// Galileo Experiment (GALEX) epoch: exactly **1980-01-06 00:00:00 UTC**.
+    ///
+    /// This is the same physical instant as [`Self::GPS_EPOCH`] and was used
+    /// as the reference epoch during early Galileo system testing and development.
+    /// It is provided as a convenient alias for code that explicitly references
+    /// the GALEX-era epoch.
     pub const GALEX_EPOCH: Self = Self::GPS_EPOCH;
+
+    /// Galileo System Time (GST) epoch: exactly **1999-08-22 00:00:00 UTC**.
+    ///
+    /// This is the official zero point of the Galileo System Time scale.
     pub const GALILEO_EPOCH: Self = Self::new(-11_448_000 + 19, 0);
+
+    /// BeiDou Time (BDT) epoch: exactly **2006-01-01 00:00:00 UTC**.
+    ///
+    /// This is the official zero point of the BeiDou Navigation Satellite System Time.
     pub const BDT_EPOCH: Self = Self::new(189_345_600 + 33, 0);
 
     /// Creates a new `Dt` from whole seconds, a subsecond part in attoseconds,
@@ -44,9 +97,7 @@ impl Dt {
 
     #[inline]
     pub const fn from_attos(attos: i128, scale: Scale) -> Self {
-        let sec = (attos / ATTOS_PER_SEC as i128) as i64;
-        let subsec = (attos % ATTOS_PER_SEC as i128) as u64;
-        Self::from(sec, subsec, scale)
+        Self::from_span(TSpan::attos_to_span(attos), scale)
     }
 
     #[inline]
@@ -56,42 +107,32 @@ impl Dt {
 
     #[inline]
     pub const fn from_ms(ms: i128, scale: Scale) -> Self {
-        let sec = ms.div_euclid(MS_PER_SEC) as i64;
-        let remaining_ms = ms.rem_euclid(MS_PER_SEC);
-        let subsec = (remaining_ms as u64) * ATTOS_PER_MS;
-        Self::from(sec, subsec, scale)
+        let attos = ms.saturating_mul(ATTOS_PER_MS as i128);
+        Self::from_span(TSpan::attos_to_span(attos), scale)
     }
 
     #[inline]
     pub const fn from_us(us: i128, scale: Scale) -> Self {
-        let sec = us.div_euclid(US_PER_SEC) as i64;
-        let remaining_us = us.rem_euclid(US_PER_SEC);
-        let subsec = (remaining_us as u64) * ATTOS_PER_US;
-        Self::from(sec, subsec, scale)
+        let attos = us.saturating_mul(ATTOS_PER_US as i128);
+        Self::from_span(TSpan::attos_to_span(attos), scale)
     }
 
     #[inline]
     pub const fn from_ns(ns: i128, scale: Scale) -> Self {
-        let sec = ns.div_euclid(NS_PER_SEC) as i64;
-        let remaining_ns = ns.rem_euclid(NS_PER_SEC);
-        let subsec = (remaining_ns as u64) * ATTOS_PER_NS;
-        Self::from(sec, subsec, scale)
+        let attos = ns.saturating_mul(ATTOS_PER_NS as i128);
+        Self::from_span(TSpan::attos_to_span(attos), scale)
     }
 
     #[inline]
     pub const fn from_ps(ps: i128, scale: Scale) -> Self {
-        let sec = ps.div_euclid(PS_PER_SEC) as i64;
-        let remaining_ps = ps.rem_euclid(PS_PER_SEC);
-        let subsec = (remaining_ps as u64) * ATTOS_PER_PS;
-        Self::from(sec, subsec, scale)
+        let attos = ps.saturating_mul(ATTOS_PER_PS as i128);
+        Self::from_span(TSpan::attos_to_span(attos), scale)
     }
 
     #[inline]
     pub const fn from_fs(fs: i128, scale: Scale) -> Self {
-        let sec = fs.div_euclid(FS_PER_SEC) as i64;
-        let remaining_fs = fs.rem_euclid(FS_PER_SEC);
-        let subsec = (remaining_fs as u64) * ATTOS_PER_FS;
-        Self::from(sec, subsec, scale)
+        let attos = fs.saturating_mul(ATTOS_PER_FS as i128);
+        Self::from_span(TSpan::attos_to_span(attos), scale)
     }
 
     #[inline]

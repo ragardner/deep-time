@@ -16,6 +16,11 @@ impl Dt {
         }
     }
 
+    #[inline]
+    pub const fn from_span(span: TSpan, scale: Scale) -> Dt {
+        Self::from(span.sec, span.attos, scale)
+    }
+
     pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
         // Create a raw Dt with the input numbers on the requested scale
         let raw = Dt::new(sec, attos);

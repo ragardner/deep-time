@@ -1,7 +1,9 @@
 use crate::{
-    Scale, JD_EPOCH_NANOS, JD_RANGE, MJD_EPOCH_NANOS, MJD_RANGE, NS_PER_DAY, NS_PER_HALF_DAY,
-    Dt, UNIX_EPOCH_TO_J2000_NOON_UTC, frac_to_nanos,
+    Dt, JD_EPOCH_NANOS, JD_RANGE, MJD_EPOCH_NANOS, MJD_RANGE, NS_PER_DAY, NS_PER_HALF_DAY, Scale,
+    TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos,
 };
+
+// TODO: inefficient calculations
 
 /// Modified Julian Date (MJD) interpreted as UTC
 pub(crate) fn parse_mjd(s: &str) -> Option<Dt> {
@@ -15,14 +17,14 @@ pub(crate) fn parse_mjd(s: &str) -> Option<Dt> {
         return None;
     }
 
-    let frac_nanos = frac_to_nanos(frac_part)?; // ← fixed: now propagates error correctly
+    let frac_nanos = frac_to_nanos(frac_part)?;
 
     let unix_nanos: i128 = (days as i128) * NS_PER_DAY + frac_nanos - MJD_EPOCH_NANOS;
 
     let secs_since_unix = unix_nanos.div_euclid(1_000_000_000);
     let rem_nanos = unix_nanos.rem_euclid(1_000_000_000) as u64;
 
-    let sec = (secs_since_unix as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
+    let sec = (secs_since_unix as i64) - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
     let subsec = rem_nanos * 1_000_000_000;
 
     Some(Dt::from(sec, subsec, Scale::UTC))
@@ -55,7 +57,7 @@ pub(crate) fn parse_jd(s: &str, astronomical_noon: bool) -> Option<Dt> {
     let secs_since_unix = unix_nanos.div_euclid(1_000_000_000);
     let rem_nanos = unix_nanos.rem_euclid(1_000_000_000) as u64;
 
-    let sec = (secs_since_unix as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
+    let sec = (secs_since_unix as i64) - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
     let subsec = rem_nanos * 1_000_000_000;
 
     Some(Dt::from(sec, subsec, Scale::UTC))

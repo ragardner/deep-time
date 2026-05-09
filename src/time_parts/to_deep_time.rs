@@ -1,6 +1,6 @@
 use crate::tzdb::offset_info_at_local;
 use crate::{
-    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, Scale, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
+    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
@@ -11,7 +11,7 @@ impl TimeParts {
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
-            let sec = (unix_secs as i64) - UNIX_EPOCH_TO_J2000_NOON_UTC;
+            let sec = (unix_secs as i64) - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
             let subsec = self.attos.unwrap_or(0);
             return Ok(Dt::from(sec, subsec, Scale::UTC));
         }
@@ -114,7 +114,7 @@ impl TimeParts {
             })?;
 
             if !name_str.is_empty() {
-                let provisional_unix = sec_utc + UNIX_EPOCH_TO_J2000_NOON_UTC;
+                let provisional_unix = sec_utc + TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
                 match offset_info_at_local(name_str, provisional_unix) {
                     Some(info) => {
                         if info.is_gap {

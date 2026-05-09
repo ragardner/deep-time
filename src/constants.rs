@@ -93,13 +93,13 @@ pub const TAI_SEC_AT_1972: i64 = -883_655_990;
 
 /// Seconds from the Unix epoch (1970-01-01 00:00:00 UTC) to J2000.0 noon
 /// (2000-01-01 12:00:00 UTC).
-pub(crate) const UNIX_EPOCH_TO_J2000_NOON_UTC: i64 = 946_728_000;
+pub(crate) const TAI_SECS_1970_MIDNIGHT_TO_2000_NOON: i64 = 946_728_000;
 
-pub(crate) const FS_PER_SEC: i128 = 1_000_000_000_000_000;
-pub(crate) const PS_PER_SEC: i128 = 1_000_000_000_000;
+// pub(crate) const FS_PER_SEC: i128 = 1_000_000_000_000_000;
+// pub(crate) const PS_PER_SEC: i128 = 1_000_000_000_000;
 pub(crate) const NS_PER_SEC: i128 = 1_000_000_000;
-pub(crate) const US_PER_SEC: i128 = 1_000_000;
-pub(crate) const MS_PER_SEC: i128 = 1_000;
+// pub(crate) const US_PER_SEC: i128 = 1_000_000;
+// pub(crate) const MS_PER_SEC: i128 = 1_000;
 
 // JD 2440587.5 = 1970-01-01 00:00:00 UTC (the .5 is handled by ATTOS_PER_HALF_DAY)
 pub(crate) const JD_EPOCH_DAYS: i128 = 2_440_587;

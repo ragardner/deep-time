@@ -1,5 +1,7 @@
-use crate::{Scale, Dt};
-use crate::{UNIX_EPOCH_TO_J2000_NOON_UTC, frac_to_nanos};
+use crate::{Dt, Scale};
+use crate::{TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos};
+
+// TODO: inefficient calculations
 
 /// Pure-numeric Unix timestamp fallback with automatic unit detection.
 /// - 10–12 digit traditional Unix seconds timestamps
@@ -25,7 +27,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
         12..=15 => {
             let total_millis = ts_f64.trunc() as i64;
             let unix_secs = total_millis.div_euclid(1_000);
-            let secs = unix_secs - UNIX_EPOCH_TO_J2000_NOON_UTC;
+            let secs = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
             let rem_millis = total_millis.rem_euclid(1_000) as u32;
 
             let frac_nanos =
@@ -41,7 +43,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
         16..=18 => {
             let total_micros = ts_f64.trunc() as i64;
             let unix_secs = total_micros.div_euclid(1_000_000);
-            let secs = unix_secs - UNIX_EPOCH_TO_J2000_NOON_UTC;
+            let secs = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
             let rem_micros = total_micros.rem_euclid(1_000_000) as u32;
 
             let frac_nanos =
@@ -66,7 +68,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
 
                 let ns_per_sec = 1_000_000_000i128;
                 let unix_secs_i128 = total_nanos.div_euclid(ns_per_sec);
-                let secs_i128 = unix_secs_i128 - (UNIX_EPOCH_TO_J2000_NOON_UTC as i128);
+                let secs_i128 = unix_secs_i128 - (TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128);
                 let rem_nanos = total_nanos.rem_euclid(ns_per_sec) as u64;
 
                 let secs: i64 = secs_i128.try_into().ok()?;
@@ -76,7 +78,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             } else {
                 // Extremely rare fallback
                 let unix_secs = ts_f64.trunc() as i64;
-                let secs = unix_secs - UNIX_EPOCH_TO_J2000_NOON_UTC;
+                let secs = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
                 let nanos = ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32)
                     .min(999_999_999) as u64;
                 let subsec_attos = nanos * 1_000_000_000;
@@ -87,7 +89,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
         // Everything else (1–11 digits + huge future seconds) → classic Unix seconds
         _ => {
             let unix_secs = ts_f64.trunc() as i64;
-            let secs = unix_secs - UNIX_EPOCH_TO_J2000_NOON_UTC;
+            let secs = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
             let nanos =
                 ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32).min(999_999_999) as u64;
             let subsec_attos = nanos * 1_000_000_000;

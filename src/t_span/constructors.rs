@@ -24,33 +24,24 @@ impl TSpan {
     pub const SEC_37: Self = Self::from_sec(37);
     pub const ONE_DAY: Self = Self::from_days(1);
 
-    /// Reconstruct `TSpan` from total attoseconds (exact, handles negative values correctly).
-    pub const fn from_attos(mut attos: i128) -> Self {
-        if attos > (i64::MAX as i128) * ATTOS_PER_SEC_I128 {
-            return Self::MAX;
-        }
-        if attos < (i64::MIN as i128) * ATTOS_PER_SEC_I128 {
-            return Self::MIN;
-        }
+    ///
+    #[inline]
+    pub const fn from_attos(attos: i128) -> Self {
+        Self::attos_to_span(attos)
+    }
 
-        if attos >= 0 {
-            let sec = (attos / ATTOS_PER_SEC_I128) as i64;
-            let attos = (attos % ATTOS_PER_SEC_I128) as u64;
-            Self { sec, attos }
+    pub(crate) const fn attos_to_span(attos: i128) -> Self {
+        let q = attos.div_euclid(ATTOS_PER_SEC_I128);
+
+        if q > (i64::MAX as i128) {
+            return Self::MAX;
+        } else if q < (i64::MIN as i128) {
+            return Self::MIN;
         } else {
-            attos = -attos;
-            let sec_pos = (attos / ATTOS_PER_SEC_I128) as i64;
-            let rem = (attos % ATTOS_PER_SEC_I128) as u64;
-            if rem == 0 {
-                Self {
-                    sec: -sec_pos,
-                    attos: 0,
-                }
-            } else {
-                Self {
-                    sec: -sec_pos - 1,
-                    attos: ATTOS_PER_SEC - rem,
-                }
+            let r = attos.rem_euclid(ATTOS_PER_SEC_I128);
+            Self {
+                sec: q as i64,
+                attos: r as u64,
             }
         }
     }
