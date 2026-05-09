@@ -580,8 +580,6 @@ impl TSpan {
     }
 
     /// Returns `self - rhs` exactly.
-    ///
-    /// This is the normal case when subtracting two durations.
     #[inline]
     pub const fn to_diff_raw(self, rhs: Self) -> Self {
         Self::diff_raw_internal(self.sec, self.attos, rhs.sec, rhs.attos)
