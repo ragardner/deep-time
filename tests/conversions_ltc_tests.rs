@@ -30,8 +30,8 @@ fn ltc_tai_roundtrip_is_accurate() {
     }
 }
 
-/// At J2000 the LTC–TAI difference must be exactly the value produced by
-/// the library’s f64 math (L_M × days × 86400 + TT–TAI offset).
+/// At J2000 the LTC–TAI difference (secular Ashby L_M + LTE440 periodic terms)
+/// must match the full model. The periodic correction at t=J2000.0 is –35.128 µs.
 #[test]
 fn ltc_minus_tai_at_j2000() {
     let tai = Dt::ZERO;
@@ -40,8 +40,8 @@ fn ltc_minus_tai_at_j2000() {
     let diff_s = ltc.to_diff(tai.to_span()).to_sec_f();
 
     assert!(
-        (diff_s - 32.6545948272096).abs() < 1e-9,
-        "LTC-TAI difference at J2000 was {} s (expected 32.6545948272096 s)",
+        (diff_s - 32.654559693364384).abs() < 1e-9,
+        "LTC-TAI difference at J2000 was {} s (expected 32.654559693364384 s)",
         diff_s
     );
 }

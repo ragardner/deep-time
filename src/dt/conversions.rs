@@ -2,11 +2,9 @@ use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::leap_seconds::get_leap_seconds;
 use crate::{
     ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ClockDrift, ClockModel, Dt, J2000_JD_TT,
-    J2000_SEC_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, LM_DEN, LM_NUM, MARS_MSD_REF_JD_INT,
-    MARS_MSD_REF_TOD_SEC, MARS_MSD_REF_TOD_SUBSEC, MARS_REF_TT, MARS_SOL_ATTOS,
-    MARS_SOL_LENGTH_SEC, Real, SEC_PER_DAYI64, SEC_PER_DAYI128, Scale, TAI_SEC_AT_1972,
-    TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC, TDB0_ATTOS, TSpan,
-    TT_TAI_OFFSET_SPAN, floor_f, sin_approx, to_sec_f,
+    J2000_SEC_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Real, SEC_PER_DAYI64, SEC_PER_DAYI128,
+    Scale, TAI_SEC_AT_1972, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC,
+    TDB0_ATTOS, TSpan, TT_TAI_OFFSET_SPAN, sin_approx,
 };
 
 impl Dt {
@@ -166,6 +164,101 @@ impl Dt {
         self.convert_back_using_drift(model.reference, model.drift)
     }
 
+    const fn tai_to_tdb(tai: Self) -> Self {
+        let tt = tai.add(TT_TAI_OFFSET_SPAN);
+        let span = Self::tdb_minus_tt(tt.sec, tt.attos);
+        tt.add(span)
+    }
+
+    const fn tdb_to_tai(tdb: Self) -> Self {
+        let mut tt = tdb;
+        let mut i = 0u32;
+        while i < 8 {
+            tt = tdb.sub(Self::tdb_minus_tt(tt.sec, tt.attos));
+            i += 1;
+        }
+        tt.sub(TT_TAI_OFFSET_SPAN)
+    }
+
+    const fn tai_to_tcg(tai: Self) -> Self {
+        let tt = tai.add(TT_TAI_OFFSET_SPAN);
+        Self::tt_to_tcg(tt)
+    }
+
+    const fn tai_to_tcb(tai: Self) -> Self {
+        let tdb = Self::tai_to_tdb(tai);
+        Self::tdb_to_tcb(tdb)
+    }
+
+    /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
+    /// using only the numerical `sec`/`attos` of the supplied `Dt` (scale is ignored).
+    pub(crate) const fn elapsed_to_attos_since_ref(numerical: Self) -> i128 {
+        let days_since_j2000 = numerical.sec.div_euclid(SEC_PER_DAYI64);
+        let tod_sec = numerical.sec.rem_euclid(SEC_PER_DAYI64);
+
+        let jd_days = J2000_JD_TT + days_since_j2000;
+        let days_diff = jd_days - TCG_TCB_REF_JD_INT;
+
+        let mut sec_diff =
+            (days_diff as i128) * SEC_PER_DAYI128 + (tod_sec as i128 - TCG_TCB_REF_TOD_SEC as i128);
+        let mut attos_diff = (numerical.attos as i128) - (TCG_TCB_REF_TOD_SUBSEC as i128);
+
+        if attos_diff < 0 {
+            attos_diff += ATTOS_PER_SEC_I128;
+            sec_diff -= 1;
+        }
+
+        sec_diff * ATTOS_PER_SEC_I128 + attos_diff
+    }
+
+    /// Exact fixed-point multiplication: `attos * num / den` (handles negative values safely, no overflow for library time range).
+    pub(crate) const fn mul_rate(attos: i128, num: i128, den: i128) -> i128 {
+        if attos == 0 {
+            return 0;
+        }
+        let sign = if attos < 0 { -1i128 } else { 1i128 };
+        let a = if attos < 0 { -attos } else { attos };
+        let q = a / den;
+        let r = a % den;
+        sign * (q * num + (r * num) / den)
+    }
+
+    #[inline]
+    pub(crate) const fn mul_lg(attos: i128) -> i128 {
+        Self::mul_rate(attos, LG_NUM, LG_DEN)
+    }
+
+    #[inline]
+    pub(crate) const fn mul_lb(attos: i128) -> i128 {
+        Self::mul_rate(attos, LB_NUM, LB_DEN)
+    }
+
+    pub(crate) const fn tt_to_tcg(tt: Self) -> Self {
+        let elapsed = Self::elapsed_to_attos_since_ref(tt);
+        let span_attos = Self::mul_lg(elapsed);
+        tt.add(TSpan::from_attos(span_attos))
+    }
+
+    pub(crate) const fn tcg_to_tt(tcg: Self) -> Self {
+        let elapsed_cg = Self::elapsed_to_attos_since_ref(tcg);
+        let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
+        tcg.sub(TSpan::from_attos(span_attos))
+    }
+
+    pub(crate) const fn tcb_to_tdb(tcb: Self) -> Self {
+        let elapsed_cg = Self::elapsed_to_attos_since_ref(tcb);
+        let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
+        tcb.sub(TSpan::from_attos(span_attos))
+            .sub(TSpan::from_attos(TDB0_ATTOS))
+    }
+
+    pub(crate) const fn tdb_to_tcb(tdb: Self) -> Self {
+        let elapsed = Self::elapsed_to_attos_since_ref(tdb);
+        let span_attos = Self::mul_lb(elapsed);
+        tdb.add(TSpan::from_attos(span_attos))
+            .add(TSpan::from_attos(TDB0_ATTOS))
+    }
+
     /// Computes the difference TDB − TT (in seconds) using the four dominant
     /// periodic terms from the Fairhead & Bretagnon (1990) analytical series,
     /// as extracted from the SOFA/ERFA library (`eraDtdb`).
@@ -238,185 +331,5 @@ impl Dt {
             + f!(0.000004676740) * venus;
 
         TSpan::from_sec_f(correction)
-    }
-
-    const fn tai_to_tdb(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN);
-        let span = Self::tdb_minus_tt(tt.sec, tt.attos);
-        tt.add(span)
-    }
-
-    const fn tdb_to_tai(tdb: Self) -> Self {
-        let mut tt = tdb;
-        let mut i = 0u32;
-        while i < 8 {
-            tt = tdb.sub(Self::tdb_minus_tt(tt.sec, tt.attos));
-            i += 1;
-        }
-        tt.sub(TT_TAI_OFFSET_SPAN)
-    }
-
-    const fn tai_to_tcg(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN);
-        Self::tt_to_tcg(tt)
-    }
-
-    const fn tai_to_tcb(tai: Self) -> Self {
-        let tdb = Self::tai_to_tdb(tai);
-        Self::tdb_to_tcb(tdb)
-    }
-
-    /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
-    /// using only the numerical `sec`/`attos` of the supplied `Dt` (scale is ignored).
-    const fn elapsed_to_attos_since_ref(numerical: Self) -> i128 {
-        let days_since_j2000 = numerical.sec.div_euclid(SEC_PER_DAYI64);
-        let tod_sec = numerical.sec.rem_euclid(SEC_PER_DAYI64);
-
-        let jd_days = J2000_JD_TT + days_since_j2000;
-        let days_diff = jd_days - TCG_TCB_REF_JD_INT;
-
-        let mut sec_diff =
-            (days_diff as i128) * SEC_PER_DAYI128 + (tod_sec as i128 - TCG_TCB_REF_TOD_SEC as i128);
-        let mut attos_diff = (numerical.attos as i128) - (TCG_TCB_REF_TOD_SUBSEC as i128);
-
-        if attos_diff < 0 {
-            attos_diff += ATTOS_PER_SEC_I128;
-            sec_diff -= 1;
-        }
-
-        sec_diff * ATTOS_PER_SEC_I128 + attos_diff
-    }
-
-    /// Exact fixed-point multiplication: `attos * num / den` (handles negative values safely, no overflow for library time range).
-    const fn mul_rate(attos: i128, num: i128, den: i128) -> i128 {
-        if attos == 0 {
-            return 0;
-        }
-        let sign = if attos < 0 { -1i128 } else { 1i128 };
-        let a = if attos < 0 { -attos } else { attos };
-        let q = a / den;
-        let r = a % den;
-        sign * (q * num + (r * num) / den)
-    }
-
-    #[inline]
-    const fn mul_lg(attos: i128) -> i128 {
-        Self::mul_rate(attos, LG_NUM, LG_DEN)
-    }
-
-    #[inline]
-    const fn mul_lb(attos: i128) -> i128 {
-        Self::mul_rate(attos, LB_NUM, LB_DEN)
-    }
-
-    #[inline]
-    const fn mul_lm(attos: i128) -> i128 {
-        Self::mul_rate(attos, LM_NUM, LM_DEN)
-    }
-
-    const fn tt_to_tcg(tt: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(tt);
-        let span_attos = Self::mul_lg(elapsed);
-        tt.add(TSpan::from_attos(span_attos))
-    }
-
-    const fn tcg_to_tt(tcg: Self) -> Self {
-        let elapsed_cg = Self::elapsed_to_attos_since_ref(tcg);
-        let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
-        tcg.sub(TSpan::from_attos(span_attos))
-    }
-
-    const fn tcb_to_tdb(tcb: Self) -> Self {
-        let elapsed_cg = Self::elapsed_to_attos_since_ref(tcb);
-        let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
-        tcb.sub(TSpan::from_attos(span_attos))
-            .sub(TSpan::from_attos(TDB0_ATTOS))
-    }
-
-    const fn tdb_to_tcb(tdb: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(tdb);
-        let span_attos = Self::mul_lb(elapsed);
-        tdb.add(TSpan::from_attos(span_attos))
-            .add(TSpan::from_attos(TDB0_ATTOS))
-    }
-
-    const fn tt_to_ltc(tt: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(tt);
-        let span_attos = Self::mul_lm(elapsed);
-        tt.add(TSpan::from_attos(span_attos))
-    }
-
-    const fn ltc_to_tt(ltc: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(ltc);
-        let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
-        ltc.sub(TSpan::from_attos(span_attos))
-    }
-
-    /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
-    const fn elapsed_to_attos_since_mars_ref(numerical_tt: TSpan) -> i128 {
-        let days_since_j2000 = numerical_tt.sec.div_euclid(SEC_PER_DAYI64);
-        let tod_sec = numerical_tt.sec.rem_euclid(SEC_PER_DAYI64);
-
-        let jd_days = J2000_JD_TT + days_since_j2000;
-        let days_diff = jd_days - MARS_MSD_REF_JD_INT;
-
-        let mut sec_diff = (days_diff as i128) * SEC_PER_DAYI128
-            + (tod_sec as i128 - MARS_MSD_REF_TOD_SEC as i128);
-        let mut attos_diff = (numerical_tt.attos as i128) - (MARS_MSD_REF_TOD_SUBSEC as i128);
-
-        if attos_diff < 0 {
-            attos_diff += ATTOS_PER_SEC_I128;
-            sec_diff -= 1;
-        }
-
-        sec_diff * ATTOS_PER_SEC_I128 + attos_diff
-    }
-
-    /// Returns the exact Mars Sol Date (MSD) as a tuple of integer sols and the fractional part of a sol.
-    ///
-    /// The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
-    /// [`Scale`]. Leap seconds are automatically accounted for when converting from UTC.
-    pub const fn to_msd_exact(self) -> (i64, u128) {
-        let tt = self.to(Scale::TT);
-        let elapsed = Self::elapsed_to_attos_since_mars_ref(tt);
-        let attos_per_sol = MARS_SOL_ATTOS;
-
-        let whole_sols = elapsed.div_euclid(attos_per_sol) as i64;
-        let frac_attos = elapsed.rem_euclid(attos_per_sol) as u128;
-
-        (whole_sols, frac_attos)
-    }
-
-    /// Returns Mars Coordinated Time (MTC) as a [`TSpan`] representing
-    /// seconds into the current sol (range `[0, one Martian sol)`).
-    #[inline]
-    pub const fn to_mtc(self) -> TSpan {
-        let (_, frac_attos) = self.to_msd_exact();
-        TSpan::from_attos(frac_attos as i128)
-    }
-
-    /// Creates a `Dt` (in TT) from an exact Mars Sol Date using full library precision.
-    pub const fn from_msd_exact(whole_sols: i64, frac_attos: u128) -> Self {
-        let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
-
-        let tt = MARS_REF_TT.add(TSpan::from_attos(elapsed_attos));
-        Self::from(tt.sec, tt.attos, Scale::TT)
-    }
-
-    /// Creates a `Dt` (in TT) from a floating-point Mars Sol Date.
-    /// Non-exact Real.
-    pub const fn from_msd(msd: Real) -> Self {
-        let whole = floor_f(msd) as i64;
-        let frac = msd - f!(whole);
-        let frac_span = TSpan::from_sec_f(frac * MARS_SOL_LENGTH_SEC);
-        Self::from_msd_exact(whole, frac_span.to_attos() as u128)
-    }
-
-    /// Returns the Mars Sol Date (MSD) as a floating-point value (matches NASA Mars24 output).
-    /// Non-exact Real.
-    #[inline]
-    pub const fn to_msd(self) -> Real {
-        let (whole, frac) = self.to_msd_exact();
-        f!(whole) + to_sec_f(frac) / MARS_SOL_LENGTH_SEC
     }
 }
