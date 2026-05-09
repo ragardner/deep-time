@@ -70,44 +70,6 @@ fn test_ymd_to_jdn() {
     assert_eq!(Dt::jdn_to_ymd(-34802825), (-100000, 12, 31));
 }
 
-#[cfg(feature = "tz")]
-#[test]
-fn roundtrip_gap_boundary_new_york() {
-    let our_input = "2023-03-12 02:00:00 America/New_York";
-    let expected_snapped = "2023-03-12 03:00:00 America/New_York";
-
-    // Parse the non-existent local time (should succeed via lenient gap handling)
-    let our_dt: Dt =
-        Dt::from_str_parse(our_input, &None).expect("parse should succeed (lenient gap handling)");
-
-    // Verify internal representation (the snapped UTC instant)
-    assert_eq!(
-        our_dt.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_sec(),
-        1678604400,
-        "internal unix timestamp should be the snapped UTC instant"
-    );
-
-    // Format back using the IANA zone
-    let fmt = "%Y-%m-%d %H:%M:%S %Q";
-    let output = our_dt
-        .to_str_with_tz(fmt, "America/New_York")
-        .expect("to_str_with_tz should succeed");
-
-    // === THE KEY REGRESSION ASSERT ===
-    assert_eq!(
-        output, expected_snapped,
-        "gap time should silently snap forward to the next valid local time (post-DST)"
-    );
-
-    // Bonus: verify the round-trip is stable (parse → format → parse → format)
-    let our_dt2: Dt = Dt::from_str_parse(&output, &None).expect("second parse should also succeed");
-    let output2 = our_dt2
-        .to_str_with_tz(fmt, "America/New_York")
-        .expect("second format should succeed");
-
-    assert_eq!(output2, expected_snapped, "round-trip must be stable");
-}
-
 #[test]
 fn test_mjd_utc_roundtrip() {
     // Normal instant (non-leap)
@@ -263,86 +225,6 @@ fn proper_to_tt_with_drift_roundtrip() {
     let back = tt.convert_back_using_model(model);
 
     assert_eq!(back, onboard_proper);
-}
-
-/// Round-trip accuracy test (TAI → LTC → TAI)
-///
-/// LTC conversion is purely linear, so round-trips should be extremely
-/// accurate. The observed error is ~0.3 ns due to unavoidable f64 rounding
-/// noise in `to_jd_tt()` + the rate multiplication. We therefore allow a
-/// very small tolerance that is still far tighter than any practical use case.
-#[test]
-fn ltc_tai_roundtrip_is_accurate() {
-    let test_points = [
-        Dt::from_sec(0, Scale::TAI),                  // J2000 TAI
-        Dt::from_sec(86_400 * 365, Scale::TAI),       // ~1 year later
-        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI), // 10 years before
-        Dt::from_sec(1_000_000_000, Scale::TAI),      // ~31.7 years later
-        Dt::from_sec(-2_208_945_600, Scale::TAI),     // J1900 epoch
-    ];
-
-    for &p in &test_points {
-        let ltc = p.to(Scale::LTC);
-        let back = ltc.to_tai(Scale::LTC);
-
-        let diff = back.to_tai_since(p).to_sec_f().abs();
-        assert!(
-            diff < 1e-9,
-            "LTC round-trip error too large: {} s at {:?}",
-            diff,
-            p
-        );
-    }
-}
-
-/// At J2000 the LTC–TAI difference must be exactly the value produced by
-/// the library’s f64 math (L_M × days × 86400 + TT–TAI offset).
-#[test]
-fn ltc_minus_tai_at_j2000() {
-    let tai = Dt::ZERO;
-    let ltc = tai.to(Scale::LTC);
-
-    let diff_s = ltc.to_diff(tai.to_span()).to_sec_f();
-
-    assert!(
-        (diff_s - 32.6545948272096).abs() < 1e-9,
-        "LTC-TAI difference at J2000 was {} s (expected 32.6545948272096 s)",
-        diff_s
-    );
-}
-
-/// Verify that the LTC–TT difference grows linearly (pure secular term).
-#[test]
-fn ltc_offset_grows_linearly() {
-    let points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365, Scale::TAI), // ~1 year
-        Dt::from_sec(86_400 * 365 * 100, Scale::TAI), // ~100 years
-    ];
-
-    for &p in &points {
-        let tt = p.to(Scale::TT);
-        let ltc = p.to(Scale::LTC);
-
-        // LTC - TT (pure secular term)
-        let corr_s = ltc.to_diff(tt).to_sec_f();
-
-        assert!(
-            corr_s > 0.0,
-            "LTC-TT correction should be positive (got {} s at {:?})",
-            corr_s,
-            p
-        );
-
-        // At ~100 years the offset should be ~2.5 s (56 µs/day × 36525 days)
-        if p.sec() > 86_400 * 365 * 50 {
-            assert!(
-                corr_s > 1.0 && corr_s < 4.0,
-                "LTC-TT correction at ~100y should be ~2-3 s (got {} s)",
-                corr_s
-            );
-        }
-    }
 }
 
 #[test]

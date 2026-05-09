@@ -2,6 +2,45 @@
 mod tests {
     use deep_time::{DateOrder, DateParseMode, Dt, ParseCfg, Scale};
 
+    #[cfg(feature = "tz")]
+    #[test]
+    fn roundtrip_gap_boundary_new_york() {
+        let our_input = "2023-03-12 02:00:00 America/New_York";
+        let expected_snapped = "2023-03-12 03:00:00 America/New_York";
+
+        // Parse the non-existent local time (should succeed via lenient gap handling)
+        let our_dt: Dt = Dt::from_str_parse(our_input, &None)
+            .expect("parse should succeed (lenient gap handling)");
+
+        // Verify internal representation (the snapped UTC instant)
+        assert_eq!(
+            our_dt.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_sec(),
+            1678604400,
+            "internal unix timestamp should be the snapped UTC instant"
+        );
+
+        // Format back using the IANA zone
+        let fmt = "%Y-%m-%d %H:%M:%S %Q";
+        let output = our_dt
+            .to_str_with_tz(fmt, "America/New_York")
+            .expect("to_str_with_tz should succeed");
+
+        // === THE KEY REGRESSION ASSERT ===
+        assert_eq!(
+            output, expected_snapped,
+            "gap time should silently snap forward to the next valid local time (post-DST)"
+        );
+
+        // Bonus: verify the round-trip is stable (parse → format → parse → format)
+        let our_dt2: Dt =
+            Dt::from_str_parse(&output, &None).expect("second parse should also succeed");
+        let output2 = our_dt2
+            .to_str_with_tz(fmt, "America/New_York")
+            .expect("second format should succeed");
+
+        assert_eq!(output2, expected_snapped, "round-trip must be stable");
+    }
+
     #[test]
     fn print_stuff() {
         // let x = Dt::from_ymd(1961, 1, 1, Scale::UTC);

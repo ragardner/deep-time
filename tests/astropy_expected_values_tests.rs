@@ -37,22 +37,9 @@ mod astropy_verified_tai_sec_tests {
     use super::*;
 
     #[test]
-    fn tai_sec_at_2000_01_01_12utc() {
-        let dt = Dt::from_ymdhms(2000, 1, 1, 12, 0, 0, 0);
-        assert_eq!(dt.sec(), 32);
-        assert_eq!(dt.attos(), 0);
-    }
-
-    #[test]
-    fn tai_sec_at_2025_04_16() {
-        let dt = Dt::from_ymdhms(2025, 4, 16, 0, 0, 0, 0);
-        assert_eq!(dt.sec(), 798033637);
-        assert_eq!(dt.attos(), 0);
-    }
-
-    #[test]
     fn tai_sec_at_unix_epoch() {
         let dt = Dt::from_ymdhms_on(1970, 1, 1, 0, 0, 0, 0, Scale::UTCSofa);
+        // 1970-01-01 00:00:00 (UTC) -> -946727991.99991798400878906250
         assert_eq!(dt.sec(), -946727992);
 
         // Astropy ground truth for the fractional part
@@ -65,6 +52,20 @@ mod astropy_verified_tai_sec_tests {
             astropy_attos,
             diff
         );
+    }
+
+    #[test]
+    fn tai_sec_at_2000_01_01_12utc() {
+        let dt = Dt::from_ymdhms(2000, 1, 1, 12, 0, 0, 0);
+        assert_eq!(dt.sec(), 32);
+        assert_eq!(dt.attos(), 0);
+    }
+
+    #[test]
+    fn tai_sec_at_2025_04_16() {
+        let dt = Dt::from_ymdhms(2025, 4, 16, 0, 0, 0, 0);
+        assert_eq!(dt.sec(), 798033637);
+        assert_eq!(dt.attos(), 0);
     }
 
     #[test]

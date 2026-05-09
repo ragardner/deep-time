@@ -217,8 +217,8 @@ impl Dt {
         let t = seconds_since_j2000_tt / J2000_SEC_PER_CENTURY;
 
         // Mean anomaly of Earth (from Fairhead & Bretagnon 1990 / Simon et al. 1994)
-        let g =
-            f!(2.0) * core::f64::consts::PI * (f!(357.52910918) + f!(35999.050290) * t) / f!(360.0);
+        let g = f!(2.0) * f!(core::f64::consts::PI) * (f!(357.52910918) + f!(35999.050290) * t)
+            / f!(360.0);
 
         // Main annual term with first-order eccentricity correction
         let sin_g = sin_approx(g + f!(0.01671) * sin_approx(g));
