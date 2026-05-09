@@ -6,9 +6,9 @@ use crate::{ATTOS_PER_SEC, Dt, LM_DEN, LM_NUM, Real, TSpan, sin_approx};
 /// Accuracy: < 0.15 ns (before 2050) when combined with the secular rate.
 #[derive(Copy, Clone)]
 struct LunarPeriodicTerm {
-    period_days: f64,  // T_i
-    amplitude_us: f64, // A_i
-    phase_rad: f64,    // ϕ_i
+    period_days: Real,  // T_i
+    amplitude_us: Real, // A_i
+    phase_rad: Real,    // ϕ_i
 }
 
 const LUNAR_PERIODIC_TERMS: [LunarPeriodicTerm; 13] = [
@@ -140,10 +140,10 @@ impl Dt {
     /// Exactly analogous to your `tdb_minus_tt`.
     const fn ltc_minus_tt_periodic(tt: Self) -> TSpan {
         let seconds_since_j2000_tt = f!(tt.sec) + f!(tt.attos) / f!(ATTOS_PER_SEC);
-        let t_days = seconds_since_j2000_tt / 86400.0; // days since J2000.0 TT
+        let t_days = seconds_since_j2000_tt / f!(86400.0); // days since J2000.0 TT
 
-        let mut delta_us = 0.0_f64;
-        let two_pi = 2.0 * core::f64::consts::PI;
+        let mut delta_us = f!(0.0);
+        let two_pi = f!(2.0) * f!(core::f64::consts::PI);
 
         let mut i = 0usize;
         while i < LUNAR_PERIODIC_TERMS.len() {
