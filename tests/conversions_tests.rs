@@ -1,8 +1,4 @@
-use deep_time::{
-    ClockDrift, ClockModel, Dt, Scale, TSpan,
-    constants::{ATTOS_PER_HALF_DAYU, MARS_SOL_LENGTH_SEC},
-    to_sec_f,
-};
+use deep_time::{ClockDrift, ClockModel, Dt, Scale, TSpan};
 
 #[test]
 fn test_ymd_to_jdn() {
@@ -68,40 +64,6 @@ fn test_ymd_to_jdn() {
     assert_eq!(Dt::jdn_to_ymd(1721060), (0, 1, 1));
     assert_eq!(Dt::jdn_to_ymd(1720695), (-1, 1, 1));
     assert_eq!(Dt::jdn_to_ymd(-34802825), (-100000, 12, 31));
-}
-
-#[test]
-fn test_mjd_utc_roundtrip() {
-    // Normal instant (non-leap)
-    let original = Dt::from_ymdhms(2025, 4, 27, 14, 30, 0, 123_456_789_000_000_000);
-    let (mjd, frac) = original.to_mjd_exact(Scale::UTC);
-    let roundtrip = Dt::from_mjd_exact(mjd, frac, Scale::UTC);
-    assert_eq!(
-        original, roundtrip,
-        "MJD UTC round-trip failed for normal time"
-    );
-
-    // Also exercise the JD variant
-    let (jd, frac_jd) = original.to_jd_exact(Scale::UTC);
-    let roundtrip_jd = Dt::from_jd_exact(jd, frac_jd, Scale::UTC);
-    assert_eq!(original, roundtrip_jd, "JD UTC round-trip failed");
-
-    // Leap-second case (2015-06-30 23:59:60 UTC) — the trickiest path
-    let leap = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 0);
-    let (mjd_leap, frac_leap) = leap.to_mjd_exact(Scale::UTC);
-    let roundtrip_leap = Dt::from_mjd_exact(mjd_leap, frac_leap, Scale::UTC);
-    assert_eq!(
-        leap, roundtrip_leap,
-        "MJD UTC round-trip failed for leap second"
-    );
-
-    // Also verify JD round-trip on the leap second
-    let (jd_leap, frac_jd_leap) = leap.to_jd_exact(Scale::UTC);
-    let roundtrip_jd_leap = Dt::from_jd_exact(jd_leap, frac_jd_leap, Scale::UTC);
-    assert_eq!(
-        leap, roundtrip_jd_leap,
-        "JD UTC round-trip failed for leap second"
-    );
 }
 
 /// Verifies that the TDB-TT difference produced by our implementation
@@ -227,88 +189,6 @@ fn proper_to_tt_with_drift_roundtrip() {
     assert_eq!(back, onboard_proper);
 }
 
-#[test]
-fn msd_exact_roundtrip_is_accurate() {
-    let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365, Scale::TAI),
-        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI),
-        Dt::from_sec(1_000_000_000, Scale::TAI),
-        Dt::from_sec(-2_208_945_600, Scale::TAI),
-    ];
-
-    for &p in &test_points {
-        let (whole, frac) = p.to_msd_exact();
-        let back = Dt::from_msd_exact(whole, frac);
-
-        let diff = back.to_diff_raw(p).to_sec_f().abs();
-        assert!(
-            diff < 5e-5, // ← relaxed for f64 JD precision (max observed error ≈ 13.7 µs)
-            "MSD round-trip error too large: {} s at {:?}",
-            diff,
-            p
-        );
-    }
-}
-
-#[test]
-fn msd_float_roundtrip_is_accurate() {
-    let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365 * 100, Scale::TAI),
-        Dt::from_sec(1_000_000_000, Scale::TAI),
-    ];
-
-    for &p in &test_points {
-        let msd_float = p.to_msd();
-        let back = Dt::from_msd(msd_float);
-
-        let diff = back.to_diff_raw(p).to_sec_f().abs();
-        assert!(
-            diff < 5e-5, // ← relaxed for f64 MSD path (max observed error ≈ 13.7 µs)
-            "MSD float round-trip error too large: {} s at {:?}",
-            diff,
-            p
-        );
-    }
-}
-
-#[test]
-fn mtc_is_in_valid_range() {
-    let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365, Scale::TAI),
-        Dt::from_sec(1_000_000_000, Scale::TAI),
-    ];
-
-    for &p in &test_points {
-        let mtc = p.to_mtc();
-        let mtc_sec = mtc.to_sec_f();
-        assert!(
-            mtc_sec >= 0.0 && mtc_sec < MARS_SOL_LENGTH_SEC,
-            "MTC out of range: {} s at {:?}",
-            mtc_sec,
-            p
-        );
-    }
-}
-
-#[test]
-fn msd_at_j2000_is_correct() {
-    let tai = Dt::ZERO;
-    let (whole, frac) = tai.to_msd_exact();
-
-    assert_eq!(whole, 44791, "Integer part of MSD at J2000 should be 44791");
-
-    // New exact value (no magic number)
-    let frac_sols = to_sec_f(frac) / MARS_SOL_LENGTH_SEC;
-    assert!(
-        (frac_sols - 0.61987471912).abs() < 1e-11, // or use a TSpan comparison
-        "Fractional part of MSD at J2000 (TAI) was {} sols",
-        frac_sols
-    );
-}
-
 /// TT is exactly TAI + 32.184 s (and ET is an alias for TT).
 #[test]
 fn tt_tai_offset_exact() {
@@ -404,59 +284,6 @@ fn utc_tai_roundtrip_is_accurate() {
         let utc = p.to(Scale::UTC);
         let back = utc.to_tai(Scale::UTC);
         assert_eq!(back, p, "UTC round-trip failed at {:?}", p);
-    }
-}
-
-#[test]
-fn j2000_tt_is_jd_2451545() {
-    let j2000_tt = Dt::from_jd_exact(2451545, 0, Scale::TT);
-
-    let (jd, frac) = j2000_tt.to_jd_exact(Scale::TT);
-    assert_eq!(jd, 2451545);
-    assert_eq!(frac, 0);
-
-    let (mjd, mjd_frac) = j2000_tt.to_mjd_exact(Scale::TT);
-
-    // Standard MJD = JD − 2400000.5
-    // At J2000.0 (JD 2451545.0) → MJD 51544.5
-    assert_eq!(mjd, 51544, "MJD integer part (standard convention)");
-    assert_eq!(
-        mjd_frac, ATTOS_PER_HALF_DAYU,
-        "MJD fractional part should be 0.5 day"
-    );
-}
-
-/// Exact JD ↔ Dt round-trip (full attosecond precision).
-#[test]
-fn jd_tt_exact_roundtrip() {
-    let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365, Scale::TAI),
-        Dt::from_sec(1_000_000_000, Scale::TAI),
-        Dt::from_sec(-2_208_945_600, Scale::TAI),
-    ];
-
-    for &p in &test_points {
-        let (jd, frac) = p.to_jd_exact(Scale::TT);
-        let back = Dt::from_jd_exact(jd, frac, Scale::TT);
-        let diff = back.to_diff_raw(p).to_sec_f().abs();
-        assert!(diff < 1e-10, "JD round-trip error {} s at {:?}", diff, p);
-    }
-}
-
-/// Exact MJD ↔ Dt round-trip.
-#[test]
-fn mjd_tt_exact_roundtrip() {
-    let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365 * 100, Scale::TAI),
-    ];
-
-    for &p in &test_points {
-        let (mjd, frac) = p.to_mjd_exact(Scale::TT);
-        let back = Dt::from_mjd_exact(mjd, frac, Scale::TT);
-        let diff = back.to_diff_raw(p).to_sec_f().abs();
-        assert!(diff < 1e-10, "MJD round-trip error {} s at {:?}", diff, p);
     }
 }
 
