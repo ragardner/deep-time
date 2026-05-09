@@ -1,10 +1,11 @@
-use crate::{
-    AsciiStr, Dt, DtErr, GregorianTime, STRFTIME_SIZE, Scale, TSpan, tzdb::offset_info_at_utc,
-};
+use crate::{AsciiStr, Dt, DtErr, GregorianTime, STRFTIME_SIZE, Scale, tzdb::offset_info_at_utc};
 
+#[cfg(feature = "alloc")]
+use crate::ATTOS_PER_SEC;
+
+#[cfg(feature = "alloc")]
 impl Dt {
     /// High-level alloc version (defaults to UTC label-only formatting).
-    #[cfg(feature = "alloc")]
     #[inline]
     pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
         self.to_str_with_offset(fmt, 0)
@@ -28,6 +29,65 @@ impl Dt {
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
+    /// Converts this `Dt` to an ISO 8601 duration string
+    /// (e.g. `"PT1H23M45.6789S"`, `"-PT0.5S"`, `"PT0.000000000000000001S"`, or `"PT0S"`).
+    ///
+    /// This method is only available when the **`alloc`** feature is enabled.
+    /// It returns `alloc::string::String` (no_std + alloc compatible).
+    #[cfg(feature = "alloc")]
+    pub fn to_iso_duration(&self) -> alloc::string::String {
+        if self.is_zero() {
+            return alloc::string::String::from("PT0S");
+        }
+
+        let total = self.to_attos();
+        let negative = total < 0;
+        let mut attos = total.unsigned_abs() as u128;
+
+        let mut s = alloc::string::String::with_capacity(48);
+        if negative {
+            s.push('-');
+        }
+        s.push_str("PT");
+
+        const A_PER_S: u128 = ATTOS_PER_SEC as u128;
+        const A_PER_M: u128 = A_PER_S * 60;
+        const A_PER_H: u128 = A_PER_M * 60;
+
+        let hours = attos / A_PER_H;
+        attos %= A_PER_H;
+        let minutes = attos / A_PER_M;
+        attos %= A_PER_M;
+        let seconds = attos / A_PER_S;
+        let frac_attos = attos % A_PER_S;
+
+        if hours > 0 {
+            s.push_str(&alloc::format!("{}", hours));
+            s.push('H');
+        }
+        if minutes > 0 {
+            s.push_str(&alloc::format!("{}", minutes));
+            s.push('M');
+        }
+
+        if seconds > 0 || frac_attos > 0 {
+            s.push_str(&alloc::format!("{}", seconds));
+
+            if frac_attos != 0 {
+                let frac_str = alloc::format!("{frac_attos:018}");
+                let trimmed = frac_str.trim_end_matches('0');
+                s.push('.');
+                s.push_str(trimmed);
+            }
+
+            s.push('S');
+        }
+
+        s
+    }
+}
+
+impl Dt {
     /// No-alloc label-only formatting.
     pub fn to_str_bin(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
         let mut gt = self.to_gregorian_time();
@@ -102,7 +162,7 @@ impl Dt {
     /// Helper for creating an offset adjusted GregorianTime.
     pub(crate) fn gregorian_time_with_offset(&self, secs: i32) -> GregorianTime {
         let local_tp = if secs != 0 {
-            *self + TSpan::new(secs as i64, 0)
+            *self + Dt::new(secs as i64, 0)
         } else {
             *self
         };
@@ -127,7 +187,7 @@ impl Dt {
         };
 
         // 3. Build local time = UTC + offset
-        let span = TSpan::new(offset_secs as i64, 0);
+        let span = Dt::new(offset_secs as i64, 0);
         let local_tp = *self + span;
 
         let mut gt = local_tp.to_gregorian_time();

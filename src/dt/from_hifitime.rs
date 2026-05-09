@@ -1,5 +1,5 @@
-use crate::{Scale, Dt};
-use hifitime::Epoch;
+use crate::{Dt, Scale};
+use hifitime::{Duration, Epoch};
 
 impl Dt {
     /// Creates a `Dt` from a `hifitime::Epoch`.
@@ -17,5 +17,13 @@ impl Dt {
 
         let ns_since_zero_tai = ns_since_j1900 - offset_ns;
         Self::from_ns(ns_since_zero_tai, Scale::TAI)
+    }
+
+    /// Creates a `Dt` from a `hifitime::Duration` (nanosecond precision).
+    ///
+    /// This is the **exact reverse** of [`Dt::to_hifitime_duration`].
+    #[inline]
+    pub fn from_hifitime_duration(dur: Duration) -> Self {
+        Self::from_ns(dur.total_nanoseconds(), Scale::TAI)
     }
 }

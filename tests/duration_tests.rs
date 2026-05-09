@@ -1,10 +1,10 @@
 #[cfg(feature = "parse")]
 mod tests {
-    use deep_time::{Lang, TSpan};
+    use deep_time::{Dt, Lang};
 
     fn assert_duration(input: &str, expected_millis: i64) {
         let trimmed = input.trim();
-        let dur = TSpan::from_str(trimmed, Lang::default())
+        let dur = Dt::from_duration_str(trimmed, Lang::default())
             .unwrap_or_else(|e| panic!("Failed '{}': {}", input, e));
 
         let actual_millis = dur.to_ms() as i64;

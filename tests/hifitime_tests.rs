@@ -121,7 +121,7 @@ mod tests {
                 }
 
                 // scale time span to some other scale
-                let our_to = our_from.to(from, to);
+                let our_to = our_from.to_scale_from(from, to);
 
                 let ns_since_our_zero = (base_tai_sec as i128) * 1_000_000_000i128
                     + (base_attos / 1_000_000_000) as i128;

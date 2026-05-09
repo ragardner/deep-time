@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_SEC, ATTOS_PER_SEC_I128, Dt, LM_DEN, LM_NUM, Real, SEC_PER_DAYI64, SEC_PER_DAYI128,
-    TSpan, TT_TAI_OFFSET_SPAN, sin_approx,
+    Scale, sin_approx,
 };
 
 /// TCL secular rate vs TDB (exact value from LTE440).
@@ -96,13 +96,13 @@ impl Dt {
     // pub(crate) const fn tt_to_ltc(tt: Self) -> Self {
     //     let elapsed = Self::elapsed_to_attos_since_ref(tt);
     //     let span_attos = Self::mul_lm(elapsed);
-    //     tt.add(TSpan::from_attos(span_attos))
+    //     tt.add(Dt::from_attos(span_attos))
     // }
     // old fn
     // pub(crate) const fn ltc_to_tt(ltc: Self) -> Self {
     //     let elapsed = Self::elapsed_to_attos_since_ref(ltc);
     //     let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
-    //     ltc.sub(TSpan::from_attos(span_attos))
+    //     ltc.sub(Dt::from_attos(span_attos))
     // }
 
     pub(crate) const fn tt_to_ltc(tt: Self) -> Self {
@@ -110,7 +110,8 @@ impl Dt {
         let secular_attos = Self::mul_lm(elapsed);
         let periodic = Self::ltc_periodic_correction(tt);
 
-        tt.add(TSpan::from_attos(secular_attos)).add(periodic)
+        tt.add(Dt::from_attos(secular_attos, Scale::TAI))
+            .add(periodic)
     }
 
     // non-iterate approach
@@ -119,7 +120,7 @@ impl Dt {
     //     let secular_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
     //     let periodic = Self::ltc_periodic_correction(ltc); // evaluate at input (or iterate if you want ultra-pedantic)
 
-    //     ltc.sub(TSpan::from_attos(secular_attos)).sub(periodic)
+    //     ltc.sub(Dt::from_attos(secular_attos)).sub(periodic)
     // }
 
     /// Converts LTC → TT using fixed-point iteration to account for the
@@ -139,7 +140,9 @@ impl Dt {
             let secular_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
             let periodic = Self::ltc_periodic_correction(tt);
 
-            tt = ltc.sub(TSpan::from_attos(secular_attos)).sub(periodic);
+            tt = ltc
+                .sub(Dt::from_attos(secular_attos, Scale::TAI))
+                .sub(periodic);
             i += 1;
         }
         tt
@@ -150,9 +153,9 @@ impl Dt {
         Self::mul_rate(attos, TL_NUM, TL_DEN)
     }
 
-    /// Returns the periodic part of (LTC − TT) in TSpan (µs-level, evaluated at the TT instant).
+    /// Returns the periodic part of (LTC − TT) in Dt (µs-level, evaluated at the TT instant).
     /// Exactly analogous to your `tdb_minus_tt`.
-    const fn ltc_periodic_correction(tt: Self) -> TSpan {
+    const fn ltc_periodic_correction(tt: Self) -> Dt {
         let seconds_since_j2000_tt = f!(tt.sec) + f!(tt.attos) / f!(ATTOS_PER_SEC);
         let t_days = seconds_since_j2000_tt / f!(86400.0); // days since J2000.0 TT
 
@@ -167,8 +170,8 @@ impl Dt {
             i += 1;
         }
 
-        // Convert µs → TSpan (positive = lunar time runs ahead)
-        TSpan::from_sec_f(delta_us * 1e-6)
+        // Convert µs → Dt (positive = lunar time runs ahead)
+        Dt::from_sec_f(delta_us * 1e-6)
     }
 
     /// Zero-point calibration constant for TCL so that our implementation
@@ -200,7 +203,7 @@ impl Dt {
     ///
     /// Reference: https://github.com/xlucn/LTE440
     /// (README and demo output)
-    pub(crate) const TCL_TDB_BIAS_SPAN: TSpan = TSpan::from_sec_f(0.49334260839797583);
+    pub(crate) const TCL_TDB_BIAS_SPAN: Dt = Dt::from_sec_f(0.49334260839797583);
 
     /// Exact integer helper: elapsed attoseconds since J2000.0 TDB.
     /// Used exclusively for the TCL pathway to match LTE440 exactly
@@ -217,22 +220,21 @@ impl Dt {
         sec_diff * ATTOS_PER_SEC_I128 + attos_diff
     }
 
-    pub(crate) const fn tt_to_tcl(tt: Self) -> Self {
-        let tai = tt.sub(TT_TAI_OFFSET_SPAN);
+    pub(crate) const fn tai_to_tcl(tai: Self) -> Self {
         let tdb = Self::tai_to_tdb(tai);
 
         let elapsed = Self::elapsed_to_attos_since_j2000_tdb_epoch(tdb);
         let secular_attos = Self::mul_tl(elapsed);
         let periodic = Self::ltc_periodic_correction(tdb);
 
-        tdb.add(TSpan::from_attos(secular_attos))
+        tdb.add(Dt::from_attos(secular_attos, Scale::TAI))
             .add(periodic)
             .add(Self::TCL_TDB_BIAS_SPAN)
     }
 
     /// Dedicated inverse for TCL → TT (iterative, mirrors your TDB style).
     /// Returns a Dt on the TT scale (consistent with ltc_to_tt, tcg_to_tt, etc.).
-    pub(crate) const fn tcl_to_tt(tcl: Self) -> Self {
+    pub(crate) const fn tcl_to_tai(tcl: Self) -> Self {
         let mut tdb = tcl;
         let mut i = 0u32;
         while i < 6 {
@@ -241,14 +243,11 @@ impl Dt {
             let periodic = Self::ltc_periodic_correction(tdb);
 
             tdb = tcl
-                .sub(TSpan::from_attos(secular_attos))
+                .sub(Dt::from_attos(secular_attos, Scale::TAI))
                 .sub(periodic)
                 .sub(Self::TCL_TDB_BIAS_SPAN);
             i += 1;
         }
-
-        // tdb → TAI → TT (so the caller gets TT, matching the rest of the library)
-        let tai = Self::tdb_to_tai(tdb);
-        tai.add(TT_TAI_OFFSET_SPAN)
+        Self::tdb_to_tai(tdb)
     }
 }

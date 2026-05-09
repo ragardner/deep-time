@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, TSpan};
+use crate::{ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale};
 
 impl Dt {
     /// Returns the GPS week number and exact Time of Week (TOW) for this instant
@@ -11,7 +11,7 @@ impl Dt {
     ///   traditional GPS reference epoch **1980-01-06 00:00:00 GPS**.
     ///   Returned as `i64` (effectively unlimited range).
     /// - **Time of Week (TOW)**: Exact elapsed time since the start of that GPS
-    ///   week, returned as a [`TSpan`] in the range `[0, 604800)` seconds.
+    ///   week, returned as a [`Dt`] in the range `[0, 604800)` seconds.
     ///
     /// GPS weeks always begin on **Sunday 00:00:00 GPS**.
     ///
@@ -23,12 +23,12 @@ impl Dt {
     ///   other scales via `to_type(Scale::GPS)`.
     /// - The result is **exact** (attosecond precision) and independent of any
     ///   calendar or timezone rules.
-    pub const fn to_gps_wk_and_tow(&self) -> (i64, TSpan) {
+    pub const fn to_gps_wk_and_tow(&self) -> (i64, Dt) {
         let elapsed = self.to_diff_raw(Self::GPS_EPOCH);
         let total_attos = elapsed.to_attos();
         let wk = (total_attos / ATTOS_PER_WEEK) as i64;
         let tow_attos = total_attos % ATTOS_PER_WEEK;
-        (wk, TSpan::from_attos(tow_attos))
+        (wk, Dt::from_attos(tow_attos, Scale::TAI))
     }
 
     /// Returns the day of the GPS week (0 = Sunday, 1 = Monday, …, 6 = Saturday).

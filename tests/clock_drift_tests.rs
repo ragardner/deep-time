@@ -1,69 +1,69 @@
 #[cfg(test)]
 mod tests {
-    use deep_time::{ClockDrift, LocalSpacetime, TSpan, constants::PLANCK_LENGTH_4};
+    use deep_time::{ClockDrift, Dt, LocalSpacetime, Scale, constants::PLANCK_LENGTH_4};
 
     #[test]
     fn evaluate_zero_drift() {
         let drift = ClockDrift::ZERO;
-        let dt = TSpan::from_sec(1_234_567);
-        assert_eq!(drift.time_diff_after(&dt), TSpan::ZERO);
+        let dt = Dt::from_sec(1_234_567, Scale::TAI);
+        assert_eq!(drift.time_diff_after(&dt), Dt::ZERO);
     }
 
     #[test]
     fn evaluate_constant_only() {
-        let drift = ClockDrift::from_constant(TSpan::from_sec_f(0.5));
-        let dt = TSpan::from_sec(1_000);
-        assert_eq!(drift.time_diff_after(&dt), TSpan::from_sec_f(0.5));
+        let drift = ClockDrift::from_constant(Dt::from_sec_f(0.5));
+        let dt = Dt::from_sec(1_000, Scale::TAI);
+        assert_eq!(drift.time_diff_after(&dt), Dt::from_sec_f(0.5));
     }
 
     #[test]
     fn evaluate_rate_only() {
-        let drift = ClockDrift::from_offset_and_rate(TSpan::ZERO, TSpan::from_sec_f(1e-9)); // 1 ns/s
-        let dt = TSpan::from_sec(1_000_000); // 1 million seconds
-        assert_eq!(drift.time_diff_after(&dt), TSpan::from_sec_f(0.001)); // 1 µs
+        let drift = ClockDrift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(1e-9)); // 1 ns/s
+        let dt = Dt::from_sec(1_000_000, Scale::TAI); // 1 million seconds
+        assert_eq!(drift.time_diff_after(&dt), Dt::from_sec_f(0.001)); // 1 µs
     }
 
     #[test]
     fn evaluate_full_quadratic() {
         let drift = ClockDrift::new(
-            TSpan::from_sec(2),
-            TSpan::from_ns(1),    // exactly 1e-9 s/s
-            TSpan::from_attos(2), // exactly 2e-18 s/s²
+            Dt::from_sec(2, Scale::TAI),
+            Dt::from_ns(1, Scale::TAI),    // exactly 1e-9 s/s
+            Dt::from_attos(2, Scale::TAI), // exactly 2e-18 s/s²
         );
-        let dt = TSpan::from_sec(1_000_000);
+        let dt = Dt::from_sec(1_000_000, Scale::TAI);
 
         // Exact mathematical result:
         // 2 + (1e-9 * 1_000_000) + (2e-18 * 1_000_000²) = 2 + 0.001 + 0.000002
         // = 2.001002 s = 2 s + 1_002_000_000_000_000 attoseconds
         assert_eq!(
             drift.time_diff_after(&dt),
-            TSpan::new(2, 1_002_000_000_000_000)
+            Dt::new(2, 1_002_000_000_000_000)
         );
     }
 
     #[test]
     fn evaluate_negative_dt() {
         let drift = ClockDrift::new(
-            TSpan::from_sec(5),
-            TSpan::from_ns(1),    // exactly 1e-9 s/s
-            TSpan::from_attos(1), // exactly 1e-18 s/s²
+            Dt::from_sec(5, Scale::TAI),
+            Dt::from_ns(1, Scale::TAI),    // exactly 1e-9 s/s
+            Dt::from_attos(1, Scale::TAI), // exactly 1e-18 s/s²
         );
-        let dt = TSpan::from_sec(-500_000);
+        let dt = Dt::from_sec(-500_000, Scale::TAI);
 
         // Exact mathematical result (no f64 loss)
-        let expected = TSpan::from_sec(4)
-            .add(TSpan::from_ms(999))
-            .add(TSpan::from_us(500))
-            .add(TSpan::from_ns(250));
+        let expected = Dt::from_sec(4, Scale::TAI)
+            .add(Dt::from_ms(999, Scale::TAI))
+            .add(Dt::from_us(500, Scale::TAI))
+            .add(Dt::from_ns(250, Scale::TAI));
 
         assert_eq!(drift.time_diff_after(&dt), expected);
     }
 
     #[test]
     fn evaluate_large_dt_exact() {
-        let drift = ClockDrift::from_offset_and_rate(TSpan::ZERO, TSpan::from_sec_f(1e-12));
-        let dt = TSpan::from_sec(1_000_000_000); // ~31.7 years
-        assert_eq!(drift.time_diff_after(&dt), TSpan::from_sec_f(0.001));
+        let drift = ClockDrift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(1e-12));
+        let dt = Dt::from_sec(1_000_000_000, Scale::TAI); // ~31.7 years
+        assert_eq!(drift.time_diff_after(&dt), Dt::from_sec_f(0.001));
     }
 
     // ========================================================================
@@ -87,7 +87,7 @@ mod tests {
             let drift = ClockDrift::from_unified_proper_time_rate(u, k);
             let expected_offset = expected_rate - 1.0;
             let expected_drift =
-                ClockDrift::from_offset_and_rate(TSpan::ZERO, TSpan::from_sec_f(expected_offset));
+                ClockDrift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(expected_offset));
             assert_eq!(
                 drift, expected_drift,
                 "Low-curvature GR recovery failed for u={}, k={}",
@@ -113,7 +113,7 @@ mod tests {
             let expected_offset = expected_rate - 1.0;
 
             let expected_drift =
-                ClockDrift::from_offset_and_rate(TSpan::ZERO, TSpan::from_sec_f(expected_offset));
+                ClockDrift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(expected_offset));
             assert_eq!(
                 drift, expected_drift,
                 "High-curvature saturation failed for δ = {}",
@@ -128,9 +128,9 @@ mod tests {
         let drift_neg_u = ClockDrift::from_unified_proper_time_rate(-0.5, 0.0);
 
         // Semantic check using .to_sec_f() — this is the robust way.
-        // (TSpan::from_sec_f(-1.0) currently produces a non-canonical internal
+        // (Dt::from_sec_f(-1.0) currently produces a non-canonical internal
         // representation while the unified function produces the canonical one.
-        // The two TSpans are mathematically identical but not ==.)
+        // The two Dts are mathematically identical but not ==.)
         assert_eq!(
             drift_neg_u.rate().to_sec_f(),
             -1.0,
@@ -147,7 +147,7 @@ mod tests {
         // delta = 1.0 must always give exactly rate = 1.0 (no drift) regardless of curvature
         for k in [0.0, 1.0, 1e10, 1e30] {
             let drift = ClockDrift::from_unified_proper_time_rate(1.0, k);
-            assert_eq!(*drift.rate(), TSpan::ZERO, "δ=1 should be exactly rate=1");
+            assert_eq!(*drift.rate(), Dt::ZERO, "δ=1 should be exactly rate=1");
         }
 
         // delta = 0 with moderate curvature (null-ray / lightlike edge case sanity).
@@ -163,7 +163,7 @@ mod tests {
         let k_eff = x / (1.0 + x);
         let expected_null_rate: f64 = k_eff.sqrt() - 1.0;
         let expected_null =
-            ClockDrift::from_offset_and_rate(TSpan::ZERO, TSpan::from_sec_f(expected_null_rate));
+            ClockDrift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(expected_null_rate));
 
         assert_eq!(drift_null, expected_null);
     }

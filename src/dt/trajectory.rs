@@ -1,4 +1,4 @@
-use crate::{ClockDrift, Dt, LocalSpacetime, Real, TSpan};
+use crate::{ClockDrift, Dt, LocalSpacetime, Real};
 
 impl Dt {
     /// Computes the accumulated **proper time** (Δτ) experienced by a clock moving along a
@@ -26,7 +26,7 @@ impl Dt {
     ///
     /// # Example
     /// ```rust
-    /// use deep_time::{Scale, TSpan, LocalSpacetime, Dt};
+    /// use deep_time::{Scale, LocalSpacetime, Dt};
     ///
     /// let start = Dt::from_sec(0, Scale::TAI);
     /// let end   = Dt::from_sec(1000, Scale::TAI);
@@ -36,14 +36,14 @@ impl Dt {
     /// let samples = [slow; 2];
     ///
     /// let delta_tau = start.proper_time_interval_samples(end, &samples);
-    /// assert_eq!(delta_tau, TSpan::from_sec(900));
+    /// assert_eq!(delta_tau, Dt::from_sec(900, Scale::TAI));
     ///
     /// // Update onboard proper time clock
     /// let onboard_tau = start.to(Scale::Custom).add(delta_tau);
     /// ```
-    pub const fn proper_time_interval_samples(self, end: Dt, samples: &[LocalSpacetime]) -> TSpan {
+    pub const fn proper_time_interval_samples(self, end: Dt, samples: &[LocalSpacetime]) -> Dt {
         if samples.len() < 2 || self.eq(&end) {
-            return TSpan::ZERO;
+            return Dt::ZERO;
         }
 
         let mut dt = end.to_diff_raw(self);
@@ -60,7 +60,7 @@ impl Dt {
             let rate0 = Self::rate_from_local(&samples[0]);
             let rate1 = Self::rate_from_local(&samples[samples.len() - 1]);
             let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt_sec;
-            return TSpan::from_sec_f(sign * (dt_sec + integral));
+            return Dt::from_sec_f(sign * (dt_sec + integral));
         }
 
         // Simpson’s rule quadrature (high-order accuracy)
@@ -86,7 +86,7 @@ impl Dt {
         }
 
         let integral = (h / f!(3.0)) * s;
-        TSpan::from_sec_f(sign * (dt_sec + integral))
+        Dt::from_sec_f(sign * (dt_sec + integral))
     }
 
     /// Computes the relativistic correction (Δτ − Δt) using pre-computed samples.
@@ -100,12 +100,12 @@ impl Dt {
     ///   [`proper_time_interval_samples`] for details and example).
     ///
     /// # Returns
-    /// The relativistic correction as a `TSpan`.
+    /// The relativistic correction as a `Dt`.
     pub const fn relativistic_correction_with_samples(
         self,
         end: Dt,
         samples: &[LocalSpacetime],
-    ) -> TSpan {
+    ) -> Dt {
         let dtau = self.proper_time_interval_samples(end, samples);
         let dt = end.to_diff_raw(self);
         dtau.sub(dt)

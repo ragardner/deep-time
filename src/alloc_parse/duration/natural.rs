@@ -1,7 +1,7 @@
 use crate::{
-    DateToken, DtErr, DtErrKind, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
-    NS_PER_MONTH, NS_PER_SEC, NS_PER_WEEK, NS_PER_YEAR, SplitKeepWithPos, TSpan, an_err,
-    lang_map, to_ascii_digit,
+    DateToken, Dt, DtErr, DtErrKind, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
+    NS_PER_MONTH, NS_PER_SEC, NS_PER_WEEK, NS_PER_YEAR, Scale, SplitKeepWithPos, an_err, lang_map,
+    to_ascii_digit,
 };
 use alloc::{
     string::{String, ToString},
@@ -185,7 +185,7 @@ pub(crate) fn natural_duration_to_span(
     input: &str,
     lang: Lang,
     use_dur_finder: bool,
-) -> Result<TSpan, DtErr> {
+) -> Result<Dt, DtErr> {
     let Some(LangData {
         map: term_map,
         duration_ac,
@@ -222,17 +222,17 @@ pub(crate) fn natural_duration_to_span(
                 DateToken::Past => overall_multiplier = -1,
                 DateToken::Now | DateToken::Today => {
                     if !has_duration {
-                        return Ok(TSpan::ZERO);
+                        return Ok(Dt::ZERO);
                     }
                 }
                 DateToken::Tomorrow => {
                     if !has_duration {
-                        return Ok(TSpan::from_ns(NS_PER_DAY));
+                        return Ok(Dt::from_ns(NS_PER_DAY, Scale::TAI));
                     }
                 }
                 DateToken::Yesterday => {
                     if !has_duration {
-                        return Ok(TSpan::from_ns(-NS_PER_DAY));
+                        return Ok(Dt::from_ns(-NS_PER_DAY, Scale::TAI));
                     }
                 }
 
@@ -335,10 +335,10 @@ pub(crate) fn natural_duration_to_span(
         return Err(an_err!(DtErrKind::InvalidInput, "{}", input));
     }
 
-    // Convert total nanoseconds → attoseconds and build TSpan
-    // (TSpan supports the full representable range, so no size checks are needed)
+    // Convert total nanoseconds → attoseconds and build Dt
+    // (Dt supports the full representable range, so no size checks are needed)
     let total_attos = total_nanos * 1_000_000_000i128;
-    Ok(TSpan::from_attos(total_attos))
+    Ok(Dt::from_attos(total_attos, Scale::TAI))
 }
 
 pub(crate) fn natural_duration_to_iso(

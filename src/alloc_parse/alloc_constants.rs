@@ -81,6 +81,7 @@ pub(crate) const NS_PER_HOUR: i128 = 3_600_000_000_000;
 pub(crate) const NS_PER_MINUTE: i128 = 60_000_000_000;
 pub(crate) const NS_PER_DAY: i128 = 86_400_000_000_000;
 pub(crate) const NS_PER_HALF_DAY: i128 = 43_200_000_000_000;
+pub(crate) const NS_PER_SEC: i128 = 1_000_000_000;
 
 /// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC
 pub(crate) const MJD_EPOCH_NANOS: i128 = 40_587_i128 * NS_PER_DAY;

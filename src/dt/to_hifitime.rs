@@ -21,4 +21,17 @@ impl Dt {
 
         Epoch::from_tai_parts(centuries, nanos)
     }
+
+    /// Converts this `Span` to a [`hifitime::Duration`] (nanosecond precision).
+    ///
+    /// - Sub-nanosecond attoseconds are **truncated toward zero**.
+    /// - The conversion is fully exact up to the nanosecond (128-bit integer arithmetic).
+    /// - Internally uses [`hifitime::Duration::from_total_nanoseconds`], which
+    ///   automatically normalizes centuries/nanoseconds and saturates at
+    ///   [`Duration::MAX`] / [`Duration::MIN`] if outside hifitime's range
+    ///   (±32,768 centuries).
+    #[inline]
+    pub fn to_hifitime_duration(self) -> Duration {
+        Duration::from_total_nanoseconds(self.to_attos() / 1_000_000_000i128)
+    }
 }

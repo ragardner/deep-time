@@ -1,12 +1,12 @@
 use crate::{
     ATTOS_PER_SEC_I128, Dt, JD_2000_2_451_545, MARS_MSD_REF_JD_INT, MARS_MSD_REF_TOD_SEC,
     MARS_MSD_REF_TOD_SUBSEC, MARS_REF_TT, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real,
-    SEC_PER_DAYI64, SEC_PER_DAYI128, Scale, TSpan, floor_f, to_sec_f,
+    SEC_PER_DAYI64, SEC_PER_DAYI128, Scale, floor_f, to_sec_f,
 };
 
 impl Dt {
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
-    pub(crate) const fn elapsed_to_attos_since_mars_msd_epoch(numerical_tt: TSpan) -> i128 {
+    pub(crate) const fn elapsed_to_attos_since_mars_msd_epoch(numerical_tt: Dt) -> i128 {
         let days_since_j2000 = numerical_tt.sec.div_euclid(SEC_PER_DAYI64);
         let tod_sec = numerical_tt.sec.rem_euclid(SEC_PER_DAYI64);
 
@@ -40,19 +40,19 @@ impl Dt {
         (whole_sols, frac_attos)
     }
 
-    /// Returns Mars Coordinated Time (MTC) as a [`TSpan`] representing
+    /// Returns Mars Coordinated Time (MTC) as a [`Dt`] representing
     /// seconds into the current sol (range `[0, one Martian sol)`).
     #[inline]
-    pub const fn to_mtc(self) -> TSpan {
+    pub const fn to_mtc(self) -> Dt {
         let (_, frac_attos) = self.to_msd_exact();
-        TSpan::from_attos(frac_attos as i128)
+        Dt::from_attos(frac_attos as i128, Scale::TAI)
     }
 
     /// Creates a `Dt` (in TT) from an exact Mars Sol Date using full library precision.
     pub const fn from_msd_exact(whole_sols: i64, frac_attos: u128) -> Self {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
 
-        let tt = MARS_REF_TT.add(TSpan::from_attos(elapsed_attos));
+        let tt = MARS_REF_TT.add(Dt::from_attos(elapsed_attos, Scale::TAI));
         Self::from(tt.sec, tt.attos, Scale::TT)
     }
 
@@ -61,7 +61,7 @@ impl Dt {
     pub const fn from_msd(msd: Real) -> Self {
         let whole = floor_f(msd) as i64;
         let frac = msd - f!(whole);
-        let frac_span = TSpan::from_sec_f(frac * MARS_SOL_LENGTH_SEC);
+        let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC);
         Self::from_msd_exact(whole, frac_span.to_attos() as u128)
     }
 

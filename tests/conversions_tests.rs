@@ -1,4 +1,4 @@
-use deep_time::{ClockDrift, ClockModel, Dt, Scale, TSpan};
+use deep_time::{ClockDrift, ClockModel, Dt, Scale};
 
 #[test]
 fn test_ymd_to_jdn() {
@@ -66,26 +66,38 @@ fn test_ymd_to_jdn() {
     assert_eq!(Dt::jdn_to_ymd(-34802825), (-100000, 12, 31));
 }
 
-/// Verifies that the TDB-TT difference produced by our implementation
-/// stays within the documented SPICE tolerance (~30 µs accuracy for
-/// the simple approximation, max amplitude ~1.658 ms).
+/// According to NASA/SPICE documentation:
+///   TDB − TT ≈ K ⋅ sin(E)  (simple approximation)
+///   amplitude ≈ 0.001658 s
+///   this simple model is accurate to ~30 µs (it ignores small periodic terms)
 ///
-/// Source: https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/time.html
-/// (section describing "TDB - TT = K * sin(E)" with amplitude ~0.001658 s)
+/// Our implementation uses the more accurate 4-term Fairhead & Bretagnon model
+/// (SOFA/ERFA `eraDtdb`), so the difference must still be < 2 ms and the
+/// round-trip must be extremely tight.
 #[test]
 fn tdb_tt_difference_matches_spice_approximation() {
-    // Test at a few representative epochs
-    for &tai_sec in &[0i64, 1_000_000_000, -500_000_000] {
-        // from tai sec to a tt timespan
-        let tt = Dt::from_sec(tai_sec, Scale::TAI).to(Scale::TT);
-        // from tt timespan to tdb timespan, create tai from tdb timespan
-        let tdb = tt.to(Scale::TT, Scale::TDB).to_tai(Scale::TDB);
-        // create tai from tt, measure against tdb (tai internally)
-        let diff = tdb.to_diff_raw(tt.to_tai(Scale::TT)).to_sec_f().abs();
+    let test_points = [
+        Dt::from_sec(0, Scale::TAI),                   // J2000.0
+        Dt::from_sec(1_000_000_000, Scale::TAI),       // ~31.7 y after J2000
+        Dt::from_sec(-500_000_000, Scale::TAI),        // ~15.85 y before J2000
+        Dt::from_sec(86_400 * 365 * 50, Scale::TAI),   // +50 years
+        Dt::from_sec(-86_400 * 365 * 100, Scale::TAI), // -100 years
+        Dt::from_sec(-2_208_945_600, Scale::TAI),      // ≈ J1900
+    ];
+
+    for &tai in &test_points {
+        // These give the *numerical* values on each scale (correct usage of .to)
+        let tt_num = tai.to(Scale::TT);
+        let tdb_num = tai.to(Scale::TDB);
+
+        // This is exactly TDB − TT in seconds (the quantity SPICE approximates)
+        let diff = tdb_num.to_diff_raw(tt_num).to_sec_f().abs();
+
         assert!(
             diff < 0.002,
-            "TDB-TT difference ({:.6} s) exceeded SPICE documented max (~1.658 ms)",
-            diff
+            "TDB−TT difference of {:.9} s exceeds expected max amplitude (~1.658 ms) at TAI = {:?}",
+            diff,
+            tai
         );
     }
 }
@@ -138,7 +150,7 @@ fn tdb_minus_tt_at_j2000() {
     let tai = Dt::ZERO;
     let tdb = tai.to(Scale::TDB);
 
-    let diff_s = tdb.to_diff_raw(tai.to_span()).to_sec_f(); // see helper below
+    let diff_s = tdb.to_diff_raw(tai).to_sec_f(); // see helper below
 
     assert!(
         (diff_s - 32.183925).abs() < 0.00001,
@@ -175,13 +187,13 @@ fn tdb_correction_stays_within_bounds() {
 fn proper_to_tt_with_drift_roundtrip() {
     let reference = Dt::from_sec(0, Scale::TAI);
     let drift = ClockDrift::new(
-        TSpan::from_ms(100), // exactly 0.1 s
-        TSpan::from_ns(1),   // exactly 1 ns/s = 1e-9 s/s
-        TSpan::ZERO,
+        Dt::from_ms(100, Scale::TAI), // exactly 0.1 s
+        Dt::from_ns(1, Scale::TAI),   // exactly 1 ns/s = 1e-9 s/s
+        Dt::ZERO,
     );
     let model = ClockModel::new(Scale::Custom, reference, drift);
 
-    let onboard_proper = model.reference.add(TSpan::from_sec(1_000_000));
+    let onboard_proper = model.reference.add(Dt::from_sec(1_000_000, Scale::TAI));
 
     let tt = onboard_proper.convert_using_model(model);
     let back = tt.convert_back_using_model(model);
@@ -194,7 +206,7 @@ fn proper_to_tt_with_drift_roundtrip() {
 fn tt_tai_offset_exact() {
     let tai = Dt::ZERO;
     let tt = tai.to(Scale::TT);
-    let diff_s = tt.to_diff_raw(tai.to_span()).to_sec_f();
+    let diff_s = tt.to_diff_raw(tai).to_sec_f();
     assert!(
         (diff_s - 32.184).abs() < 1e-12,
         "TT-TAI at J2000 was {} s (expected exactly 32.184)",
@@ -208,16 +220,16 @@ fn gnss_offsets_are_correct() {
     let tai = Dt::ZERO;
 
     let gpst = tai.to(Scale::GPS);
-    assert!((gpst.to_diff_raw(tai.to_span()).to_sec_f() + 19.0).abs() < 1e-12);
+    assert!((gpst.to_diff_raw(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
     let qzsst = tai.to(Scale::QZSS);
-    assert!((qzsst.to_diff_raw(tai.to_span()).to_sec_f() + 19.0).abs() < 1e-12);
+    assert!((qzsst.to_diff_raw(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
     let gst = tai.to(Scale::GST);
-    assert!((gst.to_diff_raw(tai.to_span()).to_sec_f() + 19.0).abs() < 1e-12);
+    assert!((gst.to_diff_raw(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
     let bdt = tai.to(Scale::BDT);
-    assert!((bdt.to_diff_raw(tai.to_span()).to_sec_f() + 33.0).abs() < 1e-12);
+    assert!((bdt.to_diff_raw(tai).to_sec_f() + 33.0).abs() < 1e-12);
 }
 
 /// TCG ↔ TAI round-trip (pure linear rate – should be exact within f64 noise).

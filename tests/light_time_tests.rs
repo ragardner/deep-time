@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod relativistic_tests {
     use deep_time::{
-        Dt, LightContext, LocalSpacetime, ObserverState, Position, Scale, TSpan, Velocity,
-        constants::C,
+        Dt, LightContext, LocalSpacetime, ObserverState, Position, Scale, Velocity, constants::C,
     };
 
     /// Small helper to build a `ObserverState` quickly.
@@ -30,7 +29,7 @@ mod relativistic_tests {
         let rx = make_state(0, origin, zero_vel, 0.0, 0.0);
 
         let correction = tx.one_way_relativistic_delay_to(rx, LightContext::FLAT);
-        assert_eq!(correction, TSpan::ZERO);
+        assert_eq!(correction, Dt::ZERO);
     }
 
     #[test]
@@ -84,7 +83,7 @@ mod relativistic_tests {
         let rx_pos = Position::new(1.52e11, 0.0, 0.0);
         let rx_phi = -8.80e8;
 
-        let tolerance = TSpan::from_ns(1);
+        let tolerance = Dt::from_ns(1, Scale::TAI);
         let (correction, final_rx_time) = tx.iterative_one_way_relativistic_delay_to(
             |guessed_time| {
                 make_state(
@@ -119,7 +118,7 @@ mod relativistic_tests {
         let tx = make_state(0, tx_pos, Velocity::from_speed(30_000.0), -8.87e8, 0.0);
         let rx = make_state(0, rx_pos, Velocity::from_speed(29_000.0), -8.80e8, 0.0);
 
-        let round_trip_measured = TSpan::from_sec_f(1010.0);
+        let round_trip_measured = Dt::from_sec_f(1010.0);
 
         let correction =
             tx.round_trip_relativistic_correction(round_trip_measured, rx, LightContext::SOLAR);

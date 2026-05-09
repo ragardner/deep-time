@@ -1,6 +1,6 @@
 //! High-precision evenly-spaced `Dt` iterator (the "linspace" for time).
 
-use crate::{Dt, TSpan};
+use crate::{Dt, Scale};
 
 /// Builder type that enables the ergonomic `start.every(step)` syntax.
 ///
@@ -12,7 +12,7 @@ use crate::{Dt, TSpan};
 #[derive(Clone, Debug)]
 pub struct Every {
     start: Dt,
-    step: TSpan,
+    step: Dt,
 }
 
 impl Dt {
@@ -25,7 +25,7 @@ impl Dt {
     ///
     /// ```ignore
     /// let start = Dt::from_gregorian(2025, 1, 1, 0, 0, 0, 0, Scale::TAI);
-    /// let step = TSpan::from_hours(1);
+    /// let step = Dt::from_hours(1);
     ///
     /// // Inclusive range: yields 25 points (including both start and end)
     /// for t in start.every(step).until(end) { ... }
@@ -34,7 +34,7 @@ impl Dt {
     /// for t in start.every(step).up_to(end) { ... }
     /// ```
     #[inline]
-    pub const fn every(self, step: TSpan) -> Every {
+    pub const fn every(self, step: Dt) -> Every {
         Every { start: self, step }
     }
 
@@ -42,7 +42,7 @@ impl Dt {
     ///
     /// Equivalent to `self.every(step).until(end)`.
     #[inline]
-    pub const fn range_to(self, end: Dt, step: TSpan) -> TimeRange {
+    pub const fn range_to(self, end: Dt, step: Dt) -> TimeRange {
         TimeRange::inclusive(self, end, step)
     }
 
@@ -50,32 +50,32 @@ impl Dt {
     ///
     /// Equivalent to `self.every(step).up_to(end)`.
     #[inline]
-    pub const fn range_until(self, end: Dt, step: TSpan) -> TimeRange {
+    pub const fn range_until(self, end: Dt, step: Dt) -> TimeRange {
         TimeRange::exclusive(self, end, step)
     }
 
     /// Creates a range stepping by whole seconds.
     #[inline]
     pub const fn every_second(self) -> Every {
-        self.every(TSpan::from_sec(1))
+        self.every(Dt::from_sec(1, Scale::TAI))
     }
 
     /// Creates a range stepping by whole minutes.
     #[inline]
     pub const fn every_minute(self) -> Every {
-        self.every(TSpan::from_min(1))
+        self.every(Dt::from_min(1, Scale::TAI))
     }
 
     /// Creates a range stepping by whole hours.
     #[inline]
     pub const fn every_hour(self) -> Every {
-        self.every(TSpan::from_hr(1))
+        self.every(Dt::from_hr(1, Scale::TAI))
     }
 
     /// Creates a range stepping by whole days.
     #[inline]
     pub const fn every_day(self) -> Every {
-        self.every(TSpan::from_hr(24))
+        self.every(Dt::from_hr(24, Scale::TAI))
     }
 
     /// Returns the next `n` points **after** `self` (exclusive of `self`)
@@ -83,7 +83,7 @@ impl Dt {
     ///
     /// This is a convenient way to get future points without including the start.
     #[inline]
-    pub fn next_n(self, n: usize, step: TSpan) -> impl Iterator<Item = Dt> {
+    pub fn next_n(self, n: usize, step: Dt) -> impl Iterator<Item = Dt> {
         (self + step).for_n_steps(n, step)
     }
 
@@ -92,7 +92,7 @@ impl Dt {
     ///
     /// This is a convenient one-liner for the common "next N steps" pattern.
     #[inline]
-    pub fn for_n_steps(self, n: usize, step: TSpan) -> impl Iterator<Item = Dt> {
+    pub fn for_n_steps(self, n: usize, step: Dt) -> impl Iterator<Item = Dt> {
         // We create an exclusive range long enough for n steps, then limit it
         let end = self + step * (n as i64);
         TimeRange::exclusive(self, end, step).take(n)
@@ -129,7 +129,7 @@ impl Every {
 #[cfg(feature = "wire")]
 impl Every {
     /// Size of the canonical wire representation in bytes (33 bytes).
-    pub const WIRE_SIZE: usize = Dt::WIRE_SIZE + TSpan::WIRE_SIZE;
+    pub const WIRE_SIZE: usize = Dt::WIRE_SIZE + Dt::WIRE_SIZE;
 
     /// Serializes this `Every` builder into a fixed 33-byte buffer.
     ///
@@ -148,13 +148,13 @@ impl Every {
     /// ## Security
     ///
     /// Safe for untrusted input. Fixed size with strict validation
-    /// of the inner `Dt` and `TSpan`.
+    /// of the inner `Dt` and `Dt`.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
         }
         let start = Dt::from_wire_bytes(&bytes[0..17])?;
-        let step = TSpan::from_wire_bytes(&bytes[17..33])?;
+        let step = Dt::from_wire_bytes(&bytes[17..33])?;
         Some(Self { start, step })
     }
 }
@@ -194,7 +194,7 @@ pub struct TimeRange {
     start: Dt,
     current: Dt,
     end: Dt,
-    step: TSpan,
+    step: Dt,
     inclusive: bool,
     finished: bool,
 }
@@ -204,7 +204,7 @@ impl TimeRange {
     ///
     /// The iterator will yield `end` if it is exactly reachable.
     #[inline]
-    pub const fn inclusive(start: Dt, end: Dt, step: TSpan) -> Self {
+    pub const fn inclusive(start: Dt, end: Dt, step: Dt) -> Self {
         Self::new(start, end, step, true)
     }
 
@@ -212,13 +212,13 @@ impl TimeRange {
     ///
     /// The iterator will **not** yield `end`.
     #[inline]
-    pub const fn exclusive(start: Dt, end: Dt, step: TSpan) -> Self {
+    pub const fn exclusive(start: Dt, end: Dt, step: Dt) -> Self {
         Self::new(start, end, step, false)
     }
 
     /// Internal constructor.
     #[inline]
-    const fn new(start: Dt, end: Dt, step: TSpan, inclusive: bool) -> Self {
+    const fn new(start: Dt, end: Dt, step: Dt, inclusive: bool) -> Self {
         Self {
             start,
             current: start,
@@ -247,9 +247,9 @@ impl Iterator for TimeRange {
         let passed = if self.step.is_zero() {
             true
         } else if self.step.sec > 0 || (self.step.sec == 0 && self.step.attos > 0) {
-            to_end > TSpan::ZERO
+            to_end > Dt::ZERO
         } else {
-            to_end < TSpan::ZERO
+            to_end < Dt::ZERO
         };
 
         if passed {
@@ -319,7 +319,7 @@ impl TimeRange {
 
     /// Size of the canonical wire representation in bytes.
     /// Only the logical definition is stored (runtime state is not serialized).
-    pub const WIRE_SIZE: usize = 1 + 2 * Dt::WIRE_SIZE + TSpan::WIRE_SIZE + 1;
+    pub const WIRE_SIZE: usize = 1 + 2 * Dt::WIRE_SIZE + Dt::WIRE_SIZE + 1;
 
     /// Serializes this `TimeRange` into a fixed buffer.
     ///
@@ -336,7 +336,7 @@ impl TimeRange {
         let step = self.step.to_wire_bytes();
 
         let tp_size = Dt::WIRE_SIZE;
-        let span_size = TSpan::WIRE_SIZE;
+        let span_size = Dt::WIRE_SIZE;
 
         buf[1..1 + tp_size].copy_from_slice(&start);
         buf[1 + tp_size..1 + 2 * tp_size].copy_from_slice(&end);
@@ -367,11 +367,11 @@ impl TimeRange {
         }
 
         let tp_size = Dt::WIRE_SIZE;
-        let span_size = TSpan::WIRE_SIZE;
+        let span_size = Dt::WIRE_SIZE;
 
         let start = Dt::from_wire_bytes(&bytes[1..1 + tp_size])?;
         let end = Dt::from_wire_bytes(&bytes[1 + tp_size..1 + 2 * tp_size])?;
-        let step = TSpan::from_wire_bytes(&bytes[1 + 2 * tp_size..1 + 2 * tp_size + span_size])?;
+        let step = Dt::from_wire_bytes(&bytes[1 + 2 * tp_size..1 + 2 * tp_size + span_size])?;
         let inclusive = bytes[1 + 2 * tp_size + span_size] != 0;
 
         Some(Self::new(start, end, step, inclusive))

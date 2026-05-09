@@ -1,18 +1,18 @@
 use crate::{
-    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC_I128, ATTOS_PER_SECF,
-    ATTOS_PER_US, ClockDrift, Dt, LocalSpacetime, Real, TSpan,
+    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
+    ATTOS_PER_SECF, ATTOS_PER_US, ClockDrift, Dt, LocalSpacetime, Real, Scale, floor_f,
 };
 
 impl Dt {
     #[inline]
-    pub const fn add(self, span: TSpan) -> Self {
-        let (sec, attos) = TSpan::add_time(self.sec, self.attos, span.sec, span.attos);
+    pub const fn add(self, span: Dt) -> Self {
+        let (sec, attos) = Dt::add_time(self.sec, self.attos, span.sec, span.attos);
         Self { sec, attos }
     }
 
     #[inline]
-    pub const fn sub(self, span: TSpan) -> Self {
-        let (sec, attos) = TSpan::sub_time(self.sec, self.attos, span.sec, span.attos);
+    pub const fn sub(self, span: Dt) -> Self {
+        let (sec, attos) = Dt::sub_time(self.sec, self.attos, span.sec, span.attos);
         Self { sec, attos }
     }
 
@@ -31,7 +31,7 @@ impl Dt {
     /// This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
     /// For the spacecraft's own hardware proper-time clock, use the plain `add` method instead.
     #[inline]
-    pub const fn adjusted_advance(&mut self, elapsed: &TSpan, local_spacetime: &LocalSpacetime) {
+    pub const fn adjusted_advance(&mut self, elapsed: &Dt, local_spacetime: &LocalSpacetime) {
         let dtau =
             elapsed.add(ClockDrift::from_local_spacetime(local_spacetime).time_diff_after(elapsed));
         *self = self.add(dtau);
@@ -43,15 +43,15 @@ impl Dt {
     /// This is an optimized variant of `adjusted_advance` for callers that already hold a `ClockDrift` instance.
     /// It is intended for simulation of remote clocks; the spacecraft's own hardware clock should use the plain `add` method.
     #[inline]
-    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &TSpan, drift: &ClockDrift) {
+    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &ClockDrift) {
         let dtau = elapsed.add(drift.time_diff_after(elapsed));
         *self = self.add(dtau);
     }
 
     /// Computes the TAI signed duration between this `Dt` and another `Dt`.
     #[inline]
-    pub const fn to_diff_raw(&self, other: Self) -> TSpan {
-        TSpan::diff_raw_internal(self.sec, self.attos, other.sec, other.attos)
+    pub const fn to_diff_raw(&self, other: Self) -> Dt {
+        Self::diff_raw_internal(self.sec, self.attos, other.sec, other.attos)
     }
 
     /// Computes the TAI signed duration between this `Dt` and another `Dt` as a float.
@@ -83,7 +83,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ms(&mut self) {
-        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_MS);
+        Self::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_MS);
     }
 
     /// Adds exactly 1 microsecond to this time value.
@@ -91,7 +91,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1us(&mut self) {
-        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_US);
+        Self::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_US);
     }
 
     /// Adds exactly 1 nanosecond to this time value.
@@ -99,7 +99,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
     pub const fn add_1ns(&mut self) {
-        TSpan::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_NS);
+        Self::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
@@ -125,7 +125,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ms(&mut self, n: i64) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_MS);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_MS);
     }
 
     /// Adds the specified number of microseconds to this time value.
@@ -133,7 +133,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_us(&mut self, n: i64) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_US);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_US);
     }
 
     /// Adds the specified number of nanoseconds to this time value.
@@ -141,7 +141,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ns(&mut self, n: i64) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_NS);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_NS);
     }
 
     /// Adds the specified number of picoseconds to this time value.
@@ -149,7 +149,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_ps(&mut self, n: i64) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_PS);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_PS);
     }
 
     /// Adds the specified number of femtoseconds to this time value.
@@ -157,7 +157,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_fs(&mut self, n: i64) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_FS);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, n, ATTOS_PER_FS);
     }
 
     /// Adds the specified number of attoseconds to this time value.
@@ -165,7 +165,7 @@ impl Dt {
     /// Handles carry into the seconds field using saturating logic.
     #[inline]
     pub const fn add_attos(&mut self, n: i64) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n, 1);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, n, 1);
     }
 
     // =====================================================================
@@ -195,7 +195,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ms(&mut self) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_MS);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_MS);
     }
 
     /// Subtracts exactly 1 microsecond from this time value.
@@ -203,7 +203,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1us(&mut self) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_US);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_US);
     }
 
     /// Subtracts exactly 1 nanosecond from this time value.
@@ -211,7 +211,7 @@ impl Dt {
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
     pub const fn sub_1ns(&mut self) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_NS);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_NS);
     }
 
     /// Subtracts the specified number of seconds from this time value using saturating arithmetic.
@@ -237,7 +237,7 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ms(&mut self, n: i64) {
-        TSpan::add_attos_span(
+        Self::add_attos_span(
             &mut self.sec,
             &mut self.attos,
             n.saturating_neg(),
@@ -250,7 +250,7 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_us(&mut self, n: i64) {
-        TSpan::add_attos_span(
+        Self::add_attos_span(
             &mut self.sec,
             &mut self.attos,
             n.saturating_neg(),
@@ -263,7 +263,7 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ns(&mut self, n: i64) {
-        TSpan::add_attos_span(
+        Self::add_attos_span(
             &mut self.sec,
             &mut self.attos,
             n.saturating_neg(),
@@ -276,7 +276,7 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_ps(&mut self, n: i64) {
-        TSpan::add_attos_span(
+        Self::add_attos_span(
             &mut self.sec,
             &mut self.attos,
             n.saturating_neg(),
@@ -289,7 +289,7 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_fs(&mut self, n: i64) {
-        TSpan::add_attos_span(
+        Self::add_attos_span(
             &mut self.sec,
             &mut self.attos,
             n.saturating_neg(),
@@ -302,7 +302,7 @@ impl Dt {
     /// Handles borrow from the seconds field using saturating logic.
     #[inline]
     pub const fn sub_attos(&mut self, n: i64) {
-        TSpan::add_attos_span(&mut self.sec, &mut self.attos, n.saturating_neg(), 1);
+        Self::add_attos_span(&mut self.sec, &mut self.attos, n.saturating_neg(), 1);
     }
 
     /// Total attoseconds (exact i128 representation within the representable range).
@@ -339,5 +339,302 @@ impl Dt {
     #[inline]
     pub const fn to_fs(self) -> i128 {
         self.to_attos() / (ATTOS_PER_FS as i128)
+    }
+
+    //
+    //
+    //
+    //
+
+    /// Core saturating add for (sec, attos) pairs.
+    pub(crate) const fn add_time(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> (i64, u64) {
+        let mut sec = sec_a.saturating_add(sec_b);
+        let mut attos = sub_a as i64 + sub_b as i64;
+
+        if attos >= ATTOS_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            attos -= ATTOS_PER_SEC as i64;
+        } else if attos < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            attos += ATTOS_PER_SEC as i64;
+        }
+
+        let attos = if sec == i64::MAX {
+            ATTOS_PER_SEC - 1
+        } else if sec == i64::MIN {
+            0
+        } else {
+            attos as u64
+        };
+
+        (sec, attos)
+    }
+
+    /// Core saturating sub for (sec, attos) pairs.
+    pub(crate) const fn sub_time(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> (i64, u64) {
+        let mut sec = sec_a.saturating_sub(sec_b);
+        let mut attos = sub_a as i64 - sub_b as i64;
+
+        if attos < 0 {
+            if sec > i64::MIN {
+                sec = sec.saturating_sub(1);
+            }
+            attos += ATTOS_PER_SEC as i64;
+        } else if attos >= ATTOS_PER_SEC as i64 {
+            if sec < i64::MAX {
+                sec = sec.saturating_add(1);
+            }
+            attos -= ATTOS_PER_SEC as i64;
+        }
+
+        let attos = if sec == i64::MAX {
+            ATTOS_PER_SEC - 1
+        } else if sec == i64::MIN {
+            0
+        } else {
+            attos as u64
+        };
+
+        (sec, attos)
+    }
+
+    /// Returns `true` if this duration is exactly zero.
+    #[inline]
+    pub const fn is_zero(self) -> bool {
+        self.sec == 0 && self.attos == 0
+    }
+
+    /// Multiplies this duration by an integer scalar (exact).
+    ///
+    /// Uses 128-bit arithmetic internally.
+    pub const fn mul(self, rhs: i64) -> Self {
+        if rhs == 0 || self.is_zero() {
+            return Self::ZERO;
+        }
+        let total: i128 = self.to_attos().saturating_mul(rhs as i128);
+        Self::from_attos(total, Scale::TAI)
+    }
+
+    /// Divides this duration by an integer scalar (exact floor division).
+    ///
+    /// Returns `ZERO` if `rhs == 0`.
+    /// Uses floor division (toward negative infinity) for consistency
+    /// with the existing `floor` method.
+    pub const fn div(self, rhs: i64) -> Self {
+        if rhs == 0 || self.is_zero() {
+            return Self::ZERO;
+        }
+        let total = self.to_attos();
+        let result = total.div_euclid(rhs as i128);
+        Self::from_attos(result, Scale::TAI)
+    }
+
+    /// Returns the **largest** multiple of `unit` that is ≤ `self`.
+    /// If `unit` is zero, returns `self` unchanged (exact, full precision).
+    pub const fn floor(self, unit: Self) -> Self {
+        if unit.is_zero() {
+            return self;
+        }
+        let a = self.to_attos();
+        let b = unit.to_attos();
+        let q = a.div_euclid(b);
+        let result = q.wrapping_mul(b);
+        Self::from_attos(result, Scale::TAI)
+    }
+
+    /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
+    /// If `unit` is zero, returns `self` unchanged (exact, full precision).
+    pub const fn ceil(self, unit: Self) -> Self {
+        if unit.is_zero() {
+            return self;
+        }
+        let a = self.to_attos();
+        let b = unit.to_attos();
+        // ceil(a/b) ≡ −floor(−a/b)
+        let neg_a = a.wrapping_neg();
+        let q = neg_a.div_euclid(b);
+        let q_ceil = q.wrapping_neg();
+        let result = q_ceil.wrapping_mul(b);
+        Self::from_attos(result, Scale::TAI)
+    }
+
+    /// Returns the nearest multiple of `unit`.
+    /// Halfway cases round **away from zero** (matches old `f64::round`).
+    /// If `unit` is zero, returns `self` unchanged (exact, full precision).
+    pub const fn round(self, unit: Self) -> Self {
+        if unit.is_zero() {
+            return self;
+        }
+        let a = self.to_attos();
+        let b = unit.to_attos();
+
+        let q = a.div_euclid(b);
+        let r = a.rem_euclid(b);
+
+        // half = |b| / 2  (rounded up for tie-breaking away from zero)
+        let abs_b = b.wrapping_abs();
+        let two = 2i128;
+        let half = (abs_b + 1) / two;
+
+        if r >= half {
+            // round away from zero
+            let one = 1i128;
+            let q_rounded = if a < 0 { q - one } else { q + one };
+            let result = q_rounded.wrapping_mul(b);
+            Self::from_attos(result, Scale::TAI)
+        } else {
+            let result = q.wrapping_mul(b);
+            Self::from_attos(result, Scale::TAI)
+        }
+    }
+
+    /// Returns `floor(|self| / |unit|)` as `usize`, saturating at `usize::MAX`.
+    ///
+    /// Fully exact integer arithmetic using 128-bit intermediaries. Used by `TimeRange::len`.
+    pub const fn abs_div_floor(self, unit: Self) -> usize {
+        if unit.is_zero() {
+            return 0;
+        }
+        let a = self.to_attos().wrapping_abs();
+        let b = unit.to_attos().wrapping_abs();
+        let q = a.div_euclid(b);
+
+        if q > (usize::MAX as i128) {
+            usize::MAX
+        } else {
+            q as usize
+        }
+    }
+
+    /// - Integer part of `rhs` is multiplied **exactly** (pure i128 arithmetic).
+    /// - Fractional part (|frac| < 1) uses the 10¹⁵ scaling.
+    pub const fn mul_by_f(self, rhs: Real) -> Self {
+        if rhs.is_nan() {
+            return Self::ZERO;
+        }
+        if rhs.is_infinite() {
+            if self.is_zero() {
+                return Self::ZERO;
+            }
+            let self_pos = self.sec > 0 || (self.sec == 0 && self.attos != 0);
+            return if (rhs > 0.0) == self_pos {
+                Self::MAX
+            } else {
+                Self::MIN
+            };
+        }
+        if self.is_zero() || rhs == 0.0 {
+            return Self::ZERO;
+        }
+
+        let int_part = floor_f(rhs) as i128; // exact integer part
+        let frac_part = rhs - f!(int_part); // always in [0, 1)
+
+        // Integer part
+        let int_result = Self::from_attos(self.to_attos().saturating_mul(int_part), Scale::TAI);
+
+        // Fractional part: scaling is safe (|frac_part| < 1)
+        const SCALE: i128 = 1_000_000_000_000_000; // 10¹⁵
+        let frac_scaled = (frac_part * (SCALE as Real)) as i128;
+        let frac_product = self.to_attos().saturating_mul(frac_scaled);
+        let frac_attos = frac_product / SCALE;
+        let frac_result = Self::from_attos(frac_attos, Scale::TAI);
+
+        int_result.add(frac_result)
+    }
+
+    /// Divides by a real number (routes through the high-precision `mul_by_f`).
+    #[inline]
+    pub const fn div_by_f(self, rhs: Real) -> Self {
+        if rhs == 0.0 || rhs.is_nan() {
+            return if self.sec >= 0 { Self::MAX } else { Self::MIN };
+        }
+        self.mul_by_f(1.0 / rhs)
+    }
+
+    /// Divides this duration by 2 (convenience wrapper).
+    #[inline]
+    pub const fn div_by_2(self) -> Self {
+        self.div_by_f(2.0)
+    }
+
+    /// Internal helper used by add_1ms / add_1us / add_1ns.
+    #[doc(hidden)]
+    pub(crate) const fn add_attos_to(sec: &mut i64, attos: &mut u64, amount: u64) {
+        let total = *attos + amount;
+        let carry_sec = total / ATTOS_PER_SEC;
+        *attos = total % ATTOS_PER_SEC;
+        *sec = sec.saturating_add(carry_sec as i64);
+    }
+
+    /// Internal method to add or subtract a subsecond span in a given unit.
+    ///
+    /// This is the core implementation for all subsecond addition and subtraction
+    /// operations. It properly handles carry and borrow between the fractional
+    /// part (`attos`) and the whole seconds (`sec`), using saturating arithmetic
+    /// throughout.
+    #[doc(hidden)]
+    pub(crate) const fn add_attos_span(sec: &mut i64, attos: &mut u64, n: i64, unit: u64) {
+        if n == 0 {
+            return;
+        }
+
+        let mps = ATTOS_PER_SEC;
+
+        if n >= 0 {
+            let amount = (n as u64).saturating_mul(unit);
+            let total = attos.saturating_add(amount);
+
+            let carry = total / mps;
+            let new_frac = total % mps;
+
+            *sec = sec.saturating_add(carry as i64);
+            *attos = new_frac;
+        } else {
+            let amount = n.unsigned_abs().saturating_mul(unit);
+            let borrow_sec = amount / mps;
+            let borrow_frac = amount % mps;
+
+            *sec = sec.saturating_sub(borrow_sec as i64);
+
+            if *attos >= borrow_frac {
+                *attos -= borrow_frac;
+            } else {
+                *attos += mps - borrow_frac;
+                *sec = sec.saturating_sub(1);
+            }
+        }
+
+        // Final saturation clamp
+        if *sec == i64::MAX {
+            *attos = mps - 1;
+        } else if *sec == i64::MIN {
+            *attos = 0;
+        }
+    }
+
+    /// Returns the total duration in seconds.
+    #[inline]
+    pub const fn to_sec(&mut self) -> i64 {
+        self.carry_over();
+        self.sec
+    }
+
+    pub(crate) const fn diff_raw_internal(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> Self {
+        if sub_a >= sub_b {
+            Self {
+                sec: sec_a.saturating_sub(sec_b),
+                attos: sub_a - sub_b,
+            }
+        } else {
+            Self {
+                sec: sec_a.saturating_sub(sec_b).saturating_sub(1),
+                attos: sub_a.saturating_add(ATTOS_PER_SEC.saturating_sub(sub_b)),
+            }
+        }
     }
 }

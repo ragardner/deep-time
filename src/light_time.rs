@@ -1,6 +1,5 @@
 use crate::{
-    C, C_SQUARED, ClockDrift, Dt, LocalSpacetime, Position, Real, TSpan, TWO_GM_SUN_OVER_C3,
-    Velocity, log,
+    C, C_SQUARED, ClockDrift, Dt, LocalSpacetime, Position, Real, TWO_GM_SUN_OVER_C3, Velocity, log,
 };
 
 /// Configuration for the **Shapiro delay** — the extra time light (or radio signals)
@@ -230,7 +229,7 @@ impl ObserverState {
     ///   or black hole.
     ///
     /// # Returns
-    /// A [`TSpan`] (in seconds) to be **added** to the Newtonian geometric light time.
+    /// A [`Dt`] (in seconds) to be **added** to the Newtonian geometric light time.
     ///
     /// # Examples
     ///
@@ -238,7 +237,7 @@ impl ObserverState {
     ///
     /// ```no_run
     /// use deep_time::{
-    ///     ObserverState, Position, Velocity, Dt, TSpan, LightContext,
+    ///     ObserverState, Position, Velocity, Dt, LightContext,
     ///     // Assume you have ephemeris functions or constants available
     /// };
     ///
@@ -266,7 +265,7 @@ impl ObserverState {
     /// );
     ///
     /// // Use SOLAR for Sun-centered calculations
-    /// let correction: TSpan = transmitter
+    /// let correction: Dt = transmitter
     ///     .one_way_relativistic_delay_to(receiver_approx, LightContext::SOLAR);
     ///
     /// // The result should be added to the Newtonian geometric delay `r_sep / C`
@@ -296,7 +295,7 @@ impl ObserverState {
         &self,
         rx: ObserverState,
         context: LightContext,
-    ) -> TSpan {
+    ) -> Dt {
         let span = rx.time.to_diff_raw(self.time);
 
         let tx_drift = ClockDrift::from_velocity_potential_and_scale(
@@ -337,7 +336,7 @@ impl ObserverState {
     /// - `context` – gravitational context (`LightContext::SOLAR`, `LightContext::FLAT`,
     ///   or a custom value). See [`one_way_relativistic_delay_to`] for details.
     /// - `tolerance` – maximum allowed change in receive time between iterations
-    ///   (recommended `TSpan::from_ns(1)` or tighter)
+    ///   (recommended `Dt::from_ns(1)` or tighter)
     /// - `max_iter` – safety limit on the number of iterations (recommended 8–12)
     ///
     /// # Returns
@@ -348,7 +347,7 @@ impl ObserverState {
     /// # Examples
     ///
     /// ```no_run
-    /// use deep_time::{ObserverState, Dt, TSpan, LightContext, Position, Velocity};
+    /// use deep_time::{ObserverState, Dt, LightContext, Position, Scale, Velocity};
     ///
     /// # // Assume these exist in your code (e.g. from an ephemeris library)
     /// # let tx_time: Dt = todo!();
@@ -371,7 +370,7 @@ impl ObserverState {
     ///         ObserverState::new(guessed_rx_time, pos, vel, potential)
     ///     },
     ///     LightContext::SOLAR,
-    ///     TSpan::from_ns(1),   // 1 nanosecond tolerance (recommended)
+    ///     Dt::from_ns(1, Scale::TAI),   // 1 nanosecond tolerance (recommended)
     ///     12,                  // safety limit (recommended)
     /// );
     ///
@@ -387,27 +386,27 @@ impl ObserverState {
     /// let context = LightContext::from_grav_param(jupiter_gm);
     ///
     /// let (correction, rx_time) = tx.iterative_one_way_relativistic_delay_to(
-    ///     rx_provider, context, TSpan::from_ns(0.1), 10
+    ///     rx_provider, context, Dt::from_ns(0.1), 10
     /// );
     /// ```
     pub fn iterative_one_way_relativistic_delay_to<F>(
         &self,
         mut rx_provider: F,
         context: LightContext,
-        tolerance: TSpan,
+        tolerance: Dt,
         max_iter: usize,
-    ) -> (TSpan, Dt)
+    ) -> (Dt, Dt)
     where
         F: FnMut(Dt) -> ObserverState,
     {
         let mut rx = rx_provider(self.time);
-        let mut rel_correction = TSpan::ZERO;
+        let mut rel_correction = Dt::ZERO;
 
         for _ in 0..max_iter {
             rel_correction = self.one_way_relativistic_delay_to(rx, context);
 
             let r_sep = self.position.distance_to(rx.position);
-            let geometric = TSpan::from_sec_f(r_sep / C);
+            let geometric = Dt::from_sec_f(r_sep / C);
             let full_delay = geometric.add(rel_correction);
 
             let new_rx_time = self.time.add(full_delay);
@@ -439,7 +438,7 @@ impl ObserverState {
     ///   excellent accuracy.
     ///
     /// # Returns
-    /// A [`TSpan`] containing the integrated clock-drift correction plus the Shapiro
+    /// A [`Dt`] containing the integrated clock-drift correction plus the Shapiro
     /// delay from the supplied `context`.
     ///
     /// # Example of building `samples`
@@ -466,7 +465,7 @@ impl ObserverState {
     /// ```no_run
     /// use deep_time::{
     ///     ObserverState, LocalSpacetime, Position, Velocity, Dt,
-    ///     TSpan, LightContext,
+    ///     LightContext,
     /// };
     ///
     /// # let tx_time: Dt = todo!();
@@ -503,7 +502,7 @@ impl ObserverState {
     ///     })
     ///     .collect();
     ///
-    /// let total_correction: TSpan = transmitter.one_way_relativistic_delay_integrated(
+    /// let total_correction: Dt = transmitter.one_way_relativistic_delay_integrated(
     ///     receiver,
     ///     LightContext::SOLAR,
     ///     &samples,
@@ -540,7 +539,7 @@ impl ObserverState {
         rx: ObserverState,
         context: LightContext,
         samples: &[LocalSpacetime],
-    ) -> TSpan {
+    ) -> Dt {
         if samples.is_empty() {
             return self.one_way_relativistic_delay_to(rx, context);
         }
@@ -577,7 +576,7 @@ impl ObserverState {
         let r_sep = self.position.distance_to(rx.position);
         let shapiro = Self::shapiro_one_way_delay(context, r_tx, r_rx, r_sep);
 
-        TSpan::from_sec_f(integrated_drift_sec).add(shapiro)
+        Dt::from_sec_f(integrated_drift_sec).add(shapiro)
     }
 
     /// Computes the relativistic correction for a two-way round-trip ranging measurement
@@ -594,7 +593,7 @@ impl ObserverState {
     /// - `context` – gravitational context for the Shapiro delay (see [`one_way_relativistic_delay_to`])
     ///
     /// # Returns
-    /// A [`TSpan`] (in seconds) that must be **subtracted** from the measured round-trip time.
+    /// A [`Dt`] (in seconds) that must be **subtracted** from the measured round-trip time.
     ///
     /// # Examples
     ///
@@ -602,7 +601,7 @@ impl ObserverState {
     ///
     /// ```no_run
     /// use deep_time::{
-    ///     ObserverState, Position, Velocity, Dt, TSpan, LightContext,
+    ///     ObserverState, Position, Velocity, Dt, LightContext,
     /// };
     ///
     /// # let tx_time: Dt = todo!();
@@ -612,7 +611,7 @@ impl ObserverState {
     /// # let rx_pos: Position = todo!();
     /// # let rx_vel: Velocity = todo!();
     /// # let rx_potential: f64 = todo!();
-    /// # let measured_round_trip: TSpan = todo!(); // from your ranging hardware / DSN
+    /// # let measured_round_trip: Dt = todo!(); // from your ranging hardware / DSN
     ///
     /// let transmitter = ObserverState::new(
     ///     tx_time,
@@ -652,10 +651,10 @@ impl ObserverState {
     /// ```
     pub const fn round_trip_relativistic_correction(
         &self,
-        round_trip_measured: TSpan,
+        round_trip_measured: Dt,
         rx: ObserverState,
         context: LightContext,
-    ) -> TSpan {
+    ) -> Dt {
         let one_way_approx = round_trip_measured.div_by_2();
         let rx_approx = ObserverState {
             time: self.time.add(one_way_approx),
@@ -676,18 +675,18 @@ impl ObserverState {
         r_tx: Real,
         r_rx: Real,
         r_sep: Real,
-    ) -> TSpan {
+    ) -> Dt {
         if context.two_grav_param_over_c3 == f!(0.0)
             || r_tx <= f!(0.0)
             || r_rx <= f!(0.0)
             || r_sep <= f!(0.0)
         {
-            return TSpan::ZERO;
+            return Dt::ZERO;
         }
 
         let arg = (r_tx + r_rx + r_sep) / (r_tx + r_rx - r_sep).max(f!(1.0));
         let delay_sec = context.two_grav_param_over_c3 * log(arg);
 
-        TSpan::from_sec_f(delay_sec)
+        Dt::from_sec_f(delay_sec)
     }
 }

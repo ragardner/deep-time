@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_SEC, Dt, GregorianTime, SEC_PER_DAYI64, Scale, TSpan, Weekday, YmdHms,
+    ATTOS_PER_SEC, Dt, GregorianTime, SEC_PER_DAYI64, Scale, Weekday, YmdHms,
     leap_seconds::get_leap_seconds,
 };
 
@@ -253,13 +253,9 @@ impl Dt {
 
         let civil_unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, h, m, s_for_unix) + extra_sec;
 
-        let tp = Self::from_epoch(
-            TSpan::new(civil_unix_sec, final_attos),
-            Dt::UNIX_EPOCH,
-            scale,
-        );
+        let tp = Self::from_epoch(Dt::new(civil_unix_sec, final_attos), Dt::UNIX_EPOCH, scale);
         if is_exact_leap_second {
-            tp.add(TSpan::from_sec(1))
+            tp.add(Dt::from_sec(1, Scale::TAI))
         } else {
             tp
         }
@@ -273,13 +269,13 @@ impl Dt {
     #[inline]
     pub const fn from_ymd(yr: i64, mo: u8, day: u8) -> Self {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
-        Self::from_epoch(TSpan::new(unix_sec, 0), Dt::UNIX_EPOCH, Scale::UTC)
+        Self::from_epoch(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, Scale::UTC)
     }
 
     #[inline]
     pub const fn from_ymd_on(yr: i64, mo: u8, day: u8, scale: Scale) -> Self {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
-        Self::from_epoch(TSpan::new(unix_sec, 0), Dt::UNIX_EPOCH, scale)
+        Self::from_epoch(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, scale)
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.

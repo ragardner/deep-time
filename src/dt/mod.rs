@@ -15,6 +15,8 @@ mod to_gps;
 mod to_str;
 mod trajectory;
 
+pub mod time_units;
+
 #[cfg(feature = "alloc")]
 mod formatting;
 #[cfg(feature = "alloc")]

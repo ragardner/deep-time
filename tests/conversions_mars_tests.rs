@@ -76,7 +76,7 @@ fn msd_at_j2000_is_correct() {
     // New exact value (no magic number)
     let frac_sols = to_sec_f(frac) / MARS_SOL_LENGTH_SEC;
     assert!(
-        (frac_sols - 0.61987471912).abs() < 1e-11, // or use a TSpan comparison
+        (frac_sols - 0.61987471912).abs() < 1e-11, // or use a Span comparison
         "Fractional part of MSD at J2000 (TAI) was {} sols",
         frac_sols
     );

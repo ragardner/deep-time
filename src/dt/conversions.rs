@@ -4,21 +4,13 @@ use crate::{
     ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ClockDrift, ClockModel, Dt, J2000_SEC_PER_CENTURY,
     JD_2000_2_451_545, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Real, SEC_PER_DAYI64, SEC_PER_DAYI128,
     Scale, TAI_SEC_AT_1972, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC,
-    TDB0_ATTOS, TSpan, TT_TAI_OFFSET_SPAN, sin_approx,
+    TDB0_ATTOS, TT_TAI_OFFSET, sin_approx,
 };
 
 impl Dt {
-    #[inline(always)]
-    pub const fn to_span(&self) -> TSpan {
-        TSpan {
-            sec: self.sec,
-            attos: self.attos,
-        }
-    }
-
     #[inline]
-    pub const fn from_span(span: TSpan, scale: Scale) -> Dt {
-        Self::from(span.sec, span.attos, scale)
+    pub const fn from_dt(dt: Dt, scale: Scale) -> Dt {
+        Self::from(dt.sec, dt.attos, scale)
     }
 
     pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
@@ -28,36 +20,45 @@ impl Dt {
         match scale {
             Scale::TAI | Scale::Custom | Scale::UT1 => raw,
 
-            Scale::TT => raw.sub(TT_TAI_OFFSET_SPAN),
+            Scale::TT => raw.sub(TT_TAI_OFFSET),
 
-            Scale::UTC => raw.add(TSpan::from_sec(get_leap_seconds(&raw, true).offset)),
+            Scale::UTC => raw.add(Dt::from_sec(
+                get_leap_seconds(&raw, true).offset,
+                Scale::TAI,
+            )),
 
             Scale::UTCSpice => {
-                let tai = raw.add(TSpan::from_sec(get_leap_seconds(&raw, true).offset));
+                let tai = raw.add(Dt::from_sec(
+                    get_leap_seconds(&raw, true).offset,
+                    Scale::TAI,
+                ));
                 if sec < TAI_SEC_AT_1972 - 10 {
-                    tai.add(TSpan::from_sec_f(f!(9.0)))
+                    tai.add(Dt::from_sec_f(f!(9.0)))
                 } else {
                     tai
                 }
             }
             Scale::UTCSofa => {
-                let tai = raw.add(TSpan::from_sec(get_leap_seconds(&raw, true).offset));
+                let tai = raw.add(Dt::from_sec(
+                    get_leap_seconds(&raw, true).offset,
+                    Scale::TAI,
+                ));
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(&raw) {
-                    tai.add(TSpan::from_sec_f(offset))
+                    tai.add(Dt::from_sec_f(offset))
                 } else {
                     tai
                 }
             }
 
-            Scale::GPS | Scale::QZSS | Scale::GST => raw.add(TSpan::SEC_19),
+            Scale::GPS | Scale::QZSS | Scale::GST => raw.add(Dt::SEC_19),
 
-            Scale::BDT => raw.add(TSpan::SEC_33),
+            Scale::BDT => raw.add(Dt::SEC_33),
 
             Scale::TDB | Scale::ET => Self::tdb_to_tai(raw),
 
             Scale::TCG => {
                 let tt = Self::tcg_to_tt(raw);
-                tt.sub(TT_TAI_OFFSET_SPAN)
+                tt.sub(TT_TAI_OFFSET)
             }
 
             Scale::TCB => {
@@ -67,72 +68,84 @@ impl Dt {
 
             Scale::LTC => {
                 let tt = Self::ltc_to_tt(raw);
-                tt.sub(TT_TAI_OFFSET_SPAN)
+                tt.sub(TT_TAI_OFFSET)
             }
 
-            Scale::TCL => {
-                let tt = Self::tcl_to_tt(raw);
-                tt.sub(TT_TAI_OFFSET_SPAN)
-            }
+            Scale::TCL => Self::tcl_to_tai(raw),
         }
     }
 
-    /// Returns a bare [`TSpan`] containing the numerical `sec`/`attos` values
+    /// Returns a [`Dt`] containing the numerical `sec`/`attos` values
     /// of this instant **on its own [`Scale`]** (same physical moment).
     ///
     /// This is the recommended way for callers to obtain the representation on
     /// a particular scale after construction via [`Self::from`].
-    pub const fn to(&self, scale: Scale) -> TSpan {
+    pub const fn to(&self, scale: Scale) -> Dt {
         match scale {
-            Scale::TAI | Scale::Custom | Scale::UT1 => self.to_span(),
+            Scale::TAI | Scale::Custom | Scale::UT1 => *self,
 
-            Scale::TT => self.add(TT_TAI_OFFSET_SPAN).to_span(),
+            Scale::TT => self.add(TT_TAI_OFFSET),
 
-            Scale::UTC => self
-                .sub(TSpan::from_sec(get_leap_seconds(&self, false).offset))
-                .to_span(),
-
+            Scale::UTC => self.sub(Dt::from_sec(
+                get_leap_seconds(&self, false).offset,
+                Scale::TAI,
+            )),
             Scale::UTCSpice => {
                 if self.sec < TAI_SEC_AT_1972 {
-                    self.sub(TSpan::from_sec(get_leap_seconds(&self, false).offset))
-                        .sub(TSpan::from_sec_f(f!(9.0)))
-                        .to_span()
+                    self.sub(Dt::from_sec(
+                        get_leap_seconds(&self, false).offset,
+                        Scale::TAI,
+                    ))
+                    .sub(Dt::from_sec_f(f!(9.0)))
                 } else {
-                    self.sub(TSpan::from_sec(get_leap_seconds(&self, false).offset))
-                        .to_span()
+                    self.sub(Dt::from_sec(
+                        get_leap_seconds(&self, false).offset,
+                        Scale::TAI,
+                    ))
                 }
             }
             Scale::UTCSofa => {
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(&self) {
-                    self.sub(TSpan::from_sec(get_leap_seconds(&self, false).offset))
-                        .sub(TSpan::from_sec_f(offset))
-                        .to_span()
+                    self.sub(Dt::from_sec(
+                        get_leap_seconds(&self, false).offset,
+                        Scale::TAI,
+                    ))
+                    .sub(Dt::from_sec_f(offset))
                 } else {
-                    self.sub(TSpan::from_sec(get_leap_seconds(&self, false).offset))
-                        .to_span()
+                    self.sub(Dt::from_sec(
+                        get_leap_seconds(&self, false).offset,
+                        Scale::TAI,
+                    ))
                 }
             }
 
-            Scale::GPS | Scale::QZSS | Scale::GST => self.sub(TSpan::SEC_19).to_span(),
+            Scale::GPS | Scale::QZSS | Scale::GST => self.sub(Dt::SEC_19),
 
-            Scale::BDT => self.sub(TSpan::SEC_33).to_span(),
+            Scale::BDT => self.sub(Dt::SEC_33),
 
-            Scale::TDB | Scale::ET => Self::tai_to_tdb(*self).to_span(),
+            Scale::TDB | Scale::ET => Self::tai_to_tdb(*self),
 
-            Scale::TCG => Self::tai_to_tcg(*self).to_span(),
+            Scale::TCG => Self::tai_to_tcg(*self),
 
-            Scale::TCB => Self::tai_to_tcb(*self).to_span(),
+            Scale::TCB => Self::tai_to_tcb(*self),
 
             Scale::LTC => {
-                let tt = self.add(TT_TAI_OFFSET_SPAN);
-                Self::tt_to_ltc(tt).to_span()
+                let tt = self.add(TT_TAI_OFFSET);
+                Self::tt_to_ltc(tt)
             }
 
-            Scale::TCL => {
-                let tt = self.add(TT_TAI_OFFSET_SPAN);
-                Self::tt_to_tcl(tt).to_span()
-            }
+            Scale::TCL => Self::tai_to_tcl(*self),
         }
+    }
+
+    #[inline]
+    pub const fn to_tai(&self, current: Scale) -> Dt {
+        Self::from(self.sec, self.attos, current)
+    }
+
+    #[inline]
+    pub const fn to_scale_from(&self, current: Scale, target: Scale) -> Dt {
+        Self::from(self.sec, self.attos, current).to(target)
     }
 
     /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
@@ -180,7 +193,7 @@ impl Dt {
     }
 
     pub(crate) const fn tai_to_tdb(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN);
+        let tt = tai.add(TT_TAI_OFFSET);
         let span = Self::tdb_minus_tt(tt.sec, tt.attos);
         tt.add(span)
     }
@@ -192,11 +205,11 @@ impl Dt {
             tt = tdb.sub(Self::tdb_minus_tt(tt.sec, tt.attos));
             i += 1;
         }
-        tt.sub(TT_TAI_OFFSET_SPAN)
+        tt.sub(TT_TAI_OFFSET)
     }
 
     pub(crate) const fn tai_to_tcg(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET_SPAN);
+        let tt = tai.add(TT_TAI_OFFSET);
         Self::tt_to_tcg(tt)
     }
 
@@ -251,27 +264,27 @@ impl Dt {
     pub(crate) const fn tt_to_tcg(tt: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_tcg_tcb_epoch(tt);
         let span_attos = Self::mul_lg(elapsed);
-        tt.add(TSpan::from_attos(span_attos))
+        tt.add(Dt::from_attos(span_attos, Scale::TAI))
     }
 
     pub(crate) const fn tcg_to_tt(tcg: Self) -> Self {
         let elapsed_cg = Self::elapsed_to_attos_since_tcg_tcb_epoch(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
-        tcg.sub(TSpan::from_attos(span_attos))
+        tcg.sub(Dt::from_attos(span_attos, Scale::TAI))
     }
 
     pub(crate) const fn tcb_to_tdb(tcb: Self) -> Self {
         let elapsed_cg = Self::elapsed_to_attos_since_tcg_tcb_epoch(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
-        tcb.sub(TSpan::from_attos(span_attos))
-            .sub(TSpan::from_attos(TDB0_ATTOS))
+        tcb.sub(Dt::from_attos(span_attos, Scale::TAI))
+            .sub(Dt::from_attos(TDB0_ATTOS, Scale::TAI))
     }
 
     pub(crate) const fn tdb_to_tcb(tdb: Self) -> Self {
         let elapsed = Self::elapsed_to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
-        tdb.add(TSpan::from_attos(span_attos))
-            .add(TSpan::from_attos(TDB0_ATTOS))
+        tdb.add(Dt::from_attos(span_attos, Scale::TAI))
+            .add(Dt::from_attos(TDB0_ATTOS, Scale::TAI))
     }
 
     /// Computes the difference TDB − TT (in seconds) using the four dominant
@@ -320,7 +333,7 @@ impl Dt {
     ///
     /// - SOFA/ERFA `eraDtdb` implementation (2021 May 11 revision):
     ///   https://raw.githubusercontent.com/liberfa/erfa/master/src/dtdb.c
-    pub(crate) const fn tdb_minus_tt(sec: i64, attos: u64) -> TSpan {
+    pub(crate) const fn tdb_minus_tt(sec: i64, attos: u64) -> Dt {
         let seconds_since_j2000_tt = f!(sec) + f!(attos) / f!(ATTOS_PER_SEC);
         let t = seconds_since_j2000_tt / J2000_SEC_PER_CENTURY;
 
@@ -345,6 +358,6 @@ impl Dt {
             + f!(0.000004770086) * lunar
             + f!(0.000004676740) * venus;
 
-        TSpan::from_sec_f(correction)
+        Dt::from_sec_f(correction)
     }
 }

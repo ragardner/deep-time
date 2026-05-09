@@ -6,8 +6,8 @@ mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
     use deep_time::{
-        ClockDrift, ClockModel, Dt, GregorianTime, Meridiem, Offset, Scale, TSpan, TimeParts,
-        TimeRange, Weekday,
+        ClockDrift, ClockModel, Dt, GregorianTime, Meridiem, Offset, Scale, TimeParts, TimeRange,
+        Weekday,
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -25,13 +25,9 @@ mod tests {
     }
 
     #[test]
-    fn test_span_roundtrip() {
-        let span = TSpan::from_sec(123456789) + TSpan::from_ns(987654321);
-        assert_roundtrip(
-            &span,
-            |d| d.to_wire_bytes().to_vec(),
-            TSpan::from_wire_bytes,
-        );
+    fn test_dt_roundtrip() {
+        let span = Dt::from_sec(123456789, Scale::TAI) + Dt::from_ns(987654321, Scale::TAI);
+        assert_roundtrip(&span, |d| d.to_wire_bytes().to_vec(), Dt::from_wire_bytes);
     }
 
     #[test]
@@ -42,7 +38,11 @@ mod tests {
 
     #[test]
     fn test_clockdrift_roundtrip() {
-        let drift = ClockDrift::new(TSpan::from_sec(5), TSpan::from_ns(1), TSpan::from_attos(2));
+        let drift = ClockDrift::new(
+            Dt::from_sec(5, Scale::TAI),
+            Dt::from_ns(1, Scale::TAI),
+            Dt::from_attos(2, Scale::TAI),
+        );
         assert_roundtrip(
             &drift,
             |d| d.to_wire_bytes().to_vec(),
@@ -55,7 +55,10 @@ mod tests {
         let model = ClockModel::new(
             Scale::Custom,
             Dt::new(0, 0),
-            ClockDrift::from_offset_and_rate(TSpan::from_sec(42), TSpan::from_ns(1)),
+            ClockDrift::from_offset_and_rate(
+                Dt::from_sec(42, Scale::TAI),
+                Dt::from_ns(1, Scale::TAI),
+            ),
         );
         assert_roundtrip(
             &model,
@@ -67,8 +70,8 @@ mod tests {
     #[test]
     fn test_timerange_roundtrip() {
         let start = Dt::new(1000000000, 0);
-        let end = start + TSpan::from_hr(24);
-        let step = TSpan::from_hr(1);
+        let end = start + Dt::from_hr(24, Scale::TAI);
+        let step = Dt::from_hr(1, Scale::TAI);
         let range = start.range_to(end, step);
 
         assert_roundtrip(

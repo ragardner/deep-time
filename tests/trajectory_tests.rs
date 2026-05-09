@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod proper_time_samples_tests {
-    use deep_time::{Dt, LocalSpacetime, Scale, TSpan};
+    use deep_time::{Dt, LocalSpacetime, Scale};
 
     fn make_state(tai_sec: i64) -> Dt {
         Dt::from(tai_sec, 0, Scale::TAI)
@@ -13,7 +13,7 @@ mod proper_time_samples_tests {
         let samples = [LocalSpacetime::new(1.0, 0.0, 0.0); 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::ZERO);
+        assert_eq!(dtau, Dt::ZERO);
     }
 
     #[test]
@@ -25,7 +25,7 @@ mod proper_time_samples_tests {
         let samples = [flat; 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::from_sec(1000));
+        assert_eq!(dtau, Dt::from_sec(1000, Scale::TAI));
     }
 
     #[test]
@@ -37,7 +37,7 @@ mod proper_time_samples_tests {
         let samples = [slow; 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::from_sec(900));
+        assert_eq!(dtau, Dt::from_sec(900, Scale::TAI));
     }
 
     #[test]
@@ -49,7 +49,7 @@ mod proper_time_samples_tests {
         let samples = [slow; 2];
 
         let correction = t0.relativistic_correction_with_samples(t1, &samples);
-        assert_eq!(correction, TSpan::from_sec(-100));
+        assert_eq!(correction, Dt::from_sec(-100, Scale::TAI));
     }
 
     #[test]
@@ -61,7 +61,7 @@ mod proper_time_samples_tests {
         let samples = [slow; 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::from_sec(-900));
+        assert_eq!(dtau, Dt::from_sec(-900, Scale::TAI));
     }
 
     #[test]
@@ -73,6 +73,6 @@ mod proper_time_samples_tests {
         let samples = [moving; 2];
 
         let dtau = t0.proper_time_interval_samples(t1, &samples);
-        assert_eq!(dtau, TSpan::from_sec(400));
+        assert_eq!(dtau, Dt::from_sec(400, Scale::TAI));
     }
 }

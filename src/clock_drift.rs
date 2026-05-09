@@ -55,7 +55,7 @@ K_{\rm eff} = 1 - \Lambda^2 + (\ell_{\rm Pl}^4 \mathcal{K})\Lambda^4 + \mathcal{
 \[
 \frac{d\tau}{dt} = \sqrt{1 - \Lambda^2}\left(1 + \frac{\ell_{\rm Pl}^4 \mathcal{K} \,\Lambda^4}{2(1 - \Lambda^2)} + \mathcal{O}(\ell_{\rm Pl}^8 \mathcal{K}^2)\right).
 \]
-The accumulated proper-time shifts remain \(\delta(\TSpan\tau) \ll 10^{-140}\) s over cosmic history and far below machine precision in solar-system integrations—identical to the original low-curvature recovery of GR.
+The accumulated proper-time shifts remain \(\delta(\Span\tau) \ll 10^{-140}\) s over cosmic history and far below machine precision in solar-system integrations—identical to the original low-curvature recovery of GR.
 
 **High-curvature saturation (\(x \gg 1\))**
 \[
@@ -96,7 +96,7 @@ General relativity is recovered exactly as the low-curvature projection of this 
 This formulation is production-ready for spacecraft navigation pipelines, black-hole flyby simulations, cosmological trajectories, or any mixed weak/strong-field probe adventure. All prior stages are recovered algebraically in the low-curvature limit. The engine is minimal, modular, and fully first-principles at the level of the master Lagrangian.
 */
 
-use crate::{ATTOS_PER_SEC_I128, C_SQUARED, PLANCK_LENGTH_4, Real, TSpan, Velocity, sqrt};
+use crate::{ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Real, Scale, Velocity, sqrt};
 
 /// The three local spacetime quantities that fully determine how fast an observer’s
 /// proper time advances relative to coordinate time.
@@ -342,7 +342,7 @@ impl LocalSpacetime {
 /// steer clocks, predict time offsets, and maintain synchronization over long
 /// durations.
 ///
-/// All three coefficients are stored using the exact `TSpan` type, which
+/// All three coefficients are stored using the exact `Dt` type, which
 /// guarantees 36-digit precision with no floating-point rounding errors even
 /// over centuries of integration.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -352,23 +352,23 @@ pub struct ClockDrift {
     /// Constant term a₀ expressed in seconds.  
     /// This represents any fixed time offset between the observer’s proper time
     /// and the chosen coordinate time.
-    constant: TSpan,
+    constant: Dt,
 
     /// Linear drift rate a₁ expressed in seconds per second.  
     /// This term captures a steady fractional rate difference (for example, a
     /// clock that runs consistently fast or slow).
-    rate: TSpan,
+    rate: Dt,
 
     /// Quadratic acceleration term a₂ expressed in seconds per second squared.  
     /// This term accounts for any changing drift rate, such as the gradual
     /// acceleration caused by relativistic effects or hardware aging.
-    accel: TSpan,
+    accel: Dt,
 }
 
 impl ClockDrift {
     /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
     #[inline]
-    pub const fn new(constant: TSpan, rate: TSpan, accel: TSpan) -> Self {
+    pub const fn new(constant: Dt, rate: Dt, accel: Dt) -> Self {
         Self {
             constant,
             rate,
@@ -379,15 +379,15 @@ impl ClockDrift {
     /// The zero polynomial representing no correction at all.  
     /// Use this when the observer’s clock is already perfectly synchronized with
     /// the chosen coordinate time.
-    pub const ZERO: Self = Self::new(TSpan::ZERO, TSpan::ZERO, TSpan::ZERO);
+    pub const ZERO: Self = Self::new(Dt::ZERO, Dt::ZERO, Dt::ZERO);
 
     /// Creates a `ClockDrift` consisting of a pure constant offset.  
     /// This is the most common constructor when only a fixed time bias is known
     /// (for example, after a one-time clock synchronization or leap-second
     /// adjustment).
     #[inline]
-    pub const fn from_constant(c: TSpan) -> Self {
-        Self::new(c, TSpan::ZERO, TSpan::ZERO)
+    pub const fn from_constant(c: Dt) -> Self {
+        Self::new(c, Dt::ZERO, Dt::ZERO)
     }
 
     /// Creates a `ClockDrift` consisting of a constant offset together with a
@@ -396,56 +396,56 @@ impl ClockDrift {
     /// where a steady fractional frequency offset must be corrected in addition
     /// to any fixed bias.
     #[inline]
-    pub const fn from_offset_and_rate(offset: TSpan, rate: TSpan) -> Self {
-        Self::new(offset, rate, TSpan::ZERO)
+    pub const fn from_offset_and_rate(offset: Dt, rate: Dt) -> Self {
+        Self::new(offset, rate, Dt::ZERO)
     }
 
     #[inline]
-    pub const fn constant(&self) -> &TSpan {
+    pub const fn constant(&self) -> &Dt {
         &self.constant
     }
 
     #[inline]
-    pub const fn rate(&self) -> &TSpan {
+    pub const fn rate(&self) -> &Dt {
         &self.rate
     }
 
     #[inline]
-    pub const fn accel(&self) -> &TSpan {
+    pub const fn accel(&self) -> &Dt {
         &self.accel
     }
 
     #[inline]
-    pub const fn set_constant(&mut self, constant: TSpan) -> &mut Self {
+    pub const fn set_constant(&mut self, constant: Dt) -> &mut Self {
         self.constant = constant;
         self
         // constant never affects the pre-computed big fields
     }
 
     #[inline]
-    pub const fn set_rate(&mut self, rate: TSpan) -> &mut Self {
+    pub const fn set_rate(&mut self, rate: Dt) -> &mut Self {
         self.rate = rate;
         self
     }
 
     #[inline]
-    pub const fn set_accel(&mut self, accel: TSpan) -> &mut Self {
+    pub const fn set_accel(&mut self, accel: Dt) -> &mut Self {
         self.accel = accel;
         self
     }
 
     #[inline]
-    pub const fn with_constant(self, constant: TSpan) -> Self {
+    pub const fn with_constant(self, constant: Dt) -> Self {
         Self::new(constant, self.rate, self.accel)
     }
 
     #[inline]
-    pub const fn with_rate(self, rate: TSpan) -> Self {
+    pub const fn with_rate(self, rate: Dt) -> Self {
         Self::new(self.constant, rate, self.accel)
     }
 
     #[inline]
-    pub const fn with_accel(self, accel: TSpan) -> Self {
+    pub const fn with_accel(self, accel: Dt) -> Self {
         Self::new(self.constant, self.rate, accel)
     }
 
@@ -469,7 +469,7 @@ impl ClockDrift {
     /// time and coordinate time after the interval span has passed. All
     /// arithmetic is performed with full 36-digit precision, ensuring no loss of
     /// accuracy even for multi-year integrations.
-    pub const fn time_diff_after(&self, span: &TSpan) -> TSpan {
+    pub const fn time_diff_after(&self, span: &Dt) -> Dt {
         let dt_attos = span.to_attos();
         let mut total_attos = self.constant.to_attos();
 
@@ -486,7 +486,7 @@ impl ClockDrift {
             total_attos = total_attos.saturating_add(accel_term);
         }
 
-        TSpan::from_attos(total_attos)
+        Dt::from_attos(total_attos, Scale::TAI)
     }
 
     /// Creates a `ClockDrift` directly from an observer’s velocity and total
@@ -547,7 +547,7 @@ impl ClockDrift {
         let rate_factor = sqrt(k_eff).max(f!(0.0));
         let rate_offset = rate_factor - f!(1.0);
 
-        Self::from_offset_and_rate(TSpan::ZERO, TSpan::from_sec_f(rate_offset))
+        Self::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(rate_offset))
     }
 
     /// Creates a `ClockDrift` from a fully resolved `LocalSpacetime` snapshot.  
@@ -570,31 +570,31 @@ impl ClockDrift {
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize = 3 * TSpan::WIRE_SIZE; // 3 × 17 = 51
+    pub const WIRE_SIZE: usize = 3 * Dt::WIRE_SIZE; // 3 × 17 = 51
 
     /// Serializes this `ClockDrift` polynomial into a fixed buffer.
     ///
-    /// The layout is the concatenation of the three `TSpan` fields.
+    /// The layout is the concatenation of the three `Dt` fields.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         let c = self.constant.to_wire_bytes();
         let r = self.rate.to_wire_bytes();
         let a = self.accel.to_wire_bytes();
 
-        buf[0..TSpan::WIRE_SIZE].copy_from_slice(&c);
-        buf[TSpan::WIRE_SIZE..2 * TSpan::WIRE_SIZE].copy_from_slice(&r);
-        buf[2 * TSpan::WIRE_SIZE..].copy_from_slice(&a);
+        buf[0..Dt::WIRE_SIZE].copy_from_slice(&c);
+        buf[Dt::WIRE_SIZE..2 * Dt::WIRE_SIZE].copy_from_slice(&r);
+        buf[2 * Dt::WIRE_SIZE..].copy_from_slice(&a);
         buf
     }
 
     /// Deserializes a `ClockDrift` from exactly `WIRE_SIZE` bytes of wire data.
     ///
-    /// Returns `None` if any nested `TSpan` fails validation or if the version
+    /// Returns `None` if any nested `Dt` fails validation or if the version
     /// byte is unknown.
     ///
     /// ## Security
     ///
-    /// Composes the safety guarantees of [`TSpan::from_wire_bytes`].
+    /// Composes the safety guarantees of [`Dt::from_wire_bytes`].
     /// Fixed size and layered validation make it safe for untrusted input.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
@@ -605,9 +605,9 @@ impl ClockDrift {
             return None;
         }
 
-        let constant = TSpan::from_wire_bytes(&bytes[0..TSpan::WIRE_SIZE])?;
-        let rate = TSpan::from_wire_bytes(&bytes[TSpan::WIRE_SIZE..2 * TSpan::WIRE_SIZE])?;
-        let accel = TSpan::from_wire_bytes(&bytes[2 * TSpan::WIRE_SIZE..])?;
+        let constant = Dt::from_wire_bytes(&bytes[0..Dt::WIRE_SIZE])?;
+        let rate = Dt::from_wire_bytes(&bytes[Dt::WIRE_SIZE..2 * Dt::WIRE_SIZE])?;
+        let accel = Dt::from_wire_bytes(&bytes[2 * Dt::WIRE_SIZE..])?;
 
         Some(Self::new(constant, rate, accel))
     }

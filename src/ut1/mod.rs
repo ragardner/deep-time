@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_DAY, Dt, DtErr, DtErrKind, Real, SEC_PER_DAY_F, Scale, TSpan, an_err};
+use crate::{ATTOS_PER_DAY, Dt, DtErr, DtErrKind, Real, SEC_PER_DAY_F, Scale, an_err};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
@@ -306,7 +306,7 @@ impl Dt {
                 an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
             })?;
 
-        Ok(self.add(TSpan::from_sec_f(dut1)))
+        Ok(self.add(Dt::from_sec_f(dut1)))
     }
 
     /// Convert a UT1 `Dt` back to UTC.
@@ -331,7 +331,7 @@ impl Dt {
                     an_err!(DtErrKind::OutOfRange, "mjd: {mjd_f}")
                 })?;
 
-            utc_guess = ut1.sub(TSpan::from_sec_f(dut1));
+            utc_guess = ut1.sub(Dt::from_sec_f(dut1));
         }
 
         Ok(utc_guess)

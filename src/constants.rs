@@ -1,18 +1,5 @@
-use crate::{Real, TSpan};
+use crate::{Dt, Real};
 
-/// Fixed-length second equivalents for ISO 8601 calendar units (Y, M, W, D).
-///
-/// These constants deliberately use the **Julian year** convention (exactly
-/// 365.25 days per year) rather than the slightly more precise Gregorian
-/// average (365.2425 days). This is the traditional astronomical standard
-/// used by Julian Day (JD) and Modified Julian Date (MJD) systems, and it
-/// matches the `NS_PER_YEAR` / `NS_PER_MONTH` constants.
-///
-/// They exist so that years/months/weeks/days can be converted to a
-/// **fixed number of seconds**.
-/// The resulting `Span` then contains only fixed time units (hours,
-/// minutes, seconds, nanoseconds) and no longer requires a reference
-/// date for `.total()` conversions.
 pub(crate) const SEC_PER_YEAR: i128 = 31_557_600; // 365.25 days × 86_400
 pub(crate) const SEC_PER_MONTH: i128 = 2_629_800; // 30.4375 days × 86_400
 pub(crate) const SEC_PER_DAY: i128 = 86_400;
@@ -78,8 +65,8 @@ pub const ATTOS_PER_FS_I128: i128 = ATTOS_PER_FS as i128;
 pub(crate) const TT_TAI_OFFSET_SEC: i64 = 32;
 pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 × 10¹⁸
 
-/// Helper that returns the exact TT–TAI offset as a `TSpan`.
-pub const TT_TAI_OFFSET_SPAN: TSpan = TSpan::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
+/// Helper that returns the exact TT–TAI offset as a `Dt`.
+pub const TT_TAI_OFFSET: Dt = Dt::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
 
 // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
 pub(crate) const J2000_SEC_PER_CENTURY: Real = 3_155_760_000.0;
@@ -97,7 +84,6 @@ pub(crate) const TAI_SECS_1970_MIDNIGHT_TO_2000_NOON: i64 = 946_728_000;
 
 // pub(crate) const FS_PER_SEC: i128 = 1_000_000_000_000_000;
 // pub(crate) const PS_PER_SEC: i128 = 1_000_000_000_000;
-pub(crate) const NS_PER_SEC: i128 = 1_000_000_000;
 // pub(crate) const US_PER_SEC: i128 = 1_000_000;
 // pub(crate) const MS_PER_SEC: i128 = 1_000;
 
@@ -140,7 +126,7 @@ pub(crate) const MARS_MSD_REF_TOD_SUBSEC: u64 = 650_560_000_000_000_000;
 pub const MARS_SOL_ATTOS: i128 = 88_775_244_000_000_000_000_000;
 
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
-pub(crate) const MARS_REF_TT: TSpan = TSpan::new(-3_976_386_952, 650_560_000_000_000_000);
+pub(crate) const MARS_REF_TT: Dt = Dt::new(-3_976_386_952, 650_560_000_000_000_000);
 
 pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
     b"Sunday",

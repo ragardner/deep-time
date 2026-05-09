@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, Dt, JD_2000_2_451_545, JD_EPOCH_DAYS,
-    MJD_1970, Real, SEC_PER_DAYI64, Scale, TSpan, clamp_i128_to_i64,
+    MJD_1970, Real, SEC_PER_DAYI64, Scale, clamp_i128_to_i64,
 };
 
 impl Dt {
@@ -38,7 +38,7 @@ impl Dt {
             let jd_int = 2_440_587i64.saturating_add(days_i64);
             (jd_int, frac_attos)
         } else {
-            let TSpan { sec, attos } = self.to(target);
+            let Dt { sec, attos } = self.to(target);
             let days_since_j2000 = sec.div_euclid(SEC_PER_DAYI64);
             let remaining_sec = sec.rem_euclid(SEC_PER_DAYI64);
 

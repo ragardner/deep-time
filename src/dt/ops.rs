@@ -1,45 +1,82 @@
-use crate::{Dt, TSpan};
+use crate::Dt;
 use core::cmp::Ordering;
-use core::ops::{Add, AddAssign, Sub, SubAssign};
+use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-impl Add<TSpan> for Dt {
+impl Add<Dt> for Dt {
     type Output = Self;
 
     #[inline]
-    fn add(self, rhs: TSpan) -> Self {
+    fn add(self, rhs: Dt) -> Self {
         self.add(rhs)
     }
 }
 
-impl AddAssign<TSpan> for Dt {
+impl AddAssign<Dt> for Dt {
     #[inline]
-    fn add_assign(&mut self, rhs: TSpan) {
+    fn add_assign(&mut self, rhs: Dt) {
         *self = self.add(rhs);
     }
 }
 
-impl Sub<TSpan> for Dt {
+impl Sub<Dt> for Dt {
     type Output = Self;
 
     #[inline]
-    fn sub(self, rhs: TSpan) -> Self {
+    fn sub(self, rhs: Dt) -> Self {
         self.sub(rhs)
     }
 }
 
-impl SubAssign<TSpan> for Dt {
+impl SubAssign<Dt> for Dt {
     #[inline]
-    fn sub_assign(&mut self, rhs: TSpan) {
+    fn sub_assign(&mut self, rhs: Dt) {
         *self = self.sub(rhs);
     }
 }
 
-impl Sub<Dt> for Dt {
-    type Output = TSpan;
+impl Neg for Dt {
+    type Output = Self;
 
+    /// Negates this `Dt` (returns the additive inverse).
     #[inline]
-    fn sub(self, rhs: Dt) -> TSpan {
-        self.to_diff_raw(rhs)
+    fn neg(self) -> Self {
+        self.neg()
+    }
+}
+
+impl Mul<i64> for Dt {
+    type Output = Self;
+
+    /// Multiplies this `Dt` by an integer scalar.
+    #[inline]
+    fn mul(self, rhs: i64) -> Self {
+        self.mul(rhs)
+    }
+}
+
+impl MulAssign<i64> for Dt {
+    /// Multiplies this `Dt` by an integer scalar in place.
+    #[inline]
+    fn mul_assign(&mut self, rhs: i64) {
+        *self = self.mul(rhs);
+    }
+}
+
+impl Div<i64> for Dt {
+    type Output = Self;
+
+    /// Divides this `Dt` by an integer scalar.
+    #[inline]
+    fn div(self, rhs: i64) -> Self {
+        self.div(rhs)
+    }
+}
+
+impl DivAssign<i64> for Dt {
+    /// Divides this `Dt` by an integer scalar in place.
+    #[inline]
+    fn div_assign(&mut self, rhs: i64) {
+        *self = self.div(rhs);
     }
 }
 
@@ -102,6 +139,34 @@ impl Dt {
             Ordering::Equal => true,
             _ => false,
         }
+    }
+
+    /// Returns `true` if this `Dt` is less than the other.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
+    pub const fn lt(self, other: Self) -> bool {
+        matches!(self.cmp(other), Ordering::Less)
+    }
+
+    /// Returns `true` if this `Dt` is greater than the other.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
+    pub const fn gt(self, other: Self) -> bool {
+        matches!(self.cmp(other), Ordering::Greater)
+    }
+
+    /// Returns `true` if this `Dt` is less than or equal to the other.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
+    pub const fn le(self, other: Self) -> bool {
+        !matches!(self.cmp(other), Ordering::Greater)
+    }
+
+    /// Returns `true` if this `Dt` is greater than or equal to the other.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
+    pub const fn ge(self, other: Self) -> bool {
+        !matches!(self.cmp(other), Ordering::Less)
     }
 }
 

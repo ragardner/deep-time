@@ -8,7 +8,7 @@
 /// authoritative published reference value. All tolerances are set to be
 /// substantially tighter than any operational requirement for cislunar PNT.
 mod ltc_tests {
-    use deep_time::{Dt, Scale, TSpan};
+    use deep_time::{Dt, Scale};
 
     /// Verifies round-trip conversion accuracy between TAI and LTC.
     ///
@@ -51,7 +51,7 @@ mod ltc_tests {
         let tai = Dt::ZERO;
         let ltc = tai.to(Scale::LTC);
 
-        let diff_s = ltc.to_diff_raw(tai.to_span()).to_sec_f();
+        let diff_s = ltc.to_diff_raw(tai).to_sec_f();
 
         const EXPECTED_LTC_TAI_J2000_S: f64 = 32.654559693364384;
 
@@ -199,10 +199,10 @@ mod ltc_tests {
         // (Unix timestamp 2_145_916_800 on the TAI scale)
         let unix_tai_sec = 2_145_916_800i64;
 
-        let tai_2038 = Dt::from_epoch(TSpan::new(unix_tai_sec, 0), Dt::UNIX_EPOCH, Scale::TAI);
+        let tai_2038 = Dt::from_epoch(Dt::new(unix_tai_sec, 0), Dt::UNIX_EPOCH, Scale::TAI);
 
-        let tcl_span = tai_2038.to(Scale::TCL); // TSpan on TCL scale
-        let tdb_span = tai_2038.to(Scale::TDB); // TSpan on TDB scale
+        let tcl_span = tai_2038.to(Scale::TCL); // Dt on TCL scale
+        let tdb_span = tai_2038.to(Scale::TDB); // Dt on TDB scale
 
         let diff_s = tcl_span.to_diff_raw(tdb_span).to_sec_f();
 
@@ -213,13 +213,10 @@ mod ltc_tests {
         );
 
         // Round-trip sanity check (critical for onboard flight software)
-        let tcl_dt = Dt::from(tcl_span.sec, tcl_span.attos, Scale::TCL);
+        let tcl_dt = Dt::from(tcl_span.sec(), tcl_span.attos(), Scale::TCL);
         let back_to_tai_span = tcl_dt.to(Scale::TAI);
 
-        let roundtrip_error = back_to_tai_span
-            .to_diff_raw(tai_2038.to_span())
-            .to_sec_f()
-            .abs();
+        let roundtrip_error = back_to_tai_span.to_diff_raw(tai_2038).to_sec_f().abs();
 
         assert!(
             roundtrip_error < 1e-9,
@@ -251,10 +248,13 @@ mod ltc_tests {
         // The numeric value on the TCL time scale (seconds since TCL reference)
         let tcl_sec = epoch_tcl.duration.to_seconds();
 
+        let my_2038_tai = Dt::from_ymd_on(2038, 1, 1, Scale::TAI);
+        let my_tcl = my_2038_tai.to_epoch(Dt::TCL_1977_EPOCH, Scale::TCL);
+
         // Optional: also get it via the general method
         // let tcl_sec2 = epoch_tcl.to_duration_in_time_scale(TimeScale::TCL).to_seconds();
-
-        eprintln!("TAI seconds input : {}", tai_sec);
-        eprintln!("TCL seconds output: {}", tcl_sec);
+        // 1924992001.3089945
+        eprintln!("hifitime TCL seconds output (since 1977): {}", tcl_sec);
+        eprintln!("my TCL seconds output (since 1977): {}", my_tcl);
     }
 }
