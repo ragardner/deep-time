@@ -16,8 +16,8 @@ pub struct TaiUtcPre1972 {
     pub offset: Real,
     /// Drift rate (seconds per day) — this is the historical frequency offset effect
     pub drift: Real,
-    /// tai jd for the date, includes calculated sofa offset
-    pub tai_jd: Real,
+    // tai jd for the date, includes calculated sofa offset
+    // pub tai_jd: Real,
     // /// tai mjd for the date, includes calculated sofa offset
     // pub tai_mjd: Real,
 }
@@ -35,7 +35,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 37300.0,
         offset: 1.4228180,
         drift: 0.001296,
-        tai_jd: 2437300.5000164676,
+        // tai_jd: 2437300.5000164676,
         // tai_mjd: 37300.0000164678,
     },
     TaiUtcPre1972 {
@@ -46,7 +46,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 37300.0,
         offset: 1.3728180,
         drift: 0.001296,
-        tai_jd: 2437512.5000190693,
+        // tai_jd: 2437512.5000190693,
         // tai_mjd: 37512.0000190691,
     },
     TaiUtcPre1972 {
@@ -57,7 +57,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 37665.0,
         offset: 1.8458580,
         drift: 0.0011232,
-        tai_jd: 2437665.500021364,
+        // tai_jd: 2437665.500021364,
         // tai_mjd: 37665.000021364096,
     },
     TaiUtcPre1972 {
@@ -68,7 +68,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 37665.0,
         offset: 1.9458580,
         drift: 0.0011232,
-        tai_jd: 2438334.5000312184,
+        // tai_jd: 2438334.5000312184,
         // tai_mjd: 38334.00003121851,
     },
     TaiUtcPre1972 {
@@ -79,7 +79,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 38761.0,
         offset: 3.2401300,
         drift: 0.001296,
-        tai_jd: 2438395.5000320114,
+        // tai_jd: 2438395.5000320114,
         // tai_mjd: 38395.00003201151,
     },
     TaiUtcPre1972 {
@@ -90,7 +90,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 38761.0,
         offset: 3.3401300,
         drift: 0.001296,
-        tai_jd: 2438486.500034534,
+        // tai_jd: 2438486.500034534,
         // tai_mjd: 38486.000034533914,
     },
     TaiUtcPre1972 {
@@ -101,7 +101,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 38761.0,
         offset: 3.4401300,
         drift: 0.001296,
-        tai_jd: 2438639.5000379863,
+        // tai_jd: 2438639.5000379863,
         // tai_mjd: 38639.00003798632,
     },
     TaiUtcPre1972 {
@@ -112,7 +112,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 38761.0,
         offset: 3.5401300,
         drift: 0.001296,
-        tai_jd: 2438761.5000409735,
+        // tai_jd: 2438761.5000409735,
         // tai_mjd: 38761.000040973726,
     },
     TaiUtcPre1972 {
@@ -123,7 +123,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 38761.0,
         offset: 3.6401300,
         drift: 0.001296,
-        tai_jd: 2438820.500043016,
+        // tai_jd: 2438820.500043016,
         // tai_mjd: 38820.00004301613,
     },
     TaiUtcPre1972 {
@@ -134,7 +134,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 38761.0,
         offset: 3.7401300,
         drift: 0.001296,
-        tai_jd: 2438942.5000460036,
+        // tai_jd: 2438942.5000460036,
         // tai_mjd: 38942.000046003544,
     },
     TaiUtcPre1972 {
@@ -145,7 +145,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 38761.0,
         offset: 3.8401300,
         drift: 0.001296,
-        tai_jd: 2439004.500048091,
+        // tai_jd: 2439004.500048091,
         // tai_mjd: 39004.00004809095,
     },
     TaiUtcPre1972 {
@@ -156,7 +156,7 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 39126.0,
         offset: 4.3131700,
         drift: 0.002592,
-        tai_jd: 2439126.5000499208,
+        // tai_jd: 2439126.5000499208,
         // tai_mjd: 39126.00004992095,
     },
     TaiUtcPre1972 {
@@ -167,27 +167,27 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         mjd_ref: 39126.0,
         offset: 4.2131700,
         drift: 0.002592,
-        tai_jd: 2439887.5000715936,
+        // tai_jd: 2439887.5000715936,
         // tai_mjd: 39887.00007159354,
     },
 ];
 
 /// Returns the SOFA historical TAI−UTC offset (in seconds) for a given UTC instant.
 ///
-/// **This is designed to go from a historical UTC SOFA time to a normal TAI time.**
+/// **This is designed to go from a historical UTC or TAI SOFA time to a normal TAI time.**
 ///
 /// The offset is computed using:
 /// `offset = entry.offset + (MJD − entry.mjd_ref) × entry.drift`
 ///
 /// The correct usage for the returned offset is to add to an existing historical
 /// time.
-pub const fn historical_sofa_for_utc_to_tai(utc: &Dt) -> Option<Real> {
-    // < 1961-1-1 midnight, or >= utc 1972-1-1 midnight
-    if utc.sec < -1230724800 || utc.sec >= -883656990 {
+pub const fn historical_sofa_offset_for_non_adjusted(dt: &Dt) -> Option<Real> {
+    // < 1961-1-1 midnight, or >= 1972-1-1 midnight
+    if dt.sec < -1230724800 || dt.sec >= -883656990 {
         return None;
     }
-    let jd = utc.to_jd(Scale::UTC);
-    let mjd = utc.to_mjd(Scale::UTC);
+    let jd = dt.to_jd(Scale::UTC);
+    let mjd = dt.to_mjd(Scale::UTC);
     let len = SOFA_TAI_UTC_PRE_1972.len();
     let mut i = len;
     while i > 0 {
@@ -203,37 +203,37 @@ pub const fn historical_sofa_for_utc_to_tai(utc: &Dt) -> Option<Real> {
     None
 }
 
-/// Returns the SOFA historical TAI−UTC offset (in seconds) for a given TAI instant.
-///
-/// This is designed to go from a TAI time that was created using
-/// `historical_sofa_for_utc_to_tai` back to a historical UTC SOFA time.
-///
-/// The offset is computed using the same piecewise linear formula as the forward direction:
-/// `offset = entry.offset + (MJD − entry.mjd_ref) × entry.drift`
-///
-/// The correct usage for the returned offset is to subtract from an existing TAI time.
-pub const fn historical_sofa_for_tai_to_utc(tai: &Dt) -> Option<Real> {
-    // < 1961-01-01 after SOFA offset applied, or >= tai 1972-1-1 midnight
-    if (tai.sec() < -1230724800 || (tai.sec() == -1230724800 && tai.attos() < 422817999999999936))
-        || tai.sec() >= -883655990
-    {
-        return None;
-    }
+// Returns the SOFA historical TAI−UTC offset (in seconds) for a given TAI instant.
+//
+// This is designed to go from a TAI time that was created using
+// `historical_sofa_for_utc_to_tai` back to a historical UTC SOFA time.
+//
+// The offset is computed using the same piecewise linear formula as the forward direction:
+// `offset = entry.offset + (MJD − entry.mjd_ref) × entry.drift`
+//
+// The correct usage for the returned offset is to subtract from an existing TAI time.
+// pub const fn historical_sofa_offset_for_already_added(tai: &Dt) -> Option<Real> {
+//     // < 1961-01-01 after SOFA offset applied, or >= tai 1972-1-1 midnight
+//     if (tai.sec() < -1230724800 || (tai.sec() == -1230724800 && tai.attos() < 422817999999999936))
+//         || tai.sec() >= -883655990
+//     {
+//         return None;
+//     }
 
-    let jd = tai.to_jd(Scale::TAI);
-    let mjd = tai.to_mjd(Scale::TAI);
+//     let jd = tai.to_jd(Scale::TAI);
+//     let mjd = tai.to_mjd(Scale::TAI);
 
-    let len = SOFA_TAI_UTC_PRE_1972.len();
-    let mut i = len;
-    while i > 0 {
-        i -= 1;
-        let entry = &SOFA_TAI_UTC_PRE_1972[i];
+//     let len = SOFA_TAI_UTC_PRE_1972.len();
+//     let mut i = len;
+//     while i > 0 {
+//         i -= 1;
+//         let entry = &SOFA_TAI_UTC_PRE_1972[i];
 
-        if jd >= entry.tai_jd {
-            let offset = entry.offset + (mjd - entry.mjd_ref) * entry.drift;
-            return Some(offset);
-        }
-    }
+//         if jd >= entry.tai_jd {
+//             let offset = entry.offset + (mjd - entry.mjd_ref) * entry.drift;
+//             return Some(offset);
+//         }
+//     }
 
-    None
-}
+//     None
+// }

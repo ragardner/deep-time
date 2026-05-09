@@ -1,4 +1,4 @@
-use crate::historical_sofa::{historical_sofa_for_tai_to_utc, historical_sofa_for_utc_to_tai};
+use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::leap_seconds::get_leap_seconds;
 use crate::{
     ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ClockDrift, ClockModel, Dt, J2000_JD_TT,
@@ -39,7 +39,7 @@ impl Dt {
             }
             Scale::UTCSofa => {
                 let tai = raw.add(TSpan::from_sec(get_leap_seconds(&raw, true).offset));
-                if let Some(offset) = historical_sofa_for_utc_to_tai(&raw) {
+                if let Some(offset) = historical_sofa_offset_for_non_adjusted(&raw) {
                     tai.add(TSpan::from_sec_f(offset))
                 } else {
                     tai
@@ -95,7 +95,7 @@ impl Dt {
                 }
             }
             Scale::UTCSofa => {
-                if let Some(offset) = historical_sofa_for_tai_to_utc(&self) {
+                if let Some(offset) = historical_sofa_offset_for_non_adjusted(&self) {
                     self.sub(TSpan::from_sec(get_leap_seconds(&self, false).offset))
                         .sub(TSpan::from_sec_f(offset))
                         .to_span()

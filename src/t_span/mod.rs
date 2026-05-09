@@ -86,8 +86,8 @@ impl TSpan {
     }
 
     #[inline]
-    pub const fn to_ymdhms(&self) -> YmdHms {
-        Dt::new(self.sec, self.attos).to_ymdhms()
+    pub const fn to_ymdhms(&self, current: Scale) -> YmdHms {
+        Dt::from(self.sec, self.attos, current).to_ymdhms()
     }
 }
 
