@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, Dt, J2000_JD_TT, JD_EPOCH_DAYS,
+    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, Dt, JD_2000_2_451_545, JD_EPOCH_DAYS,
     MJD_1970, Real, SEC_PER_DAYI64, Scale, TSpan, clamp_i128_to_i64,
 };
 
@@ -16,7 +16,7 @@ impl Dt {
     ///   most astronomy software, and online JD calculators).
     ///
     /// - **All other types** (TAI, TT, TDB, GPS, TCG, etc.): Computes **JD(TT)** (or
-    ///   equivalent uniform scale) using the J2000.0 TT epoch (`J2000_JD_TT = 2451545`).
+    ///   equivalent uniform scale) using the J2000.0 TT epoch (`JD_2000_2_451_545 = 2451545`).
     ///   This is the continuous, leap-second-free value used for ephemerides and
     ///   dynamical calculations.
     ///
@@ -44,7 +44,7 @@ impl Dt {
 
             let frac_attos = (remaining_sec as u128) * ATTOS_PER_SEC_I128 as u128 + (attos as u128);
 
-            let jd_int = J2000_JD_TT.saturating_add(days_since_j2000);
+            let jd_int = JD_2000_2_451_545.saturating_add(days_since_j2000);
             (jd_int, frac_attos)
         }
     }
@@ -141,7 +141,7 @@ impl Dt {
 
             Self::from_tai_attos_since(canon_attos, Dt::UNIX_EPOCH)
         } else {
-            let days_since_j2000 = jd_days.saturating_sub(J2000_JD_TT);
+            let days_since_j2000 = jd_days.saturating_sub(JD_2000_2_451_545);
             let seconds_from_days = days_since_j2000.saturating_mul(SEC_PER_DAYI64);
 
             let extra_seconds = {

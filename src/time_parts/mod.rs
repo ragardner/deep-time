@@ -413,9 +413,7 @@ impl TimeParts {
         offset += 1;
 
         // scale (1 byte)
-        if let Some(ct) = Scale::from_u8(bytes[offset]) {
-            dc.scale = ct;
-        }
+        dc.scale = Scale::from_u8(bytes[offset]);
         offset += 1;
 
         // weekday (1 byte)

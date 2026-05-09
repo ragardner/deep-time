@@ -85,7 +85,7 @@ pub const TT_TAI_OFFSET_SPAN: TSpan = TSpan::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSE
 pub(crate) const J2000_SEC_PER_CENTURY: Real = 3_155_760_000.0;
 
 /// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
-pub const J2000_JD_TT: i64 = 2_451_545;
+pub const JD_2000_2_451_545: i64 = 2_451_545;
 /// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC
 pub const MJD_1970: i64 = 40_587;
 /// Number of TAI seconds backwards from noon 2000-01-01 to midnight 1972-01-01

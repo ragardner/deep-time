@@ -1,5 +1,5 @@
 use crate::{
-    Scale, DateParseMode, J2000_JD_TT, MAX_YEAR, MIN_YEAR, NS_PER_DAY,
+    Scale, DateParseMode, JD_2000_2_451_545, MAX_YEAR, MIN_YEAR, NS_PER_DAY,
     PLAUSIBLE_YYYYMM_YEAR_RANGE, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Dt, parse_jd,
     parse_mjd, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
 };
@@ -13,7 +13,7 @@ pub(crate) fn parse_i32_year(input: &str) -> Option<Dt> {
     let year_i64 = year as i64;
 
     let jdn = Dt::ymd_to_jdn(year_i64, 1, 1);
-    let days_since_j2000 = jdn - J2000_JD_TT;
+    let days_since_j2000 = jdn - JD_2000_2_451_545;
     let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
     Some(Dt::from(sec_utc, 0, Scale::UTC))
@@ -29,7 +29,7 @@ pub(crate) fn parse_two_digit_year(input: &str) -> Option<Dt> {
     let year_i64 = full_year as i64;
 
     let jdn = Dt::ymd_to_jdn(year_i64, 1, 1);
-    let days_since_j2000 = jdn - J2000_JD_TT;
+    let days_since_j2000 = jdn - JD_2000_2_451_545;
     let sec_utc = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // Jan 1 00:00 = JDN noon - 12 h
 
     Some(Dt::from(sec_utc, 0, Scale::UTC))

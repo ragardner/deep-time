@@ -94,7 +94,7 @@ impl ClockModel {
             return None;
         }
 
-        let base = Scale::from_u8(bytes[1])?;
+        let base = Scale::from_u8(bytes[1]);
         let reference = Dt::from_wire_bytes(&bytes[2..2 + Dt::WIRE_SIZE])?;
         let drift = ClockDrift::from_wire_bytes(&bytes[2 + Dt::WIRE_SIZE..])?;
 

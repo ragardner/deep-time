@@ -1,6 +1,6 @@
 use crate::tzdb::offset_info_at_local;
 use crate::{
-    Dt, J2000_JD_TT, SEC_PER_DAYI64, Scale, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
+    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, Scale, UNIX_EPOCH_TO_J2000_NOON_UTC, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
@@ -94,7 +94,7 @@ impl TimeParts {
         let Some(jdn) = jdn else {
             return Err(an_err!(DtErrKind::InvalidInput, "could not create julian"));
         };
-        let days_since_j2000 = jdn - J2000_JD_TT;
+        let days_since_j2000 = jdn - JD_2000_2_451_545;
         let seconds_from_noon_utc =
             (hour as i64 - 12) * 3600 + (minute as i64) * 60 + (second as i64);
         let mut sec_utc = days_since_j2000 * SEC_PER_DAYI64 + seconds_from_noon_utc;

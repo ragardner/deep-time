@@ -1,16 +1,16 @@
 use crate::{
-    ATTOS_PER_SEC_I128, Dt, J2000_JD_TT, MARS_MSD_REF_JD_INT, MARS_MSD_REF_TOD_SEC,
+    ATTOS_PER_SEC_I128, Dt, JD_2000_2_451_545, MARS_MSD_REF_JD_INT, MARS_MSD_REF_TOD_SEC,
     MARS_MSD_REF_TOD_SUBSEC, MARS_REF_TT, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real,
     SEC_PER_DAYI64, SEC_PER_DAYI128, Scale, TSpan, floor_f, to_sec_f,
 };
 
 impl Dt {
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
-    pub(crate) const fn elapsed_to_attos_since_mars_ref(numerical_tt: TSpan) -> i128 {
+    pub(crate) const fn elapsed_to_attos_since_mars_msd_epoch(numerical_tt: TSpan) -> i128 {
         let days_since_j2000 = numerical_tt.sec.div_euclid(SEC_PER_DAYI64);
         let tod_sec = numerical_tt.sec.rem_euclid(SEC_PER_DAYI64);
 
-        let jd_days = J2000_JD_TT + days_since_j2000;
+        let jd_days = JD_2000_2_451_545 + days_since_j2000;
         let days_diff = jd_days - MARS_MSD_REF_JD_INT;
 
         let mut sec_diff = (days_diff as i128) * SEC_PER_DAYI128
@@ -31,7 +31,7 @@ impl Dt {
     /// [`Scale`]. Leap seconds are automatically accounted for when converting from UTC.
     pub const fn to_msd_exact(self) -> (i64, u128) {
         let tt = self.to(Scale::TT);
-        let elapsed = Self::elapsed_to_attos_since_mars_ref(tt);
+        let elapsed = Self::elapsed_to_attos_since_mars_msd_epoch(tt);
         let attos_per_sol = MARS_SOL_ATTOS;
 
         let whole_sols = elapsed.div_euclid(attos_per_sol) as i64;

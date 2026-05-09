@@ -1,8 +1,8 @@
 use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::leap_seconds::get_leap_seconds;
 use crate::{
-    ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ClockDrift, ClockModel, Dt, J2000_JD_TT,
-    J2000_SEC_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Real, SEC_PER_DAYI64, SEC_PER_DAYI128,
+    ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ClockDrift, ClockModel, Dt, J2000_SEC_PER_CENTURY,
+    JD_2000_2_451_545, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Real, SEC_PER_DAYI64, SEC_PER_DAYI128,
     Scale, TAI_SEC_AT_1972, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC,
     TDB0_ATTOS, TSpan, TT_TAI_OFFSET_SPAN, sin_approx,
 };
@@ -64,6 +64,11 @@ impl Dt {
                 let tt = Self::ltc_to_tt(raw);
                 tt.sub(TT_TAI_OFFSET_SPAN)
             }
+
+            Scale::TCL => {
+                let tt = Self::tcl_to_tt(raw);
+                tt.sub(TT_TAI_OFFSET_SPAN)
+            }
         }
     }
 
@@ -117,6 +122,11 @@ impl Dt {
                 let tt = self.add(TT_TAI_OFFSET_SPAN);
                 Self::tt_to_ltc(tt).to_span()
             }
+
+            Scale::TCL => {
+                let tt = self.add(TT_TAI_OFFSET_SPAN);
+                Self::tt_to_tcl(tt).to_span()
+            }
         }
     }
 
@@ -164,13 +174,13 @@ impl Dt {
         self.convert_back_using_drift(model.reference, model.drift)
     }
 
-    const fn tai_to_tdb(tai: Self) -> Self {
+    pub(crate) const fn tai_to_tdb(tai: Self) -> Self {
         let tt = tai.add(TT_TAI_OFFSET_SPAN);
         let span = Self::tdb_minus_tt(tt.sec, tt.attos);
         tt.add(span)
     }
 
-    const fn tdb_to_tai(tdb: Self) -> Self {
+    pub(crate) const fn tdb_to_tai(tdb: Self) -> Self {
         let mut tt = tdb;
         let mut i = 0u32;
         while i < 8 {
@@ -180,23 +190,23 @@ impl Dt {
         tt.sub(TT_TAI_OFFSET_SPAN)
     }
 
-    const fn tai_to_tcg(tai: Self) -> Self {
+    pub(crate) const fn tai_to_tcg(tai: Self) -> Self {
         let tt = tai.add(TT_TAI_OFFSET_SPAN);
         Self::tt_to_tcg(tt)
     }
 
-    const fn tai_to_tcb(tai: Self) -> Self {
+    pub(crate) const fn tai_to_tcb(tai: Self) -> Self {
         let tdb = Self::tai_to_tdb(tai);
         Self::tdb_to_tcb(tdb)
     }
 
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
     /// using only the numerical `sec`/`attos` of the supplied `Dt` (scale is ignored).
-    pub(crate) const fn elapsed_to_attos_since_ref(numerical: Self) -> i128 {
+    pub(crate) const fn elapsed_to_attos_since_tcg_tcb_epoch(numerical: Self) -> i128 {
         let days_since_j2000 = numerical.sec.div_euclid(SEC_PER_DAYI64);
         let tod_sec = numerical.sec.rem_euclid(SEC_PER_DAYI64);
 
-        let jd_days = J2000_JD_TT + days_since_j2000;
+        let jd_days = JD_2000_2_451_545 + days_since_j2000;
         let days_diff = jd_days - TCG_TCB_REF_JD_INT;
 
         let mut sec_diff =
@@ -234,26 +244,26 @@ impl Dt {
     }
 
     pub(crate) const fn tt_to_tcg(tt: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(tt);
+        let elapsed = Self::elapsed_to_attos_since_tcg_tcb_epoch(tt);
         let span_attos = Self::mul_lg(elapsed);
         tt.add(TSpan::from_attos(span_attos))
     }
 
     pub(crate) const fn tcg_to_tt(tcg: Self) -> Self {
-        let elapsed_cg = Self::elapsed_to_attos_since_ref(tcg);
+        let elapsed_cg = Self::elapsed_to_attos_since_tcg_tcb_epoch(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
         tcg.sub(TSpan::from_attos(span_attos))
     }
 
     pub(crate) const fn tcb_to_tdb(tcb: Self) -> Self {
-        let elapsed_cg = Self::elapsed_to_attos_since_ref(tcb);
+        let elapsed_cg = Self::elapsed_to_attos_since_tcg_tcb_epoch(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
         tcb.sub(TSpan::from_attos(span_attos))
             .sub(TSpan::from_attos(TDB0_ATTOS))
     }
 
     pub(crate) const fn tdb_to_tcb(tdb: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_ref(tdb);
+        let elapsed = Self::elapsed_to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
         tdb.add(TSpan::from_attos(span_attos))
             .add(TSpan::from_attos(TDB0_ATTOS))
@@ -305,7 +315,7 @@ impl Dt {
     ///
     /// - SOFA/ERFA `eraDtdb` implementation (2021 May 11 revision):
     ///   https://raw.githubusercontent.com/liberfa/erfa/master/src/dtdb.c
-    const fn tdb_minus_tt(sec: i64, attos: u64) -> TSpan {
+    pub(crate) const fn tdb_minus_tt(sec: i64, attos: u64) -> TSpan {
         let seconds_since_j2000_tt = f!(sec) + f!(attos) / f!(ATTOS_PER_SEC);
         let t = seconds_since_j2000_tt / J2000_SEC_PER_CENTURY;
 

@@ -51,6 +51,8 @@ pub enum Scale {
     /// The periodic term is **not** part of the defining LTC conversion; it is
     /// handled via `ClockModel` / `ClockDrift` when utmost precision is required.
     LTC,
+    ///
+    TCL,
     /// **Custom / user-defined type** – for experimental or mission-specific timescales.
     /// Most powerful when paired with `ClockModel` (self-describing polynomial).
     Custom,
@@ -116,6 +118,7 @@ impl Scale {
             "TCG" => Some(Self::TCG),
             "TCB" => Some(Self::TCB),
             "LTC" => Some(Self::LTC),
+            "TCL" => Some(Self::TCL),
             "CUSTOM" => Some(Self::Custom),
             _ => None,
         }
@@ -139,6 +142,7 @@ impl Scale {
             Self::BDT => "BDT",
             Self::QZSS => "QZSS",
             Self::LTC => "LTC",
+            Self::TCL => "TCL",
             Self::Custom => "CUSTOM",
         }
     }
@@ -156,25 +160,25 @@ impl Scale {
     ///
     /// Returns `None` for any value that does not correspond to a known variant.
     /// This provides safe deserialization from untrusted sources.
-    pub const fn from_u8(v: u8) -> Option<Self> {
+    pub const fn from_u8(v: u8) -> Self {
         match v {
-            0 => Some(Self::TAI),
-            1 => Some(Self::TT),
-            2 => Some(Self::ET),
-            3 => Some(Self::TDB),
-            4 => Some(Self::UTC),
-            5 => Some(Self::UT1),
-            6 => Some(Self::UTCSpice),
-            7 => Some(Self::UTCSofa),
-            8 => Some(Self::GPS),
-            9 => Some(Self::GST),
-            10 => Some(Self::BDT),
-            11 => Some(Self::QZSS),
-            12 => Some(Self::TCG),
-            13 => Some(Self::TCB),
-            14 => Some(Self::LTC),
-            15 => Some(Self::Custom),
-            _ => None,
+            0 => Self::TAI,
+            1 => Self::TT,
+            2 => Self::ET,
+            3 => Self::TDB,
+            4 => Self::UTC,
+            5 => Self::UT1,
+            6 => Self::UTCSpice,
+            7 => Self::UTCSofa,
+            8 => Self::GPS,
+            9 => Self::GST,
+            10 => Self::BDT,
+            11 => Self::QZSS,
+            12 => Self::TCG,
+            13 => Self::TCB,
+            14 => Self::LTC,
+            15 => Self::TCL,
+            _ => Self::Custom,
         }
     }
 

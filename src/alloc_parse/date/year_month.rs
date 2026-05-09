@@ -1,4 +1,4 @@
-use crate::{Dt, J2000_JD_TT, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Scale, TimeParts};
+use crate::{Dt, JD_2000_2_451_545, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Scale, TimeParts};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline]
@@ -67,7 +67,7 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<Dt> {
 
     // Build Dt at day 1, 00:00:00 UTC using the same J2000 logic
     let jdn = Dt::ymd_to_jdn(year as i64, month as u8, 1);
-    let days_since_j2000 = jdn - J2000_JD_TT;
+    let days_since_j2000 = jdn - JD_2000_2_451_545;
     let sec = days_since_j2000 * SEC_PER_DAYI64 - SEC_PER_HALF_DAYI64; // midnight = -12h from noon
 
     Some(Dt::from(sec, 0, Scale::UTC))
