@@ -24,7 +24,7 @@ impl Dt {
     /// - The result is **exact** (attosecond precision) and independent of any
     ///   calendar or timezone rules.
     pub const fn to_gps_wk_and_tow(&self) -> (i64, TSpan) {
-        let elapsed = self.to_tai_since(Self::GPS_EPOCH);
+        let elapsed = self.to_diff_raw(Self::GPS_EPOCH);
         let total_attos = elapsed.to_attos();
         let wk = (total_attos / ATTOS_PER_WEEK) as i64;
         let tow_attos = total_attos % ATTOS_PER_WEEK;
@@ -36,7 +36,7 @@ impl Dt {
     /// This is computed directly from GPS Time and is independent of the
     /// Gregorian calendar.
     pub const fn to_gps_day_of_wk(&self) -> u8 {
-        let elapsed = self.to_tai_since(Self::GPS_EPOCH);
+        let elapsed = self.to_diff_raw(Self::GPS_EPOCH);
         let total_sec = elapsed.to_attos() / ATTOS_PER_SEC_I128;
         let secs_into_wk = total_sec.rem_euclid(SEC_PER_WEEK as i128);
         (secs_into_wk / SEC_PER_DAYI64 as i128) as u8

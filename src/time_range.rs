@@ -243,7 +243,7 @@ impl Iterator for TimeRange {
 
         let item = self.current;
 
-        let to_end = self.current.to_tai_since(self.end);
+        let to_end = self.current.to_diff_raw(self.end);
         let passed = if self.step.is_zero() {
             true
         } else if self.step.sec > 0 || (self.step.sec == 0 && self.step.attos > 0) {
@@ -301,7 +301,7 @@ impl ExactSizeIterator for TimeRange {
             };
         }
 
-        let total = self.end.to_tai_since(self.start);
+        let total = self.end.to_diff_raw(self.start);
         let steps = total.abs_div_floor(self.step);
 
         if self.inclusive {

@@ -103,7 +103,7 @@ mod relativistic_tests {
         assert!(correction.to_sec_f().abs() < 1e-5);
 
         let geometric_sec = tx_pos.distance_to(rx_pos) / C;
-        let total_sec = final_rx_time.to_tai_since(tx.time).to_sec_f();
+        let total_sec = final_rx_time.to_diff_raw(tx.time).to_sec_f();
         assert!(
             (total_sec - geometric_sec).abs() < 1e-4,
             "Converged receive time deviates from geometric light time by {:.6} s",

@@ -119,7 +119,7 @@ fn tdb_tt_difference_matches_spice_approximation() {
         // from tt timespan to tdb timespan, create tai from tdb timespan
         let tdb = tt.to(Scale::TT, Scale::TDB).to_tai(Scale::TDB);
         // create tai from tt, measure against tdb (tai internally)
-        let diff = tdb.to_tai_since(tt.to_tai(Scale::TT)).to_sec_f().abs();
+        let diff = tdb.to_diff_raw(tt.to_tai(Scale::TT)).to_sec_f().abs();
         assert!(
             diff < 0.002,
             "TDB-TT difference ({:.6} s) exceeded SPICE documented max (~1.658 ms)",
@@ -159,7 +159,7 @@ fn tdb_tai_roundtrip_is_accurate() {
         let tdb = p.to(Scale::TDB);
         let back = tdb.to_tai(Scale::TDB);
 
-        let diff = back.to_tai_since(p).to_sec_f().abs();
+        let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
             diff < 1e-6,
             "TDB round-trip error too large: {} s at {:?}",
@@ -176,7 +176,7 @@ fn tdb_minus_tt_at_j2000() {
     let tai = Dt::ZERO;
     let tdb = tai.to(Scale::TDB);
 
-    let diff_s = tdb.to_diff_tp(tai).to_sec_f(); // see helper below
+    let diff_s = tdb.to_diff_raw(tai.to_span()).to_sec_f(); // see helper below
 
     assert!(
         (diff_s - 32.183925).abs() < 0.00001,
@@ -199,7 +199,7 @@ fn tdb_correction_stays_within_bounds() {
         let tdb = p.to(Scale::TDB);
 
         // TDB - TT (periodic term only)
-        let corr_s = tdb.to_diff(tt).to_sec_f();
+        let corr_s = tdb.to_diff_raw(tt).to_sec_f();
 
         assert!(
             corr_s.abs() < 0.002,
@@ -241,7 +241,7 @@ fn msd_exact_roundtrip_is_accurate() {
         let (whole, frac) = p.to_msd_exact();
         let back = Dt::from_msd_exact(whole, frac);
 
-        let diff = back.to_tai_since(p).to_sec_f().abs();
+        let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
             diff < 5e-5, // ← relaxed for f64 JD precision (max observed error ≈ 13.7 µs)
             "MSD round-trip error too large: {} s at {:?}",
@@ -263,7 +263,7 @@ fn msd_float_roundtrip_is_accurate() {
         let msd_float = p.to_msd();
         let back = Dt::from_msd(msd_float);
 
-        let diff = back.to_tai_since(p).to_sec_f().abs();
+        let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
             diff < 5e-5, // ← relaxed for f64 MSD path (max observed error ≈ 13.7 µs)
             "MSD float round-trip error too large: {} s at {:?}",
@@ -314,7 +314,7 @@ fn msd_at_j2000_is_correct() {
 fn tt_tai_offset_exact() {
     let tai = Dt::ZERO;
     let tt = tai.to(Scale::TT);
-    let diff_s = tt.to_diff_tp(tai).to_sec_f();
+    let diff_s = tt.to_diff_raw(tai.to_span()).to_sec_f();
     assert!(
         (diff_s - 32.184).abs() < 1e-12,
         "TT-TAI at J2000 was {} s (expected exactly 32.184)",
@@ -328,16 +328,16 @@ fn gnss_offsets_are_correct() {
     let tai = Dt::ZERO;
 
     let gpst = tai.to(Scale::GPS);
-    assert!((gpst.to_diff_tp(tai).to_sec_f() + 19.0).abs() < 1e-12);
+    assert!((gpst.to_diff_raw(tai.to_span()).to_sec_f() + 19.0).abs() < 1e-12);
 
     let qzsst = tai.to(Scale::QZSS);
-    assert!((qzsst.to_diff_tp(tai).to_sec_f() + 19.0).abs() < 1e-12);
+    assert!((qzsst.to_diff_raw(tai.to_span()).to_sec_f() + 19.0).abs() < 1e-12);
 
     let gst = tai.to(Scale::GST);
-    assert!((gst.to_diff_tp(tai).to_sec_f() + 19.0).abs() < 1e-12);
+    assert!((gst.to_diff_raw(tai.to_span()).to_sec_f() + 19.0).abs() < 1e-12);
 
     let bdt = tai.to(Scale::BDT);
-    assert!((bdt.to_diff_tp(tai).to_sec_f() + 33.0).abs() < 1e-12);
+    assert!((bdt.to_diff_raw(tai.to_span()).to_sec_f() + 33.0).abs() < 1e-12);
 }
 
 /// TCG ↔ TAI round-trip (pure linear rate – should be exact within f64 noise).
@@ -354,7 +354,7 @@ fn tcg_tai_roundtrip_is_accurate() {
     for &p in &test_points {
         let tcg = p.to(Scale::TCG);
         let back = tcg.to_tai(Scale::TCG);
-        let diff = back.to_tai_since(p).to_sec_f().abs();
+        let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
             diff < 1e-9,
             "TCG round-trip error too large: {} s at {:?}",
@@ -378,7 +378,7 @@ fn tcb_tai_roundtrip_is_accurate() {
     for &p in &test_points {
         let tcb = p.to(Scale::TCB);
         let back = tcb.to_tai(Scale::TCB);
-        let diff = back.to_tai_since(p).to_sec_f().abs();
+        let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
             diff < 1e-9,
             "TCB round-trip error too large: {} s at {:?}",
@@ -439,7 +439,7 @@ fn jd_tt_exact_roundtrip() {
     for &p in &test_points {
         let (jd, frac) = p.to_jd_exact(Scale::TT);
         let back = Dt::from_jd_exact(jd, frac, Scale::TT);
-        let diff = back.to_tai_since(p).to_sec_f().abs();
+        let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(diff < 1e-10, "JD round-trip error {} s at {:?}", diff, p);
     }
 }
@@ -455,7 +455,7 @@ fn mjd_tt_exact_roundtrip() {
     for &p in &test_points {
         let (mjd, frac) = p.to_mjd_exact(Scale::TT);
         let back = Dt::from_mjd_exact(mjd, frac, Scale::TT);
-        let diff = back.to_tai_since(p).to_sec_f().abs();
+        let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(diff < 1e-10, "MJD round-trip error {} s at {:?}", diff, p);
     }
 }

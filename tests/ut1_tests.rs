@@ -32,9 +32,9 @@ mod tests {
         let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
 
         // The numerical value of the UT1 Dt is UTC + DUT1.
-        // to_tai_since() computes physical time (via TAI), so we re-interpret
+        // to_diff_raw() computes physical time (via TAI), so we re-interpret
         // the UT1 value as UTC to see the clock difference (DUT1).
-        let diff = ut1.to_tai_since(utc);
+        let diff = ut1.to_diff_raw(utc);
         assert!(
             (diff.to_sec_f() - dut1_expected).abs() < 1e-9,
             "to_ut1 applied wrong DUT1: expected {}, got {}",
@@ -45,7 +45,7 @@ mod tests {
         // === Test from_ut1 (full round-trip) ===
         let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
 
-        let roundtrip_diff = utc.to_tai_since(back_to_utc);
+        let roundtrip_diff = utc.to_diff_raw(back_to_utc);
         assert!(
             roundtrip_diff.to_sec_f().abs() < 1e-9,
             "round-trip should be exact within floating-point tolerance, got {}",
@@ -87,7 +87,7 @@ mod tests {
             .expect("to_ut1 failed for MJD 60961.00");
 
         // Verify the numerical difference is exactly the DUT1 we expect
-        let diff = ut1.to_tai_since(utc);
+        let diff = ut1.to_diff_raw(utc);
         assert!(
             (diff.to_sec_f() - dut1_expected).abs() < 1e-10,
             "to_ut1 applied wrong DUT1: expected {}, got {}",
@@ -98,7 +98,7 @@ mod tests {
         // 4. Round-trip back to UTC using the exact fixed-point iteration version
         let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
 
-        let roundtrip_diff = utc.to_tai_since(back_to_utc);
+        let roundtrip_diff = utc.to_diff_raw(back_to_utc);
         assert!(
             roundtrip_diff.to_sec_f().abs() < 1e-10,
             "UT1 ↔ UTC round-trip should be exact within machine precision, got {}",
@@ -136,7 +136,7 @@ mod tests {
         let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
 
         // 4. Verify round-trip is exact (within floating-point tolerance)
-        let roundtrip_error = utc.to_tai_since(back_to_utc).to_sec_f();
+        let roundtrip_error = utc.to_diff_raw(back_to_utc).to_sec_f();
         assert!(
             roundtrip_error.abs() < 1e-10,
             "C04 round-trip error too large: {} s",
@@ -172,7 +172,7 @@ mod tests {
         assert_eq!(ut1.attos(), roundtrip.attos());
 
         // Physical round-trip check (via TAI)
-        let diff = ut1.to_tai_since(roundtrip);
+        let diff = ut1.to_diff_raw(roundtrip);
         assert!(
             diff.to_sec_f().abs() < 1e-12,
             "JD_UT1 round-trip error too large: {} s",
@@ -199,7 +199,7 @@ mod tests {
         let utc_back = Dt::from_ut1(ut1_back, &provider).expect("from_ut1 failed");
 
         // Final check: should be extremely close to original UTC
-        let error = original_utc.to_tai_since(utc_back).to_sec_f();
+        let error = original_utc.to_diff_raw(utc_back).to_sec_f();
         assert!(
             error.abs() < 1e-10,
             "Full pipeline round-trip error too large: {} s",
@@ -223,7 +223,7 @@ mod tests {
         assert_eq!(ut1.sec(), roundtrip.sec());
         assert_eq!(ut1.attos(), roundtrip.attos());
 
-        let diff = ut1.to_tai_since(roundtrip).to_sec_f();
+        let diff = ut1.to_diff_raw(roundtrip).to_sec_f();
         assert!(diff.abs() < 1e-12, "MJD_UT1 round-trip error: {} s", diff);
     }
 
@@ -273,7 +273,7 @@ mod tests {
         let (jd_days, frac2) = ut1.to_jd_exact(Scale::UT1);
         let roundtrip = Dt::from_jd_exact(jd_days, frac2, Scale::UT1);
 
-        let diff = ut1.to_tai_since(roundtrip).to_sec_f();
+        let diff = ut1.to_diff_raw(roundtrip).to_sec_f();
         assert!(
             diff.abs() < 1e-11,
             "Fractional day round-trip error: {} s",

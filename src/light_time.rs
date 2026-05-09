@@ -297,7 +297,7 @@ impl ObserverState {
         rx: ObserverState,
         context: LightContext,
     ) -> TSpan {
-        let span = rx.time.to_tai_since(self.time);
+        let span = rx.time.to_diff_raw(self.time);
 
         let tx_drift = ClockDrift::from_velocity_potential_and_scale(
             self.velocity.speed(),
@@ -411,7 +411,7 @@ impl ObserverState {
             let full_delay = geometric.add(rel_correction);
 
             let new_rx_time = self.time.add(full_delay);
-            let change = new_rx_time.to_tai_since(rx.time);
+            let change = new_rx_time.to_diff_raw(rx.time);
 
             rx = rx_provider(new_rx_time);
             rx.time = new_rx_time;
@@ -545,7 +545,7 @@ impl ObserverState {
             return self.one_way_relativistic_delay_to(rx, context);
         }
 
-        let dt_sec = rx.time.to_tai_since(self.time).to_sec_f();
+        let dt_sec = rx.time.to_diff_raw(self.time).to_sec_f();
 
         let num_samples = samples.len();
         let n = f!(num_samples);

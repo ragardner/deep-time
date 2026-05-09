@@ -3,7 +3,7 @@ use crate::{Dt, Scale, TSpan};
 impl Dt {
     #[inline]
     pub const fn to_tai_attos_since(self, reference: Dt) -> i128 {
-        self.to_tai_since(reference).to_attos()
+        self.to_diff_raw(reference).to_attos()
     }
 
     #[inline]
@@ -19,7 +19,7 @@ impl Dt {
         the same as the UTC instant UNIX_EPOCH should remain UTC and the offset should
         not be applied to the epoch
         */
-        self.to(scale).to_diff_tp(epoch)
+        self.to(scale).to_diff_raw(epoch.to_span())
     }
 
     #[inline]

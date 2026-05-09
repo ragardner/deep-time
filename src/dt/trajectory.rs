@@ -46,7 +46,7 @@ impl Dt {
             return TSpan::ZERO;
         }
 
-        let mut dt = end.to_tai_since(self);
+        let mut dt = end.to_diff_raw(self);
         let sign = if dt.sec < 0 { f!(-1.0) } else { f!(1.0) };
         if sign < f!(0.0) {
             dt = dt.neg();
@@ -107,7 +107,7 @@ impl Dt {
         samples: &[LocalSpacetime],
     ) -> TSpan {
         let dtau = self.proper_time_interval_samples(end, samples);
-        let dt = end.to_tai_since(self);
+        let dt = end.to_diff_raw(self);
         dtau.sub(dt)
     }
 

@@ -134,7 +134,7 @@ impl Dt {
     /// or clock-drift correction defined by a [`ClockDrift`] model relative to a reference instant.
     #[inline]
     pub const fn convert_using_drift(self, reference: Self, drift: ClockDrift) -> Self {
-        let span = self.to_tai_since(reference);
+        let span = self.to_diff_raw(reference);
         let correction = drift.time_diff_after(&span);
         self.add(correction)
     }
@@ -151,7 +151,7 @@ impl Dt {
         let mut guess = self;
         let mut i = 0u32;
         while i < 16 {
-            let span = guess.to_tai_since(reference);
+            let span = guess.to_diff_raw(reference);
             let correction = drift.time_diff_after(&span);
             guess = self.sub(correction);
             i += 1;

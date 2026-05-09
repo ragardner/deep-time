@@ -39,7 +39,7 @@ impl Sub<Dt> for Dt {
 
     #[inline]
     fn sub(self, rhs: Dt) -> TSpan {
-        self.to_tai_since(rhs)
+        self.to_diff_raw(rhs)
     }
 }
 

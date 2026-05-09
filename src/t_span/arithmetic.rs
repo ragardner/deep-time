@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, Dt, Real, TSpan, floor_f,
+    ATTOS_PER_SECF, ATTOS_PER_US, Real, TSpan, floor_f,
 };
 
 impl TSpan {
@@ -583,18 +583,17 @@ impl TSpan {
     ///
     /// This is the normal case when subtracting two durations.
     #[inline]
-    pub const fn to_diff(self, rhs: Self) -> Self {
-        Self::diff_raw(self.sec, self.attos, rhs.sec, rhs.attos)
+    pub const fn to_diff_raw(self, rhs: Self) -> Self {
+        Self::diff_raw_internal(self.sec, self.attos, rhs.sec, rhs.attos)
     }
 
-    /// Returns `self - rhs` exactly, where `rhs` is a `Dt`.
+    /// Computes the TAI signed duration between this `Dt` and another `Dt` as a float.
     #[inline]
-    pub const fn to_diff_tp(self, rhs: Dt) -> Self {
-        Self::diff_raw(self.sec, self.attos, rhs.sec, rhs.attos)
+    pub const fn to_diff_raw_f(&self, other: Self) -> Real {
+        self.to_sec_f() - other.to_sec_f()
     }
 
-    #[inline]
-    pub(crate) const fn diff_raw(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> Self {
+    pub(crate) const fn diff_raw_internal(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> Self {
         if sub_a >= sub_b {
             Self {
                 sec: sec_a.saturating_sub(sec_b),

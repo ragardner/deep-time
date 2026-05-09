@@ -15,7 +15,7 @@ impl Dt {
     ///   (roughly years 1678–2262) if the instant is out of range.
     ///   Never returns an error.
     pub fn to_chrono_datetime_utc(self) -> DateTime<Utc> {
-        let span_since_epoch = self.to_tai_since(Dt::UNIX_EPOCH);
+        let span_since_epoch = self.to_diff_raw(Dt::UNIX_EPOCH);
         let total_nanos = span_since_epoch.to_attos() / 1_000_000_000i128;
         let nanos = clamp_i128_to_i64(total_nanos);
 

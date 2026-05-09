@@ -48,16 +48,15 @@ impl Dt {
         *self = self.add(dtau);
     }
 
-    /// Computes the TAI signed duration between this `Dt` and an earlier instant.
+    /// Computes the TAI signed duration between this `Dt` and another `Dt`.
     #[inline]
-    pub const fn to_tai_since(&self, earlier: Self) -> TSpan {
-        TSpan::diff_raw(self.sec, self.attos, earlier.sec, earlier.attos)
+    pub const fn to_diff_raw(&self, other: Self) -> TSpan {
+        TSpan::diff_raw_internal(self.sec, self.attos, other.sec, other.attos)
     }
 
-    /// This method is lossy by design and is provided for testing and debugging purposes only.
-    /// For the exact duration, use `duration_since` or `duration_since_ref`.
+    /// Computes the TAI signed duration between this `Dt` and another `Dt` as a float.
     #[inline]
-    pub const fn to_tai_since_f(&self, other: Self) -> Real {
+    pub const fn to_diff_raw_f(&self, other: Self) -> Real {
         self.to_sec_f() - other.to_sec_f()
     }
 
