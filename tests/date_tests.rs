@@ -14,7 +14,9 @@ mod tests {
 
         // Verify internal representation (the snapped UTC instant)
         assert_eq!(
-            our_dt.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_sec(),
+            our_dt
+                .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+                .to_sec(),
             1678604400,
             "internal unix timestamp should be the snapped UTC instant"
         );

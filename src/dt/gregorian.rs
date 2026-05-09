@@ -17,7 +17,9 @@ impl Dt {
     pub const fn to_gregorian_time(&self) -> GregorianTime {
         // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
         let ymdhms = self.to_ymdhms();
-        let unix_attosec = self.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_attos();
+        let unix_attosec = self
+            .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+            .to_attos();
 
         let (iso_yr, iso_wk, iso_wkday) =
             self.to_iso_week_date(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
@@ -59,7 +61,7 @@ impl Dt {
     pub const fn to_ymdhms(&self) -> YmdHms {
         // Single call gets us the full civil attos since Unix epoch (POSIX style).
         // This replaces both to_unix_sec() + the old to_attos_since(UNIX_EPOCH).
-        let canon = self.to_epoch(Dt::UNIX_EPOCH, Scale::UTC);
+        let canon = self.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH);
 
         let unix_sec = canon.sec;
         let attos = canon.attos;
@@ -253,7 +255,8 @@ impl Dt {
 
         let civil_unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, h, m, s_for_unix) + extra_sec;
 
-        let tp = Self::from_epoch(Dt::new(civil_unix_sec, final_attos), Dt::UNIX_EPOCH, scale);
+        let tp =
+            Self::from_diff_and_scale(Dt::new(civil_unix_sec, final_attos), Dt::UNIX_EPOCH, scale);
         if is_exact_leap_second {
             tp.add(Dt::from_sec(1, Scale::TAI))
         } else {
@@ -261,21 +264,18 @@ impl Dt {
         }
     }
 
-    /// Creates a `Dt` representing **00:00:00 UTC** on the given proleptic
-    /// Gregorian date, converted to the requested [`Scale`].
-    ///
-    /// The date components are interpreted according to POSIX civil time
-    /// (leap seconds are not inserted into the day count).
+    /// Creates a [`Dt`] representing **00:00:00 UTC** on the given proleptic Gregorian date.
     #[inline]
     pub const fn from_ymd(yr: i64, mo: u8, day: u8) -> Self {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
-        Self::from_epoch(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, Scale::UTC)
+        Self::from_diff_and_scale(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, Scale::UTC)
     }
 
+    /// Creates a [`Dt`] representing **00:00:00 on the given [`Scale`]** on the given proleptic Gregorian date.
     #[inline]
     pub const fn from_ymd_on(yr: i64, mo: u8, day: u8, scale: Scale) -> Self {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
-        Self::from_epoch(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, scale)
+        Self::from_diff_and_scale(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, scale)
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.

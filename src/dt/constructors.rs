@@ -5,6 +5,100 @@ use crate::{
 };
 
 impl Dt {
+    /// The library’s internal reference epoch: exactly **2000-01-01 12:00:00 TAI**.
+    ///
+    /// (`Dt::new(0, 0)`).
+    pub const ZERO: Self = Self::new(0, 0);
+
+    /// Zero-point offset for GPS Time (GPST) relative to [`Self::ZERO`].
+    ///
+    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
+    /// constant +19 s TAI-to-GPST offset used by all GPS-related conversions.
+    pub const GPS_ZERO: Self = Self::new(19, 0);
+
+    /// Zero-point offset for Galileo System Time (GST) relative to [`Self::ZERO`].
+    ///
+    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
+    /// constant +19 s TAI-to-GST offset.
+    pub const GST_ZERO: Self = Self::new(19, 0);
+
+    /// Zero-point offset for QZSS Time relative to [`Self::ZERO`].
+    ///
+    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
+    /// constant +19 s TAI-to-QZSS offset.
+    pub const QZSS_ZERO: Self = Self::new(19, 0);
+
+    /// Zero-point offset for BeiDou Time (BDT) relative to [`Self::ZERO`].
+    ///
+    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
+    /// constant +33 s TAI-to-BDT offset.
+    pub const BDT_ZERO: Self = Self::new(33, 0);
+
+    /// The Unix epoch (**1970-01-01 00:00:00 UTC**) expressed as a signed
+    /// TAI-second offset from [`Self::ZERO`].
+    ///
+    /// This is computed as `-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON`, i.e. the exact
+    /// number of TAI seconds from 1970-01-01 00:00:00 TAI to 2000-01-01 12:00:00 TAI
+    /// (the value of the private constant `TAI_SECS_1970_MIDNIGHT_TO_2000_NOON`).
+    pub const UNIX_EPOCH: Self = Self::new(-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, 0);
+
+    /// Canonical reference epoch for modern relativistic time scales:
+    /// exactly **1977-01-01 00:00:00 TAI**.
+    ///
+    /// This is the defining instant (per IAU recommendations) where:
+    /// - Terrestrial Time (TT) = TAI + 32.184 s exactly,
+    /// - TT, TCG, TCB, and TCL are synchronized by definition,
+    /// - Lunar Coordinate Time (TCL) and the proposed TL use this as their official zero point.
+    ///
+    /// It is **-725_803_200 TAI seconds** before [`Self::ZERO`].
+    pub const TAI_1977_EPOCH: Self = Self::new(-725_803_200, 0);
+
+    pub const TCL_1977_EPOCH: Self = {
+        let tcl1977 = Self::TAI_1977_EPOCH.to(Scale::TCL);
+        Self::new(tcl1977.sec, tcl1977.attos)
+    };
+
+    /// GPS Time epoch: exactly **1980-01-06 00:00:00 UTC**.
+    ///
+    /// This is the zero point of the continuous GPS Time scale (GPST).
+    /// At this epoch, GPST was exactly 19 seconds behind TAI.
+    pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0);
+
+    /// Galileo Experiment (GALEX) epoch: exactly **1980-01-06 00:00:00 UTC**.
+    ///
+    /// This is the same physical instant as [`Self::GPS_EPOCH`] and was used
+    /// as the reference epoch during early Galileo system testing and development.
+    /// It is provided as a convenient alias for code that explicitly references
+    /// the GALEX-era epoch.
+    pub const GALEX_EPOCH: Self = Self::GPS_EPOCH;
+
+    /// Galileo System Time (GST) epoch: exactly **1999-08-22 00:00:00 UTC**.
+    ///
+    /// This is the official zero point of the Galileo System Time scale.
+    pub const GALILEO_EPOCH: Self = Self::new(-11_448_000 + 19, 0);
+
+    /// BeiDou Time (BDT) epoch: exactly **2006-01-01 00:00:00 UTC**.
+    ///
+    /// This is the official zero point of the BeiDou Navigation Satellite System Time.
+    pub const BDT_EPOCH: Self = Self::new(189_345_600 + 33, 0);
+
+    /// Maximum representable duration (`i64::MAX` seconds + 999... attoseconds).
+    pub const MAX: Self = Self {
+        sec: i64::MAX,
+        attos: ATTOS_PER_SEC - 1,
+    };
+
+    /// Minimum (most negative) representable duration (`i64::MIN` seconds).
+    pub const MIN: Self = Self {
+        sec: i64::MIN,
+        attos: 0,
+    };
+
+    pub const SEC_19: Self = Self::new(19, 0);
+    pub const SEC_33: Self = Self::new(33, 0);
+    pub const SEC_37: Self = Self::new(37, 0);
+    pub const ONE_DAY: Self = Self::new(SEC_PER_DAYI64, 0);
+
     /// Creates a new `Dt` from whole seconds, a subsecond part in attoseconds,
     /// and a scale, automatically normalizing the representation.
     #[inline]
@@ -109,105 +203,6 @@ impl Dt {
         Self::from(final_sec, final_frac, scale)
     }
 
-    //
-    //
-    //
-    //
-
-    /// The library’s internal reference epoch: exactly **2000-01-01 12:00:00 TAI**.
-    ///
-    /// (`Dt::new(0, 0)`).
-    pub const ZERO: Self = Self::new(0, 0);
-
-    /// Zero-point offset for GPS Time (GPST) relative to [`Self::ZERO`].
-    ///
-    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
-    /// constant +19 s TAI-to-GPST offset used by all GPS-related conversions.
-    pub const GPS_ZERO: Self = Self::new(19, 0);
-
-    /// Zero-point offset for Galileo System Time (GST) relative to [`Self::ZERO`].
-    ///
-    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
-    /// constant +19 s TAI-to-GST offset.
-    pub const GST_ZERO: Self = Self::new(19, 0);
-
-    /// Zero-point offset for QZSS Time relative to [`Self::ZERO`].
-    ///
-    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
-    /// constant +19 s TAI-to-QZSS offset.
-    pub const QZSS_ZERO: Self = Self::new(19, 0);
-
-    /// Zero-point offset for BeiDou Time (BDT) relative to [`Self::ZERO`].
-    ///
-    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
-    /// constant +33 s TAI-to-BDT offset.
-    pub const BDT_ZERO: Self = Self::new(33, 0);
-
-    /// The Unix epoch (**1970-01-01 00:00:00 UTC**) expressed as a signed
-    /// TAI-second offset from [`Self::ZERO`].
-    ///
-    /// This is computed as `-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON`, i.e. the exact
-    /// number of TAI seconds from 1970-01-01 00:00:00 TAI to 2000-01-01 12:00:00 TAI
-    /// (the value of the private constant `TAI_SECS_1970_MIDNIGHT_TO_2000_NOON`).
-    pub const UNIX_EPOCH: Self = Self::new(-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, 0);
-
-    /// Canonical reference epoch for modern relativistic time scales:
-    /// exactly **1977-01-01 00:00:00 TAI**.
-    ///
-    /// This is the defining instant (per IAU recommendations) where:
-    /// - Terrestrial Time (TT) = TAI + 32.184 s exactly,
-    /// - TT, TCG, TCB, and TCL are synchronized by definition,
-    /// - Lunar Coordinate Time (TCL) and the proposed TL use this as their official zero point.
-    ///
-    /// It is **-725_803_200 TAI seconds** before [`Self::ZERO`].
-    pub const TAI_1977_EPOCH: Self = Self::new(-725_803_200, 0);
-
-    pub const TCL_1977_EPOCH: Self = {
-        let tcl1977 = Self::TAI_1977_EPOCH.to(Scale::TCL);
-        Self::new(tcl1977.sec, tcl1977.attos)
-    };
-
-    /// GPS Time epoch: exactly **1980-01-06 00:00:00 UTC**.
-    ///
-    /// This is the zero point of the continuous GPS Time scale (GPST).
-    /// At this epoch, GPST was exactly 19 seconds behind TAI.
-    pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0);
-
-    /// Galileo Experiment (GALEX) epoch: exactly **1980-01-06 00:00:00 UTC**.
-    ///
-    /// This is the same physical instant as [`Self::GPS_EPOCH`] and was used
-    /// as the reference epoch during early Galileo system testing and development.
-    /// It is provided as a convenient alias for code that explicitly references
-    /// the GALEX-era epoch.
-    pub const GALEX_EPOCH: Self = Self::GPS_EPOCH;
-
-    /// Galileo System Time (GST) epoch: exactly **1999-08-22 00:00:00 UTC**.
-    ///
-    /// This is the official zero point of the Galileo System Time scale.
-    pub const GALILEO_EPOCH: Self = Self::new(-11_448_000 + 19, 0);
-
-    /// BeiDou Time (BDT) epoch: exactly **2006-01-01 00:00:00 UTC**.
-    ///
-    /// This is the official zero point of the BeiDou Navigation Satellite System Time.
-    pub const BDT_EPOCH: Self = Self::new(189_345_600 + 33, 0);
-
-    /// Maximum representable duration (`i64::MAX` seconds + 999... attoseconds).
-    pub const MAX: Self = Self {
-        sec: i64::MAX,
-        attos: ATTOS_PER_SEC - 1,
-    };
-
-    /// Minimum (most negative) representable duration (`i64::MIN` seconds).
-    pub const MIN: Self = Self {
-        sec: i64::MIN,
-        attos: 0,
-    };
-
-    pub const SEC_19: Self = Self::new(19, 0);
-    pub const SEC_33: Self = Self::new(33, 0);
-    pub const SEC_37: Self = Self::new(37, 0);
-    pub const ONE_DAY: Self = Self::new(SEC_PER_DAYI64, 0);
-
     pub(crate) const fn attos_to_dt(attos: i128) -> Self {
         let q = attos.div_euclid(ATTOS_PER_SEC_I128);
 
@@ -308,7 +303,7 @@ impl Dt {
                 (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
             }
         };
-        crate::Dt::from_epoch(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
+        crate::Dt::from_diff_and_scale(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
             .add(crate::Dt::from_ns(nanos as i128, Scale::TAI))
     }
 

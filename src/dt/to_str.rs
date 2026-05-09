@@ -178,7 +178,9 @@ impl Dt {
     /// a non-UTC `unix_ts` was being passed to `offset_info_at_local`.
     pub(crate) fn gregorian_time_with_tz(&self, tz_name: &str) -> GregorianTime {
         // 1. Get the true UTC Unix timestamp (this is what we search with)
-        let utc_unix = self.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_sec();
+        let utc_unix = self
+            .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+            .to_sec();
 
         // 2. Look up offset + abbrev at that exact UTC instant
         let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, utc_unix) {

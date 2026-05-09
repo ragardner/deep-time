@@ -3,7 +3,6 @@ mod constructors;
 mod conversions;
 mod conversions_lunar;
 mod conversions_mars;
-mod epoch;
 mod from_ccsds;
 mod from_gps;
 mod from_str;

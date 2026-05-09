@@ -39,7 +39,9 @@ mod format_tests {
         assert_eq!(&buf[0..n], b"2016-12-31T23:59:60.123456789Z");
 
         // === Gotcha 5: leap second Unix timestamp (POSIX convention) ===
-        let unix = leap.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_sec();
+        let unix = leap
+            .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+            .to_sec();
         assert_eq!(unix, 1483228799); // same as 23:59:59 — the leap second "replays" the previous second
     }
 

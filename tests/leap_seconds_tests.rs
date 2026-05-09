@@ -4,18 +4,22 @@ use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128, leap_seconds::get_leap
 fn to_epoch_leaps_and_tai() {
     // A normal date well after the last leap second
     let t = Dt::from_ymdhms(2023, 6, 15, 12, 0, 0, 0);
-    let unix_attos = t.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_attos();
+    let unix_attos = t
+        .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+        .to_attos();
     assert!(unix_attos > 1_600_000_000_000_000_000);
 
     // Sub-second precision is preserved
     let t2 = Dt::from_ymdhms(2023, 6, 15, 12, 0, 0, 123_456_789_000_000_000);
-    let attos2 = t2.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_attos();
+    let attos2 = t2
+        .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+        .to_attos();
     assert_eq!(attos2 % ATTOS_PER_SEC_I128, 123_456_789_000_000_000);
 
     // Roundtrip on GPS scale (non-epoch instant)
     let t_gps = Dt::from_ymdhms(2020, 1, 1, 0, 0, 0, 0);
-    let back = Dt::from_epoch(
-        t_gps.to_epoch(Dt::GPS_EPOCH, Scale::GPS),
+    let back = Dt::from_diff_and_scale(
+        t_gps.to_scale_and_then_diff(Scale::GPS, Dt::GPS_EPOCH),
         Dt::GPS_EPOCH,
         Scale::GPS,
     );
@@ -52,13 +56,17 @@ fn to_epoch_leaps_and_tai() {
     // 2016-12-31 23:59:60 UTC  →  civil unix timestamp of 2017-01-01 00:00:00
     // ------------------------------------------------------------
     let leap = Dt::from_ymdhms(2016, 12, 31, 23, 59, 60, 0);
-    let leap_attos = leap.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_attos();
+    let leap_attos = leap
+        .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+        .to_attos();
 
     let unix_sec_part = leap_attos.div_euclid(ATTOS_PER_SEC_I128);
     assert_eq!(unix_sec_part, 1_483_228_799);
 
     let after = Dt::from_ymdhms(2017, 1, 1, 0, 0, 0, 0);
-    let after_attos = after.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_attos();
+    let after_attos = after
+        .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+        .to_attos();
 
     let unix_sec_part = after_attos.div_euclid(ATTOS_PER_SEC_I128);
     assert_eq!(unix_sec_part, 1_483_228_800); // 2017-01-01 00:00:00 UTC

@@ -13,6 +13,26 @@ impl Dt {
         Self::from(dt.sec, dt.attos, scale)
     }
 
+    #[inline]
+    pub const fn to_tai_attos_since(self, reference: Dt) -> i128 {
+        self.to_diff_raw(reference).to_attos()
+    }
+
+    #[inline]
+    pub const fn from_tai_attos_since(attos: i128, reference: Dt) -> Self {
+        reference.add(Dt::from_attos(attos, Scale::TAI))
+    }
+
+    #[inline]
+    pub const fn to_scale_and_then_diff(self, scale: Scale, epoch: Dt) -> Dt {
+        self.to(scale).to_diff_raw(epoch)
+    }
+
+    #[inline]
+    pub const fn from_diff_and_scale(diff: Dt, epoch: Dt, current: Scale) -> Self {
+        Dt::from_dt(epoch.add(diff), current)
+    }
+
     pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
         // Create a raw Dt with the input numbers on the requested scale
         let raw = Dt::new(sec, attos);

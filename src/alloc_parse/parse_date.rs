@@ -232,9 +232,10 @@ impl Dt {
     /// on any parse error.
     #[inline]
     pub fn str_to_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        Dt::from_str_parse(s, opts)
-            .ok()
-            .map(|tp| tp.to_epoch(Dt::UNIX_EPOCH, Scale::UTC).to_ms())
+        Dt::from_str_parse(s, opts).ok().map(|tp| {
+            tp.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+                .to_ms()
+        })
     }
 }
 

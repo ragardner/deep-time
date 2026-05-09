@@ -1,10 +1,10 @@
 #[cfg(feature = "hifitime")]
 mod tests {
-    use deep_time::{Dt, Scale};
+    use deep_time::{Dt, Scale, leap_seconds};
     use hifitime::{Duration, Epoch, TimeScale};
     /// Seconds between hifitime's TAI reference epoch (1900-01-01 00:00:00 TAI)
-    /// and our library's `ZERO` (2000-01-01 12:00:00 TAI).
-    const HIFITIME_TAI_EPOCH_TO_OUR_ZERO: i64 = 3_155_716_800;
+    /// and our library's J2000.0 TAI.
+    const HIFITIME_TAI_EPOCH_TO_OUR_J2000: i64 = 3_155_716_800;
 
     /// Map our `Scale` to the equivalent `hifitime::TimeScale`.
     fn to_hifitime(ct: Scale) -> Option<TimeScale> {
@@ -20,10 +20,11 @@ mod tests {
         }
     }
 
-    /// Returns hifitime's TAI representation as `(sec, attos)` using integer nanoseconds (no f64 loss).
+    /// Returns hifitime's TAI representation as `(sec, attos)` using integer nanoseconds.
+    /// hifitime is only ns-precise, so we truncate our attos to ns for comparison.
     fn hifitime_tai_parts(hi: Epoch) -> (i64, u64) {
         let tai = hi.to_time_scale(TimeScale::TAI);
-        let ref_tai = Epoch::from_tai_seconds(HIFITIME_TAI_EPOCH_TO_OUR_ZERO as f64);
+        let ref_tai = Epoch::from_tai_seconds(HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
         let dur: Duration = tai - ref_tai;
 
         let total_ns = dur.total_nanoseconds();
@@ -46,17 +47,217 @@ mod tests {
         }
     }
 
-    fn assert_tp_matches_hifitime(our_tai: Dt, hi: Epoch, msg: &str) {
+    fn assert_tai_matches_hifitime(our_tai: Dt, hi: Epoch, context: &str) {
         let (our_sec, our_attos) = (our_tai.sec(), our_tai.attos());
         let (hi_sec, hi_attos) = hifitime_tai_parts(hi);
 
-        assert_eq!(our_sec, hi_sec, "{} — TAI seconds differ", msg);
-        // Truncate to ns precision (hifitime is only ns-precise)
+        assert_eq!(our_sec, hi_sec, "{} — TAI seconds differ", context);
+        // Truncate to ns precision (hifitime only guarantees ns)
         assert_eq!(
             our_attos / 1_000_000_000 * 1_000_000_000,
             hi_attos,
-            "{} — TAI attoseconds differ (to ns precision)",
-            msg
+            "{} — TAI subseconds differ (ns precision)",
+            context
+        );
+    }
+
+    #[test]
+    fn scales_roundtrip_match_hifitime() {
+        // Representative TAI instants that stress different parts of the code:
+        // - J2000.0
+        // - Modern epoch
+        // - Far future
+        // - Far past
+        // - Near a leap-second boundary (UTC)
+        let test_points = [
+            Dt::from_sec(0, Scale::TAI),              // J2000.0 TAI
+            Dt::from_sec(1_000_000_000, Scale::TAI),  // ~31.7 years after J2000
+            Dt::from_sec(2_000_000_000, Scale::TAI),  // ~63.4 years after J2000
+            Dt::from_sec(-500_000_000, Scale::TAI),   // ~15.85 years before J2000
+            Dt::from_sec(-2_208_945_600, Scale::TAI), // ≈ J1900
+        ];
+
+        let scales = [
+            Scale::TAI,
+            Scale::TT,
+            Scale::TDB,
+            Scale::UTC,
+            Scale::GPS,
+            Scale::GST,
+            Scale::BDT,
+            Scale::QZSS,
+        ];
+
+        for &our_tai in &test_points {
+            for &scale in &scales {
+                if let Some(hi_scale) = to_hifitime(scale) {
+                    // Our library: TAI → numerical on `scale` → back to TAI
+                    let our_on_scale = our_tai.to(scale);
+                    let our_back = our_on_scale.to_tai(scale);
+
+                    // hifitime: same physical instant, same conversion chain
+                    let hi_base = Epoch::from_tai_seconds(HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
+                    let hi_tai = hi_base
+                        + Duration::from_nanoseconds(
+                            (our_tai.sec() as i128 * 1_000_000_000
+                                + (our_tai.attos() / 1_000_000_000) as i128)
+                                as f64,
+                        );
+                    let hi_on_scale = hi_tai.to_time_scale(hi_scale);
+                    let hi_back = hi_on_scale.to_time_scale(TimeScale::TAI);
+
+                    assert_tai_matches_hifitime(
+                        our_back,
+                        hi_back,
+                        &format!("{:?} roundtrip", scale),
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn tt_matches_hifitime_latest() {
+        use hifitime::{Epoch, TimeScale};
+
+        // Same test instant as your TCL test (2038-01-01 00:00 TAI)
+        let tai_sec: f64 = 4_354_905_600.0;
+
+        let epoch_tai = Epoch::from_tai_seconds(tai_sec);
+        let epoch_tt = epoch_tai.to_time_scale(TimeScale::TT);
+        let hifi_tt_sec = epoch_tt.duration.to_seconds();
+
+        let my_2038_tai = Dt::from_ymd_on(2038, 1, 1, Scale::TAI);
+
+        // Our library gives seconds since J2000.0 TT.
+        // hifitime gives seconds since 1900-01-01 TT.
+        // Add the known constant offset so both numbers count from the same point.
+        let my_tt_sec =
+            my_2038_tai.to(Scale::TT).to_sec_f() + (HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
+
+        let diff = (my_tt_sec - hifi_tt_sec).abs();
+
+        assert!(
+            diff < 1e-12,
+            "TT mismatch with hifitime: our (adjusted) = {:.12}, hifitime = {:.12}, diff = {:.12} s",
+            my_tt_sec,
+            hifi_tt_sec,
+            diff
+        );
+    }
+
+    #[test]
+    fn tdb_matches_hifitime_latest() {
+        use hifitime::{Epoch, TimeScale};
+
+        // Same test instant as your TCL and TT tests (2038-01-01 00:00 TAI)
+        let tai_sec: f64 = 4_354_905_600.0;
+
+        let epoch_tai = Epoch::from_tai_seconds(tai_sec);
+        let epoch_tdb = epoch_tai.to_time_scale(TimeScale::TDB);
+        let hifi_tdb_sec = epoch_tdb.duration.to_seconds();
+
+        let my_2038_tai = Dt::from_ymd_on(2038, 1, 1, Scale::TAI);
+
+        // Both libraries give TDB seconds since J2000.0 → direct comparison, no offset
+        let my_tdb_sec = my_2038_tai.to(Scale::TDB).to_sec_f();
+
+        let diff = (my_tdb_sec - hifi_tdb_sec).abs();
+
+        assert!(
+            diff < 1e-4,
+            "TDB mismatch with hifitime: our = {:.9}, hifitime = {:.9}, diff = {:.9} s",
+            my_tdb_sec,
+            hifi_tdb_sec,
+            diff
+        );
+    }
+
+    #[test]
+    fn utc_matches_hifitime_latest() {
+        use hifitime::{Epoch, TimeScale};
+
+        // Same test instant as your TCL / TT / TDB tests (2038-01-01 00:00 TAI)
+        let tai_sec: f64 = 4_354_905_600.0;
+
+        let epoch_tai = Epoch::from_tai_seconds(tai_sec);
+        let epoch_utc = epoch_tai.to_time_scale(TimeScale::UTC);
+        let hifi_utc_sec = epoch_utc.duration.to_seconds();
+
+        let my_2038_tai = Dt::from_ymd_on(2038, 1, 1, Scale::TAI);
+
+        // Our library gives seconds since J2000.0 UTC.
+        // hifitime gives seconds since 1900-01-01 00:00 UTC.
+        // Add the known constant offset so both numbers count from the same point.
+        let my_utc_sec =
+            my_2038_tai.to(Scale::UTC).to_sec_f() + (HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
+
+        let diff = (my_utc_sec - hifi_utc_sec).abs();
+
+        assert!(
+            diff < 1e-12,
+            "UTC mismatch with hifitime: our (adjusted) = {:.12}, hifitime = {:.12}, diff = {:.12} s",
+            my_utc_sec,
+            hifi_utc_sec,
+            diff
+        );
+    }
+
+    #[test]
+    fn gps_matches_hifitime_latest() {
+        use hifitime::{Epoch, TimeScale};
+
+        // Same test instant as your TCL / TT / TDB / UTC tests (2038-01-01 00:00 TAI)
+        let tai_sec: f64 = 4_354_905_600.0;
+
+        let epoch_tai = Epoch::from_tai_seconds(tai_sec);
+        let epoch_gps = epoch_tai.to_time_scale(TimeScale::GPST);
+        let hifi_gps_sec = epoch_gps.duration.to_seconds();
+
+        let my_2038_tai = Dt::from_ymd_on(2038, 1, 1, Scale::TAI);
+
+        // hifitime GPST: seconds since 1980-01-06 00:00:00 UTC (standard GPS epoch)
+        // Our library: seconds since J2000.0 on the GPS scale
+        // Offset between GPS epoch and J2000.0 = exactly 630763200 s
+        let my_gps_sec = my_2038_tai.to(Scale::GPS).to_sec_f() + 630_763_200.0;
+
+        let diff = (my_gps_sec - hifi_gps_sec).abs();
+
+        assert!(
+            diff < 1e-12,
+            "GPS mismatch with hifitime: our (adjusted) = {:.12}, hifitime = {:.12}, diff = {:.12} s",
+            my_gps_sec,
+            hifi_gps_sec,
+            diff
+        );
+    }
+
+    #[test]
+    fn bdt_matches_hifitime_latest() {
+        use hifitime::{Epoch, TimeScale};
+
+        // Same test instant as all your other cross-validation tests (2038-01-01 00:00 TAI)
+        let tai_sec: f64 = 4_354_905_600.0;
+
+        let epoch_tai = Epoch::from_tai_seconds(tai_sec);
+        let epoch_bdt = epoch_tai.to_time_scale(TimeScale::BDT);
+        let hifi_bdt_sec = epoch_bdt.duration.to_seconds();
+
+        let my_2038_tai = Dt::from_ymd_on(2038, 1, 1, Scale::TAI);
+
+        // hifitime BDT: seconds since 2006-01-01 00:00:00 UTC
+        // Our library: seconds since J2000.0 on the BDT scale
+        // → subtract the offset (BDT reference is later than J2000)
+        let my_bdt_sec = my_2038_tai.to(Scale::BDT).to_sec_f() - 189_345_600.0;
+
+        let diff = (my_bdt_sec - hifi_bdt_sec).abs();
+
+        assert!(
+            diff < 1e-12,
+            "BDT mismatch with hifitime: our (adjusted) = {:.12}, hifitime = {:.12}, diff = {:.12} s",
+            my_bdt_sec,
+            hifi_bdt_sec,
+            diff
         );
     }
 
@@ -68,81 +269,26 @@ mod tests {
         let our_tai = Dt::new(hi_tai_sec, hi_tai_subsec);
         let our_utc = our_tai.to(Scale::UTC).to_tai(Scale::UTC);
 
-        assert_tp_matches_hifitime(our_utc, hi_tai, "UTC leap second 2016-12-31");
+        assert_tai_matches_hifitime(our_utc, hi_tai, "UTC leap second 2016-12-31");
     }
 
     #[test]
     fn test_j2000_zero_points() {
         let our = Dt::from(0, 0, Scale::TAI);
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
-        assert_tp_matches_hifitime(our, hi, "J2000 TAI zero");
+        assert_tai_matches_hifitime(our, hi, "J2000 TAI zero");
 
         let our = Dt::from(0, 0, Scale::TT);
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 11, 59, 27, 816_000_000);
-        assert_tp_matches_hifitime(our, hi, "J2000 TT zero");
+        assert_tai_matches_hifitime(our, hi, "J2000 TT zero");
 
         let our = Dt::from(0, 0, Scale::GPS);
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::GPST);
-        assert_tp_matches_hifitime(our, hi, "J2000 GPST zero");
+        assert_tai_matches_hifitime(our, hi, "J2000 GPST zero");
 
         let our = Dt::from(0, 0, Scale::BDT);
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::BDT);
-        assert_tp_matches_hifitime(our, hi, "J2000 BDT zero");
-    }
-
-    #[test]
-    fn test_scale_conversions_all_directions() {
-        let base_tai_sec = 123_456_789_i64;
-        let base_attos = 987_654_321_000_000_000u64;
-
-        let our_base = Dt::new(base_tai_sec, base_attos);
-
-        let scales: &[Scale] = &[
-            Scale::TAI,
-            Scale::TT,
-            Scale::TDB,
-            Scale::UTC,
-            Scale::GPS,
-            Scale::GST,
-            Scale::BDT,
-            Scale::QZSS,
-        ];
-
-        for &from in scales {
-            if to_hifitime(from).is_none() {
-                continue;
-            }
-            // tai to scale timespan
-            let our_from = our_base.to(from);
-
-            for &to in scales {
-                if to_hifitime(to).is_none() {
-                    continue;
-                }
-
-                // scale time span to some other scale
-                let our_to = our_from.to_scale_from(from, to);
-
-                let ns_since_our_zero = (base_tai_sec as i128) * 1_000_000_000i128
-                    + (base_attos / 1_000_000_000) as i128;
-
-                let hi_base =
-                    Epoch::from_tai_seconds(
-                        (HIFITIME_TAI_EPOCH_TO_OUR_ZERO as i128 + ns_since_our_zero / 1_000_000_000)
-                            as f64,
-                    ) + Duration::from_nanoseconds((ns_since_our_zero % 1_000_000_000) as f64);
-
-                let hi_from = hi_base.to_time_scale(to_hifitime(from).unwrap());
-                let hi_to = hi_from.to_time_scale(to_hifitime(to).unwrap());
-
-                // make a tai
-                assert_tp_matches_hifitime(
-                    our_to.to_tai(to),
-                    hi_to,
-                    &format!("{:?} → {:?}", from, to),
-                );
-            }
-        }
+        assert_tai_matches_hifitime(our, hi, "J2000 BDT zero");
     }
 
     #[test]
@@ -155,7 +301,7 @@ mod tests {
         let gpst_zero = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::GPST);
         let hi = gpst_zero + delta;
 
-        assert_tp_matches_hifitime(our, hi, "negative GPST with sub-second");
+        assert_tai_matches_hifitime(our, hi, "negative GPST with sub-second");
     }
 
     #[test]
@@ -168,8 +314,8 @@ mod tests {
 
         for &(tai_sec, label) in cases {
             let our = Dt::new(tai_sec, 0);
-            let hi = Epoch::from_tai_seconds((HIFITIME_TAI_EPOCH_TO_OUR_ZERO + tai_sec) as f64);
-            assert_tp_matches_hifitime(our, hi, label);
+            let hi = Epoch::from_tai_seconds((HIFITIME_TAI_EPOCH_TO_OUR_J2000 + tai_sec) as f64);
+            assert_tai_matches_hifitime(our, hi, label);
         }
     }
 
@@ -189,6 +335,9 @@ mod tests {
         for &(year, month, day, hour, min, sec, expected_offset) in cases {
             let utc = Epoch::from_gregorian(year, month, day, hour, min, sec, 0, TimeScale::UTC);
 
+            let my_utc = Dt::from_ymd(year as i64, month, day);
+            let my_offset = leap_seconds::get_leap_seconds(&my_utc, true).offset as i32;
+
             let offset = utc
                 .leap_seconds(true) // IERS-only (post-1972)
                 .expect("Leap second date should be after 1960")
@@ -196,7 +345,19 @@ mod tests {
 
             assert_eq!(
                 offset, expected_offset,
-                "Leap second offset mismatch for {}-{:02}-{:02}",
+                "hifitime leap second offset mismatch for {}-{:02}-{:02}",
+                year, month, day
+            );
+
+            assert_eq!(
+                my_offset, expected_offset,
+                "deep_time leap second offset mismatch for {}-{:02}-{:02}",
+                year, month, day
+            );
+
+            assert_eq!(
+                offset, my_offset,
+                "hifitime and deep_time disagree on leap second offset for {}-{:02}-{:02}",
                 year, month, day
             );
         }
