@@ -1,19 +1,12 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_US,
     ClockDrift, ClockModel, Dt, FS_PER_SEC, MS_PER_SEC, NS_PER_SEC, PS_PER_SEC, Scale,
-    TT_TAI_OFFSET_SPAN, UNIX_EPOCH_TO_J2000_NOON_UTC, US_PER_SEC,
+    UNIX_EPOCH_TO_J2000_NOON_UTC, US_PER_SEC,
 };
 
 impl Dt {
     /// The library’s reference zero instant: exactly **2000-01-01 12:00:00 TAI**.
     pub const ZERO: Self = Self::new(0, 0);
-
-    /// The TAI instant that corresponds to the conventional **J2000.0 epoch**
-    /// (2000-01-01 12:00:00 **TT**, JD 2451545.0 TT).
-    pub const J2000_TAI: Self = Self::ZERO.sub(TT_TAI_OFFSET_SPAN);
-
-    /// The J1900.0 epoch expressed in TAI (1900-01-01 12:00:00 TAI).
-    pub const J1900_TAI: Self = Self::new(-3_155_760_000, 0);
 
     /// Library zero points (same physical instant as ZERO, different tags)
     pub const GPS_ZERO: Self = Self::new(19, 0);
