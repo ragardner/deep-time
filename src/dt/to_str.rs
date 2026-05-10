@@ -12,7 +12,6 @@ impl Dt {
     }
 
     /// High-level alloc version with explicit offset (label-only).
-    #[cfg(feature = "alloc")]
     #[inline]
     pub fn to_str_with_offset(&self, fmt: &str, secs: i32) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
@@ -21,7 +20,6 @@ impl Dt {
     }
 
     /// High-level alloc version for full IANA timezone formatting (with civil-time adjustment).
-    #[cfg(feature = "alloc")]
     #[inline]
     pub fn to_str_with_tz(&self, fmt: &str, tz_name: &str) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
@@ -34,7 +32,6 @@ impl Dt {
     ///
     /// This method is only available when the **`alloc`** feature is enabled.
     /// It returns `alloc::string::String` (no_std + alloc compatible).
-    #[cfg(feature = "alloc")]
     pub fn to_iso_duration(&self) -> alloc::string::String {
         if self.is_zero() {
             return alloc::string::String::from("PT0S");

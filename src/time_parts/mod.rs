@@ -27,7 +27,7 @@ pub struct TimeParts {
     pub second: Option<u8>, // 0-60
     pub attos: Option<u64>, // 0 ≤ value < 10¹⁸
     pub offset: Option<Offset>,
-    pub iana_name: Option<AsciiStr<50>>,
+    pub iana_name: Option<AsciiStr<49>>,
     pub is_leap_second: bool,
     pub scale: Scale,
     pub weekday: Option<Weekday>,
@@ -52,7 +52,7 @@ impl TimeParts {
     /// Sets the IANA timezone name safely.
     ///
     /// Uses `AsciiStr::try_from_str` internally. If the name is non-ASCII
-    /// or longer than 50 bytes it is silently dropped (no panics).
+    /// or longer than 49 bytes it is silently dropped (no panics).
     #[inline]
     pub fn set_iana_name(&mut self, name: Option<&str>) -> &mut Self {
         self.iana_name = name.and_then(|s| AsciiStr::try_from_str(s).ok());
@@ -229,14 +229,14 @@ impl TimeParts {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
-    /// Total size of the wire representation (121 bytes).
-    pub const WIRE_SIZE: usize = 121;
+    /// Total size of the wire representation (120 bytes).
+    pub const WIRE_SIZE: usize = 120;
 
-    /// Serializes `TimeParts` into a fixed 121-byte buffer.
+    /// Serializes `TimeParts` into a fixed 120-byte buffer.
     ///
     /// Layout:
     /// - Byte 0: Version (`WIRE_VERSION`)
-    /// - Bytes 1..121: Data (120 bytes)
+    /// - Bytes 1..120: Data (119 bytes)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -278,12 +278,12 @@ impl TimeParts {
         buf[offset..offset + 5].copy_from_slice(&offset_bytes);
         offset += 5;
 
-        // iana_name (50 bytes)
+        // iana_name (49 bytes)
         if let Some(name) = &self.iana_name {
             let name_bytes = name.to_wire_bytes();
-            buf[offset..offset + 50].copy_from_slice(&name_bytes);
+            buf[offset..offset + 49].copy_from_slice(&name_bytes);
         }
-        offset += 50;
+        offset += 49;
 
         // is_leap_second
         buf[offset] = if self.is_leap_second { 1 } else { 0 };
@@ -330,7 +330,7 @@ impl TimeParts {
         buf
     }
 
-    /// Deserializes `TimeParts` from exactly 121 bytes.
+    /// Deserializes `TimeParts` from exactly 120 bytes.
     ///
     /// Returns `None` if the version byte is unknown or the data is invalid.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
@@ -399,14 +399,14 @@ impl TimeParts {
         }
         offset += 5;
 
-        // iana_name (50 bytes) — already nice
-        let iana_bytes = &bytes[offset..offset + 50];
-        if let Some(name) = AsciiStr::<50>::from_wire_bytes(iana_bytes) {
+        // iana_name (49 bytes) — already nice
+        let iana_bytes = &bytes[offset..offset + 49];
+        if let Some(name) = AsciiStr::<49>::from_wire_bytes(iana_bytes) {
             if !name.is_empty() {
                 dc.iana_name = Some(name);
             }
         }
-        offset += 50;
+        offset += 49;
 
         // is_leap_second (1 byte)
         dc.is_leap_second = bytes[offset] != 0;

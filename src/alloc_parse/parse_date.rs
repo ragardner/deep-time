@@ -54,7 +54,7 @@ impl Dt {
         let (mode, date_order) = if let Some(formats) = &opts.parse {
             if !formats.is_empty() {
                 for fmt in formats {
-                    if let Some(value) = Self::from_str(normalized, fmt, true, true, false) {
+                    if let Ok(value) = Self::from_str(normalized, fmt, true, true, false) {
                         return Ok(value);
                     }
                 }
@@ -250,7 +250,7 @@ where
 {
     formats
         .into_iter()
-        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false))
+        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false).ok())
 }
 
 #[inline]

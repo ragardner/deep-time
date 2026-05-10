@@ -1,6 +1,6 @@
 #[cfg(feature = "parse")]
 mod tests {
-    use deep_time::{DateOrder, DateParseMode, Dt, ParseCfg, Scale};
+    use deep_time::{DateOrder, DateParseMode, Dt, DtErr, DtErrKind, ParseCfg, Scale};
 
     #[cfg(feature = "tz")]
     #[test]
@@ -45,75 +45,8 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        // let x = Dt::from_ymd(1961, 1, 1, Scale::UTC);
-        // eprintln!("UTC lower 61 {:?}", x);
-        // let x = Dt::from_ymd(1972, 1, 1, Scale::UTC);
-        // eprintln!("UTC upper 72 {:?}", x);
-
-        // let utc_tp = Dt::from_ymd(1961, 1, 1, Scale::UTC);
-        // let sofa_tp = utc_tp.with_type(Scale::UTCSofa);
-        // let tai_tp = sofa_tp.to_tai();
-        // println!("TAI lower 61 {:?}", tai_tp);
-
-        // let utc_tp = Dt::from_ymd(1972, 1, 1, Scale::UTC);
-        // let tai_tp = utc_tp.to_tai();
-        // println!("TAI upper 72 {:?}", tai_tp);
-
-        // for &(year, month, day, _) in dates {
-        //     // Create UTC Dt at 00:00:00 on the insertion date
-        //     let utc_tp =
-        //         Dt::from_ymd(year as i64, month as u8, day as u8, Scale::UTC);
-
-        //     // Create TAI Dt at the same civil date (for comparison)
-        //     let tai_tp =
-        //         Dt::from_ymd(year as i64, month as u8, day as u8, Scale::TAI);
-
-        //     println!(
-        //         "{:04}-{:02}-{:02}: UTC sec = {}, TAI sec = {}",
-        //         year,
-        //         month,
-        //         day,
-        //         utc_tp.sec(),
-        //         tai_tp.sec(),
-        //     );
-        // }
-
-        // let unix_sec = -283996800i64;
-
-        // let tp = Dt::from_unix_sec(unix_sec);
-        // let tai = tp.to_type(Scale::TAI); // or tp.to_tai() if you have that method
-
-        // println!("TAI sec: {}", tai.sec());
-        // println!("TAI subsec: {}", tai.subsec());
-
-        // let unix_1972 = 63072000i64;
-        // let tp_1972 = Dt::from_unix_sec(unix_1972);
-        // let tai_1972 = tp_1972.to_type(Scale::TAI);
-        // eprintln!("1972-01-01 TAI sec (for cutoff): {}", tai_1972.sec());
-
-        // let x = Dt::from_ymd(1972, 1, 1, Scale::TAI).to_jd();
-        // eprintln!("{}", x);
-
-        // for e in SOFA_TAI_UTC_PRE_1972.iter() {
-        //     // Create the UTC instant for this table row
-        //     let utc_tp = Dt::from_ymd(e.yr as i64, e.mo, e.day, Scale::UTC);
-
-        //     // Turn it into a UTCSofa Dt (preserves the numerical unix_sec)
-        //     let sofa_tp = utc_tp.with_type(Scale::UTCSofa);
-
-        //     // This calls your to_tai for UTCSofa, which does:
-        //     //   utc_to_tai(...) + add(sofa_offset)
-        //     let tai_tp = sofa_tp.to_tai();
-
-        //     println!(
-        //         "{}-{}-{} : tai_jd: {}, tai_mjd: {}",
-        //         e.yr,
-        //         e.mo,
-        //         e.day,
-        //         tai_tp.to_jd(),
-        //         tai_tp.to_mjd(),
-        //     );
-        // }
+        let x = DtErr::new(DtErrKind::BadFractional);
+        eprintln!("{}", std::mem::size_of_val(&x));
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

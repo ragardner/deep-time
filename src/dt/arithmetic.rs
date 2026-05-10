@@ -168,10 +168,6 @@ impl Dt {
         Self::add_attos_span(&mut self.sec, &mut self.attos, n, 1);
     }
 
-    // =====================================================================
-    // Single-unit subtraction methods (convenience methods for -1)
-    // =====================================================================
-
     /// Subtracts exactly 1 hour (3600 seconds) from this time value using saturating arithmetic.
     #[inline]
     pub const fn sub_1hr(&mut self) {
@@ -340,11 +336,6 @@ impl Dt {
     pub const fn to_fs(self) -> i128 {
         self.to_attos() / (ATTOS_PER_FS as i128)
     }
-
-    //
-    //
-    //
-    //
 
     /// Core saturating add for (sec, attos) pairs.
     pub(crate) const fn add_time(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> (i64, u64) {

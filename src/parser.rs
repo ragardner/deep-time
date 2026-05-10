@@ -57,7 +57,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 return Err(an_err!(DtErrKind::UnexpectedEnd, "after %"));
             }
 
-            let (flag, width, colons, new_fmt) = parse_format_extensions(self.fmt, 0);
+            let (flag, width, colons, new_fmt) = Self::parse_format_extensions(self.fmt, 0);
             self.fmt = new_fmt;
 
             let directive = self.fmt.get(0).copied().unwrap_or(0);
@@ -216,7 +216,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), DtErr> {
-        let (y, remaining) = match parse_padded_i64(self.inp, flag, width, 4, b'0') {
+        let (y, remaining) = match Self::parse_padded_i64(self.inp, flag, width, 4, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "year")),
         };
@@ -230,7 +230,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline]
     fn parse_unbounded_year(&mut self) -> Result<(), DtErr> {
-        let (y, remaining) = match parse_arbitrary_i64(self.inp) {
+        let (y, remaining) = match Self::parse_arbitrary_i64(self.inp) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "year")),
         };
@@ -248,7 +248,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), DtErr> {
-        let (y, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (y, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "year")),
         };
@@ -272,8 +272,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (sign, after_sign) = parse_optional_sign(self.inp);
-        let (c, remaining) = match parse_padded_i64(after_sign, flag, width, 2, b'_') {
+        let (sign, after_sign) = Self::parse_optional_sign(self.inp);
+        let (c, remaining) = match Self::parse_padded_i64(after_sign, flag, width, 2, b'_') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "century")),
         };
@@ -291,7 +291,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (y, remaining) = match parse_padded_i64(self.inp, flag, width, 4, b'0') {
+        let (y, remaining) = match Self::parse_padded_i64(self.inp, flag, width, 4, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "iso week year")),
         };
@@ -308,7 +308,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (y, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (y, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(DtErrKind::ExpectedValue, "iso week year"));
@@ -333,7 +333,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), DtErr> {
-        let (m, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (m, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "digit month")),
         };
@@ -356,7 +356,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), DtErr> {
-        let (d, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (d, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "day")),
         };
@@ -378,7 +378,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (n, remaining) = match parse_padded_number(self.inp, flag, width, 3, b'0') {
+        let (n, remaining) = match Self::parse_padded_number(self.inp, flag, width, 3, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "day of year")),
         };
@@ -404,7 +404,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), DtErr> {
-        let (h, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (h, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "hour")),
         };
@@ -426,7 +426,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (h, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (h, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "hour")),
         };
@@ -447,7 +447,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), DtErr> {
-        let (m, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (m, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "minute")),
         };
@@ -470,7 +470,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), DtErr> {
-        let (s, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (s, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "seconds")),
         };
@@ -533,8 +533,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (sign, after_sign) = parse_optional_sign(self.inp);
-        let (n, remaining) = match parse_padded_number(after_sign, flag, width, 19, b' ') {
+        let (sign, after_sign) = Self::parse_optional_sign(self.inp);
+        let (n, remaining) = match Self::parse_padded_number(after_sign, flag, width, 19, b' ') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "timestamp")),
         };
@@ -602,7 +602,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             b"November",
             b"December",
         ];
-        let (index, remaining) = match match_from_choice_list(self.inp, CHOICES) {
+        let (index, remaining) = match Self::match_from_choice_list(self.inp, CHOICES) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::InvalidName, "month name")),
         };
@@ -655,7 +655,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             b"Friday",
             b"Saturday",
         ];
-        let (index, remaining) = match match_from_choice_list(self.inp, CHOICES) {
+        let (index, remaining) = match Self::match_from_choice_list(self.inp, CHOICES) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::InvalidName, "weekday")),
         };
@@ -675,7 +675,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 1, b'_') {
+        let (w, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 1, b'_') {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -699,7 +699,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 1, b'_') {
+        let (w, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 1, b'_') {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -741,7 +741,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (w, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -763,7 +763,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (w, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -785,7 +785,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match parse_u8_padded(self.inp, flag, width, 2, b'0') {
+        let (w, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "iso week")),
         };
@@ -930,7 +930,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if !self.inp.is_empty() && matches!(self.current_input_byte(), b'+' | b'-') {
             return self.parse_timezone_offset(_flag, _width, colons);
         }
-        let (iana_str, remaining) = match parse_iana(self.inp) {
+        let (iana_str, remaining) = match Self::parse_iana(self.inp) {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -1026,193 +1026,199 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.advance_input();
         Ok(())
     }
-}
 
-#[inline]
-fn parse_format_extensions(fmt: &[u8], mut pos: usize) -> (Option<u8>, Option<u8>, u8, &[u8]) {
-    let mut flag = None;
-    let mut width = None;
-    let mut colons = 0u8;
-    if matches!(fmt.get(pos), Some(b'-' | b'_' | b'0' | b'^' | b'#')) {
-        flag = Some(fmt[pos]);
-        pos += 1;
-    }
-    // Width (e.g. %4Y, %02d, %-3j, %^10A – width after flag)
-    if matches!(fmt.get(pos), Some(c) if c.is_ascii_digit()) {
-        let mut w = 0u16;
-        while pos < fmt.len() && fmt[pos].is_ascii_digit() {
-            w = w * 10 + u16::from(fmt[pos] - b'0');
+    #[inline]
+    pub(crate) fn parse_format_extensions(
+        fmt: &[u8],
+        mut pos: usize,
+    ) -> (Option<u8>, Option<u8>, u8, &[u8]) {
+        let mut flag = None;
+        let mut width = None;
+        let mut colons = 0u8;
+        if matches!(fmt.get(pos), Some(b'-' | b'_' | b'0' | b'^' | b'#')) {
+            flag = Some(fmt[pos]);
             pos += 1;
         }
-        if w <= u8::MAX as u16 {
-            width = Some(w as u8);
-        }
-    }
-    // Colons (for %:z, %::z, %:::z, %:Q, etc.)
-    while matches!(fmt.get(pos), Some(b':')) {
-        colons += 1;
-        pos += 1;
-    }
-    (flag, width, colons, &fmt[pos..])
-}
-
-fn parse_optional_sign(inp: &[u8]) -> (i32, &[u8]) {
-    if let Some(b'-') = inp.get(0) {
-        (-1, &inp[1..])
-    } else if let Some(b'+') = inp.get(0) {
-        (1, &inp[1..])
-    } else {
-        (1, inp)
-    }
-}
-
-#[inline]
-fn parse_digits(inp: &[u8]) -> (&[u8], &[u8]) {
-    let mut pos = 0;
-    while pos < inp.len() && inp[pos].is_ascii_digit() {
-        pos += 1;
-    }
-    (&inp[..pos], &inp[pos..])
-}
-
-#[inline]
-fn parse_padded_number(
-    inp: &[u8],
-    flag: Option<u8>,
-    width: Option<u8>,
-    default_pad_width: usize,
-    default_flag: u8,
-) -> Result<(i64, &[u8]), ()> {
-    let mut pos = 0;
-    // Skip leading whitespace
-    while pos < inp.len() && inp[pos].is_ascii_whitespace() {
-        pos += 1;
-    }
-    if pos >= inp.len() {
-        return Err(());
-    }
-    // Resolve effective padding flag (ignore ^ and # for numeric parsing – they are no-ops)
-    let effective_flag = match flag {
-        Some(b'^') | Some(b'#') => default_flag,
-        Some(f) => f,
-        None => default_flag,
-    };
-    let zero_pad_width = match effective_flag {
-        b'_' | b' ' | b'-' => 0, // PadSpace or NoPad
-        _ => width.map(usize::from).unwrap_or(default_pad_width),
-    };
-    let max_digits = default_pad_width.max(zero_pad_width);
-    let mut n: i64 = 0;
-    let mut digits = 0usize;
-    while digits < zero_pad_width && pos + digits < inp.len() && inp[pos + digits] == b'0' {
-        digits += 1;
-    }
-    // Then parse the rest of the digits up to max_digits
-    while digits < max_digits && pos + digits < inp.len() && inp[pos + digits].is_ascii_digit() {
-        let digit = i64::from(inp[pos + digits] - b'0');
-        n = n
-            .checked_mul(10)
-            .and_then(|x| x.checked_add(digit))
-            .ok_or(())?;
-        digits += 1;
-    }
-    if digits == 0 {
-        return Err(());
-    }
-    Ok((n, &inp[pos + digits..]))
-}
-
-#[inline]
-fn parse_u8_padded(
-    inp: &[u8],
-    flag: Option<u8>,
-    width: Option<u8>,
-    default_pad_width: usize,
-    default_flag: u8,
-) -> Result<(u8, &[u8]), ()> {
-    let (n, remaining) = parse_padded_number(inp, flag, width, default_pad_width, default_flag)?;
-    if !(0..=255).contains(&n) {
-        return Err(());
-    }
-    Ok((n as u8, remaining))
-}
-
-#[inline]
-fn match_from_choice_list<'a>(inp: &'a [u8], choices: &[&[u8]]) -> Result<(u8, &'a [u8]), ()> {
-    for (i, choice) in choices.iter().enumerate() {
-        if inp.len() < choice.len() {
-            continue;
-        }
-        let candidate = &inp[..choice.len()];
-        if candidate.eq_ignore_ascii_case(choice) {
-            return Ok((i as u8, &inp[choice.len()..]));
-        }
-    }
-    Err(())
-}
-
-#[inline]
-fn parse_iana<'a>(inp: &'a [u8]) -> Result<(&'a str, &'a [u8]), ()> {
-    let start = inp;
-    let mut pos = 0;
-
-    if pos >= inp.len() || !matches!(inp[pos], b'_' | b'.' | b'A'..=b'Z' | b'a'..=b'z') {
-        return Err(());
-    }
-    pos += 1;
-
-    while pos < inp.len() {
-        if matches!(
-            inp[pos],
-            b'_' | b'.' | b'+' | b'-' | b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z'
-        ) {
-            pos += 1;
-        } else if inp[pos] == b'/' {
-            pos += 1;
-            if pos >= inp.len() || !matches!(inp[pos], b'_' | b'.' | b'A'..=b'Z' | b'a'..=b'z') {
-                return Err(());
+        // Width (e.g. %4Y, %02d, %-3j, %^10A – width after flag)
+        if matches!(fmt.get(pos), Some(c) if c.is_ascii_digit()) {
+            let mut w = 0u16;
+            while pos < fmt.len() && fmt[pos].is_ascii_digit() {
+                w = w * 10 + u16::from(fmt[pos] - b'0');
+                pos += 1;
             }
+            if w <= u8::MAX as u16 {
+                width = Some(w as u8);
+            }
+        }
+        // Colons (for %:z, %::z, %:::z, %:Q, etc.)
+        while matches!(fmt.get(pos), Some(b':')) {
+            colons += 1;
             pos += 1;
+        }
+        (flag, width, colons, &fmt[pos..])
+    }
+
+    fn parse_optional_sign(inp: &[u8]) -> (i32, &[u8]) {
+        if let Some(b'-') = inp.get(0) {
+            (-1, &inp[1..])
+        } else if let Some(b'+') = inp.get(0) {
+            (1, &inp[1..])
         } else {
-            break;
+            (1, inp)
         }
     }
-    let iana = core::str::from_utf8(&start[..pos]).map_err(|_| ())?;
-    Ok((iana, &start[pos..]))
-}
 
-#[inline]
-fn parse_padded_i64(
-    inp: &[u8],
-    flag: Option<u8>,
-    width: Option<u8>,
-    default_pad_width: usize,
-    default_flag: u8,
-) -> Result<(i64, &[u8]), ()> {
-    let (sign, after_sign) = parse_optional_sign(inp);
-    let (n, remaining) =
-        parse_padded_number(after_sign, flag, width, default_pad_width, default_flag)?;
-    let mut y = n as i64;
-    if sign < 0 {
-        y = -y;
+    #[inline]
+    fn parse_digits(inp: &[u8]) -> (&[u8], &[u8]) {
+        let mut pos = 0;
+        while pos < inp.len() && inp[pos].is_ascii_digit() {
+            pos += 1;
+        }
+        (&inp[..pos], &inp[pos..])
     }
-    Ok((y, remaining))
-}
 
-#[inline]
-fn parse_arbitrary_i64(inp: &[u8]) -> Result<(i64, &[u8]), ()> {
-    let (sign, after_sign) = parse_optional_sign(inp);
-    let (digits, remaining) = parse_digits(after_sign);
-    if digits.is_empty() {
-        return Err(());
+    #[inline]
+    fn parse_padded_number(
+        inp: &[u8],
+        flag: Option<u8>,
+        width: Option<u8>,
+        default_pad_width: usize,
+        default_flag: u8,
+    ) -> Result<(i64, &[u8]), ()> {
+        let mut pos = 0;
+        // Skip leading whitespace
+        while pos < inp.len() && inp[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        if pos >= inp.len() {
+            return Err(());
+        }
+        // Resolve effective padding flag (ignore ^ and # for numeric parsing – they are no-ops)
+        let effective_flag = match flag {
+            Some(b'^') | Some(b'#') => default_flag,
+            Some(f) => f,
+            None => default_flag,
+        };
+        let zero_pad_width = match effective_flag {
+            b'_' | b' ' | b'-' => 0, // PadSpace or NoPad
+            _ => width.map(usize::from).unwrap_or(default_pad_width),
+        };
+        let max_digits = default_pad_width.max(zero_pad_width);
+        let mut n: i64 = 0;
+        let mut digits = 0usize;
+        while digits < zero_pad_width && pos + digits < inp.len() && inp[pos + digits] == b'0' {
+            digits += 1;
+        }
+        // Then parse the rest of the digits up to max_digits
+        while digits < max_digits && pos + digits < inp.len() && inp[pos + digits].is_ascii_digit()
+        {
+            let digit = i64::from(inp[pos + digits] - b'0');
+            n = n
+                .checked_mul(10)
+                .and_then(|x| x.checked_add(digit))
+                .ok_or(())?;
+            digits += 1;
+        }
+        if digits == 0 {
+            return Err(());
+        }
+        Ok((n, &inp[pos + digits..]))
     }
-    let mut y: i64 = 0;
-    for &byte in digits {
-        let d = (byte - b'0') as i64;
-        y = y.checked_mul(10).and_then(|x| x.checked_add(d)).ok_or(())?;
+
+    #[inline]
+    fn parse_u8_padded(
+        inp: &[u8],
+        flag: Option<u8>,
+        width: Option<u8>,
+        default_pad_width: usize,
+        default_flag: u8,
+    ) -> Result<(u8, &[u8]), ()> {
+        let (n, remaining) =
+            Self::parse_padded_number(inp, flag, width, default_pad_width, default_flag)?;
+        if !(0..=255).contains(&n) {
+            return Err(());
+        }
+        Ok((n as u8, remaining))
     }
-    if sign < 0 {
-        y = y.checked_neg().ok_or(())?;
+
+    #[inline]
+    fn match_from_choice_list<'a>(inp: &'a [u8], choices: &[&[u8]]) -> Result<(u8, &'a [u8]), ()> {
+        for (i, choice) in choices.iter().enumerate() {
+            if inp.len() < choice.len() {
+                continue;
+            }
+            let candidate = &inp[..choice.len()];
+            if candidate.eq_ignore_ascii_case(choice) {
+                return Ok((i as u8, &inp[choice.len()..]));
+            }
+        }
+        Err(())
     }
-    Ok((y, remaining))
+
+    #[inline]
+    fn parse_iana<'a>(inp: &'a [u8]) -> Result<(&'a str, &'a [u8]), ()> {
+        let start = inp;
+        let mut pos = 0;
+
+        if pos >= inp.len() || !matches!(inp[pos], b'_' | b'.' | b'A'..=b'Z' | b'a'..=b'z') {
+            return Err(());
+        }
+        pos += 1;
+
+        while pos < inp.len() {
+            if matches!(
+                inp[pos],
+                b'_' | b'.' | b'+' | b'-' | b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z'
+            ) {
+                pos += 1;
+            } else if inp[pos] == b'/' {
+                pos += 1;
+                if pos >= inp.len() || !matches!(inp[pos], b'_' | b'.' | b'A'..=b'Z' | b'a'..=b'z')
+                {
+                    return Err(());
+                }
+                pos += 1;
+            } else {
+                break;
+            }
+        }
+        let iana = core::str::from_utf8(&start[..pos]).map_err(|_| ())?;
+        Ok((iana, &start[pos..]))
+    }
+
+    #[inline]
+    fn parse_padded_i64(
+        inp: &[u8],
+        flag: Option<u8>,
+        width: Option<u8>,
+        default_pad_width: usize,
+        default_flag: u8,
+    ) -> Result<(i64, &[u8]), ()> {
+        let (sign, after_sign) = Self::parse_optional_sign(inp);
+        let (n, remaining) =
+            Self::parse_padded_number(after_sign, flag, width, default_pad_width, default_flag)?;
+        let mut y = n as i64;
+        if sign < 0 {
+            y = -y;
+        }
+        Ok((y, remaining))
+    }
+
+    #[inline]
+    fn parse_arbitrary_i64(inp: &[u8]) -> Result<(i64, &[u8]), ()> {
+        let (sign, after_sign) = Self::parse_optional_sign(inp);
+        let (digits, remaining) = Self::parse_digits(after_sign);
+        if digits.is_empty() {
+            return Err(());
+        }
+        let mut y: i64 = 0;
+        for &byte in digits {
+            let d = (byte - b'0') as i64;
+            y = y.checked_mul(10).and_then(|x| x.checked_add(d)).ok_or(())?;
+        }
+        if sign < 0 {
+            y = y.checked_neg().ok_or(())?;
+        }
+        Ok((y, remaining))
+    }
 }
