@@ -55,7 +55,7 @@ impl Dt {
     /// This is the lossy counterpart to [`to_jd_exact`](Self::to_jd_exact).
     /// See that method for the exact scale-dependent behavior (JD(UTC) vs JD(TT)).
     #[inline]
-    pub const fn to_jd(&self, current: Scale, target: Scale) -> Real {
+    pub const fn to_jd_f(&self, current: Scale, target: Scale) -> Real {
         let (days, attos) = self.to_jd_exact(current, target);
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
@@ -106,7 +106,7 @@ impl Dt {
     /// This is the lossy counterpart to [`to_mjd_exact`](Self::to_mjd_exact).
     /// See that method for the exact scale-dependent behavior (MJD(UTC) vs uniform MJD).
     #[inline]
-    pub const fn to_mjd(self, current: Scale, target: Scale) -> Real {
+    pub const fn to_mjd_f(self, current: Scale, target: Scale) -> Real {
         let (days, attos) = self.to_mjd_exact(current, target);
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }

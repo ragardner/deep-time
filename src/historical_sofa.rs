@@ -201,8 +201,8 @@ pub const fn historical_sofa_offset_for_non_adjusted(dt: &Dt) -> Option<Real> {
     if dt.sec < -1230724800 || dt.sec >= -883656990 {
         return None;
     }
-    let jd = dt.to_jd(Scale::UTC, Scale::UTC);
-    let mjd = dt.to_mjd(Scale::UTC, Scale::UTC);
+    let jd = dt.to_jd_f(Scale::UTC, Scale::UTC);
+    let mjd = dt.to_mjd_f(Scale::UTC, Scale::UTC);
     let len = SOFA_TAI_UTC_PRE_1972.len();
     let mut i = len;
     while i > 0 {

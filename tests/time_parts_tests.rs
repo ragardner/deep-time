@@ -4,9 +4,9 @@ mod tests {
     use deep_time::error::DtErrKind;
     use deep_time::{Dt, Scale, TimeParts, Weekday};
 
-    /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd()`).
+    /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_f()`).
     fn jd_tt(tp: &Dt) -> f64 {
-        tp.to_jd(Scale::TAI, Scale::TT)
+        tp.to_jd_f(Scale::TAI, Scale::TT)
     }
 
     #[test]
