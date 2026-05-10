@@ -311,8 +311,13 @@ pub(crate) fn classify_date(
                             date_norm.push('.');
                             num_dot += 1;
                             let is_fractional_trigger = !seen_dot
-                                && (currently.after_date()
-                                    || (is_pure_numeric && num_non_decimal_digits >= 10));
+                                && (currently.after_date() || {
+                                    if num_dot > 1 {
+                                        is_pure_numeric && num_non_decimal_digits >= 10
+                                    } else {
+                                        is_pure_numeric && num_non_decimal_digits >= 5
+                                    }
+                                });
                             if is_fractional_trigger {
                                 seen_dot = true;
                                 has_fractional = true;

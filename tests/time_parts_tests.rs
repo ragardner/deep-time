@@ -6,7 +6,7 @@ mod tests {
 
     /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_f()`).
     fn jd_tt(tp: &Dt) -> f64 {
-        tp.to_jd_f(Scale::TAI, Scale::TT)
+        tp.to(Scale::TAI, Scale::TT).to_jd_f()
     }
 
     #[test]
@@ -64,10 +64,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(jd_tt(&ymd), jd_tt(&ordinal));
-        assert_eq!(
-            ymd.to_jd(Scale::TAI, Scale::TT),
-            ordinal.to_jd(Scale::TAI, Scale::TT)
-        );
+        assert_eq!(ymd.to_jd(), ordinal.to_jd());
     }
 
     #[test]
@@ -103,7 +100,7 @@ mod tests {
         .unwrap();
 
         let tp = parsed.to_time_point().unwrap();
-        let (_, frac_attos) = tp.to_jd(Scale::TAI, Scale::TT);
+        let (_, frac_attos) = tp.to(Scale::TAI, Scale::TT).to_jd();
 
         // Convert attoseconds → seconds
         let seconds_past_noon = (frac_attos as f64) / (ATTOS_PER_SEC_I128 as f64);
@@ -162,9 +159,6 @@ mod tests {
             .unwrap();
 
         assert_eq!(jd_tt(&tp_iso), jd_tt(&ymd));
-        assert_eq!(
-            tp_iso.to_jd(Scale::TAI, Scale::TT),
-            ymd.to_jd(Scale::TAI, Scale::TT)
-        );
+        assert_eq!(tp_iso.to_jd(), ymd.to_jd());
     }
 }

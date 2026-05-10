@@ -45,8 +45,21 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        let x = DtErr::new(DtErrKind::BadFractional);
-        eprintln!("{}", std::mem::size_of_val(&x));
+        let x = Dt::from_ymd(1970, 1, 1);
+        eprintln!("CIVIL     {:?}", x.to_jd());
+        eprintln!("NON CIVIL {:?}", x.to_jd());
+
+        let x = Dt::from_ymd_on(2020, 1, 1, Scale::TT); // or Scale::TT
+        eprintln!("CIVIL     {:?}", x.to_jd());
+        eprintln!("NON CIVIL {:?}", x.to_jd());
+
+        let x = Dt::from_ymd(1970, 1, 1);
+        eprintln!("CIVIL     {:?}", x.to_mjd());
+        eprintln!("NON CIVIL {:?}", x.to_mjd());
+
+        let x = Dt::from_ymd_on(2020, 1, 1, Scale::TT); // or Scale::TT
+        eprintln!("CIVIL     {:?}", x.to_mjd());
+        eprintln!("NON CIVIL {:?}", x.to_mjd());
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -376,6 +389,14 @@ mod tests {
     #[test]
     fn date_parser_comprehensive() {
         let cases: Vec<(&str, &str, Option<ParseCfg>)> = vec![
+            (
+                "2440587.5",
+                "1970-01-01T00:00:00Z",
+                Some(ParseCfg {
+                    mode: DateParseMode::Scientific,
+                    ..Default::default()
+                }),
+            ),
             (
                 "2024-03-14 03:30:45.123 PM",
                 "2024-03-14T15:30:45.123Z",

@@ -1,7 +1,7 @@
 use crate::{
-    Scale, DateParseMode, JD_2000_2_451_545, MAX_YEAR, MIN_YEAR, NS_PER_DAY,
-    PLAUSIBLE_YYYYMM_YEAR_RANGE, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Dt, parse_jd,
-    parse_mjd, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
+    DateParseMode, Dt, JD_2000_2_451_545, MAX_YEAR, MIN_YEAR, NS_PER_DAY,
+    PLAUSIBLE_YYYYMM_YEAR_RANGE, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Scale, parse_jd, parse_mjd,
+    parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
 };
 
 #[inline]
@@ -118,7 +118,7 @@ pub(crate) fn try_pure_numeric(
                 if is_decimal {
                     parse_jd(input, false)
                 } else {
-                    parse_yyyyjjj(input).or_else(|| parse_jd(input, false))
+                    parse_yyyyjjj(input).or_else(|| parse_jd(input, true))
                 }
             }
             _ => None,
