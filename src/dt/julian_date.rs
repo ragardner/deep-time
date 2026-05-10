@@ -125,7 +125,7 @@ impl Dt {
     ///
     /// # Precision
     /// Exact (attosecond resolution).
-    pub const fn from_jd_exact(jd_days: i64, frac_attos: u128, orig_type: Scale) -> Self {
+    pub const fn from_jd(jd_days: i64, frac_attos: u128, orig_type: Scale) -> Self {
         if orig_type.is_ut() {
             let delta_days = (jd_days as i128).saturating_sub(JD_EPOCH_DAYS);
 
@@ -165,22 +165,22 @@ impl Dt {
     /// in the scale indicated by `orig_type`.
     ///
     /// This is the inverse of [`to_mjd`](Self::to_mjd). See that method
-    /// and [`from_jd_exact`](Self::from_jd_exact) for scale-specific behavior.
+    /// and [`from_jd`](Self::from_jd) for scale-specific behavior.
     ///
     /// # Precision
     /// Exact (attosecond resolution).
-    pub const fn from_mjd_exact(mjd_days: i64, frac_attos: u128, orig_type: Scale) -> Self {
+    pub const fn from_mjd(mjd_days: i64, frac_attos: u128, orig_type: Scale) -> Self {
         let jd_days = mjd_days.saturating_add(2_400_000);
         let jd_attos = frac_attos.saturating_add(ATTOS_PER_HALF_DAY as u128);
 
         if jd_attos >= ATTOS_PER_DAY as u128 {
-            Self::from_jd_exact(
+            Self::from_jd(
                 jd_days.saturating_add(1),
                 jd_attos.saturating_sub(ATTOS_PER_DAY as u128),
                 orig_type,
             )
         } else {
-            Self::from_jd_exact(jd_days, jd_attos, orig_type)
+            Self::from_jd(jd_days, jd_attos, orig_type)
         }
     }
 }
