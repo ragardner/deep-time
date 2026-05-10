@@ -26,8 +26,7 @@ impl Dt {
     /// # Precision
     /// Exact (attosecond resolution). Use [`to_jd`](Self::to_jd) for the floating-point
     /// version.
-    pub const fn to_jd_exact(self, target: Scale) -> (i64, u128) {
-        // TODO: add current
+    pub const fn to_jd_exact(&self, current: Scale, target: Scale) -> (i64, u128) {
         if target.is_ut() {
             let canon_attos = self.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
             let total_attos = canon_attos.saturating_add(ATTOS_PER_HALF_DAY);
@@ -39,11 +38,12 @@ impl Dt {
             let jd_int = 2_440_587i64.saturating_add(days_i64);
             (jd_int, frac_attos)
         } else {
-            let Dt { sec, attos } = self.to(Scale::TAI, target);
-            let days_since_j2000 = sec.div_euclid(SEC_PER_DAYI64);
-            let remaining_sec = sec.rem_euclid(SEC_PER_DAYI64);
+            let dt = self.to(current, target);
+            let days_since_j2000 = dt.sec.div_euclid(SEC_PER_DAYI64);
+            let remaining_sec = dt.sec.rem_euclid(SEC_PER_DAYI64);
 
-            let frac_attos = (remaining_sec as u128) * ATTOS_PER_SEC_I128 as u128 + (attos as u128);
+            let frac_attos =
+                (remaining_sec as u128) * ATTOS_PER_SEC_I128 as u128 + (dt.attos as u128);
 
             let jd_int = JD_2000_2_451_545.saturating_add(days_since_j2000);
             (jd_int, frac_attos)
@@ -55,8 +55,8 @@ impl Dt {
     /// This is the lossy counterpart to [`to_jd_exact`](Self::to_jd_exact).
     /// See that method for the exact scale-dependent behavior (JD(UTC) vs JD(TT)).
     #[inline]
-    pub const fn to_jd(self, target: Scale) -> Real {
-        let (days, attos) = self.to_jd_exact(target);
+    pub const fn to_jd(&self, current: Scale, target: Scale) -> Real {
+        let (days, attos) = self.to_jd_exact(current, target);
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
 
@@ -75,7 +75,7 @@ impl Dt {
     ///
     /// # Precision
     /// Exact (attosecond resolution). Use [`to_mjd`](Self::to_mjd) for the floating-point version.
-    pub const fn to_mjd_exact(self, target: Scale) -> (i64, u128) {
+    pub const fn to_mjd_exact(&self, current: Scale, target: Scale) -> (i64, u128) {
         if target.is_ut() {
             let canon_attos = self.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
             let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
@@ -85,7 +85,7 @@ impl Dt {
             let mjd_days = MJD_1970.saturating_add(days_i64);
             (mjd_days, frac_attos)
         } else {
-            let (jd_days, frac_attos) = self.to_jd_exact(target);
+            let (jd_days, frac_attos) = self.to_jd_exact(current, target);
 
             let mjd_days = jd_days.saturating_sub(2_400_001);
             let mjd_attos = frac_attos.saturating_add(ATTOS_PER_HALF_DAY as u128);
@@ -106,8 +106,8 @@ impl Dt {
     /// This is the lossy counterpart to [`to_mjd_exact`](Self::to_mjd_exact).
     /// See that method for the exact scale-dependent behavior (MJD(UTC) vs uniform MJD).
     #[inline]
-    pub const fn to_mjd(self, target: Scale) -> Real {
-        let (days, attos) = self.to_mjd_exact(target);
+    pub const fn to_mjd(self, current: Scale, target: Scale) -> Real {
+        let (days, attos) = self.to_mjd_exact(current, target);
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
 

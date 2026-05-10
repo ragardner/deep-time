@@ -178,8 +178,8 @@ fn utc_leap_seconds_are_handled_in_mars_time() {
     let utc_pre = Dt::new(1_485_779_199, 0);
     let utc_post = Dt::new(1_485_779_200, 0);
 
-    let msd_pre = utc_pre.to_msd();
-    let msd_post = utc_post.to_msd();
+    let msd_pre = utc_pre.to_msd(Scale::TAI);
+    let msd_post = utc_post.to_msd(Scale::TAI);
 
     let diff_sols = (msd_post - msd_pre).abs();
     assert!(

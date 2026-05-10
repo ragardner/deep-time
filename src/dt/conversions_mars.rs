@@ -1,6 +1,6 @@
 use crate::{
-    Dt, MARS_REF_TT, MARS_REF_TT_ATTOS, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real, Scale, floor_f,
-    to_sec_f,
+    Dt, MARS_REF_TT, MARS_REF_TT_ATTOS, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real, Scale,
+    clamp_i128_to_i64, floor_f, to_sec_f,
 };
 
 impl Dt {
@@ -14,21 +14,20 @@ impl Dt {
     ///
     /// The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
     /// [`Scale`]. Leap seconds are automatically accounted for when converting from UTC.
-    pub const fn to_msd_exact(self) -> (i64, u128) {
-        // TODO: add current
-        let tt = self.to(Scale::TAI, Scale::TT);
+    pub const fn to_msd_exact(&self, current: Scale) -> (i64, u128) {
+        let tt = self.to(current, Scale::TT);
         let elapsed = Self::elapsed_to_attos_since_mars_msd_epoch(tt);
-        let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS) as i64;
+        let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS);
         let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;
 
-        (whole_sols, frac_attos)
+        (clamp_i128_to_i64(whole_sols), frac_attos)
     }
 
     /// Returns Mars Coordinated Time (MTC) as a [`Dt`] representing
     /// seconds into the current sol (range `[0, one Martian sol)`).
     #[inline]
-    pub const fn to_mtc(self) -> Dt {
-        let (_, frac_attos) = self.to_msd_exact();
+    pub const fn to_mtc(&self, current: Scale) -> Dt {
+        let (_, frac_attos) = self.to_msd_exact(current);
         Dt::from_attos(frac_attos as i128, Scale::TAI)
     }
 
@@ -52,8 +51,8 @@ impl Dt {
     /// Returns the Mars Sol Date (MSD) as a floating-point value (matches NASA Mars24 output).
     /// Non-exact Real.
     #[inline]
-    pub const fn to_msd(self) -> Real {
-        let (whole, frac) = self.to_msd_exact();
+    pub const fn to_msd(&self, current: Scale) -> Real {
+        let (whole, frac) = self.to_msd_exact(current);
         f!(whole) + to_sec_f(frac) / MARS_SOL_LENGTH_SEC
     }
 }

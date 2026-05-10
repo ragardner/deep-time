@@ -27,6 +27,7 @@ impl Dt {
         Dt::from_dt(epoch.add(diff), current)
     }
 
+    /// Creates a TAI [`Dt`], converting from another scale.
     pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
         let raw = Dt::new(sec, attos);
         match scale {
@@ -77,11 +78,6 @@ impl Dt {
         }
     }
 
-    /// Returns a [`Dt`] containing the numerical `sec`/`attos` values
-    /// of this instant **on its own [`Scale`]** (same physical moment).
-    ///
-    /// This is the recommended way for callers to obtain the representation on
-    /// a particular scale after construction via [`Self::from`].
     pub(crate) const fn to_internal(&self, scale: Scale) -> Dt {
         match scale {
             Scale::TAI | Scale::Custom | Scale::UT1 => *self,
@@ -132,7 +128,11 @@ impl Dt {
 
     #[inline]
     pub const fn to(&self, current: Scale, target: Scale) -> Dt {
-        Self::from(self.sec, self.attos, current).to_internal(target)
+        if !current.eq(target) {
+            Self::from(self.sec, self.attos, current).to_internal(target)
+        } else {
+            *self
+        }
     }
 
     /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic

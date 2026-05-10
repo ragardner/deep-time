@@ -11,7 +11,7 @@ fn msd_exact_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let (whole, frac) = p.to_msd_exact();
+        let (whole, frac) = p.to_msd_exact(Scale::TAI);
         let back = Dt::from_msd_exact(whole, frac);
 
         let diff = back.to_diff_raw(p).to_sec_f().abs();
@@ -33,7 +33,7 @@ fn msd_float_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let msd_float = p.to_msd();
+        let msd_float = p.to_msd(Scale::TAI);
         let back = Dt::from_msd(msd_float);
 
         let diff = back.to_diff_raw(p).to_sec_f().abs();
@@ -55,7 +55,7 @@ fn mtc_is_in_valid_range() {
     ];
 
     for &p in &test_points {
-        let mtc = p.to_mtc();
+        let mtc = p.to_mtc(Scale::TAI);
         let mtc_sec = mtc.to_sec_f();
         assert!(
             mtc_sec >= 0.0 && mtc_sec < MARS_SOL_LENGTH_SEC,
@@ -69,7 +69,7 @@ fn mtc_is_in_valid_range() {
 #[test]
 fn msd_at_j2000_is_correct() {
     let tai = Dt::ZERO;
-    let (whole, frac) = tai.to_msd_exact();
+    let (whole, frac) = tai.to_msd_exact(Scale::TAI);
 
     assert_eq!(whole, 44791, "Integer part of MSD at J2000 should be 44791");
 

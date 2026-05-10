@@ -147,7 +147,7 @@ impl Scale {
         }
     }
 
-    /// Const-friendly equality comparison (does **not** rely on `==` for the enum itself).
+    /// Const-friendly equality comparison.
     #[inline]
     pub const fn eq(self, other: Self) -> bool {
         self.to_wire_byte() == other.to_wire_byte()
