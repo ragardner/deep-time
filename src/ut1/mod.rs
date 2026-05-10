@@ -297,7 +297,7 @@ impl Dt {
     ///
     /// Uses the library’s exact MJD path (`to_mjd_utc_exact`) for the lookup.
     pub fn to_ut1(&self, current: Scale, ut1_data: &Ut1Data) -> Result<Self, DtErr> {
-        let (mjd_days, mjd_frac) = self.to_mjd_exact(current, Scale::UT1);
+        let (mjd_days, mjd_frac) = self.to_mjd(current, Scale::UT1);
 
         let dut1 = ut1_data
             .ut1_minus_utc_exact(mjd_days, mjd_frac)
@@ -322,7 +322,7 @@ impl Dt {
         let mut utc_guess = ut1.clone();
 
         for _ in 0..8 {
-            let (mjd_days, mjd_frac) = utc_guess.to_mjd_exact(Scale::UT1, Scale::UT1);
+            let (mjd_days, mjd_frac) = utc_guess.to_mjd(Scale::UT1, Scale::UT1);
 
             let dut1 = ut1_data
                 .ut1_minus_utc_exact(mjd_days, mjd_frac)

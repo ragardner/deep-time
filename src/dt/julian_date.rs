@@ -26,7 +26,7 @@ impl Dt {
     /// # Precision
     /// Exact (attosecond resolution). Use [`to_jd`](Self::to_jd) for the floating-point
     /// version.
-    pub const fn to_jd_exact(&self, current: Scale, target: Scale) -> (i64, u128) {
+    pub const fn to_jd(&self, current: Scale, target: Scale) -> (i64, u128) {
         if target.is_ut() {
             let canon_attos = self.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
             let total_attos = canon_attos.saturating_add(ATTOS_PER_HALF_DAY);
@@ -52,11 +52,11 @@ impl Dt {
 
     /// Returns the Julian Date of this instant as a floating-point `Real` (`f64`).
     ///
-    /// This is the lossy counterpart to [`to_jd_exact`](Self::to_jd_exact).
+    /// This is the lossy counterpart to [`to_jd`](Self::to_jd).
     /// See that method for the exact scale-dependent behavior (JD(UTC) vs JD(TT)).
     #[inline]
     pub const fn to_jd_f(&self, current: Scale, target: Scale) -> Real {
-        let (days, attos) = self.to_jd_exact(current, target);
+        let (days, attos) = self.to_jd(current, target);
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
 
@@ -75,7 +75,7 @@ impl Dt {
     ///
     /// # Precision
     /// Exact (attosecond resolution). Use [`to_mjd`](Self::to_mjd) for the floating-point version.
-    pub const fn to_mjd_exact(&self, current: Scale, target: Scale) -> (i64, u128) {
+    pub const fn to_mjd(&self, current: Scale, target: Scale) -> (i64, u128) {
         if target.is_ut() {
             let canon_attos = self.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
             let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
@@ -85,7 +85,7 @@ impl Dt {
             let mjd_days = MJD_1970.saturating_add(days_i64);
             (mjd_days, frac_attos)
         } else {
-            let (jd_days, frac_attos) = self.to_jd_exact(current, target);
+            let (jd_days, frac_attos) = self.to_jd(current, target);
 
             let mjd_days = jd_days.saturating_sub(2_400_001);
             let mjd_attos = frac_attos.saturating_add(ATTOS_PER_HALF_DAY as u128);
@@ -103,11 +103,11 @@ impl Dt {
 
     /// Returns the Modified Julian Date of this instant as a floating-point `Real` (`f64`).
     ///
-    /// This is the lossy counterpart to [`to_mjd_exact`](Self::to_mjd_exact).
+    /// This is the lossy counterpart to [`to_mjd`](Self::to_mjd).
     /// See that method for the exact scale-dependent behavior (MJD(UTC) vs uniform MJD).
     #[inline]
     pub const fn to_mjd_f(self, current: Scale, target: Scale) -> Real {
-        let (days, attos) = self.to_mjd_exact(current, target);
+        let (days, attos) = self.to_mjd(current, target);
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
 
@@ -164,7 +164,7 @@ impl Dt {
     /// Creates a `Dt` from an exact Modified Julian Date, interpreting the MJD
     /// in the scale indicated by `orig_type`.
     ///
-    /// This is the inverse of [`to_mjd_exact`](Self::to_mjd_exact). See that method
+    /// This is the inverse of [`to_mjd`](Self::to_mjd). See that method
     /// and [`from_jd_exact`](Self::from_jd_exact) for scale-specific behavior.
     ///
     /// # Precision
