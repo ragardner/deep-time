@@ -1,10 +1,9 @@
 use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::leap_seconds::get_leap_seconds;
 use crate::{
-    ATTOS_PER_SEC, ATTOS_PER_SEC_I128, ClockDrift, ClockModel, Dt, J2000_SEC_PER_CENTURY,
-    JD_2000_2_451_545, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Real, SEC_PER_DAYI64, SEC_PER_DAYI128,
-    Scale, TAI_SEC_AT_1972, TCG_TCB_REF_JD_INT, TCG_TCB_REF_TOD_SEC, TCG_TCB_REF_TOD_SUBSEC,
-    TDB0_ATTOS, TT_TAI_OFFSET, sin_approx,
+    ATTOS_PER_SEC, ClockDrift, ClockModel, Dt, J2000_SEC_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN,
+    LG_NUM, Real, Scale, TAI_SEC_AT_1972, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET,
+    sin_approx,
 };
 
 impl Dt {
@@ -14,12 +13,7 @@ impl Dt {
     }
 
     #[inline]
-    pub const fn to_tai_attos_since(self, reference: Dt) -> i128 {
-        self.to_diff_raw(reference).to_attos()
-    }
-
-    #[inline]
-    pub const fn from_tai_attos_since(attos: i128, reference: Dt) -> Self {
+    pub const fn from_attos_since(attos: i128, reference: Dt) -> Self {
         reference.add(Dt::from_attos(attos, Scale::TAI))
     }
 
@@ -240,23 +234,9 @@ impl Dt {
 
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
     /// using only the numerical `sec`/`attos` of the supplied `Dt` (scale is ignored).
+    #[inline]
     pub(crate) const fn elapsed_to_attos_since_tcg_tcb_epoch(numerical: Self) -> i128 {
-        let days_since_j2000 = numerical.sec.div_euclid(SEC_PER_DAYI64);
-        let tod_sec = numerical.sec.rem_euclid(SEC_PER_DAYI64);
-
-        let jd_days = JD_2000_2_451_545 + days_since_j2000;
-        let days_diff = jd_days - TCG_TCB_REF_JD_INT;
-
-        let mut sec_diff =
-            (days_diff as i128) * SEC_PER_DAYI128 + (tod_sec as i128 - TCG_TCB_REF_TOD_SEC as i128);
-        let mut attos_diff = (numerical.attos as i128) - (TCG_TCB_REF_TOD_SUBSEC as i128);
-
-        if attos_diff < 0 {
-            attos_diff += ATTOS_PER_SEC_I128;
-            sec_diff -= 1;
-        }
-
-        sec_diff * ATTOS_PER_SEC_I128 + attos_diff
+        numerical.to_attos() - TCG_TCB_REF_ATTOS_SINCE_J2000
     }
 
     /// Exact fixed-point multiplication: `attos * num / den` (handles negative values safely, no overflow for library time range).

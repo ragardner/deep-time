@@ -28,7 +28,7 @@ impl Dt {
     /// version.
     pub const fn to_jd_exact(self, target: Scale) -> (i64, u128) {
         if target.is_ut() {
-            let canon_attos = self.to_tai_attos_since(Dt::UNIX_EPOCH);
+            let canon_attos = self.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
             let total_attos = canon_attos.saturating_add(ATTOS_PER_HALF_DAY);
 
             let days_since_1970 = total_attos.div_euclid(ATTOS_PER_DAY);
@@ -76,7 +76,7 @@ impl Dt {
     /// Exact (attosecond resolution). Use [`to_mjd`](Self::to_mjd) for the floating-point version.
     pub const fn to_mjd_exact(self, target: Scale) -> (i64, u128) {
         if target.is_ut() {
-            let canon_attos = self.to_tai_attos_since(Dt::UNIX_EPOCH);
+            let canon_attos = self.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
             let days_since_1970 = canon_attos.div_euclid(ATTOS_PER_DAY);
             let frac_attos = canon_attos.rem_euclid(ATTOS_PER_DAY) as u128;
             let days_i64 = clamp_i128_to_i64(days_since_1970);
@@ -139,7 +139,7 @@ impl Dt {
                 .saturating_add(frac_clamped)
                 .saturating_sub(ATTOS_PER_HALF_DAY);
 
-            Self::from_tai_attos_since(canon_attos, Dt::UNIX_EPOCH)
+            Self::from_attos_since(canon_attos, Dt::UNIX_EPOCH)
         } else {
             let days_since_j2000 = jd_days.saturating_sub(JD_2000_2_451_545);
             let seconds_from_days = days_since_j2000.saturating_mul(SEC_PER_DAYI64);

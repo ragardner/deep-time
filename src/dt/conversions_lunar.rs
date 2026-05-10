@@ -1,7 +1,4 @@
-use crate::{
-    ATTOS_PER_SEC, ATTOS_PER_SEC_I128, Dt, LM_DEN, LM_NUM, Real, SEC_PER_DAYI64, SEC_PER_DAYI128,
-    Scale, sin_approx,
-};
+use crate::{ATTOS_PER_SEC, Dt, LM_DEN, LM_NUM, Real, Scale, sin_approx};
 
 /// TCL secular rate vs TDB (exact value from LTE440).
 pub(crate) const TL_NUM: i128 = 6_798_355_240;
@@ -208,16 +205,9 @@ impl Dt {
     /// Exact integer helper: elapsed attoseconds since J2000.0 TDB.
     /// Used exclusively for the TCL pathway to match LTE440 exactly
     /// (TCL = TDB + L_D^M × (JD_TDB − 2451545.0) × 86400 + periodic).
+    #[inline]
     pub(crate) const fn elapsed_to_attos_since_j2000_tdb_epoch(numerical_tdb: Self) -> i128 {
-        let days_since_j2000 = numerical_tdb.sec.div_euclid(SEC_PER_DAYI64);
-        let tod_sec = numerical_tdb.sec.rem_euclid(SEC_PER_DAYI64);
-
-        // TDB scale is anchored at J2000.0 TDB, so the numerical sec/attos
-        // of a TDB instant is exactly the elapsed time since that epoch.
-        let sec_diff = (days_since_j2000 as i128) * SEC_PER_DAYI128 + (tod_sec as i128);
-        let attos_diff = numerical_tdb.attos as i128;
-
-        sec_diff * ATTOS_PER_SEC_I128 + attos_diff
+        numerical_tdb.to_attos()
     }
 
     pub(crate) const fn tai_to_tcl(tai: Self) -> Self {

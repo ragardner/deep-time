@@ -1,7 +1,33 @@
-use crate::{
-    AsciiStr, Dt, DtErr, DtErrKind, GregorianTime, MONTHS_ABBR, MONTHS_FULL, STRFTIME_SIZE,
-    WEEKDAYS_ABBR, WEEKDAYS_FULL, an_err,
-};
+use crate::{AsciiStr, Dt, DtErr, DtErrKind, GregorianTime, STRFTIME_SIZE, an_err};
+
+pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
+    b"Sunday",
+    b"Monday",
+    b"Tuesday",
+    b"Wednesday",
+    b"Thursday",
+    b"Friday",
+    b"Saturday",
+];
+pub(crate) const WEEKDAYS_ABBR: [&[u8]; 7] =
+    [b"Sun", b"Mon", b"Tue", b"Wed", b"Thu", b"Fri", b"Sat"];
+pub(crate) const MONTHS_FULL: [&[u8]; 12] = [
+    b"January",
+    b"February",
+    b"March",
+    b"April",
+    b"May",
+    b"June",
+    b"July",
+    b"August",
+    b"September",
+    b"October",
+    b"November",
+    b"December",
+];
+pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
+    b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec",
+];
 
 impl GregorianTime {
     #[cfg(feature = "alloc")]

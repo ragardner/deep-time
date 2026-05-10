@@ -115,8 +115,8 @@ fn test_1972_leap_second_canonical_roundtrip() {
 
     // Round-trip through attoseconds since the Unix epoch
     // (this exercises the exact civil/POSIX UTC path in to_attos_since/from_attos_since)
-    let canon = original.to_tai_attos_since(Dt::UNIX_EPOCH);
-    let roundtrip = Dt::from_tai_attos_since(canon, Dt::UNIX_EPOCH);
+    let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
+    let roundtrip = Dt::from_attos_since(canon, Dt::UNIX_EPOCH);
 
     // These should be identical if everything is consistent
     assert_eq!(
@@ -148,8 +148,8 @@ fn test_leap_second_roundtrip_2015_06_30() {
     let original = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 123_456_789_000_000_000);
 
     // === Round-trip through canonical attoseconds ===
-    let canon = original.to_tai_attos_since(Dt::UNIX_EPOCH);
-    let roundtrip1 = Dt::from_tai_attos_since(canon, Dt::UNIX_EPOCH);
+    let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
+    let roundtrip1 = Dt::from_attos_since(canon, Dt::UNIX_EPOCH);
 
     assert_eq!(original, roundtrip1, "Canonical round-trip failed");
 

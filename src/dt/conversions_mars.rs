@@ -1,28 +1,13 @@
 use crate::{
-    ATTOS_PER_SEC_I128, Dt, JD_2000_2_451_545, MARS_MSD_REF_JD_INT, MARS_MSD_REF_TOD_SEC,
-    MARS_MSD_REF_TOD_SUBSEC, MARS_REF_TT, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real,
-    SEC_PER_DAYI64, SEC_PER_DAYI128, Scale, floor_f, to_sec_f,
+    Dt, MARS_REF_TT, MARS_REF_TT_ATTOS, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real, Scale, floor_f,
+    to_sec_f,
 };
 
 impl Dt {
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
+    #[inline]
     pub(crate) const fn elapsed_to_attos_since_mars_msd_epoch(numerical_tt: Dt) -> i128 {
-        let days_since_j2000 = numerical_tt.sec.div_euclid(SEC_PER_DAYI64);
-        let tod_sec = numerical_tt.sec.rem_euclid(SEC_PER_DAYI64);
-
-        let jd_days = JD_2000_2_451_545 + days_since_j2000;
-        let days_diff = jd_days - MARS_MSD_REF_JD_INT;
-
-        let mut sec_diff = (days_diff as i128) * SEC_PER_DAYI128
-            + (tod_sec as i128 - MARS_MSD_REF_TOD_SEC as i128);
-        let mut attos_diff = (numerical_tt.attos as i128) - (MARS_MSD_REF_TOD_SUBSEC as i128);
-
-        if attos_diff < 0 {
-            attos_diff += ATTOS_PER_SEC_I128;
-            sec_diff -= 1;
-        }
-
-        sec_diff * ATTOS_PER_SEC_I128 + attos_diff
+        numerical_tt.to_attos() - MARS_REF_TT_ATTOS
     }
 
     /// Returns the exact Mars Sol Date (MSD) as a tuple of integer sols and the fractional part of a sol.
@@ -32,10 +17,8 @@ impl Dt {
     pub const fn to_msd_exact(self) -> (i64, u128) {
         let tt = self.to(Scale::TT);
         let elapsed = Self::elapsed_to_attos_since_mars_msd_epoch(tt);
-        let attos_per_sol = MARS_SOL_ATTOS;
-
-        let whole_sols = elapsed.div_euclid(attos_per_sol) as i64;
-        let frac_attos = elapsed.rem_euclid(attos_per_sol) as u128;
+        let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS) as i64;
+        let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;
 
         (whole_sols, frac_attos)
     }

@@ -106,6 +106,14 @@ pub(crate) const TCG_TCB_REF_JD_INT: i64 = 2_443_144;
 pub(crate) const TCG_TCB_REF_TOD_SEC: i64 = 43_232; // 0.5003725 * 86400 = 43232.184
 pub(crate) const TCG_TCB_REF_TOD_SUBSEC: u64 = TT_TAI_OFFSET_SUBSEC;
 
+/// Attoseconds since J2000.0 TT of the TCG/TCB reference epoch
+/// (JD 2443144.5003725 TT). Computed from the existing reference constants.
+pub(crate) const TCG_TCB_REF_ATTOS_SINCE_J2000: i128 = {
+    let days_since_j2000 = (TCG_TCB_REF_JD_INT - JD_2000_2_451_545) as i128;
+    let sec_part = days_since_j2000 * SEC_PER_DAYI128 + (TCG_TCB_REF_TOD_SEC as i128);
+    sec_part * ATTOS_PER_SEC_I128 + (TCG_TCB_REF_TOD_SUBSEC as i128)
+};
+
 /// TDB₀ = −65.5 µs expressed in attoseconds (exact).
 pub(crate) const TDB0_ATTOS: i128 = -65_500_000_000_000;
 
@@ -117,44 +125,16 @@ pub(crate) const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
 /// Exact mean length of one Martian sol in Earth seconds (NASA GISS / AM2000)
 pub const MARS_SOL_LENGTH_SEC: Real = 88775.244;
 
-/// Mars MSD reference epoch (JD 2405522.0028779 TT) broken into integer parts for exact math.
-pub(crate) const MARS_MSD_REF_JD_INT: i64 = 2_405_522;
-pub(crate) const MARS_MSD_REF_TOD_SEC: i64 = 248;
-pub(crate) const MARS_MSD_REF_TOD_SUBSEC: u64 = 650_560_000_000_000_000;
+// Mars MSD reference epoch (JD 2405522.0028779 TT) broken into integer parts for exact math.
+// pub(crate) const MARS_MSD_REF_JD_INT: i64 = 2_405_522;
+// pub(crate) const MARS_MSD_REF_TOD_SEC: i64 = 248;
+// pub(crate) const MARS_MSD_REF_TOD_SUBSEC: u64 = 650_560_000_000_000_000;
 
 /// Martian mean sol length in attoseconds (88775.244 s × 10¹⁸).
 pub const MARS_SOL_ATTOS: i128 = 88_775_244_000_000_000_000_000;
 
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
 pub(crate) const MARS_REF_TT: Dt = Dt::new(-3_976_386_952, 650_560_000_000_000_000);
-
-pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
-    b"Sunday",
-    b"Monday",
-    b"Tuesday",
-    b"Wednesday",
-    b"Thursday",
-    b"Friday",
-    b"Saturday",
-];
-pub(crate) const WEEKDAYS_ABBR: [&[u8]; 7] =
-    [b"Sun", b"Mon", b"Tue", b"Wed", b"Thu", b"Fri", b"Sat"];
-pub(crate) const MONTHS_FULL: [&[u8]; 12] = [
-    b"January",
-    b"February",
-    b"March",
-    b"April",
-    b"May",
-    b"June",
-    b"July",
-    b"August",
-    b"September",
-    b"October",
-    b"November",
-    b"December",
-];
-pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
-    b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec",
-];
+pub(crate) const MARS_REF_TT_ATTOS: i128 = MARS_REF_TT.to_attos();
 
 pub const STRFTIME_SIZE: usize = 512;
