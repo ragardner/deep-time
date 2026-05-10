@@ -33,14 +33,11 @@ impl Dt {
 
         match scale {
             Scale::TAI | Scale::Custom | Scale::UT1 => raw,
-
             Scale::TT => raw.sub(TT_TAI_OFFSET),
-
             Scale::UTC => raw.add(Dt::from_sec(
                 get_leap_seconds(&raw, true).offset,
                 Scale::TAI,
             )),
-
             Scale::UTCSpice => {
                 let tai = raw.add(Dt::from_sec(
                     get_leap_seconds(&raw, true).offset,
@@ -63,28 +60,21 @@ impl Dt {
                     tai
                 }
             }
-
             Scale::GPS | Scale::QZSS | Scale::GST => raw.add(Dt::SEC_19),
-
             Scale::BDT => raw.add(Dt::SEC_33),
-
             Scale::TDB | Scale::ET => Self::tdb_to_tai(raw),
-
             Scale::TCG => {
                 let tt = Self::tcg_to_tt(raw);
                 tt.sub(TT_TAI_OFFSET)
             }
-
             Scale::TCB => {
                 let tdb = Self::tcb_to_tdb(raw);
                 Self::tdb_to_tai(tdb)
             }
-
             Scale::LTC => {
                 let tt = Self::ltc_to_tt(raw);
                 tt.sub(TT_TAI_OFFSET)
             }
-
             Scale::TCL => Self::tcl_to_tai(raw),
         }
     }
@@ -97,57 +87,42 @@ impl Dt {
     pub const fn to(&self, scale: Scale) -> Dt {
         match scale {
             Scale::TAI | Scale::Custom | Scale::UT1 => *self,
-
             Scale::TT => self.add(TT_TAI_OFFSET),
-
             Scale::UTC => self.sub(Dt::from_sec(
                 get_leap_seconds(&self, false).offset,
                 Scale::TAI,
             )),
             Scale::UTCSpice => {
+                let spice = self.sub(Dt::from_sec(
+                    get_leap_seconds(&self, false).offset,
+                    Scale::TAI,
+                ));
                 if self.sec < TAI_SEC_AT_1972 {
-                    self.sub(Dt::from_sec(
-                        get_leap_seconds(&self, false).offset,
-                        Scale::TAI,
-                    ))
-                    .sub(Dt::from_sec_f(f!(9.0)))
+                    spice.sub(Dt::from_sec_f(f!(9.0)))
                 } else {
-                    self.sub(Dt::from_sec(
-                        get_leap_seconds(&self, false).offset,
-                        Scale::TAI,
-                    ))
+                    spice
                 }
             }
             Scale::UTCSofa => {
+                let sofa = self.sub(Dt::from_sec(
+                    get_leap_seconds(&self, false).offset,
+                    Scale::TAI,
+                ));
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(&self) {
-                    self.sub(Dt::from_sec(
-                        get_leap_seconds(&self, false).offset,
-                        Scale::TAI,
-                    ))
-                    .sub(Dt::from_sec_f(offset))
+                    sofa.sub(Dt::from_sec_f(offset))
                 } else {
-                    self.sub(Dt::from_sec(
-                        get_leap_seconds(&self, false).offset,
-                        Scale::TAI,
-                    ))
+                    sofa
                 }
             }
-
             Scale::GPS | Scale::QZSS | Scale::GST => self.sub(Dt::SEC_19),
-
             Scale::BDT => self.sub(Dt::SEC_33),
-
             Scale::TDB | Scale::ET => Self::tai_to_tdb(*self),
-
             Scale::TCG => Self::tai_to_tcg(*self),
-
             Scale::TCB => Self::tai_to_tcb(*self),
-
             Scale::LTC => {
                 let tt = self.add(TT_TAI_OFFSET);
                 Self::tt_to_ltc(tt)
             }
-
             Scale::TCL => Self::tai_to_tcl(*self),
         }
     }

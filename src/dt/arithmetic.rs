@@ -6,14 +6,22 @@ use crate::{
 impl Dt {
     #[inline]
     pub const fn add(self, span: Dt) -> Self {
-        let (sec, attos) = Dt::add_time(self.sec, self.attos, span.sec, span.attos);
-        Self { sec, attos }
+        if !span.is_zero() {
+            let (sec, attos) = Dt::add_time(self.sec, self.attos, span.sec, span.attos);
+            Self { sec, attos }
+        } else {
+            self
+        }
     }
 
     #[inline]
     pub const fn sub(self, span: Dt) -> Self {
-        let (sec, attos) = Dt::sub_time(self.sec, self.attos, span.sec, span.attos);
-        Self { sec, attos }
+        if !span.is_zero() {
+            let (sec, attos) = Dt::sub_time(self.sec, self.attos, span.sec, span.attos);
+            Self { sec, attos }
+        } else {
+            self
+        }
     }
 
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.

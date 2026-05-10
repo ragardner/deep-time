@@ -191,40 +191,68 @@ pub struct LeapInfo {
     pub is_leap_second: bool,
 }
 
-pub const fn get_leap_seconds(tp: &Dt, from_civil: bool) -> LeapInfo {
-    let mut offset = 0i64;
-    let mut leaps_inserted = 0i64;
-    let mut i = 0usize;
+#[inline]
+pub const fn get_leap_seconds(dt: &Dt, from_civil: bool) -> LeapInfo {
+    get_leap_seconds_with_table(dt, from_civil, &LEAP_SECS)
+}
 
-    while i < LEAP_SECS.len() {
-        let entry = &LEAP_SECS[i];
-
-        let entry_sec = if from_civil {
-            entry.utc_sec
-        } else {
-            entry.tai_sec
+pub const fn get_leap_seconds_with_table(
+    dt: &Dt,
+    from_civil: bool,
+    table: &[LeapSecond],
+) -> LeapInfo {
+    let len = table.len();
+    if len == 0 {
+        return LeapInfo {
+            offset: 0,
+            leaps_inserted: 0,
+            is_leap_second: false,
         };
-
-        if tp.sec() == entry_sec {
-            return LeapInfo {
-                offset: entry.leap_seconds_after,
-                leaps_inserted: i as i64 + 1,
-                is_leap_second: true,
-            };
-        }
-
-        if tp.sec() < entry_sec {
-            break;
-        }
-
-        offset = entry.leap_seconds_after;
-        leaps_inserted = i as i64 + 1;
-        i += 1;
     }
 
+    let target = dt.sec();
+
+    // Binary search for upper_bound: first index where entry_sec > target
+    let mut low = 0usize;
+    let mut high = len;
+
+    while low < high {
+        let mid = low + (high - low) / 2;
+        let entry_sec = if from_civil {
+            table[mid].utc_sec
+        } else {
+            table[mid].tai_sec
+        };
+
+        if entry_sec <= target {
+            low = mid + 1;
+        } else {
+            high = mid;
+        }
+    }
+
+    // low == first index with entry_sec > target (or len)
+    if low == 0 {
+        return LeapInfo {
+            offset: 0,
+            leaps_inserted: 0,
+            is_leap_second: false,
+        };
+    }
+
+    let idx = low - 1;
+    let entry = &table[idx];
+    let entry_sec = if from_civil {
+        entry.utc_sec
+    } else {
+        entry.tai_sec
+    };
+
+    let is_leap = target == entry_sec;
+
     LeapInfo {
-        offset,
-        leaps_inserted,
-        is_leap_second: false,
+        offset: entry.leap_seconds_after,
+        leaps_inserted: (idx + 1) as i64,
+        is_leap_second: is_leap,
     }
 }
