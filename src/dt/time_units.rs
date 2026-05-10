@@ -127,7 +127,7 @@ macro_rules! impl_time_units_int {
 
                 #[inline]
                 fn ago(self, scale: Scale) -> Dt {
-                    Dt::from(0, 0,scale).sub(self.sec())
+                    Dt::from(0, 0, scale).sub(self.sec())
                 }
 
                 #[inline]

@@ -57,4 +57,18 @@ impl Dt {
     pub const fn to_gps_week_number(&self) -> i64 {
         self.to_gps_wk_and_tow().0
     }
+
+    #[inline]
+    pub const fn to_galexsec(&self, current: Scale) -> Real {
+        self.to_scale_from(current, Scale::UTC)
+            .to_diff_raw(Dt::GPS_EPOCH.to(Scale::UTC))
+            .to_sec_f()
+    }
+
+    #[inline]
+    pub const fn to_gps(&self, current: Scale) -> Real {
+        self.to_scale_from(current, Scale::GPS)
+            .to_diff_raw(Dt::GPS_EPOCH.to(Scale::GPS))
+            .to_sec_f()
+    }
 }

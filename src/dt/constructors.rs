@@ -59,18 +59,11 @@ impl Dt {
     };
 
     /// GPS Time epoch: exactly **1980-01-06 00:00:00 UTC**.
+    /// Galileo Experiment (GALEX) epoch: exactly **1980-01-06 00:00:00 UTC**.
     ///
     /// This is the zero point of the continuous GPS Time scale (GPST).
     /// At this epoch, GPST was exactly 19 seconds behind TAI.
     pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0);
-
-    /// Galileo Experiment (GALEX) epoch: exactly **1980-01-06 00:00:00 UTC**.
-    ///
-    /// This is the same physical instant as [`Self::GPS_EPOCH`] and was used
-    /// as the reference epoch during early Galileo system testing and development.
-    /// It is provided as a convenient alias for code that explicitly references
-    /// the GALEX-era epoch.
-    pub const GALEX_EPOCH: Self = Self::GPS_EPOCH;
 
     /// Galileo System Time (GST) epoch: exactly **1999-08-22 00:00:00 UTC**.
     ///

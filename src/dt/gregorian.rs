@@ -7,7 +7,7 @@ impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
     /// to a proleptic Gregorian date (year, month, day).
     #[inline]
-    pub const fn unix_sec_to_gregorian_ymd(unix_sec: i64) -> (i64, u8, u8) {
+    pub const fn unix_sec_to_ymd(unix_sec: i64) -> (i64, u8, u8) {
         let days_since_1970 = unix_sec.div_euclid(SEC_PER_DAYI64);
         // 1970-01-01 00:00:00 UTC is JD 2440588.0
         let jdn = days_since_1970.saturating_add(2440588);
@@ -59,8 +59,6 @@ impl Dt {
     /// - For all other scales: Uses the standard TT-based JD path.
     #[inline]
     pub const fn to_ymdhms(&self) -> YmdHms {
-        // Single call gets us the full civil attos since Unix epoch (POSIX style).
-        // This replaces both to_unix_sec() + the old to_attos_since(UNIX_EPOCH).
         let canon = self.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH);
 
         let unix_sec = canon.sec;
@@ -76,7 +74,7 @@ impl Dt {
             unix_sec
         };
 
-        let (yr, mo, day) = Self::unix_sec_to_gregorian_ymd(unix_sec_for_date);
+        let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec_for_date);
 
         // Only the hour/minute/second fields differ for a leap second.
         let (hr, min, sec) = if is_leap_second {
