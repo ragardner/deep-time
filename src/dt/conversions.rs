@@ -19,7 +19,7 @@ impl Dt {
 
     #[inline]
     pub const fn to_scale_and_then_diff(self, scale: Scale, epoch: Dt) -> Dt {
-        self.to(scale).to_diff_raw(epoch)
+        self.to_internal(scale).to_diff_raw(epoch)
     }
 
     #[inline]
@@ -28,9 +28,7 @@ impl Dt {
     }
 
     pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
-        // Create a raw Dt with the input numbers on the requested scale
         let raw = Dt::new(sec, attos);
-
         match scale {
             Scale::TAI | Scale::Custom | Scale::UT1 => raw,
             Scale::TT => raw.sub(TT_TAI_OFFSET),
@@ -84,7 +82,7 @@ impl Dt {
     ///
     /// This is the recommended way for callers to obtain the representation on
     /// a particular scale after construction via [`Self::from`].
-    pub const fn to(&self, scale: Scale) -> Dt {
+    pub(crate) const fn to_internal(&self, scale: Scale) -> Dt {
         match scale {
             Scale::TAI | Scale::Custom | Scale::UT1 => *self,
             Scale::TT => self.add(TT_TAI_OFFSET),
@@ -133,8 +131,8 @@ impl Dt {
     }
 
     #[inline]
-    pub const fn to_scale_from(&self, current: Scale, target: Scale) -> Dt {
-        Self::from(self.sec, self.attos, current).to(target)
+    pub const fn to(&self, current: Scale, target: Scale) -> Dt {
+        Self::from(self.sec, self.attos, current).to_internal(target)
     }
 
     /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic

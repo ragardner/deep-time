@@ -92,7 +92,7 @@ mod astropy_verified_tai_sec_tests {
 
     #[test]
     fn tai_sec_at_1900_01_01() {
-        let dt = Dt::from_ymdhms(1900, 1, 1, 0, 0, 0, 0).to(Scale::UTCSofa);
+        let dt = Dt::from_ymdhms(1900, 1, 1, 0, 0, 0, 0).to(Scale::TAI, Scale::UTCSofa);
         assert_eq!(dt.sec(), -3155716800);
         assert_eq!(dt.attos(), 0);
     }

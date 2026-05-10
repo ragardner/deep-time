@@ -102,7 +102,7 @@ impl Dt {
             return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
         }
 
-        let utc = self.to(Scale::UTC);
+        let utc = self.to(Scale::TAI, Scale::UTC); // TODO: add current
 
         // UTC seconds since 1958-01-01 00:00:00 UTC (exact offset to library UTC zero,
         // accounting for all leap seconds up to the library epoch)

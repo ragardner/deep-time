@@ -27,6 +27,7 @@ impl Dt {
     /// Exact (attosecond resolution). Use [`to_jd`](Self::to_jd) for the floating-point
     /// version.
     pub const fn to_jd_exact(self, target: Scale) -> (i64, u128) {
+        // TODO: add current
         if target.is_ut() {
             let canon_attos = self.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
             let total_attos = canon_attos.saturating_add(ATTOS_PER_HALF_DAY);
@@ -38,7 +39,7 @@ impl Dt {
             let jd_int = 2_440_587i64.saturating_add(days_i64);
             (jd_int, frac_attos)
         } else {
-            let Dt { sec, attos } = self.to(target);
+            let Dt { sec, attos } = self.to(Scale::TAI, target);
             let days_since_j2000 = sec.div_euclid(SEC_PER_DAYI64);
             let remaining_sec = sec.rem_euclid(SEC_PER_DAYI64);
 

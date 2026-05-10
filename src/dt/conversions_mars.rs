@@ -15,7 +15,8 @@ impl Dt {
     /// The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
     /// [`Scale`]. Leap seconds are automatically accounted for when converting from UTC.
     pub const fn to_msd_exact(self) -> (i64, u128) {
-        let tt = self.to(Scale::TT);
+        // TODO: add current
+        let tt = self.to(Scale::TAI, Scale::TT);
         let elapsed = Self::elapsed_to_attos_since_mars_msd_epoch(tt);
         let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS) as i64;
         let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;

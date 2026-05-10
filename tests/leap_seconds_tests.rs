@@ -89,7 +89,7 @@ fn test_leap_second_roundtrip_and_sec() {
 
         // Verify the internal .sec() value matches what was printed
         assert_eq!(
-            tp.to(Scale::UTC).sec(),
+            tp.to(Scale::TAI, Scale::UTC).sec(),
             expected_sec,
             "sec() mismatch for input {yr}-{mo:02}-{day:02} {hr:02}:{min:02}:{sec_input:02}"
         );

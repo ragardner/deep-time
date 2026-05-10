@@ -54,7 +54,7 @@ impl Dt {
     pub const TAI_1977_EPOCH: Self = Self::new(-725_803_200, 0);
 
     pub const TCL_1977_EPOCH: Self = {
-        let tcl1977 = Self::TAI_1977_EPOCH.to(Scale::TCL);
+        let tcl1977 = Self::TAI_1977_EPOCH.to(Scale::TAI, Scale::TCL);
         Self::new(tcl1977.sec, tcl1977.attos)
     };
 

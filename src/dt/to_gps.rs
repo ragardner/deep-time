@@ -60,15 +60,15 @@ impl Dt {
 
     #[inline]
     pub const fn to_galexsec(&self, current: Scale) -> Real {
-        self.to_scale_from(current, Scale::UTC)
-            .to_diff_raw(Dt::GPS_EPOCH.to(Scale::UTC))
+        self.to(current, Scale::UTC)
+            .to_diff_raw(Dt::GPS_EPOCH.to(Scale::TAI, Scale::UTC))
             .to_sec_f()
     }
 
     #[inline]
     pub const fn to_gps(&self, current: Scale) -> Real {
-        self.to_scale_from(current, Scale::GPS)
-            .to_diff_raw(Dt::GPS_EPOCH.to(Scale::GPS))
+        self.to(current, Scale::GPS)
+            .to_diff_raw(Dt::GPS_EPOCH.to(Scale::TAI, Scale::GPS))
             .to_sec_f()
     }
 }
