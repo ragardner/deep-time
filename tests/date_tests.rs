@@ -1,6 +1,6 @@
 #[cfg(feature = "parse")]
 mod tests {
-    use deep_time::{DateOrder, DateParseMode, Dt, DtErr, DtErrKind, ParseCfg, Scale};
+    use deep_time::{DateOrder, DateParseMode, Dt, ParseCfg, Scale};
 
     #[cfg(feature = "tz")]
     #[test]
@@ -24,7 +24,7 @@ mod tests {
         // Format back using the IANA zone
         let fmt = "%Y-%m-%d %H:%M:%S %Q";
         let output = our_dt
-            .to_str_with_tz(fmt, "America/New_York")
+            .to_str_with_tz(Scale::TAI, fmt, "America/New_York")
             .expect("to_str_with_tz should succeed");
 
         // === THE KEY REGRESSION ASSERT ===
@@ -37,7 +37,7 @@ mod tests {
         let our_dt2: Dt =
             Dt::from_str_parse(&output, &None).expect("second parse should also succeed");
         let output2 = our_dt2
-            .to_str_with_tz(fmt, "America/New_York")
+            .to_str_with_tz(Scale::TAI, fmt, "America/New_York")
             .expect("second format should succeed");
 
         assert_eq!(output2, expected_snapped, "round-trip must be stable");
@@ -57,7 +57,7 @@ mod tests {
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let dt = Dt::from_str_parse(input.trim(), &opts)
             .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
-        let actual = dt.to_str_rfc3339().unwrap();
+        let actual = dt.to_str_rfc3339(Scale::TAI).unwrap();
 
         assert_eq!(actual, expected_rfc3339, "Input: {}", input);
     }
@@ -351,8 +351,8 @@ mod tests {
     fn date_parser_roundtrip() {
         let tp1 = Dt::from(5, 0, Scale::LTC);
         let tp2 = Dt::from(5, 0, Scale::GPS);
-        let xp1 = tp1.to_str("%Y-%m-%dT%H:%M:%S%.f").unwrap();
-        let xp2 = tp2.to_str("%Y-%m-%dT%H:%M:%S%.f").unwrap();
+        let xp1 = tp1.to_str(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
+        let xp2 = tp2.to_str(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
         let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
         let res_tp2 = Dt::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
         assert!(tp1 == res_tp1);
@@ -363,11 +363,11 @@ mod tests {
     fn round_trip_fixed_offsets() {
         for tp in [Dt::new(5, 0), Dt::new(5, 0)] {
             let xp1 = tp
-                .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
+                .to_str_with_offset(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
                 .unwrap();
             let tp2 = Dt::from_str_parse(&xp1, &None).unwrap();
             let xp2 = tp2
-                .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
+                .to_str_with_offset(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
                 .unwrap();
             let tp3 = Dt::from_str_parse(&xp2, &None).unwrap();
             assert_eq!(tp, tp3);

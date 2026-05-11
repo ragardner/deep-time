@@ -95,7 +95,7 @@ fn test_leap_second_roundtrip_and_sec() {
         );
 
         // Round-trip test
-        let g = tp.to_ymdhms();
+        let g = tp.to_ymdhms(Scale::TAI);
         let tp_roundtrip = Dt::from_ymdhms(g.yr, g.mo, g.day, g.hr, g.min, g.sec, g.attos);
 
         assert_eq!(
@@ -125,7 +125,7 @@ fn test_1972_leap_second_canonical_roundtrip() {
     );
 
     // Also verify civil time is still correct
-    let g = roundtrip.to_ymdhms();
+    let g = roundtrip.to_ymdhms(Scale::TAI);
     assert_eq!(g.yr, 1972);
     assert_eq!(g.mo, 6);
     assert_eq!(g.day, 30);
@@ -137,7 +137,7 @@ fn test_1972_leap_second_canonical_roundtrip() {
 #[test]
 fn test_leap_second_gotcha_1972_06_30() {
     let leap = Dt::from_ymdhms(1972, 6, 30, 23, 59, 60, 0);
-    let g = leap.to_ymdhms();
+    let g = leap.to_ymdhms(Scale::TAI);
     assert_eq!(g.sec, 60);
     assert_eq!(g.day, 30);
 }
@@ -156,7 +156,7 @@ fn test_leap_second_roundtrip_2015_06_30() {
     // === Multiple Gregorian round-trips ===
     let mut current = original;
     for i in 0..5 {
-        let g = current.to_ymdhms();
+        let g = current.to_ymdhms(Scale::TAI);
         assert_eq!(g.sec, 60, "Leap second lost on iteration {}", i);
         assert_eq!(g.day, 30);
         assert_eq!(g.mo, 6);
@@ -167,7 +167,7 @@ fn test_leap_second_roundtrip_2015_06_30() {
     assert_eq!(original, current, "Multiple Gregorian round-trips failed");
 
     // Final sanity check via to_gregorian_time
-    let gt = original.to_gregorian_time();
+    let gt = original.to_gregorian_time(Scale::TAI);
     assert_eq!(gt.sec(), 60);
     assert_eq!(gt.day(), 30);
 }

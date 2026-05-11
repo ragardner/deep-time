@@ -283,8 +283,6 @@ impl Dt {
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     #[inline]
     pub fn now() -> Self {
-        use crate::Dt;
-
         let now = std::time::SystemTime::now();
         let (secs, nanos) = match now.duration_since(std::time::UNIX_EPOCH) {
             Ok(dur) => (dur.as_secs() as i64, dur.subsec_nanos() as i64),
@@ -296,8 +294,9 @@ impl Dt {
                 (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
             }
         };
-        crate::Dt::from_diff_and_scale(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
-            .add(crate::Dt::from_ns(nanos as i128, Scale::TAI))
+
+        Dt::from_diff_and_scale(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
+            .add(Dt::from_ns(nanos as i128, Scale::TAI))
     }
 
     /// Returns the current system time as TAI from 2000-01-01 noon.
@@ -305,10 +304,11 @@ impl Dt {
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
     #[inline]
     pub fn now() -> Self {
-        let millis = js_sys::Date::now() as i64;
-        let secs = millis / 1000;
-        let nanos = (millis % 1000) * 1_000_000;
-        crate::Dt::from_epoch(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
-            .add(crate::Dt::from_ns(nanos, Scale::TAI))
+        let ms: f64 = js_sys::Date::now();
+        let secs = (ms / 1000.0).floor() as i64;
+        let nanos = ((ms % 1000.0) * 1_000_000.0) as i128;
+
+        Dt::from_diff_and_scale(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
+            .add(Dt::from_ns(nanos as i128, Scale::TAI))
     }
 }

@@ -161,6 +161,7 @@ impl StrPTimeFmt {
     #[cfg(feature = "alloc")]
     pub fn to_str(
         &self,
+        current: Scale,
         s: &str,
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
@@ -172,7 +173,7 @@ impl StrPTimeFmt {
             fmt_can_end_before_inp,
             allow_partial_date,
         )?
-        .to_str(self.as_str()?)
+        .to_str(current, self.as_str()?)
     }
 }
 

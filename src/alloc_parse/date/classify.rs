@@ -22,7 +22,7 @@ pub(crate) fn classify_date(
     };
 
     let (s, attach_hyphen) = s.strip_prefix('-').map_or((s, false), |s| (s, true));
-    let ascii_len = s.len();
+    let bytes_len = s.len();
 
     let mut has_ampm = false;
     let mut has_fractional = false;
@@ -60,7 +60,7 @@ pub(crate) fn classify_date(
     let mut part_chars: Vec<char> = Vec::with_capacity(24);
     let mut following_digits: usize;
 
-    let mut date_norm = String::with_capacity(ascii_len);
+    let mut date_norm = String::with_capacity(bytes_len);
     if attach_hyphen {
         date_norm.push('-');
     }
@@ -159,7 +159,7 @@ pub(crate) fn classify_date(
                                 8.. => idx + 1 < part_len && part_chars[idx + 1].is_numeric(),
                                 6 => {
                                     is_pure_numeric
-                                        && match ascii_len {
+                                        && match bytes_len {
                                             10 | 12 => {
                                                 idx + 1 < part_len
                                                     && part_chars[idx + 1].is_numeric()
@@ -315,6 +315,7 @@ pub(crate) fn classify_date(
                                     if num_dot > 1 {
                                         is_pure_numeric && num_non_decimal_digits >= 10
                                     } else {
+                                        // mjd
                                         is_pure_numeric && num_non_decimal_digits >= 5
                                     }
                                 });
@@ -517,7 +518,7 @@ pub(crate) fn classify_date(
         || (num_named >= 1 && has_time && num_digits >= 10);
 
     Ok(ClassifiedDate::Cls(DateClassification {
-        ascii_len: ascii_len,
+        bytes_len: bytes_len,
         date: date_norm,
         tokens: tokens,
         is_pure_numeric: is_pure_numeric,

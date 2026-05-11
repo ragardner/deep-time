@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DateClassification {
-    pub ascii_len: usize,
+    pub bytes_len: usize,
     pub date: String,
     pub tokens: Vec<DateToken>,
     pub is_pure_numeric: bool,

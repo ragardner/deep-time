@@ -12,6 +12,7 @@ pub struct YmdHms {
     pub min: u8,
     pub sec: u8,    // 0–60 (60 only during leap seconds)
     pub attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
+    pub unix_attosec: i128,
 }
 
 /// UTC Civil calendar and time-of-day components of a `Dt`.

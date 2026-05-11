@@ -257,7 +257,7 @@ where
 
 #[inline]
 pub(crate) fn try_unambiguous(s: &str, classification: &DateClassification) -> Option<Dt> {
-    if matches!(classification.ascii_len, 6 | 7 | 8) {
+    if matches!(classification.bytes_len, 6 | 7 | 8) {
         if let Some(dt) = parse_yyyy_mm(&s.as_bytes()) {
             return Some(dt);
         }

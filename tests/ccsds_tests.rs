@@ -31,7 +31,7 @@ mod ccsds_tests {
     #[test]
     fn cuc_epoch() {
         let dt = tai_epoch();
-        let (buf, len) = dt.to_ccsds_c(4, 0, false).unwrap();
+        let (buf, len) = dt.to_ccsds_c(Scale::TAI, 4, 0, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x1C, 0x00, 0x00, 0x00, 0x00]);
     }
@@ -40,7 +40,7 @@ mod ccsds_tests {
     fn cuc_one_second_after() {
         let dt = tai_epoch();
         let dt = Dt::new(dt.sec() + 1, dt.attos());
-        let (buf, len) = dt.to_ccsds_c(4, 0, false).unwrap();
+        let (buf, len) = dt.to_ccsds_c(Scale::TAI, 4, 0, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x1C, 0x00, 0x00, 0x00, 0x01]);
     }
@@ -49,7 +49,7 @@ mod ccsds_tests {
     fn cuc_fractional() {
         let dt = tai_epoch();
         let dt = Dt::new(dt.sec(), 500_000_000_000_000_000);
-        let (buf, len) = dt.to_ccsds_c(1, 3, false).unwrap();
+        let (buf, len) = dt.to_ccsds_c(Scale::TAI, 1, 3, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x13, 0x00, 0x80, 0x00, 0x00]);
     }
@@ -57,7 +57,7 @@ mod ccsds_tests {
     #[test]
     fn cuc_extension() {
         let dt = j2000();
-        let (buf, len) = dt.to_ccsds_c(5, 0, false).unwrap();
+        let (buf, len) = dt.to_ccsds_c(Scale::TAI, 5, 0, false).unwrap();
         assert_eq!(len, 7);
         assert_eq!(buf[0], 0x9C);
         assert_eq!(buf[1], 0x20);
@@ -68,7 +68,7 @@ mod ccsds_tests {
     #[test]
     fn cds_epoch() {
         let dt = utc_epoch();
-        let (buf, len) = dt.to_ccsds_d(2, 0, false).unwrap();
+        let (buf, len) = dt.to_ccsds_d(Scale::TAI, 2, 0, false).unwrap();
         assert_eq!(len, 7);
         assert_eq!(&buf[..len], &[0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
     }
@@ -76,7 +76,7 @@ mod ccsds_tests {
     #[test]
     fn cds_n_day3_extension() {
         let dt = utc_epoch();
-        let (buf, len) = dt.to_ccsds_d(3, 0, true).unwrap();
+        let (buf, len) = dt.to_ccsds_d(Scale::TAI, 3, 0, true).unwrap();
         assert_eq!(len, 9);
         assert_eq!(buf[0], 0xC4);
         assert_eq!(buf[1], 0x00);
@@ -86,7 +86,7 @@ mod ccsds_tests {
     fn cds_submillisecond() {
         let dt = utc_epoch();
         let dt = Dt::new(dt.sec(), 123_456_789_012_345_678);
-        let (buf, len) = dt.to_ccsds_d(2, 1, false).unwrap();
+        let (buf, len) = dt.to_ccsds_d(Scale::TAI, 2, 1, false).unwrap();
         assert_eq!(len, 9);
         assert_eq!(buf[0], 0x41);
     }
@@ -96,7 +96,7 @@ mod ccsds_tests {
     #[test]
     fn ccs_y2k_month_day() {
         let dt = y2k();
-        let (buf, len) = dt.to_ccsds_ccs(false, 0).unwrap();
+        let (buf, len) = dt.to_ccsds_ccs(Scale::TAI, false, 0).unwrap();
         assert_eq!(len, 8);
         let expected = [0x50, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00];
         assert_eq!(&buf[..len], &expected[..]);
@@ -105,7 +105,7 @@ mod ccsds_tests {
     #[test]
     fn ccs_doy() {
         let dt = y2k();
-        let (buf, len) = dt.to_ccsds_ccs(true, 0).unwrap();
+        let (buf, len) = dt.to_ccsds_ccs(Scale::UTC, true, 0).unwrap();
         assert_eq!(len, 8);
         assert_eq!(buf[0], 0x58);
         assert_eq!(buf[3], 0x00);
@@ -116,7 +116,7 @@ mod ccsds_tests {
     fn ccs_subsecond() {
         let dt = y2k();
         let dt = Dt::new(dt.sec(), 123_456_789_012_345_678);
-        let (buf, len) = dt.to_ccsds_ccs(false, 2).unwrap();
+        let (buf, len) = dt.to_ccsds_ccs(Scale::TAI, false, 2).unwrap();
         assert_eq!(len, 10);
         assert_eq!(buf[0], 0x52);
     }
@@ -128,27 +128,27 @@ mod ccsds_tests {
         let dt = j2000();
 
         assert!(matches!(
-            dt.to_ccsds_c(0, 0, false),
+            dt.to_ccsds_c(Scale::TAI, 0, 0, false),
             Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
         ));
 
         assert!(matches!(
-            dt.to_ccsds_c(4, 11, false),
+            dt.to_ccsds_c(Scale::TAI, 4, 11, false),
             Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
         ));
 
         assert!(matches!(
-            dt.to_ccsds_d(1, 0, false),
+            dt.to_ccsds_d(Scale::TAI, 1, 0, false),
             Err(e) if e.kind() == Some(DtErrKind::InvalidNumber)
         ));
 
         assert!(matches!(
-            dt.to_ccsds_d(2, 3, false),
+            dt.to_ccsds_d(Scale::TAI, 2, 3, false),
             Err(e) if e.kind() == Some(DtErrKind::InvalidItem)
         ));
 
         assert!(matches!(
-            dt.to_ccsds_ccs(false, 7),
+            dt.to_ccsds_ccs(Scale::TAI, false, 7),
             Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
         ));
     }
@@ -251,7 +251,7 @@ fn test_ccsds_c_roundtrip() {
 
     let t = Dt::new(tai_sec, 123_456_789_000_000_000);
 
-    let (buf, len) = t.to_ccsds_c(4, 3, false).unwrap();
+    let (buf, len) = t.to_ccsds_c(Scale::TAI, 4, 3, false).unwrap();
     let parsed = TimeParts::from_ccsds_c(&buf[0..len]).unwrap();
 
     assert_eq!(parsed.year, Some(2025));
@@ -285,7 +285,7 @@ fn test_ccsds_d_roundtrip() {
 
     let t = Dt::from(utc_sec, 400_000_000_000, Scale::UTC);
 
-    let (buf, len) = t.to_ccsds_d(2, 1, false).unwrap();
+    let (buf, len) = t.to_ccsds_d(Scale::TAI, 2, 1, false).unwrap();
     let parsed = TimeParts::from_ccsds_d(&buf[0..len]).unwrap();
 
     assert_eq!(parsed.year, Some(2025));
@@ -310,7 +310,7 @@ fn test_ccsds_d_roundtrip() {
 /// and the recovered TimeParts are correct.
 fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     // to_ccsds_ccs
-    let (buf, len) = tp.to_ccsds_ccs(use_doy, n_subsec).unwrap();
+    let (buf, len) = tp.to_ccsds_ccs(Scale::TAI, use_doy, n_subsec).unwrap();
     let bytes = &buf[0..len];
 
     // Check P-field byte is exactly as expected
@@ -399,7 +399,7 @@ fn test_ccsds_ccs_edge_cases() {
 
     // Subsecond rounding test (exactly halfway case)
     let half = Dt::from_ymdhms(2025, 4, 17, 0, 0, 0, 500_000_000_000_000_000);
-    let (buf, _) = half.to_ccsds_ccs(false, 1).unwrap();
+    let (buf, _) = half.to_ccsds_ccs(Scale::TAI, false, 1).unwrap();
     // Should round to 50 (i.e. 0.5 s)
     assert_eq!(buf[8], 0x50); // last BCD byte should be 0x50 for "50"
 }

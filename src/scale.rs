@@ -59,9 +59,15 @@ pub enum Scale {
 }
 
 impl Scale {
+    /// Returns `true` if this scale is TAI.
+    #[inline]
+    pub const fn is_tai(&self) -> bool {
+        matches!(self, Self::TAI)
+    }
+
     #[inline]
     pub const fn to_ut(&self) -> Self {
-        if self.is_ut() {
+        if self.uses_leap_seconds() {
             return *self;
         } else {
             return Scale::UTC;
@@ -71,8 +77,8 @@ impl Scale {
     /// Returns `true` if this scale accounts for leap seconds
     /// (or historical UTC civil time rules).
     #[inline]
-    pub const fn is_ut(&self) -> bool {
-        matches!(self, Self::UTC | Self::UTCSpice | Self::UTCSofa | Self::UT1)
+    pub const fn uses_leap_seconds(&self) -> bool {
+        matches!(self, Self::UTC | Self::UTCSpice | Self::UTCSofa)
     }
 
     /// Returns `true` if this scale is based off a GNSS constellation.

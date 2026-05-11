@@ -4,6 +4,24 @@ use crate::{
 };
 
 impl Dt {
+    /// Returns this [`Dt`] but as a unix timestamp
+    /// where the:
+    /// - `.sec` field is seconds since the UNIX epoch
+    /// (1970-01-01 00:00:00 UTC).
+    /// - `.attos` field is remaining fractional seconds.
+    ///
+    /// Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
+    #[inline]
+    pub const fn to_unix(&self, current: Scale) -> Dt {
+        let mut dt = if current.uses_leap_seconds() {
+            self.to_diff_raw(Dt::UNIX_EPOCH)
+        } else {
+            self.to(current, Scale::UTC).to_diff_raw(Dt::UNIX_EPOCH)
+        };
+        dt.carry_over();
+        dt
+    }
+
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
     /// to a proleptic Gregorian date (year, month, day).
     #[inline]
@@ -14,23 +32,26 @@ impl Dt {
         Self::jdn_to_ymd(jdn)
     }
 
-    pub const fn to_gregorian_time(&self) -> GregorianTime {
-        // Use the new unified function (replaces the old to_gregorian_ymd + to_hms_subsec calls)
-        let ymdhms = self.to_ymdhms();
-        let unix_attosec = self
-            .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
-            .to_attos();
-
+    pub const fn to_gregorian_time(&self, current: Scale) -> GregorianTime {
+        let ymdhms = self.to_ymdhms(current);
         let (iso_yr, iso_wk, iso_wkday) =
-            self.to_iso_week_date(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
-        let day_of_yr = self.day_of_year(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
+            self.to_iso_week_date(current, Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
+        let day_of_yr = self.day_of_year(current, Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
         let jdn = Self::ymd_to_jdn(ymdhms.yr, ymdhms.mo, ymdhms.day);
         let wkday = Self::jdn_to_weekday(jdn);
-        let wk_of_yr_sun = self.wk_sun(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
-        let wk_of_yr_mon = self.wk_mon(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
+        let wk_of_yr_sun = self.wk_sun(
+            current,
+            Some((ymdhms.yr, ymdhms.mo, ymdhms.day)),
+            Some(day_of_yr),
+        );
+        let wk_of_yr_mon = self.wk_mon(
+            current,
+            Some((ymdhms.yr, ymdhms.mo, ymdhms.day)),
+            Some(day_of_yr),
+        );
 
         GregorianTime {
-            unix_attosec,
+            unix_attosec: ymdhms.unix_attosec,
             yr: ymdhms.yr,
             mo: ymdhms.mo,
             day: ymdhms.day,
@@ -51,20 +72,24 @@ impl Dt {
         }
     }
 
-    /// Stripped down version of `Dt::to_gregorian_time`.
-    ///
     /// Returns the Gregorian date and wall time for this instant.
     ///
     /// - For `Scale::UTC`: Uses a direct Unix-timestamp-based path (fast and clean).
     /// - For all other scales: Uses the standard TT-based JD path.
     #[inline]
-    pub const fn to_ymdhms(&self) -> YmdHms {
-        let canon = self.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH);
+    pub const fn to_ymdhms(&self, current: Scale) -> YmdHms {
+        // tai knows whether the seconds lie exactly on a leap second
+        let tai = if current.is_tai() {
+            *self
+        } else {
+            self.to(current, Scale::TAI)
+        };
+        let canon = tai.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH);
 
         let unix_sec = canon.sec;
         let attos = canon.attos;
 
-        let is_leap_second = get_leap_seconds(&self, false).is_leap_second;
+        let is_leap_second = get_leap_seconds(&tai, false).is_leap_second;
 
         // For the date we always use the previous second when on a leap second
         // (so 23:59:60 stays on the correct civil day).
@@ -88,6 +113,7 @@ impl Dt {
         };
 
         YmdHms {
+            unix_attosec: canon.to_attos(),
             yr,
             mo,
             day,
@@ -102,18 +128,11 @@ impl Dt {
     /// (seconds since 1970-01-01 00:00:00 UTC).
     ///
     /// This version is correct for the full i64 range, including negative years.
-    pub const fn ymdhms_to_unix_sec(
-        year: i64,
-        month: u8,
-        day: u8,
-        hour: u8,
-        minute: u8,
-        second: u8,
-    ) -> i64 {
-        let jdn = Self::ymd_to_jdn(year, month, day);
+    pub const fn ymdhms_to_unix_sec(yr: i64, mo: u8, day: u8, hr: u8, min: u8, sec: u8) -> i64 {
+        let jdn = Self::ymd_to_jdn(yr, mo, day);
         // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
         let days_since_1970 = jdn.saturating_sub(2440588);
-        let time_of_day = (hour as i64) * 3600 + (minute as i64) * 60 + (second as i64);
+        let time_of_day = (hr as i64) * 3600 + (min as i64) * 60 + (sec as i64);
         days_since_1970
             .saturating_mul(SEC_PER_DAYI64)
             .saturating_add(time_of_day)
@@ -399,11 +418,11 @@ impl Dt {
     ///
     /// January 1 is day `1`; December 31 is day `365` or `366` (in leap years).
     /// Uses the proleptic Gregorian calendar.
-    pub const fn day_of_year(&self, ymd: Option<(i64, u8, u8)>) -> u16 {
+    pub const fn day_of_year(&self, current: Scale, ymd: Option<(i64, u8, u8)>) -> u16 {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
-            let g = self.to_ymdhms();
+            let g = self.to_ymdhms(current);
             (g.yr, g.mo, g.day)
         };
         let jdn = Self::ymd_to_jdn(year, month, day);
@@ -422,17 +441,17 @@ impl Dt {
     /// The optional `ymd` and `doy` arguments are performance optimisations
     /// (same pattern used throughout the file for `day_of_year`, `to_iso_week_date`, etc.).
     /// Pass whichever you already have; the function will use the fastest path.
-    pub const fn wk_sun(&self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
+    pub const fn wk_sun(&self, current: Scale, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
-            let g = self.to_ymdhms();
+            let g = self.to_ymdhms(current);
             (g.yr, g.mo, g.day)
         };
         let doy = if let Some(doy) = doy {
             doy
         } else {
-            self.day_of_year(ymd)
+            self.day_of_year(current, ymd)
         };
         let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
@@ -454,17 +473,17 @@ impl Dt {
     ///
     /// The optional `ymd` and `doy` arguments are performance optimisations
     /// (same pattern as `wk_sun`, `day_of_year`, `to_iso_week_date`, etc.).
-    pub const fn wk_mon(&self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
+    pub const fn wk_mon(&self, current: Scale, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
         let (year, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
-            let g = self.to_ymdhms();
+            let g = self.to_ymdhms(current);
             (g.yr, g.mo, g.day)
         };
         let doy = if let Some(doy) = doy {
             doy
         } else {
-            self.day_of_year(ymd)
+            self.day_of_year(current, ymd)
         };
         let jan1_jdn = Self::ymd_to_jdn(year, 1, 1);
         let wd_jan1 = Self::jdn_to_weekday(jan1_jdn);
@@ -492,11 +511,15 @@ impl Dt {
     /// The optional `ymd` argument is a performance optimization. If provided,
     /// it is used directly; otherwise [`to_gregorian_ymd`](Self::to_gregorian_ymd)
     /// is called internally.
-    pub const fn to_iso_week_date(&self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
+    pub const fn to_iso_week_date(
+        &self,
+        current: Scale,
+        ymd: Option<(i64, u8, u8)>,
+    ) -> (i64, u8, Weekday) {
         let (year, month, day) = if let Some(ymd) = ymd {
             ymd
         } else {
-            let g = self.to_ymdhms();
+            let g = self.to_ymdhms(current);
             (g.yr, g.mo, g.day)
         };
         let jdn = Self::ymd_to_jdn(year, month, day);

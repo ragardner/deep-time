@@ -19,7 +19,7 @@ impl TimeParts {
         extension: bool,
     ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         self.to_time_point()?
-            .to_ccsds_c(n_coarse, n_frac, extension)
+            .to_ccsds_c(self.scale, n_coarse, n_frac, extension)
     }
 
     /// Formats this [`TimeParts`] as a **CCSDS D (CDS)** binary time code.
@@ -34,7 +34,7 @@ impl TimeParts {
         extension: bool,
     ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         self.to_time_point()?
-            .to_ccsds_d(n_day, sub_ms_code, extension)
+            .to_ccsds_d(self.scale, n_day, sub_ms_code, extension)
     }
 
     /// Formats this [`TimeParts`] as a **CCSDS CCS (Calendar Segmented Time Code)**.
@@ -57,7 +57,8 @@ impl TimeParts {
         use_doy: bool,
         n_subsec: u8,
     ) -> Result<([u8; Dt::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
-        self.to_time_point()?.to_ccsds_ccs(use_doy, n_subsec)
+        self.to_time_point()?
+            .to_ccsds_ccs(self.scale, use_doy, n_subsec)
     }
 
     /// Convenience method that automatically selects the most appropriate

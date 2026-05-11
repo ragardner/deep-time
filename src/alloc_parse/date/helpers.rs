@@ -63,7 +63,7 @@ impl<'a> Iterator for SplitKeepWithPos<'a> {
 
 macro_rules! define_ends_with_methods {
     ($($method_name:ident => $byte:literal),* $(,)?) => {
-        pub(crate) trait EndsWithExt {  // ← crate-only now
+        pub(crate) trait EndsWithExt {
             $(fn $method_name(&self) -> bool;)*
             fn ends_with_ascii_digit(&self) -> bool;
         }

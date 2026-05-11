@@ -11,12 +11,13 @@ impl TimeParts {
     /// - **Perfect round-trip** with `Dt::from_ccsds_str` / `TimeParts::from_ccsds_str`.
     #[inline]
     pub fn to_ccsds_str(&self) -> Result<String, DtErr> {
-        self.to_time_point()?.to_ccsds_str()
+        self.to_time_point()?.to_ccsds_str(self.scale)
     }
 
     /// Same as [`to_ccsds_str`] but lets you control the maximum number of fractional digits (0–18).
     pub fn to_ccsds_str_nf(&self, max_precision: usize) -> Result<String, DtErr> {
-        self.to_time_point()?.to_ccsds_str_nf(max_precision)
+        self.to_time_point()?
+            .to_ccsds_str_nf(self.scale, max_precision)
     }
 
     /// Returns this instant as a **CCSDS ASCII Time Code B** (day-of-year variant).
@@ -24,11 +25,12 @@ impl TimeParts {
     /// Example: `"2025-107T14:30:45.123456789Z"`
     #[inline]
     pub fn to_ccsds_doy_str(&self) -> Result<String, DtErr> {
-        self.to_time_point()?.to_ccsds_doy_str_nf(18)
+        self.to_time_point()?.to_ccsds_doy_str_nf(self.scale, 18)
     }
 
     /// Same as [`to_ccsds_doy_str`] but with configurable fractional precision.
     pub fn to_ccsds_doy_str_nf(&self, max_precision: usize) -> Result<String, DtErr> {
-        self.to_time_point()?.to_ccsds_doy_str_nf(max_precision)
+        self.to_time_point()?
+            .to_ccsds_doy_str_nf(self.scale, max_precision)
     }
 }

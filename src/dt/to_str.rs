@@ -7,23 +7,33 @@ use crate::ATTOS_PER_SEC;
 impl Dt {
     /// High-level alloc version (defaults to UTC label-only formatting).
     #[inline]
-    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
-        self.to_str_with_offset(fmt, 0)
+    pub fn to_str(&self, current: Scale, fmt: &str) -> Result<alloc::string::String, DtErr> {
+        self.to_str_with_offset(current, fmt, 0)
     }
 
     /// High-level alloc version with explicit offset (label-only).
     #[inline]
-    pub fn to_str_with_offset(&self, fmt: &str, secs: i32) -> Result<alloc::string::String, DtErr> {
+    pub fn to_str_with_offset(
+        &self,
+        current: Scale,
+        fmt: &str,
+        secs: i32,
+    ) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self.to_u8_with_offset(fmt, &mut buf, secs)?;
+        let n = self.to_u8_with_offset(current, fmt, &mut buf, secs)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
     /// High-level alloc version for full IANA timezone formatting (with civil-time adjustment).
     #[inline]
-    pub fn to_str_with_tz(&self, fmt: &str, tz_name: &str) -> Result<alloc::string::String, DtErr> {
+    pub fn to_str_with_tz(
+        &self,
+        current: Scale,
+        fmt: &str,
+        tz_name: &str,
+    ) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self.to_u8_with_tz(fmt, &mut buf, tz_name)?;
+        let n = self.to_u8_with_tz(current, fmt, &mut buf, tz_name)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
@@ -86,8 +96,8 @@ impl Dt {
 
 impl Dt {
     /// No-alloc label-only formatting.
-    pub fn to_str_bin(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let mut gt = self.to_gregorian_time();
+    pub fn to_str_bin(&self, current: Scale, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
+        let mut gt = self.to_gregorian_time(current);
         gt.set_offset(Some(0)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -98,10 +108,11 @@ impl Dt {
     /// No-alloc label-only formatting.
     pub fn to_str_bin_with_offset(
         &self,
+        current: Scale,
         fmt: &str,
         secs: i32,
     ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let gt = self.gregorian_time_with_offset(secs);
+        let gt = self.gregorian_time_with_offset(current, secs);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -111,10 +122,11 @@ impl Dt {
     /// No-alloc full IANA adjusted formatting (civil time is adjusted to local wall time).
     pub fn to_str_bin_with_tz(
         &self,
+        current: Scale,
         fmt: &str,
         tz_name: &str,
     ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let gt = self.gregorian_time_with_tz(tz_name);
+        let gt = self.gregorian_time_with_tz(current, tz_name);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -131,8 +143,14 @@ impl Dt {
     }
 
     /// Helper for to_str.
-    pub fn to_u8_with_offset(&self, fmt: &str, dest: &mut [u8], secs: i32) -> Result<usize, DtErr> {
-        let gt = self.gregorian_time_with_offset(secs);
+    pub fn to_u8_with_offset(
+        &self,
+        current: Scale,
+        fmt: &str,
+        dest: &mut [u8],
+        secs: i32,
+    ) -> Result<usize, DtErr> {
+        let gt = self.gregorian_time_with_offset(current, secs);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
@@ -144,8 +162,14 @@ impl Dt {
     }
 
     /// Helper for to_str.
-    pub fn to_u8_with_tz(&self, fmt: &str, dest: &mut [u8], tz_name: &str) -> Result<usize, DtErr> {
-        let gt = self.gregorian_time_with_tz(tz_name);
+    pub fn to_u8_with_tz(
+        &self,
+        current: Scale,
+        fmt: &str,
+        dest: &mut [u8],
+        tz_name: &str,
+    ) -> Result<usize, DtErr> {
+        let gt = self.gregorian_time_with_tz(current, tz_name);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
@@ -157,13 +181,13 @@ impl Dt {
     }
 
     /// Helper for creating an offset adjusted GregorianTime.
-    pub(crate) fn gregorian_time_with_offset(&self, secs: i32) -> GregorianTime {
+    pub(crate) fn gregorian_time_with_offset(&self, current: Scale, secs: i32) -> GregorianTime {
         let local_tp = if secs != 0 {
             *self + Dt::new(secs as i64, 0)
         } else {
             *self
         };
-        let mut gt = local_tp.to_gregorian_time();
+        let mut gt = local_tp.to_gregorian_time(current);
         gt.set_offset(Some(secs));
         gt
     }
@@ -173,14 +197,19 @@ impl Dt {
     /// Always converts to UTC first, then does a correct UTC-based lookup
     /// in the IANA transition table. This avoids the previous bug where
     /// a non-UTC `unix_ts` was being passed to `offset_info_at_local`.
-    pub(crate) fn gregorian_time_with_tz(&self, tz_name: &str) -> GregorianTime {
+    pub(crate) fn gregorian_time_with_tz(&self, current: Scale, tz_name: &str) -> GregorianTime {
         // 1. Get the true UTC Unix timestamp (this is what we search with)
-        let utc_unix = self
-            .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
-            .to_sec();
+        // let utc_unix = if current.uses_leap_seconds() {
+        //     self.to_diff_raw(Dt::UNIX_EPOCH).to_sec()
+        // } else {
+        //     self.to(current, Scale::UTC)
+        //         .to_diff_raw(Dt::UNIX_EPOCH)
+        //         .to_sec()
+        // };
+        let utc_unix = self.to_unix(current);
 
         // 2. Look up offset + abbrev at that exact UTC instant
-        let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, utc_unix) {
+        let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, utc_unix.sec) {
             Some(info) => (info.offset, info.abbrev),
             None => (0, "UTC"), // fallback for unknown timezone
         };
@@ -189,7 +218,7 @@ impl Dt {
         let span = Dt::new(offset_secs as i64, 0);
         let local_tp = *self + span;
 
-        let mut gt = local_tp.to_gregorian_time();
+        let mut gt = local_tp.to_gregorian_time(current);
         gt.set_offset(Some(offset_secs));
         gt.set_tz(Some(tz_name));
         gt.set_tz_abbrev(Some(abbrev));

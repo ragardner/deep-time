@@ -16,6 +16,7 @@ impl Dt {
     /// - `extension`: advisory flag (ignored when larger sizes force the second octet)
     pub fn to_ccsds_c(
         &self,
+        current: Scale,
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
@@ -26,14 +27,16 @@ impl Dt {
             return Err(an_err!(DtErrKind::OutOfRange, "frac: {}", n_frac));
         }
 
+        let tai = self.to(current, Scale::TAI);
+
         const EPOCH_OFFSET: i64 = 1_325_419_167;
-        let total_tai_seconds = self.sec + EPOCH_OFFSET;
+        let total_tai_seconds = tai.sec + EPOCH_OFFSET;
 
         let frac_scaled = if n_frac == 0 {
             0u128
         } else {
             let scale = 1u128 << (8 * n_frac as u32);
-            (self.attos as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
+            (tai.attos as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
         };
 
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
@@ -92,6 +95,7 @@ impl Dt {
     /// Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since 1958-01-01 UTC.
     pub fn to_ccsds_d(
         &self,
+        current: Scale,
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
@@ -102,7 +106,7 @@ impl Dt {
             return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
         }
 
-        let utc = self.to(Scale::TAI, Scale::UTC); // TODO: add current
+        let utc = self.to(current, Scale::UTC);
 
         // UTC seconds since 1958-01-01 00:00:00 UTC (exact offset to library UTC zero,
         // accounting for all leap seconds up to the library epoch)
@@ -192,6 +196,7 @@ impl Dt {
     /// (exactly as `to_ccsds_d` does for milliseconds).
     pub fn to_ccsds_ccs(
         &self,
+        current: Scale,
         use_doy: bool,
         n_subsec: u8,
     ) -> Result<([u8; Self::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
@@ -200,7 +205,12 @@ impl Dt {
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
-        let gt = self.to_gregorian_time();
+        let gt = if current.uses_leap_seconds() {
+            self.to_gregorian_time(current)
+        } else {
+            let utc = self.to(current, Scale::UTC);
+            utc.to_gregorian_time(Scale::UTC)
+        };
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
         let mut pos = 0usize;
@@ -270,19 +280,19 @@ impl Dt {
     }
 
     /// Convenience method that automatically selects the most appropriate
-    /// CCSDS binary time code based on `scale`.
+    /// CCSDS binary time code based on `current` [`Scale`].
     ///
-    /// - `Scale::TAI` → **CUC** (4 coarse + 4 fractional bytes)
-    /// - Any other `Scale` (UTC, TT, GPS, TCG, …) → uses **CDS**
-    ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
+    /// - If the `current` [`Scale`] **uses leap seconds** then **ccsds_d is chosen**.
+    /// - Otherwise ccsds_c is chosen.
     #[inline]
     pub fn to_ccsds_bin(
         &self,
-        scale: Scale,
+        current: Scale,
     ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        match scale {
-            Scale::TAI => self.to_ccsds_c(4, 4, false),
-            _ => self.to_ccsds_d(2, 1, false),
+        if current.uses_leap_seconds() {
+            self.to_ccsds_d(current, 2, 1, false)
+        } else {
+            self.to_ccsds_c(current, 4, 4, false)
         }
     }
 }

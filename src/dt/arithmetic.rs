@@ -26,10 +26,10 @@ impl Dt {
 
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
     ///
-    /// The conversion is lossy by design, as `f64` (`Real`) provides approximately 15.95 decimal digits of precision.
+    /// The conversion is lossy by design, as [`Real`] provides approximately 15.95 decimal digits of precision.
     /// For full exactness, use the integer components `sec` and `attos` directly or higher-precision arithmetic when available.
     #[inline]
-    pub const fn to_sec_f(self) -> Real {
+    pub const fn to_sec_f(&self) -> Real {
         f!(self.sec) + f!(self.attos) / ATTOS_PER_SECF
     }
 
@@ -56,13 +56,13 @@ impl Dt {
         *self = self.add(dtau);
     }
 
-    /// Computes the TAI signed duration between this `Dt` and another `Dt`.
+    /// Computes the signed duration between this `Dt` and another `Dt`.
     #[inline]
     pub const fn to_diff_raw(&self, other: Self) -> Dt {
         Self::diff_raw_internal(self.sec, self.attos, other.sec, other.attos)
     }
 
-    /// Computes the TAI signed duration between this `Dt` and another `Dt` as a float.
+    /// Computes the signed duration between this `Dt` and another `Dt` as a float.
     #[inline]
     pub const fn to_diff_raw_f(&self, other: Self) -> Real {
         self.to_sec_f() - other.to_sec_f()
@@ -311,37 +311,37 @@ impl Dt {
 
     /// Total attoseconds (exact i128 representation within the representable range).
     #[inline]
-    pub const fn to_attos(self) -> i128 {
+    pub const fn to_attos(&self) -> i128 {
         (self.sec as i128) * ATTOS_PER_SEC_I128 + (self.attos as i128)
     }
 
-    /// Returns the total duration in milliseconds.
+    /// Returns the total time in milliseconds.
     #[inline]
-    pub const fn to_ms(self) -> i128 {
+    pub const fn to_ms(&self) -> i128 {
         self.to_attos() / (ATTOS_PER_MS as i128)
     }
 
-    /// Returns the total duration in microseconds.
+    /// Returns the total time in microseconds.
     #[inline]
-    pub const fn to_us(self) -> i128 {
+    pub const fn to_us(&self) -> i128 {
         self.to_attos() / (ATTOS_PER_US as i128)
     }
 
-    /// Returns the total duration in nanoseconds.
+    /// Returns the total time in nanoseconds.
     #[inline]
-    pub const fn to_ns(self) -> i128 {
+    pub const fn to_ns(&self) -> i128 {
         self.to_attos() / (ATTOS_PER_NS as i128)
     }
 
-    /// Returns the total duration in picoseconds.
+    /// Returns the total time in picoseconds.
     #[inline]
-    pub const fn to_ps(self) -> i128 {
+    pub const fn to_ps(&self) -> i128 {
         self.to_attos() / (ATTOS_PER_PS as i128)
     }
 
-    /// Returns the total duration in femtoseconds.
+    /// Returns the total time in femtoseconds.
     #[inline]
-    pub const fn to_fs(self) -> i128 {
+    pub const fn to_fs(&self) -> i128 {
         self.to_attos() / (ATTOS_PER_FS as i128)
     }
 
@@ -401,13 +401,13 @@ impl Dt {
         (sec, attos)
     }
 
-    /// Returns `true` if this duration is exactly zero.
+    /// Returns `true` if this time is exactly zero.
     #[inline]
-    pub const fn is_zero(self) -> bool {
+    pub const fn is_zero(&self) -> bool {
         self.sec == 0 && self.attos == 0
     }
 
-    /// Multiplies this duration by an integer scalar (exact).
+    /// Multiplies this time by an integer scalar (exact).
     ///
     /// Uses 128-bit arithmetic internally.
     pub const fn mul(self, rhs: i64) -> Self {
@@ -418,7 +418,7 @@ impl Dt {
         Self::from_attos(total, Scale::TAI)
     }
 
-    /// Divides this duration by an integer scalar (exact floor division).
+    /// Divides this time by an integer scalar (exact floor division).
     ///
     /// Returns `ZERO` if `rhs == 0`.
     /// Uses floor division (toward negative infinity) for consistency
@@ -434,9 +434,9 @@ impl Dt {
 
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
-    pub const fn floor(self, unit: Self) -> Self {
+    pub const fn floor(&self, unit: Self) -> Self {
         if unit.is_zero() {
-            return self;
+            return *self;
         }
         let a = self.to_attos();
         let b = unit.to_attos();
@@ -447,9 +447,9 @@ impl Dt {
 
     /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
-    pub const fn ceil(self, unit: Self) -> Self {
+    pub const fn ceil(&self, unit: Self) -> Self {
         if unit.is_zero() {
-            return self;
+            return *self;
         }
         let a = self.to_attos();
         let b = unit.to_attos();
@@ -464,9 +464,9 @@ impl Dt {
     /// Returns the nearest multiple of `unit`.
     /// Halfway cases round **away from zero** (matches old `f64::round`).
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
-    pub const fn round(self, unit: Self) -> Self {
+    pub const fn round(&self, unit: Self) -> Self {
         if unit.is_zero() {
-            return self;
+            return *self;
         }
         let a = self.to_attos();
         let b = unit.to_attos();
@@ -494,7 +494,7 @@ impl Dt {
     /// Returns `floor(|self| / |unit|)` as `usize`, saturating at `usize::MAX`.
     ///
     /// Fully exact integer arithmetic using 128-bit intermediaries. Used by `TimeRange::len`.
-    pub const fn abs_div_floor(self, unit: Self) -> usize {
+    pub const fn abs_div_floor(&self, unit: Self) -> usize {
         if unit.is_zero() {
             return 0;
         }
@@ -511,7 +511,7 @@ impl Dt {
 
     /// - Integer part of `rhs` is multiplied **exactly** (pure i128 arithmetic).
     /// - Fractional part (|frac| < 1) uses the 10¹⁵ scaling.
-    pub const fn mul_by_f(self, rhs: Real) -> Self {
+    pub const fn mul_by_f(&self, rhs: Real) -> Self {
         if rhs.is_nan() {
             return Self::ZERO;
         }
@@ -548,16 +548,16 @@ impl Dt {
 
     /// Divides by a real number (routes through the high-precision `mul_by_f`).
     #[inline]
-    pub const fn div_by_f(self, rhs: Real) -> Self {
+    pub const fn div_by_f(&self, rhs: Real) -> Self {
         if rhs == 0.0 || rhs.is_nan() {
             return if self.sec >= 0 { Self::MAX } else { Self::MIN };
         }
         self.mul_by_f(1.0 / rhs)
     }
 
-    /// Divides this duration by 2 (convenience wrapper).
+    /// Divides this Dt by 2 (convenience wrapper).
     #[inline]
-    pub const fn div_by_2(self) -> Self {
+    pub const fn div_by_2(&self) -> Self {
         self.div_by_f(2.0)
     }
 
@@ -616,7 +616,7 @@ impl Dt {
         }
     }
 
-    /// Returns the total duration in seconds.
+    /// Returns the total time in seconds.
     #[inline]
     pub const fn to_sec(&mut self) -> i64 {
         self.carry_over();
