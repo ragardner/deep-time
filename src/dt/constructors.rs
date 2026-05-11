@@ -10,30 +10,6 @@ impl Dt {
     /// (`Dt::new(0, 0)`).
     pub const ZERO: Self = Self::new(0, 0);
 
-    /// Zero-point offset for GPS Time (GPST) relative to [`Self::ZERO`].
-    ///
-    /// - Represents the **same physical instant** as [`Self::ZERO`].
-    /// - Carries the constant +19 s TAI-to-GPST offset used by GPS-related conversions.
-    pub const GPS_ZERO: Self = Self::new(19, 0);
-
-    /// Zero-point offset for Galileo System Time (GST) relative to [`Self::ZERO`].
-    ///
-    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
-    /// constant +19 s TAI-to-GST offset.
-    pub const GST_ZERO: Self = Self::new(19, 0);
-
-    /// Zero-point offset for QZSS Time relative to [`Self::ZERO`].
-    ///
-    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
-    /// constant +19 s TAI-to-QZSS offset.
-    pub const QZSS_ZERO: Self = Self::new(19, 0);
-
-    /// Zero-point offset for BeiDou Time (BDT) relative to [`Self::ZERO`].
-    ///
-    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
-    /// constant +33 s TAI-to-BDT offset.
-    pub const BDT_ZERO: Self = Self::new(33, 0);
-
     /// The Unix epoch (**1970-01-01 00:00:00 UTC**) expressed as a signed
     /// TAI-second offset from [`Self::ZERO`].
     ///
@@ -57,6 +33,11 @@ impl Dt {
         let tcl1977 = Self::TAI_1977_EPOCH.to(Scale::TAI, Scale::TCL);
         Self::new(tcl1977.sec, tcl1977.attos)
     };
+
+    /// 1998-01-01 midnight TT, but as **TAI**.
+    /// - -63_115_233 sec
+    /// - 816000000000000000 attos
+    pub const CXC_EPOCH: Self = Self::new(-63_115_233, 816000000000000000);
 
     /// GPS Time epoch: exactly **1980-01-06 00:00:00 UTC**.
     /// Galileo Experiment (GALEX) epoch: exactly **1980-01-06 00:00:00 UTC**.

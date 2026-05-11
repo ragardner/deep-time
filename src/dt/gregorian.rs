@@ -7,19 +7,15 @@ impl Dt {
     /// Returns this [`Dt`] but as a unix timestamp
     /// where the:
     /// - `.sec` field is seconds since the UNIX epoch
-    /// (1970-01-01 00:00:00 UTC).
+    /// (1970-01-01 00:00:00).
     /// - `.attos` field is remaining fractional seconds.
     ///
-    /// Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
+    /// ### Notes:
+    /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
     #[inline]
-    pub const fn to_unix(&self, current: Scale) -> Dt {
-        let mut dt = if current.uses_leap_seconds() {
-            self.to_diff_raw(Dt::UNIX_EPOCH)
-        } else {
-            self.to(current, Scale::UTC).to_diff_raw(Dt::UNIX_EPOCH)
-        };
-        dt.carry_over();
-        dt
+    pub const fn to_unix(&self, current: Scale, target: Scale) -> Dt {
+        self.to(current, target)
+            .to_diff_raw(Dt::UNIX_EPOCH.to_internal(target))
     }
 
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
