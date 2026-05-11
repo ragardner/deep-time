@@ -86,9 +86,6 @@ pub(crate) const TAI_SECS_1970_MIDNIGHT_TO_2000_NOON: i64 = 946_728_000;
 // pub(crate) const US_PER_SEC: i128 = 1_000_000;
 // pub(crate) const MS_PER_SEC: i128 = 1_000;
 
-// JD 2440587.5 = 1970-01-01 00:00:00 UTC (the .5 is handled by ATTOS_PER_HALF_DAY)
-pub(crate) const JD_UNIX_EPOCH_2_440_587: i64 = 2_440_587;
-
 pub const PLANCK_LENGTH: Real = 1.616255e-35; // meters (standard value)
 pub const PLANCK_LENGTH_4: Real = PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;
 

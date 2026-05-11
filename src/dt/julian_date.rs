@@ -8,6 +8,8 @@ impl Dt {
     ///
     /// The returned JD is expressed in the time scale of this `Dt`.
     /// The fractional part is always in `[0, ATTOS_PER_DAY)`.
+    ///
+    /// For a float value use [`Self::to_jd_f`].
     pub const fn to_jd(&self) -> (i64, u128) {
         let days_since_j2000 = self.sec.div_euclid(SEC_PER_DAYI64);
         let remaining_sec = self.sec.rem_euclid(SEC_PER_DAYI64);
@@ -32,6 +34,8 @@ impl Dt {
     ///
     /// The returned MJD is expressed in the time scale of this `Dt`.
     /// The fractional part is always in `[0, ATTOS_PER_DAY)`.
+    ///
+    /// For a float value use [`Self::to_mjd_f`].
     pub const fn to_mjd(&self) -> (i64, u128) {
         let (jd_days, frac_attos) = self.to_jd();
 

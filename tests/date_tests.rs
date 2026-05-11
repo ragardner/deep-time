@@ -45,21 +45,9 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        let x = Dt::from_ymd(1970, 1, 1);
-        eprintln!("CIVIL     {:?}", x.to_jd());
-        eprintln!("NON CIVIL {:?}", x.to_jd());
-
-        let x = Dt::from_ymd_on(2020, 1, 1, Scale::TT); // or Scale::TT
-        eprintln!("CIVIL     {:?}", x.to_jd());
-        eprintln!("NON CIVIL {:?}", x.to_jd());
-
-        let x = Dt::from_ymd(1970, 1, 1);
-        eprintln!("CIVIL     {:?}", x.to_mjd());
-        eprintln!("NON CIVIL {:?}", x.to_mjd());
-
-        let x = Dt::from_ymd_on(2020, 1, 1, Scale::TT); // or Scale::TT
-        eprintln!("CIVIL     {:?}", x.to_mjd());
-        eprintln!("NON CIVIL {:?}", x.to_mjd());
+        let x = Dt::from_ymd(1962, 1, 1);
+        eprintln!("jd {:?}", x.to_jd_f());
+        eprintln!("mjd {:?}", x.to_mjd());
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
