@@ -1,6 +1,6 @@
 [package]
 name = "deep-time"
-version = "0.1.0-alpha.3"
+version = "0.1.0-alpha.4"
 authors = ["ragardner <github@ragardner.simplelogin.com>"]
 edition = "2024"
 description = "High-precision time types, time scale conversions, relativistic time, and a flexible date and duration parser"

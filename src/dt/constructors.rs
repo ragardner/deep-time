@@ -12,8 +12,8 @@ impl Dt {
 
     /// Zero-point offset for GPS Time (GPST) relative to [`Self::ZERO`].
     ///
-    /// Represents the **same physical instant** as [`Self::ZERO`] but carries the
-    /// constant +19 s TAI-to-GPST offset used by all GPS-related conversions.
+    /// - Represents the **same physical instant** as [`Self::ZERO`].
+    /// - Carries the constant +19 s TAI-to-GPST offset used by GPS-related conversions.
     pub const GPS_ZERO: Self = Self::new(19, 0);
 
     /// Zero-point offset for Galileo System Time (GST) relative to [`Self::ZERO`].

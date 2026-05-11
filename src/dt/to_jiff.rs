@@ -14,7 +14,7 @@ impl Dt {
     /// - Saturates at [`Timestamp::MIN`] / [`Timestamp::MAX`] if the instant
     ///   is outside the range supported by Jiff (roughly years 0000–9999).
     ///   Never returns an error.
-    pub fn to_jiff_timestamp(self) -> Timestamp {
+    pub fn to_jiff_timestamp(&self) -> Timestamp {
         let span_since_epoch = self.to_diff_raw(Dt::UNIX_EPOCH);
         let total_nanos = span_since_epoch.to_attos() / 1_000_000_000i128;
 
@@ -39,7 +39,7 @@ impl Dt {
     /// - **Saturates** at the largest/smallest representable `Span` (roughly ±20,000 years)
     ///   if the value is out of range.
     ///   Never returns an error.
-    pub fn to_jiff_span(self) -> Span {
+    pub fn to_jiff_span(&self) -> Span {
         let total_nanos = self.to_attos() / 1_000_000_000i128;
 
         let seconds = (total_nanos / 1_000_000_000) as i64;
@@ -69,7 +69,7 @@ impl Dt {
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
     /// - Supports the **entire** range of `Span` (never saturates).
     #[inline]
-    pub fn to_jiff_signed_duration(self) -> SignedDuration {
+    pub fn to_jiff_signed_duration(&self) -> SignedDuration {
         let total_nanos = self.to_attos() / 1_000_000_000i128;
         SignedDuration::from_nanos_i128(total_nanos)
     }

@@ -6,7 +6,7 @@ impl Dt {
     ///
     /// Round-trips perfectly with `from_hifitime` thanks to the
     /// runtime-computed offset that matches hifitime's calendar math.
-    pub fn to_hifitime(self) -> Epoch {
+    pub fn to_hifitime(&self) -> Epoch {
         let ns_since_zero = self.to_attos() / 1_000_000_000;
 
         let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);
@@ -31,7 +31,7 @@ impl Dt {
     ///   [`Duration::MAX`] / [`Duration::MIN`] if outside hifitime's range
     ///   (±32,768 centuries).
     #[inline]
-    pub fn to_hifitime_duration(self) -> Duration {
+    pub fn to_hifitime_duration(&self) -> Duration {
         Duration::from_total_nanoseconds(self.to_attos() / 1_000_000_000i128)
     }
 }
