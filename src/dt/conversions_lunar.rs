@@ -91,19 +91,19 @@ impl Dt {
 
     // old fn
     // pub(crate) const fn tt_to_ltc(tt: Self) -> Self {
-    //     let elapsed = Self::elapsed_to_attos_since_ref(tt);
+    //     let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
     //     let span_attos = Self::mul_lm(elapsed);
     //     tt.add(Dt::from_attos(span_attos))
     // }
     // old fn
     // pub(crate) const fn ltc_to_tt(ltc: Self) -> Self {
-    //     let elapsed = Self::elapsed_to_attos_since_ref(ltc);
+    //     let elapsed = Self::to_attos_since_tcg_tcb_epoch(ltc);
     //     let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
     //     ltc.sub(Dt::from_attos(span_attos))
     // }
 
     pub(crate) const fn tt_to_ltc(tt: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_tcg_tcb_epoch(tt);
+        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
         let secular_attos = Self::mul_lm(elapsed);
         let periodic = Self::ltc_periodic_correction(tt);
 
@@ -113,7 +113,7 @@ impl Dt {
 
     // non-iterate approach
     // pub(crate) const fn ltc_to_tt(ltc: Self) -> Self {
-    //     let elapsed = Self::elapsed_to_attos_since_ref(ltc);
+    //     let elapsed = Self::to_attos_since_tcg_tcb_epoch(ltc);
     //     let secular_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
     //     let periodic = Self::ltc_periodic_correction(ltc); // evaluate at input (or iterate if you want ultra-pedantic)
 
@@ -133,7 +133,7 @@ impl Dt {
         let mut tt = ltc; // initial guess (already within ~2 ms)
         let mut i = 0u32;
         while i < 6 {
-            let elapsed = Self::elapsed_to_attos_since_tcg_tcb_epoch(tt);
+            let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
             let secular_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
             let periodic = Self::ltc_periodic_correction(tt);
 
@@ -206,14 +206,14 @@ impl Dt {
     /// Used exclusively for the TCL pathway to match LTE440 exactly
     /// (TCL = TDB + L_D^M × (JD_TDB − 2451545.0) × 86400 + periodic).
     #[inline]
-    pub(crate) const fn elapsed_to_attos_since_j2000_tdb_epoch(numerical_tdb: Self) -> i128 {
+    pub(crate) const fn to_attos_since_j2000_tdb_epoch(numerical_tdb: Self) -> i128 {
         numerical_tdb.to_attos()
     }
 
     pub(crate) const fn tai_to_tcl(tai: Self) -> Self {
         let tdb = Self::tai_to_tdb(tai);
 
-        let elapsed = Self::elapsed_to_attos_since_j2000_tdb_epoch(tdb);
+        let elapsed = Self::to_attos_since_j2000_tdb_epoch(tdb);
         let secular_attos = Self::mul_tl(elapsed);
         let periodic = Self::ltc_periodic_correction(tdb);
 
@@ -228,7 +228,7 @@ impl Dt {
         let mut tdb = tcl;
         let mut i = 0u32;
         while i < 6 {
-            let elapsed = Self::elapsed_to_attos_since_j2000_tdb_epoch(tdb);
+            let elapsed = Self::to_attos_since_j2000_tdb_epoch(tdb);
             let secular_attos = Self::mul_rate(elapsed, TL_NUM, TL_DEN + TL_NUM);
             let periodic = Self::ltc_periodic_correction(tdb);
 

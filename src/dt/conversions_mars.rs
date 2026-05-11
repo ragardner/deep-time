@@ -6,7 +6,7 @@ use crate::{
 impl Dt {
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
     #[inline]
-    pub(crate) const fn elapsed_to_attos_since_mars_msd_epoch(numerical_tt: Dt) -> i128 {
+    pub(crate) const fn to_attos_since_mars_msd_epoch(numerical_tt: Dt) -> i128 {
         numerical_tt.to_attos() - MARS_REF_TT_ATTOS
     }
 
@@ -16,7 +16,7 @@ impl Dt {
     /// [`Scale`]. Leap seconds are automatically accounted for when converting from UTC.
     pub const fn to_msd_exact(&self, current: Scale) -> (i64, u128) {
         let tt = self.to(current, Scale::TT);
-        let elapsed = Self::elapsed_to_attos_since_mars_msd_epoch(tt);
+        let elapsed = Self::to_attos_since_mars_msd_epoch(tt);
         let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS);
         let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;
 
@@ -34,7 +34,6 @@ impl Dt {
     /// Creates a `Dt` (in TT) from an exact Mars Sol Date using full library precision.
     pub const fn from_msd_exact(whole_sols: i64, frac_attos: u128) -> Self {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
-
         let tt = MARS_REF_TT.add(Dt::from_attos(elapsed_attos, Scale::TAI));
         Self::from(tt.sec, tt.attos, Scale::TT)
     }

@@ -18,7 +18,7 @@ impl Dt {
     }
 
     #[inline]
-    pub const fn to_scale_and_then_diff(self, scale: Scale, epoch: Dt) -> Dt {
+    pub const fn to_scale_and_then_diff(&self, scale: Scale, epoch: Dt) -> Dt {
         self.to_internal(scale).to_diff_raw(epoch)
     }
 
@@ -33,26 +33,26 @@ impl Dt {
         match scale {
             Scale::TAI | Scale::Custom | Scale::UT1 => raw,
             Scale::TT => raw.sub(TT_TAI_OFFSET),
-            Scale::UTC => raw.add(Dt::from_sec(
-                get_leap_seconds(&raw, true).offset,
-                Scale::TAI,
-            )),
+            Scale::UTC => raw.add(Dt {
+                sec: get_leap_seconds(&raw, true).offset,
+                attos: 0,
+            }),
             Scale::UTCSpice => {
-                let tai = raw.add(Dt::from_sec(
-                    get_leap_seconds(&raw, true).offset,
-                    Scale::TAI,
-                ));
+                let tai = raw.add(Dt {
+                    sec: get_leap_seconds(&raw, true).offset,
+                    attos: 0,
+                });
                 if sec < TAI_SEC_AT_1972 - 10 {
-                    tai.add(Dt::from_sec_f(f!(9.0)))
+                    tai.add(Dt::from_sec(9, Scale::TAI))
                 } else {
                     tai
                 }
             }
             Scale::UTCSofa => {
-                let tai = raw.add(Dt::from_sec(
-                    get_leap_seconds(&raw, true).offset,
-                    Scale::TAI,
-                ));
+                let tai = raw.add(Dt {
+                    sec: get_leap_seconds(&raw, true).offset,
+                    attos: 0,
+                });
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(&raw) {
                     tai.add(Dt::from_sec_f(offset))
                 } else {
@@ -82,15 +82,15 @@ impl Dt {
         match scale {
             Scale::TAI | Scale::Custom | Scale::UT1 => *self,
             Scale::TT => self.add(TT_TAI_OFFSET),
-            Scale::UTC => self.sub(Dt::from_sec(
-                get_leap_seconds(&self, false).offset,
-                Scale::TAI,
-            )),
+            Scale::UTC => self.sub(Dt {
+                sec: get_leap_seconds(&self, false).offset,
+                attos: 0,
+            }),
             Scale::UTCSpice => {
-                let spice = self.sub(Dt::from_sec(
-                    get_leap_seconds(&self, false).offset,
-                    Scale::TAI,
-                ));
+                let spice = self.sub(Dt {
+                    sec: get_leap_seconds(&self, false).offset,
+                    attos: 0,
+                });
                 if self.sec < TAI_SEC_AT_1972 {
                     spice.sub(Dt::from_sec_f(f!(9.0)))
                 } else {
@@ -98,10 +98,10 @@ impl Dt {
                 }
             }
             Scale::UTCSofa => {
-                let sofa = self.sub(Dt::from_sec(
-                    get_leap_seconds(&self, false).offset,
-                    Scale::TAI,
-                ));
+                let sofa = self.sub(Dt {
+                    sec: get_leap_seconds(&self, false).offset,
+                    attos: 0,
+                });
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(&self) {
                     sofa.sub(Dt::from_sec_f(offset))
                 } else {
@@ -208,7 +208,7 @@ impl Dt {
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
     /// using only the numerical `sec`/`attos` of the supplied `Dt` (scale is ignored).
     #[inline]
-    pub(crate) const fn elapsed_to_attos_since_tcg_tcb_epoch(numerical: Self) -> i128 {
+    pub(crate) const fn to_attos_since_tcg_tcb_epoch(numerical: Self) -> i128 {
         numerical.to_attos() - TCG_TCB_REF_ATTOS_SINCE_J2000
     }
 
@@ -235,26 +235,26 @@ impl Dt {
     }
 
     pub(crate) const fn tt_to_tcg(tt: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_tcg_tcb_epoch(tt);
+        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
         let span_attos = Self::mul_lg(elapsed);
         tt.add(Dt::from_attos(span_attos, Scale::TAI))
     }
 
     pub(crate) const fn tcg_to_tt(tcg: Self) -> Self {
-        let elapsed_cg = Self::elapsed_to_attos_since_tcg_tcb_epoch(tcg);
+        let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
         tcg.sub(Dt::from_attos(span_attos, Scale::TAI))
     }
 
     pub(crate) const fn tcb_to_tdb(tcb: Self) -> Self {
-        let elapsed_cg = Self::elapsed_to_attos_since_tcg_tcb_epoch(tcb);
+        let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
         tcb.sub(Dt::from_attos(span_attos, Scale::TAI))
             .sub(Dt::from_attos(TDB0_ATTOS, Scale::TAI))
     }
 
     pub(crate) const fn tdb_to_tcb(tdb: Self) -> Self {
-        let elapsed = Self::elapsed_to_attos_since_tcg_tcb_epoch(tdb);
+        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
         tdb.add(Dt::from_attos(span_attos, Scale::TAI))
             .add(Dt::from_attos(TDB0_ATTOS, Scale::TAI))

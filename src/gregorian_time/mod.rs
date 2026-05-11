@@ -1,4 +1,4 @@
-use crate::{AsciiStr, Dt, JD_2000_2_451_545, SEC_PER_DAYI64, Scale, Weekday};
+use crate::{AsciiStr, Dt, Weekday};
 
 mod to_str;
 
@@ -249,17 +249,9 @@ impl GregorianTime {
     /// Reconstructs a [`Dt`] from these **UTC** civil components.
     ///
     /// Round-tripping with `Dt::to_gregorian_time`.
-    pub const fn to_time_point(self) -> Dt {
-        let jdn = Dt::ymd_to_jdn(self.yr, self.mo, self.day);
-        let days_since_j2000 = jdn - JD_2000_2_451_545;
-        let seconds_from_noon =
-            (self.hr as i64 - 12) * 3600i64 + (self.min as i64) * 60i64 + (self.sec as i64);
-        let sec = days_since_j2000 * SEC_PER_DAYI64 + seconds_from_noon;
-        Dt::from(sec, self.attos, Scale::UTC)
-
-        // Dt::from_ymdhms(
-        //     self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0, scale,
-        // )
+    #[inline]
+    pub const fn to_time_point(&self) -> Dt {
+        Dt::from_ymdhms(self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0)
     }
 }
 

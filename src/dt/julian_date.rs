@@ -56,7 +56,7 @@ impl Dt {
     ///
     /// This is the lossy counterpart to [`Self::to_mjd`].
     #[inline]
-    pub const fn to_mjd_f(self) -> Real {
+    pub const fn to_mjd_f(&self) -> Real {
         let (days, attos) = self.to_mjd();
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
