@@ -26,4 +26,38 @@ impl Dt {
         let tow_span = Dt::from_sec_f(tow);
         Self::from_gps_wk_and_tow(week, tow_span)
     }
+
+    /// Inverse of [`Self::to_gps`].
+    pub const fn from_gps(elapsed: Dt) -> Self {
+        Self::GPS_EPOCH.add(elapsed)
+    }
+
+    /// Floating-point version of [`Self::from_gps`].
+    #[inline]
+    pub const fn from_gps_f(elapsed_sec: Real) -> Self {
+        Self::from_gps(Dt::from_sec_f(elapsed_sec))
+    }
+
+    /// Inverse of [`Self::to_cxcsec`].
+    pub const fn from_cxcsec(elapsed: Dt) -> Self {
+        Self::CXC_EPOCH.add(elapsed)
+    }
+
+    /// Floating-point counterpart of [`Self::from_cxcsec`].
+    #[inline]
+    pub const fn from_cxcsec_f(elapsed_sec: Real) -> Self {
+        Self::from_cxcsec(Dt::from_sec_f(elapsed_sec))
+    }
+
+    /// Inverse of [`Self::to_galexsec`].
+    pub const fn from_galexsec(elapsed: Dt) -> Self {
+        let epoch_utc = Self::GPS_EPOCH.to(Scale::TAI, Scale::UTC);
+        epoch_utc.add(elapsed).to(Scale::UTC, Scale::TAI)
+    }
+
+    /// Floating-point counterpart of [`Self::from_galexsec`].
+    #[inline]
+    pub const fn from_galexsec_f(elapsed_sec: Real) -> Self {
+        Self::from_galexsec(Dt::from_sec_f(elapsed_sec))
+    }
 }

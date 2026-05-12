@@ -3,6 +3,7 @@ mod constructors;
 mod conversions;
 mod conversions_lunar;
 mod conversions_mars;
+mod decimal_year;
 mod from_ccsds;
 mod from_gps;
 mod from_str;
@@ -22,19 +23,13 @@ mod formatting;
 mod to_ccsds_str;
 
 #[cfg(feature = "hifitime")]
-mod from_hifitime;
-#[cfg(feature = "hifitime")]
-mod to_hifitime;
+mod hifitime;
 
 #[cfg(feature = "chrono")]
-mod from_chrono;
-#[cfg(feature = "chrono")]
-mod to_chrono;
+mod chrono;
 
 #[cfg(feature = "jiff")]
-mod from_jiff;
-#[cfg(feature = "jiff")]
-mod to_jiff;
+mod jiff;
 
 use crate::ATTOS_PER_SEC;
 use core::fmt;
@@ -68,7 +63,7 @@ impl Dt {
     #[inline]
     pub const fn carry_over(&mut self) -> &mut Self {
         if self.attos >= ATTOS_PER_SEC {
-            self.sec += (self.attos / ATTOS_PER_SEC) as i64;
+            self.sec = self.sec.saturating_add((self.attos / ATTOS_PER_SEC) as i64);
             self.attos %= ATTOS_PER_SEC;
         }
         self

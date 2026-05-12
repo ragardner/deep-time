@@ -530,20 +530,102 @@ impl Dt {
             return Self::ZERO;
         }
 
-        let int_part = floor_f(rhs) as i128; // exact integer part
+        let self_attos = self.to_attos();
+        let max_attos = Self::MAX.to_attos();
+        let min_attos = Self::MIN.to_attos();
+
+        // Safe extraction of integer part (handles huge |rhs| without UB)
+        let int_part = if rhs >= (i128::MAX as Real) {
+            i128::MAX
+        } else if rhs <= (i128::MIN as Real) {
+            i128::MIN
+        } else {
+            floor_f(rhs) as i128
+        };
+
+        // Huge |rhs| → definitely saturates the type
+        if int_part == i128::MAX || int_part == i128::MIN {
+            let self_pos = self.sec > 0 || (self.sec == 0 && self.attos != 0);
+            return if (rhs > 0.0) == self_pos {
+                Self::MAX
+            } else {
+                Self::MIN
+            };
+        }
+
         let frac_part = rhs - f!(int_part); // always in [0, 1)
 
-        // Integer part
-        let int_result = Self::from_attos(self.to_attos().saturating_mul(int_part), Scale::TAI);
+        // --- Integer part with explicit type-range saturation ---
+        let int_attos = if int_part == 0 {
+            0
+        } else if int_part > 0 {
+            if self_attos > 0 {
+                if int_part > max_attos / self_attos {
+                    max_attos
+                } else {
+                    self_attos * int_part
+                }
+            } else {
+                let abs_self = self_attos.wrapping_neg();
+                let abs_min = min_attos.wrapping_neg();
+                if int_part > abs_min / abs_self {
+                    min_attos
+                } else {
+                    self_attos * int_part
+                }
+            }
+        } else {
+            // int_part < 0
+            if self_attos > 0 {
+                let abs_int = int_part.wrapping_neg();
+                let abs_min = min_attos.wrapping_neg();
+                if abs_int > abs_min / self_attos {
+                    min_attos
+                } else {
+                    self_attos * int_part
+                }
+            } else {
+                let abs_self = self_attos.wrapping_neg();
+                let abs_int = int_part.wrapping_neg();
+                if abs_int > max_attos / abs_self {
+                    max_attos
+                } else {
+                    self_attos * int_part
+                }
+            }
+        };
 
-        // Fractional part: scaling is safe (|frac_part| < 1)
+        // --- Fractional part: decomposed exact computation (never overflows i128) ---
         const SCALE: i128 = 1_000_000_000_000_000; // 10¹⁵
         let frac_scaled = (frac_part * (SCALE as Real)) as i128;
-        let frac_product = self.to_attos().saturating_mul(frac_scaled);
-        let frac_attos = frac_product / SCALE;
-        let frac_result = Self::from_attos(frac_attos, Scale::TAI);
 
-        int_result.add(frac_result)
+        let frac_attos = if self_attos >= 0 {
+            let high = self_attos / SCALE;
+            let low = self_attos % SCALE;
+            let high_part = high * frac_scaled;
+            let low_part = (low * frac_scaled) / SCALE;
+            high_part + low_part
+        } else {
+            let abs_self = self_attos.wrapping_neg();
+            let high = abs_self / SCALE;
+            let low = abs_self % SCALE;
+            let high_part = high * frac_scaled;
+            let low_part = (low * frac_scaled) / SCALE;
+            let pos = high_part + low_part;
+            pos.wrapping_neg()
+        };
+
+        // Combine + final clamp (manual version because clamp is not const yet)
+        let total_attos = int_attos.saturating_add(frac_attos);
+        let clamped = if total_attos > max_attos {
+            max_attos
+        } else if total_attos < min_attos {
+            min_attos
+        } else {
+            total_attos
+        };
+
+        Self::from_attos(clamped, Scale::TAI)
     }
 
     /// Divides by a real number (routes through the high-precision `mul_by_f`).

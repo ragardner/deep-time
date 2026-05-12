@@ -237,7 +237,12 @@ impl Dt {
     }
 
     /// Creates a `Dt` from a floating-point number of seconds.
+    #[inline]
     pub const fn from_sec_f(sec_f: Real) -> Self {
+        Self::from_sec_f_on(sec_f, Scale::TAI)
+    }
+
+    pub const fn from_sec_f_on(sec_f: Real, s: Scale) -> Self {
         if sec_f.is_nan() {
             return Self::ZERO;
         }
@@ -254,7 +259,7 @@ impl Dt {
         let attos_frac = (frac * ATTOS_PER_SECF) as i128;
 
         let total = (floor_val as i128) * ATTOS_PER_SEC_I128 + attos_frac;
-        Self::from_attos(total, Scale::TAI)
+        Self::from_attos(total, s)
     }
 
     /// Returns the current system time as TAI from 2000-01-01 noon.

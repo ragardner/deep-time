@@ -185,6 +185,20 @@ mod astropy_verified_conversions_tests {
     }
 
     #[test]
+    fn decimal_year() {
+        let x = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let y = Dt::from_ymdhms_on(-2000, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        // jyear 2019.9986310746065
+        assert_eq!(x.to_jyear(), 2019.9986310746065);
+        // byear 2020.000335739628
+        assert!((x.to_byear() - 2020.000335739628).abs() < 1e-12);
+        // decimalyear 2020.0
+        assert_eq!(x.to_decimalyear(Scale::TAI), 2020.0);
+        // Negative decimal year
+        assert_eq!(y.to_decimalyear(Scale::TAI), -2000.0);
+    }
+
+    #[test]
     fn tai_jd() {
         let jd = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI).to_jd_f();
         // jd_tai 2458849.5
