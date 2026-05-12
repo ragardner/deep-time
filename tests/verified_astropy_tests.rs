@@ -297,12 +297,12 @@ mod astropy_verified_conversions_tests {
                     diff < TOLERANCE,
                     "{yr}-{mo:02}-01: diff = {diff:.2e} JD (expected {expected}, got {jd})"
                 );
-                eprintln!(
-                    "{}-{}-01 diff: {:.2e}",
-                    yr,
-                    mo,
-                    (jd - results[results_idx]).abs()
-                );
+                // eprintln!(
+                //     "{}-{}-01 diff: {:.2e}",
+                //     yr,
+                //     mo,
+                //     (jd - results[results_idx]).abs()
+                // );
                 results_idx += 1;
             }
         }
