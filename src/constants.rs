@@ -69,7 +69,7 @@ pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 Ã
 pub const TT_TAI_OFFSET: Dt = Dt::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
 
 // J2000.0 = 2000-01-01 12:00:00 TT â†’ 100 Julian years = exactly 3_155_760_000 s
-pub(crate) const J2000_SEC_PER_CENTURY: Real = 3_155_760_000.0;
+pub(crate) const J2000_SEC_PER_MILLENNIUM: f64 = 31_557_600_000.0;
 
 /// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
 pub const JD_2000_2_451_545: i64 = 2_451_545;
@@ -80,11 +80,6 @@ pub const TAI_SEC_AT_1972: i64 = -883_655_990;
 
 /// TAI secs from 1970-01-01 midnight to 2000-01-01 noon
 pub(crate) const TAI_SECS_1970_MIDNIGHT_TO_2000_NOON: i64 = 946_728_000;
-
-// pub(crate) const FS_PER_SEC: i128 = 1_000_000_000_000_000;
-// pub(crate) const PS_PER_SEC: i128 = 1_000_000_000_000;
-// pub(crate) const US_PER_SEC: i128 = 1_000_000;
-// pub(crate) const MS_PER_SEC: i128 = 1_000;
 
 pub const PLANCK_LENGTH: Real = 1.616255e-35; // meters (standard value)
 pub const PLANCK_LENGTH_4: Real = PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;

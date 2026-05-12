@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC, Dt, LM_DEN, LM_NUM, Real, Scale, sin_approx};
+use crate::{ATTOS_PER_SEC, Dt, LM_DEN, LM_NUM, Real, Scale, sin};
 
 /// TCL secular rate vs TDB (exact value from LTE440).
 pub(crate) const TL_NUM: i128 = 6_798_355_240;
@@ -163,7 +163,7 @@ impl Dt {
         while i < LUNAR_PERIODIC_TERMS.len() {
             let term = LUNAR_PERIODIC_TERMS[i];
             let arg = two_pi * (t_days / term.period_days) + term.phase_rad;
-            delta_us += term.amplitude_us * sin_approx(arg);
+            delta_us += term.amplitude_us * sin(arg);
             i += 1;
         }
 

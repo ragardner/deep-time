@@ -1,9 +1,8 @@
 use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::leap_seconds::get_leap_seconds;
 use crate::{
-    ATTOS_PER_SEC, ClockDrift, ClockModel, Dt, J2000_SEC_PER_CENTURY, LB_DEN, LB_NUM, LG_DEN,
-    LG_NUM, Real, Scale, TAI_SEC_AT_1972, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET,
-    sin_approx,
+    ClockDrift, ClockModel, Dt, J2000_SEC_PER_MILLENNIUM, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Real,
+    Scale, TAI_SEC_AT_1972, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET, sin,
 };
 
 impl Dt {
@@ -181,17 +180,35 @@ impl Dt {
 
     pub(crate) const fn tai_to_tdb(tai: Self) -> Self {
         let tt = tai.add(TT_TAI_OFFSET);
-        let span = Self::tdb_minus_tt(tt.sec, tt.attos);
+        let span = Self::tdb_minus_tt(tt.to_sec_f());
         tt.add(span)
     }
 
     pub(crate) const fn tdb_to_tai(tdb: Self) -> Self {
-        let mut tt = tdb;
+        // Linear-rate + constant initial guess (dominant part of the forward transformation)
+        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
+        let linear_span = Self::mul_lb(elapsed); // LB * elapsed
+        let mut tt = tdb
+            .sub(Dt::from_attos(linear_span, Scale::TAI))
+            .sub(Dt::from_attos(TDB0_ATTOS, Scale::TAI));
+
+        // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
         let mut i = 0u32;
         while i < 8 {
-            tt = tdb.sub(Self::tdb_minus_tt(tt.sec, tt.attos));
+            let p = Self::tdb_minus_tt(tt.to_sec_f());
+            let new_tt = tdb.sub(p);
+
+            // Early exit when change is smaller than ~1 atto-second
+            let delta = new_tt.to_diff_raw(tt);
+            if delta.sec == 0 && delta.attos < 1 {
+                tt = new_tt;
+                break;
+            }
+
+            tt = new_tt;
             i += 1;
         }
+
         tt.sub(TT_TAI_OFFSET)
     }
 
@@ -260,76 +277,53 @@ impl Dt {
             .add(Dt::from_attos(TDB0_ATTOS, Scale::TAI))
     }
 
-    /// Computes the difference TDB − TT (in seconds) using the four dominant
-    /// periodic terms from the Fairhead & Bretagnon (1990) analytical series,
-    /// as extracted from the SOFA/ERFA library (`eraDtdb`).
+    /// DE440/LTE440-tuned compact analytical TT–TDB model
     ///
-    /// This is currently the most accurate practical analytical model for the
-    /// periodic part of TDB−TT. It captures approximately 99.85% of the total
-    /// power present in the full 787-term Fairhead-Bretagnon series while
-    /// remaining extremely fast and fully `const fn` compatible.
-    ///
-    /// The model includes:
-    /// - Main annual term (Earth's orbital eccentricity)
-    /// - Semi-annual harmonic
-    /// - 11.86-year perturbation term (lunar/planetary)
-    /// - Venus perturbation term
-    ///
-    /// **Accuracy**: better than ±0.5 µs near J2000.0 for the periodic component
-    /// (this 4-term model captures the dominant variation), with slow degradation
-    /// over millennia. For nanosecond-level work over long timescales, numerical
-    /// integration against a modern solar-system ephemeris (DE440/DE441, INPOP,
-    /// etc.) remains the definitive method.
-    ///
-    /// References (all directly from the SOFA/ERFA implementation):
-    ///
-    /// - Fairhead, L. & Bretagnon, P., "An analytical formula for the time
-    ///   transformation TB-TT", Astron. Astrophys. 229, 240-247 (1990).
-    ///
-    /// - IAU 2006 Resolution 3 (re-definition of Barycentric Dynamical Time).
-    ///
-    /// - McCarthy, D. D. & Petit, G. (eds.), IERS Conventions (2003),
-    ///   IERS Technical Note No. 32, BKG (2004).
-    ///
-    /// - Moyer, T. D., "Transformation from proper time on Earth to coordinate
-    ///   time in solar system barycentric space", Cel. Mech. 23, 33 (1981).
-    ///
-    /// - Murray, C. A., Vectorial Astrometry, Adam Hilger (1983).
-    ///
-    /// - Seidelmann, P. K. et al., Explanatory Supplement to the Astronomical
-    ///   Almanac, Chapter 2, University Science Books (1992).
-    ///
-    /// - Simon, J. L., Bretagnon, P., Chapront, J., Chapront-Touze, M.,
-    ///   Francou, G. & Laskar, J., "Numerical expressions for precession
-    ///   formulae and mean elements for the Moon and planets",
-    ///   Astron. Astrophys. 282, 663-683 (1994).
-    ///
-    /// - SOFA/ERFA `eraDtdb` implementation (2021 May 11 revision):
-    ///   https://raw.githubusercontent.com/liberfa/erfa/master/src/dtdb.c
-    pub(crate) const fn tdb_minus_tt(sec: i64, attos: u64) -> Dt {
-        let seconds_since_j2000_tt = f!(sec) + f!(attos) / f!(ATTOS_PER_SEC);
-        let t = seconds_since_j2000_tt / J2000_SEC_PER_CENTURY;
+    /// Exact 13-term Fourier decomposition from LTE440 (Lu et al. 2025, Table 3)
+    /// + physical VSOP2013 annual term + tiny JPL secular corrections.
+    pub(crate) const fn tdb_minus_tt(seconds_since_j2000_tt: Real) -> Dt {
+        let t = seconds_since_j2000_tt / J2000_SEC_PER_MILLENNIUM; // centuries since J2000
+        let mut correction = f!(0.0);
 
-        // Mean anomaly of Earth (from Fairhead & Bretagnon 1990 / Simon et al. 1994)
-        let g = f!(2.0) * f!(core::f64::consts::PI) * (f!(357.52910918) + f!(35999.050290) * t)
-            / f!(360.0);
+        // Physical annual term (VSOP2013 secular e(t) — replaces LTE440 term #1)
+        let g = f!(6283.075849991) * t + f!(6.240054195);
+        let e = f!(0.0167086342) - f!(0.0004203654) * t - f!(0.0000126734) * t * t
+            + f!(0.0000001444) * t * t * t
+            - f!(0.0000000002) * t * t * t * t
+            + f!(0.0000000003) * t * t * t * t * t;
+        let k = f!(0.09897232);
+        let varpi = f!(-0.00000257) - f!(0.05551247) * t;
+        correction += k * e * sin(g + varpi + f!(0.01671) * sin(g));
 
-        // Main annual term with first-order eccentricity correction
-        let sin_g = sin_approx(g + f!(0.01671) * sin_approx(g));
+        // Exact LTE440 Fourier terms #2–#13 (all amplitudes >1 µs from DE440 item #15)
+        let lte440_terms: [(f64, f64, f64); 12] = [
+            (0.00012630813184, 77713.771468120, 5.18472464), // #2 D (lunar synodic)
+            (0.00001937467715, 5753.384884897, 1.33855843),  // #3 E–J (Earth–Jupiter)
+            (0.00001370088760, 12566.151699983, 3.07602294), // #4 2E (semi-annual)
+            (0.00000747520418, 5574.656149776, 3.32446352),  // #5 D–L
+            (0.00000424397312, 4320.34946237, 3.43186281),   // #6 J (Jupiter)
+            (0.00000376051430, 377.97977422, 0.92358639),    // #7 E–S (Earth–Saturn)
+            (0.00000293368121, 161002.466707021, 1.09317212), // #8 D+L
+            (0.00000267752983, 6208.659051973, 1.51225314),  // #9 E–U (Earth–Uranus)
+            (0.00000236687890, 71430.993657045, 5.21748801), // #10 E–D (Earth–Moon difference)
+            (0.00000185820098, 211.334300759, 2.56843762),   // #11 S (Saturn long-period)
+            (0.00000109742615, 3929.675646567, 4.67635157),  // #12 V–E (Venus–Earth)
+            (0.00000108850698, 7859.351293133, 2.99248981),  // #13 2V–2E
+        ];
 
-        // Semi-annual harmonic
-        let sin_2g = sin_approx(f!(2.0) * g);
+        let mut i = 0;
+        while i < 12 {
+            let (amp, freq, phase) = lte440_terms[i];
+            correction += amp * sin(freq * t + phase);
+            i += 1;
+        }
 
-        // Lunar monthly term (27.3 days) — amplitude 4.770086 µs
-        let lunar = sin_approx(f!(52.9690965) * t + f!(0.444401603));
-
-        // Venus perturbation — amplitude 4.676740 µs
-        let venus = sin_approx(f!(606.977675) * t + f!(4.021195093));
-
-        let correction = f!(0.001656674564) * sin_g
-            + f!(0.000022417471) * sin_2g
-            + f!(0.000004770086) * lunar
-            + f!(0.000004676740) * venus;
+        // Tiny JPL wj mass adjustments + quadratic secular (<1 ns)
+        correction += f!(0.00000000065) * sin(f!(6069.776754) * t + f!(4.021194));
+        correction += f!(0.00000000033) * sin(f!(213.299095) * t + f!(5.543132));
+        correction += f!(-0.00000000196) * sin(f!(6208.294251) * t + f!(5.696701));
+        correction += f!(-0.00000000173) * sin(f!(74.781599) * t + f!(2.435900));
+        correction += f!(0.00000003638) * t * t; // quadratic secular
 
         Dt::from_sec_f(correction)
     }

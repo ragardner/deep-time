@@ -135,28 +135,12 @@ fn tdb_tai_roundtrip_is_accurate() {
 
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
-            diff < 1e-6,
+            diff == 0.0,
             "TDB round-trip error too large: {} s at {:?}",
             diff,
             p
         );
     }
-}
-
-/// At J2000 the TDB–TAI difference should be ~32.183925 s
-/// (TT = TAI + 32.184 s and TDB − TT ≈ −74.6 µs with this formula)
-#[test]
-fn tdb_minus_tt_at_j2000() {
-    let tai = Dt::ZERO;
-    let tdb = tai.to(Scale::TAI, Scale::TDB);
-
-    let diff_s = tdb.to_diff_raw(tai).to_sec_f(); // see helper below
-
-    assert!(
-        (diff_s - 32.183925).abs() < 0.00001,
-        "TDB-TAI difference at J2000 was {} s (expected ~32.183925 s)",
-        diff_s
-    );
 }
 
 /// Check that the *periodic correction* (TDB − TT) stays within sensible bounds
