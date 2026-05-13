@@ -136,7 +136,7 @@ impl Dt {
     /// Returns `(is_negative, hours, minutes)`.
     #[inline]
     pub const fn sec_as_hhmm(seconds: i32) -> (bool, u8, u8) {
-        let total = seconds.abs();
+        let total = seconds.saturating_abs();
         let hours = (total / 3600) as u8;
         let minutes = ((total % 3600) / 60) as u8;
         (seconds < 0, hours, minutes)

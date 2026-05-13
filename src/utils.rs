@@ -55,7 +55,6 @@ pub const fn tdb_minus_tt(seconds_since_j2000_tt: Real) -> Real {
 }
 
 /// Clamps an `i128` to the representable range of `i64`.
-#[inline]
 pub(crate) const fn clamp_i128_to_i64(x: i128) -> i64 {
     if x > i64::MAX as i128 {
         i64::MAX

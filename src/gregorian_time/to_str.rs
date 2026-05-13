@@ -561,7 +561,7 @@ impl GregorianTime {
         width: Option<u8>,
         _colons: u8,
     ) {
-        let yy = (self.iso_yr % 100).abs() as u32;
+        let yy = (self.iso_yr % 100).saturating_abs() as u32;
         Self::write_u32_padded(buf, pos, yy, flag, width.or(Some(2)), b'0');
     }
 
@@ -803,7 +803,7 @@ impl GregorianTime {
         _colons: u8,
         _pad: bool,
     ) {
-        let yy = (self.yr % 100).abs() as u32;
+        let yy = (self.yr % 100).saturating_abs() as u32;
         Self::write_u32_padded(buf, pos, yy, flag, width.or(Some(2)), b'0');
     }
 
@@ -834,7 +834,7 @@ impl GregorianTime {
         let sign = if negative { b'-' } else { b'+' };
 
         // seconds component — only used by %::z
-        let seconds = ((offset_sec.abs() % 3600) % 60) as u8;
+        let seconds = ((offset_sec.saturating_abs() % 3600) % 60) as u8;
 
         match colons {
             0 => {
@@ -900,7 +900,14 @@ impl GregorianTime {
         Self::write_bytes(buf, pos, b"/");
         Self::write_u32_padded(buf, pos, self.day as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b"/");
-        Self::write_u32_padded(buf, pos, (self.yr % 100).abs() as u32, b'0', Some(2), b'0');
+        Self::write_u32_padded(
+            buf,
+            pos,
+            (self.yr % 100).saturating_abs() as u32,
+            b'0',
+            Some(2),
+            b'0',
+        );
     }
 
     #[inline]

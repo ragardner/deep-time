@@ -15,7 +15,7 @@ pub struct YmdHms {
     pub unix_attosec: i128,
 }
 
-/// UTC Civil calendar and time-of-day components of a `Dt`.
+/// UTC Civil calendar and time-of-day components of a [`Dt`].
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

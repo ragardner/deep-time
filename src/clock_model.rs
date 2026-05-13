@@ -16,7 +16,7 @@ pub struct ClockModel {
     pub base: Scale,
     /// Epoch at which the polynomial was defined (e.g. last ground contact)
     pub reference: Dt,
-    /// Quadratic correction model (exact 36-digit precision)
+    /// Offset
     pub drift: Drift,
 }
 
@@ -28,17 +28,6 @@ impl ClockModel {
             base,
             reference,
             drift,
-        }
-    }
-
-    /// Returns a new `ClockModel` with the same base type and reference epoch,
-    /// but with an updated `Drift`.
-    #[inline]
-    pub const fn with_drift(self, new_drift: Drift) -> Self {
-        Self {
-            base: self.base,
-            reference: self.reference,
-            drift: new_drift,
         }
     }
 }

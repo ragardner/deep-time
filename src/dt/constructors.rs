@@ -1,7 +1,7 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, Drift, ClockModel, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK,
-    Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, floor_f,
+    ATTOS_PER_SECF, ATTOS_PER_US, ClockModel, Drift, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale,
+    TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, floor_f,
 };
 
 impl Dt {
@@ -239,7 +239,7 @@ impl Dt {
     /// Returns the positive of this duration.
     #[inline]
     pub const fn abs(self) -> Self {
-        Self::from_attos(self.to_attos().abs(), Scale::TAI)
+        Self::from_attos(self.to_attos().saturating_abs(), Scale::TAI)
     }
 
     /// Creates a `Dt` from a floating-point number of seconds.

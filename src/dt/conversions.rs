@@ -1,6 +1,6 @@
 use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::{
-    Drift, ClockModel, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_SEC_AT_1972,
+    ClockModel, Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_SEC_AT_1972,
     TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET, tdb_minus_tt,
 };
 
@@ -163,9 +163,6 @@ impl Dt {
     }
 
     /// Converts this instant using a self-describing [`ClockModel`].
-    ///
-    /// This is the recommended high-level API for onboard or custom time scales (Proper, Custom,
-    /// or any model with a defined base and drift).
     #[inline]
     pub const fn convert_using_model(self, model: ClockModel) -> Self {
         self.convert_using_drift(model.reference, model.drift)
