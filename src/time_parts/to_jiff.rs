@@ -1,16 +1,14 @@
 use {
     crate::{
-        ATTOS_PER_NS, Dt, Meridiem, Offset, TimeParts, Weekday, an_err,
+        ATTOS_PER_NS, Meridiem, Offset, TimeParts, Weekday, an_err,
         error::{DtErr, DtErrKind},
-        tzdb::offset_info_at_local,
     },
     alloc::string::String,
     core::result::Result,
     jiff::{
         Timestamp, Zoned,
-        civil::{Date, Time},
         fmt::strtime::{BrokenDownTime, Meridiem as JiffMeridiem},
-        tz::{Offset as JiffOffset, TimeZone as JiffTimeZone},
+        tz::Offset as JiffOffset,
     },
 };
 
@@ -150,6 +148,7 @@ impl TimeParts {
         Ok(bdt)
     }
 
+    /// Converts [`TimeParts`] → [`jiff::Zoned`].
     pub fn to_jiff_zoned(&self) -> Result<Zoned, DtErr> {
         let bdt = self.to_jiff_broken_down_time()?;
         if let Ok(zoned) = bdt.to_zoned() {
@@ -176,135 +175,9 @@ impl TimeParts {
         ))
     }
 
-    /// Converts `TimeParts` → absolute `Timestamp` on the SI scale.
+    /// Converts [`TimeParts`] → [`jiff::Timestamp`].
+    #[inline]
     pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtErr> {
-        if let Some(secs) = self.unix_timestamp_seconds {
-            return Timestamp::from_second(secs)
-                .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e));
-        }
-
-        if let (Some(year), Some(month), Some(day)) = (self.year, self.month, self.day) {
-            let year_i16: i16 = year
-                .try_into()
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "year: {}: {}", year, e))?;
-
-            let date = Date::new(year_i16, month as i8, day as i8).map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidInput,
-                    "ymd: {} {} {}: {}",
-                    year_i16,
-                    month,
-                    day,
-                    e
-                )
-            })?;
-
-            let hour = self.hour.unwrap_or(0) as i8;
-            let minute = self.minute.unwrap_or(0) as i8;
-            let second = self.second.unwrap_or(0) as i8;
-
-            let subsec_nanosecond: i32 = if let Some(attos) = self.attos {
-                let ns_u64 = attos / ATTOS_PER_NS;
-                if ns_u64 > 999_999_999 {
-                    999_999_999
-                } else {
-                    ns_u64 as i32
-                }
-            } else {
-                0
-            };
-
-            let time = Time::new(hour, minute, second, subsec_nanosecond).map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidInput,
-                    "hms: {} {} {} {}: {}",
-                    hour,
-                    minute,
-                    second,
-                    subsec_nanosecond,
-                    e
-                )
-            })?;
-
-            let civil_dt = date.to_datetime(time);
-
-            let tz = self.to_jiff_time_zone()?;
-            let zoned = tz
-                .to_zoned(civil_dt)
-                .map_err(|e| an_err!(DtErrKind::InvalidInput, "civil to zoned: {}", e))?;
-            return Ok(zoned.timestamp());
-        }
-
-        // FALLBACK: ordinal date, ISO week date, partial fields, etc.
-        let bdt = self.clone().to_jiff_broken_down_time()?;
-
-        bdt.to_timestamp()
-            .map_err(|e| an_err!(DtErrKind::InvalidInput, "to timestamp: {}", e))
-    }
-
-    // Helper used by to_timestamp
-    fn to_jiff_time_zone(&self) -> core::result::Result<JiffTimeZone, DtErr> {
-        // IANA name takes precedence — use OUR own tz database only
-        if let Some(name) = &self.iana_name {
-            let name_str = name.as_str().map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidBytes,
-                    "invalid iana ascii: {:?}: {}",
-                    name,
-                    e
-                )
-            })?;
-
-            if !name_str.is_empty() {
-                let probe_ts = if let Some(ts) = self.unix_timestamp_seconds {
-                    ts
-                } else if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
-                    Dt::ymdhms_to_unix_sec(
-                        y,
-                        m,
-                        d,
-                        self.hour.unwrap_or(0),
-                        self.minute.unwrap_or(0),
-                        self.second.unwrap_or(0),
-                    )
-                } else {
-                    0
-                };
-                // TODO: use jiffs tzdb with feature
-                if let Some(info) = offset_info_at_local(name_str, probe_ts) {
-                    let jiff_offset = JiffOffset::from_seconds(info.offset).map_err(|e| {
-                        an_err!(
-                            DtErrKind::InvalidTimezoneOffset,
-                            "offset secs: {}: {}",
-                            info.offset,
-                            e
-                        )
-                    })?;
-                    return Ok(JiffTimeZone::fixed(jiff_offset));
-                } else {
-                    return Err(an_err!(
-                        DtErrKind::InvalidTimezoneOffset,
-                        "iana: {}",
-                        name_str
-                    ));
-                }
-            }
-        }
-
-        // Fallback to the custom TimeZone enum
-        match self.offset {
-            Some(Offset::Fixed(secs)) => {
-                let offset = JiffOffset::from_seconds(secs).map_err(|e| {
-                    an_err!(
-                        DtErrKind::InvalidTimezoneOffset,
-                        "offset secs: {}: {}",
-                        secs,
-                        e
-                    )
-                })?;
-                Ok(JiffTimeZone::fixed(offset))
-            }
-            Some(Offset::Utc) | Some(Offset::None) | None => Ok(JiffTimeZone::UTC),
-        }
+        self.to_jiff_zoned().map(|z| z.timestamp())
     }
 }

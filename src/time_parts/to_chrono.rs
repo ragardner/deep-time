@@ -88,32 +88,19 @@ impl TimeParts {
             }
         }
 
-        let raw_ns_u64 = if let Some(attos) = self.attos {
-            attos / ATTOS_PER_NS
+        if second >= 60 || self.is_leap_second {
+            second = 59;
+        }
+        let subsec_nano: u32 = if let Some(attos) = self.attos {
+            let ns_u64 = attos / ATTOS_PER_NS;
+            if ns_u64 > 999_999_999 {
+                999_999_999
+            } else {
+                ns_u64 as u32
+            }
         } else {
             0
         };
-
-        let is_leap = second == 60 || self.is_leap_second;
-        if !is_leap && raw_ns_u64 > 999_999_999 {
-            return Err(an_err!(DtErrKind::OutOfRange, "leap ns: {}", raw_ns_u64));
-        }
-
-        let mut subsec_nano: u32 = if raw_ns_u64 > 1_999_999_999 {
-            1_999_999_999
-        } else {
-            raw_ns_u64 as u32
-        };
-
-        if is_leap {
-            second = 59;
-            subsec_nano = subsec_nano.saturating_add(1_000_000_000);
-            if subsec_nano > 1_999_999_999 {
-                subsec_nano = 1_999_999_999;
-            }
-        } else if second > 59 {
-            return Err(an_err!(DtErrKind::OutOfRange, "seconds: {}", second));
-        }
 
         NaiveTime::from_hms_nano_opt(hour, minute, second, subsec_nano).ok_or_else(|| {
             an_err!(
