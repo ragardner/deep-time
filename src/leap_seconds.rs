@@ -1,5 +1,5 @@
-//! Leap seconds table from the official IANA leap-seconds.list
-//![](https://data.iana.org/time-zones/data/leap-seconds.list)
+//! Leap seconds table from the official IANA
+//! [leap-seconds.list](https://data.iana.org/time-zones/data/leap-seconds.list)
 //! Updated through IERS Bulletin C as of April 2026.
 //! Last leap second: 2017-01-01 (TAI-UTC = 37 s)
 //! File expires: 28 December 2026
@@ -189,6 +189,18 @@ pub struct LeapInfo {
     pub offset: i64,
     pub leaps_inserted: i64,
     pub is_leap_second: bool,
+}
+
+impl Dt {
+    #[inline]
+    pub const fn leap_seconds(&self, from_civil: bool) -> LeapInfo {
+        get_leap_seconds(self, from_civil)
+    }
+
+    #[inline]
+    pub const fn leap_seconds_using(&self, from_civil: bool, table: &[LeapSecond]) -> LeapInfo {
+        get_leap_seconds_with_table(self, from_civil, table)
+    }
 }
 
 #[inline]

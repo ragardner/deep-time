@@ -1,8 +1,7 @@
 use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
-use crate::leap_seconds::get_leap_seconds;
 use crate::{
-    ClockDrift, ClockModel, Dt, J2000_SEC_PER_MILLENNIUM, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Real,
-    Scale, TAI_SEC_AT_1972, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET, sin,
+    Drift, ClockModel, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_SEC_AT_1972,
+    TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET, tdb_minus_tt,
 };
 
 impl Dt {
@@ -33,12 +32,12 @@ impl Dt {
             Scale::TAI | Scale::Custom | Scale::UT1 => raw,
             Scale::TT => raw.sub(TT_TAI_OFFSET),
             Scale::UTC => raw.add(Dt {
-                sec: get_leap_seconds(&raw, true).offset,
+                sec: raw.leap_seconds(true).offset,
                 attos: 0,
             }),
             Scale::UTCSpice => {
                 let tai = raw.add(Dt {
-                    sec: get_leap_seconds(&raw, true).offset,
+                    sec: raw.leap_seconds(true).offset,
                     attos: 0,
                 });
                 if sec < TAI_SEC_AT_1972 - 10 {
@@ -49,7 +48,7 @@ impl Dt {
             }
             Scale::UTCSofa => {
                 let tai = raw.add(Dt {
-                    sec: get_leap_seconds(&raw, true).offset,
+                    sec: raw.leap_seconds(true).offset,
                     attos: 0,
                 });
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(&raw) {
@@ -82,12 +81,12 @@ impl Dt {
             Scale::TAI | Scale::Custom | Scale::UT1 => *self,
             Scale::TT => self.add(TT_TAI_OFFSET),
             Scale::UTC => self.sub(Dt {
-                sec: get_leap_seconds(&self, false).offset,
+                sec: self.leap_seconds(false).offset,
                 attos: 0,
             }),
             Scale::UTCSpice => {
                 let spice = self.sub(Dt {
-                    sec: get_leap_seconds(&self, false).offset,
+                    sec: self.leap_seconds(false).offset,
                     attos: 0,
                 });
                 if self.sec < TAI_SEC_AT_1972 {
@@ -98,7 +97,7 @@ impl Dt {
             }
             Scale::UTCSofa => {
                 let sofa = self.sub(Dt {
-                    sec: get_leap_seconds(&self, false).offset,
+                    sec: self.leap_seconds(false).offset,
                     attos: 0,
                 });
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(&self) {
@@ -135,9 +134,9 @@ impl Dt {
     }
 
     /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
-    /// or clock-drift correction defined by a [`ClockDrift`] model relative to a reference instant.
+    /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
     #[inline]
-    pub const fn convert_using_drift(self, reference: Self, drift: ClockDrift) -> Self {
+    pub const fn convert_using_drift(self, reference: Self, drift: Drift) -> Self {
         let span = self.to_diff_raw(reference);
         let correction = drift.time_diff_after(&span);
         self.add(correction)
@@ -148,7 +147,7 @@ impl Dt {
     ///
     /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
     /// case of a pure constant offset the function returns immediately without iteration.
-    pub const fn convert_back_using_drift(self, reference: Self, drift: ClockDrift) -> Self {
+    pub const fn convert_back_using_drift(self, reference: Self, drift: Drift) -> Self {
         if drift.rate().is_zero() && drift.accel().is_zero() {
             return self.sub(*drift.constant());
         }
@@ -178,13 +177,13 @@ impl Dt {
         self.convert_back_using_drift(model.reference, model.drift)
     }
 
-    pub(crate) const fn tai_to_tdb(tai: Self) -> Self {
+    pub const fn tai_to_tdb(tai: Self) -> Self {
         let tt = tai.add(TT_TAI_OFFSET);
-        let span = Self::tdb_minus_tt(tt.to_sec_f());
-        tt.add(span)
+        let correction = tdb_minus_tt(tt.to_sec_f());
+        tt.add(Dt::from_sec_f(correction))
     }
 
-    pub(crate) const fn tdb_to_tai(tdb: Self) -> Self {
+    pub const fn tdb_to_tai(tdb: Self) -> Self {
         // Linear-rate + constant initial guess (dominant part of the forward transformation)
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let linear_span = Self::mul_lb(elapsed); // LB * elapsed
@@ -195,8 +194,8 @@ impl Dt {
         // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
         let mut i = 0u32;
         while i < 8 {
-            let p = Self::tdb_minus_tt(tt.to_sec_f());
-            let new_tt = tdb.sub(p);
+            let p = tdb_minus_tt(tt.to_sec_f());
+            let new_tt = tdb.sub(Dt::from_sec_f(p));
 
             // Early exit when change is smaller than ~1 atto-second
             let delta = new_tt.to_diff_raw(tt);
@@ -275,56 +274,5 @@ impl Dt {
         let span_attos = Self::mul_lb(elapsed);
         tdb.add(Dt::from_attos(span_attos, Scale::TAI))
             .add(Dt::from_attos(TDB0_ATTOS, Scale::TAI))
-    }
-
-    /// DE440/LTE440-tuned compact analytical TT–TDB model
-    ///
-    /// Exact 13-term Fourier decomposition from LTE440 (Lu et al. 2025, Table 3)
-    /// + physical VSOP2013 annual term + tiny JPL secular corrections.
-    pub(crate) const fn tdb_minus_tt(seconds_since_j2000_tt: Real) -> Dt {
-        let t = seconds_since_j2000_tt / J2000_SEC_PER_MILLENNIUM; // centuries since J2000
-        let mut correction = f!(0.0);
-
-        // Physical annual term (VSOP2013 secular e(t) — replaces LTE440 term #1)
-        let g = f!(6283.075849991) * t + f!(6.240054195);
-        let e = f!(0.0167086342) - f!(0.0004203654) * t - f!(0.0000126734) * t * t
-            + f!(0.0000001444) * t * t * t
-            - f!(0.0000000002) * t * t * t * t
-            + f!(0.0000000003) * t * t * t * t * t;
-        let k = f!(0.09897232);
-        let varpi = f!(-0.00000257) - f!(0.05551247) * t;
-        correction += k * e * sin(g + varpi + f!(0.01671) * sin(g));
-
-        // Exact LTE440 Fourier terms #2–#13 (all amplitudes >1 µs from DE440 item #15)
-        let lte440_terms: [(f64, f64, f64); 12] = [
-            (0.00012630813184, 77713.771468120, 5.18472464), // #2 D (lunar synodic)
-            (0.00001937467715, 5753.384884897, 1.33855843),  // #3 E–J (Earth–Jupiter)
-            (0.00001370088760, 12566.151699983, 3.07602294), // #4 2E (semi-annual)
-            (0.00000747520418, 5574.656149776, 3.32446352),  // #5 D–L
-            (0.00000424397312, 4320.34946237, 3.43186281),   // #6 J (Jupiter)
-            (0.00000376051430, 377.97977422, 0.92358639),    // #7 E–S (Earth–Saturn)
-            (0.00000293368121, 161002.466707021, 1.09317212), // #8 D+L
-            (0.00000267752983, 6208.659051973, 1.51225314),  // #9 E–U (Earth–Uranus)
-            (0.00000236687890, 71430.993657045, 5.21748801), // #10 E–D (Earth–Moon difference)
-            (0.00000185820098, 211.334300759, 2.56843762),   // #11 S (Saturn long-period)
-            (0.00000109742615, 3929.675646567, 4.67635157),  // #12 V–E (Venus–Earth)
-            (0.00000108850698, 7859.351293133, 2.99248981),  // #13 2V–2E
-        ];
-
-        let mut i = 0;
-        while i < 12 {
-            let (amp, freq, phase) = lte440_terms[i];
-            correction += amp * sin(freq * t + phase);
-            i += 1;
-        }
-
-        // Tiny JPL wj mass adjustments + quadratic secular (<1 ns)
-        correction += f!(0.00000000065) * sin(f!(6069.776754) * t + f!(4.021194));
-        correction += f!(0.00000000033) * sin(f!(213.299095) * t + f!(5.543132));
-        correction += f!(-0.00000000196) * sin(f!(6208.294251) * t + f!(5.696701));
-        correction += f!(-0.00000000173) * sin(f!(74.781599) * t + f!(2.435900));
-        correction += f!(0.00000003638) * t * t; // quadratic secular
-
-        Dt::from_sec_f(correction)
     }
 }

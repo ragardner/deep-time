@@ -13,9 +13,9 @@ mod ops;
 mod to_ccsds_bin;
 mod to_gps;
 mod to_str;
-mod trajectory;
 
 pub mod time_units;
+pub mod trajectory;
 
 #[cfg(feature = "alloc")]
 mod formatting;

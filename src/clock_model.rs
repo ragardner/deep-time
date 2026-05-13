@@ -1,4 +1,4 @@
-use crate::{ClockDrift, Dt, Scale};
+use crate::{Drift, Dt, Scale};
 
 /// A fully self-describing relativistic time scale.
 ///
@@ -17,13 +17,13 @@ pub struct ClockModel {
     /// Epoch at which the polynomial was defined (e.g. last ground contact)
     pub reference: Dt,
     /// Quadratic correction model (exact 36-digit precision)
-    pub drift: ClockDrift,
+    pub drift: Drift,
 }
 
 impl ClockModel {
     /// Creates a new self-describing scale (most common for Proper time).
     #[inline]
-    pub const fn new(base: Scale, reference: Dt, drift: ClockDrift) -> Self {
+    pub const fn new(base: Scale, reference: Dt, drift: Drift) -> Self {
         Self {
             base,
             reference,
@@ -32,9 +32,9 @@ impl ClockModel {
     }
 
     /// Returns a new `ClockModel` with the same base type and reference epoch,
-    /// but with an updated `ClockDrift`.
+    /// but with an updated `Drift`.
     #[inline]
-    pub const fn with_drift(self, new_drift: ClockDrift) -> Self {
+    pub const fn with_drift(self, new_drift: Drift) -> Self {
         Self {
             base: self.base,
             reference: self.reference,
@@ -49,7 +49,7 @@ impl ClockModel {
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize = 1 + Scale::WIRE_SIZE + Dt::WIRE_SIZE + ClockDrift::WIRE_SIZE;
+    pub const WIRE_SIZE: usize = 1 + Scale::WIRE_SIZE + Dt::WIRE_SIZE + Drift::WIRE_SIZE;
 
     /// Serializes this self-describing `ClockModel` into a fixed buffer.
     ///
@@ -58,7 +58,7 @@ impl ClockModel {
     /// - Byte `0`: Version (`WIRE_VERSION`)
     /// - Byte `1`: `base` (`Scale`)
     /// - Bytes `2..20`: `reference` (`Dt`)
-    /// - Bytes `20..71`: `drift` (`ClockDrift`)
+    /// - Bytes `20..71`: `drift` (`Drift`)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -96,7 +96,7 @@ impl ClockModel {
 
         let base = Scale::from_u8(bytes[1]);
         let reference = Dt::from_wire_bytes(&bytes[2..2 + Dt::WIRE_SIZE])?;
-        let drift = ClockDrift::from_wire_bytes(&bytes[2 + Dt::WIRE_SIZE..])?;
+        let drift = Drift::from_wire_bytes(&bytes[2 + Dt::WIRE_SIZE..])?;
 
         Some(Self {
             base,

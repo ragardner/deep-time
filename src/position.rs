@@ -124,7 +124,7 @@ impl Velocity {
     ///
     /// Direction is set along the x-axis because only the speed matters
     /// for relativistic calculations (`beta()`, `norm_squared()`, etc.).
-    /// This is the convenience constructor used by `ClockDrift::from_velocity_potential_and_scale`.
+    /// This is the convenience constructor used by `Drift::from_velocity_potential_and_scale`.
     #[inline]
     pub const fn from_speed(speed_m_s: Real) -> Self {
         Self::new(speed_m_s, f!(0.0), f!(0.0))
@@ -143,7 +143,7 @@ impl Velocity {
     }
 
     /// Dimensionless 3-velocity β = v/c relative to the local chrono-rest frame.
-    /// This is exactly what the master Lagrangian and `LocalSpacetime` expect.
+    /// This is exactly what the master Lagrangian and `Spacetime` expect.
     #[inline]
     pub const fn beta(self) -> Real {
         sqrt((self.norm_squared() / C_SQUARED).max(f!(0.0)))

@@ -22,7 +22,7 @@ K_{\rm eff} \equiv \frac{ \delta (1 + x) + x (1 - \delta)^2 }{1 + x} > 0
 \[
 \delta \equiv \alpha^{2}(1-\beta^{2}), \qquad x \equiv \ell_{\rm Pl}^4 \mathcal{K},
 \]
-\(\mu \in \{0,1\}\) (\(\mu=1\) for massive probes, \(\mu=0\) for null rays), and the background quantities \(\alpha(t,\mathbf{x})\) (local lapse/redshift factor) and \(\beta(t,\mathbf{x},\dot{\mathbf{x}})\) (local 3-velocity magnitude relative to the chrono-rest frame) are supplied by the modular **LocalSpacetime** interface for any metric \(g_{\mu\nu}\). The Kretschmann scalar \(\mathcal{K} = R_{\alpha\beta\gamma\delta} R^{\alpha\beta\gamma\delta}\) is also supplied by LocalSpacetime.
+\(\mu \in \{0,1\}\) (\(\mu=1\) for massive probes, \(\mu=0\) for null rays), and the background quantities \(\alpha(t,\mathbf{x})\) (local lapse/redshift factor) and \(\beta(t,\mathbf{x},\dot{\mathbf{x}})\) (local 3-velocity magnitude relative to the chrono-rest frame) are supplied by the modular **Spacetime** interface for any metric \(g_{\mu\nu}\). The Kretschmann scalar \(\mathcal{K} = R_{\alpha\beta\gamma\delta} R^{\alpha\beta\gamma\delta}\) is also supplied by Spacetime.
 
 This closed-form rational expression is the exact algebraic substitution of the minimal Padé regulator into the original structure. It is **inherently non-singular**: even if the background curvature \(\mathcal{K} \to \infty\) (i.e., \(x \to \infty\)), \(K_{\rm eff} \to \delta^2 - \delta + 1 \geq 3/4 > 0\). The main Lagrangian equation therefore never predicts a divergence or vanishing proper-time measure.
 
@@ -63,7 +63,7 @@ K_{\rm eff} \to \delta^2 - \delta + 1, \qquad \frac{d\tau}{dt} \to \sqrt{\delta^
 \]
 Proper time never stops; a smooth Planck-scale core replaces any would-be GR singularity.
 
-### Background-Generalization Modules (LocalSpacetime Interface)
+### Background-Generalization Modules (Spacetime Interface)
 The same interface is implemented for every spacetime (FLRW, multi-body PN, Kerr ZAMO, NR grids). In every case the low-curvature limit (\(x \ll 1\)) is exact GR; the intrinsic saturation activates algebraically only when \(\mathcal{K}^{1/4} \gtrsim 1/\ell_{\rm Pl}\).
 
 ### Numerical Implementation and Code Integration
@@ -71,7 +71,7 @@ The same interface is implemented for every spacetime (FLRW, multi-body PN, Kerr
 In post-Newtonian regimes \(x \ll 10^{-100}\), so \(K_{\rm eff} \approx \delta\) and the correction is negligible. Existing integrators require only the direct evaluation of the rational form (no separate regulator branch).
 
 **General integration pseudocode (massive probe, coordinate-time stepper)**
-```python
+
 def step_probe(t, x, v, dt, local_metric):
     alpha, beta, Kretschmann = local_metric.evaluate(t, x, v)
     delta = alpha**2 * (1 - beta**2)
@@ -84,7 +84,7 @@ def step_probe(t, x, v, dt, local_metric):
     # RK4 or adaptive update for v and x in coordinate time t
     # accumulate proper time: tau += dtau_dt * dt
     return t + dt, x_new, v_new, tau_new, dtau_dt
-```
+
 For null rays enforce \(K_{\rm eff} \approx 0\) algebraically at each step (standard null geodesic integrator). The main equation remains non-singular everywhere.
 
 ### Observational and Numerical Status
@@ -96,18 +96,20 @@ General relativity is recovered exactly as the low-curvature projection of this 
 This formulation is production-ready for spacecraft navigation pipelines, black-hole flyby simulations, cosmological trajectories, or any mixed weak/strong-field probe adventure. All prior stages are recovered algebraically in the low-curvature limit. The engine is minimal, modular, and fully first-principles at the level of the master Lagrangian.
 */
 
-use crate::{ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Real, Scale, Velocity, sqrt};
+use crate::{
+    ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Position, Real, Scale, Velocity, sqrt,
+};
 
 /// The three local spacetime quantities that fully determine how fast an observer’s
 /// proper time advances relative to coordinate time.
 ///
 /// This structure holds the gravitational lapse factor, the observer’s local velocity,
 /// and the curvature information needed for the library’s unified proper-time model.
-/// It is the low-level input that `ClockDrift` uses internally.
+/// It is the low-level input that `Drift` uses internally.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
-pub struct LocalSpacetime {
+pub struct Spacetime {
     /// Gravitational lapse (redshift) factor α.  
     /// This is the factor by which clocks run slower in a gravitational potential.
     pub alpha: Real,
@@ -133,7 +135,7 @@ pub struct LocalSpacetime {
     pub kretschmann: Real,
 }
 
-impl LocalSpacetime {
+impl Spacetime {
     #[inline]
     pub const fn new(alpha: Real, beta: Real, kretschmann: Real) -> Self {
         Self {
@@ -146,10 +148,10 @@ impl LocalSpacetime {
     /// Returns the instantaneous proper-time rate `dτ/dt` from this snapshot.
     ///
     /// Convenience method that internally uses the same unified calculation as
-    /// `ClockDrift::proper_time_rate`.
+    /// `Drift::proper_time_rate`.
     #[inline]
     pub const fn proper_time_rate(self) -> Real {
-        ClockDrift::from_local_spacetime(&self).proper_time_rate()
+        Drift::from_spacetime(&self).proper_time_rate()
     }
 
     /// Convenience for direct gravimeter / sensor paths.
@@ -188,7 +190,7 @@ impl LocalSpacetime {
     ///   systems (as observed by LIGO/Virgo in events such as GW170817 or GW150914).
     ///
     /// In those extreme regimes this function alone is no longer sufficient; a full
-    /// strong-field treatment (including curvature information passed to `LocalSpacetime`)
+    /// strong-field treatment (including curvature information passed to `Spacetime`)
     /// is required.
     #[inline]
     pub const fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
@@ -259,7 +261,7 @@ impl LocalSpacetime {
     ///   systems (as observed by LIGO/Virgo in events such as GW170817 or GW150914).
     ///
     /// In those extreme regimes this function alone is no longer sufficient; a full
-    /// strong-field treatment (including curvature information passed to `LocalSpacetime`)
+    /// strong-field treatment (including curvature information passed to `Spacetime`)
     /// is required.
     ///
     /// For the `characteristic_length_scale` parameter:
@@ -283,14 +285,75 @@ impl LocalSpacetime {
         );
         Self::from_gravitic_and_velocity(alpha, velocity, kretschmann)
     }
+
+    /// Recovers the Newtonian gravitational potential Φ (m²/s²) from the
+    /// gravitational lapse factor α using the exact weak-field relation.
+    ///
+    /// \[
+    /// \alpha = \sqrt{1 + \frac{2\Phi}{c^2}} \quad\implies\quad
+    /// \Phi = \frac{c^2}{2}(\alpha^2 - 1)
+    /// \]
+    ///
+    /// This is the inverse of [`Spacetime::alpha_from_weak_field_potential`].
+    /// It is primarily useful for tests, legacy ephemeris data, or when
+    /// converting previously-computed α values into the form required by
+    /// [`TrajectorySample`].
+    #[inline]
+    pub const fn grav_potential_from_alpha(alpha: Real) -> Real {
+        let alpha_sq = alpha * alpha;
+        (alpha_sq - f!(1.0)) / f!(2.0) * C_SQUARED
+    }
+
+    /// Computes the total Newtonian gravitational potential Φ at a given position
+    /// from an arbitrary collection of point-mass bodies (Sun, Earth, Moon,
+    /// planets, asteroids, etc.).
+    ///
+    /// This is the standard method used by real mission planners (Apollo,
+    /// Artemis, Mars orbiters, lunar landers) and in open-source astrodynamics
+    /// libraries (SPICE/NAIF, Orekit, GMAT, poliastro). It evaluates
+    ///
+    /// \[
+    /// \Phi = -\sum_i \frac{GM_i}{r_i}
+    /// \]
+    ///
+    /// # Example (realistic cislunar trajectory)
+    /// ```rust
+    /// use deep_time::{Position, Spacetime};
+    ///
+    /// let bodies = [
+    ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20),     // Sun
+    ///     (Position::from_au(1.0, 0.0, 0.0), 3.9860044e14),     // Earth
+    ///     (Position::from_au(1.00257, 0.0, 0.0), 4.9048695e12), // Moon
+    /// ];
+    ///
+    /// let position = Position::from_au(1.001, 0.001, 0.0); // e.g. spacecraft, asteroid, etc.
+    ///
+    /// let phi = Spacetime::grav_potential_from_point_masses(
+    ///     position,
+    ///     bodies.iter().copied(),
+    /// );
+    /// ```
+    pub fn grav_potential_from_point_masses<I>(position: Position, bodies: I) -> Real
+    where
+        I: IntoIterator<Item = (Position, Real)>, // (body_position, GM in m³/s²)
+    {
+        let mut phi = 0.0;
+        for (body_pos, gm) in bodies {
+            let r = position.distance_to(body_pos);
+            if r > 0.0 {
+                phi -= gm / r;
+            }
+        }
+        phi
+    }
 }
 
 #[cfg(feature = "wire")]
-impl LocalSpacetime {
+impl Spacetime {
     /// Size of the canonical wire representation in bytes (24 bytes).
     pub const WIRE_SIZE: usize = 24;
 
-    /// Serializes this `LocalSpacetime` snapshot into a fixed 24-byte buffer.
+    /// Serializes this `Spacetime` snapshot into a fixed 24-byte buffer.
     ///
     /// All fields are stored as little-endian IEEE 754 `f64`.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
@@ -301,7 +364,7 @@ impl LocalSpacetime {
         buf
     }
 
-    /// Deserializes a `LocalSpacetime` from exactly 24 bytes.
+    /// Deserializes a `Spacetime` from exactly 24 bytes.
     ///
     /// ## Security
     ///
@@ -348,7 +411,7 @@ impl LocalSpacetime {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct ClockDrift {
+pub struct Drift {
     /// Constant term a₀ expressed in seconds.  
     /// This represents any fixed time offset between the observer’s proper time
     /// and the chosen coordinate time.
@@ -365,8 +428,8 @@ pub struct ClockDrift {
     accel: Dt,
 }
 
-impl ClockDrift {
-    /// Creates a new `ClockDrift` polynomial from its three exact coefficients.
+impl Drift {
+    /// Creates a new `Drift` polynomial from its three exact coefficients.
     #[inline]
     pub const fn new(constant: Dt, rate: Dt, accel: Dt) -> Self {
         Self {
@@ -381,7 +444,7 @@ impl ClockDrift {
     /// the chosen coordinate time.
     pub const ZERO: Self = Self::new(Dt::ZERO, Dt::ZERO, Dt::ZERO);
 
-    /// Creates a `ClockDrift` consisting of a pure constant offset.  
+    /// Creates a `Drift` consisting of a pure constant offset.  
     /// This is the most common constructor when only a fixed time bias is known
     /// (for example, after a one-time clock synchronization or leap-second
     /// adjustment).
@@ -390,7 +453,7 @@ impl ClockDrift {
         Self::new(c, Dt::ZERO, Dt::ZERO)
     }
 
-    /// Creates a `ClockDrift` consisting of a constant offset together with a
+    /// Creates a `Drift` consisting of a constant offset together with a
     /// constant linear drift rate.  
     /// This form is very common for GNSS receivers and spacecraft clock steering,
     /// where a steady fractional frequency offset must be corrected in addition
@@ -489,14 +552,31 @@ impl ClockDrift {
         Dt::from_attos(total_attos, Scale::TAI)
     }
 
-    /// Creates a `ClockDrift` directly from an observer’s velocity and total
+    /// Evaluates the deterministic relativistic/polynomial correction **and**
+    /// adds a user-supplied stochastic offset (in seconds).
+    ///
+    /// This is the single production method for realistic stochastic clock
+    /// modeling. In real mission pipelines the deterministic part (this
+    /// polynomial) is kept perfectly clean; stochastic noise (white phase noise,
+    /// random-walk frequency noise, Monte-Carlo realizations, Kalman process
+    /// noise, measured clock residuals, etc.) is added at evaluation time.
+    ///
+    /// Pass `0.0` (or simply call the original `time_diff_after`) when you
+    /// want purely deterministic behavior.
+    #[inline]
+    pub fn time_diff_after_with_noise(&self, span: &Dt, stochastic_offset_sec: Real) -> Dt {
+        self.time_diff_after(span)
+            .add(Dt::from_sec_f(stochastic_offset_sec))
+    }
+
+    /// Creates a `Drift` directly from an observer’s velocity and total
     /// local gravitational potential using the library’s unified master-Lagrangian
     /// proper-time rate.  
     ///
     /// This is the recommended high-level constructor for nearly all users. It
     /// automatically computes the relativistic clock rate that includes both
     /// special-relativistic velocity effects and gravitational time dilation,
-    /// then returns a `ClockDrift` that can be evaluated at any future time.
+    /// then returns a `Drift` that can be evaluated at any future time.
     ///
     /// The `characteristic_length_scale` parameter controls whether the
     /// weak-field or strong-field formulation is used:
@@ -516,12 +596,12 @@ impl ClockDrift {
     ) -> Self {
         let phi = grav_potential_m2_s2 / C_SQUARED;
         let velocity = Velocity::from_speed(velocity_m_s);
-        let spacetime = LocalSpacetime::from_potential_velocity_and_scale(
+        let spacetime = Spacetime::from_potential_velocity_and_scale(
             phi,
             velocity,
             characteristic_length_scale,
         );
-        Self::from_local_spacetime(&spacetime)
+        Self::from_spacetime(&spacetime)
     }
 
     /// Canonical low-level constructor that implements the exact intrinsic
@@ -530,12 +610,12 @@ impl ClockDrift {
     /// This function is the single source of truth for the proper-time rate
     /// calculation used throughout the library. Most users will never call it
     /// directly; the high-level constructors `from_velocity_potential_and_scale`
-    /// and `from_local_spacetime` are the intended entry points.
+    /// and `from_spacetime` are the intended entry points.
     ///
     /// The internal expression is  
     /// K_eff = [δ(1 + x) + x(1−δ)²] / (1 + x)  
     /// where δ = α²(1−β²) and x = ℓ_Pl⁴ 𝒦. The returned rate offset is then
-    /// applied as a linear term in the `ClockDrift` polynomial.
+    /// applied as a linear term in the `Drift` polynomial.
     pub const fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Self {
         let delta = u.max(f!(0.0));
         let x = PLANCK_LENGTH_4 * kretschmann.max(f!(0.0));
@@ -550,29 +630,29 @@ impl ClockDrift {
         Self::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(rate_offset))
     }
 
-    /// Creates a `ClockDrift` from a fully resolved `LocalSpacetime` snapshot.  
+    /// Creates a `Drift` from a fully resolved `Spacetime` snapshot.  
     ///
     /// This is the canonical high-level entry point when you already hold a
-    /// `LocalSpacetime` object containing the gravitational lapse factor α, the
+    /// `Spacetime` object containing the gravitational lapse factor α, the
     /// local velocity β, and the Kretschmann scalar. It internally computes the
-    /// unified proper-time rate and packages the result as a `ClockDrift`
+    /// unified proper-time rate and packages the result as a `Drift`
     /// polynomial ready for evaluation at any future time.
     #[inline]
-    pub const fn from_local_spacetime(spacetime: &LocalSpacetime) -> Self {
+    pub const fn from_spacetime(spacetime: &Spacetime) -> Self {
         let u = spacetime.alpha * spacetime.alpha * (f!(1.0) - spacetime.beta * spacetime.beta);
         Self::from_unified_proper_time_rate(u, spacetime.kretschmann)
     }
 }
 
 #[cfg(feature = "wire")]
-impl ClockDrift {
+impl Drift {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes.
     pub const WIRE_SIZE: usize = 3 * Dt::WIRE_SIZE; // 3 × 17 = 51
 
-    /// Serializes this `ClockDrift` polynomial into a fixed buffer.
+    /// Serializes this `Drift` polynomial into a fixed buffer.
     ///
     /// The layout is the concatenation of the three `Dt` fields.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
@@ -587,7 +667,7 @@ impl ClockDrift {
         buf
     }
 
-    /// Deserializes a `ClockDrift` from exactly `WIRE_SIZE` bytes of wire data.
+    /// Deserializes a `Drift` from exactly `WIRE_SIZE` bytes of wire data.
     ///
     /// Returns `None` if any nested `Dt` fails validation or if the version
     /// byte is unknown.

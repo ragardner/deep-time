@@ -68,9 +68,6 @@ pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 �
 /// Helper that returns the exact TT–TAI offset as a `Dt`.
 pub const TT_TAI_OFFSET: Dt = Dt::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
 
-// J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
-pub(crate) const J2000_SEC_PER_MILLENNIUM: f64 = 31_557_600_000.0;
-
 /// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
 pub const JD_2000_2_451_545: i64 = 2_451_545;
 /// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC

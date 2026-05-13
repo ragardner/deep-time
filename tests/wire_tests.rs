@@ -6,7 +6,7 @@ mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
     use deep_time::{
-        ClockDrift, ClockModel, Dt, GregorianTime, Meridiem, Offset, Scale, TimeParts, TimeRange,
+        Drift, ClockModel, Dt, GregorianTime, Meridiem, Offset, Scale, TimeParts, TimeRange,
         Weekday,
     };
 
@@ -38,7 +38,7 @@ mod tests {
 
     #[test]
     fn test_clockdrift_roundtrip() {
-        let drift = ClockDrift::new(
+        let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI),
             Dt::from_ns(1, Scale::TAI),
             Dt::from_attos(2, Scale::TAI),
@@ -46,7 +46,7 @@ mod tests {
         assert_roundtrip(
             &drift,
             |d| d.to_wire_bytes().to_vec(),
-            ClockDrift::from_wire_bytes,
+            Drift::from_wire_bytes,
         );
     }
 
@@ -55,7 +55,7 @@ mod tests {
         let model = ClockModel::new(
             Scale::Custom,
             Dt::new(0, 0),
-            ClockDrift::from_offset_and_rate(
+            Drift::from_offset_and_rate(
                 Dt::from_sec(42, Scale::TAI),
                 Dt::from_ns(1, Scale::TAI),
             ),

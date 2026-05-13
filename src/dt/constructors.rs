@@ -1,13 +1,13 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, ClockDrift, ClockModel, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK,
+    ATTOS_PER_SECF, ATTOS_PER_US, Drift, ClockModel, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK,
     Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, floor_f,
 };
 
 impl Dt {
     /// The library’s internal reference epoch: exactly **2000-01-01 12:00:00 TAI**.
     ///
-    /// (`Dt::new(0, 0)`).
+    /// [`Dt::new(0, 0)`].
     pub const ZERO: Self = Self::new(0, 0);
 
     /// The Unix epoch (**1970-01-01 00:00:00 UTC**) expressed as a signed
@@ -84,11 +84,11 @@ impl Dt {
 
     /// Creates a new custom clock model using this exact instant as the reference epoch.
     ///
-    /// The supplied `ClockDrift` defines the relativistic model for the new clock.
+    /// The supplied `Drift` defines the relativistic model for the new clock.
     /// The resulting `ClockModel` can be used to convert to or from the custom timescale
     /// even after the observer has left the original reference frame.
     #[inline]
-    pub const fn new_custom_clock(self, drift: ClockDrift) -> ClockModel {
+    pub const fn new_custom_clock(self, drift: Drift) -> ClockModel {
         ClockModel::new(Scale::Custom, self, drift)
     }
 
@@ -234,6 +234,12 @@ impl Dt {
                 attos: ATTOS_PER_SEC - self.attos,
             }
         }
+    }
+
+    /// Returns the positive of this duration.
+    #[inline]
+    pub const fn abs(self) -> Self {
+        Self::from_attos(self.to_attos().abs(), Scale::TAI)
     }
 
     /// Creates a `Dt` from a floating-point number of seconds.

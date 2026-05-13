@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, ClockDrift, Dt, LocalSpacetime, Real, Scale, floor_f,
+    ATTOS_PER_SECF, ATTOS_PER_US, Drift, Dt, Spacetime, Real, Scale, floor_f,
 };
 
 impl Dt {
@@ -34,24 +34,24 @@ impl Dt {
     }
 
     /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
-    /// derived from the supplied `LocalSpacetime` model.
+    /// derived from the supplied `Spacetime` model.
     ///
     /// This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
     /// For the spacecraft's own hardware proper-time clock, use the plain `add` method instead.
     #[inline]
-    pub const fn adjusted_advance(&mut self, elapsed: &Dt, local_spacetime: &LocalSpacetime) {
+    pub const fn adjusted_advance(&mut self, elapsed: &Dt, spacetime: &Spacetime) {
         let dtau =
-            elapsed.add(ClockDrift::from_local_spacetime(local_spacetime).time_diff_after(elapsed));
+            elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
         *self = self.add(dtau);
     }
 
     /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
-    /// from a pre-computed `ClockDrift` value.
+    /// from a pre-computed `Drift` value.
     ///
-    /// This is an optimized variant of `adjusted_advance` for callers that already hold a `ClockDrift` instance.
+    /// This is an optimized variant of `adjusted_advance` for callers that already hold a `Drift` instance.
     /// It is intended for simulation of remote clocks; the spacecraft's own hardware clock should use the plain `add` method.
     #[inline]
-    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &ClockDrift) {
+    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &Drift) {
         let dtau = elapsed.add(drift.time_diff_after(elapsed));
         *self = self.add(dtau);
     }
@@ -405,6 +405,22 @@ impl Dt {
     #[inline]
     pub const fn is_zero(&self) -> bool {
         self.sec == 0 && self.attos == 0
+    }
+
+    /// Returns `true` if this time is strictly positive **(> 0)**.
+    #[inline]
+    pub const fn is_positive(&self) -> bool {
+        if self.sec > 0 {
+            true
+        } else if self.sec == 0 {
+            self.attos != 0
+        } else {
+            let k = (-self.sec) as u64;
+            let quot = self.attos / ATTOS_PER_SEC;
+            let rem = self.attos % ATTOS_PER_SEC;
+
+            quot > k || (quot == k && rem > 0)
+        }
     }
 
     /// Multiplies this time by an integer scalar (exact).

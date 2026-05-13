@@ -1,4 +1,4 @@
-use deep_time::{ClockDrift, ClockModel, Dt, Scale};
+use deep_time::{ClockModel, Drift, Dt, Scale};
 
 #[test]
 fn test_ymd_to_jdn() {
@@ -170,7 +170,7 @@ fn tdb_correction_stays_within_bounds() {
 #[test]
 fn proper_to_tt_with_drift_roundtrip() {
     let reference = Dt::from_sec(0, Scale::TAI);
-    let drift = ClockDrift::new(
+    let drift = Drift::new(
         Dt::from_ms(100, Scale::TAI), // exactly 0.1 s
         Dt::from_ns(1, Scale::TAI),   // exactly 1 ns/s = 1e-9 s/s
         Dt::ZERO,

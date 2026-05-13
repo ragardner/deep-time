@@ -22,9 +22,11 @@ fn panic(_info: &PanicInfo) -> ! {
 
 // possibly upgrade to f128 when it's stable
 pub type Real = f64;
+
+#[macro_export]
 macro_rules! f {
     ($x:expr) => {
-        $x as Real
+        $x as $crate::Real
     };
 }
 
@@ -83,8 +85,8 @@ mod ut1;
 // _________________________________________
 mod an_err;
 mod ascii_str;
-mod clock_drift;
 mod clock_model;
+mod drift;
 mod dt;
 mod gregorian_time;
 mod light_time;
@@ -136,8 +138,8 @@ pub use an_err::{WireErr, WireLocation};
 // _________________________________________
 pub use an_err::AnErr;
 pub use ascii_str::{AsciiStr, AsciiStrError};
-pub use clock_drift::{ClockDrift, LocalSpacetime};
 pub use clock_model::ClockModel;
+pub use drift::{Drift, Spacetime};
 pub use dt::Dt;
 pub use dt::time_units::{AttosUnits, TimeUnits};
 pub use error::{DtErr, DtErrKind};

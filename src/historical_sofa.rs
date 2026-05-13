@@ -189,13 +189,9 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
 
 /// Returns the SOFA historical TAI−UTC offset (in seconds) for a given UTC instant.
 ///
-/// **This is designed to go from a historical UTC or TAI SOFA time to a normal TAI time.**
+/// Only for use with [`Dt`]s that are not already offset by a historical sofa offset.
 ///
-/// The offset is computed using:
-/// `offset = entry.offset + (MJD − entry.mjd_ref) × entry.drift`
-///
-/// The correct usage for the returned offset is to add to an existing historical
-/// time.
+/// **Do not use this for round tripping.**
 pub const fn historical_sofa_offset_for_non_adjusted(dt: &Dt) -> Option<Real> {
     // < 1961-1-1 midnight, or >= 1972-1-1 midnight
     if dt.sec < -1230724800 || dt.sec >= -883656990 {

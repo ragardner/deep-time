@@ -49,7 +49,7 @@ pub enum Scale {
     /// A small additional periodic variation exists due to lunar orbital eccentricity
     /// (±0.108 µs/day in instantaneous rate, ~±0.75 µs accumulated over one orbit).
     /// The periodic term is **not** part of the defining LTC conversion; it is
-    /// handled via `ClockModel` / `ClockDrift` when utmost precision is required.
+    /// handled via `ClockModel` / `Drift` when utmost precision is required.
     LTC,
     ///
     TCL,
