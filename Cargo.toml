@@ -3,7 +3,7 @@ name = "deep-time"
 version = "0.1.0-alpha.6"
 authors = ["ragardner <github@ragardner.simplelogin.com>"]
 edition = "2024"
-description = "High-precision time types, time scale conversions, relativistic time, and a flexible date and duration parser"
+description = "High-precision, no-std, no-alloc date-time library with leap-second support, full time scale conversions, and a powerful date & duration parser"
 license = "Apache-2.0"
 repository = "https://github.com/ragardner/deep-time"
 keywords = ["time", "date", "duration", "astronomy", "parser"]
@@ -40,6 +40,8 @@ alloc = [
     "jiff?/alloc",
     "chrono?/alloc",
 ]
+
+ut1 = ["alloc"]
 
 std = [
     "alloc",
@@ -87,10 +89,6 @@ serde = [
 # ──────────────────────────────────────────────────────────────
 # DATETIME FEATURES
 # ──────────────────────────────────────────────────────────────
-
-ut1 = [
-    "alloc",
-]
 
 jiff = [
     "dep:jiff",
