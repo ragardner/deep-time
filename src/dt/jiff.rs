@@ -1,27 +1,15 @@
-use crate::{Dt, DtErr, DtErrKind, Scale, an_err};
+use crate::{Dt, DtErr, DtErrKind, Scale, an_err, clamp_i128_to_i64};
 use jiff::{SignedDuration, Span, Timestamp};
 
 impl Dt {
-    /// Converts this `Dt` to a [`jiff::Timestamp`] (always in UTC).
-    ///
-    /// This is the main/default conversion method for absolute instants.
-    ///
-    /// - The `Dt` is first converted to TAI internally (respecting all
-    ///   scales, leap seconds, and relativistic models).
-    /// - The duration since the Unix epoch (1970-01-01 00:00:00 UTC) is then
-    ///   computed.
-    /// - Sub-nanosecond attoseconds are truncated toward zero.
-    /// - Saturates at [`Timestamp::MIN`] / [`Timestamp::MAX`] if the instant
-    ///   is outside the range supported by Jiff (roughly years 0000–9999).
-    ///   Never returns an error.
-    pub fn to_jiff_timestamp(&self) -> Timestamp {
-        let span_since_epoch = self.to_diff_raw(Dt::UNIX_EPOCH);
-        let total_nanos = span_since_epoch.to_attos() / 1_000_000_000i128;
+    /// Converts this [`Dt`] to a [`jiff::Timestamp`] (always in UTC).
+    pub fn to_jiff_timestamp(&self, current: Scale) -> Timestamp {
+        let nanos = self.to(current, Scale::UTC).to_ns();
 
-        match Timestamp::from_nanosecond(total_nanos) {
+        match Timestamp::from_nanosecond(nanos) {
             Ok(ts) => ts,
             Err(_) => {
-                if total_nanos >= 0 {
+                if nanos >= 0 {
                     Timestamp::MAX
                 } else {
                     Timestamp::MIN
@@ -31,21 +19,11 @@ impl Dt {
     }
 
     /// Converts this `Dt` to a [`jiff::Span`] (seconds + nanoseconds only).
-    ///
-    /// This is the **main/default** conversion method.
-    ///
-    /// - Sub-nanosecond attoseconds are **truncated toward zero**.
-    /// - The conversion is fully exact up to the nanosecond (using 128-bit integer arithmetic).
-    /// - **Saturates** at the largest/smallest representable `Span` (roughly ±20,000 years)
-    ///   if the value is out of range.
-    ///   Never returns an error.
     pub fn to_jiff_span(&self) -> Span {
-        let total_nanos = self.to_attos() / 1_000_000_000i128;
+        let total_nanos = self.to_ns();
+        let seconds = clamp_i128_to_i64(total_nanos.div_euclid(1_000_000_000));
+        let nanoseconds = clamp_i128_to_i64(total_nanos.rem_euclid(1_000_000_000));
 
-        let seconds = (total_nanos / 1_000_000_000) as i64;
-        let nanoseconds = (total_nanos % 1_000_000_000) as i64;
-
-        // Fast path when in range
         if let Ok(base) = Span::new().try_seconds(seconds) {
             if let Ok(span) = base.try_nanoseconds(nanoseconds) {
                 return span;
@@ -70,41 +48,28 @@ impl Dt {
     /// - Supports the **entire** range of `Span` (never saturates).
     #[inline]
     pub fn to_jiff_signed_duration(&self) -> SignedDuration {
-        let total_nanos = self.to_attos() / 1_000_000_000i128;
-        SignedDuration::from_nanos_i128(total_nanos)
+        SignedDuration::from_nanos_i128(self.to_ns())
     }
 
     /// Creates a `Dt` from a `jiff::Timestamp`.
     ///
-    /// This is the exact reverse of [`Dt::to_jiff_timestamp`].
-    ///
-    /// `jiff::Timestamp` is the primary absolute instant type in the Jiff
-    /// ecosystem (broadly convertible to `Zoned`, civil datetimes, etc.).
-    ///
-    /// - The resulting `Dt` is expressed in the TAI scale
-    ///   (the library's canonical internal scale).
-    /// - Sub-nanosecond attoseconds are set to zero.
+    /// This is the inverse of [`Dt::to_jiff_timestamp`].
     #[inline]
     pub fn from_jiff_timestamp(ts: Timestamp) -> Self {
-        Dt::UNIX_EPOCH.add(Dt::from_ns(ts.as_nanosecond(), Scale::TAI))
+        Dt::from_dt(Dt::from_ns(ts.as_nanosecond(), Scale::TAI), Scale::UTC)
     }
 
-    /// Creates a `Dt` from a `jiff::SignedDuration` (nanosecond precision).
+    /// Creates a [`Dt`] from a `jiff::SignedDuration` (nanosecond precision).
     ///
-    /// This is the exact reverse of [`Dt::to_jiff_signed_duration`].
+    /// This is the inverse of [`Dt::to_jiff_signed_duration`].
     #[inline]
     pub fn from_jiff_signed_duration(dur: SignedDuration) -> Self {
         Self::from_ns(dur.as_nanos(), Scale::TAI)
     }
 
-    /// Creates a `Dt` from a `jiff::Dt`.
+    /// Creates a [`Dt`] from a `jiff::Dt`.
     ///
-    /// This is the exact reverse of [`Dt::to_jiff_span`].
-    ///
-    /// - Works perfectly for pure time-based `Dt`s (seconds + nanoseconds only).
-    /// - Returns `Err` if the `Dt` contains any calendar units (years, months,
-    ///   weeks, days, etc.) that cannot be converted to a pure elapsed-time
-    ///   duration.
+    /// This is the inverse of [`Dt::to_jiff_span`].
     #[inline]
     pub fn from_jiff_span(span: Span) -> Result<Self, DtErr> {
         let dur = SignedDuration::try_from(span)

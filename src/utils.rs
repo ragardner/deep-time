@@ -65,6 +65,17 @@ pub(crate) const fn clamp_i128_to_i64(x: i128) -> i64 {
     }
 }
 
+/// Clamps an `i128` to the representable range of `u64`.
+pub(crate) const fn clamp_i128_to_u64(x: i128) -> u64 {
+    if x > u64::MAX as i128 {
+        u64::MAX
+    } else if x < u64::MIN as i128 {
+        u64::MIN
+    } else {
+        x as u64
+    }
+}
+
 /// sine approximation.
 ///
 /// Maximum absolute error ≈ 4.44 × 10^{-16} (≈ 2 ULP near |sin| = 1).
