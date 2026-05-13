@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, ClockModel, Drift, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale,
+    ATTOS_PER_SECF, ATTOS_PER_US, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale,
     TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, floor_f,
 };
 
@@ -10,50 +10,65 @@ impl Dt {
     /// [`Dt::new(0, 0)`].
     pub const ZERO: Self = Self::new(0, 0);
 
-    /// The Unix epoch (**1970-01-01 00:00:00 UTC**) expressed as a signed
-    /// TAI-second offset from [`Self::ZERO`].
-    ///
-    /// This is computed as `-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON`, i.e. the exact
-    /// number of TAI seconds from 1970-01-01 00:00:00 TAI to 2000-01-01 12:00:00 TAI
-    /// (the value of the private constant `TAI_SECS_1970_MIDNIGHT_TO_2000_NOON`).
+    /// UNIX epoch.
+    /// - 1970-01-01 midnight TAI.
+    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - -946_728_000 sec
+    /// - 0 attos
+    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
+    ///   This const is provided as a convenience.
     pub const UNIX_EPOCH: Self = Self::new(-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, 0);
 
-    /// Canonical reference epoch for modern relativistic time scales:
-    /// exactly **1977-01-01 00:00:00 TAI**.
-    ///
-    /// This is the defining instant (per IAU recommendations) where:
-    /// - Terrestrial Time (TT) = TAI + 32.184 s exactly,
-    /// - TT, TCG, TCB, and TCL are synchronized by definition,
-    /// - Lunar Coordinate Time (TCL) and the proposed TL use this as their official zero point.
-    ///
-    /// It is **-725_803_200 TAI seconds** before [`Self::ZERO`].
+    /// TT/TCG/TCB/TDB epoch.
+    /// - 1977-01-01 midnight TAI.
+    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - -725_803_200 sec
+    /// - 0 attos
+    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
+    ///   This const is provided as a convenience.
     pub const TAI_1977_EPOCH: Self = Self::new(-725_803_200, 0);
 
-    pub const TCL_1977_EPOCH: Self = {
-        let tcl1977 = Self::TAI_1977_EPOCH.to(Scale::TAI, Scale::TCL);
-        Self::new(tcl1977.sec, tcl1977.attos)
-    };
+    /// TT/TCG/TCB/TDB/TCL epoch.
+    /// - 1977-01-01 midnight TAI.
+    /// - Stored here on the **TCL** timescale as an offset from [`Self::ZERO`].
+    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
+    ///   This const is provided as a convenience.
+    pub const TCL_1977_EPOCH: Self = { Self::TAI_1977_EPOCH.to(Scale::TAI, Scale::TCL) };
 
-    /// 1998-01-01 midnight TT, but as **TAI**.
+    /// Chandra X-ray Center (CXC) Time epoch.
+    /// - 1998-01-01 midnight TT.
+    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -63_115_233 sec
     /// - 816000000000000000 attos
+    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
+    ///   This const is provided as a convenience.
     pub const CXC_EPOCH: Self = Self::new(-63_115_233, 816000000000000000);
 
-    /// GPS Time epoch: exactly **1980-01-06 00:00:00 UTC**.
-    /// Galileo Experiment (GALEX) epoch: exactly **1980-01-06 00:00:00 UTC**.
-    ///
-    /// This is the zero point of the continuous GPS Time scale (GPST).
-    /// At this epoch, GPST was exactly 19 seconds behind TAI.
+    /// GPS/Galileo Experiment (GALEX) Time epoch.
+    /// - **1980-01-06 00:00:00 UTC**.
+    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - -630_763_200 **+ 19** sec
+    /// - 0 attos
+    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
+    ///   This const is provided as a convenience.
     pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0);
 
-    /// Galileo System Time (GST) epoch: exactly **1999-08-22 00:00:00 UTC**.
-    ///
-    /// This is the official zero point of the Galileo System Time scale.
+    /// Galileo System Time (GST) epoch.
+    /// - 1999-08-22 00:00:00 GST.
+    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - -11_448_000 **+ 19** sec
+    /// - 0 attos
+    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
+    ///   This const is provided as a convenience.
     pub const GALILEO_EPOCH: Self = Self::new(-11_448_000 + 19, 0);
 
-    /// BeiDou Time (BDT) epoch: exactly **2006-01-01 00:00:00 UTC**.
-    ///
-    /// This is the official zero point of the BeiDou Navigation Satellite System Time.
+    /// BeiDou Time (BDT) epoch.
+    /// - 2006-01-01 00:00:00 UTC.
+    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - 189_345_600 **+ 33** sec
+    /// - 0 attos
+    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
+    ///   This const is provided as a convenience.
     pub const BDT_EPOCH: Self = Self::new(189_345_600 + 33, 0);
 
     /// Maximum representable duration (`i64::MAX` seconds + 999... attoseconds).
@@ -80,16 +95,6 @@ impl Dt {
         let mut tp = Self { sec, attos };
         tp.carry_over();
         tp
-    }
-
-    /// Creates a new custom clock model using this exact instant as the reference epoch.
-    ///
-    /// The supplied `Drift` defines the relativistic model for the new clock.
-    /// The resulting `ClockModel` can be used to convert to or from the custom timescale
-    /// even after the observer has left the original reference frame.
-    #[inline]
-    pub const fn new_custom_clock(self, drift: Drift) -> ClockModel {
-        ClockModel::new(Scale::Custom, self, drift)
     }
 
     #[inline]

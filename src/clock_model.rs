@@ -1,13 +1,10 @@
 use crate::{Drift, Dt, Scale};
 
-/// A fully self-describing relativistic time scale.
+/// A fully self-describing custom relativistic time scale.
 ///
 /// Bundles a base `Scale` (`Custom`) with the quadratic
 /// polynomial and reference epoch needed for exact conversion to any other scale
 /// (typically TT or TDB).
-///
-/// This is the recommended way to represent onboard proper time that carries
-/// its own clock-drift / relativistic model.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
@@ -92,5 +89,15 @@ impl ClockModel {
             reference,
             drift,
         })
+    }
+}
+
+impl Dt {
+    /// Creates a new custom time model using this exact instant as the reference epoch.
+    /// - The supplied [`Drift`] defines the relativistic model for the timescale.
+    /// - The returned [`ClockModel`] can be used to convert to or from the custom timescale.
+    #[inline]
+    pub const fn to_model_as_epoch(self, drift: Drift) -> ClockModel {
+        ClockModel::new(Scale::Custom, self, drift)
     }
 }

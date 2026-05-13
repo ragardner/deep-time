@@ -692,3 +692,20 @@ impl Drift {
         Some(Self::new(constant, rate, accel))
     }
 }
+
+impl Dt {
+    #[inline]
+    pub const fn to_drift_as_constant(self, rate: Dt, accel: Dt) -> Drift {
+        Drift::new(self, rate, accel)
+    }
+
+    #[inline]
+    pub const fn to_drift_as_rate(self, constant: Dt, accel: Dt) -> Drift {
+        Drift::new(constant, self, accel)
+    }
+
+    #[inline]
+    pub const fn to_drift_as_accel(self, constant: Dt, rate: Dt) -> Drift {
+        Drift::new(constant, rate, self)
+    }
+}
