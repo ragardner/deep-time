@@ -150,8 +150,8 @@ impl Spacetime {
     /// Convenience method that internally uses the same unified calculation as
     /// `Drift::proper_time_rate`.
     #[inline]
-    pub const fn proper_time_rate(self) -> Real {
-        Drift::from_spacetime(&self).proper_time_rate()
+    pub const fn proper_time_rate(&self) -> Real {
+        Drift::from_spacetime(self).proper_time_rate()
     }
 
     /// Convenience for direct gravimeter / sensor paths.

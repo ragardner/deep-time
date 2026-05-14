@@ -1,5 +1,5 @@
 use crate::{
-    ClassifiedDate, Dt, Lang, Scale, TimeUnits, classify_date, generate_syslog_candidates,
+    ClassifiedDate, Dt, Lang, Scale, TimeTraits, classify_date, generate_syslog_candidates,
     try_compatible_formats,
 };
 

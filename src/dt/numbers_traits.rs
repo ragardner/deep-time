@@ -1,7 +1,7 @@
 //! Ergonomic time-unit constructors (optional import).
 //!
 //! ```
-//! use deep_time::{Scale, TimeUnits};
+//! use deep_time::{Scale, TimeTraits};
 //!
 //! let span = 5.sec() + 250.ms() + 123_456.ns();
 //! let stamp = 3.days().ago(Scale::UTC);
@@ -14,60 +14,60 @@ use crate::{
 
 pub trait AttosUnits: Copy + Sized {
     /// attoseconds → seconds (s)
-    fn to_sec(self) -> i64;
+    fn attos_to_sec(self) -> i64;
 
     /// attoseconds → milliseconds (ms)
-    fn to_ms(self) -> i128;
+    fn attos_to_ms(self) -> i128;
 
     /// attoseconds → microseconds (us)
-    fn to_us(self) -> i128;
+    fn attos_to_us(self) -> i128;
 
     /// attoseconds → nanoseconds (ns)
-    fn to_ns(self) -> i128;
+    fn attos_to_ns(self) -> i128;
 
     /// attoseconds → picoseconds (ps)
-    fn to_ps(self) -> i128;
+    fn attos_to_ps(self) -> i128;
 
     /// attoseconds → femtoseconds (fs)
-    fn to_fs(self) -> i128;
+    fn attos_to_fs(self) -> i128;
 
     /// attoseconds → float seconds (s)
-    fn to_sec_f(self) -> f64;
+    fn attos_to_sec_f(self) -> f64;
 }
 
 impl AttosUnits for i128 {
-    #[inline(always)]
-    fn to_sec_f(self) -> f64 {
+    #[inline]
+    fn attos_to_sec_f(self) -> f64 {
         self as f64 / ATTOS_PER_SECF
     }
 
-    #[inline(always)]
-    fn to_sec(self) -> i64 {
+    #[inline]
+    fn attos_to_sec(self) -> i64 {
         (self / ATTOS_PER_SEC_I128) as i64
     }
 
-    #[inline(always)]
-    fn to_ms(self) -> i128 {
+    #[inline]
+    fn attos_to_ms(self) -> i128 {
         self / ATTOS_PER_MS_I128
     }
 
-    #[inline(always)]
-    fn to_us(self) -> i128 {
+    #[inline]
+    fn attos_to_us(self) -> i128 {
         self / ATTOS_PER_US_I128
     }
 
-    #[inline(always)]
-    fn to_ns(self) -> i128 {
+    #[inline]
+    fn attos_to_ns(self) -> i128 {
         self / ATTOS_PER_NS_I128
     }
 
-    #[inline(always)]
-    fn to_ps(self) -> i128 {
+    #[inline]
+    fn attos_to_ps(self) -> i128 {
         self / ATTOS_PER_PS_I128
     }
 
-    #[inline(always)]
-    fn to_fs(self) -> i128 {
+    #[inline]
+    fn attos_to_fs(self) -> i128 {
         self / ATTOS_PER_FS_I128
     }
 }
@@ -75,8 +75,8 @@ impl AttosUnits for i128 {
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
 /// Import it explicitly to create `Dt`s directly from rust ints and floats:
-/// `use deep_time::TimeUnits;`
-pub trait TimeUnits: Copy + Sized {
+/// `use deep_time::TimeTraits;`
+pub trait TimeTraits: Copy + Sized {
     // ── Dt constructors ─────────────────────────────────────
     fn ns(self) -> Dt;
     fn us(self) -> Dt;
@@ -97,7 +97,7 @@ pub trait TimeUnits: Copy + Sized {
 macro_rules! impl_time_units_int {
     ($($ty:ty),* $(,)?) => {
         $(
-            impl TimeUnits for $ty {
+            impl TimeTraits for $ty {
                 #[inline]
                 fn ns(self) -> Dt { Dt::from_ns(self as i128, Scale::TAI) }
 
@@ -142,7 +142,7 @@ macro_rules! impl_time_units_int {
 impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
 
 // f64 support (most useful for fractional units)
-impl TimeUnits for f64 {
+impl TimeTraits for f64 {
     #[inline]
     fn ns(self) -> Dt {
         Dt::from_ns(self as i128, Scale::TAI)
@@ -199,7 +199,7 @@ impl TimeUnits for f64 {
     }
 }
 
-impl TimeUnits for f32 {
+impl TimeTraits for f32 {
     #[inline]
     fn ns(self) -> Dt {
         Dt::from_ns(self as i128, Scale::TAI)
