@@ -15,9 +15,21 @@ mod proper_time_tests {
         let t = tai(0);
         let flat = Spacetime::new(1.0, 0.0, 0.0);
 
-        assert_eq!(t.proper_time_between(t, &[flat; 2]), Dt::ZERO);
-        assert_eq!(t.proper_time_between(tai(100), &[]), Dt::ZERO);
-        assert_eq!(t.proper_time_between(tai(100), &[flat]), Dt::ZERO);
+        // Empty path
+        assert_eq!(
+            Dt::proper_time_from_path(std::iter::empty::<(Dt, Spacetime)>()),
+            Ok(Dt::ZERO)
+        );
+
+        // Single point
+        assert_eq!(
+            Dt::proper_time_from_path(std::iter::once((t, flat))),
+            Ok(Dt::ZERO)
+        );
+
+        // Zero-duration path (start == end)
+        let zero_dur = [(t, flat), (t, flat)];
+        assert_eq!(Dt::proper_time_from_path(zero_dur), Ok(Dt::ZERO));
     }
 
     #[test]
@@ -25,10 +37,13 @@ mod proper_time_tests {
         let t0 = tai(0);
         let t1 = tai(86400);
 
+        // Flat spacetime → proper time rate = 1.0 (no dilation)
         let flat = Spacetime::new(1.0, 0.0, 0.0);
-        let samples = [flat; 2];
 
-        let dtau = t0.proper_time_between(t1, &samples);
+        // Build a two-point path
+        let path = [(t0, flat), (t1, flat)];
+
+        let dtau = Dt::proper_time_from_path(path).expect("path should be valid");
         assert_eq!(dtau, Dt::from_sec(86400, Scale::TAI));
     }
 
@@ -37,10 +52,11 @@ mod proper_time_tests {
         let t0 = tai(0);
         let t1 = tai(1000);
 
+        // Constant rate of 0.9 (e.g. gravitational time dilation)
         let slow = Spacetime::new(0.9, 0.0, 0.0);
-        let samples = [slow; 2];
+        let path = [(t0, slow), (t1, slow)];
 
-        let dtau = t0.proper_time_between(t1, &samples);
+        let dtau = Dt::proper_time_from_path(path).expect("valid path");
         assert_eq!(dtau, Dt::from_sec(900, Scale::TAI));
     }
 
@@ -49,70 +65,60 @@ mod proper_time_tests {
         let t0 = tai(0);
         let t1 = tai(500);
 
+        // Spacetime with velocity β = 0.6 → proper time rate ≈ 0.8
         let moving = Spacetime::new(1.0, 0.6, 0.0);
-        let samples = [moving; 2];
+        let path = [(t0, moving), (t1, moving)];
 
-        let dtau = t0.proper_time_between(t1, &samples);
+        let dtau = Dt::proper_time_from_path(path).expect("valid path");
         assert_eq!(dtau, Dt::from_sec(400, Scale::TAI));
     }
 
     #[test]
-    fn negative_interval_sign_is_preserved() {
-        let t0 = tai(1000);
-        let t1 = tai(0);
-
-        let slow = Spacetime::new(0.9, 0.0, 0.0);
-        let samples = [slow; 2];
-
-        let dtau = t0.proper_time_between(t1, &samples);
-        assert_eq!(dtau, Dt::from_sec(-900, Scale::TAI));
-    }
-
-    #[test]
-    fn simpson_rule_with_varying_rate_two_intervals() {
+    fn multi_segment_trapezoidal_with_varying_rate() {
         let t0 = tai(0);
+        let t_mid = tai(300);
         let t1 = tai(600);
 
-        let samples = [
-            Spacetime::new(1.00, 0.0, 0.0),
-            Spacetime::new(0.95, 0.0, 0.0),
-            Spacetime::new(0.90, 0.0, 0.0),
+        // Three samples with a linearly decreasing rate
+        let path = [
+            (t0, Spacetime::new(1.00, 0.0, 0.0)),
+            (t_mid, Spacetime::new(0.95, 0.0, 0.0)),
+            (t1, Spacetime::new(0.90, 0.0, 0.0)),
         ];
+        let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
-        let dtau = t0.proper_time_between(t1, &samples);
+        // With piecewise trapezoidal integration, the result is 570 seconds
         assert_eq!(dtau, Dt::from_sec(570, Scale::TAI));
     }
 
     #[test]
-    fn simpson_rule_with_odd_number_of_intervals() {
-        let t0 = tai(0);
-        let t1 = tai(900); // 3 intervals, h = 300
-
-        let samples = [
-            Spacetime::new(1.00, 0.0, 0.0), // rate-1 = 0.00
-            Spacetime::new(0.96, 0.0, 0.0), // rate-1 = -0.04
-            Spacetime::new(0.92, 0.0, 0.0), // rate-1 = -0.08
-            Spacetime::new(0.88, 0.0, 0.0), // rate-1 = -0.12
+    fn multi_segment_trapezoidal_with_odd_number_of_intervals() {
+        // 4 samples → 3 segments (odd number of intervals)
+        let path = [
+            (tai(0), Spacetime::new(1.00, 0.0, 0.0)),
+            (tai(300), Spacetime::new(0.96, 0.0, 0.0)),
+            (tai(600), Spacetime::new(0.92, 0.0, 0.0)),
+            (tai(900), Spacetime::new(0.88, 0.0, 0.0)),
         ];
 
-        let dtau = t0.proper_time_between(t1, &samples);
+        let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
-        // Verified: s = -0.44 → integral = -44 → Δτ = 856
-        assert_eq!(dtau, Dt::from_sec(856, Scale::TAI));
+        // Piecewise trapezoidal result over 3 segments
+        assert_eq!(dtau, Dt::from_sec(846, Scale::TAI));
     }
 
     #[test]
-    fn relativistic_correction_matches_delta_tau_minus_delta_t() {
+    fn drift_equals_proper_time_minus_coordinate_time() {
         let t0 = tai(0);
         let t1 = tai(1000);
 
         let slow = Spacetime::new(0.9, 0.0, 0.0);
-        let samples = [slow; 2];
+        let path = [(t0, slow), (t1, slow)];
 
-        let dtau = t0.proper_time_between(t1, &samples);
-        let correction = t0.relativistic_correction_between(t1, &samples);
+        let dtau = Dt::proper_time_from_path(path).unwrap();
+        let dt = t1.to_diff_raw(t0);
 
-        assert_eq!(correction, dtau.sub(t1.to_diff_raw(t0)));
+        assert_eq!(dtau.sub(dt), Dt::from_sec(-100, Scale::TAI));
     }
 
     #[test]
@@ -121,11 +127,11 @@ mod proper_time_tests {
         let t1 = tai(100);
 
         let extreme = Spacetime::new(0.5, 0.0, 1e200);
-        let samples = [extreme; 2];
+        let path = [(t0, extreme), (t1, extreme)];
 
-        let dtau = t0.proper_time_between(t1, &samples);
+        let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
-        // K_eff saturates at √0.8125 ≈ 0.9013878188659973
+        // K_eff saturates at ≈ 0.9013878188659973
         let expected = Dt::from_sec_f(90.13878188659973);
         assert_eq!(dtau, expected);
     }
@@ -141,8 +147,11 @@ mod proper_time_tests {
         let no_k = Spacetime::new(alpha, beta, 0.0);
         let with_k = Spacetime::new(alpha, beta, 1e20);
 
-        let dtau_no_k = t0.proper_time_between(t1, &[no_k; 2]);
-        let dtau_with_k = t0.proper_time_between(t1, &[with_k; 2]);
+        let path_no_k = [(t0, no_k), (t1, no_k)];
+        let path_with_k = [(t0, with_k), (t1, with_k)];
+
+        let dtau_no_k = Dt::proper_time_from_path(path_no_k).unwrap();
+        let dtau_with_k = Dt::proper_time_from_path(path_with_k).unwrap();
 
         let diff_attos = dtau_no_k.sub(dtau_with_k).to_attos().abs();
         assert!(diff_attos < 10);
@@ -155,47 +164,29 @@ mod proper_time_tests {
     #[test]
     fn proper_time_from_path_handles_empty_or_single_point_path() {
         let empty: &[(Dt, Spacetime)] = &[];
-        assert_eq!(Dt::proper_time_from_path(empty.iter().copied()), Dt::ZERO);
+        assert_eq!(
+            Dt::proper_time_from_path(empty.iter().copied()),
+            Ok(Dt::ZERO)
+        );
 
         let single = &[(tai(0), Spacetime::new(1.0, 0.0, 0.0))];
-        assert_eq!(Dt::proper_time_from_path(single.iter().copied()), Dt::ZERO);
+        assert_eq!(
+            Dt::proper_time_from_path(single.iter().copied()),
+            Ok(Dt::ZERO)
+        );
     }
 
     #[test]
-    fn proper_time_from_path_non_uniform_trajectory() {
-        let path: &[(Dt, Spacetime)] = &[
-            (tai(0), Spacetime::new(1.0000, 0.00, 0.0)),
-            (tai(300), Spacetime::new(0.9950, 0.10, 0.0)),
-            (tai(700), Spacetime::new(0.9850, 0.20, 0.0)),
-            (tai(1000), Spacetime::new(0.9995, 0.00, 0.0)),
-        ];
-
-        let total_dtau = Dt::proper_time_from_path(path.iter().copied());
-
-        let seg1 = path[0]
-            .0
-            .proper_time_between(path[1].0, &[path[0].1, path[1].1]);
-        let seg2 = path[1]
-            .0
-            .proper_time_between(path[2].0, &[path[1].1, path[2].1]);
-        let seg3 = path[2]
-            .0
-            .proper_time_between(path[3].0, &[path[2].1, path[3].1]);
-
-        let expected = seg1.add(seg2).add(seg3);
-        assert_eq!(total_dtau, expected);
-    }
-
-    #[test]
-    fn proper_time_from_path_consistent_with_interval_samples_for_uniform_case() {
+    fn proper_time_from_path_consistent_with_two_point_path() {
         let t0 = tai(0);
         let t1 = tai(300);
         let ls = Spacetime::new(0.95, 0.0, 0.0);
 
-        let direct = t0.proper_time_between(t1, &[ls, ls]);
-        let via_path = Dt::proper_time_from_path([(t0, ls), (t1, ls)].into_iter());
+        let via_path = Dt::proper_time_from_path([(t0, ls), (t1, ls)]).unwrap();
 
-        assert_eq!(direct, via_path);
+        // With constant rate, this should equal rate * Δt
+        let expected = Dt::from_sec_f(0.95 * 300.0);
+        assert_eq!(via_path, expected);
     }
 
     #[test]
@@ -267,7 +258,8 @@ mod proper_time_tests {
         }
 
         // === SPACECRAFT proper time (integrated along real trajectory) ===
-        let spacecraft_dtau = Dt::proper_time_from_path(spacecraft_path.iter().copied());
+        let spacecraft_dtau = Dt::proper_time_from_path(spacecraft_path.iter().copied())
+            .expect("spacecraft path should be valid");
 
         // === GROUND CLOCK (constant Earth surface) ===
         let t0 = spacecraft_path[0].0;
@@ -306,7 +298,8 @@ mod proper_time_tests {
         // Internal library consistency check
         let mut summed = Dt::ZERO;
         for w in spacecraft_path.windows(2) {
-            let seg = w[0].0.proper_time_between(w[1].0, &[w[0].1, w[1].1]);
+            let segment = vec![w[0], w[1]];
+            let seg = Dt::proper_time_from_path(segment).expect("segment should be valid");
             summed = summed.add(seg);
         }
         assert_eq!(

@@ -91,7 +91,7 @@ impl Dt {
     /// Two `Dt`s that represent the exact same physical instant (after all
     /// leap-second, relativistic, and scale conversions) compare as `Equal`, even if
     /// they were constructed with different [`Scale`]s.
-    pub const fn cmp(self, other: Self) -> Ordering {
+    pub const fn cmp(&self, other: &Self) -> Ordering {
         if self.sec < other.sec {
             Ordering::Less
         } else if self.sec > other.sec {
@@ -115,7 +115,7 @@ impl Dt {
     /// This is a `const fn` and can be used in const contexts.
     #[inline]
     pub const fn min(self, other: Self) -> Self {
-        match self.cmp(other) {
+        match self.cmp(&other) {
             Ordering::Greater => other,
             _ => self,
         }
@@ -127,7 +127,7 @@ impl Dt {
     /// See [`Self::min`] for more details.
     #[inline]
     pub const fn max(self, other: Self) -> Self {
-        match self.cmp(other) {
+        match self.cmp(&other) {
             Ordering::Less => other,
             _ => self,
         }
@@ -135,7 +135,7 @@ impl Dt {
 
     #[inline]
     pub const fn eq(&self, other: &Self) -> bool {
-        match Dt::cmp(*self, *other) {
+        match Dt::cmp(self, other) {
             Ordering::Equal => true,
             _ => false,
         }
@@ -144,28 +144,28 @@ impl Dt {
     /// Returns `true` if this `Dt` is less than the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
-    pub const fn lt(self, other: Self) -> bool {
+    pub const fn lt(&self, other: &Self) -> bool {
         matches!(self.cmp(other), Ordering::Less)
     }
 
     /// Returns `true` if this `Dt` is greater than the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
-    pub const fn gt(self, other: Self) -> bool {
+    pub const fn gt(&self, other: &Self) -> bool {
         matches!(self.cmp(other), Ordering::Greater)
     }
 
     /// Returns `true` if this `Dt` is less than or equal to the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
-    pub const fn le(self, other: Self) -> bool {
+    pub const fn le(&self, other: &Self) -> bool {
         !matches!(self.cmp(other), Ordering::Greater)
     }
 
     /// Returns `true` if this `Dt` is greater than or equal to the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
-    pub const fn ge(self, other: Self) -> bool {
+    pub const fn ge(&self, other: &Self) -> bool {
         !matches!(self.cmp(other), Ordering::Less)
     }
 }
@@ -182,14 +182,14 @@ impl Eq for Dt {}
 impl PartialOrd for Dt {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(Dt::cmp(*self, *other))
+        Some(Dt::cmp(self, other))
     }
 }
 
 impl Ord for Dt {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
-        Dt::cmp(*self, *other)
+        Dt::cmp(self, other)
     }
 }
 
