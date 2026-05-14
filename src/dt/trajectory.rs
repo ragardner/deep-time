@@ -54,8 +54,8 @@ impl Dt {
     /// This returns how much a physical clock has gained or lost time compared
     /// with coordinate time between `start` and `end`.
     ///
-    /// A positive result means the onboard clock ran fast.
-    /// A negative result means the onboard clock ran slow.
+    /// - A positive result means the onboard clock ran fast.
+    /// - A negative result means the onboard clock ran slow.
     ///
     /// # Parameters
     ///
