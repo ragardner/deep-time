@@ -698,7 +698,12 @@ impl ObserverState {
     ///   relativistic effects.
     /// - For high-precision work during deep solar conjunctions, consider using
     ///   a numerically integrated or impact-parameter-based Shapiro model instead.
-    const fn shapiro_one_way_delay(shapiro: Dt, r_tx: Real, r_rx: Real, r_sep: Real) -> Dt {
+    pub(crate) const fn shapiro_one_way_delay(
+        shapiro: Dt,
+        r_tx: Real,
+        r_rx: Real,
+        r_sep: Real,
+    ) -> Dt {
         let shapiro_sec = shapiro.to_sec_f();
 
         if r_tx <= f!(0.0) || r_rx <= f!(0.0) || r_sep <= f!(0.0) || shapiro_sec == f!(0.0) {
@@ -724,8 +729,8 @@ impl ObserverState {
     /// Computes only the differential clock-rate correction between `self`
     /// (transmitter) and `rx` (receiver). Does **not** include any Shapiro delay.
     ///
-    /// This is an internal helper used by `one_way_relativistic_delay`.
-    const fn compute_differential_clock_correction(&self, rx: ObserverState) -> Dt {
+    /// Internal helper.
+    pub const fn compute_differential_clock_correction(&self, rx: ObserverState) -> Dt {
         let span = rx.time.to_diff_raw(self.time);
 
         let tx_drift = Drift::from_velocity_potential_and_scale(
