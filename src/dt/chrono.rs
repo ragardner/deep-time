@@ -1,5 +1,16 @@
-use crate::{Dt, Scale, clamp_i128_to_i64, clamp_i128_to_u64};
+use crate::{Dt, Scale, clamp_i128_to_i64};
 use chrono::{DateTime, Datelike, Duration, TimeDelta, Timelike, Utc};
+
+/// Clamps an `i128` to the representable range of `u64`.
+fn clamp_i128_to_u64(x: i128) -> u64 {
+    if x > u64::MAX as i128 {
+        u64::MAX
+    } else if x < u64::MIN as i128 {
+        u64::MIN
+    } else {
+        x as u64
+    }
+}
 
 impl Dt {
     /// Creates a `Dt` from a `chrono::DateTime<chrono::Utc>`.
