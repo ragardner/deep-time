@@ -13,6 +13,17 @@ pub enum Separator {
     Semicolon,
 }
 
+/// Body Orientation Parameters Format.
+///
+/// Formats to provide to the parser, including a
+/// custom one to allow specific column indices.
+///
+/// - `Finals2000A` such as is available from
+///   https://maia.usno.navy.mil/ser7/finals2000A.all
+/// - `C04` such as is available from
+///   https://datacenter.iers.org/data/latestVersion/EOP_20u24_C04_one_file_1962-now.txt
+/// - `Custom` so you can provide your own specific column indices
+///   using [`BopColumns`].
 #[derive(Debug, Clone, Copy, Default)]
 pub enum BopFormat {
     /// finals2000A.all / finals.all.iau2000.txt style files
@@ -24,6 +35,7 @@ pub enum BopFormat {
     Custom(BopColumns),
 }
 
+/// For use with [`BopFormat`].
 #[derive(Debug, Clone, Copy)]
 pub struct BopColumns {
     pub mjd: usize,
@@ -36,6 +48,11 @@ pub struct BopDataRow {
     pub offset: Real,
 }
 
+/// Container for Body Orientation Parameters data.
+///
+/// - On Earth this would enable time scale conversions to and from
+///   the **UT1 time scale**.
+/// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
 #[derive(Debug, Clone)]
 pub struct BopData {
     rows: Vec<BopDataRow>,
@@ -248,6 +265,7 @@ impl BopData {
     }
 
     /// Returns the offset (seconds) via linear interpolation at the given MJD.
+    ///
     /// Returns `None` if the MJD is completely outside the loaded table.
     pub fn offset(&self, mjd: Real) -> Option<Real> {
         if self.rows.is_empty() {
