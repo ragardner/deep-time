@@ -23,7 +23,7 @@ pub enum Separator {
 /// - `C04` such as is available from
 ///   https://datacenter.iers.org/data/latestVersion/EOP_20u24_C04_one_file_1962-now.txt
 /// - `Custom` so you can provide your own specific column indices
-///   using [`BopColumns`].
+///   using [`CustomBopCols`].
 #[derive(Debug, Clone, Copy, Default)]
 pub enum BopFormat {
     /// finals2000A.all / finals.all.iau2000.txt style files
@@ -32,20 +32,27 @@ pub enum BopFormat {
     /// C04 long-term series
     C04,
     /// User-defined column indices (0-based)
-    Custom(BopColumns),
+    Custom(CustomBopCols),
 }
 
 /// For use with [`BopFormat`].
 #[derive(Debug, Clone, Copy)]
-pub struct BopColumns {
+pub struct CustomBopCols {
     pub mjd: usize,
     pub offset: usize,
+    pub pm_x: Option<usize>,
+    pub pm_y: Option<usize>,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct BopDataRow {
     pub mjd: Real,
+    /// e.g. UT1-UTC(s)
     pub offset: Real,
+    /// polar motion x (arcsec)
+    pub pm_x: Real,
+    /// polar motion y (arcsec)
+    pub pm_y: Real,
 }
 
 /// Container for Body Orientation Parameters data.
@@ -144,16 +151,20 @@ impl BopData {
             return None;
         }
 
-        let (mjd, offset) = match format {
+        let (mjd, offset, pm_x, pm_y) = match format {
             BopFormat::Finals2000A => {
                 let mjd_idx = parts.iter().position(|p| {
                     p.contains('.') && p.parse::<Real>().map_or(false, |v| v > 30000.0)
                 })?;
+
                 let mut flag_count = 0;
                 let mut offset_value: Option<Real> = None;
+                let mut pm_x_val: Real = 0.0;
+                let mut pm_y_val: Real = 0.0;
 
                 for i in (mjd_idx + 1)..parts.len() {
                     let token = parts[i];
+
                     let is_flag = token == "I"
                         || token == "P"
                         || token.starts_with("I-")
@@ -161,6 +172,16 @@ impl BopData {
 
                     if is_flag {
                         flag_count += 1;
+
+                        if flag_count == 1 {
+                            // After first flag: x_p and y_p
+                            if let (Some(x_str), Some(y_str)) = (parts.get(i + 1), parts.get(i + 3))
+                            {
+                                pm_x_val = x_str.parse::<Real>().unwrap_or(0.0);
+                                pm_y_val = y_str.parse::<Real>().unwrap_or(0.0);
+                            }
+                        }
+
                         if flag_count == 2 {
                             let value_str = if token.starts_with("I-") || token.starts_with("P-") {
                                 &token[1..]
@@ -179,31 +200,59 @@ impl BopData {
 
                 let offset = offset_value?;
                 let mjd_val = parts[mjd_idx].parse::<Real>().ok()?;
-                (Some(mjd_val), Some(offset))
+
+                (mjd_val, offset, pm_x_val, pm_y_val)
             }
 
             BopFormat::C04 => {
-                let (mjd_str, offset_str) = (parts.get(4)?, parts.get(7)?);
-                let mjd = mjd_str.parse::<Real>().ok()?;
-                let offset = offset_str.parse::<Real>().ok()?;
-                (Some(mjd), Some(offset))
+                let mjd = parts.get(4)?.parse::<Real>().ok()?;
+                let pm_x = parts
+                    .get(5)
+                    .unwrap_or_else(|| &"0.0")
+                    .parse::<Real>()
+                    .unwrap_or(0.0);
+                let pm_y = parts
+                    .get(6)
+                    .unwrap_or_else(|| &"0.0")
+                    .parse::<Real>()
+                    .unwrap_or(0.0);
+                let offset = parts.get(7)?.parse::<Real>().ok()?;
+                (mjd, offset, pm_x, pm_y)
             }
 
             BopFormat::Custom(cols) => {
-                let (mjd_str, offset_str) = (parts.get(cols.mjd)?, parts.get(cols.offset)?);
-                let mjd = mjd_str.parse::<Real>().ok()?;
-                let offset = offset_str.parse::<Real>().ok()?;
-                (Some(mjd), Some(offset))
+                let mjd = parts.get(cols.mjd)?.parse::<Real>().ok()?;
+                let offset = parts.get(cols.offset)?.parse::<Real>().ok()?;
+                let pm_x = if let Some(pm_x_col) = cols.pm_x {
+                    parts
+                        .get(pm_x_col)
+                        .unwrap_or_else(|| &"0.0")
+                        .parse::<Real>()
+                        .ok()
+                        .unwrap_or(0.0)
+                } else {
+                    0.0
+                };
+                let pm_y = if let Some(pm_y_col) = cols.pm_y {
+                    parts
+                        .get(pm_y_col)
+                        .unwrap_or_else(|| &"0.0")
+                        .parse::<Real>()
+                        .ok()
+                        .unwrap_or(0.0)
+                } else {
+                    0.0
+                };
+                (mjd, offset, pm_x, pm_y)
             }
         };
 
-        match (mjd, offset) {
-            (Some(mjd_val), Some(offset_val)) => Some(BopDataRow {
-                mjd: mjd_val,
-                offset: offset_val,
-            }),
-            _ => None,
-        }
+        Some(BopDataRow {
+            mjd,
+            offset,
+            pm_x,
+            pm_y,
+        })
     }
 
     fn parse_lines<'a>(
@@ -264,10 +313,12 @@ impl BopData {
         Ok(Self { rows })
     }
 
-    /// Returns the offset (seconds) via linear interpolation at the given MJD.
+    /// Returns all interpolated orientation parameters (offset + polar motion)
+    /// at the given MJD.
     ///
-    /// Returns `None` if the MJD is completely outside the loaded table.
-    pub fn offset(&self, mjd: Real) -> Option<Real> {
+    /// Returns `None` if the table is empty or the MJD is completely outside
+    /// the loaded data.
+    pub fn params(&self, mjd: Real) -> Option<BopParams> {
         if self.rows.is_empty() {
             return None;
         }
@@ -279,10 +330,20 @@ impl BopData {
             Ok(i) => i,
             Err(i) => {
                 if i == 0 {
-                    return Some(self.rows[0].offset);
+                    let row = &self.rows[0];
+                    return Some(BopParams {
+                        offset: row.offset,
+                        pm_x: row.pm_x,
+                        pm_y: row.pm_y,
+                    });
                 }
                 if i >= self.rows.len() {
-                    return Some(self.rows[self.rows.len() - 1].offset);
+                    let row = &self.rows[self.rows.len() - 1];
+                    return Some(BopParams {
+                        offset: row.offset,
+                        pm_x: row.pm_x,
+                        pm_y: row.pm_y,
+                    });
                 }
                 i - 1
             }
@@ -293,24 +354,47 @@ impl BopData {
             let e1 = &self.rows[idx + 1];
 
             let t = (mjd - e0.mjd) / (e1.mjd - e0.mjd);
-            let delta = e1.offset - e0.offset;
-            // delta -= delta.round();
-            Some(e0.offset + t * delta)
+
+            let offset = e0.offset + t * (e1.offset - e0.offset);
+            let pm_x = e0.pm_x + t * (e1.pm_x - e0.pm_x);
+            let pm_y = e0.pm_y + t * (e1.pm_y - e0.pm_y);
+
+            Some(BopParams { offset, pm_x, pm_y })
         } else {
-            Some(self.rows[idx].offset)
+            let row = &self.rows[idx];
+            Some(BopParams {
+                offset: row.offset,
+                pm_x: row.pm_x,
+                pm_y: row.pm_y,
+            })
         }
     }
 }
 
+/// Interpolated Body Orientation Parameters at a specific MJD.
+///
+/// Contains everything needed for high-precision sidereal time
+/// and polar-motion corrections.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct BopParams {
+    /// Value in **seconds** e.g. UT1 − UTC offset
+    pub offset: Real,
+    /// Polar motion x-coordinate in **arcseconds**
+    pub pm_x: Real,
+    /// Polar motion y-coordinate in **arcseconds**
+    pub pm_y: Real,
+}
+
 impl Dt {
-    /// Get the orientation parameters offset in seconds for a particular Modified Julian Date.
+    /// Get an orientation parameters offset in seconds for a particular Modified Julian Date.
     ///
     /// - On Earth this would be the UT1 time scale.
     /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
     pub fn orientation_offset(mjd: Real, op_data: &BopData) -> Result<Real, DtErr> {
         let offset = op_data
-            .offset(mjd)
-            .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?;
+            .params(mjd)
+            .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?
+            .offset;
         Ok(offset)
     }
 
@@ -340,10 +424,11 @@ impl Dt {
         for _ in 0..16 {
             let mjd = guess.to_mjd_f();
             let offset = op_data
-                .offset(mjd)
-                .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?;
+                .params(mjd)
+                .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?
+                .offset;
 
-            guess = self.sub(Dt::from_sec_f(offset));
+            guess = self.sub(Dt::from_sec_f(offset)); // TODO: guess or self?
         }
 
         Ok(guess)

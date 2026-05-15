@@ -19,8 +19,9 @@ mod tests {
 
         // Verify the parser + provider correctly read that row
         let dut1 = provider
-            .offset(mjd)
-            .expect("MJD 56879.00 should be in range");
+            .params(mjd)
+            .expect("MJD 56879.00 should be in range")
+            .offset;
         assert_eq!(
             dut1, dut1_expected,
             "provider.offset(56879.0) should be ≈ -0.3170554, got {dut1}"
@@ -71,8 +72,9 @@ mod tests {
 
         // 1. Verify the parser + lookup gives the correct DUT1
         let dut1 = provider
-            .offset(mjd)
-            .expect("MJD 60961.00 should be inside the loaded EOP table");
+            .params(mjd)
+            .expect("MJD 60961.00 should be inside the loaded EOP table")
+            .offset;
 
         assert_eq!(
             dut1, dut1_expected,
@@ -119,8 +121,9 @@ mod tests {
 
         // 1. Test the provider directly (this is what a user would do)
         let dut1 = provider
-            .offset(mjd)
-            .expect("MJD 57259 should be in the C04 table");
+            .params(mjd)
+            .expect("MJD 57259 should be in the C04 table")
+            .offset;
 
         assert_eq!(
             dut1, dut1_expected,

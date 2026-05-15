@@ -77,6 +77,9 @@ pub fn to_fs(attos: i128) -> i128 {
 #[cfg(feature = "parse")]
 mod alloc_parse;
 
+#[cfg(feature = "sidereal")]
+mod sidereal;
+
 // _________________________________________
 // MOD
 // _________________________________________
@@ -106,9 +109,6 @@ pub mod utils;
 // _________________________________________
 // FEATURE PUB MOD
 // _________________________________________
-#[cfg(feature = "sidereal")]
-pub mod sidereal;
-
 #[cfg(feature = "bop")]
 pub mod bop;
 
@@ -135,6 +135,9 @@ pub use alloc_parse::types::{DateOrder, DateParseMode, Lang, ParseCfg};
 
 #[cfg(feature = "wire")]
 pub use an_err::{WireErr, WireLocation};
+
+#[cfg(feature = "sidereal")]
+pub use sidereal::Sidereal;
 
 // _________________________________________
 // PUB USE
