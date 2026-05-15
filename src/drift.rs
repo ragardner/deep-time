@@ -295,9 +295,6 @@ impl Spacetime {
     /// \]
     ///
     /// This is the inverse of [`Spacetime::alpha_from_weak_field_potential`].
-    /// It is primarily useful for tests, legacy ephemeris data, or when
-    /// converting previously-computed α values into the form required by
-    /// [`TrajectorySample`].
     #[inline]
     pub const fn grav_potential_from_alpha(alpha: Real) -> Real {
         let alpha_sq = alpha * alpha;

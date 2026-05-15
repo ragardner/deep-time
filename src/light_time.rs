@@ -1,9 +1,3 @@
-//! Relativistic time and light-time primitives.
-//!
-//! Provides types and methods for proper time rates, differential clock
-//! corrections, and gravitational (Shapiro) delays used in deep-space
-//! navigation and radio science.
-
 use crate::{
     C, C_SQUARED, Drift, Dt, Position, Real, Spacetime, TWO_GM_SUN_OVER_C3, Velocity, log,
 };

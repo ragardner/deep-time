@@ -277,14 +277,14 @@ impl Dt {
         }
     }
 
-    /// Creates a [`Dt`] representing **00:00:00 UTC** on the given proleptic Gregorian date.
+    /// Creates a [`Dt`] representing midnight **00:00:00 UTC** on the given proleptic Gregorian date.
     #[inline]
     pub const fn from_ymd(yr: i64, mo: u8, day: u8) -> Self {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
         Self::from_diff_and_scale(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, Scale::UTC)
     }
 
-    /// Creates a [`Dt`] representing **00:00:00 on the given [`Scale`]** on the given proleptic Gregorian date.
+    /// Creates a [`Dt`] representing midnight **00:00:00 on the given [`Scale`]** on the given proleptic Gregorian date.
     #[inline]
     pub const fn from_ymd_on(yr: i64, mo: u8, day: u8, scale: Scale) -> Self {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);

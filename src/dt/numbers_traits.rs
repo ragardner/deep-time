@@ -12,7 +12,18 @@ use crate::{
     ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, SEC_PER_DAY, SEC_PER_DAY_F, SEC_PER_DAYI64, Scale,
 };
 
-pub trait AttosUnits: Copy + Sized {
+/// Trait that adds ergonomic conversions from attoseconds values
+/// for i64, i128, and f64.
+///
+/// ## Example:
+///
+/// ```
+/// use deep_time::AttosTraits;
+///
+/// let attos: i128 = 5;
+/// let seconds = attos.attos_to_sec();
+/// ```
+pub trait AttosTraits: Copy + Sized {
     /// attoseconds → seconds (s)
     fn attos_to_sec(self) -> i64;
 
@@ -35,7 +46,7 @@ pub trait AttosUnits: Copy + Sized {
     fn attos_to_sec_f(self) -> f64;
 }
 
-impl AttosUnits for i128 {
+impl AttosTraits for i128 {
     #[inline]
     fn attos_to_sec_f(self) -> f64 {
         self as f64 / ATTOS_PER_SECF
@@ -74,8 +85,13 @@ impl AttosUnits for i128 {
 
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
-/// Import it explicitly to create `Dt`s directly from rust ints and floats:
-/// `use deep_time::TimeTraits;`
+/// ## Example:
+///
+/// ```
+/// use deep_time::TimeTraits;
+///
+/// let dt = 5.days();
+/// ```
 pub trait TimeTraits: Copy + Sized {
     // ── Dt constructors ─────────────────────────────────────
     fn ns(self) -> Dt;

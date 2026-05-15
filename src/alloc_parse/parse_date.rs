@@ -217,6 +217,16 @@ impl Dt {
         Err(an_err!(DtErrKind::InvalidInput, "{}", s))
     }
 
+    /// Same parsing logic as `Dt::from_str`, but returns attoseconds since
+    /// the library epoch: 2000-01-01 12:00:00 UTC (on the UTC scale).
+    ///
+    /// Returns `Some(attos)` on success (negative for pre-2000 dates) or `None`
+    /// on any parse error.
+    #[inline]
+    pub fn str_to_attos(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+        Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_attos())
+    }
+
     /// Same parsing logic as `Dt::from_str`, but returns milliseconds since
     /// the library epoch: 2000-01-01 12:00:00 UTC (on the UTC scale).
     ///

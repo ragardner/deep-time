@@ -1,15 +1,16 @@
-#[cfg(feature = "ut1-tests")]
+#[cfg(feature = "bop-tests")]
 #[cfg(test)]
 mod tests {
+    use deep_time::bop::{BopData, BopFormat, Separator};
     use deep_time::constants::{ATTOS_PER_DAY, SEC_PER_DAY_F};
-    use deep_time::{Dt, Scale, Separator, Ut1Data, Ut1Format};
+    use deep_time::{Dt, Scale};
 
     #[test]
     fn test_ut1_with_finals_all_iau2000_txt() {
         // CHANGE THIS PATH to the actual location of your finals2000A.all (or finals.all) file
         let path = "finals.all.iau2000.txt";
 
-        let provider = Ut1Data::from_text_file(path, Ut1Format::Finals2000A, Separator::Whitespace)
+        let provider = BopData::from_text_file(path, BopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load real EOP file");
 
         // The exact row you gave us: MJD 56879.00 → DUT1 = -0.3170554
@@ -18,18 +19,18 @@ mod tests {
 
         // Verify the parser + provider correctly read that row
         let dut1 = provider
-            .ut1_minus_utc(mjd)
+            .offset(mjd)
             .expect("MJD 56879.00 should be in range");
-        assert!(
-            (dut1 - dut1_expected).abs() < 1e-9,
-            "provider.ut1_minus_utc(56879.0) should be ≈ -0.3170554, got {dut1}"
+        assert_eq!(
+            dut1, dut1_expected,
+            "provider.offset(56879.0) should be ≈ -0.3170554, got {dut1}"
         );
 
-        // Create a UTC Dt at exactly that MJD (midnight)
+        // Create a Dt at exactly that MJD (midnight)
         let utc = Dt::from_mjd(56879, 0, Scale::TAI);
 
         // === Test to_ut1 ===
-        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+        let ut1 = utc.to_offset_by_bop(&provider).expect("to_ut1 failed");
 
         // The numerical value of the UT1 Dt is UTC + DUT1.
         // to_diff_raw() computes physical time (via TAI), so we re-interpret
@@ -43,7 +44,7 @@ mod tests {
         );
 
         // === Test from_ut1 (full round-trip) ===
-        let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
+        let back_to_utc = ut1.from_offset_by_bop(&provider).expect("from_ut1 failed");
 
         let roundtrip_diff = utc.to_diff_raw(back_to_utc);
         assert!(
@@ -59,7 +60,7 @@ mod tests {
         // CHANGE THIS PATH if your file lives somewhere else
         let path = "finals2000A.all.txt";
 
-        let provider = Ut1Data::from_text_file(path, Ut1Format::Finals2000A, Separator::Whitespace)
+        let provider = BopData::from_text_file(path, BopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load real EOP file for MJD 60961.00 test");
 
         // The exact row you provided:
@@ -70,20 +71,20 @@ mod tests {
 
         // 1. Verify the parser + lookup gives the correct DUT1
         let dut1 = provider
-            .ut1_minus_utc(mjd)
+            .offset(mjd)
             .expect("MJD 60961.00 should be inside the loaded EOP table");
 
-        assert!(
-            (dut1 - dut1_expected).abs() < 1e-9,
-            "provider.ut1_minus_utc(60961.0) should be ≈ 0.0933562, got {dut1}"
+        assert_eq!(
+            dut1, dut1_expected,
+            "provider.offset(60961.0) should be ≈ 0.0933562, got {dut1}"
         );
 
-        // 2. Create exact UTC Dt at MJD 60961.0 00:00:00 (midnight)
+        // 2. Create exact Dt at MJD 60961.0 00:00:00 (midnight)
         let utc = Dt::from_mjd(60961, 0, Scale::TAI);
 
         // 3. to_ut1 (uses exact MJD path internally)
         let ut1 = utc
-            .to_ut1(&provider)
+            .to_offset_by_bop(&provider)
             .expect("to_ut1 failed for MJD 60961.00");
 
         // Verify the numerical difference is exactly the DUT1 we expect
@@ -95,8 +96,8 @@ mod tests {
             diff.to_sec_f()
         );
 
-        // 4. Round-trip back to UTC using the exact fixed-point iteration version
-        let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
+        // 4. Round-trip back using the exact fixed-point iteration version
+        let back_to_utc = ut1.from_offset_by_bop(&provider).expect("from_ut1 failed");
 
         let roundtrip_diff = utc.to_diff_raw(back_to_utc);
         assert!(
@@ -110,7 +111,7 @@ mod tests {
     fn test_ut1_c04_specific_row_57259() {
         let path = "EOP_20u24_C04_one_file_1962-now.txt"; // ← change to your C04 file
 
-        let provider = Ut1Data::from_text_file(path, Ut1Format::C04, Separator::Whitespace)
+        let provider = BopData::from_text_file(path, BopFormat::C04, Separator::Whitespace)
             .expect("failed to load C04 file");
 
         let mjd = 57259.0;
@@ -118,22 +119,21 @@ mod tests {
 
         // 1. Test the provider directly (this is what a user would do)
         let dut1 = provider
-            .ut1_minus_utc(mjd)
+            .offset(mjd)
             .expect("MJD 57259 should be in the C04 table");
 
-        assert!(
-            (dut1 - dut1_expected).abs() < 1e-9,
+        assert_eq!(
+            dut1, dut1_expected,
             "C04 parser gave wrong DUT1: expected {}, got {}",
-            dut1_expected,
-            dut1
+            dut1_expected, dut1
         );
 
         // 2. Create exact UTC midnight
         let utc = Dt::from_mjd(57259, 0, Scale::UTC);
 
-        // 3. User-style round-trip (the way real code uses it)
-        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
-        let back_to_utc = Dt::from_ut1(ut1, &provider).expect("from_ut1 failed");
+        // 3. User-style round-trip
+        let ut1 = utc.to_offset_by_bop(&provider).expect("to_ut1 failed");
+        let back_to_utc = ut1.from_offset_by_bop(&provider).expect("from_ut1 failed");
 
         // 4. Verify round-trip is exact (within floating-point tolerance)
         let roundtrip_error = utc.to_diff_raw(back_to_utc).to_sec_f();
@@ -147,9 +147,9 @@ mod tests {
     // ============================================================
     // Helper to load a provider (reuses your existing test data)
     // ============================================================
-    fn load_finals2000a() -> Ut1Data {
+    fn load_finals2000a() -> BopData {
         let path = "finals.all.iau2000.txt";
-        Ut1Data::from_text_file(path, Ut1Format::Finals2000A, Separator::Whitespace)
+        BopData::from_text_file(path, BopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load finals2000A.all / finals.all.iau2000.txt")
     }
 
@@ -162,7 +162,7 @@ mod tests {
 
         // Use a known good row (MJD 56879.00, DUT1 ≈ -0.3170554)
         let utc = Dt::from_mjd(56879, 0, Scale::UTC);
-        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+        let ut1 = utc.to_offset_by_bop(&provider).expect("to_ut1 failed");
 
         // Round-trip through JD_UT1
         let (jd_days, frac) = ut1.to_jd();
@@ -189,14 +189,18 @@ mod tests {
         let provider = load_finals2000a();
 
         let original_utc = Dt::from_mjd(60961, 0, Scale::UTC); // known row
-        let ut1 = original_utc.to_ut1(&provider).expect("to_ut1 failed");
+        let ut1 = original_utc
+            .to_offset_by_bop(&provider)
+            .expect("to_ut1 failed");
 
         // Convert to JD in UT1
         let (jd_days, frac) = ut1.to_jd();
 
         // Go back
         let ut1_back = Dt::from_jd(jd_days, frac, Scale::UT1);
-        let utc_back = Dt::from_ut1(ut1_back, &provider).expect("from_ut1 failed");
+        let utc_back = ut1_back
+            .from_offset_by_bop(&provider)
+            .expect("from_ut1 failed");
 
         // Final check: should be extremely close to original UTC
         let error = original_utc.to_diff_raw(utc_back).to_sec_f();
@@ -215,7 +219,7 @@ mod tests {
         let provider = load_finals2000a();
 
         let utc = Dt::from_mjd(57259, 0, Scale::UTC);
-        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+        let ut1 = utc.to_offset_by_bop(&provider).expect("to_ut1 failed");
 
         let (mjd_days, frac) = ut1.to_mjd();
         let roundtrip = Dt::from_mjd(mjd_days, frac, Scale::UT1);
@@ -238,7 +242,7 @@ mod tests {
 
         // Create exact UTC midnight using the modern constructor
         let utc = Dt::from_mjd(56879, 0, Scale::UTC);
-        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+        let ut1 = utc.to_offset_by_bop(&provider).expect("to_ut1 failed");
 
         let (jd_ut1, frac_ut1_attos) = ut1.to_jd();
         let (jd_utc, frac_utc_attos) = utc.to_jd();
@@ -267,7 +271,7 @@ mod tests {
 
         // 12:00:00 UTC on a known day
         let utc = Dt::from_mjd(60961, 12 * 3600, Scale::UTC);
-        let ut1 = utc.to_ut1(&provider).expect("to_ut1 failed");
+        let ut1 = utc.to_offset_by_bop(&provider).expect("to_ut1 failed");
 
         let (jd_days, frac2) = ut1.to_jd();
         let roundtrip = Dt::from_jd(jd_days, frac2, Scale::UT1);

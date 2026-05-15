@@ -41,7 +41,8 @@ alloc = [
     "chrono?/alloc",
 ]
 
-ut1 = ["alloc"]
+sidereal = []
+bop = ["alloc"]
 
 std = [
     "alloc",
@@ -158,4 +159,4 @@ all = [
     "serde",
 ]
 perf-tests = ["parse", "std"]
-ut1-tests = ["ut1", "std"]
+bop-tests = ["bop", "std"]
