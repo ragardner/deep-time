@@ -171,9 +171,8 @@ pub const fn hypot(mut x: Real, mut y: Real) -> Real {
     z * sqrt(ly + lx + hy + hx)
 }
 
-#[cfg(feature = "std")]
-#[cfg(test)]
-mod tests {
+#[cfg(all(test, feature = "std"))]
+mod sqrt_tests {
     use super::sqrt;
     use std::{eprintln, f64, vec, vec::Vec};
 

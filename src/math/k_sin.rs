@@ -8,8 +8,6 @@
 // software is freely granted, provided that this notice
 // is preserved.
 // ====================================================
-//
-// Made const fn friendly
 
 use crate::Real;
 
@@ -21,8 +19,6 @@ const S5: Real = -2.50507602534068634195e-08; /* 0xBE5AE5E6, 0x8A2B9CEB */
 const S6: Real = 1.58969099521155010221e-10; /* 0x3DE5D93A, 0x5ACFD57C */
 
 /// Kernel sin function on ~[-pi/4, pi/4] (except on -0).
-///
-/// Made `const fn` compatible.
 pub(crate) const fn k_sin(x: Real, y: Real, iy: i32) -> Real {
     let z = x * x;
     let w = z * z;

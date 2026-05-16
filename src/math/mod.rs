@@ -1,3 +1,5 @@
+pub mod atan;
+pub mod atan2;
 pub mod cos;
 pub mod floor;
 pub mod k_cos;
@@ -11,6 +13,7 @@ pub mod sin;
 pub mod sqrt;
 pub mod tan;
 
+use atan::*;
 use floor::*;
 use k_cos::*;
 use k_sin::*;

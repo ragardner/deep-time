@@ -20,7 +20,7 @@ fn panic(_info: &PanicInfo) -> ! {
     }
 }
 
-// possibly upgrade to f128 when it's stable
+// maybe one day upgrade to f128 ¯\_(ツ)_/¯
 pub type Real = f64;
 
 #[macro_export]
@@ -125,7 +125,6 @@ pub(crate) use alloc_parse::{
 // _________________________________________
 // CRATE USE
 // _________________________________________
-
 pub(crate) use constants::*;
 pub(crate) use utils::*;
 
@@ -153,7 +152,16 @@ pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use error::{DtErr, DtErrKind};
 pub use gregorian_time::{GregorianTime, YmdHms};
 pub use light_time::ObserverState;
-pub use math::{cos::*, floor::*, log::*, sin::*, sqrt::*, tan::*};
+pub use math::{
+    atan::atan,
+    atan2::atan2,
+    cos::cos,
+    floor::floor_f,
+    log::log,
+    sin::sin,
+    sqrt::{hypot, sqrt},
+    tan::tan,
+};
 pub use position::{Position, Velocity};
 pub use scale::Scale;
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};

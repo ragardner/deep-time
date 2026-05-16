@@ -8,8 +8,6 @@
 // software is freely granted, provided that this notice
 // is preserved.
 // ====================================================
-//
-// Made const fn friendly
 
 use crate::Real;
 
@@ -21,8 +19,6 @@ const C5: Real = 2.08757232129817482790e-09; /* 0x3E21EE9E, 0xBDB4B1C4 */
 const C6: Real = -1.13596475577881948265e-11; /* 0xBDA8FAE9, 0xBE8838D4 */
 
 /// Kernel cos function on [-pi/4, pi/4].
-///
-/// Made `const fn` compatible.
 pub(crate) const fn k_cos(x: Real, y: Real) -> Real {
     let z = x * x;
     let w = z * z;
