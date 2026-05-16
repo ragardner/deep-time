@@ -205,7 +205,7 @@ impl Dt {
 
 #[inline]
 pub const fn get_leap_seconds(dt: &Dt, from_civil: bool) -> LeapInfo {
-    get_leap_seconds_with_table(dt, from_civil, &LEAP_SECS)
+    get_leap_seconds_with_table(dt, from_civil, LEAP_SECS)
 }
 
 pub const fn get_leap_seconds_with_table(

@@ -51,8 +51,7 @@ pub enum Scale {
     /// The periodic term is **not** part of the defining LTC conversion; it is
     /// handled via `ClockModel` / `Drift` when utmost precision is required.
     LTC,
-    ///
-    TCL,
+    TCL, // TODO: add doc
     /// **Custom / user-defined type** – for experimental or mission-specific timescales.
     /// Most powerful when paired with `ClockModel` (self-describing polynomial).
     Custom,
@@ -68,9 +67,9 @@ impl Scale {
     #[inline]
     pub const fn to_ut(&self) -> Self {
         if self.uses_leap_seconds() {
-            return *self;
+            *self
         } else {
-            return Scale::UTC;
+            Scale::UTC
         }
     }
 

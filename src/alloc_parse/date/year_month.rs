@@ -1,4 +1,7 @@
-use crate::{Dt, JD_2000_2_451_545, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Scale, TimeParts};
+use crate::{
+    Dt, JD_2000_2_451_545, MAX_YEAR, MIN_YEAR, SEC_PER_DAYI64, SEC_PER_HALF_DAYI64, Scale,
+    TimeParts,
+};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline]
@@ -13,7 +16,7 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<Dt> {
     let len = bytes.len();
 
     // Parse optional leading sign for the year
-    let (sign, mut pos) = match bytes.get(0) {
+    let (sign, mut pos) = match bytes.first() {
         Some(b'+') => (1i32, 1),
         Some(b'-') => (-1i32, 1),
         _ => (1i32, 0),
@@ -61,7 +64,7 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<Dt> {
     }
 
     year *= sign;
-    if year < crate::MIN_YEAR || year > crate::MAX_YEAR {
+    if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
         return None;
     }
 

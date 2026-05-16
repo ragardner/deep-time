@@ -336,14 +336,12 @@ where
         for i in 0..DEPTH {
             if i < self.len as usize {
                 // 1. Kind as u16
-                let kind_val = self.kinds[i].map_or(0, |k| kind_to_u16(k));
+                let kind_val = self.kinds[i].map_or(0, &kind_to_u16);
                 buf[offset..offset + 2].copy_from_slice(&kind_val.to_le_bytes());
                 offset += 2;
 
                 // 2. Reason
-                let reason = self.reasons[i]
-                    .as_ref()
-                    .unwrap_or_else(|| &AsciiStr::DEFAULT);
+                let reason = self.reasons[i].as_ref().unwrap_or(&AsciiStr::DEFAULT);
                 buf[offset..offset + REASON_LEN].copy_from_slice(&reason.to_wire_bytes());
                 offset += REASON_LEN;
 

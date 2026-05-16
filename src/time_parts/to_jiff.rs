@@ -117,9 +117,7 @@ impl TimeParts {
         // Prefer IANA name if present; otherwise fall back to the custom TimeZone enum.
         if let Some(name) = &self.iana_name {
             match name.as_str() {
-                Ok(s) if !s.is_empty() => {
-                    let _ = bdt.set_iana_time_zone(Some(String::from(s)));
-                }
+                Ok(s) if !s.is_empty() => bdt.set_iana_time_zone(Some(String::from(s))),
                 Ok(_) => {} // empty name — do nothing
                 Err(e) => {
                     return Err(an_err!(
@@ -132,7 +130,7 @@ impl TimeParts {
             }
         } else if let Some(Offset::Fixed(secs)) = self.offset {
             if let Ok(jiff_offset) = JiffOffset::from_seconds(secs) {
-                let _ = bdt.set_offset(Some(jiff_offset));
+                bdt.set_offset(Some(jiff_offset));
             } else {
                 return Err(an_err!(
                     DtErrKind::InvalidTimezoneOffset,
@@ -142,7 +140,7 @@ impl TimeParts {
             }
         } else {
             // Utc / None → treat as UTC
-            let _ = bdt.set_offset(Some(JiffOffset::UTC));
+            bdt.set_offset(Some(JiffOffset::UTC));
         }
 
         Ok(bdt)
@@ -154,21 +152,22 @@ impl TimeParts {
         if let Ok(zoned) = bdt.to_zoned() {
             return Ok(zoned);
         }
-        if let Ok(ts) = bdt.to_timestamp() {
-            if let Ok(zoned) = ts.in_tz("UTC") {
-                return Ok(zoned);
-            }
+        if let Ok(ts) = bdt.to_timestamp()
+            && let Ok(zoned) = ts.in_tz("UTC")
+        {
+            return Ok(zoned);
         }
-        if let Ok(dt) = bdt.to_datetime() {
-            if let Ok(zoned) = dt.in_tz("UTC") {
-                return Ok(zoned);
-            }
+        if let Ok(dt) = bdt.to_datetime()
+            && let Ok(zoned) = dt.in_tz("UTC")
+        {
+            return Ok(zoned);
         }
-        if let Ok(date) = bdt.to_date() {
-            if let Ok(dt) = date.at(0, 0, 0, 0).in_tz("UTC") {
-                return Ok(dt);
-            }
+        if let Ok(date) = bdt.to_date()
+            && let Ok(dt) = date.at(0, 0, 0, 0).in_tz("UTC")
+        {
+            return Ok(dt);
         }
+
         Err(an_err!(
             DtErrKind::InvalidInput,
             "could not convert to jiff zoned"

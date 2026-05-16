@@ -102,7 +102,7 @@ impl StrPTimeFmt {
                     fmt = &fmt[1..];
                 }
 
-                let next = fmt.get(0).copied().unwrap_or(0);
+                let next = fmt.first().copied().unwrap_or(0);
                 if !matches!(next, b'f' | b'N') {
                     return Err(an_err!(DtErrKind::BadFractional, "{}", char::from(next)));
                 }
@@ -186,14 +186,14 @@ impl Dt {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<Dt, DtErr> {
-        Ok(TimeParts::from_str(
+        TimeParts::from_str(
             fmt,
             s,
             inp_can_end_before_fmt,
             fmt_can_end_before_inp,
             allow_partial_date,
         )?
-        .to_time_point()?)
+        .to_time_point()
     }
 
     #[inline]

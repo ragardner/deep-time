@@ -102,7 +102,7 @@ impl Dt {
     ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         if !matches!(n_day, 2 | 3) {
             return Err(an_err!(DtErrKind::InvalidNumber, "n_day: {}", n_day));
-        } else if !matches!(sub_ms_code, 0 | 1 | 2) {
+        } else if !matches!(sub_ms_code, 0..=2) {
             return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
         }
 
@@ -264,8 +264,8 @@ impl Dt {
             let scale = 10u128.pow(decimal_places);
 
             // Round attos to nearest representable value at this precision
-            let frac_scaled = ((gt.attos as u128 * scale + 500_000_000_000_000_000)
-                / 1_000_000_000_000_000_000) as u128;
+            let frac_scaled =
+                (gt.attos as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000;
 
             let mut remaining = frac_scaled;
             for i in (0..n_subsec).rev() {

@@ -1,4 +1,4 @@
-use crate::{DtErrKind, DtErr, Offset, TimeParts, an_err, parser::Parser};
+use crate::{DtErr, DtErrKind, Offset, TimeParts, an_err, parser::Parser};
 
 impl TimeParts {
     pub fn from_str(
@@ -15,9 +15,7 @@ impl TimeParts {
             &mut tm,
             inp_can_end_before_fmt,
         );
-        if let Err(e) = parser.parse() {
-            return Err(e);
-        }
+        parser.parse()?;
         if parser.inp.is_empty() || fmt_can_end_before_inp {
             // All input consumed → finalize
             tm.finish(allow_partial_date)?;

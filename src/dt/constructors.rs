@@ -186,9 +186,9 @@ impl Dt {
         let q = safe_div_euc!(attos, ATTOS_PER_SEC_I128, 0i128);
 
         if q > (i64::MAX as i128) {
-            return Self::MAX;
+            Self::MAX
         } else if q < (i64::MIN as i128) {
-            return Self::MIN;
+            Self::MIN
         } else {
             let r = safe_rem_euc!(attos, ATTOS_PER_SEC_I128, 0i128);
             Self {

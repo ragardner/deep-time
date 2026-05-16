@@ -213,12 +213,12 @@ impl BopData {
                 let mjd = parts.get(4)?.parse::<Real>().ok()?;
                 let pm_x = parts
                     .get(5)
-                    .unwrap_or_else(|| &"0.0")
+                    .unwrap_or(&"0.0")
                     .parse::<Real>()
                     .unwrap_or(0.0);
                 let pm_y = parts
                     .get(6)
-                    .unwrap_or_else(|| &"0.0")
+                    .unwrap_or(&"0.0")
                     .parse::<Real>()
                     .unwrap_or(0.0);
                 let offset = parts.get(7)?.parse::<Real>().ok()?;
@@ -231,7 +231,7 @@ impl BopData {
                 let pm_x = if let Some(pm_x_col) = cols.pm_x {
                     parts
                         .get(pm_x_col)
-                        .unwrap_or_else(|| &"0.0")
+                        .unwrap_or(&"0.0")
                         .parse::<Real>()
                         .ok()
                         .unwrap_or(0.0)
@@ -241,7 +241,7 @@ impl BopData {
                 let pm_y = if let Some(pm_y_col) = cols.pm_y {
                     parts
                         .get(pm_y_col)
-                        .unwrap_or_else(|| &"0.0")
+                        .unwrap_or(&"0.0")
                         .parse::<Real>()
                         .ok()
                         .unwrap_or(0.0)

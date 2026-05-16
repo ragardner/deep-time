@@ -60,7 +60,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             let (flag, width, colons, new_fmt) = Self::parse_format_extensions(self.fmt, 0);
             self.fmt = new_fmt;
 
-            let directive = self.fmt.get(0).copied().unwrap_or(0);
+            let directive = self.fmt.first().copied().unwrap_or(0);
 
             if self.inp.is_empty() {
                 if self.inp_can_end_before_fmt {
@@ -123,7 +123,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                         None
                     };
 
-                    let next: u8 = self.fmt.get(0).copied().unwrap_or(0);
+                    let next: u8 = self.fmt.first().copied().unwrap_or(0);
                     if !matches!(next, b'f' | b'N') {
                         return Err(an_err!(DtErrKind::BadFractional, "{}", char::from(next)));
                     }
@@ -383,7 +383,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "day of year")),
         };
         let day = n as u16;
-        if day < 1 || day > 366 {
+        if !(1..=366).contains(&day) {
             return Err(an_err!(
                 DtErrKind::OutOfRange,
                 "day of year (1..=366): {}",
@@ -805,7 +805,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _width: Option<u8>,
         colons: u8,
     ) -> Result<(), DtErr> {
-        let sign = match self.inp.get(0) {
+        let sign = match self.inp.first() {
             Some(b'+') => 1i32,
             Some(b'-') => -1i32,
             _ => {
@@ -828,15 +828,15 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                     }
                 };
                 total_seconds += minutes * 60;
-                if self.inp.len() >= 2 {
-                    if let Ok(seconds) = self.parse_offset_mm_ss() {
-                        total_seconds += seconds;
-                    }
+                if self.inp.len() >= 2
+                    && let Ok(seconds) = self.parse_offset_mm_ss()
+                {
+                    total_seconds += seconds;
                 }
             }
-            1 | 2 | 3 => {
+            1..=3 => {
                 let minutes_required = colons != 3;
-                if self.inp.get(0) == Some(&b':') {
+                if self.inp.first() == Some(&b':') {
                     self.advance_input();
                     let minutes = match self.parse_offset_mm_ss() {
                         Ok(m) => m,
@@ -845,7 +845,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                         }
                     };
                     total_seconds += minutes * 60;
-                    if self.inp.get(0) == Some(&b':') {
+                    if self.inp.first() == Some(&b':') {
                         self.advance_input();
                         let seconds = match self.parse_offset_mm_ss() {
                             Ok(s) => s,
@@ -1059,9 +1059,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     fn parse_optional_sign(inp: &[u8]) -> (i32, &[u8]) {
-        if let Some(b'-') = inp.get(0) {
+        if let Some(b'-') = inp.first() {
             (-1, &inp[1..])
-        } else if let Some(b'+') = inp.get(0) {
+        } else if let Some(b'+') = inp.first() {
             (1, &inp[1..])
         } else {
             (1, inp)
@@ -1156,7 +1156,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline]
-    fn parse_iana<'a>(inp: &'a [u8]) -> Result<(&'a str, &'a [u8]), ()> {
+    fn parse_iana(inp: &[u8]) -> Result<(&str, &[u8]), ()> {
         let start = inp;
         let mut pos = 0;
 
@@ -1197,7 +1197,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (sign, after_sign) = Self::parse_optional_sign(inp);
         let (n, remaining) =
             Self::parse_padded_number(after_sign, flag, width, default_pad_width, default_flag)?;
-        let mut y = n as i64;
+        let mut y = n;
         if sign < 0 {
             y = -y;
         }

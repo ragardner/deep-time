@@ -1,75 +1,72 @@
 #[cfg(feature = "locale")]
 use crate::locale_prefers_day_first;
-use crate::{ConnectorType, DateClassification, DateToken, DetectedDateOrder};
+use crate::{ConnectorType, DateClassification, DateOrderFirst, DateToken};
 
 /// Returns the most likely **date component ordering** for the input string.
 ///
 /// Research-backed heuristics (confirmed via date parsers, filename conventions,
 /// log formats, DB keys, and ISO practices):
 /// • Pure-numeric compact formats (`YYYYMMDD`, `YYMMDD`, `YYMMDDHHMMSS`, etc.)
-///   are **overwhelmingly** YearFirst in real-world usage (logs, filenames,
-///   databases, APIs, configs). Even two-digit-year versions are YearFirst.
+///   are **overwhelmingly** Year in real-world usage (logs, filenames,
+///   databases, APIs, configs). Even two-digit-year versions are Year.
 /// • 13–31 numeric plausibility is the strongest universal signal.
 /// • Delimited 4-digit year start + plausible range is the next strong signal.
-/// • ISO timestamp markers (`T`, `Z`, zoned/offset) are very reliable YearFirst.
+/// • ISO timestamp markers (`T`, `Z`, zoned/offset) are very reliable Year.
 /// • `/` is deliberately ignored (culturally split).
-/// • Final fallback = cached locale (if enabled) or `DayFirst` (global majority).
+/// • Final fallback = cached locale (if enabled) or `Day` (global majority).
 #[inline]
-pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> DetectedDateOrder {
+pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> DateOrderFirst {
     // ------------------------------------------------------------------
     // 1. Pure-numeric compact formats (the exact case you reported)
-    //    `240314153045` = classic YYMMDDHHMMSS → YearFirst.
-    //    Research confirms: these are almost always YearFirst (sortable,
+    //    `240314153045` = classic YYMMDDHHMMSS → Year.
+    //    Research confirms: these are almost always Year (sortable,
     //    ISO-derived, dominant in logs/filenames/DBs). We special-case
     //    them *before* everything else.
     // ------------------------------------------------------------------
     if class.is_pure_numeric && class.num_digits >= 6 {
-        return DetectedDateOrder::YearFirst;
+        return DateOrderFirst::Year;
     }
 
-    let s = s.trim_start_matches(|c: char| c == '+' || c == '-');
+    let s = s.trim_start_matches(['+', '-']);
 
     // ------------------------------------------------------------------
     // 2. Delimited formats starting with a 4-digit year
     //    (only reached for non-pure-numeric strings)
     // ------------------------------------------------------------------
-    if matches!(class.tokens.first(), Some(DateToken::Digits(n)) if *n >= 4) {
-        if let Some(year_candidate) = s.get(0..4).and_then(|p| p.parse::<u16>().ok()) {
-            if (1900..=2100).contains(&year_candidate) {
-                return DetectedDateOrder::YearFirst;
-            }
-        }
+    if matches!(class.tokens.first(), Some(DateToken::Digits(n)) if *n >= 4)
+        && let Some(year_candidate) = s.get(0..4).and_then(|p| p.parse::<u16>().ok())
+        && (1900..=2100).contains(&year_candidate)
+    {
+        return DateOrderFirst::Year;
     }
 
     // ------------------------------------------------------------------
     // 3. Numeric plausibility check (micro-optimized)
     //    We parse the second number *only* when the first is ambiguous.
     // ------------------------------------------------------------------
-    let mut num_iter = s
-        .split(|c: char| matches!(c, '/' | '-' | '.' | ' ' | 'T'))
-        .filter_map(|p| {
-            let p = p.trim();
-            if p.is_empty() {
-                None
-            } else {
-                p.parse::<u32>().ok()
-            }
-        });
+    let mut num_iter = s.split(['/', '-', '.', ' ', 'T']).filter_map(|p| {
+        let p = p.trim();
+        if p.is_empty() {
+            None
+        } else {
+            p.parse::<u32>().ok()
+        }
+    });
 
     let first = num_iter.next().unwrap_or(0);
 
     if first > 12 && first <= 31 {
-        return DetectedDateOrder::DayFirst;
+        return DateOrderFirst::Day;
     }
 
-    let second = if first >= 1 && first <= 12 {
+    let second = if (1..=12).contains(&first) {
         num_iter.next().unwrap_or(0)
     } else {
         0
     };
 
     if second > 12 && second <= 31 {
-        return DetectedDateOrder::MonthFirst;
+        return DateOrderFirst::Month;
     }
 
     // ------------------------------------------------------------------
@@ -77,7 +74,7 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> De
     // ------------------------------------------------------------------
 
     if class.connector == ConnectorType::UpperT || class.has_offset_or_zone() {
-        return DetectedDateOrder::YearFirst;
+        return DateOrderFirst::Year;
     }
 
     // ------------------------------------------------------------------
@@ -86,13 +83,13 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> De
     #[cfg(feature = "locale")]
     {
         if locale_prefers_day_first() {
-            DetectedDateOrder::DayFirst
+            DateOrderFirst::Day
         } else {
-            DetectedDateOrder::MonthFirst
+            DateOrderFirst::Month
         }
     }
     #[cfg(not(feature = "locale"))]
     {
-        DetectedDateOrder::DayFirst
+        DateOrderFirst::Day
     }
 }

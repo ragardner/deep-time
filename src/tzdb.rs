@@ -544,12 +544,10 @@ pub fn offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo> {
 
     let last_idx = transitions.len() - 1;
     let last_t_utc = transition_utc(transitions, last_idx);
-    if utc_unix > last_t_utc {
-        if let Repeating::Cycle { .. } = repeating {
+    if utc_unix > last_t_utc 
+        && let Repeating::Cycle { .. } = repeating {
             return resolve_far_future_utc(transitions, repeating, utc_unix);
         }
-    }
-
     let t = &transitions[idx];
     Some(OffsetInfo {
         offset: t.offset,

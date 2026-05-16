@@ -64,9 +64,9 @@ pub(crate) fn classify_date(
     if attach_hyphen {
         date_norm.push('-');
     }
-    let mut splitter = SplitKeepWithPos::new(finder, &s);
+    let splitter = SplitKeepWithPos::new(finder, s);
 
-    while let Some((part, _)) = splitter.next() {
+    for (part, _) in splitter {
         if let Some((norm_part, token)) = term_map.get(part) {
             if token.is_relative() {
                 // ── Use the reference time (or fall back to real system time) ──
@@ -98,13 +98,13 @@ pub(crate) fn classify_date(
                     }
                     num_named += 1;
                     tokens.push(*token);
-                    date_norm.push_str(*norm_part);
+                    date_norm.push_str(norm_part);
                 }
                 DateToken::Am | DateToken::Pm => {
                     if currently != IndexIn::PreDate {
                         has_ampm = true;
                         currently = IndexIn::PostDate;
-                        date_norm.push_str(*norm_part);
+                        date_norm.push_str(norm_part);
                     }
                 }
                 DateToken::Iana => {
@@ -117,14 +117,14 @@ pub(crate) fn classify_date(
                                 space_before_offset = true;
                             }
                         }
-                        date_norm.push_str(*norm_part);
+                        date_norm.push_str(norm_part);
                     }
                 }
                 DateToken::W => {
                     if currently != IndexIn::PreDate {
                         has_w = true;
                         tokens.push(DateToken::W);
-                        date_norm.push_str(*norm_part);
+                        date_norm.push_str(norm_part);
                     }
                 }
                 _ => {}
@@ -518,28 +518,28 @@ pub(crate) fn classify_date(
         || (num_named >= 1 && has_time && num_digits >= 10);
 
     Ok(ClassifiedDate::Cls(DateClassification {
-        bytes_len: bytes_len,
+        bytes_len,
         date: date_norm,
-        tokens: tokens,
-        is_pure_numeric: is_pure_numeric,
+        tokens,
+        is_pure_numeric,
         is_decimal: num_dot == 1 && is_pure_numeric,
-        has_year: has_year,
-        num_named: num_named,
-        time: time,
-        connector: connector,
-        offset: offset,
-        has_ampm: has_ampm,
-        has_fractional: has_fractional,
-        has_w: has_w,
-        num_colon: num_colon,
-        num_hyphen: num_hyphen,
-        num_dot: num_dot,
-        num_digits: num_digits,
-        num_date_digits: num_date_digits,
-        num_non_decimal_digits: num_non_decimal_digits,
-        num_date_digit_groups: num_date_digit_groups,
-        space_before_bracket: space_before_bracket,
-        space_before_offset: space_before_offset,
-        year_maybe_on_end: year_maybe_on_end,
+        has_year,
+        num_named,
+        time,
+        connector,
+        offset,
+        has_ampm,
+        has_fractional,
+        has_w,
+        num_colon,
+        num_hyphen,
+        num_dot,
+        num_digits,
+        num_date_digits,
+        num_non_decimal_digits,
+        num_date_digit_groups,
+        space_before_bracket,
+        space_before_offset,
+        year_maybe_on_end,
     }))
 }

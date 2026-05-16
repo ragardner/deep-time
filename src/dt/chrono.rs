@@ -73,6 +73,6 @@ impl Dt {
     ///   (roughly ±292 million years) if the value is out of range.
     #[inline]
     pub fn to_chrono_duration(&self) -> Duration {
-        TimeDelta::nanoseconds(clamp_i128_to_i64(self.to_ns())).into()
+        TimeDelta::nanoseconds(clamp_i128_to_i64(self.to_ns()))
     }
 }

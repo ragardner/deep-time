@@ -6,8 +6,7 @@ use crate::{
 impl Dt {
     /// Returns this [`Dt`] but as a unix timestamp
     /// where the:
-    /// - `.sec` field is seconds since the UNIX epoch
-    /// (1970-01-01 00:00:00).
+    /// - `.sec` field is seconds since the UNIX epoch (1970-01-01 00:00:00).
     /// - `.attos` field is remaining fractional seconds.
     ///
     /// ### Notes:
@@ -195,15 +194,13 @@ impl Dt {
         let y100 = floor_div(y, 100);
         let y400 = floor_div(y, 400);
 
-        let result = (day as i64)
+        (day as i64)
             .saturating_add((153i64 * m + 2) / 5)
             .saturating_add(365i64 * y)
             .saturating_add(y4)
             .saturating_sub(y100)
             .saturating_add(y400)
-            .saturating_sub(32045);
-
-        result
+            .saturating_sub(32045)
     }
 
     /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.
@@ -542,7 +539,7 @@ impl Dt {
 
         let iso_year = if week == 0 {
             year - 1
-        } else if (week == 53 || week > 53) && !Self::has_iso_week_53(year) {
+        } else if week >= 53 && !Self::has_iso_week_53(year) {
             year + 1
         } else {
             year
@@ -554,9 +551,7 @@ impl Dt {
             } else {
                 52
             }
-        } else if week == 53 && !Self::has_iso_week_53(year) {
-            1
-        } else if week > 53 {
+        } else if (week == 53 && !Self::has_iso_week_53(year)) || week > 53 {
             1
         } else {
             week

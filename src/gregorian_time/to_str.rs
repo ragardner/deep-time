@@ -100,12 +100,11 @@ impl GregorianTime {
             while i < fmt.len() && fmt[i].is_ascii_digit() {
                 i += 1;
             }
-            if i > width_start {
-                if let Ok(s) = core::str::from_utf8(&fmt[width_start..i]) {
-                    if let Ok(w) = s.parse::<u8>() {
-                        width = Some(w);
-                    }
-                }
+            if i > width_start
+                && let Ok(s) = core::str::from_utf8(&fmt[width_start..i])
+                && let Ok(w) = s.parse::<u8>()
+            {
+                width = Some(w);
             }
 
             // ── Parse optional colons (: :: :::) ───────────────────
@@ -129,14 +128,12 @@ impl GregorianTime {
                 while i < fmt.len() && fmt[i].is_ascii_digit() {
                     i += 1;
                 }
-                if i > frac_start {
-                    if let Ok(s) = core::str::from_utf8(&fmt[frac_start..i]) {
-                        if let Ok(w) = s.parse::<u8>() {
-                            frac_width = Some(w);
-                        }
-                    }
+                if i > frac_start
+                    && let Ok(s) = core::str::from_utf8(&fmt[frac_start..i])
+                    && let Ok(w) = s.parse::<u8>()
+                {
+                    frac_width = Some(w);
                 }
-
                 if i >= fmt.len() {
                     return Err(an_err!(DtErrKind::BadFractional, "expected f or N after ."));
                 }

@@ -100,7 +100,7 @@ impl Dt {
                     sec: self.leap_seconds(false).offset,
                     attos: 0,
                 });
-                if let Some(offset) = historical_sofa_offset_for_non_adjusted(&self) {
+                if let Some(offset) = historical_sofa_offset_for_non_adjusted(self) {
                     sofa.sub(Dt::from_sec_f(offset))
                 } else {
                     sofa

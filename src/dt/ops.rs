@@ -135,10 +135,7 @@ impl Dt {
 
     #[inline]
     pub const fn eq(&self, other: &Self) -> bool {
-        match Dt::cmp(self, other) {
-            Ordering::Equal => true,
-            _ => false,
-        }
+        matches!(Dt::cmp(self, other), Ordering::Equal)
     }
 
     /// Returns `true` if this `Dt` is less than the other.

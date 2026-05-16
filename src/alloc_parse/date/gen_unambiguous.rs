@@ -281,7 +281,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
         if class.time.is_none() {
             let mut s = date_part.clone();
             if class.year_maybe_on_end && !b.seen_year {
-                s.push_str(" ");
+                s.push(' ');
                 s.push_str(year_fmt);
             }
             candidates.push(s);
@@ -290,7 +290,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
             let mut s = date_part.clone();
             s.push_str(suffix);
             if class.year_maybe_on_end && !b.seen_year {
-                s.push_str(" ");
+                s.push(' ');
                 s.push_str(year_fmt);
             }
             candidates.push(s);

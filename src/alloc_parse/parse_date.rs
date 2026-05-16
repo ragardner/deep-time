@@ -1,5 +1,5 @@
 use crate::{
-    ClassifiedDate, DateClassification, DateOrder, DateParseMode, DetectedDateOrder, Dt, DtErr,
+    ClassifiedDate, DateClassification, DateOrder, DateOrderFirst, DateParseMode, Dt, DtErr,
     DtErrKind, MAX_DATE_STRING_LEN, ParseCfg, Scale, an_err, classify_date,
     default_date_parse_options, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
@@ -76,7 +76,7 @@ impl Dt {
             match mode {
                 DateParseMode::UnixTimestamp => {
                     if let Some(dt) = parse_pure_numeric_unix_timestamp(
-                        &normalized,
+                        normalized,
                         classification.num_non_decimal_digits as usize,
                     ) {
                         return Ok(dt);
@@ -84,7 +84,7 @@ impl Dt {
                 }
                 _ => {
                     if let Some(dt) = try_pure_numeric(
-                        &normalized,
+                        normalized,
                         classification.num_digits,
                         classification.num_non_decimal_digits,
                         classification.is_decimal,
@@ -96,37 +96,38 @@ impl Dt {
                 }
             }
         }
-        if !classification.has_year {
-            if let Some(dt) = parse_syslog_no_year(&normalized, lang, ref_time) {
-                return Ok(dt);
-            }
+        if !classification.has_year
+            && let Some(dt) = parse_syslog_no_year(normalized, lang, ref_time)
+        {
+            return Ok(dt);
         }
+
         if is_week_date_missing_weekday(&classification) {
             // std::eprintln!("IS WEEK DATE MISSING WEEKDAY: {:?}", s);
             if let Some(dt) = parse_week_date_no_weekday(&classification.date, lang, ref_time) {
                 return Ok(dt);
             }
         }
-        if let Some(dt) = try_unambiguous(&normalized, &classification) {
+        if let Some(dt) = try_unambiguous(normalized, &classification) {
             return Ok(dt);
         }
         // std::eprintln!("done trying unambiguous");
         if let Some(dt) = match date_order {
             DateOrder::Smart => {
-                let order = smart_detect_date_order(&normalized, &classification);
+                let order = smart_detect_date_order(normalized, &classification);
                 let mut result: Option<Dt>;
 
                 match order {
-                    DetectedDateOrder::DayFirst => {
+                    DateOrderFirst::Day => {
                         result = try_compatible_formats(
-                            &normalized,
+                            normalized,
                             generate_ambiguous_day_first_candidates(&classification),
                         );
                         // std::eprintln!("done trying day first: {:?}", result);
 
                         if result.is_none() {
                             result = try_compatible_formats(
-                                &normalized,
+                                normalized,
                                 generate_ambiguous_month_first_candidates(&classification),
                             );
                             // std::eprintln!("done trying month first: {:?}", result);
@@ -134,22 +135,22 @@ impl Dt {
 
                         if result.is_none() {
                             result = try_compatible_formats(
-                                &normalized,
+                                normalized,
                                 generate_ambiguous_year_first_candidates(&classification),
                             );
                             // std::eprintln!("done trying year first: {:?}", result);
                         }
                     }
-                    DetectedDateOrder::MonthFirst => {
+                    DateOrderFirst::Month => {
                         result = try_compatible_formats(
-                            &normalized,
+                            normalized,
                             generate_ambiguous_month_first_candidates(&classification),
                         );
                         // std::eprintln!("done trying month first: {:?}", result);
 
                         if result.is_none() {
                             result = try_compatible_formats(
-                                &normalized,
+                                normalized,
                                 generate_ambiguous_day_first_candidates(&classification),
                             );
                             // std::eprintln!("done trying day first: {:?}", result);
@@ -157,22 +158,22 @@ impl Dt {
 
                         if result.is_none() {
                             result = try_compatible_formats(
-                                &normalized,
+                                normalized,
                                 generate_ambiguous_year_first_candidates(&classification),
                             );
                             // std::eprintln!("done trying year first: {:?}", result);
                         }
                     }
-                    DetectedDateOrder::YearFirst => {
+                    DateOrderFirst::Year => {
                         result = try_compatible_formats(
-                            &normalized,
+                            normalized,
                             generate_ambiguous_year_first_candidates(&classification),
                         );
                         // std::eprintln!("done trying year first: {:?}", result);
 
                         if result.is_none() {
                             result = try_compatible_formats(
-                                &normalized,
+                                normalized,
                                 generate_ambiguous_day_first_candidates(&classification),
                             );
                             // std::eprintln!("done trying day first: {:?}", result);
@@ -180,7 +181,7 @@ impl Dt {
 
                         if result.is_none() {
                             result = try_compatible_formats(
-                                &normalized,
+                                normalized,
                                 generate_ambiguous_month_first_candidates(&classification),
                             );
                             // std::eprintln!("done trying month first: {:?}", result);
@@ -190,29 +191,30 @@ impl Dt {
 
                 result
             }
-            DateOrder::YearFirst => try_compatible_formats(
-                &normalized,
+            DateOrder::Year => try_compatible_formats(
+                normalized,
                 generate_ambiguous_year_first_candidates(&classification),
             ),
-            DateOrder::DayFirst => try_compatible_formats(
-                &normalized,
+            DateOrder::Day => try_compatible_formats(
+                normalized,
                 generate_ambiguous_day_first_candidates(&classification),
             ),
-            DateOrder::MonthFirst => try_compatible_formats(
-                &normalized,
+            DateOrder::Month => try_compatible_formats(
+                normalized,
                 generate_ambiguous_month_first_candidates(&classification),
             ),
         } {
             return Ok(dt);
         }
         // std::eprintln!("NOW trying numeric timestamp");
-        if classification.is_pure_numeric && mode != DateParseMode::UnixTimestamp {
-            if let Some(dt) = parse_pure_numeric_unix_timestamp(
-                &normalized,
+        if classification.is_pure_numeric
+            && mode != DateParseMode::UnixTimestamp
+            && let Some(dt) = parse_pure_numeric_unix_timestamp(
+                normalized,
                 classification.num_non_decimal_digits as usize,
-            ) {
-                return Ok(dt);
-            }
+            )
+        {
+            return Ok(dt);
         }
         Err(an_err!(DtErrKind::InvalidInput, "{}", s))
     }
@@ -256,7 +258,7 @@ impl Dt {
 /// The `fmt` we get from the iterator is still `'static`, but it coerces automatically
 /// to `&str`, so everything continues to work.
 #[inline]
-pub(crate) fn try_compatible_formats<'a, I>(s: &str, formats: I) -> Option<Dt>
+pub(crate) fn try_compatible_formats<I>(s: &str, formats: I) -> Option<Dt>
 where
     I: IntoIterator<Item = String>,
 {
@@ -267,10 +269,10 @@ where
 
 #[inline]
 pub(crate) fn try_unambiguous(s: &str, classification: &DateClassification) -> Option<Dt> {
-    if matches!(classification.bytes_len, 6 | 7 | 8) {
-        if let Some(dt) = parse_yyyy_mm(&s.as_bytes()) {
-            return Some(dt);
-        }
+    if matches!(classification.bytes_len, 6..=8)
+        && let Some(dt) = parse_yyyy_mm(s.as_bytes())
+    {
+        return Some(dt);
     }
-    try_compatible_formats(s, generate_unambiguous_candidates(&classification))
+    try_compatible_formats(s, generate_unambiguous_candidates(classification))
 }

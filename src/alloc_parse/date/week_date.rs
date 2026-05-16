@@ -1,5 +1,5 @@
 use crate::{
-    ClassifiedDate, DateClassification, DateToken, Lang, Dt, classify_date,
+    ClassifiedDate, DateClassification, DateToken, Dt, Lang, classify_date,
     generate_unambiguous_candidates, try_compatible_formats,
 };
 use alloc::string::ToString;
@@ -21,10 +21,7 @@ pub(crate) fn parse_week_date_no_weekday(
 ) -> Option<Dt> {
     // Insert "-1" (Monday) right after the week number.
     // This works whether the string is pure date or date+time.
-    let Some(w_pos) = normalized.find("-W") else {
-        return None;
-    };
-
+    let w_pos = normalized.find("-W")?;
     let mut normalized = normalized.to_string();
     let week_end = w_pos + 4; // after "-W" + 2 week digits
     if week_end <= normalized.len() {

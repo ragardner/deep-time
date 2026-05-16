@@ -11,7 +11,7 @@ impl TimeParts {
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
-            let sec = (unix_secs as i64) - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
+            let sec = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
             let subsec = self.attos.unwrap_or(0);
             return Ok(Dt::from(sec, subsec, Scale::UTC));
         }
@@ -119,7 +119,7 @@ impl TimeParts {
                     Some(info) => {
                         if info.is_gap {
                             // Non-existent time (spring-forward gap) — shift forward
-                            sec_utc += info.gap_size as i64; // shift local time into the valid post-gap period
+                            sec_utc += info.gap_size; // shift local time into the valid post-gap period
                             sec_utc -= info.offset as i64; // apply the post-jump offset
                         } else {
                             sec_utc -= info.offset as i64;

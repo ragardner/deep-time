@@ -37,14 +37,14 @@ pub(crate) fn locale_prefers_day_first() -> bool {
                 let lower = locale.to_ascii_lowercase();
 
                 // If the locale starts with any of the month-first entries
-                // → we want MonthFirst, so return `false`
+                // → we want Month, so return `false`
                 if MONTH_FIRST_LOCALES.iter().any(|&m| lower.starts_with(m)) {
                     false
                 } else {
-                    true // DayFirst (default for the rest of the world)
+                    true // Day (default for the rest of the world)
                 }
             })
-            .unwrap_or(true) // fallback: DayFirst
+            .unwrap_or(true) // fallback: Day
     })
 }
 

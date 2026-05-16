@@ -162,7 +162,12 @@ perf-tests = ["parse", "std"]
 bop-tests = ["bop", "std"]
 
 [lints.clippy]
-indexing_slicing = "allow"
-unwrap_used      = "deny"
-expect_used      = "deny"
-panic            = "deny"
+non_canonical_partial_ord_impl = "allow"
+wrong_self_convention          = "allow"
+excessive_precision            = "allow"
+indexing_slicing               = "allow"
+too_many_arguments             = "allow"
+result_unit_err                = "allow"
+unwrap_used                    = "deny"
+expect_used                    = "deny"
+panic                          = "deny"

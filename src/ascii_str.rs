@@ -89,6 +89,12 @@ impl fmt::Display for AsciiStrError {
     }
 }
 
+impl<const N: usize> Default for AsciiStr<N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<const N: usize> AsciiStr<N> {
     /// Creates a new empty `AsciiStr` (all bytes zero).
     pub const fn new() -> Self {
@@ -164,10 +170,10 @@ impl<const N: usize> AsciiStr<N> {
             return Err(AsciiStrError::InvalidAscii);
         }
 
-        if let Some(first_nul) = buffer.iter().position(|&b| b == 0) {
-            if buffer[first_nul..].iter().any(|&b| b != 0) {
-                return Err(AsciiStrError::CorruptedData);
-            }
+        if let Some(first_nul) = buffer.iter().position(|&b| b == 0)
+            && buffer[first_nul..].iter().any(|&b| b != 0)
+        {
+            return Err(AsciiStrError::CorruptedData);
         }
 
         Ok(Self { bytes: buffer })

@@ -24,12 +24,11 @@ impl Dt {
         let seconds = clamp_i128_to_i64(total_nanos.div_euclid(1_000_000_000));
         let nanoseconds = clamp_i128_to_i64(total_nanos.rem_euclid(1_000_000_000));
 
-        if let Ok(base) = Span::new().try_seconds(seconds) {
-            if let Ok(span) = base.try_nanoseconds(nanoseconds) {
-                return span;
-            }
+        if let Ok(base) = Span::new().try_seconds(seconds)
+            && let Ok(span) = base.try_nanoseconds(nanoseconds)
+        {
+            return span;
         }
-
         // Saturate to Jiff's Span limits
         if total_nanos >= 0 {
             Span::new()

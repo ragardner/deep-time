@@ -202,20 +202,20 @@ pub(crate) fn natural_duration_to_span(
         rest.trim_start()
             .chars()
             .next()
-            .map_or(false, |c| c.is_numeric() || c == '.' || c.is_whitespace())
+            .is_some_and(|c| c.is_numeric() || c == '.' || c.is_whitespace())
     } else {
         false
     };
 
     let mut overall_multiplier: i128 = if overall_negative { -1 } else { 1 };
     let mut part_chars: Vec<char> = Vec::with_capacity(50);
-    let mut splitter = SplitKeepWithPos::new(finder, lower.as_str());
     let mut has_duration = false;
     let mut pending_num: Option<ParsedNumber> = None;
     let mut pending_unit: Option<i128> = None;
     let mut total_nanos: i128 = 0;
+    let splitter = SplitKeepWithPos::new(finder, lower.as_str());
 
-    while let Some((part, _)) = splitter.next() {
+    for (part, _) in splitter {
         if let Some((_, token)) = term_map.get(part) {
             match token {
                 DateToken::Future => overall_multiplier = 1,

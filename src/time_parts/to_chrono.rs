@@ -156,8 +156,9 @@ impl TimeParts {
 
             let utc_dt = DateTime::from_timestamp(secs, subsec_nano)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidNumber, "timestamp: {:?}", secs))?;
-
-            return Ok(utc_dt.with_timezone(&FixedOffset::east_opt(0).unwrap()));
+            let offset = FixedOffset::east_opt(0)
+                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset))?;
+            return Ok(utc_dt.with_timezone(&offset));
         }
 
         // ============================================================

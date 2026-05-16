@@ -7,7 +7,7 @@ use once_cell::race::OnceBox;
 
 pub(crate) static TZ_LOWERED_KEYS: OnceBox<&'static [&'static str]> = OnceBox::new();
 pub(crate) fn tz_lowered_keys() -> &'static [&'static str] {
-    *TZ_LOWERED_KEYS.get_or_init(|| {
+    TZ_LOWERED_KEYS.get_or_init(|| {
         let keys: Vec<&'static str> = TZ_ENTRIES
             .iter()
             .map(|&(name, _, _)| Box::leak(name.to_lowercase().into_boxed_str()) as &'static str)
@@ -240,6 +240,7 @@ pub(crate) fn en_date_ac() -> &'static AhoCorasick {
         terms.extend(EN_SPECIAL.iter().map(|&(k, _, _)| k));
         // terms.extend(CLOCK_TYPES.iter().map(|&(k, _, _)| k));
         terms.extend(tz_lowered_keys());
+        #[allow(clippy::expect_used)]
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
             .build(&terms)
@@ -255,6 +256,7 @@ pub(crate) fn en_duration_ac() -> &'static AhoCorasick {
             Vec::with_capacity(EN_RELATIVES.len() + EN_DURATIONS.len());
         terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
         terms.extend(EN_DURATIONS.iter().map(|&(k, _, _)| k));
+        #[allow(clippy::expect_used)]
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
             .build(&terms)

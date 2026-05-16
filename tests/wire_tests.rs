@@ -6,7 +6,7 @@ mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
     use deep_time::{
-        Drift, ClockModel, Dt, GregorianTime, Meridiem, Offset, Scale, TimeParts, TimeRange,
+        ClockModel, Drift, Dt, GregorianTime, Meridiem, Offset, Scale, TimeParts, TimeRange,
         Weekday,
     };
 
@@ -55,10 +55,7 @@ mod tests {
         let model = ClockModel::new(
             Scale::Custom,
             Dt::new(0, 0),
-            Drift::from_offset_and_rate(
-                Dt::from_sec(42, Scale::TAI),
-                Dt::from_ns(1, Scale::TAI),
-            ),
+            Drift::from_offset_and_rate(Dt::from_sec(42, Scale::TAI), Dt::from_ns(1, Scale::TAI)),
         );
         assert_roundtrip(
             &model,

@@ -50,8 +50,8 @@ impl TimeParts {
         } else {
             [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
         };
-        for m in 0..(month as usize - 1) {
-            days += month_days[m] as i64;
+        for mday in month_days.iter().take(month as usize - 1) {
+            days += *mday as i64;
         }
         days + (day as i64 - 1)
     }

@@ -122,7 +122,7 @@ impl Dt {
         let whole_sec = floor_f(total_sec_f) as i64;
         let frac_sec = total_sec_f - (whole_sec as Real);
 
-        let attos_whole: i128 = (whole_sec as i128).saturating_mul(ATTOS_PER_SEC_I128 as i128);
+        let attos_whole: i128 = (whole_sec as i128).saturating_mul(ATTOS_PER_SEC_I128);
 
         let attos_frac_f = frac_sec * 1_000_000_000_000_000_000.0;
         let attos_frac: i128 = floor_f(attos_frac_f + 0.5) as i128;
@@ -130,12 +130,12 @@ impl Dt {
         let mut total_attos: i128 = attos_whole + attos_frac;
 
         let mut extra_days: i64 = 0;
-        if total_attos >= ATTOS_PER_DAY as i128 {
+        if total_attos >= ATTOS_PER_DAY {
             extra_days = 1;
-            total_attos -= ATTOS_PER_DAY as i128;
+            total_attos -= ATTOS_PER_DAY;
         } else if total_attos < 0 {
             extra_days = -1;
-            total_attos += ATTOS_PER_DAY as i128;
+            total_attos += ATTOS_PER_DAY;
         }
 
         let final_jd_days = jd_days.saturating_add(extra_days);

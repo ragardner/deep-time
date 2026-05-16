@@ -132,7 +132,7 @@ mod tests {
         let prefixes = ["", " ", "Thu ", "Thu. ", "Thursday, ", "Thu, "];
 
         let opts = ParseCfg {
-            order: DateOrder::YearFirst,
+            order: DateOrder::Year,
             ..Default::default()
         };
 
@@ -320,7 +320,7 @@ mod tests {
                 "05/06/2024".to_string(),
                 "2024-06-05T00:00:00Z".to_string(),
                 Some(ParseCfg {
-                    order: DateOrder::DayFirst,
+                    order: DateOrder::Day,
                     ..Default::default()
                 }),
             ),
@@ -921,7 +921,7 @@ mod tests {
                 Some(ParseCfg {
                     parse: None,
                     mode: DateParseMode::Scientific,
-                    order: DateOrder::DayFirst,
+                    order: DateOrder::Day,
                     ..Default::default()
                 }),
             ),
@@ -929,7 +929,7 @@ mod tests {
                 "05/06/2024",
                 "2024-05-06T00:00:00Z",
                 Some(ParseCfg {
-                    order: DateOrder::MonthFirst,
+                    order: DateOrder::Month,
                     ..Default::default()
                 }),
             ),
@@ -963,7 +963,7 @@ mod tests {
                 "２０２６年４月５日",
                 "2026-04-05T00:00:00Z",
                 Some(ParseCfg {
-                    order: DateOrder::YearFirst,
+                    order: DateOrder::Year,
                     ..Default::default()
                 }),
             ),
@@ -971,7 +971,7 @@ mod tests {
                 "߂߀߂߄-߀߄-߀߅",
                 "2024-04-05T00:00:00Z",
                 Some(ParseCfg {
-                    order: DateOrder::YearFirst,
+                    order: DateOrder::Year,
                     ..Default::default()
                 }),
             ),

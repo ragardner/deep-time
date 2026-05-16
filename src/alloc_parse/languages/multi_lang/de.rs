@@ -217,6 +217,7 @@ pub(crate) fn de_date_ac() -> &'static AhoCorasick {
         terms.extend(DE_DAYS.iter().map(|&(k, _, _)| k));
         terms.extend(DE_SPECIAL.iter().map(|&(k, _, _)| k));
         terms.extend(tz_lowered_keys());
+        #[allow(clippy::expect_used)]
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
             .build(&terms)
@@ -234,6 +235,7 @@ pub(crate) fn de_duration_ac() -> &'static AhoCorasick {
         terms.extend(EN_DURATIONS.iter().map(|&(k, _, _)| k));
         terms.extend(DE_RELATIVES.iter().map(|&(k, _, _)| k));
         terms.extend(DE_DURATIONS.iter().map(|&(k, _, _)| k));
+        #[allow(clippy::expect_used)]
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
             .build(&terms)

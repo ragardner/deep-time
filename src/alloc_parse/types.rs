@@ -15,11 +15,11 @@ pub enum DateOrder {
     #[default]
     Smart,
     /// Force **Year-first** only (YYYY/MM/DD or YY/MM/DD)
-    YearFirst,
+    Year,
     /// Force **Day-first** only (DD/MM/YYYY)
-    DayFirst,
+    Day,
     /// Force **Month-first** only (MM/DD/YYYY)
-    MonthFirst,
+    Month,
 }
 
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -113,13 +113,13 @@ impl Default for ParseCfg {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DetectedDateOrder {
+pub(crate) enum DateOrderFirst {
     /// Year-Month-Day ordering (ISO 8601 style, `YYYY-MM-DD`, `20240315`, etc.)
-    YearFirst,
+    Year,
     /// Month-Day-Year ordering (US / some English locales, `MM/DD/YYYY`)
-    MonthFirst,
+    Month,
     /// Day-Month-Year ordering (most of the world, `DD/MM/YYYY`, `DD.MM.YYYY`)
-    DayFirst,
+    Day,
 }
 
 #[derive(Clone)]

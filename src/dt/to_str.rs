@@ -49,7 +49,7 @@ impl Dt {
 
         let total = self.to_attos();
         let negative = total < 0;
-        let mut attos = total.unsigned_abs() as u128;
+        let mut attos = total.unsigned_abs();
 
         let mut s = alloc::string::String::with_capacity(48);
         if negative {
