@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod unified_vs_gr_tests {
-    use deep_time::{Drift, Real, Spacetime, constants::C_SQUARED, f, utils::sqrt};
+    use deep_time::{Drift, Real, Spacetime, constants::C_SQUARED, f, sqrt};
 
     /// Classic GR rate (what every existing pipeline uses)
     fn classic_gr_rate(alpha: Real, beta: Real) -> Real {

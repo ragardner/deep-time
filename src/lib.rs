@@ -103,6 +103,7 @@ pub mod constants;
 pub mod error;
 pub mod historical_sofa;
 pub mod leap_seconds;
+pub mod math;
 pub mod tzdb;
 pub mod utils;
 
@@ -124,6 +125,7 @@ pub(crate) use alloc_parse::{
 // _________________________________________
 // CRATE USE
 // _________________________________________
+
 pub(crate) use constants::*;
 pub(crate) use utils::*;
 
@@ -151,6 +153,7 @@ pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use error::{DtErr, DtErrKind};
 pub use gregorian_time::{GregorianTime, YmdHms};
 pub use light_time::ObserverState;
+pub use math::{floor::*, log::*, sin::*, sqrt::*};
 pub use position::{Position, Velocity};
 pub use scale::Scale;
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
