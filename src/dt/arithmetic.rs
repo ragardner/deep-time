@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, Drift, Dt, Spacetime, Real, Scale, floor_f,
+    ATTOS_PER_SECF, ATTOS_PER_US, Drift, Dt, Real, Scale, Spacetime, floor_f,
 };
 
 impl Dt {
@@ -25,12 +25,28 @@ impl Dt {
     }
 
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
-    ///
-    /// The conversion is lossy by design, as [`Real`] provides approximately 15.95 decimal digits of precision.
-    /// For full exactness, use the integer components `sec` and `attos` directly or higher-precision arithmetic when available.
+    /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal digits of precision.
     #[inline]
     pub const fn to_sec_f(&self) -> Real {
-        f!(self.sec) + f!(self.attos) / ATTOS_PER_SECF
+        let mut sec = self.sec;
+        let attos = self.attos;
+
+        // Absorb any carry from attos into sec first (attos can be >= ATTOS_PER_SEC in un-normalized cases)
+        let carry = attos / ATTOS_PER_SEC;
+        let rem = attos % ATTOS_PER_SEC;
+        sec += carry as i64;
+
+        if sec < 0 && rem > ATTOS_PER_SEC / 2 {
+            // Rewrite to avoid cancellation:
+            // sec + rem/ATTOS_PER_SEC  ==  (sec + 1) - (ATTOS_PER_SEC - rem)/ATTOS_PER_SEC
+            // The right-hand side has no large opposing terms.
+            let small = ATTOS_PER_SEC - rem; // positive and now small-ish
+            let small_f = f!(small) / ATTOS_PER_SECF;
+            (f!(sec) + 1.0) - small_f
+        } else {
+            // Normal path (no problematic cancellation)
+            f!(sec) + f!(rem) / ATTOS_PER_SECF
+        }
     }
 
     /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
@@ -40,8 +56,7 @@ impl Dt {
     /// For the spacecraft's own hardware proper-time clock, use the plain `add` method instead.
     #[inline]
     pub const fn adjusted_advance(&mut self, elapsed: &Dt, spacetime: &Spacetime) {
-        let dtau =
-            elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
+        let dtau = elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
         *self = self.add(dtau);
     }
 

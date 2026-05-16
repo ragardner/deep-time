@@ -1,7 +1,7 @@
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale,
-    TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, floor_f,
+    ATTOS_PER_US, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale,
+    TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
 };
 
 impl Dt {
@@ -253,7 +253,75 @@ impl Dt {
         Self::from_sec_f_on(sec_f, Scale::TAI)
     }
 
-    pub const fn from_sec_f_on(sec_f: Real, s: Scale) -> Self {
+    /// High-precision conversion from f64 seconds to total attoseconds (i128).
+    /// Uses IEEE 754 bit extraction + exact integer multiplication by 5^18.
+    pub const fn sec_f_to_total_attos(sec_f: f64) -> i128 {
+        if sec_f == 0.0 {
+            return 0;
+        }
+
+        let bits = sec_f.to_bits();
+        let is_negative = (bits >> 63) != 0;
+        let biased_exp = ((bits >> 52) & 0x7ff) as i32;
+        let mantissa = bits & 0x000f_ffff_ffff_ffff;
+
+        // Extract significand and true binary exponent
+        let (sig, exp) = if biased_exp == 0 {
+            // Subnormal
+            if mantissa == 0 {
+                return 0;
+            }
+            let lz = mantissa.leading_zeros() as i32;
+            let shift = lz - 11;
+            let sig = (mantissa as u128) << shift;
+            (sig, -1022i32 - 52 + shift)
+        } else {
+            let sig = ((1u64 << 52) | mantissa) as u128;
+            (sig, biased_exp - 1023 - 52)
+        };
+
+        const FIVE_POW_18: u64 = 3_814_697_265_625; // 5^18 exactly
+        let product = sig * (FIVE_POW_18 as u128);
+        let total_exp = exp + 18;
+
+        // Saturation guard for extremely large values
+        if total_exp > 120 {
+            return if is_negative { i128::MIN } else { i128::MAX };
+        }
+        if total_exp < -200 {
+            return 0;
+        }
+
+        let abs_total = if total_exp >= 0 {
+            if total_exp >= 128 {
+                return if is_negative { i128::MIN } else { i128::MAX };
+            }
+            (product << total_exp) as i128
+        } else {
+            let shift = (-total_exp) as u32;
+            let int_part = (product >> shift) as i128;
+
+            // === ROUNDING CHOICE ===
+            // Round to nearest, half away from zero.
+            // This is recommended for maximum precision.
+            // (Better average error than truncation.)
+            let mask = (1u128 << shift) - 1;
+            let rem = product & mask;
+            if rem > (mask >> 1) {
+                int_part + 1
+            } else {
+                int_part
+            }
+        };
+
+        if is_negative { -abs_total } else { abs_total }
+    }
+
+    /// Creates a `Dt` from a floating-point number of seconds.
+    /// - Assumes the value is on the given scale.
+    /// - Converts the values **to TAI**, the returned [`Dt`] is on
+    ///   the TAI time scale.
+    pub const fn from_sec_f_on(sec_f: Real, s: Scale) -> Dt {
         if sec_f.is_nan() {
             return Self::ZERO;
         }
@@ -265,11 +333,28 @@ impl Dt {
             };
         }
 
-        let floor_val = floor_f(sec_f);
-        let frac = sec_f - floor_val;
-        let attos_frac = (frac * ATTOS_PER_SECF) as i128;
+        let total_attos = Self::sec_f_to_total_attos(sec_f);
 
-        let total = (floor_val as i128) * ATTOS_PER_SEC_I128 + attos_frac;
+        // Split so that attos is always in [0, ATTOS_PER_SEC)
+        let (floor_sec, mut attos) = if total_attos >= 0 {
+            (
+                total_attos / ATTOS_PER_SEC_I128,
+                total_attos % ATTOS_PER_SEC_I128,
+            )
+        } else {
+            let q = (total_attos - (ATTOS_PER_SEC_I128 - 1)) / ATTOS_PER_SEC_I128;
+            let r = total_attos - q * ATTOS_PER_SEC_I128;
+            (q, r)
+        };
+
+        // Noise suppression? treat sub-attosecond values as exactly zero.
+        // This prevents floating-point noise from turning clean integer seconds
+        // into non-zero attos.
+        if attos.abs() < 1 {
+            attos = 0;
+        }
+
+        let total = floor_sec * ATTOS_PER_SEC_I128 + attos;
         Self::from_attos(total, s)
     }
 
