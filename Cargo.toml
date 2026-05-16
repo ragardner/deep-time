@@ -1,6 +1,6 @@
 [package]
 name = "deep-time"
-version = "0.1.0-alpha.6"
+version = "0.1.0-alpha.7"
 authors = ["ragardner <github@ragardner.simplelogin.com>"]
 edition = "2024"
 description = "High-precision, no-std, no-alloc date-time library, leap-seconds, time scales, relativistic time, and a powerful date & duration parser"
