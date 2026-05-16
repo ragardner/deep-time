@@ -260,7 +260,7 @@ impl Iterator for TimeRange {
             return None;
         }
 
-        self.current = self.current + self.step;
+        self.current += self.step;
         Some(item)
     }
 }
@@ -275,7 +275,7 @@ impl DoubleEndedIterator for TimeRange {
             return None;
         }
 
-        let mut rev = self.clone();
+        let mut rev = *self;
         rev.step = rev.step.neg();
 
         let item = rev.next();

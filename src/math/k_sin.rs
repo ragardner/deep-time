@@ -9,6 +9,11 @@
 // is preserved.
 // ====================================================
 
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 use crate::Real;
 
 const S1: Real = -1.66666666666666324348e-01; /* 0xBFC55555, 0x55555549 */

@@ -1,3 +1,8 @@
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 // origin: FreeBSD /usr/src/lib/msun/src/e_rem_pio2.c
 //
 // ====================================================

@@ -1,3 +1,8 @@
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 use crate::{Dt, DtErr, DtErrKind, Real, an_err};
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -154,7 +159,7 @@ impl BopData {
         let (mjd, offset, pm_x, pm_y) = match format {
             BopFormat::Finals2000A => {
                 let mjd_idx = parts.iter().position(|p| {
-                    p.contains('.') && p.parse::<Real>().map_or(false, |v| v > 30000.0)
+                    p.contains('.') && p.parse::<Real>().is_ok_and(|v| v > 30000.0)
                 })?;
 
                 let mut flag_count = 0;
@@ -419,7 +424,7 @@ impl Dt {
         if op_data.rows.is_empty() {
             return Err(an_err!(DtErrKind::InternalErr, "contains no data"));
         }
-        let mut guess = self.clone();
+        let mut guess = *self;
 
         for _ in 0..16 {
             let mjd = guess.to_mjd_f();

@@ -23,6 +23,11 @@
  *      [39/16,INF]   atan(x) = atan(INF) + atan( -1/t )
  */
 
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 use crate::Real;
 
 const ATANHI: [Real; 4] = [

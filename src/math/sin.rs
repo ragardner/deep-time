@@ -9,6 +9,11 @@
 // is preserved.
 // ====================================================
 
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 use super::{k_cos, k_sin, rem_pio2};
 use crate::Real;
 

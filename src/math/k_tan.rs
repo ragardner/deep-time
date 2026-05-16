@@ -8,6 +8,11 @@
 // is preserved.
 // ====================================================
 
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 use crate::Real;
 
 static T: [Real; 13] = [

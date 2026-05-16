@@ -1,3 +1,8 @@
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 use crate::Real;
 
 const LN2_HI: Real = 6.93147180369123816490e-01; /* 3fe62e42 fee00000 */

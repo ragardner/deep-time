@@ -9,6 +9,11 @@
 // is preserved.
 // ====================================================
 
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 use super::{k_tan, rem_pio2};
 use crate::Real;
 
@@ -212,12 +217,12 @@ mod tan_tests {
 
             // From the left
             for i in 1..=400 {
-                let delta = 1e-8 * (0.9999f64).powi(i as i32);
+                let delta = 1e-8 * (0.9999f64).powi(i);
                 check(pole - delta);
             }
             // From the right
             for i in 1..=400 {
-                let delta = 1e-8 * (0.9999f64).powi(i as i32);
+                let delta = 1e-8 * (0.9999f64).powi(i);
                 check(pole + delta);
             }
         }

@@ -401,10 +401,10 @@ impl TimeParts {
 
         // iana_name (49 bytes) — already nice
         let iana_bytes = &bytes[offset..offset + 49];
-        if let Some(name) = AsciiStr::<49>::from_wire_bytes(iana_bytes) {
-            if !name.is_empty() {
-                dc.iana_name = Some(name);
-            }
+        if let Some(name) = AsciiStr::<49>::from_wire_bytes(iana_bytes)
+            && !name.is_empty()
+        {
+            dc.iana_name = Some(name);
         }
         offset += 49;
 
@@ -418,10 +418,10 @@ impl TimeParts {
 
         // weekday (1 byte)
         let wd_byte = bytes[offset];
-        if wd_byte != 255 {
-            if let Some(wd) = Weekday::from_wire_byte(wd_byte) {
-                dc.weekday = Some(wd);
-            }
+        if wd_byte != 255
+            && let Some(wd) = Weekday::from_wire_byte(wd_byte)
+        {
+            dc.weekday = Some(wd);
         }
         offset += 1;
 
@@ -462,11 +462,12 @@ impl TimeParts {
 
         // meridiem (1 byte)
         let mer_byte = bytes[offset];
-        if mer_byte != 255 {
-            if let Some(m) = Meridiem::from_wire_byte(mer_byte) {
-                dc.meridiem = Some(m);
-            }
+        if mer_byte != 255
+            && let Some(m) = Meridiem::from_wire_byte(mer_byte)
+        {
+            dc.meridiem = Some(m);
         }
+
         offset += 1;
 
         // unix_timestamp_seconds (8 bytes)

@@ -160,3 +160,9 @@ all = [
 ]
 perf-tests = ["parse", "std"]
 bop-tests = ["bop", "std"]
+
+[lints.clippy]
+indexing_slicing = "allow"
+unwrap_used      = "deny"
+expect_used      = "deny"
+panic            = "deny"

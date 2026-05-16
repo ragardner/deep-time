@@ -1,3 +1,8 @@
+#![allow(clippy::indexing_slicing)]
+#![allow(clippy::excessive_precision)]
+#![allow(clippy::approx_constant)]
+#![allow(clippy::eq_op)]
+
 use crate::Real;
 
 const RSQRT_TAB: [u16; 128] = [
@@ -96,7 +101,7 @@ pub const fn sqrt(x: Real) -> Real {
         s = s.wrapping_add(1);
     }
     s &= 0x000f_ffff_ffff_ffff;
-    s |= (top as u64) << 52;
+    s |= top << 52;
 
     Real::from_bits(s)
 }
@@ -104,13 +109,9 @@ pub const fn sqrt(x: Real) -> Real {
 const SPLIT: Real = 134217728. + 1.; // 0x1p27 + 1 === (2 ^ 27) + 1
 
 const fn sq(x: Real) -> (Real, Real) {
-    let xh: Real;
-    let xl: Real;
-    let xc: Real;
-
-    xc = x * SPLIT;
-    xh = x - xc + xc;
-    xl = x - xh;
+    let xc: Real = x * SPLIT;
+    let xh: Real = x - xc + xc;
+    let xl: Real = x - xh;
     let hi = x * x;
     let lo = xh * xh - hi + 2. * xh * xl + xl * xl;
     (hi, lo)
@@ -123,8 +124,6 @@ pub const fn hypot(mut x: Real, mut y: Real) -> Real {
     let mut uxi = x.to_bits();
     let mut uyi = y.to_bits();
     let uti;
-    let ex: i64;
-    let ey: i64;
     let mut z: Real;
 
     /* arrange |x| >= |y| */
@@ -137,8 +136,8 @@ pub const fn hypot(mut x: Real, mut y: Real) -> Real {
     }
 
     /* special cases */
-    ex = (uxi >> 52) as i64;
-    ey = (uyi >> 52) as i64;
+    let ex: i64 = (uxi >> 52) as i64;
+    let ey: i64 = (uyi >> 52) as i64;
     x = Real::from_bits(uxi);
     y = Real::from_bits(uyi);
     /* note: hypot(inf,nan) == inf */
