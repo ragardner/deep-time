@@ -63,7 +63,7 @@ pub const fn sin(x: Real) -> Real {
 }
 
 #[cfg(feature = "std")]
-mod tests {
+mod sin_tests {
     use super::*;
 
     // =====================================================================

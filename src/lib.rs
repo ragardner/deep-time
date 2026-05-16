@@ -153,7 +153,7 @@ pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use error::{DtErr, DtErrKind};
 pub use gregorian_time::{GregorianTime, YmdHms};
 pub use light_time::ObserverState;
-pub use math::{floor::*, log::*, sin::*, sqrt::*};
+pub use math::{cos::*, floor::*, log::*, sin::*, sqrt::*, tan::*};
 pub use position::{Position, Velocity};
 pub use scale::Scale;
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
