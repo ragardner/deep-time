@@ -30,6 +30,29 @@ macro_rules! f {
     };
 }
 
+/// Safe Euclidean division.
+/// Returns `default` if `rhs == 0` or if `lhs == i128::MIN && rhs == -1`.
+macro_rules! safe_div_euc {
+    ($lhs:expr, $rhs:expr, $default:expr) => {{
+        match ($lhs).checked_div_euclid($rhs) {
+            Some(q) => q,
+            None => $default,
+        }
+    }};
+}
+
+/// Safe Euclidean remainder.
+/// Returns `$default` if `rhs == 0` or if `lhs == Self::MIN && rhs == -1`.
+#[macro_export]
+macro_rules! safe_rem_euc {
+    ($lhs:expr, $rhs:expr, $default:expr) => {{
+        match ($lhs).checked_rem_euclid($rhs) {
+            Some(r) => r,
+            None => $default,
+        }
+    }};
+}
+
 #[inline(always)]
 pub const fn to_sec_f(attos: u128) -> Real {
     f!(attos) / ATTOS_PER_SECF

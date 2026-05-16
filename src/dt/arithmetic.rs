@@ -26,15 +26,8 @@ impl Dt {
 
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
     /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal digits of precision.
-    #[inline]
     pub const fn to_sec_f(&self) -> Real {
-        let mut sec = self.sec;
-        let attos = self.attos;
-
-        // Absorb any carry from attos into sec first (attos can be >= ATTOS_PER_SEC in un-normalized cases)
-        let carry = attos / ATTOS_PER_SEC;
-        let rem = attos % ATTOS_PER_SEC;
-        sec += carry as i64;
+        let Dt { sec, attos: rem } = self.carry_over();
 
         if sec < 0 && rem > ATTOS_PER_SEC / 2 {
             // Rewrite to avoid cancellation:
@@ -459,7 +452,7 @@ impl Dt {
             return Self::ZERO;
         }
         let total = self.to_attos();
-        let result = total.div_euclid(rhs as i128);
+        let result = safe_div_euc!(total, rhs as i128, 0i128);
         Self::from_attos(result, Scale::TAI)
     }
 
@@ -471,7 +464,7 @@ impl Dt {
         }
         let a = self.to_attos();
         let b = unit.to_attos();
-        let q = a.div_euclid(b);
+        let q = safe_div_euc!(a, b, 0i128);
         let result = q.wrapping_mul(b);
         Self::from_attos(result, Scale::TAI)
     }
@@ -486,40 +479,43 @@ impl Dt {
         let b = unit.to_attos();
         // ceil(a/b) ≡ −floor(−a/b)
         let neg_a = a.wrapping_neg();
-        let q = neg_a.div_euclid(b);
+        let q = safe_div_euc!(neg_a, b, 0i128);
         let q_ceil = q.wrapping_neg();
         let result = q_ceil.wrapping_mul(b);
         Self::from_attos(result, Scale::TAI)
     }
 
     /// Returns the nearest multiple of `unit`.
-    /// Halfway cases round **away from zero** (matches old `f64::round`).
-    /// If `unit` is zero, returns `self` unchanged (exact, full precision).
+    ///
+    /// Halfway cases round **away from zero** (e.g. `2.5 → 3.0`, `-2.5 → -3.0`),
+    /// matching the behavior of the old `f64::round()`.
+    ///
+    /// - If `unit` is zero, returns `self` unchanged (preserves full precision).
+    /// - Uses Euclidean division internally for correct behavior on negative values.
+    /// - The result is always a multiple of `unit`.
     pub const fn round(&self, unit: Self) -> Self {
         if unit.is_zero() {
             return *self;
         }
+
         let a = self.to_attos();
         let b = unit.to_attos();
 
-        let q = a.div_euclid(b);
-        let r = a.rem_euclid(b);
-
-        // half = |b| / 2  (rounded up for tie-breaking away from zero)
+        let abs_a = a.wrapping_abs();
         let abs_b = b.wrapping_abs();
-        let two = 2i128;
-        let half = (abs_b + 1) / two;
 
-        if r >= half {
-            // round away from zero
-            let one = 1i128;
-            let q_rounded = if a < 0 { q - one } else { q + one };
-            let result = q_rounded.wrapping_mul(b);
-            Self::from_attos(result, Scale::TAI)
-        } else {
-            let result = q.wrapping_mul(b);
-            Self::from_attos(result, Scale::TAI)
-        }
+        let q = safe_div_euc!(abs_a, abs_b, 0i128);
+        let r = safe_rem_euc!(abs_a, abs_b, 0i128);
+
+        let half = (abs_b + 1) / 2;
+
+        let q_rounded = if r >= half { q + 1 } else { q };
+
+        let rounded_abs = q_rounded.wrapping_mul(abs_b);
+
+        let result = if a < 0 { -rounded_abs } else { rounded_abs };
+
+        Self::from_attos(result, Scale::TAI)
     }
 
     /// Returns `floor(|self| / |unit|)` as `usize`, saturating at `usize::MAX`.
@@ -531,7 +527,7 @@ impl Dt {
         }
         let a = self.to_attos().wrapping_abs();
         let b = unit.to_attos().wrapping_abs();
-        let q = a.div_euclid(b);
+        let q = safe_div_euc!(a, b, 0i128);
 
         if q > (usize::MAX as i128) {
             usize::MAX
@@ -732,8 +728,8 @@ impl Dt {
     /// Returns the total time in seconds.
     #[inline]
     pub const fn to_sec(&mut self) -> i64 {
-        self.carry_over();
-        self.sec
+        let Dt { sec, .. } = self.carry_over();
+        sec
     }
 
     pub(crate) const fn diff_raw_internal(sec_a: i64, sub_a: u64, sec_b: i64, sub_b: u64) -> Self {

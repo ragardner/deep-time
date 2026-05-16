@@ -93,7 +93,7 @@ impl Dt {
     #[inline]
     pub const fn new(sec: i64, attos: u64) -> Self {
         let mut tp = Self { sec, attos };
-        tp.carry_over();
+        tp.carry_over_mut();
         tp
     }
 
@@ -183,14 +183,14 @@ impl Dt {
     }
 
     pub(crate) const fn attos_to_dt(attos: i128) -> Self {
-        let q = attos.div_euclid(ATTOS_PER_SEC_I128);
+        let q = safe_div_euc!(attos, ATTOS_PER_SEC_I128, 0i128);
 
         if q > (i64::MAX as i128) {
             return Self::MAX;
         } else if q < (i64::MIN as i128) {
             return Self::MIN;
         } else {
-            let r = attos.rem_euclid(ATTOS_PER_SEC_I128);
+            let r = safe_rem_euc!(attos, ATTOS_PER_SEC_I128, 0i128);
             Self {
                 sec: q as i64,
                 attos: r as u64,
@@ -324,8 +324,7 @@ impl Dt {
     pub const fn from_sec_f_on(sec_f: Real, s: Scale) -> Dt {
         if sec_f.is_nan() {
             return Self::ZERO;
-        }
-        if sec_f.is_infinite() {
+        } else if sec_f.is_infinite() {
             return if sec_f.is_sign_positive() {
                 Self::MAX
             } else {
@@ -335,21 +334,15 @@ impl Dt {
 
         let total_attos = Self::sec_f_to_total_attos(sec_f);
 
-        // Split so that attos is always in [0, ATTOS_PER_SEC)
-        let (floor_sec, mut attos) = if total_attos >= 0 {
-            (
-                total_attos / ATTOS_PER_SEC_I128,
-                total_attos % ATTOS_PER_SEC_I128,
-            )
-        } else {
-            let q = (total_attos - (ATTOS_PER_SEC_I128 - 1)) / ATTOS_PER_SEC_I128;
-            let r = total_attos - q * ATTOS_PER_SEC_I128;
-            (q, r)
-        };
+        // Split into floor(seconds) and attos in [0, ATTOS_PER_SEC)
+        // Using div_euclid / rem_euclid guarantees a non-negative remainder
+        // for both positive and negative total_attos.
+        let floor_sec = total_attos.div_euclid(ATTOS_PER_SEC_I128);
+        let mut attos = total_attos.rem_euclid(ATTOS_PER_SEC_I128);
 
         // Noise suppression? treat sub-attosecond values as exactly zero.
-        // This prevents floating-point noise from turning clean integer seconds
-        // into non-zero attos.
+        // This prevents floating-point noise (from the f64 input) from
+        // turning clean integer seconds into non-zero attos.
         if attos.abs() < 1 {
             attos = 0;
         }

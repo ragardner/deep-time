@@ -61,12 +61,24 @@ impl Dt {
 
     /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOS_PER_SEC)`.
     #[inline]
-    pub const fn carry_over(&mut self) -> &mut Self {
+    pub const fn carry_over_mut(&mut self) -> &mut Self {
         if self.attos >= ATTOS_PER_SEC {
             self.sec = self.sec.saturating_add((self.attos / ATTOS_PER_SEC) as i64);
             self.attos %= ATTOS_PER_SEC;
         }
         self
+    }
+
+    /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOS_PER_SEC)`.
+    #[inline]
+    pub const fn carry_over(&self) -> Self {
+        if self.attos < ATTOS_PER_SEC {
+            return *self;
+        }
+        Self {
+            sec: self.sec.saturating_add((self.attos / ATTOS_PER_SEC) as i64),
+            attos: self.attos % ATTOS_PER_SEC,
+        }
     }
 }
 

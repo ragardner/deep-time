@@ -1,4 +1,4 @@
-use crate::{Dt, Scale};
+use crate::{Dt, NS_PER_SEC, Scale};
 use crate::{TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos};
 
 // TODO: inefficient calculations
@@ -66,10 +66,9 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
                 let frac_nanos = frac_to_nanos(frac_part).unwrap_or(0);
                 let total_nanos = int_nanos + frac_nanos;
 
-                let ns_per_sec = 1_000_000_000i128;
-                let unix_secs_i128 = total_nanos.div_euclid(ns_per_sec);
+                let unix_secs_i128 = total_nanos.div_euclid(NS_PER_SEC);
                 let secs_i128 = unix_secs_i128 - (TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128);
-                let rem_nanos = total_nanos.rem_euclid(ns_per_sec) as u64;
+                let rem_nanos = total_nanos.rem_euclid(NS_PER_SEC) as u64;
 
                 let secs: i64 = secs_i128.try_into().ok()?;
 
