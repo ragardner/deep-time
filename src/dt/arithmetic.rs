@@ -745,4 +745,15 @@ impl Dt {
             }
         }
     }
+
+    /// Clamps an `i128` to the representable range of `i64`.
+    pub(crate) const fn clamp_i128_to_i64(x: i128) -> i64 {
+        if x > i64::MAX as i128 {
+            i64::MAX
+        } else if x < i64::MIN as i128 {
+            i64::MIN
+        } else {
+            x as i64
+        }
+    }
 }

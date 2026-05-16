@@ -130,7 +130,6 @@ pub mod historical_sofa;
 pub mod leap_seconds;
 pub mod math;
 pub mod tzdb;
-pub mod utils;
 
 // _________________________________________
 // FEATURE PUB MOD
@@ -151,7 +150,6 @@ pub(crate) use alloc_parse::{
 // CRATE USE
 // _________________________________________
 pub(crate) use constants::*;
-pub(crate) use utils::*;
 
 // _________________________________________
 // FEATURE PUB USE

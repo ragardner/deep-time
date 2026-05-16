@@ -27,23 +27,14 @@ fn test_from_sec_f() {
         (1e10 + 0.123, "large integer + fraction"),
     ];
 
-    eprintln!("=== from_sec_f Precision Diagnostics ===");
-    eprintln!("(new high-precision implementation)\n");
-
     for (sec_f, label) in test_cases {
         let dt = Dt::from_sec_f(*sec_f);
-
         let roundtrip = dt.to_sec_f();
 
-        eprintln!("Input: {:>18.20e}  ({})", sec_f, label);
-        eprintln!("  → Dt:   {:?}", dt);
-        eprintln!(
-            "  → back: {:>18.20e}  (diff = {:e})",
-            roundtrip,
-            (roundtrip - sec_f).abs()
+        assert_eq!(
+            roundtrip, *sec_f,
+            "Roundtrip failed for input {} ({})\n  → Dt:   {:?}\n  → back: {}",
+            sec_f, label, dt, roundtrip
         );
-        eprintln!();
     }
-
-    eprintln!("=== End of diagnostics ===");
 }

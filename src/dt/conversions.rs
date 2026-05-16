@@ -1,7 +1,7 @@
 use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::{
     ClockModel, Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_SEC_AT_1972,
-    TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET, tdb_minus_tt,
+    TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET,
 };
 
 impl Dt {
@@ -172,40 +172,6 @@ impl Dt {
     #[inline]
     pub const fn convert_back_using_model(self, model: ClockModel) -> Self {
         self.convert_back_using_drift(model.reference, model.drift)
-    }
-
-    pub const fn tai_to_tdb(tai: Self) -> Self {
-        let tt = tai.add(TT_TAI_OFFSET);
-        let correction = tdb_minus_tt(tt.to_sec_f());
-        tt.add(Dt::from_sec_f(correction))
-    }
-
-    pub const fn tdb_to_tai(tdb: Self) -> Self {
-        // Linear-rate + constant initial guess (dominant part of the forward transformation)
-        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
-        let linear_span = Self::mul_lb(elapsed); // LB * elapsed
-        let mut tt = tdb
-            .sub(Dt::from_attos(linear_span, Scale::TAI))
-            .sub(Dt::from_attos(TDB0_ATTOS, Scale::TAI));
-
-        // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
-        let mut i = 0u32;
-        while i < 8 {
-            let p = tdb_minus_tt(tt.to_sec_f());
-            let new_tt = tdb.sub(Dt::from_sec_f(p));
-
-            // Early exit when change is smaller than ~1 atto-second
-            let delta = new_tt.to_diff_raw(tt);
-            if delta.sec == 0 && delta.attos < 1 {
-                tt = new_tt;
-                break;
-            }
-
-            tt = new_tt;
-            i += 1;
-        }
-
-        tt.sub(TT_TAI_OFFSET)
     }
 
     pub(crate) const fn tai_to_tcg(tai: Self) -> Self {

@@ -1,3 +1,5 @@
+mod eo;
+
 use crate::Real;
 use core::f64::consts::TAU;
 

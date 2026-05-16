@@ -1,6 +1,6 @@
 use crate::{
-    Dt, MARS_REF_TT, MARS_REF_TT_ATTOS, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real, Scale,
-    clamp_i128_to_i64, floor_f, to_sec_f,
+    Dt, MARS_REF_TT, MARS_REF_TT_ATTOS, MARS_SOL_ATTOS, MARS_SOL_LENGTH_SEC, Real, Scale, floor_f,
+    to_sec_f,
 };
 
 impl Dt {
@@ -20,7 +20,7 @@ impl Dt {
         let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS);
         let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;
 
-        (clamp_i128_to_i64(whole_sols), frac_attos)
+        (Dt::clamp_i128_to_i64(whole_sols), frac_attos)
     }
 
     /// Returns Mars Coordinated Time (MTC) as a [`Dt`] representing
