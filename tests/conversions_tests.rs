@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 use deep_time::{ClockModel, Drift, Dt, Scale};
 
 #[test]

@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 #[cfg(feature = "hifitime")]
 mod tests {
     use deep_time::{Dt, Scale, leap_seconds};

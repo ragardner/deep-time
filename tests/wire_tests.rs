@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 #[cfg(feature = "alloc")]
 extern crate alloc;
 

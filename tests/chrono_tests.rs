@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 #[cfg(feature = "chrono")]
 mod tests {
     use chrono::{

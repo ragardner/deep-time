@@ -18,7 +18,7 @@ pub(crate) fn tz_lowered_keys() -> &'static [&'static str] {
     })
 }
 
-// pub(crate) const CLOCK_TYPES: &[(&'static str, &'static str, DateToken)] = &[
+// pub(crate) const CLOCK_TYPES: &[(&str, &str, DateToken)] = &[
 //     ("tai", "TAI", DateToken::TAI),
 //     ("tt", "TT", DateToken::TT),
 //     ("et", "ET", DateToken::ET),
@@ -34,7 +34,7 @@ pub(crate) fn tz_lowered_keys() -> &'static [&'static str] {
 //     ("custom", "Custom", DateToken::Custom),
 // ];
 
-pub(crate) const EN_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const EN_RELATIVES: &[(&str, &str, DateToken)] = &[
     ("and", "and", DateToken::Plus),
     ("plus", "plus", DateToken::Plus),
     // Temporal
@@ -93,7 +93,7 @@ pub(crate) const EN_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
 ];
 
 /// Any missing short and long units from RELATIVES
-pub(crate) const EN_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const EN_DURATIONS: &[(&str, &str, DateToken)] = &[
     ("y", "y", DateToken::Year),
     ("w", "w", DateToken::Week),
     ("d", "d", DateToken::Day),
@@ -172,7 +172,7 @@ pub(crate) const EN_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("qs", "qs", DateToken::Quectosecond),
 ];
 
-pub(crate) const EN_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const EN_MONTHS: &[(&str, &str, DateToken)] = &[
     // Short months
     ("jan", "Jan", DateToken::MonthShort),
     ("feb", "Feb", DateToken::MonthShort),
@@ -201,7 +201,7 @@ pub(crate) const EN_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     ("december", "December", DateToken::MonthLong),
 ];
 
-pub(crate) const EN_DAYS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const EN_DAYS: &[(&str, &str, DateToken)] = &[
     // Short days
     ("mon", "Mon", DateToken::DayShort),
     ("tue", "Tue", DateToken::DayShort),
@@ -220,7 +220,7 @@ pub(crate) const EN_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     ("sunday", "Sunday", DateToken::DayLong),
 ];
 
-pub(crate) const EN_SPECIAL: &[(&'static str, &'static str, DateToken)] =
+pub(crate) const EN_SPECIAL: &[(&str, &str, DateToken)] =
     &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
 static EN_DATE_AC: OnceBox<AhoCorasick> = OnceBox::new();

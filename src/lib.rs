@@ -1,5 +1,4 @@
-#![cfg_attr(test, allow(clippy::unwrap_used))]
-#![cfg_attr(test, allow(clippy::expect_used))]
+#![cfg_attr(test, allow(clippy::all))]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "alloc")]

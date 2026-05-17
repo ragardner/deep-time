@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 /// Tests for Lunar Coordinated Time (LTC) realization.
 ///
 /// LTC is the proper-time scale for a clock at rest on the lunar selenoid,

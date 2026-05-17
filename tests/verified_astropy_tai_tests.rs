@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 /*
 from astropy.time import Time
 import astropy.units as u

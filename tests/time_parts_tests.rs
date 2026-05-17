@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 #[cfg(test)]
 mod tests {
     use deep_time::constants::ATTOS_PER_SEC_I128;

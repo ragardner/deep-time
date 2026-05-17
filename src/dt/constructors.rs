@@ -1,3 +1,5 @@
+#[cfg(any(feature = "js", feature = "std"))]
+use crate::DtErr;
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
     ATTOS_PER_US, Dt, Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale,
@@ -357,33 +359,36 @@ impl Dt {
     /// is not WASM with the `js` feature.
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     #[inline]
-    pub fn now() -> Self {
+    pub fn now() -> Result<Self, DtErr> {
         let now = std::time::SystemTime::now();
         let (secs, nanos) = match now.duration_since(std::time::UNIX_EPOCH) {
             Ok(dur) => (dur.as_secs() as i64, dur.subsec_nanos() as i64),
             Err(_) => {
                 // System time is before Unix epoch — support negative time
+                use crate::{DtErrKind, an_err};
                 let dur = std::time::SystemTime::UNIX_EPOCH
                     .duration_since(now)
-                    .unwrap();
+                    .map_err(|e| an_err!(DtErrKind::IOErr, "{}", e))?;
                 (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
             }
         };
-
-        Dt::from_diff_and_scale(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
-            .add(Dt::from_ns(nanos as i128, Scale::TAI))
+        Ok(
+            Dt::from_diff_and_scale(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
+                .add(Dt::from_ns(nanos as i128, Scale::TAI)),
+        )
     }
 
     /// Returns the current system time as TAI from 2000-01-01 noon.
     /// (browser WASM version using JavaScript’s `Date.now()`).
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
     #[inline]
-    pub fn now() -> Self {
+    pub fn now() -> Result<Self, DtErr> {
         let ms: f64 = js_sys::Date::now();
         let secs = (ms / 1000.0).floor() as i64;
         let nanos = ((ms % 1000.0) * 1_000_000.0) as i128;
-
-        Dt::from_diff_and_scale(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
-            .add(Dt::from_ns(nanos as i128, Scale::TAI))
+        Ok(
+            Dt::from_diff_and_scale(Dt::new(secs, 0), Dt::UNIX_EPOCH, Scale::UTC)
+                .add(Dt::from_ns(nanos as i128, Scale::TAI)),
+        )
     }
 }

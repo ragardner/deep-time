@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 #[cfg(all(test, feature = "jiff"))]
 mod tests {
     use deep_time::{DtErr, TimeParts};

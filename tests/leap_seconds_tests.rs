@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128, leap_seconds::get_leap_seconds};
 
 #[test]
@@ -39,9 +41,8 @@ fn to_epoch_leaps_and_tai() {
         "internal tai sec for 2016-12-31T23:59:60 should be 536500836, got: {}",
         leap.sec(),
     );
-    assert_eq!(
+    assert!(
         get_leap_seconds(&leap, false).is_leap_second,
-        true,
         "tai 536500836 should be a leap second",
     );
     let y = Dt::from_ymdhms(2017, 1, 1, 0, 0, 0, 0);

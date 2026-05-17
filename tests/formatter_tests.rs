@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 #[cfg(test)]
 mod format_tests {
     use deep_time::{Dt, Scale, constants::STRFTIME_SIZE};
@@ -302,7 +304,7 @@ mod format_tests {
         // ── Timezone offsets with seconds & different colon counts ─────
         let ny = -5 * 3600;
         let la = -8 * 3600;
-        let weird = 1 * 3600 + 23 * 60 + 45;
+        let weird = 3600 + 23 * 60 + 45;
 
         let n = t_frac
             .to_u8_with_offset(Scale::TAI, "%::z", &mut buf, ny)

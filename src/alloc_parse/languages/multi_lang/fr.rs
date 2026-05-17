@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use hashbrown::HashMap;
 use once_cell::race::OnceBox;
 
-pub(crate) const FR_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const FR_RELATIVES: &[(&str, &str, DateToken)] = &[
     ("et", "and", DateToken::Plus),
     ("plus", "plus", DateToken::Plus),
     // Temporal
@@ -65,7 +65,7 @@ pub(crate) const FR_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("ans", "y", DateToken::Year),
     ("an", "y", DateToken::Year),
 ];
-pub(crate) const FR_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const FR_DURATIONS: &[(&str, &str, DateToken)] = &[
     ("y", "y", DateToken::Year),
     ("w", "w", DateToken::Week),
     ("d", "d", DateToken::Day),
@@ -144,7 +144,7 @@ pub(crate) const FR_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("rs", "rs", DateToken::Rontosecond),
     ("qs", "qs", DateToken::Quectosecond),
 ];
-pub(crate) const FR_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const FR_MONTHS: &[(&str, &str, DateToken)] = &[
     ("janv", "Jan", DateToken::MonthShort),
     ("févr", "Feb", DateToken::MonthShort),
     ("mars", "Mar", DateToken::MonthShort),
@@ -170,7 +170,7 @@ pub(crate) const FR_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     ("novembre", "November", DateToken::MonthLong),
     ("décembre", "December", DateToken::MonthLong),
 ];
-pub(crate) const FR_DAYS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const FR_DAYS: &[(&str, &str, DateToken)] = &[
     ("lun", "Mon", DateToken::DayShort),
     ("mar", "Tue", DateToken::DayShort),
     ("mer", "Wed", DateToken::DayShort),
@@ -186,7 +186,7 @@ pub(crate) const FR_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     ("samedi", "Saturday", DateToken::DayLong),
     ("dimanche", "Sunday", DateToken::DayLong),
 ];
-pub(crate) const FR_SPECIAL: &[(&'static str, &'static str, DateToken)] =
+pub(crate) const FR_SPECIAL: &[(&str, &str, DateToken)] =
     &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
 static FR_DATE_AC: OnceBox<AhoCorasick> = OnceBox::new();

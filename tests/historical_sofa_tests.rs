@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 use deep_time::{Dt, Scale, historical_sofa::historical_sofa_offset_for_non_adjusted};
 
 #[test]

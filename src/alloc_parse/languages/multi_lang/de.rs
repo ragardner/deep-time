@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use hashbrown::HashMap;
 use once_cell::race::OnceBox;
 
-pub(crate) const DE_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const DE_RELATIVES: &[(&str, &str, DateToken)] = &[
     ("und", "and", DateToken::Plus),
     ("plus", "plus", DateToken::Plus),
     // Temporal
@@ -69,7 +69,7 @@ pub(crate) const DE_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("j", "y", DateToken::Year),
 ];
 
-pub(crate) const DE_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const DE_DURATIONS: &[(&str, &str, DateToken)] = &[
     ("y", "y", DateToken::Year),
     ("w", "w", DateToken::Week),
     ("d", "d", DateToken::Day),
@@ -149,7 +149,7 @@ pub(crate) const DE_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("qs", "qs", DateToken::Quectosecond),
 ];
 
-pub(crate) const DE_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const DE_MONTHS: &[(&str, &str, DateToken)] = &[
     ("jan", "Jan", DateToken::MonthShort),
     ("feb", "Feb", DateToken::MonthShort),
     ("mär", "Mar", DateToken::MonthShort),
@@ -176,7 +176,7 @@ pub(crate) const DE_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     ("dezember", "December", DateToken::MonthLong),
 ];
 
-pub(crate) const DE_DAYS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const DE_DAYS: &[(&str, &str, DateToken)] = &[
     ("mo", "Mon", DateToken::DayShort),
     ("di", "Tue", DateToken::DayShort),
     ("mi", "Wed", DateToken::DayShort),
@@ -193,7 +193,7 @@ pub(crate) const DE_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     ("sonntag", "Sunday", DateToken::DayLong),
 ];
 
-pub(crate) const DE_SPECIAL: &[(&'static str, &'static str, DateToken)] =
+pub(crate) const DE_SPECIAL: &[(&str, &str, DateToken)] =
     &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
 static DE_DATE_AC: OnceBox<AhoCorasick> = OnceBox::new();

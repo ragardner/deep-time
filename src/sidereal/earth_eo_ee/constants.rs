@@ -2,8 +2,10 @@ pub const DJ00: f64 = 2451545.0;
 pub const DJC: f64 = 36525.0;
 pub const DAS2R: f64 = 4.848136811095359935899141e-6;
 pub const TURNAS: f64 = 1296000.0;
-pub const D2PI: f64 = 6.283185307179586476925287;
-pub const DPI: f64 = 3.141592653589793238462643;
+pub const D2PI: f64 = core::f64::consts::TAU;
+pub const DPI: f64 = core::f64::consts::PI;
+// pub const D2PI: f64 = 6.283185307179586476925287;
+// pub const DPI: f64 = 3.141592653589793238462643;
 
 #[derive(Clone, Copy)]
 pub struct Term {

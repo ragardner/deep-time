@@ -8,7 +8,7 @@ use alloc::vec::Vec;
 use hashbrown::HashMap;
 use once_cell::race::OnceBox;
 
-pub(crate) const ES_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const ES_RELATIVES: &[(&str, &str, DateToken)] = &[
     ("y", "and", DateToken::Plus),
     ("e", "and", DateToken::Plus),
     ("más", "plus", DateToken::Plus),
@@ -74,7 +74,7 @@ pub(crate) const ES_RELATIVES: &[(&'static str, &'static str, DateToken)] = &[
     ("a", "y", DateToken::Year),
 ];
 
-pub(crate) const ES_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const ES_DURATIONS: &[(&str, &str, DateToken)] = &[
     ("y", "y", DateToken::Year),
     ("w", "w", DateToken::Week),
     ("d", "d", DateToken::Day),
@@ -154,7 +154,7 @@ pub(crate) const ES_DURATIONS: &[(&'static str, &'static str, DateToken)] = &[
     ("qs", "qs", DateToken::Quectosecond),
 ];
 
-pub(crate) const ES_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const ES_MONTHS: &[(&str, &str, DateToken)] = &[
     ("ene", "Jan", DateToken::MonthShort),
     ("feb", "Feb", DateToken::MonthShort),
     ("mar", "Mar", DateToken::MonthShort),
@@ -181,7 +181,7 @@ pub(crate) const ES_MONTHS: &[(&'static str, &'static str, DateToken)] = &[
     ("diciembre", "December", DateToken::MonthLong),
 ];
 
-pub(crate) const ES_DAYS: &[(&'static str, &'static str, DateToken)] = &[
+pub(crate) const ES_DAYS: &[(&str, &str, DateToken)] = &[
     ("lun", "Mon", DateToken::DayShort),
     ("mar", "Tue", DateToken::DayShort),
     ("mié", "Wed", DateToken::DayShort),
@@ -198,7 +198,7 @@ pub(crate) const ES_DAYS: &[(&'static str, &'static str, DateToken)] = &[
     ("domingo", "Sunday", DateToken::DayLong),
 ];
 
-pub(crate) const ES_SPECIAL: &[(&'static str, &'static str, DateToken)] =
+pub(crate) const ES_SPECIAL: &[(&str, &str, DateToken)] =
     &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
 static ES_DATE_AC: OnceBox<AhoCorasick> = OnceBox::new();

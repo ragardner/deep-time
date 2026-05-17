@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 #[cfg(test)]
 mod unified_vs_gr_tests {
     use deep_time::{Drift, Real, Spacetime, constants::C_SQUARED, f, sqrt};
@@ -61,7 +63,7 @@ mod unified_vs_gr_tests {
     #[test]
     fn saturation_minimum_is_866() {
         let huge_k = 1e160;
-        let ls = Spacetime::new(f!(0.70710678118), f!(0.0), huge_k);
+        let ls = Spacetime::new(f!(core::f64::consts::FRAC_1_SQRT_2), f!(0.0), huge_k);
         let rate = ls.proper_time_rate();
         assert!(
             rate >= 0.866,

@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 use deep_time::{Dt, ObserverState, Position, Scale, Spacetime, Velocity, constants::C};
 
 fn make_state(

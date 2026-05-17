@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 #[cfg(feature = "lang")]
 #[cfg(test)]
 mod lang_tests {

@@ -262,7 +262,7 @@ impl Sidereal {
     ///   - Pass `0.0` to get the pure local Earth Rotation Angle (CIO-based).
     ///   - Pass the **mean** Equation of the Origins (e.g. from
     ///     [`earth_eo_mean`](Self::earth_eo_mean)) to obtain Local Mean
-    ///   Sidereal Time (LMST).
+    ///     Sidereal Time (LMST).
     ///
     /// ## Details
     ///

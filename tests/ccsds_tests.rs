@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 use deep_time::constants::SEC_PER_DAYI64;
 use deep_time::{Dt, DtErrKind, Offset, Scale, TimeParts};
 

@@ -75,7 +75,7 @@ pub(crate) fn classify_date(
                 } else {
                     #[cfg(feature = "std")]
                     {
-                        Dt::now()
+                        Dt::now()?
                     }
                     #[cfg(not(feature = "std"))]
                     {

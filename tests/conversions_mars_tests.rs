@@ -1,3 +1,5 @@
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
+
 use deep_time::{Dt, Scale, constants::MARS_SOL_LENGTH_SEC, to_sec_f};
 
 #[test]
