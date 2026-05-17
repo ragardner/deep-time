@@ -45,7 +45,6 @@ macro_rules! safe_div_euc {
 
 /// Safe Euclidean remainder.
 /// Returns `$default` if `rhs == 0` or if `lhs == Self::MIN && rhs == -1`.
-#[macro_export]
 macro_rules! safe_rem_euc {
     ($lhs:expr, $rhs:expr, $default:expr) => {{
         match ($lhs).checked_rem_euclid($rhs) {
@@ -103,7 +102,7 @@ pub fn to_fs(attos: i128) -> i128 {
 mod alloc_parse;
 
 #[cfg(feature = "sidereal")]
-mod sidereal;
+pub mod sidereal;
 
 // _________________________________________
 // MOD

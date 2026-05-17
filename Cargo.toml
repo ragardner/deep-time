@@ -42,6 +42,7 @@ alloc = [
 ]
 
 sidereal = []
+sidereal-earth = ["sidereal"]
 bop = ["alloc"]
 
 std = [
