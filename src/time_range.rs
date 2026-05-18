@@ -1,5 +1,3 @@
-//! High-precision evenly-spaced `Dt` iterator (the "linspace" for time).
-
 use crate::{Dt, Scale};
 
 /// Builder type that enables the ergonomic `start.every(step)` syntax.
@@ -56,19 +54,19 @@ impl Dt {
 
     /// Creates a range stepping by whole seconds.
     #[inline]
-    pub const fn every_second(self) -> Every {
+    pub const fn every_sec(self) -> Every {
         self.every(Dt::from_sec(1, Scale::TAI))
     }
 
     /// Creates a range stepping by whole minutes.
     #[inline]
-    pub const fn every_minute(self) -> Every {
+    pub const fn every_min(self) -> Every {
         self.every(Dt::from_min(1, Scale::TAI))
     }
 
     /// Creates a range stepping by whole hours.
     #[inline]
-    pub const fn every_hour(self) -> Every {
+    pub const fn every_hr(self) -> Every {
         self.every(Dt::from_hr(1, Scale::TAI))
     }
 
@@ -83,7 +81,7 @@ impl Dt {
     ///
     /// This is a convenient way to get future points without including the start.
     #[inline]
-    pub fn next_n(self, n: usize, step: Dt) -> impl Iterator<Item = Dt> {
+    pub fn next_n(self, n: usize, step: Dt) -> impl ExactSizeIterator<Item = Dt> {
         (self + step).for_n_steps(n, step)
     }
 
@@ -92,8 +90,7 @@ impl Dt {
     ///
     /// This is a convenient one-liner for the common "next N steps" pattern.
     #[inline]
-    pub fn for_n_steps(self, n: usize, step: Dt) -> impl Iterator<Item = Dt> {
-        // We create an exclusive range long enough for n steps, then limit it
+    pub fn for_n_steps(self, n: usize, step: Dt) -> impl ExactSizeIterator<Item = Dt> {
         let end = self + step * (n as i64);
         TimeRange::exclusive(self, end, step).take(n)
     }
@@ -123,39 +120,6 @@ impl Every {
     #[inline]
     pub fn down_to(self, end: Dt) -> TimeRange {
         TimeRange::new(self.start, end, self.step, true)
-    }
-}
-
-#[cfg(feature = "wire")]
-impl Every {
-    /// Size of the canonical wire representation in bytes (33 bytes).
-    pub const WIRE_SIZE: usize = Dt::WIRE_SIZE + Dt::WIRE_SIZE;
-
-    /// Serializes this `Every` builder into a fixed 33-byte buffer.
-    ///
-    /// The layout is simply the concatenation of `start` (17 bytes) and `step` (16 bytes).
-    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
-        let mut buf = [0u8; Self::WIRE_SIZE];
-        let start = self.start.to_wire_bytes();
-        let step = self.step.to_wire_bytes();
-        buf[0..17].copy_from_slice(&start);
-        buf[17..33].copy_from_slice(&step);
-        buf
-    }
-
-    /// Deserializes an `Every` builder from exactly 33 bytes.
-    ///
-    /// ## Security
-    ///
-    /// Safe for untrusted input. Fixed size with strict validation
-    /// of the inner `Dt` and `Dt`.
-    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != Self::WIRE_SIZE {
-            return None;
-        }
-        let start = Dt::from_wire_bytes(&bytes[0..17])?;
-        let step = Dt::from_wire_bytes(&bytes[17..33])?;
-        Some(Self { start, step })
     }
 }
 
@@ -241,27 +205,43 @@ impl Iterator for TimeRange {
             return None;
         }
 
+        if self.step.is_zero() {
+            self.finished = true;
+            if self.start == self.end && self.inclusive {
+                return Some(self.start);
+            }
+            return None;
+        }
+
         let item = self.current;
 
         let to_end = self.current.to_diff_raw(self.end);
-        let passed = if self.step.is_zero() {
-            true
-        } else if self.step.sec > 0 || (self.step.sec == 0 && self.step.attos > 0) {
+        let step_positive = self.step.is_positive();
+
+        let beyond_end = if step_positive {
             to_end > Dt::ZERO
         } else {
             to_end < Dt::ZERO
         };
 
-        if passed {
+        if beyond_end {
             self.finished = true;
-            if self.inclusive && self.current == self.end {
-                return Some(item);
-            }
+            return None;
+        }
+
+        // Exclusive ranges must not yield `end` even when it is exactly reachable
+        if !self.inclusive && self.current == self.end {
+            self.finished = true;
             return None;
         }
 
         self.current += self.step;
         Some(item)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let len = self.len();
+        (len, Some(len))
     }
 }
 
@@ -293,22 +273,90 @@ impl ExactSizeIterator for TimeRange {
     ///
     /// This is computed in constant time without iterating.
     fn len(&self) -> usize {
+        if self.finished {
+            return 0;
+        }
+
         if self.step.is_zero() {
-            return if self.start == self.end && self.inclusive {
+            return if self.current == self.end && self.inclusive {
                 1
             } else {
                 0
             };
         }
 
-        let total = self.end.to_diff_raw(self.start);
-        let steps = total.abs_div_floor(self.step);
+        // Mirror the yield decision from next()
+        let to_end = self.current.to_diff_raw(self.end);
+        let step_positive = self.step.is_positive();
+
+        let beyond_end = if step_positive {
+            to_end > Dt::ZERO
+        } else {
+            to_end < Dt::ZERO
+        };
+
+        if beyond_end {
+            return 0;
+        }
+
+        if !self.inclusive && self.current == self.end {
+            return 0;
+        }
+
+        // current is yieldable → compute remaining points
+        let diff = self.end.to_diff_raw(self.current);
+        let intervals = diff.abs_div_floor(self.step);
 
         if self.inclusive {
-            steps.saturating_add(1)
+            intervals.saturating_add(1)
         } else {
-            steps
+            // For exclusive:
+            // - If we would land exactly on `end` after `intervals` steps → exclude it
+            // - Otherwise include the extra point
+            if intervals == 0 {
+                1
+            } else {
+                let reached = self.current + (self.step * (intervals as i64));
+                if reached == self.end {
+                    intervals
+                } else {
+                    intervals.saturating_add(1)
+                }
+            }
         }
+    }
+}
+
+#[cfg(feature = "wire")]
+impl Every {
+    /// Size of the canonical wire representation in bytes (33 bytes).
+    pub const WIRE_SIZE: usize = Dt::WIRE_SIZE + Dt::WIRE_SIZE;
+
+    /// Serializes this `Every` builder into a fixed 33-byte buffer.
+    ///
+    /// The layout is simply the concatenation of `start` (17 bytes) and `step` (16 bytes).
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        let start = self.start.to_wire_bytes();
+        let step = self.step.to_wire_bytes();
+        buf[0..17].copy_from_slice(&start);
+        buf[17..33].copy_from_slice(&step);
+        buf
+    }
+
+    /// Deserializes an `Every` builder from exactly 33 bytes.
+    ///
+    /// ## Security
+    ///
+    /// Safe for untrusted input. Fixed size with strict validation
+    /// of the inner `Dt` and `Dt`.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+        let start = Dt::from_wire_bytes(&bytes[0..17])?;
+        let step = Dt::from_wire_bytes(&bytes[17..33])?;
+        Some(Self { start, step })
     }
 }
 

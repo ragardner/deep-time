@@ -4,6 +4,8 @@ mod xpl;
 
 use crate::{atan2, cos, sin};
 use constants::*;
+use core::f64::consts::PI;
+use core::f64::consts::TAU;
 use xls::*;
 use xpl::*;
 
@@ -109,37 +111,37 @@ pub const fn fapa03(t: f64) -> f64 {
 
 /// Mean longitude of Jupiter (IERS Conventions 2003)
 pub const fn faju03(t: f64) -> f64 {
-    (0.599546497 + 52.9690962641 * t) % D2PI
+    (0.599546497 + 52.9690962641 * t) % TAU
 }
 
 /// Mean longitude of Saturn (IERS Conventions 2003)
 pub const fn fasa03(t: f64) -> f64 {
-    (0.874016757 + 21.3299104960 * t) % D2PI
+    (0.874016757 + 21.3299104960 * t) % TAU
 }
 
 /// Mean longitude of Uranus (IERS Conventions 2003)
 pub const fn faur03(t: f64) -> f64 {
-    (5.481293872 + 7.4781598567 * t) % D2PI
+    (5.481293872 + 7.4781598567 * t) % TAU
 }
 
 /// Mean longitude of Mercury (IERS Conventions 2003)
 pub const fn fame03(t: f64) -> f64 {
-    (4.402608842 + 2608.7903141574 * t) % D2PI
+    (4.402608842 + 2608.7903141574 * t) % TAU
 }
 
 /// Mean longitude of Venus (IERS Conventions 2003)
 pub const fn fave03(t: f64) -> f64 {
-    (3.176146697 + 1021.3285546211 * t) % D2PI
+    (3.176146697 + 1021.3285546211 * t) % TAU
 }
 
 /// Mean longitude of Earth (IERS Conventions 2003)
 pub const fn fae03(t: f64) -> f64 {
-    (1.753470314 + 628.3075849991 * t) % D2PI
+    (1.753470314 + 628.3075849991 * t) % TAU
 }
 
 /// Mean longitude of Mars (IERS Conventions 2003)
 pub const fn fama03(t: f64) -> f64 {
-    (6.203480913 + 334.0612426700 * t) % D2PI
+    (6.203480913 + 334.0612426700 * t) % TAU
 }
 
 /// Mean elongation of the Moon from the Sun (MHB2000 / IERS 2003)
@@ -185,7 +187,7 @@ pub const fn nut00a(date1: f64, date2: f64, dpsi: &mut f64, deps: &mut f64) {
                 + (XLS[i].nf as f64) * f
                 + (XLS[i].nd as f64) * d
                 + (XLS[i].nom as f64) * om)
-                % D2PI;
+                % TAU;
 
             let sarg = sin(arg);
             let carg = cos(arg);
@@ -198,14 +200,14 @@ pub const fn nut00a(date1: f64, date2: f64, dpsi: &mut f64, deps: &mut f64) {
     let depsls = de * u2r;
 
     /* Mean anomaly of the Moon (MHB2000). */
-    let al = (2.35555598 + 8328.6914269554 * t) % D2PI;
+    let al = (2.35555598 + 8328.6914269554 * t) % TAU;
     /* Mean longitude of the Moon minus that of the ascending node */
     /*(MHB2000). */
-    let af = (1.627905234 + 8433.466158131 * t) % D2PI;
+    let af = (1.627905234 + 8433.466158131 * t) % TAU;
     /* Mean elongation of the Moon from the Sun (MHB2000). */
-    let ad = (5.198466741 + 7771.3771468121 * t) % D2PI;
+    let ad = (5.198466741 + 7771.3771468121 * t) % TAU;
     /* Mean longitude of the ascending node of the Moon (MHB2000). */
-    let aom = (2.18243920 - 33.757045 * t) % D2PI;
+    let aom = (2.18243920 - 33.757045 * t) % TAU;
     /* General accumulated precession in longitude (IERS 2003). */
     let apa = fapa03(t);
     /* Planetary longitudes, Mercury through Uranus (IERS 2003). */
@@ -217,7 +219,7 @@ pub const fn nut00a(date1: f64, date2: f64, dpsi: &mut f64, deps: &mut f64) {
     let alsa = fasa03(t);
     let alur = faur03(t);
     /* Neptune longitude (MHB2000). */
-    let alne = (5.321159000 + 3.8127774000 * t) % D2PI;
+    let alne = (5.321159000 + 3.8127774000 * t) % TAU;
 
     dp = 0.0;
     de = 0.0;
@@ -240,7 +242,7 @@ pub const fn nut00a(date1: f64, date2: f64, dpsi: &mut f64, deps: &mut f64) {
                 + (XPL[i].nur as f64) * alur
                 + (XPL[i].nne as f64) * alne
                 + (XPL[i].npa as f64) * apa)
-                % D2PI;
+                % TAU;
             let sarg = sin(arg);
             let carg = cos(arg);
             dp += (XPL[i].sp as f64) * sarg + (XPL[i].cp as f64) * carg;
@@ -465,18 +467,18 @@ pub const fn earth_ee(date1: f64, date2: f64) -> f64 {
 
 /// Normalize angle into range 0 <= a < 2π  (eraAnp)
 const fn anp(a: f64) -> f64 {
-    let mut w = a % D2PI;
+    let mut w = a % TAU;
     if w < 0.0 {
-        w += D2PI;
+        w += TAU;
     }
     w
 }
 
 /// Normalize angle into range -π <= a < π  (eraAnpm)
 const fn anpm(a: f64) -> f64 {
-    let mut w = a % D2PI;
-    if w.abs() >= DPI {
-        w -= D2PI.copysign(a);
+    let mut w = a % TAU;
+    if w.abs() >= PI {
+        w -= TAU.copysign(a);
     }
     w
 }
@@ -488,7 +490,7 @@ const fn era00(dj1: f64, dj2: f64) -> f64 {
     let t = d1 + (d2 - DJ00);
     let f = (d1 % 1.0) + (d2 % 1.0);
 
-    anp(D2PI * (f + 0.7790572732640 + 0.00273781191135448 * t))
+    anp(TAU * (f + 0.7790572732640 + 0.00273781191135448 * t))
 }
 
 /// Greenwich apparent sidereal time, IAU 2006, given NPB matrix (eraGst06)

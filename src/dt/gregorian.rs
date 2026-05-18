@@ -141,66 +141,63 @@ impl Dt {
     /// This is the inverse of [`Self::ymd_to_jdn`]. Supports the full `i64`
     /// range, including negative years and year zero.
     pub const fn jdn_to_ymd(jdn: i64) -> (i64, u8, u8) {
-        // Use i128 internally to avoid overflow on full i64 JDN range
         let j = jdn as i128;
 
-        // Floor division helper (required for negative JDNs)
-        const fn floor_div(a: i128, b: i128) -> i128 {
-            let q = a / b;
-            let r = a % b;
-            if (r > 0 && b < 0) || (r < 0 && b > 0) {
-                q - 1
-            } else {
-                q
-            }
+        #[inline]
+        const fn floor_div_pos(a: i128, b: i128) -> i128 {
+            if a >= 0 { a / b } else { (a - (b - 1)) / b }
         }
 
         let a = j + 32044;
-        let b = floor_div(4 * a + 3, 146097);
-        let c = a - floor_div(b * 146097, 4);
-        let d = floor_div(4 * c + 3, 1461);
-        let e = c - floor_div(1461 * d, 4);
-        let m = floor_div(5 * e + 2, 153);
-        let day = (e - floor_div(153 * m + 2, 5) + 1) as u8;
-        let month = (m + 3 - 12 * floor_div(m, 10)) as u8;
-        let year = b * 100 + d - 4800 + floor_div(m, 10);
+        let b = floor_div_pos(4 * a + 3, 146097);
+        let c = a - floor_div_pos(b * 146097, 4);
+        let d = floor_div_pos(4 * c + 3, 1461);
+        let e = c - floor_div_pos(1461 * d, 4);
+        let m = floor_div_pos(5 * e + 2, 153);
+        let day = (e - floor_div_pos(153 * m + 2, 5) + 1) as u8;
+        let month = (m + 3 - 12 * floor_div_pos(m, 10)) as u8;
+        let year = b * 100 + d - 4800 + floor_div_pos(m, 10);
 
-        debug_assert!(day >= 1 && day <= 31);
-        debug_assert!(month >= 1 && month <= 12);
-
-        (year as i64, month, day)
+        (Dt::clamp_i128_to_i64(year), month, day)
     }
 
     /// Computes the Julian Day Number (JDN) for a proleptic Gregorian calendar date at noon UT.
     ///
+    /// # Arguments
+    /// * `year`  - Year (any `i64`; proleptic Gregorian)
+    /// * `month` - Month (**1-based**: `1` = January, `2` = February, ..., `12` = December)
+    /// * `day`   - Day of the month (**1-based**: `1` = first day of the month)
+    ///
     /// The algorithm matches the standard astronomical convention used throughout the library
     /// (`ymd_to_jdn(2000, 1, 1) == 2451545`).
+    ///
+    /// This is the inverse of [`jdn_to_ymd`].
+    ///
+    /// # Notes
+    /// - This function assumes a **valid** date. Passing `month = 0` or `day = 0` (or other
+    ///   out-of-range values) will produce incorrect results.
+    /// - The result is the integer JDN corresponding to **noon UT** on the given date.
+    #[inline]
     pub const fn ymd_to_jdn(year: i64, month: u8, day: u8) -> i64 {
-        let a = (14 - month as i64) / 12;
-        let y = year.saturating_add(4800).saturating_sub(a);
-        let m = month as i64 + 12 * a - 3;
+        let y = year as i128;
+        let m = month as i16;
+        let d = day as i16;
 
-        const fn floor_div(a: i64, b: i64) -> i64 {
-            let q = a / b;
-            let r = a % b;
-            if (r > 0 && b < 0) || (r < 0 && b > 0) {
-                q - 1
-            } else {
-                q
-            }
-        }
+        let a = (14 - m) / 12;
+        let y = y + 4800 - a as i128;
+        let m = m + 12 * a - 3;
 
-        let y4 = floor_div(y, 4);
-        let y100 = floor_div(y, 100);
-        let y400 = floor_div(y, 400);
+        let y4 = y >> 2; // floor(y / 4) — arithmetic shift works for negatives
 
-        (day as i64)
-            .saturating_add((153i64 * m + 2) / 5)
-            .saturating_add(365i64 * y)
-            .saturating_add(y4)
-            .saturating_sub(y100)
-            .saturating_add(y400)
-            .saturating_sub(32045)
+        // floor(y / 100)
+        let y100 = if y >= 0 { y / 100 } else { (y - 99) / 100 };
+
+        let y400 = y100 >> 2; // floor(y / 400)
+
+        let day_month = d + (153 * m + 2) / 5;
+        let year_part = 365 * y + y4 - y100 + y400 - 32045;
+
+        Dt::clamp_i128_to_i64(day_month as i128 + year_part)
     }
 
     /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.

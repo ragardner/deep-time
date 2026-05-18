@@ -17,34 +17,8 @@ impl TimeParts {
         }
 
         // ──────────────────────────────────────────────────────────────
-        // Resolve 12-hour time + meridiem (AM/PM) to 24-hour hour
-        // ──────────────────────────────────────────────────────────────
-        let hour = match (self.hour, self.meridiem) {
-            (Some(h), Some(m)) => {
-                if !(1..=12).contains(&h) {
-                    return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", h));
-                }
-                match (h, m) {
-                    (12, Meridiem::AM) => 0,
-                    (12, Meridiem::PM) => 12,
-                    (h, Meridiem::AM) => h,
-                    (h, Meridiem::PM) => h + 12,
-                }
-            }
-            (Some(h), None) => h,
-            (None, _) => 0,
-        };
-
-        // ──────────────────────────────────────────────────────────────
         // Civil date path
         // ──────────────────────────────────────────────────────────────
-        if self.year.is_none() && self.iso_week_year.is_none() {
-            return Err(an_err!(DtErrKind::Incomplete, "no year"));
-        }
-
-        let minute = self.minute.unwrap_or(0);
-        let second = self.second.unwrap_or(0);
-        let subsec = self.attos.unwrap_or(0);
         let mut jdn: Option<i64> = None;
 
         if let Some(year) = self.year {
@@ -92,12 +66,39 @@ impl TimeParts {
         }
 
         let Some(jdn) = jdn else {
-            return Err(an_err!(DtErrKind::InvalidInput, "could not create julian"));
+            if self.year.is_none() && self.iso_week_year.is_none() {
+                return Err(an_err!(DtErrKind::Incomplete, "no year"));
+            } else {
+                return Err(an_err!(DtErrKind::InvalidInput, "could not create julian"));
+            }
         };
-        let days_since_j2000 = jdn - JD_2000_2_451_545;
-        let seconds_from_noon_utc =
-            (hour as i64 - 12) * 3600 + (minute as i64) * 60 + (second as i64);
-        let mut sec_utc = days_since_j2000 * SEC_PER_DAYI64 + seconds_from_noon_utc;
+
+        // ──────────────────────────────────────────────────────────────
+        // Resolve 12-hour time + meridiem (AM/PM) to 24-hour hour
+        // ──────────────────────────────────────────────────────────────
+        let hour = match (self.hour, self.meridiem) {
+            (Some(h), Some(m)) => {
+                if !(1..=12).contains(&h) {
+                    return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", h));
+                }
+                match (h, m) {
+                    (12, Meridiem::AM) => 0,
+                    (12, Meridiem::PM) => 12,
+                    (h, Meridiem::AM) => h,
+                    (h, Meridiem::PM) => h + 12,
+                }
+            }
+            (Some(h), None) => h,
+            (None, _) => 0,
+        };
+
+        let minute = self.minute.unwrap_or(0) as i64;
+        let second = self.second.unwrap_or(0) as i64;
+        let days_since_j2000 = jdn.saturating_sub(JD_2000_2_451_545);
+        let seconds_from_noon_utc = (hour as i64 - 12) * 3600 + minute * 60 + second;
+        let mut sec_utc: i64 = days_since_j2000
+            .saturating_mul(SEC_PER_DAYI64)
+            .saturating_add(seconds_from_noon_utc);
 
         // ──────────────────────────────────────────────────────────────
         // Apply timezone correction (IANA or Fixed offset)
@@ -114,15 +115,15 @@ impl TimeParts {
             })?;
 
             if !name_str.is_empty() {
-                let provisional_unix = sec_utc + TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
+                let provisional_unix = sec_utc.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
                 match offset_info_at_local(name_str, provisional_unix) {
                     Some(info) => {
                         if info.is_gap {
                             // Non-existent time (spring-forward gap) — shift forward
-                            sec_utc += info.gap_size; // shift local time into the valid post-gap period
-                            sec_utc -= info.offset as i64; // apply the post-jump offset
+                            sec_utc = sec_utc.saturating_add(info.gap_size); // shift local time into the valid post-gap period
+                            sec_utc = sec_utc.saturating_sub(info.offset as i64); // apply the post-jump offset
                         } else {
-                            sec_utc -= info.offset as i64;
+                            sec_utc = sec_utc.saturating_sub(info.offset as i64);
                         }
                     }
                     None => {
@@ -135,8 +136,9 @@ impl TimeParts {
                 }
             }
         } else if let Some(Offset::Fixed(offset)) = self.offset {
-            sec_utc -= offset as i64; // local civil time → true UTC instant
+            // local civil time → true UTC instant
+            sec_utc = sec_utc.saturating_sub(offset as i64);
         }
-        Ok(Dt::from(sec_utc, subsec, Scale::UTC))
+        Ok(Dt::from(sec_utc, self.attos.unwrap_or(0), Scale::UTC))
     }
 }

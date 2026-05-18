@@ -416,19 +416,9 @@ impl Dt {
     }
 
     /// Returns `true` if this time is strictly positive **(> 0)**.
-    #[inline]
+    #[inline(always)]
     pub const fn is_positive(&self) -> bool {
-        if self.sec > 0 {
-            true
-        } else if self.sec == 0 {
-            self.attos != 0
-        } else {
-            let k = (-self.sec) as u64;
-            let quot = self.attos / ATTOS_PER_SEC;
-            let rem = self.attos % ATTOS_PER_SEC;
-
-            quot > k || (quot == k && rem > 0)
-        }
+        self.to_attos() > 0
     }
 
     /// Multiplies this time by an integer scalar (exact).
@@ -442,17 +432,16 @@ impl Dt {
         Self::from_attos(total, Scale::TAI)
     }
 
-    /// Divides this time by an integer scalar (exact floor division).
+    /// Divides this `Dt` by an integer scalar.
     ///
+    /// Uses truncating division (rounds toward zero), same as normal integer division.
     /// Returns `ZERO` if `rhs == 0`.
-    /// Uses floor division (toward negative infinity) for consistency
-    /// with the existing `floor` method.
     pub const fn div(self, rhs: i64) -> Self {
         if rhs == 0 || self.is_zero() {
             return Self::ZERO;
         }
         let total = self.to_attos();
-        let result = safe_div_euc!(total, rhs as i128, 0i128);
+        let result = total / (rhs as i128);
         Self::from_attos(result, Scale::TAI)
     }
 
@@ -747,13 +736,15 @@ impl Dt {
     }
 
     /// Clamps an `i128` to the representable range of `i64`.
+    #[inline(always)]
     pub(crate) const fn clamp_i128_to_i64(x: i128) -> i64 {
-        if x > i64::MAX as i128 {
+        let y = x as i64;
+        if x == y as i128 {
+            y
+        } else if x > 0 {
             i64::MAX
-        } else if x < i64::MIN as i128 {
-            i64::MIN
         } else {
-            x as i64
+            i64::MIN
         }
     }
 }

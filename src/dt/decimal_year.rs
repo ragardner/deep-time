@@ -1,11 +1,11 @@
-use crate::{Dt, Real, Scale};
+use crate::{Dt, JD_2000_2_451_545F, Real, Scale};
 
 impl Dt {
     /// Returns the **Julian epoch year**.
     #[inline]
     pub const fn to_jyear(&self) -> Real {
         let jd_tt = self.to_jd_f();
-        f!(2000.0) + (jd_tt - f!(2451545.0)) / f!(365.25)
+        f!(2000.0) + (jd_tt - JD_2000_2_451_545F) / f!(365.25)
     }
 
     /// Inverse of [`Self::to_jyear`].
@@ -22,7 +22,7 @@ impl Dt {
             };
         }
 
-        let jd = f!(2451545.0) + (jyear - f!(2000.0)) * f!(365.25);
+        let jd = JD_2000_2_451_545F + (jyear - f!(2000.0)) * f!(365.25);
         Self::from_jd_f(jd, scale)
     }
 

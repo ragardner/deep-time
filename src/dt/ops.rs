@@ -81,24 +81,23 @@ impl DivAssign<i64> for Dt {
 }
 
 impl Dt {
-    /// Compares this `Dt` with another by converting both to the TAI timescale
-    /// (the library's canonical physical-time reference) and then comparing their
-    /// `(sec, attos)` pairs.
+    /// Compares the time values represented by two `Dt`s.
     ///
-    /// This is a `const fn` so it can be used in const contexts and is allocation-free.
-    /// It provides the total order used by `<`, `>`, `<=`, `>=`, `cmp`, etc.
-    ///
-    /// Two `Dt`s that represent the exact same physical instant (after all
-    /// leap-second, relativistic, and scale conversions) compare as `Equal`, even if
-    /// they were constructed with different [`Scale`]s.
+    /// - This comparison is based on the raw `(sec, attos)` representation
+    /// after normalizing (without mutating self or other) any un-carried
+    /// attoseconds.
+    /// - Does **not** perform scale conversion.
     pub const fn cmp(&self, other: &Self) -> Ordering {
-        if self.sec < other.sec {
+        let a = self.carry_over();
+        let b = other.carry_over();
+
+        if a.sec < b.sec {
             Ordering::Less
-        } else if self.sec > other.sec {
+        } else if a.sec > b.sec {
             Ordering::Greater
-        } else if self.attos < other.attos {
+        } else if a.attos < b.attos {
             Ordering::Less
-        } else if self.attos > other.attos {
+        } else if a.attos > b.attos {
             Ordering::Greater
         } else {
             Ordering::Equal
@@ -107,10 +106,6 @@ impl Dt {
 
     /// Returns the smaller of two `Dt`s according to the total physical-time order
     /// defined by [`Self::cmp`].
-    ///
-    /// Both instants are converted to TAI internally, so the result is the physically
-    /// earlier instant even when the two `Dt`s belong to different [`Scale`]s
-    /// (leap seconds, relativistic offsets, etc. are all taken into account).
     ///
     /// This is a `const fn` and can be used in const contexts.
     #[inline]
@@ -133,6 +128,9 @@ impl Dt {
         }
     }
 
+    /// True if both sides have matching `sec` and `attos` fields.
+    ///
+    /// This is a `const fn` so it can be used in const contexts.
     #[inline]
     pub const fn eq(&self, other: &Self) -> bool {
         matches!(Dt::cmp(self, other), Ordering::Equal)

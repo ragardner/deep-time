@@ -24,6 +24,9 @@ fn panic(_info: &PanicInfo) -> ! {
 // maybe one day upgrade to f128 ¯\_(ツ)_/¯
 pub type Real = f64;
 
+/// Convert a number to the crates [`Real`] type (f64).
+///
+/// Equivalent to `n as f64`.
 #[macro_export]
 macro_rules! f {
     ($x:expr) => {
@@ -53,6 +56,7 @@ macro_rules! safe_rem_euc {
     }};
 }
 
+/// **Lossy** conversion of attoseconds to → float seconds (s).
 #[inline(always)]
 pub const fn to_sec_f(attos: u128) -> Real {
     f!(attos) / ATTOS_PER_SECF

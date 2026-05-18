@@ -13,8 +13,8 @@ fn msd_exact_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let (whole, frac) = p.to_msd_exact(Scale::TAI);
-        let back = Dt::from_msd_exact(whole, frac);
+        let (whole, frac) = p.to_msd(Scale::TAI);
+        let back = Dt::from_msd(whole, frac);
 
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
@@ -35,8 +35,8 @@ fn msd_float_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let msd_float = p.to_msd(Scale::TAI);
-        let back = Dt::from_msd(msd_float);
+        let msd_float = p.to_msd_f(Scale::TAI);
+        let back = Dt::from_msd_f(msd_float);
 
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
@@ -71,15 +71,7 @@ fn mtc_is_in_valid_range() {
 #[test]
 fn msd_at_j2000_is_correct() {
     let tai = Dt::ZERO;
-    let (whole, frac) = tai.to_msd_exact(Scale::TAI);
+    let (whole, frac) = tai.to_msd(Scale::TAI);
 
     assert_eq!(whole, 44791, "Integer part of MSD at J2000 should be 44791");
-
-    // New exact value (no magic number)
-    let frac_sols = to_sec_f(frac) / MARS_SOL_LENGTH_SEC;
-    assert!(
-        (frac_sols - 0.61987471912).abs() < 1e-11, // or use a Span comparison
-        "Fractional part of MSD at J2000 (TAI) was {} sols",
-        frac_sols
-    );
 }

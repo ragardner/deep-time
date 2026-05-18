@@ -88,3 +88,49 @@ fn test_mjd_utc_roundtrip() {
         "JD UTC round-trip failed for leap second"
     );
 }
+
+#[test]
+fn ymd_jdn_safety() {
+    let test_points = [
+        (i64::MIN, 1, 1),
+        (0_i64, 1, 1),
+        (i64::MAX, 1, 1),
+        (i64::MIN, 12, 31),
+        (0_i64, 12, 31),
+        (i64::MAX, 12, 31),
+    ];
+    for (y, m, d) in &test_points {
+        let jdn = Dt::ymd_to_jdn(*y, *m, *d);
+        let ymd = Dt::jdn_to_ymd(jdn);
+        assert_eq!(ymd, (ymd), "round trip extreme ymd jdn failed");
+    }
+
+    let test_points = [i64::MIN, 0_i64, 1721060_i64, i64::MAX];
+    for jdn1 in &test_points {
+        let (y, m, d) = Dt::jdn_to_ymd(*jdn1);
+        let jdn2 = Dt::ymd_to_jdn(y, m, d);
+        assert_eq!(*jdn1, jdn2, "round trip extreme jdn ymd failed");
+    }
+}
+
+#[test]
+fn ymd_jdn() {
+    let test_points = [
+        (0000, 1, 1, 1721060),
+        (2000, 1, 1, 2451545),
+        (2023, 1, 1, 2459946),
+        (2024, 1, 1, 2460311),
+        // end of year
+        (0000, 12, 31, 1721425),
+        (2000, 12, 31, 2451910),
+        (2023, 12, 31, 2460310),
+        (2024, 12, 31, 2460676),
+    ];
+    for (y, m, d, expected_jdn) in &test_points {
+        let jdn = Dt::ymd_to_jdn(*y, *m, *d);
+        assert_eq!(jdn, *expected_jdn, "expected jdn failed");
+
+        let (yr, mo, day) = Dt::jdn_to_ymd(*expected_jdn);
+        assert_eq!((yr, mo, day), (*y, *m, *d), "expected yr mo day failed");
+    }
+}

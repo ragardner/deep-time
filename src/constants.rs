@@ -68,8 +68,9 @@ pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 �
 /// Helper that returns the exact TT–TAI offset as a `Dt`.
 pub const TT_TAI_OFFSET: Dt = Dt::new(TT_TAI_OFFSET_SEC, TT_TAI_OFFSET_SUBSEC);
 
-/// Julian Date of the J2000.0 epoch in Terrestrial Time (TT).
+/// Julian Date of the J2000.0 epoch.
 pub const JD_2000_2_451_545: i64 = 2_451_545;
+pub const JD_2000_2_451_545F: Real = f!(2_451_545.0);
 /// MJD 40587.0 exactly = 1970-01-01 00:00:00 UTC
 pub const MJD_1970: i64 = 40_587;
 /// Number of TAI seconds backwards from noon 2000-01-01 to midnight 1972-01-01
@@ -110,16 +111,13 @@ pub(crate) const TDB0_ATTOS: i128 = -65_500_000_000_000;
 pub(crate) const LM_NUM: i128 = 648_378;
 pub(crate) const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
 
-/// Exact mean length of one Martian sol in Earth seconds (NASA GISS / AM2000)
-pub const MARS_SOL_LENGTH_SEC: Real = 88775.244;
+/// Exact mean length of one Martian sol in Earth seconds.
+/// Current NASA GISS Mars24 value (updated 2025-01-07): 1.0274912517 Earth days.
+pub const MARS_SOL_LENGTH_SEC: Real = 88_775.244_146_88;
 
-// Mars MSD reference epoch (JD 2405522.0028779 TT) broken into integer parts for exact math.
-// pub(crate) const MARS_MSD_REF_JD_INT: i64 = 2_405_522;
-// pub(crate) const MARS_MSD_REF_TOD_SEC: i64 = 248;
-// pub(crate) const MARS_MSD_REF_TOD_SUBSEC: u64 = 650_560_000_000_000_000;
-
-/// Martian mean sol length in attoseconds (88775.244 s × 10¹⁸).
-pub const MARS_SOL_ATTOS: i128 = 88_775_244_000_000_000_000_000;
+/// Martian mean sol length in attoseconds
+/// (88_775.24414688 s × 10¹⁸, exact integer matching the current NASA divisor).
+pub const MARS_SOL_ATTOS: i128 = 88_775_244_146_880_000_000_000;
 
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
 pub(crate) const MARS_REF_TT: Dt = Dt::new(-3_976_386_952, 650_560_000_000_000_000);

@@ -2,13 +2,13 @@
 
 #[cfg(feature = "perf-tests")]
 #[cfg(test)]
-mod tests {
+mod perf_tests {
     use deep_time::{Dt, Scale};
     use std::time::Instant;
 
     #[test]
     fn date_auto_parser_perf() {
-        let corpus: Vec<&str> = vec![
+        let cases: Vec<&str> = vec![
             "2024-03-14",
             "14 Mar 2024",
             "Mar 14, 2024",
@@ -43,13 +43,13 @@ mod tests {
 
         let start = Instant::now();
         for _ in 0..ITERATIONS {
-            for &input in &corpus {
+            for &input in &cases {
                 let _ = Dt::from_str_parse(input, &None);
             }
         }
         let elapsed = start.elapsed();
 
-        let total_parses = corpus.len() * ITERATIONS;
+        let total_parses = cases.len() * ITERATIONS;
         let ns_per_parse = elapsed.as_nanos() as f64 / total_parses as f64;
 
         println!("\n=== DATE AUTO PARSER PERF ===");
@@ -60,6 +60,7 @@ mod tests {
         );
     }
 
+    #[cfg(not(feature = "jiff-tz"))]
     #[test]
     fn date_from_str_perf() {
         const ITERATIONS: usize = 10_000_000;
@@ -90,11 +91,11 @@ mod tests {
     #[cfg(feature = "jiff-tz")]
     #[test]
     fn zoned_from_str_perf_jiff_comparison() {
-        const ITERATIONS: usize = 5_000_000; // lowered because IANA zone resolution is heavier
+        const ITERATIONS: usize = 5_000_000;
         const INPUT: &str = "2024-03-14T00:00:00[America/New_York]";
         const FORMAT_WITH_Q: &str = "%Y-%m-%dT%H:%M:%S[%Q]";
 
-        // ── deep_time with %Q directive (your auto-handling path) ─────────────────
+        // ── deep_time with %Q directive ─────────────────
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
             let _ = Dt::from_str(INPUT, FORMAT_WITH_Q, true, true, false).unwrap();
@@ -132,6 +133,55 @@ mod tests {
         } else {
             println!(
                 "→ deep_time is {:.1}% slower than jiff on zoned IANA parsing",
+                (ratio - 1.0) * 100.0
+            );
+        }
+    }
+
+    #[cfg(feature = "jiff-tz")]
+    #[test]
+    fn from_str_perf_jiff_comparison() {
+        const ITERATIONS: usize = 5_000_000; // lowered because IANA zone resolution is heavier
+        const INPUT: &str = "2024-03-14T00:00:00";
+        const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
+
+        let start = std::time::Instant::now();
+        for _ in 0..ITERATIONS {
+            let _ = Dt::from_str(INPUT, FORMAT, true, true, false).unwrap();
+        }
+        let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+        // ── Jiff  parsing ───────────────────────
+        use jiff::civil::DateTime;
+
+        let start = std::time::Instant::now();
+        for _ in 0..ITERATIONS {
+            let _ = INPUT.parse::<DateTime>().unwrap();
+        }
+        let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+        // ── Results ───────────────────────────────────────────────────────────────
+        println!("\n=== FROM STR PERF — deep_time vs jiff ===");
+        println!(
+            "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
+            deep_time_ns,
+            1_000_000.0 / deep_time_ns
+        );
+        println!(
+            "jiff      : {:7.2} ns/parse  |  {:7.0} k parses/sec",
+            jiff_ns,
+            1_000_000.0 / jiff_ns
+        );
+
+        let ratio = deep_time_ns / jiff_ns;
+        if ratio < 1.0 {
+            println!(
+                "→ deep_time is {:.1}% **faster** than jiff on datetime parsing",
+                (1.0 - ratio) * 100.0
+            );
+        } else {
+            println!(
+                "→ deep_time is {:.1}% slower than jiff on datetime parsing",
                 (ratio - 1.0) * 100.0
             );
         }

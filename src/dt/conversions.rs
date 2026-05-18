@@ -29,12 +29,12 @@ impl Dt {
     pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
         let raw = Dt::new(sec, attos);
         match scale {
-            Scale::TAI | Scale::Custom | Scale::UT1 => raw,
-            Scale::TT => raw.sub(TT_TAI_OFFSET),
             Scale::UTC => raw.add(Dt {
                 sec: raw.leap_seconds(true).offset,
                 attos: 0,
             }),
+            Scale::TAI => raw,
+            Scale::TT => raw.sub(TT_TAI_OFFSET),
             Scale::UTCSpice => {
                 let tai = raw.add(Dt {
                     sec: raw.leap_seconds(true).offset,
@@ -73,6 +73,7 @@ impl Dt {
                 tt.sub(TT_TAI_OFFSET)
             }
             Scale::TCL => Self::tcl_to_tai(raw),
+            _ => raw,
         }
     }
 

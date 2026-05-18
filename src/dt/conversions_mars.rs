@@ -14,7 +14,7 @@ impl Dt {
     ///
     /// The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
     /// [`Scale`]. Leap seconds are automatically accounted for when converting from UTC.
-    pub const fn to_msd_exact(&self, current: Scale) -> (i64, u128) {
+    pub const fn to_msd(&self, current: Scale) -> (i64, u128) {
         let tt = self.to(current, Scale::TT);
         let elapsed = Self::to_attos_since_mars_msd_epoch(tt);
         let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS);
@@ -27,12 +27,12 @@ impl Dt {
     /// seconds into the current sol (range `[0, one Martian sol)`).
     #[inline]
     pub const fn to_mtc(&self, current: Scale) -> Dt {
-        let (_, frac_attos) = self.to_msd_exact(current);
+        let (_, frac_attos) = self.to_msd(current);
         Dt::from_attos(frac_attos as i128, Scale::TAI)
     }
 
     /// Creates a `Dt` (in TT) from an exact Mars Sol Date using full library precision.
-    pub const fn from_msd_exact(whole_sols: i64, frac_attos: u128) -> Self {
+    pub const fn from_msd(whole_sols: i64, frac_attos: u128) -> Self {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
         let tt = MARS_REF_TT.add(Dt::from_attos(elapsed_attos, Scale::TAI));
         Self::from(tt.sec, tt.attos, Scale::TT)
@@ -40,18 +40,18 @@ impl Dt {
 
     /// Creates a `Dt` (in TT) from a floating-point Mars Sol Date.
     /// Non-exact Real.
-    pub const fn from_msd(msd: Real) -> Self {
+    pub const fn from_msd_f(msd: Real) -> Self {
         let whole = floor_f(msd) as i64;
         let frac = msd - f!(whole);
         let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC);
-        Self::from_msd_exact(whole, frac_span.to_attos() as u128)
+        Self::from_msd(whole, frac_span.to_attos() as u128)
     }
 
     /// Returns the Mars Sol Date (MSD) as a floating-point value (matches NASA Mars24 output).
     /// Non-exact Real.
     #[inline]
-    pub const fn to_msd(&self, current: Scale) -> Real {
-        let (whole, frac) = self.to_msd_exact(current);
+    pub const fn to_msd_f(&self, current: Scale) -> Real {
+        let (whole, frac) = self.to_msd(current);
         f!(whole) + to_sec_f(frac) / MARS_SOL_LENGTH_SEC
     }
 }
