@@ -2,6 +2,7 @@ use crate::{Dt, Scale};
 use chrono::{DateTime, Datelike, Duration, TimeDelta, Timelike, Utc};
 
 /// Clamps an `i128` to the representable range of `u64`.
+#[inline]
 fn clamp_i128_to_u64(x: i128) -> u64 {
     if x > u64::MAX as i128 {
         u64::MAX

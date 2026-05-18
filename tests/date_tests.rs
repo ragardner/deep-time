@@ -47,14 +47,14 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        let x = Dt::from_jd_f(2451545.0, Scale::TAI);
-        eprintln!("jd {:?}", x.to_jd_f());
-        let x = Dt::from_jd_f(2451545.0, Scale::TT);
-        eprintln!("jd {:?}", x.to_jd_f());
-        let x = Dt::from_mjd_f(51544.5, Scale::TAI);
-        eprintln!("Dt {:?}", x);
-        let x = Dt::from_mjd(60961, 0, Scale::TAI);
-        eprintln!("mjd {:?}", x.to_mjd_f());
+        // let x = Dt::from_jd_f(2451545.0, Scale::TAI);
+        // eprintln!("jd {:?}", x.to_jd_f());
+        // let x = Dt::from_jd_f(2451545.0, Scale::TT);
+        // eprintln!("jd {:?}", x.to_jd_f());
+        // let x = Dt::from_mjd_f(51544.5, Scale::TAI);
+        // eprintln!("Dt {:?}", x);
+        // let x = Dt::from_mjd(60961, 0, Scale::TAI);
+        // eprintln!("mjd {:?}", x.to_mjd_f());
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -300,10 +300,6 @@ mod tests {
                 "2024-03-14T15:30:45Z".to_string(),
                 None,
             ),
-            // REMOVED pure-numeric YYYYMMDDHHMM* cases per user request:
-            //   - "20240314153045"
-            //   - "240314153045"
-            // (the .millis version below is kept because it contains a separator)
             (
                 "20240314153045.123456789".to_string(),
                 "2024-03-14T15:30:45.123456789Z".to_string(),

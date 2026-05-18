@@ -250,7 +250,7 @@ impl GregorianTime {
     ///
     /// Round-tripping with `Dt::to_gregorian_time`.
     #[inline]
-    pub const fn to_time_point(&self) -> Dt {
+    pub const fn to_dt(&self) -> Dt {
         Dt::from_ymdhms(self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0)
     }
 }

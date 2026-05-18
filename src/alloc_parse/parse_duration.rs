@@ -10,14 +10,14 @@ impl Dt {
     /// 2. Common natural-language formats
     /// 3. Legacy bare number, supports decimals → fractional milliseconds
     ///
-    /// Returns deep_time::Dt
+    /// Returns a [`Dt`].
     pub fn from_duration_str(s: &str, lang: Lang) -> Result<Dt, DtErr> {
         if s.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
 
         if Dt::looks_like_iso(s) {
-            return Dt::from_iso(s).map_err(|e| {
+            return Dt::from_iso_duration(s).map_err(|e| {
                 an_err!(
                     DtErrKind::InvalidInput,
                     "iso: {}",
@@ -42,6 +42,7 @@ impl Dt {
         Err(an_err!(DtErrKind::InvalidInput, "{}", s))
     }
 
+    /// Converts a natural language duration into an ISO duration.
     pub fn natural_to_iso(s: &str, lang: Lang) -> Result<String, DtErr> {
         match natural_duration_to_iso(s, lang, true) {
             Ok(iso) => Ok(iso),

@@ -288,6 +288,47 @@ mod tests {
                 "Australia/Sydney",
                 "Exact spring-forward second (Sydney)",
             ),
+            // === More non-existent times (DST spring-forward gaps) ===
+            (
+                "2025-03-09 02:30:00",
+                "America/New_York",
+                "NY 2025 spring-forward gap (non-existent local time)",
+            ),
+            (
+                "2025-03-09 02:00:00",
+                "America/New_York",
+                "Exact NY 2025 spring-forward boundary (gap start)",
+            ),
+            (
+                "2025-03-09 02:30:00.5",
+                "America/New_York",
+                "Half-second inside NY 2025 spring-forward gap",
+            ),
+            (
+                "2025-03-30 01:30:00",
+                "Europe/London",
+                "London 2025 spring-forward gap (1am→2am BST, non-existent)",
+            ),
+            (
+                "2025-03-30 01:00:00",
+                "Europe/London",
+                "Exact London 2025 spring-forward boundary",
+            ),
+            (
+                "2025-03-30 01:30:00.123456789",
+                "Europe/London",
+                "Subsecond deep inside London 2025 spring-forward gap",
+            ),
+            (
+                "2025-03-09 02:30:00",
+                "America/Chicago",
+                "Chicago 2025 spring-forward gap (different US zone)",
+            ),
+            (
+                "2024-10-06 02:30:00.999999999",
+                "Australia/Sydney",
+                "Last nanosecond inside Sydney spring-forward gap",
+            ),
         ];
 
         for (civil_str, iana_name, description) in cases {

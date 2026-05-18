@@ -7,7 +7,7 @@ use crate::{
 #[inline]
 pub(crate) fn parse_yymmdd(input: &str) -> Option<Dt> {
     let parsed = TimeParts::from_str("%y%m%d", input, true, true, false).ok()?;
-    parsed.to_time_point().ok()
+    parsed.to_dt().ok()
 }
 
 /// Parses year-month formats with flexible separators and optional sign:
@@ -97,7 +97,7 @@ pub(crate) fn parse_yyyymm(s: &str) -> Option<Dt> {
         if (1..=12).contains(&m) && (crate::MIN_YEAR..=crate::MAX_YEAR).contains(&y) {
             let parsed =
                 TimeParts::from_str("%Y%m", s.trim_start_matches('-'), true, true, true).ok()?;
-            return parsed.to_time_point().ok();
+            return parsed.to_dt().ok();
         }
     }
     None

@@ -1,21 +1,25 @@
-use crate::{ATTOS_PER_SEC, Dt, LM_DEN, LM_NUM, Real, Scale, sin};
+use crate::{ATTOS_PER_SEC, Dt, Real, Scale, sin};
 
 /// TCL secular rate vs TDB (exact value from LTE440).
-pub(crate) const TL_NUM: i128 = 6_798_355_240;
-pub(crate) const TL_DEN: i128 = 10_000_000_000_000_000_000; // 10^19
+pub const TL_NUM: i128 = 6_798_355_240;
+pub const TL_DEN: i128 = 10_000_000_000_000_000_000; // 10^19
+/// L_M = 6.48378 × 10^{-10} (exact secular rate from Ashby & Patla 2024 NIST for LTC ↔ TT)
+/// as fixed-point fraction.
+pub const LM_NUM: i128 = 648_378;
+pub const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
 
 /// LTE440 periodic terms (Lu et al. 2025, A&A 704, A76; arXiv:2509.18511)
 /// A_i * sin(2π * (t_J2000_days / T_i) + ϕ_i)  with A_i in µs.
 /// These are the 13 dominant terms (>1 µs) after removing the linear secular drift.
 /// Accuracy: < 0.15 ns (before 2050) when combined with the secular rate.
 #[derive(Copy, Clone)]
-struct LunarPeriodicTerm {
+pub struct LunarPeriodicTerm {
     period_days: Real,  // T_i
     amplitude_us: Real, // A_i
     phase_rad: Real,    // ϕ_i
 }
 
-const LUNAR_PERIODIC_TERMS: [LunarPeriodicTerm; 13] = [
+pub const LUNAR_PERIODIC_TERMS: [LunarPeriodicTerm; 13] = [
     LunarPeriodicTerm {
         period_days: 365.26590909,
         amplitude_us: 1651.36355077,
@@ -89,19 +93,6 @@ impl Dt {
         Self::mul_rate(attos, LM_NUM, LM_DEN)
     }
 
-    // old fn
-    // pub(crate) const fn tt_to_ltc(tt: Self) -> Self {
-    //     let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
-    //     let span_attos = Self::mul_lm(elapsed);
-    //     tt.add(Dt::from_attos(span_attos))
-    // }
-    // old fn
-    // pub(crate) const fn ltc_to_tt(ltc: Self) -> Self {
-    //     let elapsed = Self::to_attos_since_tcg_tcb_epoch(ltc);
-    //     let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
-    //     ltc.sub(Dt::from_attos(span_attos))
-    // }
-
     pub(crate) const fn tt_to_ltc(tt: Self) -> Self {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
         let secular_attos = Self::mul_lm(elapsed);
@@ -110,15 +101,6 @@ impl Dt {
         tt.add(Dt::from_attos(secular_attos, Scale::TAI))
             .add(periodic)
     }
-
-    // non-iterate approach
-    // pub(crate) const fn ltc_to_tt(ltc: Self) -> Self {
-    //     let elapsed = Self::to_attos_since_tcg_tcb_epoch(ltc);
-    //     let secular_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
-    //     let periodic = Self::ltc_periodic_correction(ltc); // evaluate at input (or iterate if you want ultra-pedantic)
-
-    //     ltc.sub(Dt::from_attos(secular_attos)).sub(periodic)
-    // }
 
     /// Converts LTC → TT using fixed-point iteration to account for the
     /// time-dependent periodic correction.
@@ -222,7 +204,7 @@ impl Dt {
             .add(Self::TCL_TDB_BIAS_SPAN)
     }
 
-    /// Dedicated inverse for TCL → TT (iterative, mirrors your TDB style).
+    /// Dedicated inverse for TCL → TT.
     /// Returns a Dt on the TT scale (consistent with ltc_to_tt, tcg_to_tt, etc.).
     pub(crate) const fn tcl_to_tai(tcl: Self) -> Self {
         let mut tdb = tcl;

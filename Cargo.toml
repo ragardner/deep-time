@@ -41,6 +41,7 @@ alloc = [
     "chrono?/alloc",
 ]
 
+mars = []
 sidereal = []
 sidereal-earth = ["sidereal"]
 bop = ["alloc"]
@@ -172,3 +173,6 @@ result_unit_err                = "allow"
 unwrap_used                    = "deny"
 expect_used                    = "deny"
 panic                          = "deny"
+
+[package.metadata.docs.rs]
+all-features = true

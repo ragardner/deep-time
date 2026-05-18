@@ -13,26 +13,26 @@ mod time_range_tests {
     }
 
     #[test]
-    fn until_includes_end_when_reachable() {
+    fn to_including_includes_end_when_reachable() {
         let start = ymd(2000, 1, 1);
         let end = ymd(2000, 1, 2);
         let step = hr(1);
 
-        let v: Vec<_> = start.every(step).until(end).collect();
+        let v: Vec<_> = start.every(step).to_including(end).collect();
 
         assert_eq!(v.len(), 25);
         assert_eq!(v.first(), Some(&start));
         assert_eq!(v.last(), Some(&end));
-        assert_eq!(start.every(step).until(end).len(), 25);
+        assert_eq!(start.every(step).to_including(end).len(), 25);
     }
 
     #[test]
-    fn up_to_excludes_end_when_reachable() {
+    fn to_excluding_excludes_end_when_reachable() {
         let start = ymd(2000, 1, 1);
         let end = ymd(2000, 1, 2);
         let step = hr(1);
 
-        let v: Vec<_> = start.every(step).up_to(end).collect();
+        let v: Vec<_> = start.every(step).to_excluding(end).collect();
 
         assert_eq!(v.len(), 24);
         assert_eq!(v.first(), Some(&start));
@@ -40,7 +40,7 @@ mod time_range_tests {
         let mut expected_last = start;
         expected_last.add_hr(23);
         assert_eq!(v.last(), Some(&expected_last));
-        assert_eq!(start.every(step).up_to(end).len(), 24);
+        assert_eq!(start.every(step).to_excluding(end).len(), 24);
     }
 
     #[test]
@@ -50,11 +50,11 @@ mod time_range_tests {
         end.add_hr(25); // ← must be mut
         let step = hr(6);
 
-        let v: Vec<_> = start.every(step).up_to(end).collect();
+        let v: Vec<_> = start.every(step).to_excluding(end).collect();
 
         // 0h,6h,12h,18h,24h are all < 25h → 5 points
         assert_eq!(v.len(), 5);
-        assert_eq!(start.every(step).up_to(end).len(), 5);
+        assert_eq!(start.every(step).to_excluding(end).len(), 5);
     }
 
     // === Zero step ===
@@ -64,9 +64,9 @@ mod time_range_tests {
         let t = ymd(2025, 6, 15);
         let zero = Dt::from_sec(0, Scale::TAI);
 
-        let v: Vec<_> = t.every(zero).until(t).collect();
+        let v: Vec<_> = t.every(zero).to_including(t).collect();
         assert_eq!(v, vec![t]);
-        assert_eq!(t.every(zero).until(t).len(), 1);
+        assert_eq!(t.every(zero).to_including(t).len(), 1);
     }
 
     #[test]
@@ -75,8 +75,13 @@ mod time_range_tests {
         let other = ymd(2025, 6, 16);
         let zero = Dt::from_sec(0, Scale::TAI);
 
-        assert!(t.every(zero).up_to(t).collect::<Vec<_>>().is_empty());
-        assert!(t.every(zero).until(other).collect::<Vec<_>>().is_empty());
+        assert!(t.every(zero).to_excluding(t).collect::<Vec<_>>().is_empty());
+        assert!(
+            t.every(zero)
+                .to_including(other)
+                .collect::<Vec<_>>()
+                .is_empty()
+        );
     }
 
     // === Descending ranges ===
@@ -87,7 +92,7 @@ mod time_range_tests {
         let end = ymd(2000, 1, 1);
         let step = hr(-1);
 
-        let v: Vec<_> = start.every(step).down_to(end).collect();
+        let v: Vec<_> = start.every(step).to_including(end).collect();
 
         assert_eq!(v.len(), 25);
         assert_eq!(v.first(), Some(&start));
@@ -133,7 +138,7 @@ mod time_range_tests {
         let end = ymd(2000, 1, 2);
         let step = hr(6);
 
-        let mut r = start.every(step).until(end);
+        let mut r = start.every(step).to_including(end);
         assert_eq!(r.len(), 5);
 
         let _ = r.next();
@@ -152,7 +157,7 @@ mod time_range_tests {
         let end = ymd(2000, 1, 2);
         let step = hr(1);
 
-        let mut r = start.every(step).up_to(end);
+        let mut r = start.every(step).to_excluding(end);
         let original_len = r.len();
 
         let mut count = 0usize;
@@ -170,7 +175,7 @@ mod time_range_tests {
         let t = ymd(2025, 4, 1);
         let step = hr(1);
 
-        let v: Vec<_> = t.every(step).until(t).collect();
+        let v: Vec<_> = t.every(step).to_including(t).collect();
         assert_eq!(v.len(), 1);
         assert_eq!(v[0], t);
     }
@@ -180,9 +185,9 @@ mod time_range_tests {
         let t = ymd(2025, 4, 1);
         let step = hr(1);
 
-        let v: Vec<_> = t.every(step).up_to(t).collect();
+        let v: Vec<_> = t.every(step).to_excluding(t).collect();
         assert!(v.is_empty());
-        assert_eq!(t.every(step).up_to(t).len(), 0);
+        assert_eq!(t.every(step).to_excluding(t).len(), 0);
     }
 
     // === API consistency ===
@@ -193,7 +198,7 @@ mod time_range_tests {
         let end = ymd(2000, 1, 2);
         let step = hr(12);
 
-        let via_builder: Vec<_> = start.every(step).until(end).collect();
+        let via_builder: Vec<_> = start.every(step).to_including(end).collect();
         let via_inclusive: Vec<_> = TimeRange::inclusive(start, end, step).collect();
 
         assert_eq!(via_builder, via_inclusive);

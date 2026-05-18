@@ -15,29 +15,61 @@ mod to_jiff;
 
 use crate::{AsciiStr, Scale};
 
+/// A flexible, partially-filled representation of a civil datetime.
+///
+/// `TimeParts` is the central intermediate type used throughout the library
+/// for parsing, formatting, and converting between different time representations
+/// (CCSDS, ISO-like strings, `chrono`, `jiff`, `Dt`, etc.).
+///
+/// Most fields are optional, allowing partial dates/times. It also carries
+/// metadata such as the time `scale`, IANA zone name, leap-second flag,
+/// and various weekday/week-number representations.
+///
+/// - Convert to [`Dt`] using [`TimeParts::to_dt`].
+/// - Conversions to types from other crates require relevant features to
+///   be enabled.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct TimeParts {
+    /// Year (can be negative for BCE dates).
     pub year: Option<i64>,
-    pub month: Option<u8>,  // 1-12
-    pub day: Option<u8>,    // 1-31
-    pub hour: Option<u8>,   // 0-23
-    pub minute: Option<u8>, // 0-59
-    pub second: Option<u8>, // 0-60
-    pub attos: Option<u64>, // 0 ≤ value < 10¹⁸
+    /// Month of the year (1–12).
+    pub month: Option<u8>,
+    /// Day of the month (1–31).
+    pub day: Option<u8>,
+    /// Hour of the day (0–23).
+    pub hour: Option<u8>,
+    /// Minute of the hour (0–59).
+    pub minute: Option<u8>,
+    /// Second of the minute (0–60). Value 60 is used for leap seconds.
+    pub second: Option<u8>,
+    /// Attoseconds (0 ≤ value < 10¹⁸).
+    pub attos: Option<u64>,
+    /// Timezone offset from UTC.
     pub offset: Option<Offset>,
+    /// IANA timezone name (e.g. `"America/New_York"`), stored as ASCII.
     pub iana_name: Option<AsciiStr<49>>,
+    /// Whether this instant represents a leap second.
     pub is_leap_second: bool,
+    /// The time scale this value belongs to (TAI, UTC, etc.).
     pub scale: Scale,
+    /// Day of the week.
     pub weekday: Option<Weekday>,
-    pub day_of_year: Option<u16>,   // 1-366 (%j)
-    pub iso_week_year: Option<i64>, // %G / %g
-    pub iso_week: Option<u8>,       // 1-53 (%V)
-    pub week_sun: Option<u8>,       // 0-53 (%U)
-    pub week_mon: Option<u8>,       // 0-53 (%W)
+    /// Day of the year (1–366), corresponding to `%j`.
+    pub day_of_year: Option<u16>,
+    /// ISO week year (`%G` / `%g`).
+    pub iso_week_year: Option<i64>,
+    /// ISO week number (1–53), corresponding to `%V`.
+    pub iso_week: Option<u8>,
+    /// Week number with Sunday as first day of week (0–53), `%U`.
+    pub week_sun: Option<u8>,
+    /// Week number with Monday as first day of week (0–53), `%W`.
+    pub week_mon: Option<u8>,
+    /// AM / PM indicator.
     pub meridiem: Option<Meridiem>,
-    pub unix_timestamp_seconds: Option<i64>, // %s
+    /// Unix timestamp in seconds (`%s`).
+    pub unix_timestamp_seconds: Option<i64>,
 }
 
 impl TimeParts {
@@ -60,6 +92,7 @@ impl TimeParts {
     }
 }
 
+/// AM / PM indicator.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -91,6 +124,7 @@ impl Meridiem {
     }
 }
 
+/// Day of the week. Default is set to Sunday.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -180,6 +214,7 @@ impl Weekday {
     }
 }
 
+/// Timezone offset representation.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

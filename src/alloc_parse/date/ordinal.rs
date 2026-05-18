@@ -14,7 +14,7 @@ pub(crate) fn parse_yyddd(s: &str) -> Option<Dt> {
     {
         return None;
     }
-    parsed.to_time_point().ok()
+    parsed.to_dt().ok()
 }
 
 /// 7-digit legacy ordinal: YYYYDDD (only accepted inside LEGACY_ORDINAL_YEAR_RANGE)
@@ -26,5 +26,5 @@ pub(crate) fn parse_yyyyjjj(s: &str) -> Option<Dt> {
     {
         return None;
     }
-    parsed.to_time_point().ok()
+    parsed.to_dt().ok()
 }

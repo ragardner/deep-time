@@ -1,5 +1,7 @@
 use crate::{Dt, Real};
 
+pub const STRFTIME_SIZE: usize = 512;
+
 pub(crate) const SEC_PER_YEAR: i128 = 31_557_600; // 365.25 days × 86_400
 pub(crate) const SEC_PER_MONTH: i128 = 2_629_800; // 30.4375 days × 86_400
 pub(crate) const SEC_PER_DAY: i128 = 86_400;
@@ -105,22 +107,3 @@ pub(crate) const TCG_TCB_REF_ATTOS_SINCE_J2000: i128 = {
 
 /// TDB₀ = −65.5 µs expressed in attoseconds (exact).
 pub(crate) const TDB0_ATTOS: i128 = -65_500_000_000_000;
-
-/// L_M = 6.48378 × 10^{-10} (exact secular rate from Ashby & Patla 2024 NIST for LTC ↔ TT)
-/// as fixed-point fraction.
-pub(crate) const LM_NUM: i128 = 648_378;
-pub(crate) const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
-
-/// Exact mean length of one Martian sol in Earth seconds.
-/// Current NASA GISS Mars24 value (updated 2025-01-07): 1.0274912517 Earth days.
-pub const MARS_SOL_LENGTH_SEC: Real = 88_775.244_146_88;
-
-/// Martian mean sol length in attoseconds
-/// (88_775.24414688 s × 10¹⁸, exact integer matching the current NASA divisor).
-pub const MARS_SOL_ATTOS: i128 = 88_775_244_146_880_000_000_000;
-
-/// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
-pub(crate) const MARS_REF_TT: Dt = Dt::new(-3_976_386_952, 650_560_000_000_000_000);
-pub(crate) const MARS_REF_TT_ATTOS: i128 = MARS_REF_TT.to_attos();
-
-pub const STRFTIME_SIZE: usize = 512;

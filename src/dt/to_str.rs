@@ -5,43 +5,11 @@ use crate::ATTOS_PER_SEC;
 
 #[cfg(feature = "alloc")]
 impl Dt {
-    /// High-level alloc version (defaults to UTC label-only formatting).
-    #[inline]
-    pub fn to_str(&self, current: Scale, fmt: &str) -> Result<alloc::string::String, DtErr> {
-        self.to_str_with_offset(current, fmt, 0)
-    }
-
-    /// High-level alloc version with explicit offset (label-only).
-    #[inline]
-    pub fn to_str_with_offset(
-        &self,
-        current: Scale,
-        fmt: &str,
-        secs: i32,
-    ) -> Result<alloc::string::String, DtErr> {
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self.to_u8_with_offset(current, fmt, &mut buf, secs)?;
-        Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
-    }
-
-    /// High-level alloc version for full IANA timezone formatting (with civil-time adjustment).
-    #[inline]
-    pub fn to_str_with_tz(
-        &self,
-        current: Scale,
-        fmt: &str,
-        tz_name: &str,
-    ) -> Result<alloc::string::String, DtErr> {
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self.to_u8_with_tz(current, fmt, &mut buf, tz_name)?;
-        Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
-    }
-
     /// Converts this `Dt` to an ISO 8601 duration string
     /// (e.g. `"PT1H23M45.6789S"`, `"-PT0.5S"`, `"PT0.000000000000000001S"`, or `"PT0S"`).
     ///
-    /// This method is only available when the **`alloc`** feature is enabled.
-    /// It returns `alloc::string::String` (no_std + alloc compatible).
+    /// - This method is only available when the **`alloc`** feature is enabled.
+    /// - It returns `alloc::string::String` (no_std + alloc compatible).
     pub fn to_iso_duration(&self) -> alloc::string::String {
         if self.is_zero() {
             return alloc::string::String::from("PT0S");
@@ -92,10 +60,72 @@ impl Dt {
 
         s
     }
+
+    /// High-level allocating formatter (defaults to UTC / label-only).
+    ///
+    /// Equivalent to [`Self::to_str_with_offset`] with `secs = 0`.
+    ///
+    /// This is the convenient `alloc` version of [`Self::to_str_bin`].
+    #[inline]
+    pub fn to_str(&self, current: Scale, fmt: &str) -> Result<alloc::string::String, DtErr> {
+        self.to_str_with_offset(current, fmt, 0)
+    }
+
+    /// High-level allocating formatter with a fixed UTC offset.
+    ///
+    /// - The civil time is adjusted by the given offset before formatting,
+    /// and `%z`/`%:z` directives will reflect that offset.
+    /// - IANA name/abbreviation are **not** set.
+    ///
+    /// This is the convenient `alloc` version of [`Self::to_str_bin_with_offset`].
+    #[inline]
+    pub fn to_str_with_offset(
+        &self,
+        current: Scale,
+        fmt: &str,
+        secs: i32,
+    ) -> Result<alloc::string::String, DtErr> {
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let n = self.to_u8_with_offset(current, fmt, &mut buf, secs)?;
+        Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
+    }
+
+    /// High-level allocating formatter with full IANA timezone support
+    /// (Jiff-compatible directive behavior).
+    ///
+    /// Performs a correct UTC-based IANA lookup so that the following
+    /// directives produce accurate results:
+    ///
+    /// - `%Q` / `%:Q` → full IANA timezone name (e.g. `America/New_York`)
+    /// - `%Z` → timezone abbreviation (e.g. `EDT`). These **do not** round-trip.
+    /// - `%z` / `%:z` → numeric offset
+    ///
+    /// This is the convenient `alloc` version of [`Self::to_str_bin_with_tz`].
+    #[inline]
+    pub fn to_str_with_tz(
+        &self,
+        current: Scale,
+        fmt: &str,
+        tz_name: &str,
+    ) -> Result<alloc::string::String, DtErr> {
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let n = self.to_u8_with_tz(current, fmt, &mut buf, tz_name)?;
+        Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
+    }
 }
 
 impl Dt {
-    /// No-alloc label-only formatting.
+    /// Formats this `Dt` into a fixed-size ASCII string **without** any heap allocation.
+    ///
+    /// The datetime is first converted to Gregorian civil time on the given
+    /// `current` scale, **UTC** (offset = 0, no timezone abbreviation or IANA
+    /// name). This is the simplest no-alloc formatter.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`DtErr`] if the format string contains invalid specifiers
+    /// or if the internal formatting buffer overflows (extremely unlikely
+    /// with [`STRFTIME_SIZE`]).
     pub fn to_str_bin(&self, current: Scale, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
         let mut gt = self.to_gregorian_time(current);
         gt.set_offset(Some(0)).set_tz_abbrev(None);
@@ -105,7 +135,12 @@ impl Dt {
         Ok(AsciiStr::from_filled_buffer(buf))
     }
 
-    /// No-alloc label-only formatting.
+    /// Formats this `Dt` into a fixed-size ASCII string **without** any heap allocation,
+    /// applying a fixed UTC offset.
+    ///
+    /// - The civil time is adjusted by the given `secs` offset **before** formatting,
+    /// and the offset is stored so that `%z` / `%:z` directives will reflect it.
+    /// - No IANA timezone name or abbreviation is set.
     pub fn to_str_bin_with_offset(
         &self,
         current: Scale,
@@ -119,7 +154,18 @@ impl Dt {
         Ok(AsciiStr::from_filled_buffer(buf))
     }
 
-    /// No-alloc full IANA adjusted formatting (civil time is adjusted to local wall time).
+    /// Formats this `Dt` into a fixed-size ASCII string **without** any heap allocation,
+    /// adjusting to the given IANA timezone.
+    ///
+    /// This performs a correct UTC-based lookup in the IANA transition table,
+    /// so the resulting `GregorianTime` contains:
+    /// - accurate civil time
+    /// - correct numeric offset (for `%z` / `%:z`)
+    /// - timezone abbreviation (for `%Z`). These **do not** round-trip.
+    /// - full IANA timezone name (for `%Q` / `%:Q`)
+    ///
+    /// Use this method when you want full IANA-aware formatting (`%Q`, `%Z`,
+    /// `%z`, etc.).
     pub fn to_str_bin_with_tz(
         &self,
         current: Scale,
@@ -133,16 +179,11 @@ impl Dt {
         Ok(AsciiStr::from_filled_buffer(buf))
     }
 
-    /// Returns `(is_negative, hours, minutes)`.
-    #[inline]
-    pub const fn sec_as_hhmm(seconds: i32) -> (bool, u8, u8) {
-        let total = seconds.saturating_abs();
-        let hours = (total / 3600) as u8;
-        let minutes = ((total % 3600) / 60) as u8;
-        (seconds < 0, hours, minutes)
-    }
-
-    /// Helper for to_str.
+    /// Low-level no-alloc formatter that writes into a caller-provided slice,
+    /// using a fixed UTC offset.
+    ///
+    /// Same logic as [`Self::to_str_bin_with_offset`], but writes directly into
+    /// `dest` (truncated to `dest.len()`) and returns the number of bytes written.
     pub fn to_u8_with_offset(
         &self,
         current: Scale,
@@ -161,7 +202,11 @@ impl Dt {
         Ok(written)
     }
 
-    /// Helper for to_str.
+    /// Low-level no-alloc formatter that writes into a caller-provided slice,
+    /// using a full IANA timezone.
+    ///
+    /// Same logic as [`Self::to_str_bin_with_tz`], but writes directly into
+    /// `dest` (truncated to `dest.len()`) and returns the number of bytes written.
     pub fn to_u8_with_tz(
         &self,
         current: Scale,
@@ -178,6 +223,15 @@ impl Dt {
             dest[0..written].copy_from_slice(&internal_buf[0..written]);
         }
         Ok(written)
+    }
+
+    /// Returns `(is_negative, hours, minutes)`.
+    #[inline]
+    pub const fn sec_as_hhmm(seconds: i32) -> (bool, u8, u8) {
+        let total = seconds.saturating_abs();
+        let hours = (total / 3600) as u8;
+        let minutes = ((total % 3600) / 60) as u8;
+        (seconds < 0, hours, minutes)
     }
 
     /// Helper for creating an offset adjusted GregorianTime.

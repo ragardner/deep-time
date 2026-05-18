@@ -21,34 +21,27 @@ impl Dt {
     ///
     /// # Example
     ///
-    /// ```ignore
-    /// let start = Dt::from_gregorian(2025, 1, 1, 0, 0, 0, 0, Scale::TAI);
-    /// let step = Dt::from_hours(1);
+    /// ```
+    /// use deep_time::{Dt, Scale};
     ///
-    /// // Inclusive range: yields 25 points (including both start and end)
-    /// for t in start.every(step).until(end) { ... }
+    /// let start = Dt::from_ymd(2000, 1, 1);
+    /// let end = Dt::from_ymd(2000, 1, 2);
+    /// let step = Dt::from_hr(1, Scale::TAI);
     ///
-    /// // Exclusive range: yields 24 points
-    /// for t in start.every(step).up_to(end) { ... }
+    /// for timestamp in start.every(step).to_including(end) {
+    ///     println!("{:?}", timestamp.to_ymdhms(Scale::TAI));
+    /// }
     /// ```
     #[inline]
     pub const fn every(self, step: Dt) -> Every {
         Every { start: self, step }
     }
 
-    /// Creates an **inclusive** evenly-spaced range from `self` to `end`.
-    ///
-    /// Equivalent to `self.every(step).until(end)`.
-    #[inline]
-    pub const fn range_to(self, end: Dt, step: Dt) -> TimeRange {
-        TimeRange::inclusive(self, end, step)
-    }
-
     /// Creates an **exclusive** evenly-spaced range from `self` to `end`.
     ///
     /// Equivalent to `self.every(step).up_to(end)`.
     #[inline]
-    pub const fn range_until(self, end: Dt, step: Dt) -> TimeRange {
+    pub const fn range(self, end: Dt, step: Dt) -> TimeRange {
         TimeRange::exclusive(self, end, step)
     }
 
@@ -102,7 +95,7 @@ impl Every {
     /// The resulting iterator will yield `end` as the final element
     /// (provided `end` is reachable from `start` with the given step).
     #[inline]
-    pub fn until(self, end: Dt) -> TimeRange {
+    pub fn to_including(self, end: Dt) -> TimeRange {
         TimeRange::new(self.start, end, self.step, true)
     }
 
@@ -110,16 +103,8 @@ impl Every {
     ///
     /// The resulting iterator will **not** yield `end`.
     #[inline]
-    pub fn up_to(self, end: Dt) -> TimeRange {
+    pub fn to_excluding(self, end: Dt) -> TimeRange {
         TimeRange::new(self.start, end, self.step, false)
-    }
-
-    /// Creates a **descending** inclusive range.
-    ///
-    /// Example: `start.every(-1.hour()).down_to(earlier_time)`
-    #[inline]
-    pub fn down_to(self, end: Dt) -> TimeRange {
-        TimeRange::new(self.start, end, self.step, true)
     }
 }
 
@@ -131,18 +116,21 @@ impl Every {
 ///
 /// # Construction
 ///
-/// Prefer the ergonomic builder syntax:
 ///
-/// ```ignore
-/// start.every(step).until(end)   // inclusive
-/// start.every(step).up_to(end)   // exclusive
 /// ```
+/// use deep_time::{Dt, Scale, TimeRange};
 ///
-/// Or use the explicit constructors:
+/// let start = Dt::from_ymd(2000, 1, 1);
+/// let end = Dt::from_ymd(2000, 1, 2);
+/// let step = Dt::from_hr(1, Scale::TAI);
 ///
-/// ```ignore
-/// TimeRange::inclusive(start, end, step)
-/// TimeRange::exclusive(start, end, step)
+/// for timestamp in start.every(step).to_including(end) {
+///     println!("{:?}", timestamp.to_ymdhms(Scale::TAI));
+/// }
+///
+/// // Or use the explicit constructors:
+/// TimeRange::inclusive(start, end, step);
+/// TimeRange::exclusive(start, end, step);
 /// ```
 ///
 /// # Iteration Behavior

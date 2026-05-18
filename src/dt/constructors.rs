@@ -249,7 +249,7 @@ impl Dt {
         Self::from_attos(self.to_attos().saturating_abs(), Scale::TAI)
     }
 
-    /// Creates a `Dt` from a floating-point number of seconds.
+    /// Creates a [`Dt`] from a floating-point number of seconds.
     #[inline]
     pub const fn from_sec_f(sec_f: Real) -> Self {
         Self::from_sec_f_on(sec_f, Scale::TAI)

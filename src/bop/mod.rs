@@ -426,7 +426,7 @@ impl Dt {
         }
         let mut guess = *self;
 
-        for _ in 0..16 {
+        for _ in 0..8 {
             let mjd = guess.to_mjd_f();
             let offset = op_data
                 .params(mjd)

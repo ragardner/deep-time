@@ -155,7 +155,7 @@ impl StrPTimeFmt {
             fmt_can_end_before_inp,
             allow_partial_date,
         )
-        .and_then(|p| p.to_time_point())
+        .and_then(|p| p.to_dt())
     }
 
     #[cfg(feature = "alloc")]
@@ -193,7 +193,7 @@ impl Dt {
             fmt_can_end_before_inp,
             allow_partial_date,
         )?
-        .to_time_point()
+        .to_dt()
     }
 
     #[inline]
@@ -201,7 +201,7 @@ impl Dt {
         StrPTimeFmt::new(strptime_fmt)
     }
 
-    pub fn from_iso(s: &str) -> Result<Dt, DtErr> {
+    pub fn from_iso_duration(s: &str) -> Result<Dt, DtErr> {
         let len = s.len();
         if len == 0 {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));

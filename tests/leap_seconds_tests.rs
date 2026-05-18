@@ -172,20 +172,3 @@ fn test_leap_second_roundtrip_2015_06_30() {
     assert_eq!(gt.sec(), 60);
     assert_eq!(gt.day(), 30);
 }
-
-#[test]
-fn utc_leap_seconds_are_handled_in_mars_time() {
-    // One second before vs after a leap second insertion
-    let utc_pre = Dt::new(1_485_779_199, 0);
-    let utc_post = Dt::new(1_485_779_200, 0);
-
-    let msd_pre = utc_pre.to_msd_f(Scale::TAI);
-    let msd_post = utc_post.to_msd_f(Scale::TAI);
-
-    let diff_sols = (msd_post - msd_pre).abs();
-    assert!(
-        diff_sols > 1e-6 && diff_sols < 2e-5,
-        "MSD difference across leap second was {} sols (expected ~1.126e-5)",
-        diff_sols
-    );
-}

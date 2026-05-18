@@ -6,7 +6,7 @@ impl Dt {
     /// All time components after the date portion are optional.
     #[inline]
     pub fn from_ccsds_str(input: &str) -> Result<Self, DtErr> {
-        TimeParts::from_ccsds_str(input)?.to_time_point()
+        TimeParts::from_ccsds_str(input)?.to_dt()
     }
 
     /// Parses a **CCSDS CCS (Calendar Segmented Time Code)** binary time code
@@ -29,7 +29,7 @@ impl Dt {
     /// Epoch: 1958-01-01 00:00:00 **UTC** (identical to CDS).
     #[inline]
     pub fn from_ccsds_ccs(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_ccs(input)?.to_time_point()
+        TimeParts::from_ccsds_ccs(input)?.to_dt()
     }
 
     /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
@@ -68,7 +68,7 @@ impl Dt {
     ///   (3+ byte P-field, unsupported).
     #[inline]
     pub fn from_ccsds_c(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_c(input)?.to_time_point()
+        TimeParts::from_ccsds_c(input)?.to_dt()
     }
 
     /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
@@ -102,7 +102,7 @@ impl Dt {
     /// - [`DtErrKind::CCSDSBinInvalidSubMillisecondCode`] if bits 6-7 encode an unsupported value (0b11).
     #[inline]
     pub fn from_ccsds_d(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_d(input)?.to_time_point()
+        TimeParts::from_ccsds_d(input)?.to_dt()
     }
 
     /// Auto-detects and parses a CCSDS binary time code (CUC, CDS, or CCS)
@@ -120,6 +120,6 @@ impl Dt {
     /// - [`DtErrKind::CCSDSBinInvalidCodeId`] for any other Code ID.
     #[inline]
     pub fn from_ccsds_bin(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_bin(input)?.to_time_point()
+        TimeParts::from_ccsds_bin(input)?.to_dt()
     }
 }

@@ -71,7 +71,7 @@ mod tests {
         let start = Dt::new(1000000000, 0);
         let end = start + Dt::from_hr(24, Scale::TAI);
         let step = Dt::from_hr(1, Scale::TAI);
-        let range = start.range_to(end, step);
+        let range = start.range(end, step);
 
         assert_roundtrip(
             &range,

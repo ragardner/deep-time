@@ -323,7 +323,7 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     let parsed_via_bin = TimeParts::from_ccsds_bin(bytes).unwrap();
     assert_eq!(parsed_parts, parsed_via_bin, "auto-detector failed");
 
-    let recovered_tp = parsed_parts.to_time_point().unwrap();
+    let recovered_tp = parsed_parts.to_dt().unwrap();
 
     assert_eq!(tp.sec(), recovered_tp.sec());
 

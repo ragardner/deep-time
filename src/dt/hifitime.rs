@@ -4,8 +4,7 @@ use hifitime::{Duration, Epoch};
 impl Dt {
     /// Converts this `Dt` to a `hifitime::Epoch` (TAI scale).
     ///
-    /// Round-trips perfectly with `from_hifitime` thanks to the
-    /// runtime-computed offset that matches hifitime's calendar math.
+    /// Round-trips perfectly with [`Dt::from_hifitime`].
     pub fn to_hifitime(&self, current: Scale) -> Epoch {
         let nanos = self.to(current, Scale::TAI).to_ns();
 
@@ -37,9 +36,9 @@ impl Dt {
 
     /// Creates a `Dt` from a `hifitime::Epoch`.
     ///
-    /// The conversion is exact (within hifitime's nanosecond precision).
-    /// Uses a runtime-computed offset so it always matches whatever
-    /// calendar math hifitime uses (including negative years).
+    /// - The conversion is exact (within hifitime's nanosecond precision).
+    /// - Uses a runtime-computed offset so it always matches whatever
+    ///   calendar math hifitime uses (including negative years).
     pub fn from_hifitime_epoch(epoch: Epoch) -> Self {
         let ns_since_j1900 = epoch.to_tai_duration().total_nanoseconds();
 

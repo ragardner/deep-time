@@ -6,8 +6,8 @@ use crate::{
 impl Dt {
     /// Returns the exact Julian Date of this instant as `(integer_days, fractional_attoseconds)`.
     ///
-    /// The returned JD is expressed in the time scale of this `Dt`.
-    /// The fractional part is always in `[0, ATTOS_PER_DAY)`.
+    /// - The returned JD is expressed in the time scale of this `Dt`.
+    /// - The fractional part is always in `[0, ATTOS_PER_DAY)`.
     ///
     /// For a float value use [`Self::to_jd_f`].
     pub const fn to_jd(&self) -> (i64, u128) {
@@ -32,8 +32,8 @@ impl Dt {
 
     /// Returns the exact Modified Julian Date of this instant as `(integer_days, fractional_attoseconds)`.
     ///
-    /// The returned MJD is expressed in the time scale of this `Dt`.
-    /// The fractional part is always in `[0, ATTOS_PER_DAY)`.
+    /// - The returned MJD is expressed in the time scale of this `Dt`.
+    /// - The fractional part is always in `[0, ATTOS_PER_DAY)`.
     ///
     /// For a float value use [`Self::to_mjd_f`].
     pub const fn to_mjd(&self) -> (i64, u128) {

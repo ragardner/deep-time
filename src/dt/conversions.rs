@@ -25,7 +25,12 @@ impl Dt {
         Dt::from_dt(epoch.add(diff), current)
     }
 
-    /// Creates a TAI [`Dt`], converting from another scale.
+    /// Creates a TAI [`Dt`].
+    ///
+    /// - Assumes the given `sec` and `attos` are on the given scale.
+    /// - Equivalent to e.g. TT `sec` and `attos` -> TAI [`Dt`].
+    ///
+    /// See [`Scale`] for more information on available time scales.
     pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
         let raw = Dt::new(sec, attos);
         match scale {

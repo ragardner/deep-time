@@ -13,7 +13,7 @@ use {
 };
 
 impl TimeParts {
-    /// Converts `TimeParts` → Jiff’s `BrokenDownTime`.
+    /// Converts [`TimeParts`] → [`jiff::fmt::strtime::BrokenDownTime`].
     pub fn to_jiff_broken_down_time(&self) -> Result<BrokenDownTime, DtErr> {
         let mut bdt = BrokenDownTime::default();
 

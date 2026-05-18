@@ -14,7 +14,7 @@ use chrono_tz::Tz;
 use crate::tzdb::offset_info_at_local;
 
 impl TimeParts {
-    /// Converts `TimeParts` → Chrono’s `NaiveDateTime` (civil time, no TZ).
+    /// Converts [`TimeParts`] → [`chrono::NaiveDateTime`] (civil time, no TZ).
     pub fn to_chrono_naive_datetime(&self) -> Result<NaiveDateTime, DtErr> {
         let date = self.build_naive_date()?;
         let time = self.build_naive_time()?;
@@ -137,6 +137,13 @@ impl TimeParts {
         }
     }
 
+    /// Converts [`TimeParts`] → [`chrono::DateTime`].
+    /// - If this [`TimeParts`] has a unix timestamp then it is used
+    ///   instead of anything else, timezones are ignored in this route.
+    /// - If the `"chrono-tz"` feature is enabled then chronos tz features
+    ///   are used to parse the IANA name.
+    /// - If the `"chrono-tz"` feature is **not** enabled then the library's
+    ///   own tz handling will be used.
     pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, DtErr> {
         // ============================================================
         // UNIX TIMESTAMP PATH
@@ -203,7 +210,7 @@ impl TimeParts {
                         DateTime::<chrono::Utc>::from_naive_utc_and_offset(naive, chrono::Utc)
                             .timestamp();
 
-                    match offset_info_at_local(name_str, provisional_unix) {
+                    match crate::tzdb::offset_info_at_local(name_str, provisional_unix) {
                         Some(info) => {
                             let mut local_naive = naive;
 
@@ -247,6 +254,14 @@ impl TimeParts {
             .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset: {:?}", offset))
     }
 
+    /// Converts [`TimeParts`] → [`i64`].
+    /// - If this [`TimeParts`] has a unix timestamp then it is used
+    ///   instead of anything else, timezones are ignored in this route.
+    /// - If the `"chrono-tz"` feature is enabled then chronos tz features
+    ///   are used to parse the IANA name.
+    /// - If the `"chrono-tz"` feature is **not** enabled then the library's
+    ///   own tz handling will be used.
+    /// - Uses [`TimeParts::to_chrono_datetime`] internally.
     pub fn to_chrono_timestamp(&self) -> Result<i64, DtErr> {
         if let Some(secs) = self.unix_timestamp_seconds {
             return Ok(secs);

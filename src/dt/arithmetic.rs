@@ -415,7 +415,7 @@ impl Dt {
         self.sec == 0 && self.attos == 0
     }
 
-    /// Returns `true` if this time is strictly positive **(> 0)**.
+    /// Returns `true` if this time is strictly positive **> 0**.
     #[inline(always)]
     pub const fn is_positive(&self) -> bool {
         self.to_attos() > 0

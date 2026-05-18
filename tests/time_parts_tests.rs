@@ -14,7 +14,7 @@ mod tests {
     #[test]
     fn test_unix_epoch_1970() {
         let parsed = TimeParts::from_str("%s", "0", false, false, false).unwrap();
-        let tp = parsed.to_time_point().unwrap();
+        let tp = parsed.to_dt().unwrap();
 
         let jd = jd_tt(&tp);
         // Unix epoch (1970-01-01 00:00:00 UTC) in TT scale:
@@ -29,7 +29,7 @@ mod tests {
     #[test]
     fn test_j2000_noon_via_unix_timestamp() {
         let parsed = TimeParts::from_str("%s", "946728000", false, false, false).unwrap();
-        let tp = parsed.to_time_point().unwrap();
+        let tp = parsed.to_dt().unwrap();
 
         let jd = jd_tt(&tp);
         // J2000.0 = JD 2451545.0 in TT. Tiny deviation expected due to leap seconds + TAI→TT.
@@ -51,7 +51,7 @@ mod tests {
             false,
         )
         .unwrap()
-        .to_time_point()
+        .to_dt()
         .unwrap();
 
         let ordinal = TimeParts::from_str(
@@ -62,7 +62,7 @@ mod tests {
             false,
         )
         .unwrap()
-        .to_time_point()
+        .to_dt()
         .unwrap();
 
         assert_eq!(jd_tt(&ymd), jd_tt(&ordinal));
@@ -79,7 +79,7 @@ mod tests {
             false,
         )
         .unwrap();
-        let tp = parsed.to_time_point().unwrap();
+        let tp = parsed.to_dt().unwrap();
 
         // 0.123456789 s = 123456789 × 10¹⁸ attoseconds
         let expected = 123_456_789u64 * 1_000_000_000;
@@ -101,7 +101,7 @@ mod tests {
         )
         .unwrap();
 
-        let tp = parsed.to_time_point().unwrap();
+        let tp = parsed.to_dt().unwrap();
         let (_, frac_attos) = tp.to(Scale::TAI, Scale::TT).to_jd();
 
         // Convert attoseconds → seconds
@@ -120,7 +120,7 @@ mod tests {
     fn test_incomplete_date_error() {
         // Default TimeParts has no year → early failure in to_time_point.
         let pd = TimeParts::default();
-        let err = pd.to_time_point().unwrap_err();
+        let err = pd.to_dt().unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::Incomplete));
     }
 
@@ -132,7 +132,7 @@ mod tests {
         let mut pd = TimeParts::default();
         pd.year = Some(2023);
         pd.day_of_year = Some(366);
-        let err = pd.to_time_point().unwrap_err();
+        let err = pd.to_dt().unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::OutOfRange));
     }
 
@@ -143,7 +143,7 @@ mod tests {
         pd.iso_week_year = Some(2024);
         pd.iso_week = Some(54);
         pd.weekday = Some(Weekday::Monday); // required for the ISO path
-        let err = pd.to_time_point().unwrap_err();
+        let err = pd.to_dt().unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::OutOfRange));
     }
 
@@ -152,12 +152,12 @@ mod tests {
         // Pure ISO week date (%G/%V/%u) is now fully supported in to_time_point
         // via the iso_week_year + iso_week + weekday path (no regular .year required).
         let parsed = TimeParts::from_str("%G-W%V-%u", "2024-W16-1", false, false, false).unwrap();
-        let tp_iso = parsed.to_time_point().unwrap();
+        let tp_iso = parsed.to_dt().unwrap();
 
         // 2024-W16-1 is Monday, April 15, 2024
         let ymd = TimeParts::from_str("%Y-%m-%d", "2024-04-15", false, false, false)
             .unwrap()
-            .to_time_point()
+            .to_dt()
             .unwrap();
 
         assert_eq!(jd_tt(&tp_iso), jd_tt(&ymd));

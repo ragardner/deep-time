@@ -3,9 +3,9 @@ use crate::{Dt, DtErr, TimeParts};
 impl TimeParts {
     /// Formats this [`TimeParts`] as a **CCSDS C (CUC)** binary time code.
     ///
-    /// Fully configurable for round-tripping with [`from_ccsds_c`].
-    /// Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support for the
-    /// extended P-field (second octet) when `n_coarse > 4` or `n_frac > 3`.
+    /// - Fully configurable for round-tripping with [`from_ccsds_c`].
+    /// - Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support
+    ///   for the extended P-field (second octet) when `n_coarse > 4` or `n_frac > 3`.
     ///
     /// # Parameters
     /// - `n_coarse`: 1–7 (number of coarse-time octets)
@@ -18,14 +18,15 @@ impl TimeParts {
         n_frac: u8,
         extension: bool,
     ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_time_point()?
+        self.to_dt()?
             .to_ccsds_c(self.scale, n_coarse, n_frac, extension)
     }
 
     /// Formats this [`TimeParts`] as a **CCSDS D (CDS)** binary time code.
     ///
-    /// Fully configurable for round-tripping with [`from_ccsds_d`].
-    /// Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since 1958-01-01 UTC.
+    /// - Fully configurable for round-tripping with [`from_ccsds_d`].
+    /// - Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since
+    ///   1958-01-01 UTC.
     #[inline]
     pub fn to_ccsds_d(
         &self,
@@ -33,7 +34,7 @@ impl TimeParts {
         sub_ms_code: u8,
         extension: bool,
     ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_time_point()?
+        self.to_dt()?
             .to_ccsds_d(self.scale, n_day, sub_ms_code, extension)
     }
 
@@ -57,8 +58,7 @@ impl TimeParts {
         use_doy: bool,
         n_subsec: u8,
     ) -> Result<([u8; Dt::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
-        self.to_time_point()?
-            .to_ccsds_ccs(self.scale, use_doy, n_subsec)
+        self.to_dt()?.to_ccsds_ccs(self.scale, use_doy, n_subsec)
     }
 
     /// Convenience method that automatically selects the most appropriate
@@ -70,6 +70,6 @@ impl TimeParts {
     ///   (2 day bytes + 4 ms bytes + 2-byte sub-ms)
     #[inline]
     pub fn to_ccsds_bin(&self) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_time_point()?.to_ccsds_bin(self.scale)
+        self.to_dt()?.to_ccsds_bin(self.scale)
     }
 }

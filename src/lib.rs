@@ -165,6 +165,9 @@ pub use an_err::{WireErr, WireLocation};
 #[cfg(feature = "sidereal")]
 pub use sidereal::Sidereal;
 
+#[cfg(feature = "mars")]
+pub use dt::mars;
+
 // _________________________________________
 // PUB USE
 // _________________________________________
@@ -172,8 +175,8 @@ pub use an_err::AnErr;
 pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use clock_model::ClockModel;
 pub use drift::{Drift, Spacetime};
-pub use dt::Dt;
 pub use dt::numbers_traits::{AttosTraits, TimeTraits};
+pub use dt::{Dt, lunar};
 pub use error::{DtErr, DtErrKind};
 pub use gregorian_time::{GregorianTime, YmdHms};
 pub use light_time::ObserverState;

@@ -6,7 +6,11 @@ use crate::{
 };
 
 impl TimeParts {
-    pub fn to_time_point(&self) -> Result<Dt, DtErr> {
+    /// Converts [`TimeParts`] → [`Dt`].
+    /// - Resulting [`Dt`] is on the TAI timescale.
+    /// - If this [`TimeParts`] has a unix timestamp then it is used
+    ///   instead of anything else.
+    pub fn to_dt(&self) -> Result<Dt, DtErr> {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
