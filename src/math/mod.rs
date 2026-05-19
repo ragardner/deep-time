@@ -1,6 +1,7 @@
 pub mod atan;
 pub mod atan2;
 pub mod cos;
+pub mod div;
 pub mod floor;
 pub mod k_cos;
 pub mod k_sin;

@@ -23,7 +23,7 @@ impl Dt {
         correction += k * e * sin(g + varpi + f!(0.01671) * sin(g));
 
         // Exact LTE440 Fourier terms #2–#13 (all amplitudes >1 µs from DE440 item #15)
-        let lte440_terms: [(Real, Real, Real); 12] = [
+        const LTE440_TERMS: [(Real, Real, Real); 12] = [
             (0.00012630813184, 77713.771468120, 5.18472464), // #2 D (lunar synodic)
             (0.00001937467715, 5753.384884897, 1.33855843),  // #3 E–J (Earth–Jupiter)
             (0.00001370088760, 12566.151699983, 3.07602294), // #4 2E (semi-annual)
@@ -40,7 +40,7 @@ impl Dt {
 
         let mut i = 0;
         while i < 12 {
-            let (amp, freq, phase) = lte440_terms[i];
+            let (amp, freq, phase) = LTE440_TERMS[i];
             correction += amp * sin(freq * t + phase);
             i += 1;
         }

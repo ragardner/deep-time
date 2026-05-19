@@ -1,4 +1,4 @@
-use crate::{Dt, Real, Scale, cos, floor_f, sin, to_sec_f};
+use crate::{Dt, Real, Scale, cos, floor_f, rem_euclid_f, sin, to_sec_f};
 
 /// Exact mean length of one Martian sol in Earth seconds.
 /// Current NASA GISS Mars24 value (updated 2025-01-07): 1.0274912517 Earth days.
@@ -9,8 +9,8 @@ pub const MARS_SOL_LENGTH_SEC: Real = 88_775.244_146_88;
 pub const MARS_SOL_ATTOS: i128 = 88_775_244_146_880_000_000_000;
 
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
-pub(crate) const MARS_REF_TT: Dt = Dt::new(-3_976_386_952, 650_560_000_000_000_000);
-pub(crate) const MARS_REF_TT_ATTOS: i128 = MARS_REF_TT.to_attos();
+pub const MARS_REF_TT: Dt = Dt::new(-3_976_386_952, 650_560_000_000_000_000);
+pub const MARS_REF_TT_ATTOS: i128 = MARS_REF_TT.to_attos();
 
 /// Areocentric solar longitude (Ls) constants from the current NASA GISS Mars24
 /// algorithm (AM2000 short series, updated 2025-01-07).
@@ -19,26 +19,26 @@ pub(crate) const MARS_REF_TT_ATTOS: i128 = MARS_REF_TT.to_attos();
 /// Ls = 90°  → northern summer solstice
 /// Ls = 180° → northern autumnal equinox
 /// Ls = 270° → northern winter solstice
-pub(crate) const MARS_LS_M0: Real = f!(19.3871);
-pub(crate) const MARS_LS_M_RATE: Real = f!(0.52402073);
-pub(crate) const MARS_LS_ALPHA_FMS0: Real = f!(270.3871);
-pub(crate) const MARS_LS_ALPHA_FMS_RATE: Real = f!(0.524038496);
+pub const MARS_LS_M0: Real = f!(19.3871);
+pub const MARS_LS_M_RATE: Real = f!(0.52402073);
+pub const MARS_LS_ALPHA_FMS0: Real = f!(270.3871);
+pub const MARS_LS_ALPHA_FMS_RATE: Real = f!(0.524038496);
 
 /// Equation-of-Time coefficients for LTST (from NASA GISS Mars24 / AM2000).
-pub(crate) const MARS_EOT_COEFF_2LS: Real = f!(2.861);
-pub(crate) const MARS_EOT_COEFF_4LS: Real = f!(-0.071);
-pub(crate) const MARS_EOT_COEFF_6LS: Real = f!(0.002);
+pub const MARS_EOT_COEFF_2LS: Real = f!(2.861);
+pub const MARS_EOT_COEFF_4LS: Real = f!(-0.071);
+pub const MARS_EOT_COEFF_6LS: Real = f!(0.002);
 
 /// Mars Year epoch: JD 2435208.456 TT (northern vernal equinox Ls = 0° on 1955 April 11).
 ///
 /// This is the exact Clancy et al. (2000) definition used by NASA, ESA, LMD Mars Climate
 /// Database, and every modern Mars mission paper as of 2026.
-pub(crate) const MARS_YEAR_EPOCH_JD: Real = f!(2435208.456);
+pub const MARS_YEAR_EPOCH_JD: Real = f!(2435208.456);
 
 /// Length of one Mars tropical year in Earth days (NASA GISS Mars24, 2025).
 ///
 /// This is the interval between successive northern vernal equinoxes.
-pub(crate) const MARS_TROPICAL_YEAR_DAYS: Real = f!(686.9725);
+pub const MARS_TROPICAL_YEAR_DAYS: Real = f!(686.9725);
 
 impl Dt {
     /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
@@ -116,7 +116,7 @@ impl Dt {
     /// Updated: 2025-01-07
     ///
     /// Works for any input [`Scale`] because it internally converts to TT.
-    pub fn to_mars_ls(&self, current: Scale) -> Real {
+    pub const fn to_mars_ls(&self, current: Scale) -> Real {
         let tt = self.to(current, Scale::TT);
 
         // Δt_J2000 = days since J2000.0 TT
@@ -152,7 +152,7 @@ impl Dt {
     }
 
     #[inline]
-    fn mars_perturber_sum(dt_j2000: Real) -> Real {
+    const fn mars_perturber_sum(dt_j2000: Real) -> Real {
         let base = f!(0.985626) * dt_j2000;
 
         let mut sum = f!(0.0);
@@ -175,7 +175,7 @@ impl Dt {
     ///
     /// Longitude is east-positive (standard planetocentric convention, 0–360° E).
     /// Internally converts to TT and uses the current NASA GISS Mars24 definition of MST.
-    pub fn to_mars_lmst(&self, current: Scale, east_longitude_deg: Real) -> Dt {
+    pub const fn to_mars_lmst(&self, current: Scale, east_longitude_deg: Real) -> Dt {
         let tt = self.to(current, Scale::TT);
         let jd_tt = tt.to_jd_f();
 
@@ -185,7 +185,7 @@ impl Dt {
             % f!(24.0);
 
         // Convert east-positive longitude to west-positive (NASA convention)
-        let lambda_west = (-east_longitude_deg).rem_euclid(f!(360.0));
+        let lambda_west = rem_euclid_f(-east_longitude_deg, f!(360.0));
 
         // LMST in hours
         let mut lmst_hours = mst - lambda_west / f!(15.0);
@@ -205,7 +205,7 @@ impl Dt {
     /// local observer would see on a sundial. It equals LMST plus the Equation of Time.
     ///
     /// Longitude is east-positive (standard planetocentric convention, 0–360° E).
-    pub fn to_mars_ltst(&self, current: Scale, east_longitude_deg: Real) -> Dt {
+    pub const fn to_mars_ltst(&self, current: Scale, east_longitude_deg: Real) -> Dt {
         let lmst = self.to_mars_lmst(current, east_longitude_deg);
 
         // We already have Ls; reuse it for EOT
@@ -250,7 +250,7 @@ impl Dt {
     ///
     /// To get the fractional progress through the year, simply use:
     /// `self.to_mars_ls(current) / 360.0`
-    pub fn to_mars_year(&self, current: Scale) -> i64 {
+    pub const fn to_mars_year(&self, current: Scale) -> i64 {
         let tt = self.to(current, Scale::TT);
         let jd_tt = tt.to_jd_f();
 

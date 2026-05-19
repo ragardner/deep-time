@@ -220,7 +220,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "year")),
         };
-        self.tm.year = Some(y);
+        self.tm.yr = Some(y);
         self.inp = remaining;
         if advance {
             self.advance_format();
@@ -234,7 +234,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "year")),
         };
-        self.tm.year = Some(y);
+        self.tm.yr = Some(y);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -258,7 +258,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         } else {
             1900i64 + (y as i64)
         };
-        self.tm.year = Some(year);
+        self.tm.yr = Some(year);
         if advance {
             self.advance_format();
         }
@@ -279,7 +279,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = remaining;
         let year = if sign < 0 { -c * 100 } else { c * 100 };
-        self.tm.year = Some(year);
+        self.tm.yr = Some(year);
         self.advance_format();
         Ok(())
     }
@@ -295,7 +295,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "iso week year")),
         };
-        self.tm.iso_week_year = Some(y);
+        self.tm.iso_wk_yr = Some(y);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -320,7 +320,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         } else {
             1900i64 + (y as i64)
         };
-        self.tm.iso_week_year = Some(year);
+        self.tm.iso_wk_yr = Some(year);
         self.advance_format();
         Ok(())
     }
@@ -340,7 +340,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if !(1..=12).contains(&m) {
             return Err(an_err!(DtErrKind::OutOfRange, "month (1..=12): {}", m));
         }
-        self.tm.month = Some(m);
+        self.tm.mo = Some(m);
         self.inp = remaining;
         if advance {
             self.advance_format();
@@ -390,7 +390,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 day
             ));
         }
-        self.tm.day_of_year = Some(day);
+        self.tm.day_of_yr = Some(day);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -411,7 +411,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if h > 23 {
             return Err(an_err!(DtErrKind::OutOfRange, "hour (0..=23): {}", h));
         }
-        self.tm.hour = Some(h);
+        self.tm.hr = Some(h);
         self.inp = remaining;
         if advance {
             self.advance_format();
@@ -433,7 +433,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if !(1..=12).contains(&h) {
             return Err(an_err!(DtErrKind::OutOfRange, "hour (1..=12): {}", h));
         }
-        self.tm.hour = Some(h);
+        self.tm.hr = Some(h);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -454,7 +454,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if m > 59 {
             return Err(an_err!(DtErrKind::OutOfRange, "minute (0..=59): {}", m));
         }
-        self.tm.minute = Some(m);
+        self.tm.min = Some(m);
         self.inp = remaining;
         if advance {
             self.advance_format();
@@ -477,8 +477,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if s > 60 {
             return Err(an_err!(DtErrKind::OutOfRange, "seconds (0..=60): {}", s));
         }
-        self.tm.second = Some(s);
-        self.tm.is_leap_second = s == 60;
+        self.tm.sec = Some(s);
+        self.tm.is_leap_sec = s == 60;
         self.inp = remaining;
         if advance {
             self.advance_format();
@@ -581,7 +581,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             }
         };
         self.inp = &self.inp[3..];
-        self.tm.month = Some(index + 1);
+        self.tm.mo = Some(index + 1);
         self.advance_format();
         Ok(())
     }
@@ -607,7 +607,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Err(_) => return Err(an_err!(DtErrKind::InvalidName, "month name")),
         };
         self.inp = remaining;
-        self.tm.month = Some(index + 1);
+        self.tm.mo = Some(index + 1);
         self.advance_format();
         Ok(())
     }
@@ -636,7 +636,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             }
         };
         self.inp = &self.inp[3..];
-        self.tm.weekday = Some(
+        self.tm.wkday = Some(
             Weekday::from_sunday_zero_offset(index as i8)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidName, "abbrev. weekday"))?,
         );
@@ -660,7 +660,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Err(_) => return Err(an_err!(DtErrKind::InvalidName, "weekday")),
         };
         self.inp = remaining;
-        self.tm.weekday = Some(
+        self.tm.wkday = Some(
             Weekday::from_sunday_zero_offset(index as i8)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidName, "weekday"))?,
         );
@@ -686,7 +686,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         let wd = Weekday::from_monday_one_offset(w as i8)
             .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "monday based weekday number"))?;
-        self.tm.weekday = Some(wd);
+        self.tm.wkday = Some(wd);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -710,7 +710,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         let wd = Weekday::from_sunday_zero_offset(w as i8)
             .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "sunday based weekday number"))?;
-        self.tm.weekday = Some(wd);
+        self.tm.wkday = Some(wd);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -750,7 +750,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 ));
             }
         };
-        self.tm.week_sun = Some(w);
+        self.tm.wk_sun = Some(w);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -772,7 +772,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 ));
             }
         };
-        self.tm.week_mon = Some(w);
+        self.tm.wk_mon = Some(w);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -792,7 +792,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if !(1..=53).contains(&w) {
             return Err(an_err!(DtErrKind::OutOfRange, "iso week (1..=53): {}", w));
         }
-        self.tm.iso_week = Some(w);
+        self.tm.iso_wk = Some(w);
         self.inp = remaining;
         self.advance_format();
         Ok(())

@@ -298,8 +298,8 @@ fn ymd_to_jdn_leap_year_handling() {
 
 #[test]
 fn is_leap_year_and_valid_date() {
-    assert!(Dt::is_leap_year(2000));
-    assert!(!Dt::is_leap_year(1900));
+    assert!(Dt::is_leap_yr(2000));
+    assert!(!Dt::is_leap_yr(1900));
     assert!(Dt::is_valid_ymd(2024, 2, 29));
     assert!(!Dt::is_valid_ymd(2023, 2, 29));
 }

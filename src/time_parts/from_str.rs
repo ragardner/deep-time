@@ -79,14 +79,14 @@ impl TimeParts {
     /// - [`DtErrKind::OutOfRange`] for seconds outside `0..=60`.
     pub fn finish(&mut self, allow_partial_date: bool) -> core::result::Result<&mut Self, DtErr> {
         if self.unix_timestamp_seconds.is_some() {
-            if self.hour.is_none() {
-                self.hour = Some(0);
+            if self.hr.is_none() {
+                self.hr = Some(0);
             }
-            if self.minute.is_none() {
-                self.minute = Some(0);
+            if self.min.is_none() {
+                self.min = Some(0);
             }
-            if self.second.is_none() {
-                self.second = Some(0);
+            if self.sec.is_none() {
+                self.sec = Some(0);
             }
             if self.attos.is_none() {
                 self.attos = Some(0);
@@ -98,20 +98,20 @@ impl TimeParts {
         }
 
         // Sensible defaults for time components (most tests expect a full datetime)
-        if self.hour.is_none() {
-            self.hour = Some(0);
+        if self.hr.is_none() {
+            self.hr = Some(0);
         }
-        if self.minute.is_none() {
-            self.minute = Some(0);
+        if self.min.is_none() {
+            self.min = Some(0);
         }
-        if let Some(sec) = self.second {
+        if let Some(sec) = self.sec {
             if sec == 60 {
-                self.is_leap_second = true;
+                self.is_leap_sec = true;
             } else if sec > 60 {
                 return Err(an_err!(DtErrKind::OutOfRange, "seconds (0..=60): {}", sec));
             }
         } else {
-            self.second = Some(0);
+            self.sec = Some(0);
         }
         if self.attos.is_none() {
             self.attos = Some(0);
@@ -124,15 +124,15 @@ impl TimeParts {
             if self.day.is_none() {
                 self.day = Some(1);
             }
-            if self.month.is_none() {
-                self.month = Some(1);
+            if self.mo.is_none() {
+                self.mo = Some(1);
             }
-            self.year.is_some()
+            self.yr.is_some()
         } else {
-            self.year.is_some() && self.month.is_some() && self.day.is_some()
+            self.yr.is_some() && self.mo.is_some() && self.day.is_some()
         };
-        let has_ordinal_date = self.year.is_some() && self.day_of_year.is_some();
-        let has_iso_week_date = self.iso_week_year.is_some() && self.iso_week.is_some();
+        let has_ordinal_date = self.yr.is_some() && self.day_of_yr.is_some();
+        let has_iso_week_date = self.iso_wk_yr.is_some() && self.iso_wk.is_some();
 
         if !has_calendar_date && !has_ordinal_date && !has_iso_week_date {
             return Err(an_err!(DtErrKind::Incomplete));

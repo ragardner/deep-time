@@ -130,8 +130,8 @@ mod tests {
         // rejects day 366 (u8 limit in parse_u8_padded), so we never reach to_time_point
         // with a parser-constructed value. This test directly exercises the leap-year check.
         let mut pd = TimeParts::default();
-        pd.year = Some(2023);
-        pd.day_of_year = Some(366);
+        pd.yr = Some(2023);
+        pd.day_of_yr = Some(366);
         let err = pd.to_dt().unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::OutOfRange));
     }
@@ -140,9 +140,9 @@ mod tests {
     fn test_iso_week_out_of_range() {
         // Parser rejects week 54, so we build manually to hit the to_time_point check.
         let mut pd = TimeParts::default();
-        pd.iso_week_year = Some(2024);
-        pd.iso_week = Some(54);
-        pd.weekday = Some(Weekday::Monday); // required for the ISO path
+        pd.iso_wk_yr = Some(2024);
+        pd.iso_wk = Some(54);
+        pd.wkday = Some(Weekday::Monday); // required for the ISO path
         let err = pd.to_dt().unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::OutOfRange));
     }

@@ -25,16 +25,16 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         let mut jdn: Option<i64> = None;
 
-        if let Some(year) = self.year {
-            if let (Some(m), Some(d)) = (self.month, self.day) {
+        if let Some(year) = self.yr {
+            if let (Some(m), Some(d)) = (self.mo, self.day) {
                 // Classic YMD – highest priority + full validation
                 if !Dt::is_valid_ymd(year, m, d) {
                     return Err(an_err!(DtErrKind::InvalidInput, "ymd"));
                 }
                 jdn = Some(Dt::ymd_to_jdn(year, m, d));
-            } else if let Some(doy) = self.day_of_year {
+            } else if let Some(doy) = self.day_of_yr {
                 // Ordinal date (%j) – already validated
-                if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_year(year)) {
+                if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
                     return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
                 }
                 jdn = Some(Dt::ydoy_to_jdn(year, doy));
@@ -42,35 +42,35 @@ impl TimeParts {
         }
 
         if jdn.is_none() {
-            if let (Some(iso_y), Some(iso_w)) = (self.iso_week_year, self.iso_week) {
+            if let (Some(iso_y), Some(iso_w)) = (self.iso_wk_yr, self.iso_wk) {
                 // ISO week date (%G/%V)
                 if iso_w == 0 || iso_w > 53 {
                     return Err(an_err!(DtErrKind::OutOfRange, "iso week"));
                 }
-                if iso_w == 53 && !Dt::has_iso_week_53(iso_y) {
+                if iso_w == 53 && !Dt::has_iso_wk_53(iso_y) {
                     return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
                 }
-                let wd = self.weekday.unwrap_or(Weekday::Monday);
-                jdn = Some(Dt::ymd_to_jdn_from_iso_week(iso_y, iso_w, wd));
-            } else if let (Some(y), Some(w)) = (self.year, self.week_sun) {
+                let wd = self.wkday.unwrap_or(Weekday::Monday);
+                jdn = Some(Dt::ymd_to_jdn_from_iso_wk(iso_y, iso_w, wd));
+            } else if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
                 // Sunday-based week (%U)
                 if w > 53 {
                     return Err(an_err!(DtErrKind::OutOfRange, "week number"));
                 }
-                let wd = self.weekday.unwrap_or(Weekday::Sunday);
-                jdn = Some(Dt::ymd_to_jdn_from_week_sun(y, w, wd));
-            } else if let (Some(y), Some(w)) = (self.year, self.week_mon) {
+                let wd = self.wkday.unwrap_or(Weekday::Sunday);
+                jdn = Some(Dt::ymd_to_jdn_from_wk_sun(y, w, wd));
+            } else if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
                 // Monday-based week (%W)
                 if w > 53 {
                     return Err(an_err!(DtErrKind::OutOfRange, "week number"));
                 }
-                let wd = self.weekday.unwrap_or(Weekday::Monday);
-                jdn = Some(Dt::ymd_to_jdn_from_week_mon(y, w, wd));
+                let wd = self.wkday.unwrap_or(Weekday::Monday);
+                jdn = Some(Dt::ymd_to_jdn_from_wk_mon(y, w, wd));
             }
         }
 
         let Some(jdn) = jdn else {
-            if self.year.is_none() && self.iso_week_year.is_none() {
+            if self.yr.is_none() && self.iso_wk_yr.is_none() {
                 return Err(an_err!(DtErrKind::Incomplete, "no year"));
             } else {
                 return Err(an_err!(DtErrKind::InvalidInput, "could not create julian"));
@@ -80,7 +80,7 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Resolve 12-hour time + meridiem (AM/PM) to 24-hour hour
         // ──────────────────────────────────────────────────────────────
-        let hour = match (self.hour, self.meridiem) {
+        let hour = match (self.hr, self.meridiem) {
             (Some(h), Some(m)) => {
                 if !(1..=12).contains(&h) {
                     return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", h));
@@ -96,8 +96,8 @@ impl TimeParts {
             (None, _) => 0,
         };
 
-        let minute = self.minute.unwrap_or(0) as i64;
-        let second = self.second.unwrap_or(0) as i64;
+        let minute = self.min.unwrap_or(0) as i64;
+        let second = self.sec.unwrap_or(0) as i64;
         let days_since_j2000 = jdn.saturating_sub(JD_2000_2_451_545);
         let seconds_from_noon_utc = (hour as i64 - 12) * 3600 + minute * 60 + second;
         let mut sec_utc: i64 = days_since_j2000

@@ -14,12 +14,12 @@ mod tests {
             false,
         )
         .unwrap();
-        assert_eq!(parsed.year, Some(2024));
-        assert_eq!(parsed.month, Some(4));
+        assert_eq!(parsed.yr, Some(2024));
+        assert_eq!(parsed.mo, Some(4));
         assert_eq!(parsed.day, Some(15));
-        assert_eq!(parsed.hour, Some(14));
-        assert_eq!(parsed.minute, Some(30));
-        assert_eq!(parsed.second, Some(45));
+        assert_eq!(parsed.hr, Some(14));
+        assert_eq!(parsed.min, Some(30));
+        assert_eq!(parsed.sec, Some(45));
         assert_eq!(parsed.attos, Some(0));
         assert_eq!(parsed.offset, Some(Offset::Utc));
     }
@@ -66,8 +66,8 @@ mod tests {
             false,
         )
         .unwrap();
-        assert!(parsed.is_leap_second);
-        assert_eq!(parsed.second, Some(60));
+        assert!(parsed.is_leap_sec);
+        assert_eq!(parsed.sec, Some(60));
     }
 
     #[test]
@@ -113,16 +113,16 @@ mod tests {
     fn test_shortcut_formats() {
         let parsed_f =
             TimeParts::from_str("%F %T", "2024-04-15 14:30:45", false, false, false).unwrap();
-        assert_eq!(parsed_f.year, Some(2024));
-        assert_eq!(parsed_f.month, Some(4));
+        assert_eq!(parsed_f.yr, Some(2024));
+        assert_eq!(parsed_f.mo, Some(4));
         assert_eq!(parsed_f.day, Some(15));
-        assert_eq!(parsed_f.hour, Some(14));
-        assert_eq!(parsed_f.minute, Some(30));
-        assert_eq!(parsed_f.second, Some(45));
+        assert_eq!(parsed_f.hr, Some(14));
+        assert_eq!(parsed_f.min, Some(30));
+        assert_eq!(parsed_f.sec, Some(45));
 
         let parsed_d = TimeParts::from_str("%D", "04/15/24", false, false, false).unwrap();
-        assert_eq!(parsed_d.year, Some(2024));
-        assert_eq!(parsed_d.month, Some(4));
+        assert_eq!(parsed_d.yr, Some(2024));
+        assert_eq!(parsed_d.mo, Some(4));
         assert_eq!(parsed_d.day, Some(15));
     }
 
@@ -136,10 +136,10 @@ mod tests {
             false,
         )
         .unwrap();
-        assert_eq!(parsed.month, Some(4));
+        assert_eq!(parsed.mo, Some(4));
         assert_eq!(parsed.day, Some(15));
-        assert_eq!(parsed.year, Some(2024));
-        assert_eq!(parsed.weekday, Some(Weekday::Monday));
+        assert_eq!(parsed.yr, Some(2024));
+        assert_eq!(parsed.wkday, Some(Weekday::Monday));
     }
 
     #[test]
@@ -158,15 +158,15 @@ mod tests {
     #[test]
     fn test_ordinal_date() {
         let parsed = TimeParts::from_str("%Y-%j", "2024-106", false, false, false).unwrap();
-        assert_eq!(parsed.year, Some(2024));
-        assert_eq!(parsed.day_of_year, Some(106));
+        assert_eq!(parsed.yr, Some(2024));
+        assert_eq!(parsed.day_of_yr, Some(106));
     }
 
     #[test]
     fn test_iso_week_date() {
         let parsed = TimeParts::from_str("%G-W%V-%u", "2024-W16-2", false, false, false).unwrap();
-        assert_eq!(parsed.iso_week_year, Some(2024));
-        assert_eq!(parsed.iso_week, Some(16));
-        assert_eq!(parsed.weekday, Some(Weekday::Tuesday));
+        assert_eq!(parsed.iso_wk_yr, Some(2024));
+        assert_eq!(parsed.iso_wk, Some(16));
+        assert_eq!(parsed.wkday, Some(Weekday::Tuesday));
     }
 }

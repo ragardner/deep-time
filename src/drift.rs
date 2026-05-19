@@ -1,6 +1,6 @@
 //! Quadratic polynomial for relativistic corrections, clock drift, and custom timescale steering.
 //!
-//! Used by spacecraft to model the accumulated difference between Proper time (τ)
+//! Used to model the accumulated difference between Proper time (τ)
 //! and a coordinate time such as TT (or any other `Scale`). The polynomial is evaluated
 //! with full 36-digit exact arithmetic via `DtBig` — no floating-point loss even over centuries.
 
@@ -93,7 +93,7 @@ The theory is empirically identical to GR on all tested scales (solar system, bi
 ### Philosophy
 General relativity is recovered exactly as the low-curvature projection of this larger structure. The Planck-scale UV cutoff is now an **intrinsic algebraic property** of the master Lagrangian (via direct substitution of the minimal Padé form), enforcing that proper time never actually stops for massive observers while preserving the local light-cone everywhere. Would-be singularities are replaced by smooth finite-curvature cores **without any auxiliary regulator function**, new fields, new parameters, or observable deviations. The regulator is therefore redundant.
 
-This formulation is production-ready for spacecraft navigation pipelines, black-hole flyby simulations, cosmological trajectories, or any mixed weak/strong-field probe adventure. All prior stages are recovered algebraically in the low-curvature limit. The engine is minimal, modular, and fully first-principles at the level of the master Lagrangian.
+This formulation is production-ready for any mixed weak/strong-field probe adventure. All prior stages are recovered algebraically in the low-curvature limit. The engine is minimal, modular, and fully first-principles at the level of the master Lagrangian.
 */
 
 use crate::{
@@ -436,12 +436,14 @@ impl Drift {
         }
     }
 
-    /// The zero polynomial representing no correction at all.  
+    /// The zero polynomial representing no correction at all.
+    ///
     /// Use this when the observer’s clock is already perfectly synchronized with
     /// the chosen coordinate time.
     pub const ZERO: Self = Self::new(Dt::ZERO, Dt::ZERO, Dt::ZERO);
 
-    /// Creates a `Drift` consisting of a pure constant offset.  
+    /// Creates a [`Drift`] consisting of a pure constant offset.
+    ///
     /// This is the most common constructor when only a fixed time bias is known
     /// (for example, after a one-time clock synchronization or leap-second
     /// adjustment).
@@ -450,8 +452,9 @@ impl Drift {
         Self::new(c, Dt::ZERO, Dt::ZERO)
     }
 
-    /// Creates a `Drift` consisting of a constant offset together with a
+    /// Creates a [`Drift`] consisting of a constant offset together with a
     /// constant linear drift rate.  
+    ///
     /// This form is very common for GNSS receivers and spacecraft clock steering,
     /// where a steady fractional frequency offset must be corrected in addition
     /// to any fixed bias.
@@ -460,21 +463,25 @@ impl Drift {
         Self::new(offset, rate, Dt::ZERO)
     }
 
+    /// Get this [`Drift`]s constant value.
     #[inline]
     pub const fn constant(&self) -> &Dt {
         &self.constant
     }
 
+    /// Get this [`Drift`]s rate value.
     #[inline]
     pub const fn rate(&self) -> &Dt {
         &self.rate
     }
 
+    /// Get this [`Drift`]s accel value.
     #[inline]
     pub const fn accel(&self) -> &Dt {
         &self.accel
     }
 
+    /// Set this [`Drift`]s constant value.
     #[inline]
     pub const fn set_constant(&mut self, constant: Dt) -> &mut Self {
         self.constant = constant;
@@ -482,28 +489,33 @@ impl Drift {
         // constant never affects the pre-computed big fields
     }
 
+    /// Set this [`Drift`]s rate value.
     #[inline]
     pub const fn set_rate(&mut self, rate: Dt) -> &mut Self {
         self.rate = rate;
         self
     }
 
+    /// Set this [`Drift`]s accel value.
     #[inline]
     pub const fn set_accel(&mut self, accel: Dt) -> &mut Self {
         self.accel = accel;
         self
     }
 
+    /// Return a copy of this [`Drift`] with a new constant value.
     #[inline]
     pub const fn with_constant(self, constant: Dt) -> Self {
         Self::new(constant, self.rate, self.accel)
     }
 
+    /// Return a copy of this [`Drift`] with a new rate value.
     #[inline]
     pub const fn with_rate(self, rate: Dt) -> Self {
         Self::new(self.constant, rate, self.accel)
     }
 
+    /// Return a copy of this [`Drift`] with a new accel value.
     #[inline]
     pub const fn with_accel(self, accel: Dt) -> Self {
         Self::new(self.constant, self.rate, accel)

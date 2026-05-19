@@ -184,6 +184,7 @@ pub use math::{
     atan::atan,
     atan2::atan2,
     cos::cos,
+    div::rem_euclid_f,
     floor::floor_f,
     log::log,
     sin::sin,

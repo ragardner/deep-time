@@ -24,7 +24,7 @@ impl TimeParts {
 
     fn build_naive_date(&self) -> Result<NaiveDate, DtErr> {
         // YMD (highest priority, matches Jiff fast-path)
-        if let (Some(y), Some(m), Some(d)) = (self.year, self.month, self.day) {
+        if let (Some(y), Some(m), Some(d)) = (self.yr, self.mo, self.day) {
             let year_i32: i32 = y
                 .try_into()
                 .map_err(|e| an_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
@@ -33,7 +33,7 @@ impl TimeParts {
         }
 
         // Ordinal date (%j)
-        if let (Some(y), Some(doy)) = (self.year, self.day_of_year) {
+        if let (Some(y), Some(doy)) = (self.yr, self.day_of_yr) {
             let year_i32: i32 = y
                 .try_into()
                 .map_err(|e| an_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
@@ -51,23 +51,23 @@ impl TimeParts {
         };
 
         // ISO week date (%G/%V + weekday)
-        if let (Some(iso_y), Some(w)) = (self.iso_week_year, self.iso_week) {
-            let wd = self.weekday.unwrap_or(Weekday::Monday);
-            let jdn = Dt::ymd_to_jdn_from_iso_week(iso_y, w, wd);
+        if let (Some(iso_y), Some(w)) = (self.iso_wk_yr, self.iso_wk) {
+            let wd = self.wkday.unwrap_or(Weekday::Monday);
+            let jdn = Dt::ymd_to_jdn_from_iso_wk(iso_y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 
         // Sunday-based week number (%U)
-        if let (Some(y), Some(w)) = (self.year, self.week_sun) {
-            let wd = self.weekday.unwrap_or(Weekday::Sunday);
-            let jdn = Dt::ymd_to_jdn_from_week_sun(y, w, wd);
+        if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
+            let wd = self.wkday.unwrap_or(Weekday::Sunday);
+            let jdn = Dt::ymd_to_jdn_from_wk_sun(y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 
         // Monday-based week number (%W)
-        if let (Some(y), Some(w)) = (self.year, self.week_mon) {
-            let wd = self.weekday.unwrap_or(Weekday::Monday);
-            let jdn = Dt::ymd_to_jdn_from_week_mon(y, w, wd);
+        if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
+            let wd = self.wkday.unwrap_or(Weekday::Monday);
+            let jdn = Dt::ymd_to_jdn_from_wk_mon(y, w, wd);
             return jdn_to_naive_date(jdn);
         }
 
@@ -75,9 +75,9 @@ impl TimeParts {
     }
 
     fn build_naive_time(&self) -> Result<NaiveTime, DtErr> {
-        let mut hour = self.hour.unwrap_or(0) as u32;
-        let minute = self.minute.unwrap_or(0) as u32;
-        let mut second = self.second.unwrap_or(0) as u32;
+        let mut hour = self.hr.unwrap_or(0) as u32;
+        let minute = self.min.unwrap_or(0) as u32;
+        let mut second = self.sec.unwrap_or(0) as u32;
 
         if let Some(meridiem) = self.meridiem {
             match (hour, meridiem) {
@@ -94,7 +94,7 @@ impl TimeParts {
             0
         };
 
-        let is_leap = second == 60 || self.is_leap_second;
+        let is_leap = second == 60 || self.is_leap_sec;
         if !is_leap && raw_ns_u64 > 999_999_999 {
             return Err(an_err!(DtErrKind::OutOfRange, "leap ns: {}", raw_ns_u64));
         }

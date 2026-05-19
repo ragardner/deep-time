@@ -33,17 +33,17 @@ use crate::{AsciiStr, Scale};
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct TimeParts {
     /// Year (can be negative for BCE dates).
-    pub year: Option<i64>,
+    pub yr: Option<i64>,
     /// Month of the year (1–12).
-    pub month: Option<u8>,
+    pub mo: Option<u8>,
     /// Day of the month (1–31).
     pub day: Option<u8>,
     /// Hour of the day (0–23).
-    pub hour: Option<u8>,
+    pub hr: Option<u8>,
     /// Minute of the hour (0–59).
-    pub minute: Option<u8>,
+    pub min: Option<u8>,
     /// Second of the minute (0–60). Value 60 is used for leap seconds.
-    pub second: Option<u8>,
+    pub sec: Option<u8>,
     /// Attoseconds (0 ≤ value < 10¹⁸).
     pub attos: Option<u64>,
     /// Timezone offset from UTC.
@@ -51,21 +51,21 @@ pub struct TimeParts {
     /// IANA timezone name (e.g. `"America/New_York"`), stored as ASCII.
     pub iana_name: Option<AsciiStr<49>>,
     /// Whether this instant represents a leap second.
-    pub is_leap_second: bool,
+    pub is_leap_sec: bool,
     /// The time scale this value belongs to (TAI, UTC, etc.).
     pub scale: Scale,
     /// Day of the week.
-    pub weekday: Option<Weekday>,
+    pub wkday: Option<Weekday>,
     /// Day of the year (1–366), corresponding to `%j`.
-    pub day_of_year: Option<u16>,
+    pub day_of_yr: Option<u16>,
     /// ISO week year (`%G` / `%g`).
-    pub iso_week_year: Option<i64>,
+    pub iso_wk_yr: Option<i64>,
     /// ISO week number (1–53), corresponding to `%V`.
-    pub iso_week: Option<u8>,
+    pub iso_wk: Option<u8>,
     /// Week number with Sunday as first day of week (0–53), `%U`.
-    pub week_sun: Option<u8>,
+    pub wk_sun: Option<u8>,
     /// Week number with Monday as first day of week (0–53), `%W`.
-    pub week_mon: Option<u8>,
+    pub wk_mon: Option<u8>,
     /// AM / PM indicator.
     pub meridiem: Option<Meridiem>,
     /// Unix timestamp in seconds (`%s`).
@@ -279,12 +279,12 @@ impl TimeParts {
         let mut offset = 1usize;
 
         // year (sentinel = i64::MIN)
-        let year = self.year.unwrap_or(i64::MIN);
+        let year = self.yr.unwrap_or(i64::MIN);
         buf[offset..offset + 8].copy_from_slice(&year.to_le_bytes());
         offset += 8;
 
         // month
-        buf[offset] = self.month.unwrap_or(u8::MAX);
+        buf[offset] = self.mo.unwrap_or(u8::MAX);
         offset += 1;
 
         // day
@@ -292,15 +292,15 @@ impl TimeParts {
         offset += 1;
 
         // hour
-        buf[offset] = self.hour.unwrap_or(u8::MAX);
+        buf[offset] = self.hr.unwrap_or(u8::MAX);
         offset += 1;
 
         // minute
-        buf[offset] = self.minute.unwrap_or(u8::MAX);
+        buf[offset] = self.min.unwrap_or(u8::MAX);
         offset += 1;
 
         // second
-        buf[offset] = self.second.unwrap_or(u8::MAX);
+        buf[offset] = self.sec.unwrap_or(u8::MAX);
         offset += 1;
 
         // attos
@@ -321,7 +321,7 @@ impl TimeParts {
         offset += 49;
 
         // is_leap_second
-        buf[offset] = if self.is_leap_second { 1 } else { 0 };
+        buf[offset] = if self.is_leap_sec { 1 } else { 0 };
         offset += 1;
 
         // scale
@@ -329,29 +329,29 @@ impl TimeParts {
         offset += 1;
 
         // weekday
-        buf[offset] = self.weekday.map_or(255, |w| w.to_wire_byte());
+        buf[offset] = self.wkday.map_or(255, |w| w.to_wire_byte());
         offset += 1;
 
         // day_of_year
-        let doy = self.day_of_year.unwrap_or(u16::MAX);
+        let doy = self.day_of_yr.unwrap_or(u16::MAX);
         buf[offset..offset + 2].copy_from_slice(&doy.to_le_bytes());
         offset += 2;
 
         // iso_week_year
-        let iso_y = self.iso_week_year.unwrap_or(i64::MIN);
+        let iso_y = self.iso_wk_yr.unwrap_or(i64::MIN);
         buf[offset..offset + 8].copy_from_slice(&iso_y.to_le_bytes());
         offset += 8;
 
         // iso_week
-        buf[offset] = self.iso_week.unwrap_or(u8::MAX);
+        buf[offset] = self.iso_wk.unwrap_or(u8::MAX);
         offset += 1;
 
         // week_sun
-        buf[offset] = self.week_sun.unwrap_or(u8::MAX);
+        buf[offset] = self.wk_sun.unwrap_or(u8::MAX);
         offset += 1;
 
         // week_mon
-        buf[offset] = self.week_mon.unwrap_or(u8::MAX);
+        buf[offset] = self.wk_mon.unwrap_or(u8::MAX);
         offset += 1;
 
         // meridiem
@@ -382,14 +382,14 @@ impl TimeParts {
         // year (8 bytes)
         let year = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         if year != i64::MIN {
-            dc.year = Some(year);
+            dc.yr = Some(year);
         }
         offset += 8;
 
         // month (1 byte)
         let m = bytes[offset];
         if m != u8::MAX {
-            dc.month = Some(m);
+            dc.mo = Some(m);
         }
         offset += 1;
 
@@ -403,21 +403,21 @@ impl TimeParts {
         // hour (1 byte)
         let h = bytes[offset];
         if h != u8::MAX {
-            dc.hour = Some(h);
+            dc.hr = Some(h);
         }
         offset += 1;
 
         // minute (1 byte)
         let min = bytes[offset];
         if min != u8::MAX {
-            dc.minute = Some(min);
+            dc.min = Some(min);
         }
         offset += 1;
 
         // second (1 byte)
         let sec = bytes[offset];
         if sec != u8::MAX {
-            dc.second = Some(sec);
+            dc.sec = Some(sec);
         }
         offset += 1;
 
@@ -444,7 +444,7 @@ impl TimeParts {
         offset += 49;
 
         // is_leap_second (1 byte)
-        dc.is_leap_second = bytes[offset] != 0;
+        dc.is_leap_sec = bytes[offset] != 0;
         offset += 1;
 
         // scale (1 byte)
@@ -456,42 +456,42 @@ impl TimeParts {
         if wd_byte != 255
             && let Some(wd) = Weekday::from_wire_byte(wd_byte)
         {
-            dc.weekday = Some(wd);
+            dc.wkday = Some(wd);
         }
         offset += 1;
 
         // day_of_year (2 bytes)
         let doy = u16::from_le_bytes(bytes[offset..offset + 2].try_into().ok()?);
         if doy != u16::MAX {
-            dc.day_of_year = Some(doy);
+            dc.day_of_yr = Some(doy);
         }
         offset += 2;
 
         // iso_week_year (8 bytes)
         let iso_y = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         if iso_y != i64::MIN {
-            dc.iso_week_year = Some(iso_y);
+            dc.iso_wk_yr = Some(iso_y);
         }
         offset += 8;
 
         // iso_week (1 byte)
         let iw = bytes[offset];
         if iw != u8::MAX {
-            dc.iso_week = Some(iw);
+            dc.iso_wk = Some(iw);
         }
         offset += 1;
 
         // week_sun (1 byte)
         let ws = bytes[offset];
         if ws != u8::MAX {
-            dc.week_sun = Some(ws);
+            dc.wk_sun = Some(ws);
         }
         offset += 1;
 
         // week_mon (1 byte)
         let wm = bytes[offset];
         if wm != u8::MAX {
-            dc.week_mon = Some(wm);
+            dc.wk_mon = Some(wm);
         }
         offset += 1;
 

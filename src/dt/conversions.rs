@@ -35,14 +35,14 @@ impl Dt {
         let raw = Dt::new(sec, attos);
         match scale {
             Scale::UTC => raw.add(Dt {
-                sec: raw.leap_seconds(true).offset,
+                sec: raw.leap_sec(true).offset,
                 attos: 0,
             }),
             Scale::TAI => raw,
             Scale::TT => raw.sub(TT_TAI_OFFSET),
             Scale::UTCSpice => {
                 let tai = raw.add(Dt {
-                    sec: raw.leap_seconds(true).offset,
+                    sec: raw.leap_sec(true).offset,
                     attos: 0,
                 });
                 if sec < TAI_SEC_AT_1972 - 10 {
@@ -53,7 +53,7 @@ impl Dt {
             }
             Scale::UTCSofa => {
                 let tai = raw.add(Dt {
-                    sec: raw.leap_seconds(true).offset,
+                    sec: raw.leap_sec(true).offset,
                     attos: 0,
                 });
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(&raw) {
@@ -87,12 +87,12 @@ impl Dt {
             Scale::TAI | Scale::Custom | Scale::UT1 => *self,
             Scale::TT => self.add(TT_TAI_OFFSET),
             Scale::UTC => self.sub(Dt {
-                sec: self.leap_seconds(false).offset,
+                sec: self.leap_sec(false).offset,
                 attos: 0,
             }),
             Scale::UTCSpice => {
                 let spice = self.sub(Dt {
-                    sec: self.leap_seconds(false).offset,
+                    sec: self.leap_sec(false).offset,
                     attos: 0,
                 });
                 if self.sec < TAI_SEC_AT_1972 {
@@ -103,7 +103,7 @@ impl Dt {
             }
             Scale::UTCSofa => {
                 let sofa = self.sub(Dt {
-                    sec: self.leap_seconds(false).offset,
+                    sec: self.leap_sec(false).offset,
                     attos: 0,
                 });
                 if let Some(offset) = historical_sofa_offset_for_non_adjusted(self) {

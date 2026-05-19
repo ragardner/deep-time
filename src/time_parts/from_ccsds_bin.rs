@@ -8,7 +8,7 @@ impl TimeParts {
         let mut remaining = days_since_epoch;
 
         while remaining >= 0 {
-            let days_in_year = if Dt::is_leap_year(year) { 366 } else { 365 };
+            let days_in_year = if Dt::is_leap_yr(year) { 366 } else { 365 };
             if remaining < days_in_year {
                 break;
             }
@@ -16,7 +16,7 @@ impl TimeParts {
             year += 1;
         }
 
-        let month_days = if Dt::is_leap_year(year) {
+        let month_days = if Dt::is_leap_yr(year) {
             [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
         } else {
             [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -42,10 +42,10 @@ impl TimeParts {
         let mut days = 0i64;
         let mut y = 1958i64;
         while y < year {
-            days += if Dt::is_leap_year(y) { 366 } else { 365 };
+            days += if Dt::is_leap_yr(y) { 366 } else { 365 };
             y += 1;
         }
-        let month_days = if Dt::is_leap_year(year) {
+        let month_days = if Dt::is_leap_yr(year) {
             [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
         } else {
             [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
@@ -152,7 +152,7 @@ impl TimeParts {
             idx += 2;
             let doy = (d1 as u16) * 100 + (d2 as u16);
 
-            if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_year(year)) {
+            if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
                 return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
             }
             (None, None, Some(doy))
@@ -200,15 +200,15 @@ impl TimeParts {
         };
 
         let mut pd = TimeParts {
-            year: Some(year),
-            month,
+            yr: Some(year),
+            mo: month,
             day,
-            day_of_year,
-            hour: Some(hour),
-            minute: Some(minute),
-            second: Some(second),
+            day_of_yr: day_of_year,
+            hr: Some(hour),
+            min: Some(minute),
+            sec: Some(second),
             attos: Some(attos),
-            is_leap_second,
+            is_leap_sec: is_leap_second,
             scale: Scale::UTC,
             offset: Some(Offset::Utc),
             ..TimeParts::default()
@@ -318,12 +318,12 @@ impl TimeParts {
         let second = (sec_of_day % 60) as u8;
 
         let mut pd = TimeParts {
-            year: Some(year),
-            month: Some(month),
+            yr: Some(year),
+            mo: Some(month),
             day: Some(day),
-            hour: Some(hour),
-            minute: Some(minute),
-            second: Some(second),
+            hr: Some(hour),
+            min: Some(minute),
+            sec: Some(second),
             attos: Some(frac_attos),
             scale: Scale::TAI,
             offset: Some(Offset::Utc),
@@ -460,14 +460,14 @@ impl TimeParts {
         }
 
         let mut pd = TimeParts {
-            year: Some(year),
-            month: Some(month),
+            yr: Some(year),
+            mo: Some(month),
             day: Some(day),
-            hour: Some(hour),
-            minute: Some(minute),
-            second: Some(second),
+            hr: Some(hour),
+            min: Some(minute),
+            sec: Some(second),
             attos: Some(frac_attos as u64),
-            is_leap_second,
+            is_leap_sec: is_leap_second,
             scale: Scale::UTC,
             offset: Some(Offset::Utc),
             ..TimeParts::default()

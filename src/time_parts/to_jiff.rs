@@ -18,14 +18,14 @@ impl TimeParts {
         let mut bdt = BrokenDownTime::default();
 
         // Date fields
-        if let Some(year) = self.year {
+        if let Some(year) = self.yr {
             let y: i16 = year
                 .try_into()
                 .map_err(|e| an_err!(DtErrKind::InvalidInput, "year: {}: {}", year, e))?;
             bdt.set_year(Some(y))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "year: {}: {}", y, e))?;
         }
-        if let Some(m) = self.month {
+        if let Some(m) = self.mo {
             bdt.set_month(Some(m as i8))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "month: {}: {}", m, e))?;
         }
@@ -35,40 +35,40 @@ impl TimeParts {
         }
 
         // Week / day-of-year fields
-        if let Some(doy) = self.day_of_year {
+        if let Some(doy) = self.day_of_yr {
             bdt.set_day_of_year(Some(doy as i16))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "doy: {}: {}", doy, e))?;
         }
-        if let Some(y) = self.iso_week_year {
+        if let Some(y) = self.iso_wk_yr {
             let y: i16 = y
                 .try_into()
                 .map_err(|e| an_err!(DtErrKind::InvalidInput, "iso wk yr: {}: {}", y, e))?;
             bdt.set_iso_week_year(Some(y))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "iso wk yr: {}: {}", y, e))?;
         }
-        if let Some(w) = self.iso_week {
+        if let Some(w) = self.iso_wk {
             bdt.set_iso_week(Some(w as i8))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "iso wk: {}: {}", w, e))?;
         }
-        if let Some(w) = self.week_sun {
+        if let Some(w) = self.wk_sun {
             bdt.set_sunday_based_week(Some(w as i8))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "sun based wk: {}: {}", w, e))?;
         }
-        if let Some(w) = self.week_mon {
+        if let Some(w) = self.wk_mon {
             bdt.set_monday_based_week(Some(w as i8))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "mon based wk: {}: {}", w, e))?;
         }
 
         // Time of day
-        if let Some(h) = self.hour {
+        if let Some(h) = self.hr {
             bdt.set_hour(Some(h as i8))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "hour: {}: {}", h, e))?;
         }
-        if let Some(m) = self.minute {
+        if let Some(m) = self.min {
             bdt.set_minute(Some(m as i8))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "minute: {}: {}", m, e))?;
         }
-        if let Some(s) = self.second {
+        if let Some(s) = self.sec {
             let non_ls_s = if s == 60 { 59 } else { s };
             bdt.set_second(Some(non_ls_s as i8))
                 .map_err(|e| an_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
@@ -87,7 +87,7 @@ impl TimeParts {
         }
 
         // Infallible setters
-        if let Some(wd) = self.weekday {
+        if let Some(wd) = self.wkday {
             let jwd = match wd {
                 Weekday::Sunday => jiff::civil::Weekday::Sunday,
                 Weekday::Monday => jiff::civil::Weekday::Monday,

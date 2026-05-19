@@ -9,7 +9,7 @@ pub(crate) fn parse_yyddd(s: &str) -> Option<Dt> {
         return None;
     }
     let parsed = TimeParts::from_str("%y%j", s, true, true, false).ok()?;
-    if let Some(y) = parsed.year
+    if let Some(y) = parsed.yr
         && !LEGACY_ORDINAL_YEAR_RANGE.contains(&(y as i32))
     {
         return None;
@@ -21,7 +21,7 @@ pub(crate) fn parse_yyddd(s: &str) -> Option<Dt> {
 #[inline]
 pub(crate) fn parse_yyyyjjj(s: &str) -> Option<Dt> {
     let parsed = TimeParts::from_str("%Y%j", s, true, true, false).ok()?;
-    if let Some(y) = parsed.year
+    if let Some(y) = parsed.yr
         && !LEGACY_ORDINAL_YEAR_RANGE.contains(&(y as i32))
     {
         return None;

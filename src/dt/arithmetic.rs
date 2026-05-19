@@ -45,8 +45,8 @@ impl Dt {
     /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
     /// derived from the supplied `Spacetime` model.
     ///
-    /// This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
-    /// For the spacecraft's own hardware proper-time clock, use the plain `add` method instead.
+    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
+    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
     #[inline]
     pub const fn adjusted_advance(&mut self, elapsed: &Dt, spacetime: &Spacetime) {
         let dtau = elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
@@ -56,8 +56,9 @@ impl Dt {
     /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
     /// from a pre-computed `Drift` value.
     ///
-    /// This is an optimized variant of `adjusted_advance` for callers that already hold a `Drift` instance.
-    /// It is intended for simulation of remote clocks; the spacecraft's own hardware clock should use the plain `add` method.
+    /// - This is an optimized variant of [`Dt::adjusted_advance`] for callers that already hold a `Drift` instance.
+    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
+    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
     #[inline]
     pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &Drift) {
         let dtau = elapsed.add(drift.time_diff_after(elapsed));

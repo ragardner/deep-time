@@ -178,12 +178,12 @@ fn test_ccsds_c_direct_frac() {
 
     let parsed = TimeParts::from_ccsds_c(c_bytes).unwrap();
 
-    assert_eq!(parsed.year, Some(1958));
-    assert_eq!(parsed.month, Some(1));
+    assert_eq!(parsed.yr, Some(1958));
+    assert_eq!(parsed.mo, Some(1));
     assert_eq!(parsed.day, Some(1));
-    assert_eq!(parsed.hour, Some(0));
-    assert_eq!(parsed.minute, Some(0));
-    assert_eq!(parsed.second, Some(1));
+    assert_eq!(parsed.hr, Some(0));
+    assert_eq!(parsed.min, Some(0));
+    assert_eq!(parsed.sec, Some(1));
     assert!(parsed.attos.unwrap() > 499_000_000_000_000_000); // ~0.5 s
     assert_eq!(parsed.scale, Scale::TAI);
 }
@@ -196,12 +196,12 @@ fn test_ccsds_c_2byte_pfield() {
 
     let parsed = TimeParts::from_ccsds_c(c_bytes).unwrap();
 
-    assert_eq!(parsed.year, Some(1958));
-    assert_eq!(parsed.month, Some(1));
+    assert_eq!(parsed.yr, Some(1958));
+    assert_eq!(parsed.mo, Some(1));
     assert_eq!(parsed.day, Some(1));
-    assert_eq!(parsed.hour, Some(0));
-    assert_eq!(parsed.minute, Some(1));
-    assert_eq!(parsed.second, Some(40));
+    assert_eq!(parsed.hr, Some(0));
+    assert_eq!(parsed.min, Some(1));
+    assert_eq!(parsed.sec, Some(40));
 }
 
 #[test]
@@ -213,12 +213,12 @@ fn test_ccsds_d_direct() {
 
     let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
 
-    assert_eq!(parsed.year, Some(1958));
-    assert_eq!(parsed.month, Some(1));
+    assert_eq!(parsed.yr, Some(1958));
+    assert_eq!(parsed.mo, Some(1));
     assert_eq!(parsed.day, Some(1));
-    assert_eq!(parsed.hour, Some(0));
-    assert_eq!(parsed.minute, Some(0));
-    assert_eq!(parsed.second, Some(0));
+    assert_eq!(parsed.hr, Some(0));
+    assert_eq!(parsed.min, Some(0));
+    assert_eq!(parsed.sec, Some(0));
     assert_eq!(parsed.attos, Some(1_000_000_000_000_000)); // 1 ms
     assert_eq!(parsed.scale, Scale::UTC);
 }
@@ -233,7 +233,7 @@ fn test_ccsds_d_direct_frac() {
 
     let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
 
-    assert_eq!(parsed.second, Some(0));
+    assert_eq!(parsed.sec, Some(0));
     assert_eq!(parsed.attos, Some(1_500_000_000_000_000)); // 1.5 ms
 }
 
@@ -256,12 +256,12 @@ fn test_ccsds_c_roundtrip() {
     let (buf, len) = t.to_ccsds_c(Scale::TAI, 4, 3, false).unwrap();
     let parsed = TimeParts::from_ccsds_c(&buf[0..len]).unwrap();
 
-    assert_eq!(parsed.year, Some(2025));
-    assert_eq!(parsed.month, Some(4));
+    assert_eq!(parsed.yr, Some(2025));
+    assert_eq!(parsed.mo, Some(4));
     assert_eq!(parsed.day, Some(17));
-    assert_eq!(parsed.hour, Some(14));
-    assert_eq!(parsed.minute, Some(30));
-    assert_eq!(parsed.second, Some(45));
+    assert_eq!(parsed.hr, Some(14));
+    assert_eq!(parsed.min, Some(30));
+    assert_eq!(parsed.sec, Some(45));
     assert_eq!(parsed.scale, Scale::TAI);
 
     // 3 fractional bytes → max ~59.6 ns quantization error
@@ -290,12 +290,12 @@ fn test_ccsds_d_roundtrip() {
     let (buf, len) = t.to_ccsds_d(Scale::TAI, 2, 1, false).unwrap();
     let parsed = TimeParts::from_ccsds_d(&buf[0..len]).unwrap();
 
-    assert_eq!(parsed.year, Some(2025));
-    assert_eq!(parsed.month, Some(4));
+    assert_eq!(parsed.yr, Some(2025));
+    assert_eq!(parsed.mo, Some(4));
     assert_eq!(parsed.day, Some(17));
-    assert_eq!(parsed.hour, Some(14));
-    assert_eq!(parsed.minute, Some(30));
-    assert_eq!(parsed.second, Some(45));
+    assert_eq!(parsed.hr, Some(14));
+    assert_eq!(parsed.min, Some(30));
+    assert_eq!(parsed.sec, Some(45));
     assert_eq!(parsed.scale, Scale::UTC);
 
     let diff = (parsed.attos.unwrap() as i64 - 400_000_000_000i64).abs();
@@ -351,8 +351,8 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     // Verify other fields
     assert_eq!(parsed_parts.scale, Scale::UTC);
     assert_eq!(parsed_parts.offset, Some(Offset::Utc));
-    if parsed_parts.is_leap_second {
-        assert_eq!(parsed_parts.second, Some(59));
+    if parsed_parts.is_leap_sec {
+        assert_eq!(parsed_parts.sec, Some(59));
     }
 }
 
@@ -434,110 +434,110 @@ fn parse(s: &str) -> TimeParts {
 fn test_ccsds_calendar_variants() {
     // Full calendar with fractional seconds + trailing Z
     let dt = parse("2024-04-18T14:30:25.123456789Z");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.month, Some(4));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.day_of_year, None);
-    assert_eq!(dt.hour, Some(14));
-    assert_eq!(dt.minute, Some(30));
-    assert_eq!(dt.second, Some(25));
+    assert_eq!(dt.day_of_yr, None);
+    assert_eq!(dt.hr, Some(14));
+    assert_eq!(dt.min, Some(30));
+    assert_eq!(dt.sec, Some(25));
     assert!(dt.attos.is_some()); // fractional seconds parsed
-    assert!(!dt.is_leap_second);
+    assert!(!dt.is_leap_sec);
 
     // Calendar with seconds, no fraction
     let dt = parse("2024-04-18T14:30:25");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.month, Some(4));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hour, Some(14));
-    assert_eq!(dt.minute, Some(30));
-    assert_eq!(dt.second, Some(25));
+    assert_eq!(dt.hr, Some(14));
+    assert_eq!(dt.min, Some(30));
+    assert_eq!(dt.sec, Some(25));
     assert!(dt.attos.is_some()); // defaults to 0
 
     // Calendar with only minutes
     let dt = parse("2024-04-18T14:30");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.month, Some(4));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hour, Some(14));
-    assert_eq!(dt.minute, Some(30));
-    assert_eq!(dt.second, Some(0));
+    assert_eq!(dt.hr, Some(14));
+    assert_eq!(dt.min, Some(30));
+    assert_eq!(dt.sec, Some(0));
 
     // Calendar with only hour
     let dt = parse("2024-04-18T14");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.month, Some(4));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hour, Some(14));
-    assert_eq!(dt.minute, Some(0));
-    assert_eq!(dt.second, Some(0));
+    assert_eq!(dt.hr, Some(14));
+    assert_eq!(dt.min, Some(0));
+    assert_eq!(dt.sec, Some(0));
 
     // Calendar date-only
     let dt = parse("2024-04-18");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.month, Some(4));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.day_of_year, None);
-    assert_eq!(dt.hour, Some(0));
-    assert_eq!(dt.minute, Some(0));
-    assert_eq!(dt.second, Some(0));
+    assert_eq!(dt.day_of_yr, None);
+    assert_eq!(dt.hr, Some(0));
+    assert_eq!(dt.min, Some(0));
+    assert_eq!(dt.sec, Some(0));
 }
 
 #[test]
 fn test_ccsds_doy_variants() {
     // DOY with fractional seconds + Z
     let dt = parse("2024-109T14:30:25.5Z");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.day_of_year, Some(109));
-    assert_eq!(dt.month, None);
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.day_of_yr, Some(109));
+    assert_eq!(dt.mo, None);
     assert_eq!(dt.day, None);
-    assert_eq!(dt.hour, Some(14));
-    assert_eq!(dt.minute, Some(30));
-    assert_eq!(dt.second, Some(25));
+    assert_eq!(dt.hr, Some(14));
+    assert_eq!(dt.min, Some(30));
+    assert_eq!(dt.sec, Some(25));
     assert!(dt.attos.is_some());
 
     // DOY date-only
     let dt = parse("2024-001");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.day_of_year, Some(1));
-    assert_eq!(dt.month, None);
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.day_of_yr, Some(1));
+    assert_eq!(dt.mo, None);
     assert_eq!(dt.day, None);
 
     // DOY with seconds only (no fraction)
     let dt = parse("2024-366T23:59:59");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.day_of_year, Some(366));
-    assert_eq!(dt.hour, Some(23));
-    assert_eq!(dt.minute, Some(59));
-    assert_eq!(dt.second, Some(59));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.day_of_yr, Some(366));
+    assert_eq!(dt.hr, Some(23));
+    assert_eq!(dt.min, Some(59));
+    assert_eq!(dt.sec, Some(59));
 }
 
 #[test]
 fn test_ccsds_separators_and_z() {
     // Space instead of T
     let dt = parse("2024-04-18 14:30:25");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.month, Some(4));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hour, Some(14));
-    assert_eq!(dt.minute, Some(30));
-    assert_eq!(dt.second, Some(25));
+    assert_eq!(dt.hr, Some(14));
+    assert_eq!(dt.min, Some(30));
+    assert_eq!(dt.sec, Some(25));
 
     // Lowercase t
     let dt = parse("2024-109t14:30");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.day_of_year, Some(109));
-    assert_eq!(dt.hour, Some(14));
-    assert_eq!(dt.minute, Some(30));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.day_of_yr, Some(109));
+    assert_eq!(dt.hr, Some(14));
+    assert_eq!(dt.min, Some(30));
 
     // Trailing Z (case-insensitive) is stripped and still works
     let dt = parse("2024-04-18T14:30:25Z");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.month, Some(4));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hour, Some(14));
-    assert_eq!(dt.minute, Some(30));
-    assert_eq!(dt.second, Some(25));
+    assert_eq!(dt.hr, Some(14));
+    assert_eq!(dt.min, Some(30));
+    assert_eq!(dt.sec, Some(25));
 }
 
 #[test]
@@ -562,24 +562,24 @@ fn test_ccsds_fractional_seconds_various_lengths() {
 #[test]
 fn test_ccsds_leap_second() {
     let dt = parse("2024-06-30T23:59:60Z");
-    assert_eq!(dt.year, Some(2024));
-    assert_eq!(dt.month, Some(6));
+    assert_eq!(dt.yr, Some(2024));
+    assert_eq!(dt.mo, Some(6));
     assert_eq!(dt.day, Some(30));
-    assert_eq!(dt.second, Some(60));
-    assert!(dt.is_leap_second);
+    assert_eq!(dt.sec, Some(60));
+    assert!(dt.is_leap_sec);
 }
 
 #[test]
 fn test_ccsds_doy_vs_calendar_detection() {
     // Must be detected as DOY (exactly 3 digits after year separator, next char is not a digit)
     let doy = parse("2024-123T12:00:00");
-    assert_eq!(doy.day_of_year, Some(123));
-    assert_eq!(doy.month, None);
+    assert_eq!(doy.day_of_yr, Some(123));
+    assert_eq!(doy.mo, None);
     assert_eq!(doy.day, None);
 
     // Must be detected as calendar date
     let cal = parse("2024-12-03T12:00:00");
-    assert_eq!(cal.month, Some(12));
+    assert_eq!(cal.mo, Some(12));
     assert_eq!(cal.day, Some(3));
-    assert_eq!(cal.day_of_year, None);
+    assert_eq!(cal.day_of_yr, None);
 }

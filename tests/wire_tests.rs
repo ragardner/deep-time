@@ -110,12 +110,12 @@ mod tests {
     #[test]
     fn test_time_parts_roundtrip() {
         let mut dc = TimeParts::default();
-        dc.year = Some(2025);
-        dc.month = Some(6);
+        dc.yr = Some(2025);
+        dc.mo = Some(6);
         dc.day = Some(15);
-        dc.hour = Some(14);
-        dc.minute = Some(30);
-        dc.second = Some(0);
+        dc.hr = Some(14);
+        dc.min = Some(30);
+        dc.sec = Some(0);
         dc.attos = Some(0);
         dc.scale = Scale::TAI;
         dc.offset = Some(Offset::Utc);
