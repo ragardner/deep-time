@@ -28,21 +28,21 @@ pub enum Separator {
 /// - `C04` such as is available from
 ///   https://datacenter.iers.org/data/latestVersion/EOP_20u24_C04_one_file_1962-now.txt
 /// - `Custom` so you can provide your own specific column indices
-///   using [`CustomBopCols`].
+///   using [`CustomEopCols`].
 #[derive(Debug, Clone, Copy, Default)]
-pub enum BopFormat {
+pub enum EopFormat {
     /// finals2000A.all / finals.all.iau2000.txt style files
     #[default]
     Finals2000A,
     /// C04 long-term series
     C04,
     /// User-defined column indices (0-based)
-    Custom(CustomBopCols),
+    Custom(CustomEopCols),
 }
 
-/// For use with [`BopFormat`].
+/// For use with [`EopFormat`].
 #[derive(Debug, Clone, Copy)]
-pub struct CustomBopCols {
+pub struct CustomEopCols {
     pub mjd: usize,
     pub offset: usize,
     pub pm_x: Option<usize>,
@@ -50,7 +50,7 @@ pub struct CustomBopCols {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct BopDataRow {
+pub struct EopDataRow {
     pub mjd: Real,
     /// e.g. UT1-UTC(s)
     pub offset: Real,
@@ -66,17 +66,17 @@ pub struct BopDataRow {
 ///   the **UT1 time scale**.
 /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
 #[derive(Debug, Clone)]
-pub struct BopData {
-    rows: Vec<BopDataRow>,
+pub struct EopData {
+    rows: Vec<EopDataRow>,
 }
 
 #[cfg(feature = "std")]
-impl BopData {
+impl EopData {
     pub fn data_from_reader<R: std::io::BufRead>(
         mut reader: R,
-        format: BopFormat,
+        format: EopFormat,
         separator: Separator,
-    ) -> Result<Vec<BopDataRow>, DtErr> {
+    ) -> Result<Vec<EopDataRow>, DtErr> {
         let mut line_buf = String::with_capacity(256);
         let mut rows = Vec::new();
 
@@ -115,9 +115,9 @@ impl BopData {
 
     pub fn data_from_text_file<P: AsRef<std::path::Path>>(
         path: P,
-        format: BopFormat,
+        format: EopFormat,
         separator: Separator,
-    ) -> Result<Vec<BopDataRow>, DtErr> {
+    ) -> Result<Vec<EopDataRow>, DtErr> {
         use std::fs::File;
         use std::io::BufReader;
 
@@ -131,7 +131,7 @@ impl BopData {
 
     pub fn from_text_file<P: AsRef<std::path::Path>>(
         path: P,
-        format: BopFormat,
+        format: EopFormat,
         separator: Separator,
     ) -> Result<Self, DtErr> {
         let rows = Self::data_from_text_file(path, format, separator)?;
@@ -139,11 +139,11 @@ impl BopData {
     }
 }
 
-impl BopData {
+impl EopData {
     pub const MAX_LINE_LEN: usize = 8192;
 
     // Small helper — parses ONE row (shared by all paths)
-    fn try_parse_row(trimmed: &str, format: BopFormat, separator: Separator) -> Option<BopDataRow> {
+    fn try_parse_row(trimmed: &str, format: EopFormat, separator: Separator) -> Option<EopDataRow> {
         let parts: Vec<&str> = match separator {
             Separator::Whitespace => trimmed.split_whitespace().collect(),
             Separator::Comma => trimmed.split(',').map(|s| s.trim()).collect(),
@@ -157,7 +157,7 @@ impl BopData {
         }
 
         let (mjd, offset, pm_x, pm_y) = match format {
-            BopFormat::Finals2000A => {
+            EopFormat::Finals2000A => {
                 let mjd_idx = parts.iter().position(|p| {
                     p.contains('.') && p.parse::<Real>().is_ok_and(|v| v > 30000.0)
                 })?;
@@ -209,7 +209,7 @@ impl BopData {
                 (mjd_val, offset, pm_x_val, pm_y_val)
             }
 
-            BopFormat::C04 => {
+            EopFormat::C04 => {
                 let mjd = parts.get(4)?.parse::<Real>().ok()?;
                 let pm_x = parts
                     .get(5)
@@ -225,7 +225,7 @@ impl BopData {
                 (mjd, offset, pm_x, pm_y)
             }
 
-            BopFormat::Custom(cols) => {
+            EopFormat::Custom(cols) => {
                 let mjd = parts.get(cols.mjd)?.parse::<Real>().ok()?;
                 let offset = parts.get(cols.offset)?.parse::<Real>().ok()?;
                 let pm_x = if let Some(pm_x_col) = cols.pm_x {
@@ -252,7 +252,7 @@ impl BopData {
             }
         };
 
-        Some(BopDataRow {
+        Some(EopDataRow {
             mjd,
             offset,
             pm_x,
@@ -262,9 +262,9 @@ impl BopData {
 
     fn parse_lines<'a>(
         lines: impl Iterator<Item = &'a str>,
-        format: BopFormat,
+        format: EopFormat,
         separator: Separator,
-    ) -> Result<Vec<BopDataRow>, DtErr> {
+    ) -> Result<Vec<EopDataRow>, DtErr> {
         let mut rows = Vec::new();
 
         for line in lines {
@@ -289,29 +289,29 @@ impl BopData {
 
     pub fn data_from_str(
         s: &str,
-        format: BopFormat,
+        format: EopFormat,
         separator: Separator,
-    ) -> Result<Vec<BopDataRow>, DtErr> {
+    ) -> Result<Vec<EopDataRow>, DtErr> {
         Self::parse_lines(s.lines(), format, separator)
     }
 
     pub fn data_from_bytes(
         bytes: &[u8],
-        format: BopFormat,
+        format: EopFormat,
         separator: Separator,
-    ) -> Result<Vec<BopDataRow>, DtErr> {
+    ) -> Result<Vec<EopDataRow>, DtErr> {
         let s = core::str::from_utf8(bytes).unwrap_or("");
         Self::data_from_str(s, format, separator)
     }
 
-    pub fn from_str(s: &str, format: BopFormat, separator: Separator) -> Result<Self, DtErr> {
+    pub fn from_str(s: &str, format: EopFormat, separator: Separator) -> Result<Self, DtErr> {
         let rows = Self::data_from_str(s, format, separator)?;
         Ok(Self { rows })
     }
 
     pub fn from_bytes(
         bytes: &[u8],
-        format: BopFormat,
+        format: EopFormat,
         separator: Separator,
     ) -> Result<Self, DtErr> {
         let rows = Self::data_from_bytes(bytes, format, separator)?;
@@ -323,7 +323,7 @@ impl BopData {
     ///
     /// Returns `None` if the table is empty or the MJD is completely outside
     /// the loaded data.
-    pub fn params(&self, mjd: Real) -> Option<BopParams> {
+    pub fn eop_offset(&self, mjd: Real) -> Option<EopOffset> {
         if self.rows.is_empty() {
             return None;
         }
@@ -336,7 +336,7 @@ impl BopData {
             Err(i) => {
                 if i == 0 {
                     let row = &self.rows[0];
-                    return Some(BopParams {
+                    return Some(EopOffset {
                         offset: row.offset,
                         pm_x: row.pm_x,
                         pm_y: row.pm_y,
@@ -344,7 +344,7 @@ impl BopData {
                 }
                 if i >= self.rows.len() {
                     let row = &self.rows[self.rows.len() - 1];
-                    return Some(BopParams {
+                    return Some(EopOffset {
                         offset: row.offset,
                         pm_x: row.pm_x,
                         pm_y: row.pm_y,
@@ -364,10 +364,10 @@ impl BopData {
             let pm_x = e0.pm_x + t * (e1.pm_x - e0.pm_x);
             let pm_y = e0.pm_y + t * (e1.pm_y - e0.pm_y);
 
-            Some(BopParams { offset, pm_x, pm_y })
+            Some(EopOffset { offset, pm_x, pm_y })
         } else {
             let row = &self.rows[idx];
-            Some(BopParams {
+            Some(EopOffset {
                 offset: row.offset,
                 pm_x: row.pm_x,
                 pm_y: row.pm_y,
@@ -381,7 +381,7 @@ impl BopData {
 /// Contains everything needed for high-precision sidereal time
 /// and polar-motion corrections.
 #[derive(Debug, Clone, Copy, Default)]
-pub struct BopParams {
+pub struct EopOffset {
     /// Value in **seconds** e.g. UT1 − UTC offset
     pub offset: Real,
     /// Polar motion x-coordinate in **arcseconds**
@@ -391,16 +391,25 @@ pub struct BopParams {
 }
 
 impl Dt {
+    /// Get an orientation parameters offset in seconds inside a struct: ([`EopOffset`])
+    /// for a particular Modified Julian Date.
+    ///
+    /// - On Earth this would be the UT1 time scale.
+    /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
+    pub fn mjd_to_eop_offset(mjd: Real, op_data: &EopData) -> Result<EopOffset, DtErr> {
+        let offset = op_data
+            .eop_offset(mjd)
+            .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?;
+        Ok(offset)
+    }
+
     /// Get an orientation parameters offset in seconds for a particular Modified Julian Date.
     ///
     /// - On Earth this would be the UT1 time scale.
     /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
-    pub fn orientation_offset(mjd: Real, op_data: &BopData) -> Result<Real, DtErr> {
-        let offset = op_data
-            .params(mjd)
-            .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?
-            .offset;
-        Ok(offset)
+    #[inline]
+    pub fn mjd_to_eop_offset_f(mjd: Real, op_data: &EopData) -> Result<Real, DtErr> {
+        Self::mjd_to_eop_offset(mjd, op_data).map(|res| res.offset)
     }
 
     /// Offsets a [`Dt`] using orientation parameters data.
@@ -408,8 +417,8 @@ impl Dt {
     /// - On Earth this would be the UT1 time scale.
     /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
     #[inline]
-    pub fn to_offset_by_bop(&self, op_data: &BopData) -> Result<Self, DtErr> {
-        Ok(self.add(Dt::from_sec_f(Self::orientation_offset(
+    pub fn to_eop(&self, op_data: &EopData) -> Result<Self, DtErr> {
+        Ok(self.add(Dt::from_sec_f(Self::mjd_to_eop_offset_f(
             self.to_mjd_f(),
             op_data,
         )?)))
@@ -420,7 +429,7 @@ impl Dt {
     ///
     /// - On Earth this would be the UT1 time scale.
     /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
-    pub fn from_offset_by_bop(&self, op_data: &BopData) -> Result<Self, DtErr> {
+    pub fn from_eop(&self, op_data: &EopData) -> Result<Self, DtErr> {
         if op_data.rows.is_empty() {
             return Err(an_err!(DtErrKind::InternalErr, "contains no data"));
         }
@@ -429,7 +438,7 @@ impl Dt {
         for _ in 0..8 {
             let mjd = guess.to_mjd_f();
             let offset = op_data
-                .params(mjd)
+                .eop_offset(mjd)
                 .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?
                 .offset;
 

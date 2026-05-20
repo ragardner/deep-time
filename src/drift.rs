@@ -345,50 +345,6 @@ impl Spacetime {
     }
 }
 
-#[cfg(feature = "wire")]
-impl Spacetime {
-    /// Size of the canonical wire representation in bytes (24 bytes).
-    pub const WIRE_SIZE: usize = 24;
-
-    /// Serializes this `Spacetime` snapshot into a fixed 24-byte buffer.
-    ///
-    /// All fields are stored as little-endian IEEE 754 `f64`.
-    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
-        let mut buf = [0u8; Self::WIRE_SIZE];
-        buf[0..8].copy_from_slice(&self.alpha.to_le_bytes());
-        buf[8..16].copy_from_slice(&self.beta.to_le_bytes());
-        buf[16..24].copy_from_slice(&self.kretschmann.to_le_bytes());
-        buf
-    }
-
-    /// Deserializes a `Spacetime` from exactly 24 bytes.
-    ///
-    /// ## Security
-    ///
-    /// Accepts any `f64` bit pattern (including `NaN`/`Inf`) to match the
-    /// type’s own invariants. Fixed size makes it immune to length-based
-    /// attacks. Safe for untrusted input.
-    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != Self::WIRE_SIZE {
-            return None;
-        }
-        let alpha = f64::from_le_bytes([
-            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
-        ]);
-        let beta = f64::from_le_bytes([
-            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
-        ]);
-        let kretschmann = f64::from_le_bytes([
-            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
-        ]);
-        Some(Self {
-            alpha,
-            beta,
-            kretschmann,
-        })
-    }
-}
-
 /// Quadratic polynomial that describes the accumulated difference between an
 /// observer’s proper time (the time measured by a real clock moving through
 /// spacetime) and a chosen coordinate time such as TT, TAI, or any other
@@ -412,17 +368,17 @@ pub struct Drift {
     /// Constant term a₀ expressed in seconds.  
     /// This represents any fixed time offset between the observer’s proper time
     /// and the chosen coordinate time.
-    constant: Dt,
+    pub constant: Dt,
 
     /// Linear drift rate a₁ expressed in seconds per second.  
     /// This term captures a steady fractional rate difference (for example, a
     /// clock that runs consistently fast or slow).
-    rate: Dt,
+    pub rate: Dt,
 
     /// Quadratic acceleration term a₂ expressed in seconds per second squared.  
     /// This term accounts for any changing drift rate, such as the gradual
     /// acceleration caused by relativistic effects or hardware aging.
-    accel: Dt,
+    pub accel: Dt,
 }
 
 impl Drift {
@@ -461,64 +417,6 @@ impl Drift {
     #[inline]
     pub const fn from_offset_and_rate(offset: Dt, rate: Dt) -> Self {
         Self::new(offset, rate, Dt::ZERO)
-    }
-
-    /// Get this [`Drift`]s constant value.
-    #[inline]
-    pub const fn constant(&self) -> &Dt {
-        &self.constant
-    }
-
-    /// Get this [`Drift`]s rate value.
-    #[inline]
-    pub const fn rate(&self) -> &Dt {
-        &self.rate
-    }
-
-    /// Get this [`Drift`]s accel value.
-    #[inline]
-    pub const fn accel(&self) -> &Dt {
-        &self.accel
-    }
-
-    /// Set this [`Drift`]s constant value.
-    #[inline]
-    pub const fn set_constant(&mut self, constant: Dt) -> &mut Self {
-        self.constant = constant;
-        self
-        // constant never affects the pre-computed big fields
-    }
-
-    /// Set this [`Drift`]s rate value.
-    #[inline]
-    pub const fn set_rate(&mut self, rate: Dt) -> &mut Self {
-        self.rate = rate;
-        self
-    }
-
-    /// Set this [`Drift`]s accel value.
-    #[inline]
-    pub const fn set_accel(&mut self, accel: Dt) -> &mut Self {
-        self.accel = accel;
-        self
-    }
-
-    /// Return a copy of this [`Drift`] with a new constant value.
-    #[inline]
-    pub const fn with_constant(self, constant: Dt) -> Self {
-        Self::new(constant, self.rate, self.accel)
-    }
-
-    /// Return a copy of this [`Drift`] with a new rate value.
-    #[inline]
-    pub const fn with_rate(self, rate: Dt) -> Self {
-        Self::new(self.constant, rate, self.accel)
-    }
-
-    /// Return a copy of this [`Drift`] with a new accel value.
-    #[inline]
-    pub const fn with_accel(self, accel: Dt) -> Self {
-        Self::new(self.constant, self.rate, accel)
     }
 
     /// Returns the instantaneous proper-time rate `dτ/dt` (dimensionless).
@@ -582,10 +480,9 @@ impl Drift {
     /// local gravitational potential using the library’s unified master-Lagrangian
     /// proper-time rate.  
     ///
-    /// This is the recommended high-level constructor for nearly all users. It
-    /// automatically computes the relativistic clock rate that includes both
+    /// It automatically computes the relativistic clock rate that includes both
     /// special-relativistic velocity effects and gravitational time dilation,
-    /// then returns a `Drift` that can be evaluated at any future time.
+    /// then returns a [`Drift`] that can be evaluated at any future time.
     ///
     /// The `characteristic_length_scale` parameter controls whether the
     /// weak-field or strong-field formulation is used:
@@ -623,8 +520,10 @@ impl Drift {
     ///
     /// The internal expression is  
     /// K_eff = [δ(1 + x) + x(1−δ)²] / (1 + x)  
-    /// where δ = α²(1−β²) and x = ℓ_Pl⁴ 𝒦. The returned rate offset is then
-    /// applied as a linear term in the `Drift` polynomial.
+    /// where δ = α²(1−β²) and x = ℓ_Pl⁴ 𝒦.
+    ///
+    /// The returned rate offset is then applied as a linear term in the `Drift`
+    /// polynomial.
     pub const fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Self {
         let delta = u.max(f!(0.0));
         let x = PLANCK_LENGTH_4 * kretschmann.max(f!(0.0));
@@ -650,55 +549,6 @@ impl Drift {
     pub const fn from_spacetime(spacetime: &Spacetime) -> Self {
         let u = spacetime.alpha * spacetime.alpha * (f!(1.0) - spacetime.beta * spacetime.beta);
         Self::from_unified_proper_time_rate(u, spacetime.kretschmann)
-    }
-}
-
-#[cfg(feature = "wire")]
-impl Drift {
-    /// Current wire format version.
-    pub const WIRE_VERSION: u8 = 1;
-
-    /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize = 3 * Dt::WIRE_SIZE; // 3 × 17 = 51
-
-    /// Serializes this `Drift` polynomial into a fixed buffer.
-    ///
-    /// The layout is the concatenation of the three `Dt` fields.
-    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
-        let mut buf = [0u8; Self::WIRE_SIZE];
-        let c = self.constant.to_wire_bytes();
-        let r = self.rate.to_wire_bytes();
-        let a = self.accel.to_wire_bytes();
-
-        buf[0..Dt::WIRE_SIZE].copy_from_slice(&c);
-        buf[Dt::WIRE_SIZE..2 * Dt::WIRE_SIZE].copy_from_slice(&r);
-        buf[2 * Dt::WIRE_SIZE..].copy_from_slice(&a);
-        buf
-    }
-
-    /// Deserializes a `Drift` from exactly `WIRE_SIZE` bytes of wire data.
-    ///
-    /// Returns `None` if any nested `Dt` fails validation or if the version
-    /// byte is unknown.
-    ///
-    /// ## Security
-    ///
-    /// Composes the safety guarantees of [`Dt::from_wire_bytes`].
-    /// Fixed size and layered validation make it safe for untrusted input.
-    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != Self::WIRE_SIZE {
-            return None;
-        }
-
-        if bytes[0] != Self::WIRE_VERSION {
-            return None;
-        }
-
-        let constant = Dt::from_wire_bytes(&bytes[0..Dt::WIRE_SIZE])?;
-        let rate = Dt::from_wire_bytes(&bytes[Dt::WIRE_SIZE..2 * Dt::WIRE_SIZE])?;
-        let accel = Dt::from_wire_bytes(&bytes[2 * Dt::WIRE_SIZE..])?;
-
-        Some(Self::new(constant, rate, accel))
     }
 }
 

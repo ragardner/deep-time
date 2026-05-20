@@ -1,11 +1,10 @@
 use crate::{
-    ClassifiedDate, DateClassification, DateOrder, DateOrderFirst, DateParseMode, Dt, DtErr,
-    DtErrKind, MAX_DATE_STRING_LEN, ParseCfg, Scale, an_err, classify_date,
-    default_date_parse_options, generate_ambiguous_day_first_candidates,
-    generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
-    generate_unambiguous_candidates, is_week_date_missing_weekday,
-    parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
-    parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
+    ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, MAX_DATE_STRING_LEN, Mode, Order,
+    OrderFirst, ParseCfg, Scale, an_err, classify_date, default_date_parse_options,
+    generate_ambiguous_day_first_candidates, generate_ambiguous_month_first_candidates,
+    generate_ambiguous_year_first_candidates, generate_unambiguous_candidates,
+    is_week_date_missing_weekday, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
+    parse_week_date_no_weekday, parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
 };
 use alloc::borrow::Cow;
 use alloc::string::String;
@@ -59,7 +58,7 @@ impl Dt {
                     }
                 }
                 // None of the provided formats worked and mode is Explicit
-                if opts.mode == DateParseMode::Explicit {
+                if opts.mode == Mode::Explicit {
                     return Err(an_err!(DtErrKind::InvalidInput, "{}", s));
                 }
             }
@@ -74,7 +73,7 @@ impl Dt {
 
         if classification.is_pure_numeric {
             match mode {
-                DateParseMode::UnixTimestamp => {
+                Mode::UnixTimestamp => {
                     if let Some(dt) = parse_pure_numeric_unix_timestamp(
                         normalized,
                         classification.num_non_decimal_digits as usize,
@@ -113,12 +112,12 @@ impl Dt {
         }
         // std::eprintln!("done trying unambiguous");
         if let Some(dt) = match date_order {
-            DateOrder::Smart => {
+            Order::Smart => {
                 let order = smart_detect_date_order(normalized, &classification);
                 let mut result: Option<Dt>;
 
                 match order {
-                    DateOrderFirst::Day => {
+                    OrderFirst::Day => {
                         result = try_compatible_formats(
                             normalized,
                             generate_ambiguous_day_first_candidates(&classification),
@@ -141,7 +140,7 @@ impl Dt {
                             // std::eprintln!("done trying year first: {:?}", result);
                         }
                     }
-                    DateOrderFirst::Month => {
+                    OrderFirst::Month => {
                         result = try_compatible_formats(
                             normalized,
                             generate_ambiguous_month_first_candidates(&classification),
@@ -164,7 +163,7 @@ impl Dt {
                             // std::eprintln!("done trying year first: {:?}", result);
                         }
                     }
-                    DateOrderFirst::Year => {
+                    OrderFirst::Year => {
                         result = try_compatible_formats(
                             normalized,
                             generate_ambiguous_year_first_candidates(&classification),
@@ -191,15 +190,15 @@ impl Dt {
 
                 result
             }
-            DateOrder::Year => try_compatible_formats(
+            Order::Year => try_compatible_formats(
                 normalized,
                 generate_ambiguous_year_first_candidates(&classification),
             ),
-            DateOrder::Day => try_compatible_formats(
+            Order::Day => try_compatible_formats(
                 normalized,
                 generate_ambiguous_day_first_candidates(&classification),
             ),
-            DateOrder::Month => try_compatible_formats(
+            Order::Month => try_compatible_formats(
                 normalized,
                 generate_ambiguous_month_first_candidates(&classification),
             ),
@@ -208,7 +207,7 @@ impl Dt {
         }
         // std::eprintln!("NOW trying numeric timestamp");
         if classification.is_pure_numeric
-            && mode != DateParseMode::UnixTimestamp
+            && mode != Mode::UnixTimestamp
             && let Some(dt) = parse_pure_numeric_unix_timestamp(
                 normalized,
                 classification.num_non_decimal_digits as usize,

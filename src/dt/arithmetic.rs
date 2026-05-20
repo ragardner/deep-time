@@ -748,4 +748,20 @@ impl Dt {
             i64::MIN
         }
     }
+
+    /// Clamps `value` to the range `[min, max]`.
+    ///
+    /// This is a `const fn`, so it can be used in const contexts
+    /// (e.g. const generics, statics, const evaluation, etc.).
+    ///
+    /// If `min > max`, the result is equivalent to clamping to `[max, min]`.
+    pub(crate) const fn clamp_u8(value: u8, min: u8, max: u8) -> u8 {
+        if value < min {
+            min
+        } else if value > max {
+            max
+        } else {
+            value
+        }
+    }
 }

@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{ClockModel, Drift, Dt, Scale};
+use deep_time::{Drift, Dt, Scale};
 
 #[test]
 fn test_ymd_to_jdn() {
@@ -171,18 +171,15 @@ fn tdb_correction_stays_within_bounds() {
 
 #[test]
 fn proper_to_tt_with_drift_roundtrip() {
-    let reference = Dt::from_sec(0, Scale::TAI);
+    let epoch = Dt::from_sec(0, Scale::TAI);
     let drift = Drift::new(
         Dt::from_ms(100, Scale::TAI), // exactly 0.1 s
         Dt::from_ns(1, Scale::TAI),   // exactly 1 ns/s = 1e-9 s/s
         Dt::ZERO,
     );
-    let model = ClockModel::new(Scale::Custom, reference, drift);
-
-    let onboard_proper = model.reference.add(Dt::from_sec(1_000_000, Scale::TAI));
-
-    let tt = onboard_proper.convert_using_model(model);
-    let back = tt.convert_back_using_model(model);
+    let onboard_proper = epoch.add(Dt::from_sec(1_000_000, Scale::TAI));
+    let tt = onboard_proper.convert_using_drift(epoch, drift);
+    let back = tt.convert_back_using_drift(epoch, drift);
 
     assert_eq!(back, onboard_proper);
 }

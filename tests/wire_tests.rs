@@ -8,8 +8,7 @@ mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
     use deep_time::{
-        ClockModel, Drift, Dt, GregorianTime, Meridiem, Offset, Scale, TimeParts, TimeRange,
-        Weekday,
+        Drift, Dt, GregorianTime, Meridiem, Offset, Scale, TimeParts, TimeRange, Weekday,
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -49,20 +48,6 @@ mod tests {
             &drift,
             |d| d.to_wire_bytes().to_vec(),
             Drift::from_wire_bytes,
-        );
-    }
-
-    #[test]
-    fn test_clockmodel_roundtrip() {
-        let model = ClockModel::new(
-            Scale::Custom,
-            Dt::new(0, 0),
-            Drift::from_offset_and_rate(Dt::from_sec(42, Scale::TAI), Dt::from_ns(1, Scale::TAI)),
-        );
-        assert_roundtrip(
-            &model,
-            |m| m.to_wire_bytes().to_vec(),
-            ClockModel::from_wire_bytes,
         );
     }
 

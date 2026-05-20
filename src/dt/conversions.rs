@@ -1,6 +1,6 @@
 use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::{
-    ClockModel, Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_SEC_AT_1972,
+    Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_SEC_AT_1972,
     TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET,
 };
 
@@ -23,6 +23,18 @@ impl Dt {
     #[inline]
     pub const fn from_diff_and_scale(diff: Dt, epoch: Dt, current: Scale) -> Self {
         Dt::from_dt(epoch.add(diff), current)
+    }
+
+    /// Returns this [`Dt`] but as a unix timestamp where the:
+    /// - `.sec` field is seconds since the UNIX epoch (1970-01-01 00:00:00).
+    /// - `.attos` field is remaining fractional seconds.
+    ///
+    /// ### Notes:
+    /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
+    #[inline]
+    pub const fn to_unix(&self, current: Scale, target: Scale) -> Dt {
+        self.to(current, target)
+            .to_diff_raw(Dt::UNIX_EPOCH.to_internal(target))
     }
 
     /// Creates a TAI [`Dt`].
@@ -84,12 +96,12 @@ impl Dt {
 
     pub(crate) const fn to_internal(&self, scale: Scale) -> Dt {
         match scale {
-            Scale::TAI | Scale::Custom | Scale::UT1 => *self,
-            Scale::TT => self.add(TT_TAI_OFFSET),
+            Scale::TAI | Scale::Custom => *self,
             Scale::UTC => self.sub(Dt {
                 sec: self.leap_sec(false).offset,
                 attos: 0,
             }),
+            Scale::TT => self.add(TT_TAI_OFFSET),
             Scale::UTCSpice => {
                 let spice = self.sub(Dt {
                     sec: self.leap_sec(false).offset,
@@ -154,8 +166,8 @@ impl Dt {
     /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
     /// case of a pure constant offset the function returns immediately without iteration.
     pub const fn convert_back_using_drift(self, reference: Self, drift: Drift) -> Self {
-        if drift.rate().is_zero() && drift.accel().is_zero() {
-            return self.sub(*drift.constant());
+        if drift.rate.is_zero() && drift.accel.is_zero() {
+            return self.sub(drift.constant);
         }
         let mut guess = self;
         let mut i = 0u32;
@@ -166,18 +178,6 @@ impl Dt {
             i += 1;
         }
         guess
-    }
-
-    /// Converts this instant using a self-describing [`ClockModel`].
-    #[inline]
-    pub const fn convert_using_model(self, model: ClockModel) -> Self {
-        self.convert_using_drift(model.reference, model.drift)
-    }
-
-    /// Performs the inverse conversion of [`Self::convert_using_model`].
-    #[inline]
-    pub const fn convert_back_using_model(self, model: ClockModel) -> Self {
-        self.convert_back_using_drift(model.reference, model.drift)
     }
 
     pub(crate) const fn tai_to_tcg(tai: Self) -> Self {

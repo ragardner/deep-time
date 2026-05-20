@@ -24,8 +24,7 @@ use core::fmt;
 ///   secular rate offsets for traceability and cislunar operations).
 /// - **GNSS / navigation scales**: GPS, GST, BDT, QZSS — tied to specific
 ///   satellite constellations.
-/// - **Custom**: User-defined scales, most powerful when combined with a
-///   `ClockModel` (self-describing polynomial drift, bias, etc.).
+/// - **Custom**: Fallback for custom scales.
 ///
 /// The default variant is [`TAI`], which serves as the internal canonical
 /// representation in many high-precision time libraries because it is
@@ -50,10 +49,6 @@ use core::fmt;
 ///   LTE440 periodic terms, and a constant bias calibrated so that the model
 ///   exactly reproduces the official LTE440 reference value at J2000.0 TDB.
 ///   Inverse conversion also uses fixed-point iteration.
-///
-/// Periodic corrections are applied directly in the `Scale` conversions (not
-/// delegated to `ClockModel`). This gives users accurate results out of the box
-/// for both operational (`LTC`) and coordinate (`TCL`) lunar timekeeping.
 ///
 /// See the documentation on the individual variants for rates, historical
 /// models, and conversion notes.
@@ -88,13 +83,6 @@ pub enum Scale {
 
     /// Universal Coordinated Time using modern IERS leap second rules.
     UTC,
-
-    /// UT1 — Universal Time based on the Earth’s rotation (observed, not uniform).
-    /// - Conversions to and from this scale must be performed using
-    ///   [`Dt::to_offset_by_bop`] and [`Dt::from_offset_by_bop`] with the `"bop"`
-    ///   feature enabled.
-    /// - See [`deep_time::BopData`] for more information.
-    UT1,
 
     /// Universal Coordinated Time using the SPICE historical model
     /// (fixed +9 s offset against TAI for all dates before 1972-01-01).
@@ -149,8 +137,7 @@ pub enum Scale {
     ///   reproduces the published LTE440 reference value at J2000.0 TDB.
     TCL,
 
-    /// **Custom / user-defined type** – for experimental or mission-specific timescales.
-    /// Most powerful when paired with `ClockModel` (self-describing polynomial).
+    /// **Custom / user-defined type**.
     Custom,
 }
 
@@ -213,7 +200,6 @@ impl Scale {
             "ET" => Some(Self::ET),
             "TDB" => Some(Self::TDB),
             "UTC" => Some(Self::UTC),
-            "UT1" => Some(Self::UT1),
             "UTCSPICE" => Some(Self::UTCSpice),
             "UTCSOFA" => Some(Self::UTCSofa),
             "GPS" => Some(Self::GPS),
@@ -237,7 +223,6 @@ impl Scale {
             Self::ET => "ET",
             Self::TDB => "TDB",
             Self::UTC => "UTC",
-            Self::UT1 => "UT1",
             Self::UTCSpice => "UTCSPICE",
             Self::UTCSofa => "UTCSOFA",
             Self::TCG => "TCG",
@@ -263,8 +248,8 @@ impl Scale {
 
     /// Attempts to reconstruct a `Scale` from its wire byte representation.
     ///
-    /// Returns `None` for any value that does not correspond to a known variant.
-    /// This provides safe deserialization from untrusted sources.
+    /// - Returns `Custom` for any value that does not correspond to a known variant.
+    /// - This provides safe deserialization from untrusted sources.
     pub const fn from_u8(v: u8) -> Self {
         match v {
             0 => Self::TAI,
@@ -272,17 +257,16 @@ impl Scale {
             2 => Self::ET,
             3 => Self::TDB,
             4 => Self::UTC,
-            5 => Self::UT1,
-            6 => Self::UTCSpice,
-            7 => Self::UTCSofa,
-            8 => Self::GPS,
-            9 => Self::GST,
-            10 => Self::BDT,
-            11 => Self::QZSS,
-            12 => Self::TCG,
-            13 => Self::TCB,
-            14 => Self::LTC,
-            15 => Self::TCL,
+            5 => Self::UTCSpice,
+            6 => Self::UTCSofa,
+            7 => Self::GPS,
+            8 => Self::GST,
+            9 => Self::BDT,
+            10 => Self::QZSS,
+            11 => Self::TCG,
+            12 => Self::TCB,
+            13 => Self::LTC,
+            14 => Self::TCL,
             _ => Self::Custom,
         }
     }

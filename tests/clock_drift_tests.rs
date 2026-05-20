@@ -117,10 +117,10 @@ mod tests {
             let expected_drift =
                 Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(expected_offset));
             // Only allow difference when seconds match
-            assert_eq!(drift.rate().sec(), expected_drift.rate().sec());
+            assert_eq!(drift.rate.sec(), expected_drift.rate.sec());
 
             let attos_diff =
-                (drift.rate().attos() as i128 - expected_drift.rate().attos() as i128).abs();
+                (drift.rate.attos() as i128 - expected_drift.rate.attos() as i128).abs();
             assert!(
                 attos_diff <= 200, // Allow up to 200 attoseconds difference
                 "Attos difference too large for δ = {}: {} attos",
@@ -140,7 +140,7 @@ mod tests {
         // representation while the unified function produces the canonical one.
         // The two Dts are mathematically identical but not ==.)
         assert_eq!(
-            drift_neg_u.rate().to_sec_f(),
+            drift_neg_u.rate.to_sec_f(),
             -1.0,
             "Negative u should clamp to dτ/dt = 0.0 → rate_offset = -1.0"
         );
@@ -155,7 +155,7 @@ mod tests {
         // delta = 1.0 must always give exactly rate = 1.0 (no drift) regardless of curvature
         for k in [0.0, 1.0, 1e10, 1e30] {
             let drift = Drift::from_unified_proper_time_rate(1.0, k);
-            assert_eq!(*drift.rate(), Dt::ZERO, "δ=1 should be exactly rate=1");
+            assert_eq!(drift.rate, Dt::ZERO, "δ=1 should be exactly rate=1");
         }
 
         // delta = 0 with moderate curvature (null-ray / lightlike edge case sanity).
@@ -197,7 +197,7 @@ mod tests {
         let k_values = [0.0, 1e5, 1e15, 1e30];
         for &k in &k_values {
             let drift = Drift::from_unified_proper_time_rate(u, k);
-            let rate_factor = 1.0 + drift.rate().to_sec_f(); // internal f64 value
+            let rate_factor = 1.0 + drift.rate.to_sec_f(); // internal f64 value
             assert!(rate_factor > 0.0, "proper-time rate became non-positive");
             // monotonicity / bound check
             assert!(

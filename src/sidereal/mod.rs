@@ -54,16 +54,16 @@ use earth_eo_ee::*;
 ///
 /// ```rust
 /// use deep_time::{Dt, Sidereal};
-/// use deep_time::bop::{BopData, BopFormat, Separator};
+/// use deep_time::eop::{EopData, EopFormat, Separator};
 ///
-/// let bop = BopData::from_text_file(
+/// let eop = EopData::from_text_file(
 ///     "finals.all.iau2000.txt",
-///     BopFormat::Finals2000A,
+///     EopFormat::Finals2000A,
 ///     Separator::Whitespace,
 /// ).unwrap();
 ///
 /// let mjd_utc = 56879.0;
-/// let dut1 = Dt::orientation_offset(mjd_utc, &bop).unwrap();
+/// let dut1 = Dt::mjd_to_eop_offset_f(mjd_utc, &eop).unwrap();
 /// let mjd_ut1 = mjd_utc + dut1 / 86400.0;
 ///
 /// let earth = Sidereal::EARTH;

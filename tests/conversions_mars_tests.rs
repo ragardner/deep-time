@@ -113,7 +113,7 @@ mod mars_tests {
 
         const TOLERANCE: f64 = 0.01;
 
-        let date = Dt::from_ymd(2000, 01, 06);
+        let date = Dt::from_ymd(2000, 1, 6);
         let ls = date.to_mars_ls(Scale::TAI);
         assert!(
             (ls - 277.18758).abs() < TOLERANCE,
@@ -121,7 +121,7 @@ mod mars_tests {
             ls
         );
 
-        let date = Dt::from_ymdhms(2004, 01, 03, 13, 46, 41, 0);
+        let date = Dt::from_ymdhms(2004, 1, 3, 13, 46, 41, 0);
         let ls = date.to_mars_ls(Scale::TAI);
         assert!(
             (ls - 327.32416).abs() < TOLERANCE,
@@ -147,7 +147,7 @@ mod mars_tests {
         // These values are taken verbatim from the published NASA algorithm page
         // (Table of worked examples, rows C-2/C-3 and C-4).
 
-        let date = Dt::from_ymd(2000, 01, 06);
+        let date = Dt::from_ymd(2000, 1, 6);
         let east_lon_deg = f!(0.0); // prime meridian
 
         let lmst = date.to_mars_lmst(Scale::TAI, east_lon_deg);

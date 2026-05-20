@@ -104,15 +104,14 @@ pub fn to_fs(attos: i128) -> i128 {
 #[cfg(feature = "parse")]
 mod alloc_parse;
 
-#[cfg(feature = "sidereal")]
-pub mod sidereal;
+#[cfg(feature = "wire")]
+mod wire;
 
 // _________________________________________
 // MOD
 // _________________________________________
 mod an_err;
 mod ascii_str;
-mod clock_model;
 mod drift;
 mod dt;
 mod gregorian_time;
@@ -136,8 +135,11 @@ pub mod tzdb;
 // _________________________________________
 // FEATURE PUB MOD
 // _________________________________________
-#[cfg(feature = "bop")]
-pub mod bop;
+#[cfg(feature = "eop")]
+pub mod eop;
+
+#[cfg(feature = "sidereal")]
+pub mod sidereal;
 
 // _________________________________________
 // FEATURE CRATE USE
@@ -157,7 +159,7 @@ pub(crate) use constants::*;
 // FEATURE PUB USE
 // _________________________________________
 #[cfg(feature = "parse")]
-pub use alloc_parse::types::{DateOrder, DateParseMode, Lang, ParseCfg};
+pub use alloc_parse::types::{Lang, Mode, Order, ParseCfg};
 
 #[cfg(feature = "wire")]
 pub use an_err::{WireErr, WireLocation};
@@ -173,7 +175,6 @@ pub use dt::mars;
 // _________________________________________
 pub use an_err::AnErr;
 pub use ascii_str::{AsciiStr, AsciiStrError};
-pub use clock_model::ClockModel;
 pub use drift::{Drift, Spacetime};
 pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use dt::{Dt, lunar};

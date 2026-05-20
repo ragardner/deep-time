@@ -183,6 +183,6 @@ impl Dt {
     #[inline]
     const fn rate_from_local(spacetime: &Spacetime) -> Real {
         let drift = Drift::from_spacetime(spacetime);
-        f!(1.0) + drift.rate().to_sec_f()
+        f!(1.0) + drift.rate.to_sec_f()
     }
 }

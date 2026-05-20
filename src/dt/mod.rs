@@ -37,10 +37,60 @@ mod jiff;
 use crate::ATTOS_PER_SEC;
 use core::fmt;
 
-/// Dt, and the library, is in the process of being switched from the sec
-/// and subsec fields being related to the scale, TO the sec and subsec fields
-/// always being TAI Epoch 2000-01-01 noon.
-/// Much of the documentation is outdated and should be ignored.
+/// ## [`Dt`] A high-precision instant or duration with attosecond resolution.
+///
+/// This is the core time type of the library. It represents both absolute
+/// instants and durations using the same compact representation, making it
+/// convenient anywhere precise time measurement or arithmetic is needed.
+///
+/// ## Representation
+///
+/// It stores:
+///
+/// - `sec: i64` — whole seconds (signed).
+/// - `attos: u64` — fractional seconds in attoseconds (`0 ≤ attos < 10¹⁸`).
+///     - These always push the `Dt` towards the positive.
+///
+/// This gives a resolution of one attosecond while supporting a range of
+/// roughly ±292 billion years. An [`i128`] was considered but decided against
+/// due to the difficulty of math without overflow.
+///
+/// There are many different ways to go to and from a `Dt` see the [`documentation`](../struct.Dt.html)
+/// for the full list of methods.
+///
+/// It implements `Copy` and `Clone`. Optional derives for `serde` and
+/// `tsify` are available behind the corresponding features.
+///
+/// ## Reference epoch and scales
+///
+/// When using the conversion functions [`Dt::to`] and [`Dt::from`] the
+/// epoch for **all** time scales is [`Dt::ZERO`] 2000-01-01 noon.
+///
+/// Many convenience constructors and accessors exist for common epochs
+/// (UNIX, GPS, Galileo, BeiDou, CXC, 1977 TT/TCG/TCB, etc.).
+///
+/// See the [`Scale`] documentation for the complete list of supported scales,
+/// leap-second handling, historical UTC models, relativistic coordinate times
+/// (TCG, TCB), and the lunar scales LTC / TCL (based on the LTE440 model).
+///
+/// ## Arithmetic and manipulation
+///
+/// `Dt` provides rich const-friendly arithmetic:
+///
+/// - Addition and subtraction of durations
+/// - Multiplication and division by integers or `Real` (f64)
+/// - `floor`, `ceil`, `round` to an arbitrary unit
+/// - Many convenience increment/decrement methods (`add_1ns`, `sub_ms`, …)
+/// - Signed difference via [`to_diff_raw`](Self::to_diff_raw)
+///
+/// Relativistic proper-time corrections and clock-drift models are supported
+/// via [`convert_using_drift`](Self::convert_using_drift) and related methods.
+///
+/// ## Notes
+///
+/// - `Dt` does **not** store a time scale internally. The scale is always
+///   an explicit parameter of conversion and construction methods.
+/// - Leap-second handling follows the chosen `Scale` (UTC, UTCSpice, UTCSofa).
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
@@ -123,63 +173,5 @@ impl fmt::Debug for Dt {
             .field("sec", &self.sec())
             .field("attos", &self.attos())
             .finish()
-    }
-}
-
-#[cfg(feature = "wire")]
-impl Dt {
-    /// Current wire format version.
-    pub const WIRE_VERSION: u8 = 1;
-
-    /// Size of the canonical wire representation in bytes (17 bytes).
-    pub const WIRE_SIZE: usize = 17;
-
-    /// Serializes this `Dt` into a fixed 17-byte little-endian buffer.
-    ///
-    /// # Wire Format
-    ///
-    /// - Byte `0`: Version (`WIRE_VERSION`)
-    /// - Bytes `[1..9]`: `sec` as little-endian `i64`
-    /// - Bytes `[9..17]`: `subsec` as little-endian `u64`
-    ///
-    /// This format is stable, portable, and suitable for network transmission,
-    /// file storage, or FFI. The internal representation is always TAI.
-    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
-        let mut buf = [0u8; Self::WIRE_SIZE];
-        buf[0] = Self::WIRE_VERSION;
-        buf[1..9].copy_from_slice(&self.sec.to_le_bytes());
-        buf[9..17].copy_from_slice(&self.attos.to_le_bytes());
-        buf
-    }
-
-    /// Deserializes a `Dt` from exactly 17 bytes of wire data.
-    ///
-    /// Returns `None` if the version byte is unknown.
-    /// Any `subsec` value ≥ 10¹⁸ is automatically normalized using
-    /// [`carry_over`](Self::carry_over) so the resulting `Dt`
-    /// is always in canonical form.
-    ///
-    /// ## Security
-    ///
-    /// Safe to call with completely untrusted input. Fixed-size format,
-    /// no allocation, no `unsafe`, and no possibility of code execution.
-    /// Malicious data simply produces a normalized (but still valid) `Dt`.
-    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
-        if bytes.len() != Self::WIRE_SIZE {
-            return None;
-        }
-
-        if bytes[0] != Self::WIRE_VERSION {
-            return None;
-        }
-
-        let sec = i64::from_le_bytes([
-            bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7], bytes[8],
-        ]);
-        let subsec = u64::from_le_bytes([
-            bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15], bytes[16],
-        ]);
-
-        Some(Self::new(sec, subsec))
     }
 }

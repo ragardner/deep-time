@@ -1,6 +1,6 @@
 #[cfg(feature = "locale")]
 use crate::locale_prefers_day_first;
-use crate::{ConnectorType, DateClassification, DateOrderFirst, DateToken};
+use crate::{ConnectorType, DateClassification, DateToken, OrderFirst};
 
 /// Returns the most likely **date component ordering** for the input string.
 ///
@@ -15,7 +15,7 @@ use crate::{ConnectorType, DateClassification, DateOrderFirst, DateToken};
 /// • `/` is deliberately ignored (culturally split).
 /// • Final fallback = cached locale (if enabled) or `Day` (global majority).
 #[inline]
-pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> DateOrderFirst {
+pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> OrderFirst {
     // ------------------------------------------------------------------
     // 1. Pure-numeric compact formats (the exact case you reported)
     //    `240314153045` = classic YYMMDDHHMMSS → Year.
@@ -24,7 +24,7 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> Da
     //    them *before* everything else.
     // ------------------------------------------------------------------
     if class.is_pure_numeric && class.num_digits >= 6 {
-        return DateOrderFirst::Year;
+        return OrderFirst::Year;
     }
 
     let s = s.trim_start_matches(['+', '-']);
@@ -37,7 +37,7 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> Da
         && let Some(year_candidate) = s.get(0..4).and_then(|p| p.parse::<u16>().ok())
         && (1900..=2100).contains(&year_candidate)
     {
-        return DateOrderFirst::Year;
+        return OrderFirst::Year;
     }
 
     // ------------------------------------------------------------------
@@ -56,7 +56,7 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> Da
     let first = num_iter.next().unwrap_or(0);
 
     if first > 12 && first <= 31 {
-        return DateOrderFirst::Day;
+        return OrderFirst::Day;
     }
 
     let second = if (1..=12).contains(&first) {
@@ -66,7 +66,7 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> Da
     };
 
     if second > 12 && second <= 31 {
-        return DateOrderFirst::Month;
+        return OrderFirst::Month;
     }
 
     // ------------------------------------------------------------------
@@ -74,7 +74,7 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> Da
     // ------------------------------------------------------------------
 
     if class.connector == ConnectorType::UpperT || class.has_offset_or_zone() {
-        return DateOrderFirst::Year;
+        return OrderFirst::Year;
     }
 
     // ------------------------------------------------------------------
@@ -83,13 +83,13 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> Da
     #[cfg(feature = "locale")]
     {
         if locale_prefers_day_first() {
-            DateOrderFirst::Day
+            OrderFirst::Day
         } else {
-            DateOrderFirst::Month
+            OrderFirst::Month
         }
     }
     #[cfg(not(feature = "locale"))]
     {
-        DateOrderFirst::Day
+        OrderFirst::Day
     }
 }

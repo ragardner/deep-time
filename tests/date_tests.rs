@@ -2,7 +2,7 @@
 
 #[cfg(feature = "parse")]
 mod tests {
-    use deep_time::{DateOrder, DateParseMode, Dt, ParseCfg, Scale};
+    use deep_time::{Dt, Mode, Order, ParseCfg, Scale};
 
     #[cfg(feature = "tz")]
     #[test]
@@ -134,7 +134,7 @@ mod tests {
         let prefixes = ["", " ", "Thu ", "Thu. ", "Thursday, ", "Thu, "];
 
         let opts = ParseCfg {
-            order: DateOrder::Year,
+            order: Order::Year,
             ..Default::default()
         };
 
@@ -305,12 +305,12 @@ mod tests {
                 "2024-03-14T15:30:45.123456789Z".to_string(),
                 None,
             ),
-            // Parse-mode / DateOrder / explicit format tests
+            // Parse-mode / Order / explicit format tests
             (
                 "60400".to_string(),
                 "2024-03-31T00:00:00Z".to_string(),
                 Some(ParseCfg {
-                    mode: DateParseMode::Scientific,
+                    mode: Mode::Scientific,
                     ..Default::default()
                 }),
             ),
@@ -318,7 +318,7 @@ mod tests {
                 "05/06/2024".to_string(),
                 "2024-06-05T00:00:00Z".to_string(),
                 Some(ParseCfg {
-                    order: DateOrder::Day,
+                    order: Order::Day,
                     ..Default::default()
                 }),
             ),
@@ -384,7 +384,7 @@ mod tests {
                 "2440587.5",
                 "1970-01-01T00:00:00Z",
                 Some(ParseCfg {
-                    mode: DateParseMode::Scientific,
+                    mode: Mode::Scientific,
                     ..Default::default()
                 }),
             ),
@@ -897,8 +897,8 @@ mod tests {
                 "2024-03-31T00:00:00Z",
                 Some(ParseCfg {
                     parse: None,
-                    mode: DateParseMode::Scientific,
-                    order: DateOrder::default(),
+                    mode: Mode::Scientific,
+                    order: Order::default(),
                     ..Default::default()
                 }),
             ),
@@ -907,19 +907,19 @@ mod tests {
                 "2024-03-13T00:00:00Z",
                 Some(ParseCfg {
                     parse: None,
-                    mode: DateParseMode::Legacy,
-                    order: DateOrder::default(),
+                    mode: Mode::Legacy,
+                    order: Order::default(),
                     ..Default::default()
                 }),
             ),
-            // DateOrder
+            // Order
             (
                 "05/06/2024",
                 "2024-06-05T00:00:00Z",
                 Some(ParseCfg {
                     parse: None,
-                    mode: DateParseMode::Scientific,
-                    order: DateOrder::Day,
+                    mode: Mode::Scientific,
+                    order: Order::Day,
                     ..Default::default()
                 }),
             ),
@@ -927,7 +927,7 @@ mod tests {
                 "05/06/2024",
                 "2024-05-06T00:00:00Z",
                 Some(ParseCfg {
-                    order: DateOrder::Month,
+                    order: Order::Month,
                     ..Default::default()
                 }),
             ),
@@ -961,7 +961,7 @@ mod tests {
                 "２０２６年４月５日",
                 "2026-04-05T00:00:00Z",
                 Some(ParseCfg {
-                    order: DateOrder::Year,
+                    order: Order::Year,
                     ..Default::default()
                 }),
             ),
@@ -969,7 +969,7 @@ mod tests {
                 "߂߀߂߄-߀߄-߀߅",
                 "2024-04-05T00:00:00Z",
                 Some(ParseCfg {
-                    order: DateOrder::Year,
+                    order: Order::Year,
                     ..Default::default()
                 }),
             ),

@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-pub enum DateOrder {
+pub enum Order {
     /// **Default & recommended** — Smart modern heuristic (best of all worlds):
     /// - Tries **Year-first** formats first (modern/tech bias: JSON, logs, APIs, databases)
     /// - Then Day-first (international/European)
@@ -26,7 +26,7 @@ pub enum DateOrder {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 /// Only relevant for purely numeric dates.
-pub enum DateParseMode {
+pub enum Mode {
     /// **Default mode** — Smart heuristic:
     /// - 5/7-digit pure-numeric inside `LEGACY_ORDINAL_YEAR_RANGE` → treated as business ordinal (YYYYDDD / YYDDD)
     /// - Outside that range or invalid ordinal → treated as MJD or JD
@@ -68,11 +68,11 @@ pub struct ParseCfg {
     /// Controls which preset format sets are used (astronomy/scientific formats,
     /// legacy business rules, etc.).
     #[cfg_attr(feature = "serde", serde(default))]
-    pub mode: DateParseMode,
+    pub mode: Mode,
 
     /// Controls ambiguous numeric dates.
     #[cfg_attr(feature = "serde", serde(default))]
-    pub order: DateOrder,
+    pub order: Order,
 
     /// Sets language to use, not persistent.
     #[cfg_attr(feature = "serde", serde(default))]
@@ -82,6 +82,10 @@ pub struct ParseCfg {
     /// ONLY set to `false` if the &str is already lowercase.
     #[cfg_attr(feature = "serde", serde(default = "default_true"))]
     pub to_lower: bool,
+
+    /// Whether to parse relative dates as well as normal dates.
+    #[cfg_attr(feature = "serde", serde(default = "default_true"))]
+    pub relative: bool,
 
     /// **Reference ("current") time** used for relative expressions:
     /// - "tomorrow", "next Friday", "in 3 days", "next week"
@@ -103,17 +107,18 @@ impl Default for ParseCfg {
     fn default() -> Self {
         Self {
             parse: None,
-            mode: DateParseMode::default(),
-            order: DateOrder::default(),
+            mode: Mode::default(),
+            order: Order::default(),
             lang: Lang::default(),
             to_lower: true,
+            relative: true,
             ref_time: None,
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DateOrderFirst {
+pub(crate) enum OrderFirst {
     /// Year-Month-Day ordering (ISO 8601 style, `YYYY-MM-DD`, `20240315`, etc.)
     Year,
     /// Month-Day-Year ordering (US / some English locales, `MM/DD/YYYY`)

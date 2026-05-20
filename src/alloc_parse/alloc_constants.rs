@@ -72,7 +72,6 @@ pub(crate) const MJD_RANGE: RangeInclusive<i64> = 40_000..=85_000;
 /// Covers ~5000 BC to ~10,700 AD
 pub(crate) const JD_RANGE: RangeInclusive<i64> = 1_400_000..=4_000_000;
 
-pub(crate) const SEC_PER_HALF_DAYI64: i64 = 43_200;
 pub(crate) const NS_PER_YEAR: i128 = 31_557_600_000_000_000; // 365.25 days
 pub(crate) const NS_PER_MONTH: i128 = 2_629_800_000_000_000; // 30.4375 days
 pub(crate) const NS_PER_WEEK: i128 = 604_800_000_000_000;

@@ -4,18 +4,6 @@ use crate::{
 };
 
 impl Dt {
-    /// Returns this [`Dt`] but as a unix timestamp where the:
-    /// - `.sec` field is seconds since the UNIX epoch (1970-01-01 00:00:00).
-    /// - `.attos` field is remaining fractional seconds.
-    ///
-    /// ### Notes:
-    /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
-    #[inline]
-    pub const fn to_unix(&self, current: Scale, target: Scale) -> Dt {
-        self.to(current, target)
-            .to_diff_raw(Dt::UNIX_EPOCH.to_internal(target))
-    }
-
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
     /// to a proleptic Gregorian date (year, month, day).
     #[inline]
@@ -134,11 +122,10 @@ impl Dt {
 
     /// Converts a Julian Day Number (JDN) to a proleptic Gregorian calendar date.
     ///
-    /// Returns `(year, month, day)` where `month` ∈ [1, 12] and `day` ∈ [1, 31]
-    /// (standard 1-based Gregorian values).
-    ///
-    /// This is the inverse of [`Self::ymd_to_jdn`]. Supports the full `i64`
-    /// range, including negative years and year zero.
+    /// - Returns `(year, month, day)` where `month` ∈ [1, 12] and `day` ∈ [1, 31]
+    ///   (standard 1-based Gregorian values).
+    /// - This is the inverse of [`Dt::ymd_to_jdn`](../struct.Dt.html#method.ymd_to_jdn).
+    /// - Supports the full `i64` range, including negative years and year zero.
     pub const fn jdn_to_ymd(jdn: i64) -> (i64, u8, u8) {
         let j = jdn as i128;
 
@@ -161,8 +148,10 @@ impl Dt {
     }
 
     /// Computes the Julian Day Number (JDN) for a proleptic Gregorian calendar date at noon UT.
+    /// This is the inverse of [`jdn_to_ymd`].
     ///
     /// # Arguments
+    ///
     /// * `yr`  - Year (any `i64`; proleptic Gregorian)
     /// * `mo` - Month (**1-based**: `1` = January, `2` = February, ..., `12` = December)
     /// * `day`   - Day of the month (**1-based**: `1` = first day of the month)
@@ -170,9 +159,8 @@ impl Dt {
     /// The algorithm matches the standard astronomical convention used throughout the library
     /// (`ymd_to_jdn(2000, 1, 1) == 2451545`).
     ///
-    /// This is the inverse of [`jdn_to_ymd`].
-    ///
     /// # Notes
+    ///
     /// - This function assumes a **valid** date. Passing `mo = 0` or `day = 0` (or other
     ///   out-of-range values) will produce incorrect results.
     /// - The result is the integer JDN corresponding to **noon UT** on the given date.
@@ -205,30 +193,24 @@ impl Dt {
         yr % 4 == 0 && (yr % 100 != 0 || yr % 400 == 0)
     }
 
-    /// Creates a `Dt` at the specified civil UTC instant with full
-    /// attosecond precision on the proleptic Gregorian calendar, then converts
-    /// it to the requested [`Scale`].
+    /// Creates a [`Dt`] from a proleptic gregorian date which is assumed to be on
+    /// the provided time scale.
+    ///
+    /// - Equivalent to [`Dt::from`](../struct.Dt.html#method.from) for the provided date.
+    /// - Returned [`Dt`] will be on the **TAI** time scale.
     ///
     /// All input components are clamped to their valid ranges:
-    /// - `mo`   → 0..=12
-    /// - `day`  → 0..=31
+    /// - `mo`   → 1..=12
+    /// - `day`  → 1..=31
     /// - `hr`   → 0..=23
     /// - `min`  → 0..=59
     /// - `sec`  → 0..=60 (permits leap seconds)
     /// - `attos` → values ≥ 10¹⁸ are carried into the seconds field
-    #[inline]
-    pub const fn from_ymdhms(
-        yr: i64,
-        mo: u8,
-        day: u8,
-        hr: u8,
-        min: u8,
-        sec: u8,
-        attos: u64,
-    ) -> Self {
-        Dt::from_ymdhms_on(yr, mo, day, hr, min, sec, attos, Scale::UTC)
-    }
-
+    ///
+    /// ### Notes:
+    ///
+    /// - Does not perform validation on leap seconds. If 60 seconds are
+    ///   provided then an extra second will be added to the resulting [`Dt`].
     pub const fn from_ymdhms_on(
         yr: i64,
         mo: u8,
@@ -239,11 +221,11 @@ impl Dt {
         attos: u64,
         scale: Scale,
     ) -> Self {
-        let mo = if mo > 12 { 12 } else { mo };
-        let day = if day > 31 { 31 } else { day };
-        let h = if hr > 23 { 23 } else { hr };
-        let m = if min > 59 { 59 } else { min };
-        let s = if sec > 60 { 60 } else { sec };
+        let mo = Self::clamp_u8(mo, 1, 12);
+        let day = Self::clamp_u8(day, 1, 31);
+        let h = Self::clamp_u8(hr, 0, 23);
+        let m = Self::clamp_u8(min, 0, 59);
+        let s = Self::clamp_u8(sec, 0, 60);
 
         let extra_sec = (attos / ATTOS_PER_SEC) as i64;
         let final_attos = attos % ATTOS_PER_SEC;
@@ -264,24 +246,43 @@ impl Dt {
         let tp =
             Self::from_diff_and_scale(Dt::new(civil_unix_sec, final_attos), Dt::UNIX_EPOCH, scale);
         if is_exact_leap_second {
-            tp.add(Dt::from_sec(1, Scale::TAI))
+            Dt::new(tp.sec.saturating_add(1), tp.attos)
         } else {
             tp
         }
     }
 
-    /// Creates a [`Dt`] representing midnight **00:00:00 UTC** on the given proleptic Gregorian date.
-    #[inline]
-    pub const fn from_ymd(yr: i64, mo: u8, day: u8) -> Self {
-        let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
-        Self::from_diff_and_scale(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, Scale::UTC)
-    }
-
-    /// Creates a [`Dt`] representing midnight **00:00:00 on the given [`Scale`]** on the given proleptic Gregorian date.
+    /// Creates a [`Dt`] from a proleptic gregorian date which is assumed to be on
+    /// the provided time scale.
+    ///
+    /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
     #[inline]
     pub const fn from_ymd_on(yr: i64, mo: u8, day: u8, scale: Scale) -> Self {
-        let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, 0, 0, 0);
-        Self::from_diff_and_scale(Dt::new(unix_sec, 0), Dt::UNIX_EPOCH, scale)
+        Dt::from_ymdhms_on(yr, mo, day, 0, 0, 0, 0, scale)
+    }
+
+    /// Creates a [`Dt`] from a proleptic gregorian **UTC** date.
+    ///
+    /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
+    #[inline]
+    pub const fn from_ymdhms(
+        yr: i64,
+        mo: u8,
+        day: u8,
+        hr: u8,
+        min: u8,
+        sec: u8,
+        attos: u64,
+    ) -> Self {
+        Dt::from_ymdhms_on(yr, mo, day, hr, min, sec, attos, Scale::UTC)
+    }
+
+    /// Creates a [`Dt`] from a proleptic gregorian **UTC** date.
+    ///
+    /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
+    #[inline]
+    pub const fn from_ymd(yr: i64, mo: u8, day: u8) -> Self {
+        Dt::from_ymdhms_on(yr, mo, day, 0, 0, 0, 0, Scale::UTC)
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.
@@ -311,21 +312,10 @@ impl Dt {
         };
 
         let monday_wk1 = jan4_jdn.saturating_sub(days_to_monday);
-
         let monday_requested =
             monday_wk1.saturating_add(((iso_wk as i64).saturating_sub(1)).saturating_mul(7));
 
-        let wd_offset = match wkday {
-            Weekday::Monday => 0,
-            Weekday::Tuesday => 1,
-            Weekday::Wednesday => 2,
-            Weekday::Thursday => 3,
-            Weekday::Friday => 4,
-            Weekday::Saturday => 5,
-            Weekday::Sunday => 6,
-        };
-
-        monday_requested.saturating_add(wd_offset as i64)
+        monday_requested.saturating_add((wkday.wk_mon() - 1) as i64)
     }
 
     /// Computes the Julian Day Number from a Sunday-based week-of-year (`%U`).
@@ -339,17 +329,7 @@ impl Dt {
         let sunday_of_wk =
             first_sunday_jdn.saturating_add(((wk as i64).saturating_sub(1)).saturating_mul(7));
 
-        let wd_offset = match wkday {
-            Weekday::Sunday => 0,
-            Weekday::Monday => 1,
-            Weekday::Tuesday => 2,
-            Weekday::Wednesday => 3,
-            Weekday::Thursday => 4,
-            Weekday::Friday => 5,
-            Weekday::Saturday => 6,
-        };
-
-        sunday_of_wk.saturating_add(wd_offset as i64)
+        sunday_of_wk.saturating_add(wkday.wk_sun() as i64)
     }
 
     /// Computes the Julian Day Number from a Monday-based week-of-year (`%W`).
@@ -363,17 +343,7 @@ impl Dt {
         let monday_of_wk =
             first_monday_jdn.saturating_add(((wk as i64).saturating_sub(1)).saturating_mul(7));
 
-        let wd_offset = match wkday {
-            Weekday::Monday => 0,
-            Weekday::Tuesday => 1,
-            Weekday::Wednesday => 2,
-            Weekday::Thursday => 3,
-            Weekday::Friday => 4,
-            Weekday::Saturday => 5,
-            Weekday::Sunday => 6,
-        };
-
-        monday_of_wk.saturating_add(wd_offset as i64)
+        monday_of_wk.saturating_add((wkday.wk_mon() - 1) as i64)
     }
 
     /// Returns `true` if the supplied values form a valid proleptic Gregorian calendar date.
@@ -548,15 +518,9 @@ impl Dt {
         } else {
             wk
         };
-
-        let wkday_enum = match wd_iso {
-            1 => Weekday::Monday,
-            2 => Weekday::Tuesday,
-            3 => Weekday::Wednesday,
-            4 => Weekday::Thursday,
-            5 => Weekday::Friday,
-            6 => Weekday::Saturday,
-            _ => Weekday::Sunday,
+        let wkday_enum = match Weekday::from_monday_one_offset(wd_iso) {
+            Some(w) => w,
+            None => Weekday::Monday,
         };
 
         (iso_yr, iso_wk, wkday_enum)

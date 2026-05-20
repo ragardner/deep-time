@@ -44,7 +44,7 @@ alloc = [
 mars = []
 sidereal = []
 sidereal-earth = ["sidereal"]
-bop = ["alloc"]
+eop = ["alloc"]
 
 std = [
     "alloc",
@@ -161,7 +161,7 @@ all = [
     "serde",
 ]
 perf-tests = ["parse", "std"]
-bop-tests = ["bop", "std"]
+eop-tests = ["eop", "std"]
 
 [lints.clippy]
 non_canonical_partial_ord_impl = "allow"

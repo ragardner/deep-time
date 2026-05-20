@@ -101,21 +101,21 @@ if __name__ == "__main__":
     main()
 */
 
-#[cfg(all(feature = "bop-tests", feature = "sidereal-earth"))]
+#[cfg(all(feature = "eop-tests", feature = "sidereal-earth"))]
 #[cfg(test)]
 mod sidereal_tests {
-    use deep_time::bop::{BopData, BopFormat, Separator};
+    use deep_time::eop::{EopData, EopFormat, Separator};
     use deep_time::{Dt, Sidereal};
 
-    fn load_finals2000a() -> BopData {
+    fn load_finals2000a() -> EopData {
         let path = "finals.all.iau2000.txt";
-        BopData::from_text_file(path, BopFormat::Finals2000A, Separator::Whitespace)
-            .expect("failed to load BopData")
+        EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace)
+            .expect("failed to load EopData")
     }
 
     #[test]
     fn test_sidereal_vs_astropy() {
-        fn check(eos: EoAndSiderealTimes, provider: &BopData) {
+        fn check(eos: EoAndSiderealTimes, provider: &EopData) {
             let mjd = eos.mjd;
             let lon_deg = eos.longitude_deg;
             let astropy_mjd_ut1 = eos.ut1_mjd;
@@ -137,7 +137,7 @@ mod sidereal_tests {
                 }
             };
 
-            let dut1 = Dt::orientation_offset(mjd, &provider).expect("to_ut1 failed");
+            let dut1 = Dt::mjd_to_eop_offset_f(mjd, &provider).expect("to_ut1 failed");
             let rust_ut1_mjd = mjd + (dut1 / 86400.0);
             let rust_rot = sid.local_rotation_angle(rust_ut1_mjd);
             let rust_eo = sid.earth_eo_apparent(rust_ut1_mjd + 32.184 / 86400.0);
