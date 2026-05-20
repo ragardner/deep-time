@@ -953,7 +953,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     // fn parse_scale(&mut self) -> Result<(), DtErr> {
     //     if self.inp.is_empty() || !self.inp[0].is_ascii_alphabetic() {
-    //         return Err(an_err!(DtErrKind::InvalidScale, "invalid clocktype"));
+    //         return Err(an_err!(DtErrKind::InvalidItem, "invalid clocktype"));
     //     }
     //     let start = self.inp;
     //     let mut pos = 0usize;
@@ -962,14 +962,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     //         pos += 1;
     //     }
     //     let abbrev = core::str::from_utf8(&start[..pos])
-    //         .map_err(|_| an_err!(DtErrKind::InvalidScale, "invalid clocktype"))?;
+    //         .map_err(|_| an_err!(DtErrKind::InvalidItem, "invalid clocktype"))?;
     //     self.inp = &start[pos..];
     //     self.advance_format();
     //     if let Some(ct) = Scale::from_abbrev(abbrev) {
     //         self.tm.scale = ct;
     //         Ok(())
     //     } else {
-    //         Err(an_err!(DtErrKind::InvalidScale, "invalid clocktype"))
+    //         Err(an_err!(DtErrKind::InvalidItem, "invalid clocktype"))
     //     }
     // }
 

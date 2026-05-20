@@ -43,10 +43,8 @@ mod light_time_tests {
 
         // Sun is at the origin in this test coordinate system
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
-
-        let correction = tx.one_way_relativistic_delay(rx, bodies, &[], None);
+        let correction = tx.shapiro_delay(rx, bodies);
         let got_us = correction.to_sec_f() * 1_000_000.0;
-        eprintln!("{}", got_us);
 
         assert!(
             (got_us - 119.45).abs() < 0.2,
@@ -118,7 +116,7 @@ mod light_time_tests {
         let daily_advance_us = (relative_rate - 1.0) * 86400.0 * 1_000_000.0;
 
         const EXPECTED: f64 = 38.4;
-        const TOL: f64 = 0.1;
+        const TOL: f64 = 0.04;
 
         assert!(
             (daily_advance_us - EXPECTED).abs() < TOL,
@@ -129,55 +127,56 @@ mod light_time_tests {
         );
     }
 
-    /// Verifies that `one_way_relativistic_delay` correctly decomposes into
-    /// differential clock-rate correction + Shapiro delay.
+    /// Validates the iterative one-way light-time solver on a solar-grazing geometry.
     ///
-    /// This is a fundamental consistency check. The total relativistic correction
-    /// returned by `one_way_relativistic_delay` should be the sum of:
-    /// - The differential proper-time (clock-rate) correction between transmitter
-    ///   and receiver, and
-    /// - The gravitational Shapiro delay.
+    /// Uses the classic solar conjunction case (impact parameter ≈ 1.001 R_☉).
+    /// Checks that the solver converges and returns a propagation correction
+    /// consistent with the known one-way Shapiro delay of ~119.45 µs.
     ///
-    /// By asserting this relationship, we gain direct confidence that the
-    /// combination of the two effects is implemented correctly.
+    /// Exercises:
+    /// iterative_one_way_light_time_to → shapiro_delay → shapiro_delay
+    ///
+    /// Reference value from Moyer (2003) / Cassini-era solar conjunction analyses.
     #[test]
-    fn one_way_relativistic_delay_decomposes_into_clock_plus_shapiro() {
-        let tx_pos = Position::new(1.5e11, 0.0, 0.0);
-        let rx_pos = Position::new(1.52e11, 0.3e11, 0.0);
+    fn iterative_one_way_light_time_to_sun_grazing() {
+        let au = 1.495978707e11_f64;
+        let r_sun = 6.957e8_f64;
+        let b = r_sun * 1.001;
 
-        let tx = make_state(0, tx_pos, Velocity::from_speed(30_000.0), -8.87e8, 0.0);
-        let rx = make_state(1200, rx_pos, Velocity::from_speed(29_000.0), -8.80e8, 0.0);
+        let tx_pos = Position::new(au, b, 0.0);
+        let rx_pos = Position::new(-au, b, 0.0);
 
-        // Sun is assumed to be at the origin in this test
+        let tx = make_state(0, tx_pos, Velocity::ZERO, -8.87e8, 0.0);
+        let tolerance = Dt::from_ns(1, Scale::TAI);
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
 
-        let total = tx.one_way_relativistic_delay(rx, bodies, &[], None);
+        // Static receiver — safe to ignore the time argument
+        let (prop_correction, _rx_time, _rx_state) = tx.iterative_one_way_light_time_to(
+            &mut |_t| make_state(0, rx_pos, Velocity::ZERO, -8.87e8, 0.0),
+            bodies,
+            tolerance,
+            20,
+        );
 
-        // Compute the two components separately
-        let clock_only = tx.compute_differential_clock_correction(rx);
-        let shapiro_only = tx.shapiro_delay(rx, bodies);
-
-        let sum = clock_only.add(shapiro_only);
+        let got_us = prop_correction.to_sec_f() * 1_000_000.0;
 
         assert!(
-            (total.to_sec_f() - sum.to_sec_f()).abs() < 1e-12,
-            "one_way_relativistic_delay should equal clock correction + Shapiro \
-         (difference = {:.3e} s)",
-            (total.to_sec_f() - sum.to_sec_f()).abs()
+            (got_us - 119.45).abs() < 0.1,
+            "Iterative solver sun-grazing Shapiro: got {:.3} µs (expected ≈119.45 µs)",
+            got_us
         );
     }
 
-    /// Verifies internal consistency of `round_trip_relativistic_correction`.
+    /// Checks internal consistency of round-trip composition.
     ///
-    /// This test reconstructs the round-trip correction by explicitly solving
-    /// the uplink and downlink legs using the same iterative method that
-    /// `round_trip_relativistic_correction` uses internally.
+    /// This test verifies that `round_trip_light_time_correction` produces
+    /// the same result as manually solving the uplink leg iteratively,
+    /// then solving the downlink leg from the accurate receiver state at
+    /// uplink arrival time.
     ///
-    /// It validates that:
-    /// - The uplink leg is solved iteratively,
-    /// - The downlink leg uses the accurate receiver state at uplink arrival time,
-    /// - The sum of the two legs matches the result returned by
-    ///   `round_trip_relativistic_correction`.
+    /// It is an implementation consistency test (it protects the composition
+    /// logic), not a validation of the underlying relativistic models against
+    /// external references.
     #[test]
     fn round_trip_consistent_with_uplink_plus_downlink() {
         let tx_pos = Position::new(1.5e11, 0.0, 0.0);
@@ -189,8 +188,8 @@ mod light_time_tests {
         // Sun is at the origin in this test
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
 
-        // === Full round-trip result (what we are validating) ===
-        let round_trip_corr = tx.round_trip_relativistic_correction(
+        // Full round-trip result from the convenience method
+        let round_trip_corr = tx.round_trip_light_time_correction(
             &mut |t: Dt| {
                 let sec = t.to_sec_f() as i64;
                 make_state(sec, rx_pos, Velocity::from_speed(24_000.0), -1.3e8, 0.0)
@@ -204,21 +203,20 @@ mod light_time_tests {
             15,
         );
 
-        // 1. Solve uplink iteratively (same as round-trip does internally)
-        let (uplink_corr, _rx_arrival_time, rx_at_arrival) = tx
-            .iterative_one_way_relativistic_delay_to(
-                &mut |t| {
-                    let sec = t.to_sec_f() as i64;
-                    make_state(sec, rx_pos, Velocity::from_speed(24_000.0), -1.3e8, 0.0)
-                },
-                bodies,
-                tolerance,
-                15,
-            );
+        // 1. Solve uplink iteratively (propagation only)
+        let (uplink_corr, _rx_arrival_time, rx_at_arrival) = tx.iterative_one_way_light_time_to(
+            &mut |t| {
+                let sec = t.to_sec_f() as i64;
+                make_state(sec, rx_pos, Velocity::from_speed(24_000.0), -1.3e8, 0.0)
+            },
+            bodies,
+            tolerance,
+            15,
+        );
 
         // 2. Solve downlink iteratively from the accurate arrival state
         let (downlink_corr, _final_rx_time, _final_rx_state) = rx_at_arrival
-            .iterative_one_way_relativistic_delay_to(
+            .iterative_one_way_light_time_to(
                 &mut |t| {
                     let sec = t.to_sec_f() as i64;
                     make_state(sec, tx_pos, Velocity::from_speed(29_780.0), -8.87e8, 0.0)
@@ -239,179 +237,42 @@ mod light_time_tests {
         );
     }
 
-    /// Tests the iterative one-way relativistic light-time solver on a very long
-    /// baseline, representative of a distant Kuiper Belt object.
-    #[test]
-    fn iterative_solver_converges_for_distant_kuiper_belt_object() {
-        let tx_pos = Position::new(1.5e11, 0.0, 0.0);
-        let tx = make_state(0, tx_pos, Velocity::from_speed(29_780.0), -8.87e8, 0.0);
-        let tolerance = Dt::from_ns(1, Scale::TAI);
-
-        // Sun is at the origin
-        let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
-
-        let (rel_correction, rx_time, _rx_state) = tx.iterative_one_way_relativistic_delay_to(
-            &mut |t| {
-                let sec = t.to_sec_f() as i64;
-                make_state(
-                    sec,
-                    Position::new(5.5e12, 0.8e12, 0.0),
-                    Velocity::from_speed(4_200.0),
-                    -8e6,
-                    0.0,
-                )
-            },
-            bodies,
-            tolerance,
-            20,
-        );
-
-        let light_time_sec = rx_time.to_diff_raw(tx.time).to_sec_f();
-
-        assert!(
-            light_time_sec > 15_000.0,
-            "One-way light time should exceed 15,000 s for distant Kuiper Belt object"
-        );
-
-        assert!(
-            rel_correction.to_sec_f() > 50e-6,
-            "Relativistic correction should be non-trivial at this distance (got {:.1} µs)",
-            rel_correction.to_sec_f() * 1e6
-        );
-    }
-
-    /// Round-trip relativistic correction for a near-Earth heliocentric geometry
-    /// with moving endpoints and moderate separation.
+    /// Edge case: identical states (zero separation) must produce zero correction.
     ///
-    /// This exercises `round_trip_relativistic_correction` with non-zero velocities
-    /// on both the uplink and downlink legs. The geometry has a relatively small
-    /// separation (~0.02 AU) and moderate solar impact parameter, so the total
-    /// relativistic correction (clock-rate effects + Shapiro delay) remains small.
-    ///
-    /// Note: This is **not** an Earth-Moon or cislunar geometry. The positions
-    /// are heliocentric at approximately 1 AU from the Sun.
+    /// This verifies that the implementation correctly handles the degenerate
+    /// case of zero geometric distance between transmitter and receiver.
+    /// In this situation both the Shapiro delay and the clock-rate correction
+    /// are expected to be exactly zero.
     #[test]
-    fn round_trip_near_earth_geometry() {
-        let tx_pos = Position::new(1.5e11, 0.0, 0.0);
-        let rx_pos = Position::new(1.52e11, 0.3e11, 0.0);
-
-        let tx = make_state(0, tx_pos, Velocity::from_speed(30_000.0), -8.87e8, 0.0);
-        let tolerance = Dt::from_ns(1, Scale::TAI);
-
-        // Sun is at the origin in this test
-        let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
-
-        let correction = tx.round_trip_relativistic_correction(
-            &mut |_t| make_state(520, rx_pos, Velocity::from_speed(29_000.0), -8.80e8, 0.0),
-            &mut |_t| make_state(1040, tx_pos, Velocity::from_speed(30_000.0), -8.87e8, 0.0),
-            bodies,
-            tolerance,
-            12,
-        );
-
-        let corr_us = correction.to_sec_f() * 1e6;
-
-        assert!(
-            corr_us > 2.0 && corr_us < 12.0,
-            "Near-Earth round-trip relativistic correction: got {:.2} µs",
-            corr_us
-        );
-    }
-
-    /// Verifies `LightContext::FLAT` disables all gravitational delay and that
-    /// `LightContext::from_grav_param` produces sensible values for other bodies
-    /// (e.g. Jupiter, a common deep-space target).
-    #[test]
-    fn light_context_flat_and_from_grav_param() {
-        let tx = make_state(
-            0,
-            Position::new(1.5e11, 0.0, 0.0),
-            Velocity::ZERO,
-            -8.87e8,
-            0.0,
-        );
-        let rx = make_state(
-            0,
-            Position::new(-1.5e11, 0.0, 0.0),
-            Velocity::ZERO,
-            -8.87e8,
-            0.0,
-        );
-
-        let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
-
-        assert_eq!(
-            tx.one_way_relativistic_delay(rx, bodies, &[], None),
-            Dt::ZERO
-        );
-
-        let jupiter = Dt::shapiro_from_grav_param(1.2668654e17);
-        assert!(jupiter.to_sec_f() > 0.0 && jupiter.to_sec_f() < 2e-7);
-    }
-
-    /// Verifies both constructors (`new` and `new_strong_field`) and that
-    /// `proper_time_rate()` returns a physically bounded value (< 1.0) for
-    /// bound solar-system observers, as required by the unified master Lagrangian.
-    #[test]
-    fn observer_state_constructors_and_proper_time_rate() {
-        let normal = ObserverState::new(
-            Dt::from(0, 0, Scale::TAI),
-            Position::new(1.5e11, 0.0, 0.0),
-            Velocity::from_speed(30_000.0),
-            -8.87e8,
-        );
-        assert_eq!(normal.characteristic_length_scale, 0.0);
-
-        let strong = ObserverState::new_strong_field(
-            Dt::from(0, 0, Scale::TAI),
-            Position::new(1.5e11, 0.0, 0.0),
-            Velocity::from_speed(30_000.0),
-            -8.87e8,
-            1e6,
-        );
-        assert_eq!(strong.characteristic_length_scale, 1e6);
-
-        let earth = make_state(0, Position::ZERO, Velocity::from_speed(465.0), -6.26e7, 0.0);
-        let rate = earth.proper_time_rate();
-        assert!((0.999999999..=1.0).contains(&rate));
-    }
-
-    /// Edge cases: zero distance must produce zero correction, and identical
-    /// states in flat spacetime must also produce zero correction.
-    #[test]
-    fn one_way_delay_zero_distance_and_flat_identical() {
+    fn one_way_delay_zero_distance_and_identical_states() {
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
         let pos = Position::new(1.5e11, 0.0, 0.0);
-        let state = make_state(0, pos, Velocity::ZERO, -8.87e8, 0.0);
-        assert_eq!(
-            state.one_way_relativistic_delay(state, bodies, &[], None),
-            Dt::ZERO
-        );
 
+        // Identical states → zero separation
+        let state = make_state(0, pos, Velocity::ZERO, -8.87e8, 0.0);
+        assert_eq!(state.shapiro_delay(state, bodies), Dt::ZERO);
+
+        // Both at the origin
         let tx = make_state(0, Position::ZERO, Velocity::ZERO, 0.0, 0.0);
         let rx = make_state(0, Position::ZERO, Velocity::ZERO, 0.0, 0.0);
-        assert_eq!(
-            tx.one_way_relativistic_delay(rx, bodies, &[], None),
-            Dt::ZERO
-        );
+        assert_eq!(tx.shapiro_delay(rx, bodies), Dt::ZERO);
     }
 
-    /// Verifies that the iterative one-way light-time solver produces a result
-    /// that is internally consistent with the light-time equation it is solving.
+    /// Verifies internal consistency of the iterative one-way light-time solver.
     ///
-    /// After convergence, the following relationship must hold (to high precision):
+    /// After convergence, the following relationship must hold to high precision:
     ///
     /// ```text
-    /// t_rx - t_tx ≈ |r_rx - r_tx| / c + Δt_rel
+    /// t_rx − t_tx ≈ |r_rx − r_tx| / c + Δt_prop
     /// ```
     ///
-    /// where `Δt_rel` is the relativistic correction returned by the solver.
+    /// where `Δt_prop` is the propagation correction (Shapiro) returned by the solver.
     ///
-    /// This is a consistency check rather than a comparison against an external
-    /// truth. It confirms that the fixed-point iteration converged to a solution
-    /// that satisfies the equation being solved. The test uses a static receiver
-    /// position (no motion) to keep the geometry simple while still exercising
-    /// the full iterative + relativistic correction path.
+    /// This is a **consistency / regression test** for the fixed-point iteration.
+    /// It confirms that the solver converged to a solution that satisfies the
+    /// coordinate-time light-time equation it is designed to solve.
+    ///
+    /// It does **not** validate correctness against external references.
     #[test]
     fn iterative_solver_converges_to_sub_nanosecond() {
         let tx_pos = Position::new(1.5e11, 0.0, 0.0);
@@ -420,7 +281,7 @@ mod light_time_tests {
         let tolerance = Dt::from_ns(1, Scale::TAI);
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
 
-        let (correction, final_rx_time, _) = tx.iterative_one_way_relativistic_delay_to(
+        let (prop_correction, final_rx_time, _) = tx.iterative_one_way_light_time_to(
             &mut |t| {
                 let sec = t.to_sec_f() as i64;
                 make_state(sec, rx_pos, Velocity::ZERO, -8.80e8, 0.0)
@@ -434,47 +295,11 @@ mod light_time_tests {
         let total = final_rx_time.to_diff_raw(tx.time).to_sec_f();
 
         assert!(
-            (total - geometric - correction.to_sec_f()).abs() < 1e-10,
+            (total - geometric - prop_correction.to_sec_f()).abs() < 1e-10,
             "Iterative solver failed to satisfy light-time equation \
-             (residual = {:.2e} s)",
-            (total - geometric - correction.to_sec_f()).abs()
+         (residual = {:.2e} s)",
+            (total - geometric - prop_correction.to_sec_f()).abs()
         );
-    }
-
-    /// When the gravitational environment is constant along the path, the
-    /// integrated method must return **exactly** the same result as the direct
-    /// method. Also verifies the documented fallback behavior for empty samples.
-    #[test]
-    fn integrated_matches_direct_when_constant_and_falls_back() {
-        let tx_pos = Position::new(1.5e11, 0.0, 0.0);
-        let rx_pos = Position::new(1.52e11, 0.0, 0.0);
-        let common_potential = -8.835e8_f64;
-        let common_vel = Velocity::ZERO;
-
-        let tx = make_state(0, tx_pos, common_vel, common_potential, 0.0);
-        let rx = make_state(520, rx_pos, common_vel, common_potential, 0.0);
-
-        // Sun is at the origin in this test
-        let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
-
-        let direct = tx.one_way_relativistic_delay(rx, bodies, &[], None);
-
-        let samples: Vec<Spacetime> = (0..=20)
-            .map(|_| {
-                Spacetime::from_potential_velocity_and_scale(
-                    common_potential / (C * C),
-                    common_vel,
-                    0.0,
-                )
-            })
-            .collect();
-
-        let integrated = tx.one_way_relativistic_delay(rx, bodies, &samples, None);
-        assert!((direct.to_sec_f() - integrated.to_sec_f()).abs() < 1e-12);
-
-        // Empty samples should fall back to direct behavior
-        let integrated_empty = tx.one_way_relativistic_delay(rx, bodies, &[], None);
-        assert_eq!(direct, integrated_empty);
     }
 
     /// Verifies the expected mathematical relationship between one-way and

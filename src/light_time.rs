@@ -5,11 +5,9 @@ use crate::{
 impl Dt {
     /// Shapiro gravitational time scale for the Sun (`2 G M_☉ / c³`).
     ///
-    /// This is the recommended value to use when constructing the `bodies`
-    /// slice passed to [`ObserverState::one_way_relativistic_delay`],
-    /// [`ObserverState::shapiro_delay`], etc.
-    ///
-    /// It corresponds to the one-way Shapiro coefficient for the Sun.
+    /// Recommended value for the Sun when building the `bodies` slice passed to
+    /// [`ObserverState::shapiro_delay`], [`ObserverState::shapiro_delay`],
+    /// and related methods.
     pub const SHAPIRO_SOLAR: Self = Self::from_sec_f(TWO_GM_SUN_OVER_C3);
 
     /// Creates the Shapiro delay scale for an arbitrary central body
@@ -19,8 +17,8 @@ impl Dt {
     /// formula. It is the recommended way to create a custom Shapiro scale for
     /// planets, stars, or other massive bodies.
     ///
-    /// The returned value is intended to be used inside a `bodies` slice when
-    /// calling [`ObserverState::one_way_relativistic_delay`] or
+    /// The returned value is intended to be used for the `bodies` parameter
+    /// when calling [`ObserverState::shapiro_delay`] or
     /// [`ObserverState::shapiro_delay`].
     #[inline]
     pub const fn shapiro_from_grav_param(gm: Real) -> Self {
@@ -168,42 +166,6 @@ impl ObserverState {
         }
     }
 
-    /// Creates a new `ObserverState` when strong-field effects or a
-    /// non-zero characteristic length scale are relevant.
-    ///
-    /// Use this constructor when you have gravimeter data or are working
-    /// in regions where spacetime curvature varies significantly over
-    /// short distances (e.g. near compact objects). The
-    /// `characteristic_length_scale` parameter controls whether the
-    /// library activates higher-order terms in the proper-time calculation.
-    ///
-    /// For normal solar-system work, use [`Self::new`] instead.
-    ///
-    /// # Parameters
-    /// - `time`: The time of the state.
-    /// - `position`: Position in meters.
-    /// - `velocity`: Velocity in m/s.
-    /// - `grav_potential_m2_s2`: Newtonian gravitational potential Φ
-    ///   at the location (in m²/s²).
-    /// - `characteristic_length_scale`: Length scale (in meters) over which
-    ///   gravity varies at this location. Must be positive to have an effect.
-    #[inline]
-    pub const fn new_strong_field(
-        time: Dt,
-        position: Position,
-        velocity: Velocity,
-        grav_potential_m2_s2: Real,
-        characteristic_length_scale: Real,
-    ) -> Self {
-        Self {
-            time,
-            position,
-            velocity,
-            grav_potential_m2_s2,
-            characteristic_length_scale,
-        }
-    }
-
     /// Returns the instantaneous proper-time rate `dτ/dt` for this observer.
     ///
     /// This value indicates how fast a physical clock located at this state
@@ -297,206 +259,127 @@ impl ObserverState {
         rx.proper_time_rate() / self.proper_time_rate()
     }
 
-    /// Computes the additional delay that must be added to the Newtonian
-    /// geometric light time `|r_rx − r_tx| / c`.
+    /// Computes the combined one-way relativistic correction for a signal
+    /// traveling from this observer (the transmitter) to a receiver.
     ///
-    /// This method returns a **hybrid relativistic correction** consisting of:
+    /// This value is the **total extra time** you should add to the Newtonian
+    /// geometric light travel time (`distance / speed of light`). It includes
+    /// **two** separate relativistic effects:
     ///
-    /// - Differential clock-rate effects (proper time difference between
-    ///   transmitter and receiver).
-    /// - Total gravitational Shapiro delay summed from all provided bodies.
+    /// 1. The gravitational propagation delay (Shapiro delay) caused by the
+    ///    Sun and other bodies slowing the signal.
+    /// 2. The differential clock-rate correction caused by the transmitter
+    ///    and receiver having slightly different proper-time rates (due to
+    ///    their velocities and gravitational potentials).
     ///
-    /// This is the main high-level method for one-way relativistic light time
-    /// calculations.
+    /// In other words, this method gives you **propagation delay + clock-rate
+    /// correction** in one convenient call.
     ///
-    /// ### The `bodies` parameter
+    /// **Important:** This is a convenience method. It is provided so you can
+    /// get the full one-way relativistic correction quickly. If you need
+    /// strict separation of the two effects (for example, to apply them at
+    /// different stages of your calculation), call
+    /// [`Self::shapiro_delay`] and [`Self::compute_differential_clock_correction`]
+    /// individually and add the results yourself.
     ///
-    /// The `bodies` parameter is a slice of `(shapiro_coefficient, body_position)`
-    /// tuples. The **Shapiro coefficient** is the value `(2GM / c³)` for that body,
-    /// expressed as a `Dt`.
+    /// # When to use this method
     ///
-    /// #### How to obtain the Shapiro coefficient (`Dt`)
+    /// Use this when you need the complete relativistic correction for
+    /// one-way light time in a single step — for example when:
+    /// - Computing high-precision one-way range or Doppler observables
+    /// - Building simplified navigation or orbit determination models
+    /// - You want the total effect without manually combining the pieces
     ///
-    /// - **For the Sun** (most common):
-    ///   ```rust,ignore
-    ///   Dt::SHAPIRO_SOLAR
-    ///   ```
+    /// # The `bodies` parameter – which masses to include
     ///
-    /// - **For any other body** (Earth, Moon, planets, asteroids, etc.):
-    ///   ```rust,ignore
-    ///   Dt::shapiro_from_grav_param(gm)
-    ///   ```
-    ///   where `gm` is the **standard gravitational parameter** (`GM` or `μ`)
-    ///   of the body in **m³ s⁻²** (this is the value you get from ephemerides
-    ///   such as JPL DE, SPICE, or IAU constants).
+    /// Pass a slice of `(shapiro_coefficient, body_position)` pairs:
     ///
-    /// You can mix multiple bodies:
-    /// ```rust,ignore
-    /// let bodies = &[
-    ///     (Dt::SHAPIRO_SOLAR, sun_position),
-    ///     (Dt::shapiro_from_grav_param(earth_gm), earth_position),
-    ///     (Dt::shapiro_from_grav_param(moon_gm), moon_position),
-    /// ];
-    /// ```
+    /// - `shapiro_coefficient`: How strong the delay from this body should be.
+    ///   It equals `2GM / c³`. Use [`Dt::SHAPIRO_SOLAR`] for the Sun, or
+    ///   [`Dt::shapiro_from_grav_param(gm)`] for any other body.
+    /// - `body_position`: Where the center of that body is located at the
+    ///   relevant time.
     ///
-    /// Pass an empty slice (`&[]`) to disable Shapiro delay entirely.
+    /// **Important: All positions must be measured the same way**
     ///
-    /// ### Optional Endpoint States
+    /// The transmitter position (`self.position`), the receiver position
+    /// (`rx.position`), and every `body_position` you provide must all be
+    /// measured from the **same point in space**, and they must all use
+    /// the **same directions** for their X, Y, and Z axes.
     ///
-    /// You may optionally supply a slice of [`Spacetime`] samples. When two or
-    /// more samples are provided, only the first and last elements are used for
-    /// the clock-rate correction. This is useful when you have more accurate
-    /// local spacetime information at the exact transmission and reception events.
+    /// For example, if your transmitter position is measured from the center
+    /// of the solar system, then the receiver and body positions must also
+    /// be measured from the center of the solar system using the same
+    /// pointing directions for the coordinate axes.
     ///
-    /// If fewer than two samples are provided, the method falls back to using
-    /// `self` and `rx` directly.
+    /// In most solar-system work, people use positions from JPL ephemerides
+    /// (which are measured from the center of the solar system).
     ///
-    /// **Note**: This is an endpoint-based model. It does **not** integrate
-    /// proper time along the signal path.
-    ///
-    /// ### Custom Shapiro Delay
-    ///
-    /// You can override the internally computed Shapiro delay by passing a value
-    /// via `custom_shapiro_delay`. This is useful when you want to use a different
-    /// Shapiro model, include solar plasma, or inject an externally computed delay.
+    /// Pass an empty slice (`&[]`) to turn off the Shapiro (gravitational)
+    /// part of the correction.
     ///
     /// # Parameters
     ///
-    /// * `rx` — Receiver state at the approximate arrival time.
-    /// * `bodies` — Slice of `(shapiro_coefficient, body_position)` pairs. See
-    ///   above for how to construct the coefficients.
-    /// * `samples` — Optional [`Spacetime`] samples (only first and last used).
-    /// * `custom_shapiro_delay` — Optional override for the Shapiro delay.
+    /// * `rx` — Receiver state at the approximate time the signal arrives.
+    /// * `bodies` — List of bodies that should contribute to the gravitational
+    ///   propagation delay.
     ///
     /// # Returns
     ///
-    /// The total relativistic correction (clock-rate + Shapiro) to be added to
-    /// the geometric light time.
+    /// The total one-way relativistic correction (Shapiro propagation delay
+    /// plus differential clock-rate correction), expressed as a `Dt` in the
+    /// same time scale as `self.time`.
     ///
-    /// # Example
-    ///
-    /// ```rust,ignore
-    /// // Basic usage — Sun only
-    /// let correction = tx.one_way_relativistic_delay(
-    ///     rx_approx,
-    ///     &[(Dt::SHAPIRO_SOLAR, sun_position)],
-    ///     &[],
-    ///     None,
-    /// );
-    ///
-    /// // Multi-body + custom endpoint states
-    /// let bodies = &[
-    ///     (Dt::SHAPIRO_SOLAR, sun_pos),
-    ///     (Dt::shapiro_from_grav_param(earth_gm), earth_pos),
-    /// ];
-    /// let path_samples = vec![tx_spacetime, rx_spacetime];
-    ///
-    /// let correction = tx.one_way_relativistic_delay(
-    ///     rx_approx,
-    ///     bodies,
-    ///     &path_samples,
-    ///     None,
-    /// );
-    /// ```
+    /// This value should normally be **added** to the Newtonian geometric
+    /// light time.
     pub const fn one_way_relativistic_delay(
         &self,
         rx: ObserverState,
         bodies: &[(Dt, Position)],
-        samples: &[Spacetime],
-        custom_shapiro_delay: Option<Dt>,
     ) -> Dt {
-        // Compute the differential clock-rate correction
-        let drift_correction = if samples.len() >= 2 {
-            let tx_local = samples[0];
-            let tx_drift = Drift::from_spacetime(&tx_local);
-
-            let rx_local = samples[samples.len() - 1];
-            let rx_drift = Drift::from_spacetime(&rx_local);
-
-            let span = rx.time.to_diff_raw(self.time);
-
-            rx_drift
-                .time_diff_after(&span)
-                .sub(tx_drift.time_diff_after(&span))
-        } else {
-            self.compute_differential_clock_correction(rx)
-        };
-
-        // Determine Shapiro delay
-        let shapiro_delay = match custom_shapiro_delay {
-            Some(custom) => custom,
-            None => self.shapiro_delay(rx, bodies),
-        };
-
-        drift_correction.add(shapiro_delay)
+        let prop = self.shapiro_delay(rx, bodies);
+        let drift = self.compute_differential_clock_correction(rx);
+        prop.add(drift)
     }
 
-    /// Iteratively solves the one-way light-time equation including relativistic
-    /// corrections until the receive time converges to the requested tolerance.
+    /// Iteratively solves the one-way light-time equation in coordinate time,
+    /// including relativistic propagation corrections, until convergence.
     ///
-    /// This is the recommended high-precision solver for one-way light-time
-    /// computations. It follows the formulation described in Moyer (2003) and
-    /// works with any ephemeris source (SPICE kernels, numerical integrators,
-    /// or analytical propagators).
-    ///
-    /// The solver performs fixed-point iteration on the light-time equation:
+    /// This solver computes the receive epoch `t_rx` such that:
     ///
     /// ```text
-    /// t_rx = t_tx + |r_rx(t_rx) − r_tx(t_tx)| / c + Δt_rel(t_tx, t_rx)
+    /// t_rx = t_tx + |r_rx(t_rx) − r_tx(t_tx)| / c + Δt_shapiro(t_tx, t_rx)
     /// ```
     ///
-    /// where `Δt_rel` is the relativistic correction returned by
-    /// [`one_way_relativistic_delay`]. Iteration continues until the change
-    /// in the estimated receive time falls below `tolerance`.
+    /// It performs fixed-point iteration using the propagation delay returned by
+    /// [`Self::shapiro_delay`]. Clock-rate and proper-time effects
+    /// are **not** included in the iteration; they should be applied separately
+    /// when converting between coordinate time and proper time or when forming
+    /// observables.
+    ///
+    /// The solver is suitable for high-precision one-way light-time calculations
+    /// and works with any ephemeris source via the provided closure.
     ///
     /// # Parameters
     ///
-    /// * `rx_provider` — A mutable closure that returns the full relativistic
-    ///   state of the receiver at a given coordinate time. This allows the solver
-    ///   to work with any ephemeris or propagator without requiring a specific
-    ///   data structure.
-    /// * `bodies` — Slice of `(shapiro_coefficient, body_position)` pairs that
-    ///   control the gravitational (Shapiro) contribution.
-    ///   - Use `&[(Dt::SHAPIRO_SOLAR, sun_position)]` for normal solar-system work.
-    ///   - Include additional bodies (planets, Moon, etc.) when higher precision
-    ///     is required.
-    ///   - Pass an empty slice (`&[]`) to disable the Shapiro contribution.
-    /// * `tolerance` — Convergence tolerance on the change in receive time.
-    ///   A typical value for high-precision work is `Dt::from_ns(1, Scale::TAI)`.
-    /// * `max_iter` — Maximum number of iterations before falling back.
-    ///   A value of 12–20 is usually sufficient for solar-system geometries.
+    /// * `rx_provider` — Closure returning the full [`ObserverState`] of the
+    ///   receiver at a given coordinate time.
+    /// * `bodies` — Slice of `(shapiro_coefficient, body_position)` pairs
+    ///   controlling the Shapiro contribution. Use `&[(Dt::SHAPIRO_SOLAR, sun_pos)]`
+    ///   for solar-system work; include additional bodies for higher precision.
+    ///   Pass `&[]` to disable Shapiro.
+    /// * `tolerance` — Maximum allowed change in receive time per iteration
+    ///   before declaring convergence (e.g. `Dt::from_ns(1, Scale::TAI)`).
+    /// * `max_iter` — Maximum number of iterations. Typical values are 12–20
+    ///   for solar-system geometries.
     ///
     /// # Returns
     ///
-    /// A tuple containing:
-    /// * `rel_correction` — The final relativistic correction (clock-rate
-    ///   correction + Shapiro) evaluated at convergence.
-    /// * `rx_time` — The converged receive time in the coordinate scale of
-    ///   the transmitter.
-    /// * `final_state` — The receiver state at the converged receive time.
-    ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// use deep_time::{Dt, ObserverState, Scale};
-    ///
-    /// # let tx = /* transmitter state */;
-    /// let tolerance = Dt::from_ns(1, Scale::TAI);
-    ///
-    /// let (correction, rx_time, rx_state) = tx.iterative_one_way_relativistic_delay_to(
-    ///     &mut |t| {
-    ///         // Example: call into SPICE or your own propagator
-    ///         get_receiver_state_at(t)
-    ///     },
-    ///     &[(Dt::SHAPIRO_SOLAR, sun_position)],
-    ///     tolerance,
-    ///     20,
-    /// );
-    ///
-    /// // The total light time is:
-    /// let total_light_time = rx_time.to_diff_raw(tx.time);
-    /// ```
-    pub fn iterative_one_way_relativistic_delay_to<F>(
+    /// A tuple `(prop_correction, rx_time, final_state)` where:
+    /// - `prop_correction` is the converged Shapiro propagation delay,
+    /// - `rx_time` is the converged receive time (same scale as `self.time`),
+    /// - `final_state` is the receiver state at `rx_time`.
+    pub fn iterative_one_way_light_time_to<F>(
         &self,
         rx_provider: &mut F,
         bodies: &[(Dt, Position)],
@@ -512,16 +395,16 @@ impl ObserverState {
         let initial_geometric = Dt::from_sec_f(initial_r_sep / C);
 
         let mut rx_time = self.time.add(initial_geometric);
-        let mut rel_correction = Dt::ZERO;
+        let mut prop_correction = Dt::ZERO;
 
         for _ in 0..max_iter {
             let rx = rx_provider(rx_time);
 
-            rel_correction = self.one_way_relativistic_delay(rx, bodies, &[], None);
+            prop_correction = self.shapiro_delay(rx, bodies);
 
             let r_sep = self.position.distance_to(rx.position);
             let geometric = Dt::from_sec_f(r_sep / C);
-            let full_delay = geometric.add(rel_correction);
+            let full_delay = geometric.add(prop_correction);
 
             let new_rx_time = self.time.add(full_delay);
             let change = new_rx_time.to_diff_raw(rx_time);
@@ -529,69 +412,80 @@ impl ObserverState {
             rx_time = new_rx_time;
 
             if change.abs() < tolerance {
-                return (rel_correction, rx_time, rx);
+                return (prop_correction, rx_time, rx);
             }
         }
 
         // Fallback after max iterations
         let final_rx = rx_provider(rx_time);
-        (rel_correction, rx_time, final_rx)
+        (prop_correction, rx_time, final_rx)
     }
 
-    /// Computes the total relativistic correction for a two-way round-trip
-    /// ranging measurement.
+    /// Computes the total Shapiro (gravitational propagation) delay for a
+    /// complete round-trip (two-way) signal.
     ///
-    /// This method solves the uplink and downlink legs **independently** using
-    /// the iterative light-time solver. This is the modern approach recommended
-    /// by Moyer (2003) and used by deep-space networks (DSN, ESA, JPL).
+    /// This method solves the uplink and downlink legs *separately and
+    /// independently* using the iterative light-time solver. This approach
+    /// is more accurate than older combined round-trip formulas when the
+    /// two ends have significantly different velocities or are in different
+    /// gravitational environments.
     ///
-    /// Solving the legs separately is more accurate than older combined
-    /// round-trip formulas when the two ends are in different gravitational
-    /// environments or have significantly different velocities.
+    /// The returned value is the **sum of the uplink and downlink Shapiro
+    /// delays only**. It does **not** include clock-rate or proper-time
+    /// corrections.
     ///
-    /// The returned value must be **subtracted** from the raw measured
-    /// round-trip time to recover the geometric light time.
+    /// # When to use this method
+    ///
+    /// Use this when you need the total gravitational propagation correction
+    /// for two-way (round-trip) measurements, for example:
+    /// - Two-way range or range-rate (Doppler) data
+    /// - Transponded signals from spacecraft
+    /// - Any high-precision two-way light-time calculation
+    ///
+    /// For one-way signals, use [`Self::shapiro_delay`] or
+    /// [`Self::one_way_relativistic_delay`] instead.
+    ///
+    /// # How the calculation works
+    ///
+    /// 1. Solves the uplink leg (from `self` to the remote receiver) using
+    ///    the `rx_provider` closure.
+    /// 2. Obtains the accurate receiver state at the uplink arrival time.
+    /// 3. Solves the downlink leg (from the receiver back to the local
+    ///    transmitter) using the `tx_provider` closure.
+    ///
+    /// # The `bodies` parameter – which masses to include
+    ///
+    /// Pass a slice of `(shapiro_coefficient, body_position)` pairs (the
+    /// same slice is used for both legs). See [`Self::shapiro_delay`] for
+    /// details on how to build this slice.
+    ///
+    /// **Important: All states returned by the providers must be consistent**
+    /// with the same reference frame (same origin and same coordinate axes).
     ///
     /// # Parameters
     ///
-    /// * `rx_provider` — Closure that returns the relativistic state of the
-    ///   remote body (planet, spacecraft, etc.) at a given coordinate time.
-    ///   Used for both the uplink solution and to obtain the accurate state
-    ///   at uplink arrival for the downlink leg.
-    /// * `tx_provider` — Closure that returns the relativistic state of the
-    ///   local transmitter at a given coordinate time (e.g. a moving ground
-    ///   station or another spacecraft). Used for the downlink leg.
-    /// * `bodies` — Slice of `(shapiro_coefficient, body_position)` pairs.
-    ///   The same bodies list is used for both uplink and downlink legs.
-    ///   Use `&[(Dt::SHAPIRO_SOLAR, sun_position)]` for normal solar-system work.
-    /// * `tolerance` — Convergence tolerance for the underlying iterative
-    ///   solver (recommended: `Dt::from_ns(1, Scale::TAI)`).
-    /// * `max_iter` — Maximum iterations per leg (typically 12–20).
+    /// * `rx_provider` — Closure that returns the full [`ObserverState`] of
+    ///   the remote receiver (planet, spacecraft, etc.) at any given
+    ///   coordinate time.
+    /// * `tx_provider` — Closure that returns the full [`ObserverState`] of
+    ///   the local transmitter at any given coordinate time (used only for
+    ///   the downlink leg).
+    /// * `bodies` — Slice of `(shapiro_coefficient, body_position)` pairs
+    ///   describing the gravitating bodies.
+    /// * `tolerance` — Convergence tolerance for each leg’s iterative solver
+    ///   (e.g. `Dt::from_ns(1, Scale::TAI)`).
+    /// * `max_iter` — Maximum number of iterations allowed per leg
+    ///   (typical values are 12–20).
     ///
     /// # Returns
     ///
-    /// The total relativistic correction for the complete round trip.
-    /// This value should be subtracted from the observed round-trip time.
+    /// The total round-trip Shapiro propagation delay (uplink + downlink)
+    /// as a `Dt`, in the same time scale as `self.time`.
     ///
-    /// # Examples
-    ///
-    /// ```ignore
-    /// use deep_time::{Dt, Scale};
-    ///
-    /// # let earth_station = /* local transmitter state */;
-    /// let tolerance = Dt::from_ns(1, Scale::TAI);
-    ///
-    /// let correction = earth_station.round_trip_relativistic_correction(
-    ///     &mut |t| get_spacecraft_state(t),      // remote body
-    ///     &mut |t| get_earth_station_state(t),   // local transmitter
-    ///     &[(Dt::SHAPIRO_SOLAR, sun_position)],
-    ///     tolerance,
-    ///     15,
-    /// );
-    ///
-    /// // Geometric light time = measured_round_trip_time - correction
-    /// ```
-    pub fn round_trip_relativistic_correction<RxF, TxF>(
+    /// This value should normally be **added** to the Newtonian geometric
+    /// round-trip light time. Clock-rate corrections must still be applied
+    /// separately (e.g. by squaring the one-way clock-rate ratio).
+    pub fn round_trip_light_time_correction<RxF, TxF>(
         &self,
         mut rx_provider: RxF, // remote body (planet, spacecraft, etc.)
         mut tx_provider: TxF, // local transmitter for the return leg (can move)
@@ -604,69 +498,81 @@ impl ObserverState {
         TxF: FnMut(Dt) -> ObserverState,
     {
         // Uplink leg: transmitter → receiver
-        let (uplink_rel, rx_time, _rx_state) = self.iterative_one_way_relativistic_delay_to(
-            &mut rx_provider,
-            bodies,
-            tolerance,
-            max_iter,
-        );
+        let (uplink_prop, rx_time, _rx_state) =
+            self.iterative_one_way_light_time_to(&mut rx_provider, bodies, tolerance, max_iter);
 
         // Downlink leg: receiver → transmitter
         let return_tx = rx_provider(rx_time); // accurate state at uplink arrival
 
-        let (downlink_rel, _return_rx_time, _return_rx_state) = return_tx
-            .iterative_one_way_relativistic_delay_to(&mut tx_provider, bodies, tolerance, max_iter);
+        let (downlink_prop, _return_rx_time, _return_rx_state) = return_tx
+            .iterative_one_way_light_time_to(&mut tx_provider, bodies, tolerance, max_iter);
 
-        uplink_rel.add(downlink_rel)
+        uplink_prop.add(downlink_prop)
     }
 
-    /// Computes the total gravitational (Shapiro) delay for a one-way signal,
-    /// summed across all provided gravitating bodies.
+    /// Computes the one-way gravitational propagation delay (Shapiro delay)
+    /// caused by massive bodies between this observer (the transmitter) and
+    /// a receiver.
     ///
-    /// This is the recommended method for obtaining Shapiro delay.
+    /// This value is the **extra time** a radio signal takes to travel because
+    /// gravity from the Sun and planets slightly slows it down. You normally
+    /// add this delay to the ordinary geometric light travel time
+    /// (`distance / speed of light`) to get a more accurate total one-way
+    /// signal travel time.
     ///
-    /// It uses the modern numerically stable formulation for each body and returns
-    /// the sum of all contributions.
+    /// **Important:** This method returns **only** the gravitational
+    /// propagation delay. It does **not** include clock-rate differences
+    /// between the transmitter and receiver caused by velocity or gravity.
+    /// Those effects are available separately through
+    /// [`Self::compute_differential_clock_correction`],
+    /// [`Self::proper_time_rate`], and [`Self::relativistic_clock_rate_ratio`].
     ///
-    /// ### When to use this method
+    /// # When to use this method
     ///
-    /// - When you only need the gravitational propagation delay (Shapiro term).
-    /// - For multi-body calculations (Sun + planets + Moon, etc.).
+    /// Use this when you need the gravitational (Shapiro) contribution to
+    /// one-way light time — for example when building high-precision range,
+    /// Doppler, or orbit determination models.
     ///
-    /// ### Parameters
+    /// # The `bodies` parameter – which masses to include
     ///
-    /// - `rx`: Receiver state at the approximate time of signal arrival.
-    /// - `bodies`: Slice of `(shapiro_coefficient, body_position)` pairs.
-    ///     - Use [`Dt::SHAPIRO_SOLAR`](../struct.Dt.html#associatedconstant.SHAPIRO_SOLAR) +
-    ///       the Sun’s position for normal solar-system work.
-    ///     - Add additional bodies (planets, Moon, etc.) when higher precision is needed.
-    ///     - Pass an empty slice (`&[]`) to disable the Shapiro contribution entirely.
+    /// Pass a slice of `(shapiro_coefficient, body_position)` pairs:
     ///
-    /// The positions must be in the **same reference frame** as `self.position` and `rx.position`.
+    /// - `shapiro_coefficient`: How strong the delay from this body should be.
+    ///   It equals `2GM / c³`. Use [`Dt::SHAPIRO_SOLAR`] for the Sun, or
+    ///   [`Dt::shapiro_from_grav_param(gm)`] for any other body.
+    /// - `body_position`: Where the center of that body is located at the
+    ///   relevant time.
     ///
-    /// ### Notes
+    /// **Important: All positions must be measured the same way**
     ///
-    /// - This method computes **only** the Shapiro gravitational delay.
-    /// - It does **not** include differential clock-rate corrections.
-    /// - If you need both the Shapiro delay **and** clock-rate effects, use
-    ///   [`Self::one_way_relativistic_delay`] instead.
-    /// - Internally uses the stable algebraic formulation (equivalent to the classic
-    ///   Moyer/DSN form but numerically robust near conjunctions).
+    /// The transmitter position (`self.position`), the receiver position
+    /// (`rx.position`), and every `body_position` you provide must all be
+    /// measured from the **same point in space**, and they must all use
+    /// the **same directions** for their X, Y, and Z axes.
     ///
-    /// ### Example
+    /// For example, if the transmitter position is measured from the center
+    /// of the solar system, then the receiver and body positions must also
+    /// be measured from the center of the solar system, using the same
+    /// pointing directions for the coordinate axes.
     ///
-    /// ```ignore
-    /// // Sun only (common case)
-    /// let shapiro = tx.shapiro_delay(rx_approx, &[(Dt::SHAPIRO_SOLAR, sun_position)]);
+    /// If the positions come from different measurement systems, the
+    /// calculated delay will be wrong.
     ///
-    /// // Multi-body example
-    /// let bodies = &[
-    ///     (Dt::SHAPIRO_SOLAR, sun_pos),
-    ///     (earth_shapiro, earth_pos),
-    ///     (moon_shapiro, moon_pos),
-    /// ];
-    /// let total_shapiro = tx.shapiro_delay(rx_approx, bodies);
-    /// ```
+    /// In most solar-system work, people use positions from JPL ephemerides
+    /// (which are measured from the center of the solar system).
+    ///
+    /// Pass an empty slice (`&[]`) to turn off Shapiro delay entirely.
+    ///
+    /// # Parameters
+    ///
+    /// * `rx` — Receiver state at the approximate time the signal arrives.
+    /// * `bodies` — List of bodies that should contribute to the delay.
+    ///
+    /// # Returns
+    ///
+    /// The total one-way Shapiro gravitational propagation delay, in the
+    /// same time scale as `self.time`. This value should normally be
+    /// **added** to the Newtonian geometric light time.
     pub const fn shapiro_delay(&self, rx: ObserverState, bodies: &[(Dt, Position)]) -> Dt {
         let mut total = Dt::ZERO;
         let mut i = 0;
@@ -758,10 +664,24 @@ impl ObserverState {
         Dt::from_sec_f(delay_sec)
     }
 
-    /// Computes only the differential clock-rate correction between `self`
-    /// (transmitter) and `rx` (receiver). Does **not** include any Shapiro delay.
+    /// Computes the differential proper-time correction between `self`
+    /// (transmitter) and `rx` (receiver) over the interval between their
+    /// time tags.
     ///
-    /// Internal helper.
+    /// This returns the difference in proper time advance between the two
+    /// observers. It does **not** include Shapiro propagation delay.
+    ///
+    /// The result can be added to the output of [`Self::shapiro_delay`]
+    /// or [`Self::iterative_one_way_light_time_to`] when a combined
+    /// relativistic correction (propagation + clock rate) is required.
+    ///
+    /// # Parameters
+    ///
+    /// * `rx` — Receiver state at the approximate time of reception.
+    ///
+    /// # Returns
+    ///
+    /// The differential clock-rate correction (`rx_proper_advance − tx_proper_advance`).
     pub const fn compute_differential_clock_correction(&self, rx: ObserverState) -> Dt {
         let span = rx.time.to_diff_raw(self.time);
 

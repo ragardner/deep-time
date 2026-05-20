@@ -19,28 +19,17 @@ pub enum DtErrKind {
     InvalidName,
     /// Anything wrong with a timezone offset (+HH:MM:SS syntax)
     InvalidTimezoneOffset,
-    /// %L scale parsing failed
-    InvalidScale,
-    /// Generic must start with
     MustStartWith,
-    /// Any failure to parse a number, integer, or fractional part
-    /// (no digits, parse::<i64> failed, bad UTF-8, empty fraction, too many decimals, etc.)
     InvalidNumber,
     InvalidItem,
     InvalidBytes,
     InvalidSyntax,
-
-    FormatterErr,
     OutOfRange,
     TrailingCharacters,
     Incomplete,
     InvalidInput,
-    CCSDSInputErr,
-    CCSDSOutputErr,
     InternalErr,
     IOErr,
-    JiffConversion,
-    ChronoConversion,
 }
 
 // 120 bytes
