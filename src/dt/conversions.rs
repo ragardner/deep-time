@@ -25,18 +25,6 @@ impl Dt {
         Dt::from_dt(epoch.add(diff), current)
     }
 
-    /// Returns this [`Dt`] but as a unix timestamp where the:
-    /// - `.sec` field is seconds since the UNIX epoch (1970-01-01 00:00:00).
-    /// - `.attos` field is remaining fractional seconds.
-    ///
-    /// ### Notes:
-    /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
-    #[inline]
-    pub const fn to_unix(&self, current: Scale, target: Scale) -> Dt {
-        self.to(current, target)
-            .to_diff_raw(Dt::UNIX_EPOCH.to_internal(target))
-    }
-
     /// Creates a TAI [`Dt`].
     ///
     /// - Assumes the given `sec` and `attos` are on the given scale.

@@ -218,7 +218,7 @@ pub const fn get_leap_sec_with_table(dt: &Dt, from_civil: bool, table: &[LeapSec
         };
     }
 
-    let target = dt.sec();
+    let target = dt.sec;
 
     // Binary search for upper_bound: first index where entry_sec > target
     let mut low = 0usize;

@@ -193,18 +193,18 @@ impl Dt {
         yr % 4 == 0 && (yr % 100 != 0 || yr % 400 == 0)
     }
 
-    /// Creates a [`Dt`] from a proleptic gregorian date which is assumed to be on
+    /// Creates a TAI [`Dt`] from a proleptic gregorian date which is assumed to be on
     /// the provided time scale.
     ///
     /// - Equivalent to [`Dt::from`](../struct.Dt.html#method.from) for the provided date.
     /// - Returned [`Dt`] will be on the **TAI** time scale.
     ///
     /// All input components are clamped to their valid ranges:
-    /// - `mo`   → 1..=12
-    /// - `day`  → 1..=31
-    /// - `hr`   → 0..=23
-    /// - `min`  → 0..=59
-    /// - `sec`  → 0..=60 (permits leap seconds)
+    /// - `mo`   → 1..=12 **1 based**
+    /// - `day`  → 1..=31 **1 based**
+    /// - `hr`   → 0..=23 **0 based**
+    /// - `min`  → 0..=59 **0 based**
+    /// - `sec`  → 0..=60 **0 based** (permits leap seconds)
     /// - `attos` → values ≥ 10¹⁸ are carried into the seconds field
     ///
     /// ### Notes:
@@ -252,7 +252,7 @@ impl Dt {
         }
     }
 
-    /// Creates a [`Dt`] from a proleptic gregorian date which is assumed to be on
+    /// Creates a TAI [`Dt`] from a proleptic gregorian date which is assumed to be on
     /// the provided time scale.
     ///
     /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
@@ -261,7 +261,7 @@ impl Dt {
         Dt::from_ymdhms_on(yr, mo, day, 0, 0, 0, 0, scale)
     }
 
-    /// Creates a [`Dt`] from a proleptic gregorian **UTC** date.
+    /// Creates a TAI [`Dt`] from a proleptic gregorian **UTC** date.
     ///
     /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
     #[inline]
@@ -277,7 +277,7 @@ impl Dt {
         Dt::from_ymdhms_on(yr, mo, day, hr, min, sec, attos, Scale::UTC)
     }
 
-    /// Creates a [`Dt`] from a proleptic gregorian **UTC** date.
+    /// Creates a TAI [`Dt`] from a proleptic gregorian **UTC** date.
     ///
     /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
     #[inline]

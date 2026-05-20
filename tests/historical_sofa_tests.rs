@@ -18,13 +18,12 @@ fn test_sofa_historical_offsets() {
         .to(Scale::TAI, Scale::UTCSofa)
         .to(Scale::UTCSofa, Scale::TAI);
     assert_eq!(
-        tp.sec(),
-        tp2.sec(),
+        tp.sec, tp2.sec,
         "Round trip just before SOFA start changed integer seconds"
     );
     assert_eq!(
-        tp.attos(),
-        tp2.attos(),
+        tp.attos,
+        tp2.attos,
         "Round trip just before SOFA start changed attoseconds"
     );
 

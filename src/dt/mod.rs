@@ -1,16 +1,15 @@
 mod arithmetic;
 mod constructors;
+mod conveniences;
 mod conversions;
 mod decimal_year;
 mod from_ccsds;
-mod from_gps;
 mod from_str;
 mod gregorian;
 mod julian_date;
 mod ops;
 mod tdb;
 mod to_ccsds_bin;
-mod to_gps;
 mod to_str;
 
 pub mod lunar;
@@ -95,26 +94,14 @@ use core::fmt;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct Dt {
-    pub(crate) sec: i64,
-    pub(crate) attos: u64,
+    pub sec: i64,
+    pub attos: u64,
 }
 
 impl Dt {
-    /// Seconds field getter.
-    #[inline]
-    pub const fn sec(&self) -> i64 {
-        self.sec
-    }
-
-    /// Subseconds field getter (attoseconds).
-    #[inline]
-    pub const fn attos(&self) -> u64 {
-        self.attos
-    }
-
     /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOS_PER_SEC)`.
     #[inline]
-    pub const fn carry_over_mut(&mut self) -> &mut Self {
+    pub const fn carry_attos_mut(&mut self) -> &mut Self {
         if self.attos >= ATTOS_PER_SEC {
             self.sec = self.sec.saturating_add((self.attos / ATTOS_PER_SEC) as i64);
             self.attos %= ATTOS_PER_SEC;
@@ -124,7 +111,7 @@ impl Dt {
 
     /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOS_PER_SEC)`.
     #[inline]
-    pub const fn carry_over(&self) -> Self {
+    pub const fn carry_attos(&self) -> Self {
         if self.attos < ATTOS_PER_SEC {
             return *self;
         }
@@ -143,8 +130,8 @@ impl Default for Dt {
 
 impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sec = self.sec();
-        let attos = self.attos();
+        let sec = self.sec;
+        let attos = self.attos;
 
         // Default to nanosecond precision (9 digits) — most useful for everyday use
         let precision = f.precision().unwrap_or(9);
@@ -170,8 +157,8 @@ impl fmt::Display for Dt {
 impl fmt::Debug for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Dt")
-            .field("sec", &self.sec())
-            .field("attos", &self.attos())
+            .field("sec", &self.sec)
+            .field("attos", &self.attos)
             .finish()
     }
 }

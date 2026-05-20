@@ -36,7 +36,7 @@ mod tests {
     }
 
     fn assert_tai_matches_hifitime(our_tai: Dt, hi: Epoch, context: &str) {
-        let (our_sec, our_attos) = (our_tai.sec(), our_tai.attos());
+        let (our_sec, our_attos) = (our_tai.sec, our_tai.attos);
         let (hi_sec, hi_attos) = hifitime_tai_parts(hi);
 
         assert_eq!(our_sec, hi_sec, "{} — TAI seconds differ", context);
@@ -396,7 +396,7 @@ mod tests {
             1_234_567_890_123_456_789i128,
         ));
         let tp = Dt::from_hifitime_epoch(h);
-        assert_eq!(tp.attos() % 1_000_000_000, 0);
+        assert_eq!(tp.attos % 1_000_000_000, 0);
     }
 
     // #[test]

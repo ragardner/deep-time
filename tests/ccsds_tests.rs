@@ -41,7 +41,7 @@ mod ccsds_tests {
     #[test]
     fn cuc_one_second_after() {
         let dt = tai_epoch();
-        let dt = Dt::new(dt.sec() + 1, dt.attos());
+        let dt = Dt::new(dt.sec + 1, dt.attos);
         let (buf, len) = dt.to_ccsds_c(Scale::TAI, 4, 0, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x1C, 0x00, 0x00, 0x00, 0x01]);
@@ -50,7 +50,7 @@ mod ccsds_tests {
     #[test]
     fn cuc_fractional() {
         let dt = tai_epoch();
-        let dt = Dt::new(dt.sec(), 500_000_000_000_000_000);
+        let dt = Dt::new(dt.sec, 500_000_000_000_000_000);
         let (buf, len) = dt.to_ccsds_c(Scale::TAI, 1, 3, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x13, 0x00, 0x80, 0x00, 0x00]);
@@ -87,7 +87,7 @@ mod ccsds_tests {
     #[test]
     fn cds_submillisecond() {
         let dt = utc_epoch();
-        let dt = Dt::new(dt.sec(), 123_456_789_012_345_678);
+        let dt = Dt::new(dt.sec, 123_456_789_012_345_678);
         let (buf, len) = dt.to_ccsds_d(Scale::TAI, 2, 1, false).unwrap();
         assert_eq!(len, 9);
         assert_eq!(buf[0], 0x41);
@@ -117,7 +117,7 @@ mod ccsds_tests {
     #[test]
     fn ccs_subsecond() {
         let dt = y2k();
-        let dt = Dt::new(dt.sec(), 123_456_789_012_345_678);
+        let dt = Dt::new(dt.sec, 123_456_789_012_345_678);
         let (buf, len) = dt.to_ccsds_ccs(Scale::TAI, false, 2).unwrap();
         assert_eq!(len, 10);
         assert_eq!(buf[0], 0x52);
@@ -325,12 +325,12 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
 
     let recovered_tp = parsed_parts.to_dt().unwrap();
 
-    assert_eq!(tp.sec(), recovered_tp.sec());
+    assert_eq!(tp.sec, recovered_tp.sec);
 
     // Special case for n_subsec == 0: fractional seconds are intentionally dropped
     if n_subsec == 0 {
         assert_eq!(
-            recovered_tp.attos(),
+            recovered_tp.attos,
             0,
             "When n_subsec=0 the fractional part must be exactly zero"
         );
@@ -338,7 +338,7 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
         // Allowed quantization error = half the smallest representable unit at this precision
         let unit = 1_000_000_000_000_000_000u64 / 10u64.pow((2 * n_subsec) as u32);
         let max_error = unit / 2;
-        let diff = (tp.attos() as i64 - recovered_tp.attos() as i64).abs() as u64;
+        let diff = (tp.attos as i64 - recovered_tp.attos as i64).abs() as u64;
         assert!(
             diff <= max_error,
             "Fractional round-trip error too large for n_subsec={}: {} attos (max allowed {})",

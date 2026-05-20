@@ -12,13 +12,21 @@ impl Dt {
     /// [`Dt::new(0, 0)`].
     pub const ZERO: Self = Self::new(0, 0);
 
+    /// UTP epoch.
+    /// - 1900-01-01 midnight UTC.
+    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - -3_155_716_800 sec
+    /// - 0 attos
+    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
+    pub const NTP_EPOCH: Self = Self::new(-3155716800, 0);
+
     /// UNIX epoch.
     /// - 1970-01-01 midnight TAI.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -946_728_000 sec
     /// - 0 attos
+    /// - Does not take into account historical UTC offsets from the "rubber time" era.
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    ///   This const is provided as a convenience.
     pub const UNIX_EPOCH: Self = Self::new(-TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, 0);
 
     /// TT/TCG/TCB/TDB epoch.
@@ -27,14 +35,12 @@ impl Dt {
     /// - -725_803_200 sec
     /// - 0 attos
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    ///   This const is provided as a convenience.
     pub const TAI_1977_EPOCH: Self = Self::new(-725_803_200, 0);
 
     /// TT/TCG/TCB/TDB/TCL epoch.
     /// - 1977-01-01 midnight TAI.
     /// - Stored here on the **TCL** timescale as an offset from [`Self::ZERO`].
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    ///   This const is provided as a convenience.
     pub const TCL_1977_EPOCH: Self = { Self::TAI_1977_EPOCH.to(Scale::TAI, Scale::TCL) };
 
     /// Chandra X-ray Center (CXC) Time epoch.
@@ -43,7 +49,6 @@ impl Dt {
     /// - -63_115_233 sec
     /// - 816000000000000000 attos
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    ///   This const is provided as a convenience.
     pub const CXC_EPOCH: Self = Self::new(-63_115_233, 816000000000000000);
 
     /// GPS/Galileo Experiment (GALEX) Time epoch.
@@ -52,7 +57,6 @@ impl Dt {
     /// - -630_763_200 **+ 19** sec
     /// - 0 attos
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    ///   This const is provided as a convenience.
     pub const GPS_EPOCH: Self = Self::new(-630_763_200 + 19, 0);
 
     /// Galileo System Time (GST) epoch.
@@ -61,7 +65,6 @@ impl Dt {
     /// - -11_448_000 **+ 19** sec
     /// - 0 attos
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    ///   This const is provided as a convenience.
     pub const GALILEO_EPOCH: Self = Self::new(-11_448_000 + 19, 0);
 
     /// BeiDou Time (BDT) epoch.
@@ -70,7 +73,6 @@ impl Dt {
     /// - 189_345_600 **+ 33** sec
     /// - 0 attos
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    ///   This const is provided as a convenience.
     pub const BDT_EPOCH: Self = Self::new(189_345_600 + 33, 0);
 
     /// Maximum representable duration (`i64::MAX` seconds + 999... attoseconds).
@@ -95,7 +97,7 @@ impl Dt {
     #[inline]
     pub const fn new(sec: i64, attos: u64) -> Self {
         let mut tp = Self { sec, attos };
-        tp.carry_over_mut();
+        tp.carry_attos_mut();
         tp
     }
 

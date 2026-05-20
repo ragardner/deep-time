@@ -27,7 +27,7 @@ impl Dt {
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
     /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal digits of precision.
     pub const fn to_sec_f(&self) -> Real {
-        let Dt { sec, attos: rem } = self.carry_over();
+        let Dt { sec, attos: rem } = self.carry_attos();
 
         if sec < 0 && rem > ATTOS_PER_SEC / 2 {
             // Rewrite to avoid cancellation:
@@ -718,7 +718,7 @@ impl Dt {
     /// Returns the total time in seconds.
     #[inline]
     pub const fn to_sec(&mut self) -> i64 {
-        let Dt { sec, .. } = self.carry_over();
+        let Dt { sec, .. } = self.carry_attos();
         sec
     }
 

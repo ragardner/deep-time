@@ -96,7 +96,7 @@ mod ltc_tests {
 
             // At the ~100-year point the secular offset must be ~2.516 s
             // (L_M × ~123 years of elapsed time from the 1977 reference epoch).
-            if p.sec() > 86_400 * 365 * 50 {
+            if p.sec > 86_400 * 365 * 50 {
                 assert!(
                     (corr_s > 2.4 && corr_s < 2.6),
                     "Secular LTC-TT offset at ~100 years from J2000.0 should be ~2.516 s (got {} s)",
@@ -216,7 +216,7 @@ mod ltc_tests {
         );
 
         // Round-trip sanity check
-        let tai = Dt::from(tcl_span.sec(), tcl_span.attos(), Scale::TCL);
+        let tai = Dt::from(tcl_span.sec, tcl_span.attos, Scale::TCL);
 
         let roundtrip_error = tai.to_diff_raw(tai_2038).to_sec_f().abs();
 

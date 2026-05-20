@@ -88,8 +88,8 @@ impl Dt {
     /// attoseconds.
     /// - Does **not** perform scale conversion.
     pub const fn cmp(&self, other: &Self) -> Ordering {
-        let a = self.carry_over();
-        let b = other.carry_over();
+        let a = self.carry_attos();
+        let b = other.carry_attos();
 
         if a.sec < b.sec {
             Ordering::Less

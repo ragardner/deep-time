@@ -29,17 +29,15 @@ fn to_epoch_leaps_and_tai() {
 
     let x = Dt::from_ymdhms(2016, 12, 31, 23, 59, 59, 0);
     assert_eq!(
-        x.sec(),
-        536500835,
+        x.sec, 536500835,
         "internal tai sec for 2016-12-31T23:59:59 should be 536500835, got: {}",
-        x.sec(),
+        x.sec,
     );
     let leap = Dt::from_ymdhms(2016, 12, 31, 23, 59, 60, 0);
     assert_eq!(
-        leap.sec(),
-        536500836,
+        leap.sec, 536500836,
         "internal tai sec for 2016-12-31T23:59:60 should be 536500836, got: {}",
-        leap.sec(),
+        leap.sec,
     );
     assert!(
         get_leap_sec(&leap, false).is_leap_sec,
@@ -47,10 +45,9 @@ fn to_epoch_leaps_and_tai() {
     );
     let y = Dt::from_ymdhms(2017, 1, 1, 0, 0, 0, 0);
     assert_eq!(
-        y.sec(),
-        536500837,
+        y.sec, 536500837,
         "internal tai sec for 2017-01-01T00:00:00 should be 536500837, got: {}",
-        y.sec(),
+        y.sec,
     );
 
     // ------------------------------------------------------------
@@ -88,9 +85,9 @@ fn test_leap_second_roundtrip_and_sec() {
     for (yr, mo, day, hr, min, sec_input, expected_sec) in test_cases {
         let tp = Dt::from_ymdhms(yr, mo, day, hr, min, sec_input, 0);
 
-        // Verify the internal .sec() value matches what was printed
+        // Verify the internal .sec value matches what was printed
         assert_eq!(
-            tp.to(Scale::TAI, Scale::UTC).sec(),
+            tp.to(Scale::TAI, Scale::UTC).sec,
             expected_sec,
             "sec() mismatch for input {yr}-{mo:02}-{day:02} {hr:02}:{min:02}:{sec_input:02}"
         );
@@ -100,8 +97,7 @@ fn test_leap_second_roundtrip_and_sec() {
         let tp_roundtrip = Dt::from_ymdhms(g.yr, g.mo, g.day, g.hr, g.min, g.sec, g.attos);
 
         assert_eq!(
-            tp.sec(),
-            tp_roundtrip.sec(),
+            tp.sec, tp_roundtrip.sec,
             "roundtrip failed for input {yr}-{mo:02}-{day:02} {hr:02}:{min:02}:{sec_input:02} \
              (to_gregorian produced sec={})",
             g.sec

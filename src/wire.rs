@@ -32,7 +32,7 @@ impl Dt {
     ///
     /// Returns `None` if the version byte is unknown.
     /// Any `subsec` value ≥ 10¹⁸ is automatically normalized using
-    /// [`carry_over`](Self::carry_over) so the resulting `Dt`
+    /// [`carry_attos`](Self::carry_attos) so the resulting `Dt`
     /// is always in canonical form.
     ///
     /// ## Security

@@ -226,8 +226,8 @@ pub const fn historical_sofa_offset_for_non_adjusted(dt: &Dt) -> Option<Real> {
 // The correct usage for the returned offset is to subtract from an existing TAI time.
 // pub const fn historical_sofa_offset_for_already_added(tai: &Dt) -> Option<Real> {
 //     // < 1961-01-01 after SOFA offset applied, or >= tai 1972-1-1 midnight
-//     if (tai.sec() < -1230724800 || (tai.sec() == -1230724800 && tai.attos() < 422817999999999936))
-//         || tai.sec() >= -883655990
+//     if (tai.sec < -1230724800 || (tai.sec == -1230724800 && tai.attos < 422817999999999936))
+//         || tai.sec >= -883655990
 //     {
 //         return None;
 //     }
@@ -262,8 +262,8 @@ pub const fn historical_sofa_offset_for_non_adjusted(dt: &Dt) -> Option<Real> {
 // The correct usage for the returned offset is to add to an existing TAI time.
 // pub const fn historical_sofa_offset_for_already_subbed(tai: &Dt) -> Option<Real> {
 //     // < 1961-01-01 after SOFA offset applied, or >= tai 1972-1-1 midnight
-//     if (tai.sec() < -1230724801 || (tai.sec() == -1230724801 && tai.attos() < 577182000000000064))
-//         || tai.sec() >= -883655990 // should be subbed value?
+//     if (tai.sec < -1230724801 || (tai.sec == -1230724801 && tai.attos < 577182000000000064))
+//         || tai.sec >= -883655990 // should be subbed value?
 //     {
 //         return None;
 //     }
