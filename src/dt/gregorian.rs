@@ -1,7 +1,4 @@
-use crate::{
-    ATTOS_PER_SEC, Dt, GregorianTime, SEC_PER_DAYI64, Scale, Weekday, YmdHms,
-    leap_seconds::get_leap_sec,
-};
+use crate::{ATTOS_PER_SEC, Dt, GregorianTime, SEC_PER_DAYI64, Scale, Weekday, YmdHms};
 
 impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
@@ -54,40 +51,89 @@ impl Dt {
         }
     }
 
-    /// Returns the Gregorian date and wall time for this instant.
+    /// Returns the proleptic Gregorian date and wall-clock time for this instant,
     ///
-    /// - For `Scale::UTC`: Uses a direct Unix-timestamp-based path (fast and clean).
-    /// - For all other scales: Uses the standard TT-based JD path.
+    /// - Converts to `UTC` before creating the [`YmdHms`] from whatever the
+    ///   provided `current` [`Scale`] is.
+    /// - See [`Dt::to_ymdhms`](../struct.Dt.html#method.to_ymdhms_on) for more info.
     #[inline]
     pub const fn to_ymdhms(&self, current: Scale) -> YmdHms {
+        self.to_ymdhms_on(current, Scale::UTC)
+    }
+
+    /// Returns the proleptic Gregorian date and wall-clock time for this instant,
+    /// interpreted on the `current` time scale and expressed on the `new` time scale.
+    ///
+    /// ## Arguments
+    ///
+    /// * `current` — The time scale in which `self` is currently expressed.
+    /// * `new` — The time scale to convert to before creating the gregorian datetime.
+    ///
+    /// **To note:**
+    ///
+    /// If you created your [`Dt`] via [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
+    /// or other similar functions, then these effectively used UTC -> TAI when creating the [`Dt`].
+    ///
+    /// So, if you want to roundtrip when calling this function with such a [`Dt`] you'll have to
+    /// use the args `(Scale::TAI, Scale::UTC)`.
+    ///
+    /// ## Returns
+    ///
+    /// A [`YmdHms`] containing:
+    ///
+    /// - `yr`, `mo`, `day` — proleptic Gregorian calendar date
+    /// - `hr` (0–23), `min` (0–59), `sec` (0–60)
+    /// - `attos` — fractional second in attoseconds (`0 ≤ attos < 10¹⁸`)
+    /// - `unix_attosec` — total attoseconds since the Unix epoch (`1970-01-01 00:00:00 UTC`)
+    ///   when this instant is expressed in the `new` scale
+    ///
+    /// ## Leap-second handling
+    ///
+    /// If `new` is one of the scales that use leap seconds (`UTC`, `UTCSpice`, or `UTCSofa`)
+    /// **and** the instant falls exactly on a leap second, the returned `sec` will be `60`.
+    /// In every other case `sec` is in the range `0..=59`.
+    ///
+    /// The implementation converts internally to TAI before checking leap-second status,
+    /// ensuring correct detection regardless of the input scale.
+    ///
+    /// ## See also
+    ///
+    /// * [`Dt::to_ymdhms`](../struct.Dt.html#method.to_ymdhms) — convenience wrapper
+    ///   that always targets `Scale::UTC`.
+    /// * [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on) — the inverse operation.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // `from_ymdhms` always returns a TAI instant
+    /// let dt = Dt::from_ymdhms(2024, 6, 15, 12, 30, 45, 0);
+    /// let ymd = dt.to_ymdhms_on(Scale::TAI, Scale::UTC);
+    ///
+    /// assert_eq!(ymd.yr, 2024);
+    /// assert_eq!(ymd.mo, 6);
+    /// assert_eq!(ymd.day, 15);
+    /// assert_eq!(ymd.hr, 12);
+    /// assert_eq!(ymd.min, 30);
+    /// assert_eq!(ymd.sec, 45);
+    /// assert!(ymd.attos == 0);
+    /// ```
+    pub const fn to_ymdhms_on(&self, current: Scale, new: Scale) -> YmdHms {
         // tai knows whether the seconds lie exactly on a leap second
         let tai = if current.is_tai() {
             *self
         } else {
             self.to(current, Scale::TAI)
         };
-        let canon = tai.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH);
+        let from_unix_epoch = tai.to_scale_and_then_diff(new, Dt::UNIX_EPOCH);
 
-        let unix_sec = canon.sec;
-        let attos = canon.attos;
+        let (yr, mo, day) = Self::unix_sec_to_ymd(from_unix_epoch.sec);
 
-        let is_leap_second = get_leap_sec(&tai, false).is_leap_sec;
-
-        // For the date we always use the previous second when on a leap second
-        // (so 23:59:60 stays on the correct civil day).
-        let unix_sec_for_date = if is_leap_second {
-            unix_sec - 1
-        } else {
-            unix_sec
-        };
-
-        let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec_for_date);
-
-        // Only the hour/minute/second fields differ for a leap second.
-        let (hr, min, sec) = if is_leap_second {
+        let (hr, min, sec) = if new.uses_leap_seconds() && tai.leap_sec(false).is_leap_sec {
             (23, 59, 60)
         } else {
-            let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAYI64);
+            let seconds_since_midnight = from_unix_epoch.sec.rem_euclid(SEC_PER_DAYI64);
             let hr = (seconds_since_midnight / 3600) as u8;
             let min = ((seconds_since_midnight % 3600) / 60) as u8;
             let sec = (seconds_since_midnight % 60) as u8;
@@ -95,22 +141,23 @@ impl Dt {
         };
 
         YmdHms {
-            unix_attosec: canon.to_attos(),
+            unix_attosec: from_unix_epoch.to_attos(),
             yr,
             mo,
             day,
             hr,
             min,
             sec,
-            attos,
+            attos: from_unix_epoch.attos,
         }
     }
 
     /// Converts a proleptic Gregorian calendar date+time to a Unix timestamp
     /// (seconds since 1970-01-01 00:00:00 UTC).
     ///
-    /// This version is correct for the full i64 range, including negative years.
+    /// Expects **1 based** `mo` and `day`, and **0 based** `hr`, `min`, and `sec`.
     pub const fn ymdhms_to_unix_sec(yr: i64, mo: u8, day: u8, hr: u8, min: u8, sec: u8) -> i64 {
+        let (mo, day, hr, min, sec) = Self::clamp_mdhms(mo, day, hr, min, sec);
         let jdn = Self::ymd_to_jdn(yr, mo, day);
         // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
         let days_since_1970 = jdn.saturating_sub(2440588);
@@ -150,7 +197,7 @@ impl Dt {
     /// Computes the Julian Day Number (JDN) for a proleptic Gregorian calendar date at noon UT.
     /// This is the inverse of [`jdn_to_ymd`].
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `yr`  - Year (any `i64`; proleptic Gregorian)
     /// * `mo` - Month (**1-based**: `1` = January, `2` = February, ..., `12` = December)
@@ -159,11 +206,12 @@ impl Dt {
     /// The algorithm matches the standard astronomical convention used throughout the library
     /// (`ymd_to_jdn(2000, 1, 1) == 2451545`).
     ///
-    /// # Notes
+    /// ## Notes
     ///
-    /// - This function assumes a **valid** date. Passing `mo = 0` or `day = 0` (or other
-    ///   out-of-range values) will produce incorrect results.
-    /// - The result is the integer JDN corresponding to **noon UT** on the given date.
+    /// - This function expects **1 based** `mo` and `day`. Passing `mo = 0` or `day = 0` (or other
+    ///   out-of-range values) will produce incorrect results as this function does not perform
+    ///   value clamping.
+    /// - The result is the integer JDN corresponding to **noon** on the given date.
     #[inline]
     pub const fn ymd_to_jdn(yr: i64, mo: u8, day: u8) -> i64 {
         let y = yr as i128;
@@ -221,27 +269,15 @@ impl Dt {
         attos: u64,
         scale: Scale,
     ) -> Self {
-        let mo = Self::clamp_u8(mo, 1, 12);
-        let day = Self::clamp_u8(day, 1, 31);
-        let h = Self::clamp_u8(hr, 0, 23);
-        let m = Self::clamp_u8(min, 0, 59);
-        let s = Self::clamp_u8(sec, 0, 60);
-
-        let extra_sec = (attos / ATTOS_PER_SEC) as i64;
+        let (mo, day, hr, min, sec) = Self::clamp_mdhms(mo, day, hr, min, sec);
+        let carried_sec = (attos / ATTOS_PER_SEC) as i64;
         let final_attos = attos % ATTOS_PER_SEC;
 
-        // For an exact leap second (sec==60 with no sub-second carry), compute
-        // the civil Unix timestamp using 23:59:59, create that instant, then
-        // add exactly 1 physical second. This lands on the correct internal TAI
-        // slot (matching LEAP_SECS.tai_sec) while preserving the library's
-        // convention that to_epoch_attos(UTC) for the leap second returns the
-        // "following midnight" civil value. On non-leap days or with carry,
-        // the normal rollover path is used and to_ymdhms_utc will display
-        // correctly because is_leap_second only triggers on exact tai_sec match.
-        let is_exact_leap_second = s == 60 && extra_sec == 0;
-        let s_for_unix = if is_exact_leap_second { 59 } else { s };
+        let is_exact_leap_second = sec == 60 && carried_sec == 0;
+        let s_for_unix = if is_exact_leap_second { 59 } else { sec };
 
-        let civil_unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, h, m, s_for_unix) + extra_sec;
+        let civil_unix_sec =
+            Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix) + carried_sec;
 
         let tp =
             Self::from_diff_and_scale(Dt::new(civil_unix_sec, final_attos), Dt::UNIX_EPOCH, scale);
@@ -524,5 +560,21 @@ impl Dt {
         };
 
         (iso_yr, iso_wk, wkday_enum)
+    }
+
+    pub(crate) const fn clamp_mdhms(
+        mo: u8,
+        day: u8,
+        hr: u8,
+        min: u8,
+        sec: u8,
+    ) -> (u8, u8, u8, u8, u8) {
+        let mo = Self::clamp_u8(mo, 1, 12);
+        let day = Self::clamp_u8(day, 1, 31);
+        let h = Self::clamp_u8(hr, 0, 23);
+        let m = Self::clamp_u8(min, 0, 59);
+        let s = Self::clamp_u8(sec, 0, 60);
+
+        (mo, day, h, m, s)
     }
 }

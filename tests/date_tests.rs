@@ -47,14 +47,10 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        // let x = Dt::from_jd_f(2451545.0, Scale::TAI);
-        // eprintln!("jd {:?}", x.to_jd_f());
-        // let x = Dt::from_jd_f(2451545.0, Scale::TT);
-        // eprintln!("jd {:?}", x.to_jd_f());
-        // let x = Dt::from_mjd_f(51544.5, Scale::TAI);
-        // eprintln!("Dt {:?}", x);
-        // let x = Dt::from_mjd(60961, 0, Scale::TAI);
-        // eprintln!("mjd {:?}", x.to_mjd_f());
+        // library zero
+        let x = Dt::from_ymdhms_on(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
+        let y = x.to(Scale::TAI, Scale::UTC);
+        eprintln!("HERE: {}, {}", x.sec, y.sec);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

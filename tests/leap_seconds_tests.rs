@@ -168,3 +168,14 @@ fn test_leap_second_roundtrip_2015_06_30() {
     assert_eq!(gt.sec(), 60);
     assert_eq!(gt.day(), 30);
 }
+
+#[cfg(feature = "std")]
+#[test]
+fn test_leap_seconds_file() {
+    use deep_time::leap_seconds;
+
+    let leap_seconds_table = Dt::leap_sec_from_file("leap-seconds.list.txt").unwrap();
+    let x = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 0);
+    let leap_info = Dt::leap_sec_using(&x, false, &leap_seconds_table);
+    assert!(leap_info.is_leap_sec == true);
+}

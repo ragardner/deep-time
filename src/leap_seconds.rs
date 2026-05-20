@@ -6,6 +6,13 @@
 
 use crate::Dt;
 
+#[cfg(feature = "std")]
+use std::{fs, io, path::Path};
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct LeapSecond {
     pub ntp_timestamp: i64,
     pub leap_sec_after: i64,
@@ -193,22 +200,22 @@ pub struct LeapInfo {
 
 impl Dt {
     #[inline]
-    pub const fn leap_sec(&self, from_civil: bool) -> LeapInfo {
-        get_leap_sec(self, from_civil)
+    pub const fn leap_sec(&self, is_utc: bool) -> LeapInfo {
+        get_leap_sec(self, is_utc)
     }
 
     #[inline]
-    pub const fn leap_sec_using(&self, from_civil: bool, table: &[LeapSecond]) -> LeapInfo {
-        get_leap_sec_with_table(self, from_civil, table)
+    pub const fn leap_sec_using(&self, is_utc: bool, table: &[LeapSecond]) -> LeapInfo {
+        get_leap_sec_with_table(self, is_utc, table)
     }
 }
 
 #[inline]
-pub const fn get_leap_sec(dt: &Dt, from_civil: bool) -> LeapInfo {
-    get_leap_sec_with_table(dt, from_civil, LEAP_SECS)
+pub const fn get_leap_sec(dt: &Dt, is_utc: bool) -> LeapInfo {
+    get_leap_sec_with_table(dt, is_utc, LEAP_SECS)
 }
 
-pub const fn get_leap_sec_with_table(dt: &Dt, from_civil: bool, table: &[LeapSecond]) -> LeapInfo {
+pub const fn get_leap_sec_with_table(dt: &Dt, is_utc: bool, table: &[LeapSecond]) -> LeapInfo {
     let len = table.len();
     if len == 0 {
         return LeapInfo {
@@ -226,7 +233,7 @@ pub const fn get_leap_sec_with_table(dt: &Dt, from_civil: bool, table: &[LeapSec
 
     while low < high {
         let mid = low + (high - low) / 2;
-        let entry_sec = if from_civil {
+        let entry_sec = if is_utc {
             table[mid].utc_sec
         } else {
             table[mid].tai_sec
@@ -250,11 +257,7 @@ pub const fn get_leap_sec_with_table(dt: &Dt, from_civil: bool, table: &[LeapSec
 
     let idx = low - 1;
     let entry = &table[idx];
-    let entry_sec = if from_civil {
-        entry.utc_sec
-    } else {
-        entry.tai_sec
-    };
+    let entry_sec = if is_utc { entry.utc_sec } else { entry.tai_sec };
 
     let is_leap = target == entry_sec;
 
@@ -262,5 +265,96 @@ pub const fn get_leap_sec_with_table(dt: &Dt, from_civil: bool, table: &[LeapSec
         offset: entry.leap_sec_after,
         leaps_inserted: (idx + 1) as i64,
         is_leap_sec: is_leap,
+    }
+}
+
+#[cfg(feature = "std")]
+impl Dt {
+    /// Load directly from a file (e.g. the official IANA `leap-seconds.list`).
+    ///
+    /// Format should be the same as the file available at:
+    /// https://data.iana.org/time-zones/data/leap-seconds.list
+    ///
+    /// For rows that don't start with # (the data rows) the first column
+    /// should be the NTP timestamp, the second column (separated by whitespace)
+    /// should be the offset against TAI in seconds (the number of leap seconds at
+    /// that point).
+    ///
+    /// e.g.
+    ///
+    /// | #NTP Time  |    DTAI  |
+    /// |------------|----------|
+    /// | #          |          |
+    /// | 2272060800 |     10   |
+    /// | 2287785600 |     11   |
+    /// | 2303683200 |     12   |
+    pub fn leap_sec_from_file<P: AsRef<Path>>(path: P) -> io::Result<Vec<LeapSecond>> {
+        let content = fs::read_to_string(path)?;
+        Ok(Self::leap_sec_from_str(&content))
+    }
+}
+
+#[cfg(feature = "alloc")]
+impl Dt {
+    /// Load directly from a str (e.g. the official IANA `leap-seconds.list`).
+    ///
+    /// Format should be the same as the file available at:
+    /// https://data.iana.org/time-zones/data/leap-seconds.list
+    ///
+    /// For rows that don't start with # (the data rows) the first column
+    /// should be the NTP timestamp, the second column (separated by whitespace)
+    /// should be the offset against TAI in seconds (the number of leap seconds at
+    /// that point).
+    ///
+    /// e.g.
+    ///
+    /// | #NTP Time  |    DTAI  |
+    /// |------------|----------|
+    /// | #          |          |
+    /// | 2272060800 |     10   |
+    /// | 2287785600 |     11   |
+    /// | 2303683200 |     12   |
+    ///
+    /// # Example:
+    ///
+    /// ```ignore
+    /// let table = Self::leap_sec_from_str(&file_content_as_str);
+    /// ```
+    pub fn leap_sec_from_str(s: &str) -> Vec<LeapSecond> {
+        use crate::Scale;
+
+        let mut table = Vec::new();
+        for line in s.lines() {
+            let trimmed = line.trim();
+
+            if trimmed.is_empty() || trimmed.starts_with("#") {
+                continue;
+            }
+
+            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+
+            if parts.len() < 2 {
+                continue;
+            }
+            let Ok(ntp_timestamp) = parts[0].parse::<i64>() else {
+                continue;
+            };
+            let Ok(leap_sec_after) = parts[1].parse::<i64>() else {
+                continue;
+            };
+
+            let dt = Dt::from_ntp(f!(ntp_timestamp), Scale::UTC);
+            let tai_sec = dt.sec - 1;
+            let utc_sec = dt.to(Scale::TAI, Scale::UTC).sec;
+
+            table.push(LeapSecond {
+                ntp_timestamp,
+                leap_sec_after,
+                utc_sec,
+                tai_sec,
+            });
+        }
+
+        table
     }
 }

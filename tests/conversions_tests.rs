@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Drift, Dt, Scale};
+use deep_time::{Drift, Dt, Scale, leap_seconds::get_leap_sec};
 
 #[test]
 fn test_ymd_to_jdn() {
@@ -317,13 +317,12 @@ fn ntp_timestamp() {
         "round trip to Dt got wrong sec, old: {}, new: {}",
         dt.sec, dt2.sec
     );
-    let ymd = dt2.to_ymdhms(Scale::TAI);
-    eprintln!("{:?}", ymd);
-    // assert_eq!(ymd.yr, 1985_i64);
-    // assert_eq!(ymd.mo, 7);
-    // assert_eq!(ymd.day, 1);
-    // assert_eq!(ymd.hr, 0);
-    // assert_eq!(ymd.min, 0);
-    // assert_eq!(ymd.sec, 0);
-    // assert_eq!(ymd.attos, 0);
+    let ymd = dt2.to_ymdhms_on(Scale::TAI, Scale::TAI);
+    assert_eq!(ymd.yr, 1985_i64);
+    assert_eq!(ymd.mo, 7);
+    assert_eq!(ymd.day, 1);
+    assert_eq!(ymd.hr, 0);
+    assert_eq!(ymd.min, 0);
+    assert_eq!(ymd.sec, 0);
+    assert_eq!(ymd.attos, 0);
 }

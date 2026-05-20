@@ -5,21 +5,121 @@ use crate::{
 };
 
 impl Dt {
+    /// Convenience wrapper for [`Dt::from`](../struct.Dt.html#method.from)
     #[inline]
     pub const fn from_dt(dt: Dt, scale: Scale) -> Dt {
         Self::from(dt.sec, dt.attos, scale)
     }
 
+    /// Low level constructor from total attoseconds since a given `epoch`.
+    ///
+    /// Simply adds the total attoseconds to the epoch.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    ///
+    /// // A leap second from the middle of the table (36 leap seconds accumulated)
+    /// let original = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 123_456_789_000_000_000);
+    ///
+    /// // Round-trip through canonical attoseconds
+    /// let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
+    /// let roundtrip1 = Dt::from_attos_since(canon, Dt::UNIX_EPOCH);
+    ///
+    /// assert_eq!(original, roundtrip1, "Canonical round-trip failed");
+    /// ```
     #[inline]
-    pub const fn from_attos_since(attos: i128, reference: Dt) -> Self {
-        reference.add(Dt::from_attos(attos, Scale::TAI))
+    pub const fn from_attos_since(attos: i128, epoch: Dt) -> Self {
+        epoch.add(Dt::from_attos(attos, Scale::TAI))
     }
 
+    /// Converts this instant to the target scale and returns the signed difference
+    /// from the given epoch.
+    ///
+    /// This is a low-level `const fn` used internally by higher-level conversion
+    /// methods such as [`to_ymdhms_on`](Dt::to_ymdhms_on).
+    ///
+    /// ## Arguments
+    ///
+    /// * `to` — The time scale to convert `self` into before computing the difference.
+    /// * `epoch` — The reference epoch (e.g. [`Dt::UNIX_EPOCH`]) from which the
+    ///   difference is calculated.
+    ///
+    /// ## Returns
+    ///
+    /// A [`Dt`] representing the signed difference (seconds + attoseconds) between
+    /// this instant (after conversion to `to`) and the provided `epoch`.
+    ///
+    /// The returned value is a signed offset relative to `epoch` in the `to` scale.
+    /// While it is most commonly used as a pure duration, it can also be interpreted
+    /// as a timestamp when `epoch` is something like [`Dt::UNIX_EPOCH`] (e.g. for
+    /// generating Unix timestamps via `.to_ms()` or `.to_sec()`).
+    ///
+    /// ## See also
+    ///
+    /// * [`Dt::to_internal`](../struct.Dt.html#method.to_internal) — the conversion step used internally.
+    /// * [`Dt::to_diff_raw`](../struct.Dt.html#method.to_diff_raw) — the raw difference method.
+    /// * [`Dt::from_diff_and_scale`](../struct.Dt.html#method.from_diff_and_scale) — the complementary operation.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt = Dt::from_ymdhms(2024, 6, 15, 12, 0, 0, 0);
+    /// let diff = dt.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH);
+    ///
+    /// // diff can be used as a Unix timestamp offset
+    /// let unix_ms = diff.to_ms();
+    /// assert!(unix_ms > 1_700_000_000_000);
+    /// ```
     #[inline]
-    pub const fn to_scale_and_then_diff(&self, scale: Scale, epoch: Dt) -> Dt {
-        self.to_internal(scale).to_diff_raw(epoch)
+    pub const fn to_scale_and_then_diff(&self, to: Scale, epoch: Dt) -> Dt {
+        self.to_internal(to).to_diff_raw(epoch)
     }
 
+    /// Creates a TAI [`Dt`] by adding a difference to an epoch and interpreting
+    /// the result on the given time scale.
+    ///
+    /// This is the inverse-style counterpart to [`to_scale_and_then_diff`](Dt::to_scale_and_then_diff)
+    /// and is used by [`from_ymdhms_on`](Dt::from_ymdhms_on) and related constructors.
+    ///
+    /// ## Arguments
+    ///
+    /// * `diff` — The signed difference (as a [`Dt`]) to add to the epoch.
+    /// * `epoch` — The reference epoch (commonly [`Dt::UNIX_EPOCH`] or [`Dt::ZERO`]).
+    /// * `current` — The time scale on which `diff` + `epoch` should be interpreted.
+    ///
+    /// ## Returns
+    ///
+    /// A [`Dt`] on the **TAI** scale representing the absolute instant
+    /// `epoch + diff` when interpreted on `current`.
+    ///
+    /// ## Notes
+    ///
+    /// - The input `diff` is treated as being on the `current` scale.
+    /// - The final result is always converted to TAI (the internal canonical representation).
+    ///
+    /// ## See also
+    ///
+    /// * [`Dt::from_dt`](../struct.Dt.html#method.from_dt) — the underlying constructor.
+    /// * [`Dt::to_scale_and_then_diff`](../struct.Dt.html#method.to_scale_and_then_diff) — the complementary operation.
+    /// * [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on) — a higher-level user of this function.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let diff = Dt::new(1_718_467_200, 0); // ~2024-06-15
+    /// let dt = Dt::from_diff_and_scale(diff, Dt::UNIX_EPOCH, Scale::UTC);
+    ///
+    /// let ymd = dt.to_ymdhms(Scale::TAI);
+    /// assert_eq!(ymd.yr, 2024);
+    /// assert_eq!(ymd.mo, 6);
+    /// assert_eq!(ymd.day, 15);
+    /// ```
     #[inline]
     pub const fn from_diff_and_scale(diff: Dt, epoch: Dt, current: Scale) -> Self {
         Dt::from_dt(epoch.add(diff), current)
@@ -28,12 +128,22 @@ impl Dt {
     /// Creates a TAI [`Dt`].
     ///
     /// - Assumes the given `sec` and `attos` are on the given scale.
-    /// - Equivalent to e.g. TT `sec` and `attos` -> TAI [`Dt`].
+    /// - See [`Scale`] for more information on available time scales.
     ///
-    /// See [`Scale`] for more information on available time scales.
-    pub const fn from(sec: i64, attos: u64, scale: Scale) -> Dt {
+    /// ## Example
+    ///
+    /// ```
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt = Dt::from(-32, 0, Scale::UTC);
+    ///
+    /// // leap seconds were added to the `-32` UTC sec
+    /// // and the returned [`Dt`] is on the TAI scale
+    /// assert_eq!(dt.sec, 0);
+    /// ```
+    pub const fn from(sec: i64, attos: u64, current: Scale) -> Dt {
         let raw = Dt::new(sec, attos);
-        match scale {
+        match current {
             Scale::UTC => raw.add(Dt {
                 sec: raw.leap_sec(true).offset,
                 attos: 0,
@@ -125,15 +235,92 @@ impl Dt {
         }
     }
 
+    /// Converts this instant from the given scale into TAI.
+    ///
+    /// This is a convenience wrapper around [`Dt::from`](../struct.Dt.html#method.from) that always
+    /// returns a [`Dt`] on the TAI scale.
+    ///
+    /// ## Arguments
+    ///
+    /// * `current` — The time scale in which `self` is currently expressed.
+    ///
+    /// ## Returns
+    ///
+    /// A [`Dt`] representing the same instant on the **TAI** scale.
+    ///
+    /// ## Notes
+    ///
+    /// - The numerical `sec` and `attos` of `self` are assumed to be on `current`.
+    /// - This method is equivalent to `Dt::from(self.sec, self.attos, current)`.
+    ///
+    /// ## See also
+    ///
+    /// * [`Dt::to`](../struct.Dt.html#method.to) — the general conversion method between any two scales.
+    /// * [`Dt::from`](../struct.Dt.html#method.from) — the underlying constructor.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt_utc = Dt::from_ymdhms(2024, 6, 15, 12, 0, 0, 0);
+    /// let dt_tai = dt_utc.to_tai(Scale::UTC);
+    ///
+    /// assert_eq!(dt_tai.to_ymdhms(Scale::TAI).yr, 2024);
+    /// ```
     #[inline]
     pub const fn to_tai(&self, current: Scale) -> Dt {
         Self::from(self.sec, self.attos, current)
     }
 
+    /// Converts this instant from one time scale to another.
+    ///
+    /// This is the primary public method for converting between any two supported
+    /// time scales (TAI, UTC, TT, TDB, GPS, TCG, LTC, etc.).
+    ///
+    /// ## Arguments
+    ///
+    /// * `current` — The time scale in which `self` is currently expressed.
+    /// * `new` — The target time scale to convert into.
+    ///
+    /// ## Returns
+    ///
+    /// A [`Dt`] representing the same physical instant on the `new` scale.
+    ///
+    /// If `current == new`, this method returns `*self` without any computation.
+    ///
+    /// ## Notes
+    ///
+    /// - The numerical `sec` and `attos` of `self` are assumed to be on `current`.
+    /// - The returned [`Dt`] contains the correct `sec` and `attos` values for the
+    ///   `new` scale (the scale is never stored inside [`Dt`]).
+    /// - This method is `const fn` and performs no heap allocation.
+    ///
+    /// ## See also
+    ///
+    /// * [`Dt::to_tai`](../struct.Dt.html#method.to_tai) — convenience method that always targets TAI.
+    /// * [`Dt::from`](../struct.Dt.html#method.from) — the underlying scale conversion logic.
+    /// * [`Dt::to_internal`](../struct.Dt.html#method.to_internal) — the internal implementation (not public API).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt_tai = Dt::from_ymdhms(2024, 6, 15, 12, 0, 0, 0);
+    ///
+    /// // Convert from TAI to UTC
+    /// let dt_utc = dt_tai.to(Scale::TAI, Scale::UTC);
+    /// let ymd = dt_utc.to_ymdhms(Scale::UTC);
+    ///
+    /// assert_eq!(ymd.yr, 2024);
+    /// assert_eq!(ymd.mo, 6);
+    /// assert_eq!(ymd.day, 15);
+    /// ```
     #[inline]
-    pub const fn to(&self, current: Scale, target: Scale) -> Dt {
-        if !current.eq(target) {
-            Self::from(self.sec, self.attos, current).to_internal(target)
+    pub const fn to(&self, current: Scale, new: Scale) -> Dt {
+        if !current.eq(new) {
+            Self::from(self.sec, self.attos, current).to_internal(new)
         } else {
             *self
         }
@@ -148,7 +335,7 @@ impl Dt {
         self.add(correction)
     }
 
-    /// Performs the inverse conversion of [`Self::convert_using_drift`], recovering the original proper
+    /// Performs the inverse conversion of [`Dt::convert_using_drift`], recovering the original proper
     /// time on the source clock scale.
     ///
     /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
@@ -168,11 +355,13 @@ impl Dt {
         guess
     }
 
+    #[inline]
     pub(crate) const fn tai_to_tcg(tai: Self) -> Self {
         let tt = tai.add(TT_TAI_OFFSET);
         Self::tt_to_tcg(tt)
     }
 
+    #[inline]
     pub(crate) const fn tai_to_tcb(tai: Self) -> Self {
         let tdb = Self::tai_to_tdb(tai);
         Self::tdb_to_tcb(tdb)

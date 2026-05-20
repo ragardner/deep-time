@@ -7,13 +7,13 @@ impl Dt {
     /// - `.sec` field is seconds since the UNIX epoch (1970-01-01 00:00:00).
     /// - `.attos` field is remaining fractional seconds.
     ///
-    /// ### Notes:
+    /// ## Notes:
     ///
     /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
     #[inline]
-    pub const fn to_unix(&self, current: Scale, target: Scale) -> Dt {
-        self.to(current, target)
-            .to_diff_raw(Dt::UNIX_EPOCH.to_internal(target))
+    pub const fn to_unix(&self, current: Scale, new: Scale) -> Dt {
+        self.to(current, new)
+            .to_diff_raw(Dt::UNIX_EPOCH.to_internal(new))
     }
 
     /// Creates a TAI [`Dt`] from a unix (1970 epoch) timestamp.
@@ -22,20 +22,51 @@ impl Dt {
         Self::from_diff_and_scale(Self::from_sec_f(unix), Dt::UNIX_EPOCH, current)
     }
 
-    /// Returns this [`Dt`] but as a ntp timestamp where the:
+    /// Returns this [`Dt`] but as an ntp timestamp where the:
+    ///
     /// - `.sec` field is seconds since the epoch 1900-01-01 00:00:00 UTC.
     /// - `.attos` field is remaining fractional seconds.
     ///
-    /// ### Notes:
+    /// ## Notes:
     ///
     /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
+    /// - NTP is on an SI continuous time scale. Not UTC.
+    ///
+    /// ## Example:
+    ///
+    /// ```
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // 2698012800
+    /// let dt = Dt::from_ymd_on(1985, 7, 1, Scale::TAI);
+    /// let ntp = dt.to_ntp(Scale::TAI, Scale::TAI);
+    /// assert_eq!(
+    ///     ntp.sec, 2698012800_i64,
+    ///     "ntp sec for 1985 is wrong, got: {}, expected: {}",
+    ///     ntp.sec, 2698012800_i64
+    /// );
+    /// let dt2 = Dt::from_ntp(ntp.to_sec_f(), Scale::TAI);
+    /// assert_eq!(
+    ///     dt.sec, dt2.sec,
+    ///     "round trip to Dt got wrong sec, old: {}, new: {}",
+    ///     dt.sec, dt2.sec
+    /// );
+    /// let ymd = dt2.to_ymdhms_on(Scale::TAI, Scale::TAI);
+    /// assert_eq!(ymd.yr, 1985_i64);
+    /// assert_eq!(ymd.mo, 7);
+    /// assert_eq!(ymd.day, 1);
+    /// assert_eq!(ymd.hr, 0);
+    /// assert_eq!(ymd.min, 0);
+    /// assert_eq!(ymd.sec, 0);
+    /// assert_eq!(ymd.attos, 0);
+    /// ```
     #[inline]
-    pub const fn to_ntp(&self, current: Scale, target: Scale) -> Dt {
-        self.to(current, target)
-            .to_diff_raw(Dt::NTP_EPOCH.to_internal(target))
+    pub const fn to_ntp(&self, current: Scale, new: Scale) -> Dt {
+        self.to(current, new)
+            .to_diff_raw(Dt::NTP_EPOCH.to_internal(new))
     }
 
-    /// Creates a TAI [`Dt`] from a ntp (1900 epoch) timestamp.
+    /// Creates a TAI [`Dt`] from an ntp (1900 epoch) timestamp.
     #[inline]
     pub const fn from_ntp(ntp: Real, current: Scale) -> Dt {
         Self::from_diff_and_scale(Self::from_sec_f(ntp), Dt::NTP_EPOCH, current)
