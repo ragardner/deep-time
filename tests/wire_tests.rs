@@ -67,23 +67,8 @@ mod tests {
 
     #[test]
     fn test_gregorian_time_roundtrip() {
-        let gp = GregorianTime::new(
-            1_700_000_000_000_000_000_000_000_000, // unix_attosec
-            2024,                                  // yr
-            12,                                    // mo
-            25,                                    // day
-            12,                                    // hr
-            0,                                     // min
-            0,                                     // sec
-            123456789012345678,                    // attos
-            2024,                                  // iso_yr
-            52,                                    // iso_wk
-            Weekday::Wednesday,                    // iso_wkday
-            360,                                   // day_of_yr
-            3,                                     // wkday
-            51,                                    // wk_of_yr_sun
-            52,                                    // wk_of_yr_mon
-        );
+        let dt = Dt::from_ymdhms_on(2024, 12, 25, 12, 0, 0, 123456789012345678, Scale::UTC);
+        let gp = dt.to_gregorian_time(Scale::TAI, Scale::UTC);
 
         assert_roundtrip(
             &gp,

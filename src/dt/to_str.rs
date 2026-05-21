@@ -127,7 +127,7 @@ impl Dt {
     /// or if the internal formatting buffer overflows (extremely unlikely
     /// with [`STRFTIME_SIZE`]).
     pub fn to_str_bin(&self, current: Scale, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let mut gt = self.to_gregorian_time(current);
+        let mut gt = self.to_gregorian_time(current, current.to_utc());
         gt.set_offset(Some(0)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -241,7 +241,7 @@ impl Dt {
         } else {
             *self
         };
-        let mut gt = local_tp.to_gregorian_time(current);
+        let mut gt = local_tp.to_gregorian_time(current, current.to_utc());
         gt.set_offset(Some(secs));
         gt
     }
@@ -254,7 +254,7 @@ impl Dt {
     pub(crate) fn gregorian_time_with_tz(&self, current: Scale, tz_name: &str) -> GregorianTime {
         // 1. Get the true UTC Unix timestamp (this is what we search with)
         let utc_unix = self
-            .to(current, current.to_ut())
+            .to(current, current.to_utc())
             .to_diff_raw(Dt::UNIX_EPOCH);
 
         // 2. Look up offset + abbrev at that exact UTC instant
@@ -267,7 +267,7 @@ impl Dt {
         let span = Dt::new(offset_secs as i64, 0);
         let local_tp = *self + span;
 
-        let mut gt = local_tp.to_gregorian_time(current);
+        let mut gt = local_tp.to_gregorian_time(current, current.to_utc());
         gt.set_offset(Some(offset_secs));
         gt.set_tz(Some(tz_name));
         gt.set_tz_abbrev(Some(abbrev));

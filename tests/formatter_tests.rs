@@ -12,16 +12,17 @@ mod format_tests {
 
         // === Gotcha 1: Civil time must show sec=60 (not roll over to next day) ===
         let g = leap.to_ymdhms(Scale::TAI);
-        assert_eq!(g.yr, 2016);
-        assert_eq!(g.mo, 12);
-        assert_eq!(g.day, 31);
-        assert_eq!(g.hr, 23);
-        assert_eq!(g.min, 59);
+        assert_eq!(g.yr(), 2016);
+        assert_eq!(g.mo(), 12);
+        assert_eq!(g.day(), 31);
+        assert_eq!(g.hr(), 23);
+        assert_eq!(g.min(), 59);
         assert_eq!(
-            g.sec, 60,
+            g.sec(),
+            60,
             "Leap second must be represented as 60, not rolled over"
         );
-        assert_eq!(g.attos, 123_456_789_000_000_000);
+        assert_eq!(g.attos(), 123_456_789_000_000_000);
 
         // === Gotcha 2: Round-trip must be exact ===
         let roundtrip = Dt::from_ymdhms(2016, 12, 31, 23, 59, 60, 123_456_789_000_000_000);

@@ -152,7 +152,7 @@ impl Scale {
     /// - If the scale is already one of the UTC variants
     ///   including historical UTC then no change occurs.
     #[inline]
-    pub const fn to_ut(&self) -> Self {
+    pub const fn to_utc(&self) -> Self {
         if self.uses_leap_seconds() {
             *self
         } else {

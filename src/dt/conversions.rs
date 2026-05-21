@@ -116,9 +116,9 @@ impl Dt {
     /// let dt = Dt::from_diff_and_scale(diff, Dt::UNIX_EPOCH, Scale::UTC);
     ///
     /// let ymd = dt.to_ymdhms(Scale::TAI);
-    /// assert_eq!(ymd.yr, 2024);
-    /// assert_eq!(ymd.mo, 6);
-    /// assert_eq!(ymd.day, 15);
+    /// assert_eq!(ymd.yr(), 2024);
+    /// assert_eq!(ymd.mo(), 6);
+    /// assert_eq!(ymd.day(), 15);
     /// ```
     #[inline]
     pub const fn from_diff_and_scale(diff: Dt, epoch: Dt, current: Scale) -> Self {
@@ -266,7 +266,7 @@ impl Dt {
     /// let dt_utc = Dt::from_ymdhms(2024, 6, 15, 12, 0, 0, 0);
     /// let dt_tai = dt_utc.to_tai(Scale::UTC);
     ///
-    /// assert_eq!(dt_tai.to_ymdhms(Scale::TAI).yr, 2024);
+    /// assert_eq!(dt_tai.to_ymdhms(Scale::TAI).yr(), 2024);
     /// ```
     #[inline]
     pub const fn to_tai(&self, current: Scale) -> Dt {
@@ -313,9 +313,9 @@ impl Dt {
     /// let dt_utc = dt_tai.to(Scale::TAI, Scale::UTC);
     /// let ymd = dt_utc.to_ymdhms(Scale::UTC);
     ///
-    /// assert_eq!(ymd.yr, 2024);
-    /// assert_eq!(ymd.mo, 6);
-    /// assert_eq!(ymd.day, 15);
+    /// assert_eq!(ymd.yr(), 2024);
+    /// assert_eq!(ymd.mo(), 6);
+    /// assert_eq!(ymd.day(), 15);
     /// ```
     #[inline]
     pub const fn to(&self, current: Scale, new: Scale) -> Dt {

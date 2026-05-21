@@ -11,8 +11,8 @@ impl Dt {
         Self::jdn_to_ymd(jdn)
     }
 
-    pub const fn to_gregorian_time(&self, current: Scale) -> GregorianTime {
-        let ymdhms = self.to_ymdhms(current);
+    pub const fn to_gregorian_time(&self, current: Scale, new: Scale) -> GregorianTime {
+        let ymdhms = self.to_ymdhms_on(current, new);
         let (iso_yr, iso_wk, iso_wkday) =
             self.to_iso_wk_date(current, Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
         let day_of_yr = self.day_of_yr(current, Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
@@ -28,16 +28,7 @@ impl Dt {
             Some((ymdhms.yr, ymdhms.mo, ymdhms.day)),
             Some(day_of_yr),
         );
-
-        GregorianTime {
-            unix_attosec: ymdhms.unix_attosec,
-            yr: ymdhms.yr,
-            mo: ymdhms.mo,
-            day: ymdhms.day,
-            hr: ymdhms.hr,
-            min: ymdhms.min,
-            sec: ymdhms.sec,
-            attos: ymdhms.attos,
+        ymdhms.to_gregorian_time(
             iso_yr,
             iso_wk,
             iso_wkday,
@@ -45,10 +36,8 @@ impl Dt {
             wkday,
             wk_of_yr_sun,
             wk_of_yr_mon,
-            offset_sec: None,
-            tz: None,
-            tz_abbrev: None,
-        }
+            new,
+        )
     }
 
     /// Returns the proleptic Gregorian date and wall-clock time for this instant,
@@ -111,21 +100,17 @@ impl Dt {
     /// let dt = Dt::from_ymdhms(2024, 6, 15, 12, 30, 45, 0);
     /// let ymd = dt.to_ymdhms_on(Scale::TAI, Scale::UTC);
     ///
-    /// assert_eq!(ymd.yr, 2024);
-    /// assert_eq!(ymd.mo, 6);
-    /// assert_eq!(ymd.day, 15);
-    /// assert_eq!(ymd.hr, 12);
-    /// assert_eq!(ymd.min, 30);
-    /// assert_eq!(ymd.sec, 45);
-    /// assert!(ymd.attos == 0);
+    /// assert_eq!(ymd.yr(), 2024);
+    /// assert_eq!(ymd.mo(), 6);
+    /// assert_eq!(ymd.day(), 15);
+    /// assert_eq!(ymd.hr(), 12);
+    /// assert_eq!(ymd.min(), 30);
+    /// assert_eq!(ymd.sec(), 45);
+    /// assert!(ymd.attos() == 0);
     /// ```
     pub const fn to_ymdhms_on(&self, current: Scale, new: Scale) -> YmdHms {
         // tai knows whether the seconds lie exactly on a leap second
-        let tai = if current.is_tai() {
-            *self
-        } else {
-            self.to(current, Scale::TAI)
-        };
+        let tai = self.to(current, Scale::TAI);
         let from_unix_epoch = tai.to_scale_and_then_diff(new, Dt::UNIX_EPOCH);
 
         let (yr, mo, day) = Self::unix_sec_to_ymd(from_unix_epoch.sec);

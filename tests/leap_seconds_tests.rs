@@ -94,13 +94,15 @@ fn test_leap_second_roundtrip_and_sec() {
 
         // Round-trip test
         let g = tp.to_ymdhms(Scale::TAI);
-        let tp_roundtrip = Dt::from_ymdhms(g.yr, g.mo, g.day, g.hr, g.min, g.sec, g.attos);
+        let tp_roundtrip =
+            Dt::from_ymdhms(g.yr(), g.mo(), g.day(), g.hr(), g.min(), g.sec(), g.attos());
 
         assert_eq!(
-            tp.sec, tp_roundtrip.sec,
+            tp.sec,
+            tp_roundtrip.sec,
             "roundtrip failed for input {yr}-{mo:02}-{day:02} {hr:02}:{min:02}:{sec_input:02} \
              (to_gregorian produced sec={})",
-            g.sec
+            g.sec()
         );
     }
 }
@@ -123,20 +125,20 @@ fn test_1972_leap_second_canonical_roundtrip() {
 
     // Also verify civil time is still correct
     let g = roundtrip.to_ymdhms(Scale::TAI);
-    assert_eq!(g.yr, 1972);
-    assert_eq!(g.mo, 6);
-    assert_eq!(g.day, 30);
-    assert_eq!(g.hr, 23);
-    assert_eq!(g.min, 59);
-    assert_eq!(g.sec, 60, "Should still show sec=60 after round-trip");
+    assert_eq!(g.yr(), 1972);
+    assert_eq!(g.mo(), 6);
+    assert_eq!(g.day(), 30);
+    assert_eq!(g.hr(), 23);
+    assert_eq!(g.min(), 59);
+    assert_eq!(g.sec(), 60, "Should still show sec=60 after round-trip");
 }
 
 #[test]
 fn test_leap_second_gotcha_1972_06_30() {
     let leap = Dt::from_ymdhms(1972, 6, 30, 23, 59, 60, 0);
     let g = leap.to_ymdhms(Scale::TAI);
-    assert_eq!(g.sec, 60);
-    assert_eq!(g.day, 30);
+    assert_eq!(g.sec(), 60);
+    assert_eq!(g.day(), 30);
 }
 
 #[test]
@@ -154,17 +156,17 @@ fn test_leap_second_roundtrip_2015_06_30() {
     let mut current = original;
     for i in 0..5 {
         let g = current.to_ymdhms(Scale::TAI);
-        assert_eq!(g.sec, 60, "Leap second lost on iteration {}", i);
-        assert_eq!(g.day, 30);
-        assert_eq!(g.mo, 6);
-        assert_eq!(g.yr, 2015);
+        assert_eq!(g.sec(), 60, "Leap second lost on iteration {}", i);
+        assert_eq!(g.day(), 30);
+        assert_eq!(g.mo(), 6);
+        assert_eq!(g.yr(), 2015);
 
-        current = Dt::from_ymdhms(g.yr, g.mo, g.day, g.hr, g.min, g.sec, g.attos);
+        current = Dt::from_ymdhms(g.yr(), g.mo(), g.day(), g.hr(), g.min(), g.sec(), g.attos());
     }
     assert_eq!(original, current, "Multiple Gregorian round-trips failed");
 
     // Final sanity check via to_gregorian_time
-    let gt = original.to_gregorian_time(Scale::TAI);
+    let gt = original.to_gregorian_time(Scale::TAI, Scale::UTC);
     assert_eq!(gt.sec(), 60);
     assert_eq!(gt.day(), 30);
 }

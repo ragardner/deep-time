@@ -1,18 +1,93 @@
-use crate::{AsciiStr, Dt, Weekday};
+use crate::{AsciiStr, Dt, Scale, Weekday};
 
 mod to_str;
 
 /// Combined Gregorian date + wall time with subsecond precision.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct YmdHms {
-    pub yr: i64,
-    pub mo: u8,
-    pub day: u8,
-    pub hr: u8,
-    pub min: u8,
-    pub sec: u8,    // 0–60 (60 only during leap seconds)
-    pub attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
-    pub unix_attosec: i128,
+    pub(crate) yr: i64,
+    pub(crate) mo: u8,
+    pub(crate) day: u8,
+    pub(crate) hr: u8,
+    pub(crate) min: u8,
+    pub(crate) sec: u8,    // 0–60 (60 only during leap seconds)
+    pub(crate) attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
+    pub(crate) unix_attosec: i128,
+}
+
+impl YmdHms {
+    #[inline]
+    pub const fn yr(&self) -> i64 {
+        self.yr
+    }
+
+    #[inline]
+    pub const fn mo(&self) -> u8 {
+        self.mo
+    }
+
+    #[inline]
+    pub const fn day(&self) -> u8 {
+        self.day
+    }
+
+    #[inline]
+    pub const fn hr(&self) -> u8 {
+        self.hr
+    }
+
+    #[inline]
+    pub const fn min(&self) -> u8 {
+        self.min
+    }
+
+    #[inline]
+    pub const fn sec(&self) -> u8 {
+        self.sec
+    }
+
+    #[inline]
+    pub const fn attos(&self) -> u64 {
+        self.attos
+    }
+
+    /// Attoseconds since 1970-01-01 midnight, on whatever time scale
+    /// the object was created on.
+    #[inline]
+    pub const fn unix_attosec(&self) -> i128 {
+        self.unix_attosec
+    }
+
+    pub(crate) const fn to_gregorian_time(
+        &self,
+        iso_yr: i64,
+        iso_wk: u8,
+        iso_wkday: Weekday,
+        day_of_yr: u16,
+        wkday: u8,
+        wk_of_yr_sun: u8,
+        wk_of_yr_mon: u8,
+        scale: Scale,
+    ) -> GregorianTime {
+        GregorianTime::new(
+            self.unix_attosec,
+            self.yr,
+            self.mo,
+            self.day,
+            self.hr,
+            self.min,
+            self.sec,
+            self.attos,
+            iso_yr,
+            iso_wk,
+            iso_wkday,
+            day_of_yr,
+            wkday,
+            wk_of_yr_sun,
+            wk_of_yr_mon,
+            scale,
+        )
+    }
 }
 
 /// UTC Civil calendar and time-of-day components of a [`Dt`].
@@ -57,14 +132,17 @@ pub struct GregorianTime {
     pub(crate) tz: Option<AsciiStr<49>>,
     /// UTC, EST, %Z
     pub(crate) tz_abbrev: Option<AsciiStr<49>>,
+    /// Scale the instance was created on
+    pub(crate) scale: Scale,
 }
 
 impl GregorianTime {
     /// Creates a new `GregorianTime` with all fields specified.
-    /// This isn't the recommended way to make a `GregorianTime`.
-    /// It's safer to use `Dt::to_gregorian_time()`.
+    ///
+    /// - This isn't the recommended way to make a `GregorianTime`.
+    /// - It's safer to use `Dt::to_gregorian_time()`.
     #[inline]
-    pub const fn new(
+    pub(crate) const fn new(
         unix_attosec: i128,
         yr: i64,
         mo: u8,
@@ -80,6 +158,7 @@ impl GregorianTime {
         wkday: u8,
         wk_of_yr_sun: u8,
         wk_of_yr_mon: u8,
+        scale: Scale,
     ) -> Self {
         Self {
             unix_attosec,
@@ -100,18 +179,21 @@ impl GregorianTime {
             offset_sec: None,
             tz: None,
             tz_abbrev: None,
+            scale,
         }
     }
 
-    /// UNIX attoseconds since 1970 epoch
+    /// Attoseconds since 1970-01-01 midnight, on whatever time scale
+    /// the object was created on.
     #[inline]
     pub const fn unix_attosec(&self) -> i128 {
         self.unix_attosec
     }
 
-    /// Returns the Unix timestamp since 1970-01-01 00:00:00 UTC as a tuple of
+    /// Returns the Unix timestamp since 1970-01-01 00:00:00 as a tuple of
     /// `(whole_seconds, attoseconds)`.
     ///
+    /// - The timestamp will be on whatever [`Scale`] the [`GregorianTime`] was created on.
     /// - `whole_seconds` can be negative (for dates before 1970).
     /// - The fractional part (`attoseconds`) is always in the range `0..=999_999_999_999_999_999`.
     #[inline]
@@ -246,11 +328,13 @@ impl GregorianTime {
         self
     }
 
-    /// Reconstructs a [`Dt`] from these **UTC** civil components.
+    /// Reconstructs a [`Dt`].
     ///
-    /// Round-tripping with `Dt::to_gregorian_time`.
+    /// - Round-tripping with `Dt::to_gregorian_time`.
     #[inline]
     pub const fn to_dt(&self) -> Dt {
-        Dt::from_ymdhms(self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0)
+        Dt::from_ymdhms_on(
+            self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0, self.scale,
+        )
     }
 }

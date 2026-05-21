@@ -254,10 +254,10 @@ impl GregorianTime {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
-    /// Size of the canonical wire representation in bytes (158 bytes).
-    pub const WIRE_SIZE: usize = 158;
+    /// Size of the canonical wire representation in bytes (159 bytes).
+    pub const WIRE_SIZE: usize = 159;
 
-    /// Serializes this `GregorianTime` into a fixed 158-byte buffer.
+    /// Serializes this `GregorianTime` into a fixed 159-byte buffer.
     ///
     /// # Wire Format (Version 1)
     ///
@@ -274,6 +274,7 @@ impl GregorianTime {
     /// - Bytes `53..58`: `offset_sec` (tag byte + `i32`)
     /// - Bytes `58..108`: `tz` (tag byte + `AsciiStr<49>`)
     /// - Bytes `108..158`: `tz_abbrev` (tag byte + `AsciiStr<49>`)
+    /// - Byte `158`: `scale` (1 byte via `to_wire_byte`)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -354,11 +355,15 @@ impl GregorianTime {
         } else {
             buf[offset] = 0;
         }
+        offset += 1 + AsciiStr::<49>::WIRE_SIZE;
+
+        // scale (1 byte)
+        buf[offset] = self.scale.to_wire_byte();
 
         buf
     }
 
-    /// Deserializes a `GregorianTime` from exactly 158 bytes of wire data.
+    /// Deserializes a `GregorianTime` from exactly 159 bytes of wire data.
     ///
     /// Returns `None` if the version is unknown or any field is invalid.
     ///
@@ -452,6 +457,10 @@ impl GregorianTime {
         } else {
             None
         };
+        offset += 1 + AsciiStr::<49>::WIRE_SIZE;
+
+        // scale (1 byte)
+        let scale = Scale::from_u8(bytes[offset]);
 
         Some(Self {
             unix_attosec,
@@ -472,6 +481,7 @@ impl GregorianTime {
             offset_sec,
             tz,
             tz_abbrev,
+            scale,
         })
     }
 }

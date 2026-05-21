@@ -318,11 +318,11 @@ fn ntp_timestamp() {
         dt.sec, dt2.sec
     );
     let ymd = dt2.to_ymdhms_on(Scale::TAI, Scale::TAI);
-    assert_eq!(ymd.yr, 1985_i64);
-    assert_eq!(ymd.mo, 7);
-    assert_eq!(ymd.day, 1);
-    assert_eq!(ymd.hr, 0);
-    assert_eq!(ymd.min, 0);
-    assert_eq!(ymd.sec, 0);
-    assert_eq!(ymd.attos, 0);
+    assert_eq!(ymd.yr(), 1985_i64);
+    assert_eq!(ymd.mo(), 7);
+    assert_eq!(ymd.day(), 1);
+    assert_eq!(ymd.hr(), 0);
+    assert_eq!(ymd.min(), 0);
+    assert_eq!(ymd.sec(), 0);
+    assert_eq!(ymd.attos(), 0);
 }
