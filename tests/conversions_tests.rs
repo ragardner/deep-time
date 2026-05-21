@@ -3,31 +3,31 @@
 use deep_time::{Drift, Dt, Scale, leap_seconds::get_leap_sec};
 
 #[test]
-fn test_ymd_to_jdn() {
+fn test_ymd_to_jd() {
     // ── Positive years ─────────────────────────────────────────────
-    assert_eq!(Dt::ymd_to_jdn(2025, 4, 16), 2460782);
-    assert_eq!(Dt::ymd_to_jdn(2000, 1, 1), 2451545); // J2000.0 epoch
-    assert_eq!(Dt::ymd_to_jdn(1970, 1, 1), 2440588); // Unix epoch
-    assert_eq!(Dt::ymd_to_jdn(1582, 10, 15), 2299161); // Gregorian calendar introduction
-    assert_eq!(Dt::ymd_to_jdn(1, 1, 1), 1721426);
+    assert_eq!(Dt::ymd_to_jd(2025, 4, 16), 2460782);
+    assert_eq!(Dt::ymd_to_jd(2000, 1, 1), 2451545); // J2000.0 epoch
+    assert_eq!(Dt::ymd_to_jd(1970, 1, 1), 2440588); // Unix epoch
+    assert_eq!(Dt::ymd_to_jd(1582, 10, 15), 2299161); // Gregorian calendar introduction
+    assert_eq!(Dt::ymd_to_jd(1, 1, 1), 1721426);
 
     // ── Year 0 (corrected) ─────────────────────────────────────────
-    assert_eq!(Dt::ymd_to_jdn(0, 1, 1), 1721060);
-    assert_eq!(Dt::ymd_to_jdn(0, 12, 31), 1721425);
+    assert_eq!(Dt::ymd_to_jd(0, 1, 1), 1721060);
+    assert_eq!(Dt::ymd_to_jd(0, 12, 31), 1721425);
 
     // ── Negative years (BCE / large negative) (corrected) ──────────
-    assert_eq!(Dt::ymd_to_jdn(-1, 1, 1), 1720695);
-    assert_eq!(Dt::ymd_to_jdn(-1, 12, 31), 1721059);
-    assert_eq!(Dt::ymd_to_jdn(-4, 1, 1), 1719599); // leap year
-    assert_eq!(Dt::ymd_to_jdn(-100, 1, 1), 1684536);
-    assert_eq!(Dt::ymd_to_jdn(-400, 1, 1), 1574963);
-    assert_eq!(Dt::ymd_to_jdn(-100000, 12, 31), -34802825); // critical large negative year
+    assert_eq!(Dt::ymd_to_jd(-1, 1, 1), 1720695);
+    assert_eq!(Dt::ymd_to_jd(-1, 12, 31), 1721059);
+    assert_eq!(Dt::ymd_to_jd(-4, 1, 1), 1719599); // leap year
+    assert_eq!(Dt::ymd_to_jd(-100, 1, 1), 1684536);
+    assert_eq!(Dt::ymd_to_jd(-400, 1, 1), 1574963);
+    assert_eq!(Dt::ymd_to_jd(-100000, 12, 31), -34802825); // critical large negative year
 
     // ── Leap year edge cases (corrected) ───────────────────────────
-    assert_eq!(Dt::ymd_to_jdn(2000, 2, 29), 2451604); // leap year
-    assert_eq!(Dt::ymd_to_jdn(1900, 2, 28), 2415079); // not a leap year
-    assert_eq!(Dt::ymd_to_jdn(4, 2, 29), 1722580); // positive leap year
-    assert_eq!(Dt::ymd_to_jdn(-4, 2, 29), 1719658); // negative leap year
+    assert_eq!(Dt::ymd_to_jd(2000, 2, 29), 2451604); // leap year
+    assert_eq!(Dt::ymd_to_jd(1900, 2, 28), 2415079); // not a leap year
+    assert_eq!(Dt::ymd_to_jd(4, 2, 29), 1722580); // positive leap year
+    assert_eq!(Dt::ymd_to_jd(-4, 2, 29), 1719658); // negative leap year
 
     // ── Round-trip tests ───────────────────────────────────────────
     let test_dates = [
@@ -48,8 +48,8 @@ fn test_ymd_to_jdn() {
         (-123456, 12, 31),
     ];
     for (y, m, d) in test_dates {
-        let jdn = Dt::ymd_to_jdn(y, m, d);
-        let (y2, m2, d2) = Dt::jdn_to_ymd(jdn);
+        let jd = Dt::ymd_to_jd(y, m, d);
+        let (y2, m2, d2) = Dt::jd_to_ymd(jd);
         assert_eq!(
             (y2, m2, d2),
             (y, m, d),
@@ -60,12 +60,12 @@ fn test_ymd_to_jdn() {
         );
     }
 
-    // ── Specific jdn_to_ymd known values (corrected) ─────────
-    assert_eq!(Dt::jdn_to_ymd(2460782), (2025, 4, 16));
-    assert_eq!(Dt::jdn_to_ymd(2451545), (2000, 1, 1));
-    assert_eq!(Dt::jdn_to_ymd(1721060), (0, 1, 1));
-    assert_eq!(Dt::jdn_to_ymd(1720695), (-1, 1, 1));
-    assert_eq!(Dt::jdn_to_ymd(-34802825), (-100000, 12, 31));
+    // ── Specific jd_to_ymd known values (corrected) ─────────
+    assert_eq!(Dt::jd_to_ymd(2460782), (2025, 4, 16));
+    assert_eq!(Dt::jd_to_ymd(2451545), (2000, 1, 1));
+    assert_eq!(Dt::jd_to_ymd(1721060), (0, 1, 1));
+    assert_eq!(Dt::jd_to_ymd(1720695), (-1, 1, 1));
+    assert_eq!(Dt::jd_to_ymd(-34802825), (-100000, 12, 31));
 }
 
 /// According to NASA/SPICE documentation:
@@ -283,14 +283,14 @@ fn utc_tai_roundtrip_is_accurate() {
 }
 
 #[test]
-fn ymd_to_jdn_j2000() {
-    assert_eq!(Dt::ymd_to_jdn(2000, 1, 1), 2451545);
+fn ymd_to_jd_j2000() {
+    assert_eq!(Dt::ymd_to_jd(2000, 1, 1), 2451545);
 }
 
 #[test]
-fn ymd_to_jdn_leap_year_handling() {
-    assert_eq!(Dt::ymd_to_jdn(2000, 2, 29), 2451604); // leap day
-    assert_eq!(Dt::ymd_to_jdn(1900, 2, 28), 2415079); // non-leap
+fn ymd_to_jd_leap_year_handling() {
+    assert_eq!(Dt::ymd_to_jd(2000, 2, 29), 2451604); // leap day
+    assert_eq!(Dt::ymd_to_jd(1900, 2, 28), 2415079); // non-leap
 }
 
 #[test]

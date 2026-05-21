@@ -1,4 +1,4 @@
-use crate::{AsciiStr, Dt, DtErr, DtErrKind, GregorianTime, STRFTIME_SIZE, an_err};
+use crate::{AsciiStr, Dt, DtErr, DtErrKind, STRFTIME_SIZE, YmdHmsRich, an_err};
 
 pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
     b"Sunday",
@@ -29,7 +29,7 @@ pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
     b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec",
 ];
 
-impl GregorianTime {
+impl YmdHmsRich {
     #[cfg(feature = "alloc")]
     pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];

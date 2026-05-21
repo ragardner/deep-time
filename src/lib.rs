@@ -114,13 +114,13 @@ mod an_err;
 mod ascii_str;
 mod drift;
 mod dt;
-mod gregorian_time;
 mod light_time;
 mod parser;
 mod position;
 mod scale;
 mod time_parts;
 mod time_range;
+mod ymdhms;
 
 // _________________________________________
 // PUB MOD
@@ -179,7 +179,6 @@ pub use drift::{Drift, Spacetime};
 pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use dt::{Dt, lunar};
 pub use error::{DtErr, DtErrKind};
-pub use gregorian_time::{GregorianTime, YmdHms};
 pub use light_time::ObserverState;
 pub use math::{
     atan::atan,
@@ -196,3 +195,4 @@ pub use position::{Position, Velocity};
 pub use scale::Scale;
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
 pub use time_range::{Every, TimeRange};
+pub use ymdhms::{YmdHms, YmdHmsRich};

@@ -8,7 +8,7 @@ mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
     use deep_time::{
-        Drift, Dt, GregorianTime, Meridiem, Offset, Scale, TimeParts, TimeRange, Weekday,
+        Drift, Dt, Meridiem, Offset, Scale, TimeParts, TimeRange, Weekday, YmdHmsRich,
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -66,14 +66,14 @@ mod tests {
     }
 
     #[test]
-    fn test_gregorian_time_roundtrip() {
+    fn test_date_time_roundtrip() {
         let dt = Dt::from_ymdhms_on(2024, 12, 25, 12, 0, 0, 123456789012345678, Scale::UTC);
-        let gp = dt.to_gregorian_time(Scale::TAI, Scale::UTC);
+        let gp = dt.to_ymdhms_rich_on(Scale::TAI, Scale::UTC);
 
         assert_roundtrip(
             &gp,
             |g| g.to_wire_bytes().to_vec(),
-            GregorianTime::from_wire_bytes,
+            YmdHmsRich::from_wire_bytes,
         );
     }
 

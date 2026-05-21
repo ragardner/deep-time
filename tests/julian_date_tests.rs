@@ -90,7 +90,7 @@ fn test_mjd_utc_roundtrip() {
 }
 
 #[test]
-fn ymd_jdn_safety() {
+fn ymd_jd_safety() {
     let test_points = [
         (i64::MIN, 1, 1),
         (0_i64, 1, 1),
@@ -100,21 +100,21 @@ fn ymd_jdn_safety() {
         (i64::MAX, 12, 31),
     ];
     for (y, m, d) in &test_points {
-        let jdn = Dt::ymd_to_jdn(*y, *m, *d);
-        let ymd = Dt::jdn_to_ymd(jdn);
-        assert_eq!(ymd, (ymd), "round trip extreme ymd jdn failed");
+        let jd = Dt::ymd_to_jd(*y, *m, *d);
+        let ymd = Dt::jd_to_ymd(jd);
+        assert_eq!(ymd, (ymd), "round trip extreme ymd jd failed");
     }
 
     let test_points = [i64::MIN, 0_i64, 1721060_i64, i64::MAX];
-    for jdn1 in &test_points {
-        let (y, m, d) = Dt::jdn_to_ymd(*jdn1);
-        let jdn2 = Dt::ymd_to_jdn(y, m, d);
-        assert_eq!(*jdn1, jdn2, "round trip extreme jdn ymd failed");
+    for jd1 in &test_points {
+        let (y, m, d) = Dt::jd_to_ymd(*jd1);
+        let jd2 = Dt::ymd_to_jd(y, m, d);
+        assert_eq!(*jd1, jd2, "round trip extreme jd ymd failed");
     }
 }
 
 #[test]
-fn ymd_jdn() {
+fn ymd_jd() {
     let test_points = [
         (0000, 1, 1, 1721060),
         (2000, 1, 1, 2451545),
@@ -126,11 +126,11 @@ fn ymd_jdn() {
         (2023, 12, 31, 2460310),
         (2024, 12, 31, 2460676),
     ];
-    for (y, m, d, expected_jdn) in &test_points {
-        let jdn = Dt::ymd_to_jdn(*y, *m, *d);
-        assert_eq!(jdn, *expected_jdn, "expected jdn failed");
+    for (y, m, d, expected_jd) in &test_points {
+        let jd = Dt::ymd_to_jd(*y, *m, *d);
+        assert_eq!(jd, *expected_jd, "expected jd failed");
 
-        let (yr, mo, day) = Dt::jdn_to_ymd(*expected_jdn);
+        let (yr, mo, day) = Dt::jd_to_ymd(*expected_jd);
         assert_eq!((yr, mo, day), (*y, *m, *d), "expected yr mo day failed");
     }
 }

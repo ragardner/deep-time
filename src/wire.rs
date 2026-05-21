@@ -1,6 +1,6 @@
 use crate::{
-    AsciiStr, Drift, Dt, Every, GregorianTime, Meridiem, Offset, Scale, Spacetime, TimeParts,
-    TimeRange, Weekday,
+    AsciiStr, Drift, Dt, Every, Meridiem, Offset, Scale, Spacetime, TimeParts, TimeRange, Weekday,
+    YmdHmsRich,
 };
 
 impl Dt {
@@ -250,14 +250,14 @@ impl TimeRange {
     }
 }
 
-impl GregorianTime {
+impl YmdHmsRich {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes (159 bytes).
     pub const WIRE_SIZE: usize = 159;
 
-    /// Serializes this `GregorianTime` into a fixed 159-byte buffer.
+    /// Serializes this `YmdHmsRich` into a fixed 159-byte buffer.
     ///
     /// # Wire Format (Version 1)
     ///
@@ -363,7 +363,7 @@ impl GregorianTime {
         buf
     }
 
-    /// Deserializes a `GregorianTime` from exactly 159 bytes of wire data.
+    /// Deserializes a `YmdHmsRich` from exactly 159 bytes of wire data.
     ///
     /// Returns `None` if the version is unknown or any field is invalid.
     ///

@@ -1,4 +1,4 @@
-use crate::{AsciiStr, Dt, DtErr, GregorianTime, STRFTIME_SIZE, Scale, tzdb::offset_info_at_utc};
+use crate::{AsciiStr, Dt, DtErr, STRFTIME_SIZE, Scale, YmdHmsRich, tzdb::offset_info_at_utc};
 
 #[cfg(feature = "alloc")]
 use crate::ATTOS_PER_SEC;
@@ -117,7 +117,7 @@ impl Dt {
 impl Dt {
     /// Formats this `Dt` into a fixed-size ASCII string **without** any heap allocation.
     ///
-    /// The datetime is first converted to Gregorian civil time on the given
+    /// The Dt is first converted to Gregorian civil time on the given
     /// `current` scale, **UTC** (offset = 0, no timezone abbreviation or IANA
     /// name). This is the simplest no-alloc formatter.
     ///
@@ -127,7 +127,7 @@ impl Dt {
     /// or if the internal formatting buffer overflows (extremely unlikely
     /// with [`STRFTIME_SIZE`]).
     pub fn to_str_bin(&self, current: Scale, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let mut gt = self.to_gregorian_time(current, current.to_utc());
+        let mut gt = self.to_ymdhms_rich_on(current, current.to_utc());
         gt.set_offset(Some(0)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -147,7 +147,7 @@ impl Dt {
         fmt: &str,
         secs: i32,
     ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let gt = self.gregorian_time_with_offset(current, secs);
+        let gt = self.date_time_with_offset(current, secs);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -158,7 +158,7 @@ impl Dt {
     /// adjusting to the given IANA timezone.
     ///
     /// This performs a correct UTC-based lookup in the IANA transition table,
-    /// so the resulting `GregorianTime` contains:
+    /// so the resulting `YmdHmsRich` contains:
     /// - accurate civil time
     /// - correct numeric offset (for `%z` / `%:z`)
     /// - timezone abbreviation (for `%Z`). These **do not** round-trip.
@@ -172,7 +172,7 @@ impl Dt {
         fmt: &str,
         tz_name: &str,
     ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
-        let gt = self.gregorian_time_with_tz(current, tz_name);
+        let gt = self.date_time_with_tz(current, tz_name);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -191,7 +191,7 @@ impl Dt {
         dest: &mut [u8],
         secs: i32,
     ) -> Result<usize, DtErr> {
-        let gt = self.gregorian_time_with_offset(current, secs);
+        let gt = self.date_time_with_offset(current, secs);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
@@ -214,7 +214,7 @@ impl Dt {
         dest: &mut [u8],
         tz_name: &str,
     ) -> Result<usize, DtErr> {
-        let gt = self.gregorian_time_with_tz(current, tz_name);
+        let gt = self.date_time_with_tz(current, tz_name);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
@@ -227,31 +227,31 @@ impl Dt {
 
     /// Returns `(is_negative, hours, minutes)`.
     #[inline]
-    pub const fn sec_as_hhmm(seconds: i32) -> (bool, u8, u8) {
+    pub(crate) const fn sec_as_hhmm(seconds: i32) -> (bool, u8, u8) {
         let total = seconds.saturating_abs();
         let hours = (total / 3600) as u8;
         let minutes = ((total % 3600) / 60) as u8;
         (seconds < 0, hours, minutes)
     }
 
-    /// Helper for creating an offset adjusted GregorianTime.
-    pub(crate) fn gregorian_time_with_offset(&self, current: Scale, secs: i32) -> GregorianTime {
+    /// Helper for creating an offset adjusted YmdHmsRich.
+    pub(crate) fn date_time_with_offset(&self, current: Scale, secs: i32) -> YmdHmsRich {
         let local_tp = if secs != 0 {
             *self + Dt::new(secs as i64, 0)
         } else {
             *self
         };
-        let mut gt = local_tp.to_gregorian_time(current, current.to_utc());
+        let mut gt = local_tp.to_ymdhms_rich_on(current, current.to_utc());
         gt.set_offset(Some(secs));
         gt
     }
 
-    /// Helper for creating a timezone-adjusted GregorianTime.
+    /// Helper for creating a timezone-adjusted YmdHmsRich.
     ///
     /// Always converts to UTC first, then does a correct UTC-based lookup
     /// in the IANA transition table. This avoids the previous bug where
     /// a non-UTC `unix_ts` was being passed to `offset_info_at_local`.
-    pub(crate) fn gregorian_time_with_tz(&self, current: Scale, tz_name: &str) -> GregorianTime {
+    pub(crate) fn date_time_with_tz(&self, current: Scale, tz_name: &str) -> YmdHmsRich {
         // 1. Get the true UTC Unix timestamp (this is what we search with)
         let utc_unix = self
             .to(current, current.to_utc())
@@ -267,7 +267,7 @@ impl Dt {
         let span = Dt::new(offset_secs as i64, 0);
         let local_tp = *self + span;
 
-        let mut gt = local_tp.to_gregorian_time(current, current.to_utc());
+        let mut gt = local_tp.to_ymdhms_rich_on(current, current.to_utc());
         gt.set_offset(Some(offset_secs));
         gt.set_tz(Some(tz_name));
         gt.set_tz_abbrev(Some(abbrev));

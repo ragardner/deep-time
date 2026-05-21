@@ -41,11 +41,11 @@ impl TimeParts {
                 .ok_or_else(|| an_err!(DtErrKind::InvalidInput, "ydoy: {}-{}", y, doy));
         }
 
-        // Small helper: JDN → chrono NaiveDate
-        let jdn_to_naive_date = |jdn: i64| -> Result<NaiveDate, DtErr> {
-            let days_from_ce: i32 = (jdn - 1721425)
+        // Small helper: JD → chrono NaiveDate
+        let jd_to_naive_date = |jd: i64| -> Result<NaiveDate, DtErr> {
+            let days_from_ce: i32 = (jd - 1721425)
                 .try_into()
-                .map_err(|e| an_err!(DtErrKind::InvalidInput, "jdn: {}: {}", jdn, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidInput, "jd: {}: {}", jd, e))?;
             NaiveDate::from_num_days_from_ce_opt(days_from_ce)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidInput, "days_from_ce: {}", days_from_ce))
         };
@@ -53,22 +53,22 @@ impl TimeParts {
         // ISO week date (%G/%V + weekday)
         if let (Some(iso_y), Some(w)) = (self.iso_wk_yr, self.iso_wk) {
             let wd = self.wkday.unwrap_or(Weekday::Monday);
-            let jdn = Dt::ymd_to_jdn_from_iso_wk(iso_y, w, wd);
-            return jdn_to_naive_date(jdn);
+            let jd = Dt::ymd_to_jd_from_iso_wk(iso_y, w, wd);
+            return jd_to_naive_date(jd);
         }
 
         // Sunday-based week number (%U)
         if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
             let wd = self.wkday.unwrap_or(Weekday::Sunday);
-            let jdn = Dt::ymd_to_jdn_from_wk_sun(y, w, wd);
-            return jdn_to_naive_date(jdn);
+            let jd = Dt::ymd_to_jd_from_wk_sun(y, w, wd);
+            return jd_to_naive_date(jd);
         }
 
         // Monday-based week number (%W)
         if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
             let wd = self.wkday.unwrap_or(Weekday::Monday);
-            let jdn = Dt::ymd_to_jdn_from_wk_mon(y, w, wd);
-            return jdn_to_naive_date(jdn);
+            let jd = Dt::ymd_to_jd_from_wk_mon(y, w, wd);
+            return jd_to_naive_date(jd);
         }
 
         Err(an_err!(DtErrKind::InvalidInput, "failed to convert"))

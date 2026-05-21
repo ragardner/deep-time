@@ -23,7 +23,7 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Civil date path
         // ──────────────────────────────────────────────────────────────
-        let mut jdn: Option<i64> = None;
+        let mut jd: Option<i64> = None;
 
         if let Some(year) = self.yr {
             if let (Some(m), Some(d)) = (self.mo, self.day) {
@@ -31,17 +31,17 @@ impl TimeParts {
                 if !Dt::is_valid_ymd(year, m, d) {
                     return Err(an_err!(DtErrKind::InvalidInput, "ymd"));
                 }
-                jdn = Some(Dt::ymd_to_jdn(year, m, d));
+                jd = Some(Dt::ymd_to_jd(year, m, d));
             } else if let Some(doy) = self.day_of_yr {
                 // Ordinal date (%j) – already validated
                 if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
                     return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
                 }
-                jdn = Some(Dt::ydoy_to_jdn(year, doy));
+                jd = Some(Dt::ydoy_to_jd(year, doy));
             }
         }
 
-        if jdn.is_none() {
+        if jd.is_none() {
             if let (Some(iso_y), Some(iso_w)) = (self.iso_wk_yr, self.iso_wk) {
                 // ISO week date (%G/%V)
                 if iso_w == 0 || iso_w > 53 {
@@ -51,25 +51,25 @@ impl TimeParts {
                     return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
                 }
                 let wd = self.wkday.unwrap_or(Weekday::Monday);
-                jdn = Some(Dt::ymd_to_jdn_from_iso_wk(iso_y, iso_w, wd));
+                jd = Some(Dt::ymd_to_jd_from_iso_wk(iso_y, iso_w, wd));
             } else if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
                 // Sunday-based week (%U)
                 if w > 53 {
                     return Err(an_err!(DtErrKind::OutOfRange, "week number"));
                 }
                 let wd = self.wkday.unwrap_or(Weekday::Sunday);
-                jdn = Some(Dt::ymd_to_jdn_from_wk_sun(y, w, wd));
+                jd = Some(Dt::ymd_to_jd_from_wk_sun(y, w, wd));
             } else if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
                 // Monday-based week (%W)
                 if w > 53 {
                     return Err(an_err!(DtErrKind::OutOfRange, "week number"));
                 }
                 let wd = self.wkday.unwrap_or(Weekday::Monday);
-                jdn = Some(Dt::ymd_to_jdn_from_wk_mon(y, w, wd));
+                jd = Some(Dt::ymd_to_jd_from_wk_mon(y, w, wd));
             }
         }
 
-        let Some(jdn) = jdn else {
+        let Some(jd) = jd else {
             if self.yr.is_none() && self.iso_wk_yr.is_none() {
                 return Err(an_err!(DtErrKind::Incomplete, "no year"));
             } else {
@@ -98,7 +98,7 @@ impl TimeParts {
 
         let minute = self.min.unwrap_or(0) as i64;
         let second = self.sec.unwrap_or(0) as i64;
-        let days_since_j2000 = jdn.saturating_sub(JD_2000_2_451_545);
+        let days_since_j2000 = jd.saturating_sub(JD_2000_2_451_545);
         let seconds_from_noon_utc = (hour as i64 - 12) * 3600 + minute * 60 + second;
         let mut sec_utc: i64 = days_since_j2000
             .saturating_mul(SEC_PER_DAYI64)

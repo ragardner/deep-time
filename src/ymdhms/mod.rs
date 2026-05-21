@@ -3,6 +3,8 @@ use crate::{AsciiStr, Dt, Scale, Weekday};
 mod to_str;
 
 /// Combined Gregorian date + wall time with subsecond precision.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct YmdHms {
     pub(crate) yr: i64,
@@ -58,7 +60,7 @@ impl YmdHms {
         self.unix_attosec
     }
 
-    pub(crate) const fn to_gregorian_time(
+    pub(crate) const fn to_ymdhms_rich_on(
         &self,
         iso_yr: i64,
         iso_wk: u8,
@@ -68,8 +70,8 @@ impl YmdHms {
         wk_of_yr_sun: u8,
         wk_of_yr_mon: u8,
         scale: Scale,
-    ) -> GregorianTime {
-        GregorianTime::new(
+    ) -> YmdHmsRich {
+        YmdHmsRich::new(
             self.unix_attosec,
             self.yr,
             self.mo,
@@ -90,11 +92,11 @@ impl YmdHms {
     }
 }
 
-/// UTC Civil calendar and time-of-day components of a [`Dt`].
+/// Gregorian calendar and time-of-day components of a [`Dt`].
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct GregorianTime {
+pub struct YmdHmsRich {
     /// UNIX attoseconds counting from 1970 epoch
     pub(crate) unix_attosec: i128,
     /// Gregorian year (proleptic Gregorian calendar, supports negative years and year 0).
@@ -136,11 +138,8 @@ pub struct GregorianTime {
     pub(crate) scale: Scale,
 }
 
-impl GregorianTime {
-    /// Creates a new `GregorianTime` with all fields specified.
-    ///
-    /// - This isn't the recommended way to make a `GregorianTime`.
-    /// - It's safer to use `Dt::to_gregorian_time()`.
+impl YmdHmsRich {
+    /// Creates a new [`YmdHmsRich`] with all fields specified.
     #[inline]
     pub(crate) const fn new(
         unix_attosec: i128,
@@ -183,6 +182,14 @@ impl GregorianTime {
         }
     }
 
+    /// Reconstructs a [`Dt`]. Round trips with [`Dt::to_date_time`].
+    #[inline]
+    pub const fn to_dt(&self) -> Dt {
+        Dt::from_ymdhms_on(
+            self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
+        )
+    }
+
     /// Attoseconds since 1970-01-01 midnight, on whatever time scale
     /// the object was created on.
     #[inline]
@@ -193,7 +200,7 @@ impl GregorianTime {
     /// Returns the Unix timestamp since 1970-01-01 00:00:00 as a tuple of
     /// `(whole_seconds, attoseconds)`.
     ///
-    /// - The timestamp will be on whatever [`Scale`] the [`GregorianTime`] was created on.
+    /// - The timestamp will be on whatever [`Scale`] the [`DateTime`] was created on.
     /// - `whole_seconds` can be negative (for dates before 1970).
     /// - The fractional part (`attoseconds`) is always in the range `0..=999_999_999_999_999_999`.
     #[inline]
@@ -296,17 +303,17 @@ impl GregorianTime {
     }
 
     #[inline]
-    pub const fn offset_sec(&self) -> Option<i32> {
+    pub(crate) const fn offset_sec(&self) -> Option<i32> {
         self.offset_sec
     }
 
     #[inline]
-    pub const fn tz(&self) -> Option<&AsciiStr<49>> {
+    pub(crate) const fn tz(&self) -> Option<&AsciiStr<49>> {
         self.tz.as_ref()
     }
 
     #[inline]
-    pub const fn tz_abbrev(&self) -> Option<&AsciiStr<49>> {
+    pub(crate) const fn tz_abbrev(&self) -> Option<&AsciiStr<49>> {
         self.tz_abbrev.as_ref()
     }
 
@@ -326,15 +333,5 @@ impl GregorianTime {
     pub(crate) fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) -> &mut Self {
         self.tz_abbrev = tz_abbrev.and_then(|s| AsciiStr::try_from_str(s).ok());
         self
-    }
-
-    /// Reconstructs a [`Dt`].
-    ///
-    /// - Round-tripping with `Dt::to_gregorian_time`.
-    #[inline]
-    pub const fn to_dt(&self) -> Dt {
-        Dt::from_ymdhms_on(
-            self.yr, self.mo, self.day, self.hr, self.min, self.sec, 0, self.scale,
-        )
     }
 }

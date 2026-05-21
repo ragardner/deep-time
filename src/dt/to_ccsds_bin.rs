@@ -206,10 +206,10 @@ impl Dt {
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
         let gt = if current.uses_leap_seconds() {
-            self.to_gregorian_time(current, current)
+            self.to_ymdhms_rich_on(current, current)
         } else {
             let utc = self.to(current, Scale::UTC);
-            utc.to_gregorian_time(Scale::UTC, Scale::UTC)
+            utc.to_ymdhms_rich_on(Scale::UTC, Scale::UTC)
         };
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
