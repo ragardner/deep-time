@@ -144,10 +144,10 @@ impl Dt {
     pub const fn from(sec: i64, attos: u64, current: Scale) -> Dt {
         let raw = Dt::new(sec, attos);
         match current {
-            Scale::UTC => raw.add(Dt {
-                sec: raw.leap_sec(true).offset,
-                attos: 0,
-            }),
+            Scale::UTC => Dt {
+                sec: raw.sec.saturating_add(raw.leap_sec(true).offset),
+                attos: raw.attos,
+            },
             Scale::TAI => raw,
             Scale::TT => raw.sub(TT_TAI_OFFSET),
             Scale::UTCSpice => {
@@ -195,10 +195,10 @@ impl Dt {
     pub(crate) const fn to_internal(&self, scale: Scale) -> Dt {
         match scale {
             Scale::TAI | Scale::Custom => *self,
-            Scale::UTC => self.sub(Dt {
-                sec: self.leap_sec(false).offset,
-                attos: 0,
-            }),
+            Scale::UTC => Dt {
+                sec: self.sec.saturating_sub(self.leap_sec(false).offset),
+                attos: self.attos,
+            },
             Scale::TT => self.add(TT_TAI_OFFSET),
             Scale::UTCSpice => {
                 let spice = self.sub(Dt {

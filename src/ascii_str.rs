@@ -161,7 +161,8 @@ impl<const N: usize> AsciiStr<N> {
     /// **This method (and the entire public API) is completely panic-free.**
     /// All fallible operations return `Result` or `Option`.
     ///
-    /// # Errors
+    /// ## Errors
+    ///
     /// - [`AsciiStrError::InvalidAscii`] if the buffer contains non-ASCII bytes.
     /// - [`AsciiStrError::CorruptedData`] if bytes after the first nul are
     ///   not all zero (violates the representation invariant).
@@ -181,7 +182,8 @@ impl<const N: usize> AsciiStr<N> {
 
     /// Attempts to create an `AsciiStr<N>` from a string slice.
     ///
-    /// # Errors
+    /// ## Errors
+    ///
     /// - [`AsciiStrError::InvalidAscii`] if the input is not ASCII.
     /// - [`AsciiStrError::TooLong`] if the input exceeds capacity `N`.
     pub fn try_from_str(s: &str) -> Result<Self, AsciiStrError> {
@@ -228,9 +230,10 @@ impl<const N: usize> AsciiStr<N> {
     ///
     /// The length is computed by locating the first nul byte.
     ///
-    /// # Errors
-    /// Returns [`AsciiStrError::CorruptedData`] only if the internal data
-    /// has become invalid UTF-8 (unreachable via safe constructors).
+    /// ## Errors
+    ///
+    /// - Returns [`AsciiStrError::CorruptedData`] only if the internal data
+    ///   has become invalid UTF-8 (unreachable via safe constructors).
     pub fn as_str(&self) -> Result<&str, AsciiStrError> {
         let len = self
             .bytes

@@ -15,15 +15,29 @@ impl Dt {
     /// including all precomputed calendar metadata (ISO week date, day-of-year, multiple
     /// week-numbering systems, etc.).
     ///
-    /// This is the "heavy" version of [`to_ymdhms_on`](Self::to_ymdhms_on). It performs
-    /// the same scale conversion but additionally computes and stores every common
-    /// calendar-derived field so that downstream formatting and ISO-compliant code
-    /// does not have to recalculate them.
+    /// This is the "heavy" version of [`to_ymdhms_on`](../struct.Dt.html#method.to_ymdhms_on).
+    /// It performs the same scale conversion but additionally computes and stores every common
+    /// calendar-derived field. This means downstream formatting code does not have to
+    /// re-calculate these numbers for the same object.
+    ///
+    /// The returned [`YmdHmsRich`] has convenient and fast formatter methods for turning
+    /// the object into a datetime - an array of [`u8`] or [`String`](alloc::string::String)
+    /// (requires `"alloc"` feature).
     ///
     /// ## Arguments
     ///
     /// * `current` — The time scale in which `self` is currently expressed.
     /// * `new` — The time scale to convert to before creating the rich datetime.
+    ///
+    /// ## See also
+    ///
+    /// * [`Dt::to_ymdhms_rich`](../struct.Dt.html#method.to_ymdhms_rich) — convenience
+    ///   wrapper that always targets `Scale::UTC`.
+    /// * [`Dt::to_ymdhms_on`](../struct.Dt.html#method.to_ymdhms_on) — the lightweight
+    ///   version.
+    /// * [`YmdHmsRich`] — the rich struct type and its accessor methods.
+    /// * [`YmdHmsRich::to_str`](../struct.YmdHmsRich.html#method.to_str) — basically like
+    ///   strftime.
     ///
     /// ## What you get in `YmdHmsRich`
     ///
@@ -45,13 +59,6 @@ impl Dt {
     /// This function performs several extra calendar calculations (ISO week date,
     /// day-of-year, both week-numbering systems). If you only need the basic YMDHMS
     /// components, prefer [`to_ymdhms_on`](Self::to_ymdhms_on) for speed.
-    ///
-    /// ## See also
-    ///
-    /// * [`Dt::to_ymdhms_rich`](Self::to_ymdhms_rich) — convenience wrapper that
-    ///   always targets `Scale::UTC`.
-    /// * [`Dt::to_ymdhms_on`](Self::to_ymdhms_on) — the lightweight version.
-    /// * [`YmdHmsRich`] — the rich struct type and its accessor methods.
     ///
     /// ## Examples
     ///
