@@ -173,7 +173,7 @@ pub const fn hypot(mut x: Real, mut y: Real) -> Real {
 #[cfg(all(test, feature = "std"))]
 mod sqrt_tests {
     use super::sqrt;
-    use std::{eprintln, f64, vec, vec::Vec};
+    use std::{f64, vec, vec::Vec};
 
     #[test]
     fn test_special_cases() {
@@ -208,14 +208,14 @@ mod sqrt_tests {
             let r2 = val.sqrt();
             if r1.to_bits() != r2.to_bits() {
                 failures += 1;
-                if failures < 3 {
-                    eprintln!(
-                        "Mismatch at {:016x}: ours={:016x} std={:016x}",
-                        bits,
-                        r1.to_bits(),
-                        r2.to_bits()
-                    );
-                }
+                // if failures < 3 {
+                //     eprintln!(
+                //         "Mismatch at {:016x}: ours={:016x} std={:016x}",
+                //         bits,
+                //         r1.to_bits(),
+                //         r2.to_bits()
+                //     );
+                // }
             }
         }
         assert_eq!(
@@ -242,14 +242,14 @@ mod sqrt_tests {
             let r2 = val.sqrt();
             if r1.to_bits() != r2.to_bits() {
                 failures += 1;
-                if failures < 3 {
-                    eprintln!(
-                        "Subnormal mismatch at {:016x}: ours={:016x} std={:016x}",
-                        bits,
-                        r1.to_bits(),
-                        r2.to_bits()
-                    );
-                }
+                // if failures < 3 {
+                //     eprintln!(
+                //         "Subnormal mismatch at {:016x}: ours={:016x} std={:016x}",
+                //         bits,
+                //         r1.to_bits(),
+                //         r2.to_bits()
+                //     );
+                // }
             }
         }
         assert_eq!(
