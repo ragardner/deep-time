@@ -1,5 +1,5 @@
 use crate::{
-    ClassifiedDate, DateClassification, DateToken, Dt, Lang, classify_date,
+    ClassifiedDate, DateClassification, Dt, Lang, Token, classify_date,
     generate_unambiguous_candidates, try_compatible_formats,
 };
 use alloc::string::ToString;
@@ -10,7 +10,7 @@ use alloc::string::ToString;
 pub(crate) fn is_week_date_missing_weekday(cls: &DateClassification) -> bool {
     cls.has_w                                   // has the literal "W"
         && cls.num_hyphen == 1                  // exactly one hyphen in the date part
-        && matches!(cls.tokens.first(), Some(DateToken::Digits(n)) if *n >= 4)
+        && matches!(cls.tokens.first(), Some(Token::Digits(n)) if *n >= 4)
 }
 
 /// Expects a pre-classified (normalized to English) date string.

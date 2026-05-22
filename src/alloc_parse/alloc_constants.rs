@@ -72,10 +72,11 @@ pub(crate) const MJD_RANGE: RangeInclusive<i64> = 40_000..=85_000;
 /// Covers ~5000 BC to ~10,700 AD
 pub(crate) const JD_RANGE: RangeInclusive<i64> = 1_400_000..=4_000_000;
 
-pub(crate) const NS_PER_YEAR: i128 = 31_557_600_000_000_000; // 365.25 days
-pub(crate) const NS_PER_MONTH: i128 = 2_629_800_000_000_000; // 30.4375 days
-pub(crate) const NS_PER_WEEK: i128 = 604_800_000_000_000;
-pub(crate) const NS_PER_HOUR: i128 = 3_600_000_000_000;
-pub(crate) const NS_PER_MINUTE: i128 = 60_000_000_000;
 pub(crate) const NS_PER_DAY: i128 = 86_400_000_000_000;
 pub(crate) const NS_PER_SEC: i128 = 1_000_000_000;
+pub(crate) const AS_PER_YEAR: i128 = 31_557_600_000_000_000_000_000_000; // 365.25 days
+pub(crate) const AS_PER_MONTH: i128 = 2_629_800_000_000_000_000_000_000; // 30.4375 days
+pub(crate) const AS_PER_WEEK: i128 = 604_800_000_000_000_000_000_000;
+pub(crate) const AS_PER_DAY: i128 = 86_400_000_000_000_000_000_000;
+pub(crate) const AS_PER_HOUR: i128 = 3_600_000_000_000_000_000_000;
+pub(crate) const AS_PER_MINUTE: i128 = 60_000_000_000_000_000_000;

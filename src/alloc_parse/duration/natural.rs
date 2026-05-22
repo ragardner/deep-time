@@ -1,7 +1,7 @@
 use crate::{
-    DateToken, Dt, DtErr, DtErrKind, Lang, LangData, NS_PER_DAY, NS_PER_HOUR, NS_PER_MINUTE,
-    NS_PER_MONTH, NS_PER_SEC, NS_PER_WEEK, NS_PER_YEAR, Scale, SplitKeepWithPos, an_err, lang_map,
-    to_ascii_digit,
+    AS_PER_DAY, AS_PER_HOUR, AS_PER_MINUTE, AS_PER_MONTH, AS_PER_WEEK, AS_PER_YEAR,
+    ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_US_I128, Dt, DtErr,
+    DtErrKind, Lang, LangData, Scale, SplitKeepWithPos, Token, an_err, lang_map, to_ascii_digit,
 };
 use alloc::{
     string::{String, ToString},
@@ -23,15 +23,57 @@ struct ParsedNumber {
     sign: Sign,
 }
 
-fn extract_number(part: &str, part_chars: &mut Vec<char>) -> Option<ParsedNumber> {
+fn extract_number(part: &str, part_chars: &mut Vec<char>, d: char) -> Option<ParsedNumber> {
     part_chars.clear();
     part_chars.extend(part.chars());
+
+    let decimal_pos: Option<usize> = {
+        let dec_seps: Vec<(usize, char)> = {
+            let mut ds = Vec::new();
+            for (i, c) in part_chars.iter().copied().enumerate() {
+                if i + 1 < part_chars.len()
+                    && part_chars[i + 1].is_numeric()
+                    && (c == '.' || c == d)
+                {
+                    ds.push((i, c));
+                }
+            }
+            ds
+        };
+        match dec_seps.len() {
+            0 => None,
+            1 => {
+                let (pos, sep_char) = dec_seps[0];
+                if sep_char == d {
+                    Some(pos) // language preference matches
+                } else {
+                    // other separator used → decide based on digit count after
+                    let digits_after = part_chars[pos + 1..]
+                        .iter()
+                        .filter(|&&c| c.is_numeric())
+                        .count();
+                    match digits_after {
+                        3 => None,
+                        _ => Some(pos),
+                    }
+                }
+            }
+            _ => {
+                // 1,000,000 last one is not a decimal point
+                if dec_seps.iter().all(|&(_, c)| c == d) {
+                    None
+                } else {
+                    Some(dec_seps.last()?.0)
+                }
+            }
+        }
+    };
 
     let mut integer: i64 = 0;
     let mut decimals: i64 = 0;
     let mut decimal_places: u32 = 0;
     let mut seen_digit = false;
-    let mut seen_dot = false;
+    let mut seen_decimal = false;
     let mut sign = Sign::None;
 
     // Scientific notation support (hard-coded 'e')
@@ -40,7 +82,7 @@ fn extract_number(part: &str, part_chars: &mut Vec<char>) -> Option<ParsedNumber
     let mut exp_sign = Sign::None;
     let mut exp_seen_digit = false;
 
-    for &ch in part_chars.iter() {
+    for (i, &ch) in part_chars.iter().enumerate() {
         match ch {
             'e' => {
                 if seen_e || !seen_digit {
@@ -75,26 +117,30 @@ fn extract_number(part: &str, part_chars: &mut Vec<char>) -> Option<ParsedNumber
                     sign = Sign::Positive;
                 }
             }
-            '.' => {
-                if seen_e || seen_dot {
+            ch if ch == '.' || ch == d => {
+                if Some(i) == decimal_pos {
+                    if seen_e || seen_decimal {
+                        continue;
+                    }
+                    seen_decimal = true;
                     continue;
                 }
-                seen_dot = true;
+                // otherwise it's a thousands separator → skip
                 continue;
             }
             _ => {
                 if !ch.is_numeric() {
                     continue;
                 }
-                let Some(d) = to_ascii_digit(ch).and_then(|c| c.to_digit(10)) else {
+                let Some(digit_val) = to_ascii_digit(ch).and_then(|c| c.to_digit(10)) else {
                     continue;
                 };
-                let digit = d as i64;
+                let digit = digit_val as i64;
 
                 if seen_e {
                     exponent = exponent.saturating_mul(10).saturating_add(digit as i32);
                     exp_seen_digit = true;
-                } else if seen_dot {
+                } else if seen_decimal {
                     decimals = decimals.saturating_mul(10).saturating_add(digit);
                     decimal_places = decimal_places.saturating_add(1);
                 } else {
@@ -152,18 +198,18 @@ fn extract_number(part: &str, part_chars: &mut Vec<char>) -> Option<ParsedNumber
 }
 
 fn add_to_total(
-    total_nanos: &mut i128,
+    total_attos: &mut i128,
     num: ParsedNumber,
-    unit_nanos: i128,
+    unit_attos: i128,
     overall_multiplier: i128,
 ) {
     let magnitude_int = num.integer as i128;
     let magnitude_frac = num.decimals as i128;
 
-    let int_contrib = magnitude_int.saturating_mul(unit_nanos);
+    let int_contrib = magnitude_int.saturating_mul(unit_attos);
 
     let frac_contrib = if num.decimal_places > 0 && magnitude_frac != 0 {
-        let numerator = magnitude_frac.saturating_mul(unit_nanos);
+        let numerator = magnitude_frac.saturating_mul(unit_attos);
         let divisor = 10i128.pow(num.decimal_places.min(18));
         numerator / divisor
     } else {
@@ -178,7 +224,7 @@ fn add_to_total(
         Sign::None => overall_multiplier,
     };
 
-    *total_nanos = total_nanos.saturating_add(contribution.saturating_mul(effective_multiplier));
+    *total_attos = total_attos.saturating_add(contribution.saturating_mul(effective_multiplier));
 }
 
 pub(crate) fn natural_duration_to_span(
@@ -190,7 +236,7 @@ pub(crate) fn natural_duration_to_span(
         map: term_map,
         duration_ac,
         date_ac,
-        ..
+        decimal_char: d,
     }) = lang_map().get(&lang)
     else {
         return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
@@ -211,118 +257,234 @@ pub(crate) fn natural_duration_to_span(
     let mut part_chars: Vec<char> = Vec::with_capacity(50);
     let mut has_duration = false;
     let mut pending_num: Option<ParsedNumber> = None;
-    let mut pending_unit: Option<i128> = None;
-    let mut total_nanos: i128 = 0;
+    let mut pending_unit_attos: Option<i128> = None;
+    let mut total_attos: i128 = 0;
+
     let splitter = SplitKeepWithPos::new(finder, lower.as_str());
 
     for (part, _) in splitter {
         if let Some((_, token)) = term_map.get(part) {
             match token {
-                DateToken::Future => overall_multiplier = 1,
-                DateToken::Past => overall_multiplier = -1,
-                DateToken::Now | DateToken::Today => {
+                Token::Future => overall_multiplier = 1,
+                Token::Past => overall_multiplier = -1,
+                Token::Now | Token::Today => {
                     if !has_duration {
                         return Ok(Dt::ZERO);
                     }
                 }
-                DateToken::Tomorrow => {
+                Token::Tomorrow => {
                     if !has_duration {
-                        return Ok(Dt::from_ns(NS_PER_DAY, Scale::TAI));
+                        return Ok(Dt::from_attos(AS_PER_DAY, Scale::TAI));
                     }
                 }
-                DateToken::Yesterday => {
+                Token::Yesterday => {
                     if !has_duration {
-                        return Ok(Dt::from_ns(-NS_PER_DAY, Scale::TAI));
+                        return Ok(Dt::from_attos(-AS_PER_DAY, Scale::TAI));
                     }
                 }
-
-                DateToken::Year => {
+                Token::Year => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, NS_PER_YEAR, overall_multiplier);
+                        add_to_total(&mut total_attos, num, AS_PER_YEAR, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(NS_PER_YEAR);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(AS_PER_YEAR);
                     }
                 }
-                DateToken::Month => {
+                Token::Month => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, NS_PER_MONTH, overall_multiplier);
+                        add_to_total(&mut total_attos, num, AS_PER_MONTH, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(NS_PER_MONTH);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(AS_PER_MONTH);
                     }
                 }
-                DateToken::Week => {
+                Token::Week => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, NS_PER_WEEK, overall_multiplier);
+                        add_to_total(&mut total_attos, num, AS_PER_WEEK, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(NS_PER_WEEK);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(AS_PER_WEEK);
                     }
                 }
-                DateToken::Day => {
+                Token::Day => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, NS_PER_DAY, overall_multiplier);
+                        add_to_total(&mut total_attos, num, AS_PER_DAY, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(NS_PER_DAY);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(AS_PER_DAY);
                     }
                 }
-                DateToken::Hour => {
+                Token::Hour => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, NS_PER_HOUR, overall_multiplier);
+                        add_to_total(&mut total_attos, num, AS_PER_HOUR, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(NS_PER_HOUR);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(AS_PER_HOUR);
                     }
                 }
-                DateToken::Minute => {
+                Token::Minute => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, NS_PER_MINUTE, overall_multiplier);
+                        add_to_total(&mut total_attos, num, AS_PER_MINUTE, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(NS_PER_MINUTE);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(AS_PER_MINUTE);
                     }
                 }
-                DateToken::Second => {
+                Token::Second => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, NS_PER_SEC, overall_multiplier);
+                        add_to_total(
+                            &mut total_attos,
+                            num,
+                            ATTOS_PER_SEC_I128,
+                            overall_multiplier,
+                        );
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(NS_PER_SEC);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(ATTOS_PER_SEC_I128);
                     }
                 }
-                DateToken::Millisecond => {
+                Token::Millisecond => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, 1_000_000, overall_multiplier);
+                        add_to_total(&mut total_attos, num, ATTOS_PER_MS_I128, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(1_000_000);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(ATTOS_PER_MS_I128);
                     }
                 }
-                DateToken::Microsecond => {
+                Token::Microsecond => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, 1_000, overall_multiplier);
+                        add_to_total(&mut total_attos, num, ATTOS_PER_US_I128, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(1_000);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(ATTOS_PER_US_I128);
                     }
                 }
-                DateToken::Nanosecond => {
+                Token::Nanosecond => {
                     if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_nanos, num, 1, overall_multiplier);
+                        add_to_total(&mut total_attos, num, ATTOS_PER_NS_I128, overall_multiplier);
                         has_duration = true;
-                    } else if pending_unit.is_none() {
-                        pending_unit = Some(1);
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(ATTOS_PER_NS_I128);
+                    }
+                }
+                Token::Millennium => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(
+                            &mut total_attos,
+                            num,
+                            1000 * AS_PER_YEAR,
+                            overall_multiplier,
+                        );
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(1000 * AS_PER_YEAR);
+                    }
+                }
+                Token::Century => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(&mut total_attos, num, 100 * AS_PER_YEAR, overall_multiplier);
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(100 * AS_PER_YEAR);
+                    }
+                }
+                Token::Decade => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(&mut total_attos, num, 10 * AS_PER_YEAR, overall_multiplier);
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(10 * AS_PER_YEAR);
+                    }
+                }
+                Token::Quarter => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(&mut total_attos, num, 3 * AS_PER_MONTH, overall_multiplier);
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(3 * AS_PER_MONTH);
+                    }
+                }
+                Token::Fortnight => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(&mut total_attos, num, 14 * AS_PER_DAY, overall_multiplier);
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(14 * AS_PER_DAY);
+                    }
+                }
+                // SI large units
+                Token::Kilosecond => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(
+                            &mut total_attos,
+                            num,
+                            1_000 * ATTOS_PER_SEC_I128,
+                            overall_multiplier,
+                        );
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(1_000 * ATTOS_PER_SEC_I128);
+                    }
+                }
+                Token::Megasecond => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(
+                            &mut total_attos,
+                            num,
+                            1_000_000 * ATTOS_PER_SEC_I128,
+                            overall_multiplier,
+                        );
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(1_000_000 * ATTOS_PER_SEC_I128);
+                    }
+                }
+                Token::Gigasecond => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(
+                            &mut total_attos,
+                            num,
+                            1_000_000_000 * ATTOS_PER_SEC_I128,
+                            overall_multiplier,
+                        );
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(1_000_000_000 * ATTOS_PER_SEC_I128);
+                    }
+                }
+                Token::Terasecond => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(
+                            &mut total_attos,
+                            num,
+                            1_000_000_000_000 * ATTOS_PER_SEC_I128,
+                            overall_multiplier,
+                        );
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(1_000_000_000_000 * ATTOS_PER_SEC_I128);
+                    }
+                }
+                Token::Petasecond => {
+                    if let Some(num) = pending_num.take() {
+                        add_to_total(
+                            &mut total_attos,
+                            num,
+                            1_000_000_000_000_000 * ATTOS_PER_SEC_I128,
+                            overall_multiplier,
+                        );
+                        has_duration = true;
+                    } else if pending_unit_attos.is_none() {
+                        pending_unit_attos = Some(1_000_000_000_000_000 * ATTOS_PER_SEC_I128);
                     }
                 }
 
                 _ => {}
             }
-        } else if let Some(num) = extract_number(part, &mut part_chars) {
-            if let Some(unit_nanos) = pending_unit.take() {
+        } else if let Some(num) = extract_number(part, &mut part_chars, *d) {
+            if let Some(unit_attos) = pending_unit_attos.take() {
                 // unit came first → apply it to this number
-                add_to_total(&mut total_nanos, num, unit_nanos, overall_multiplier);
+                add_to_total(&mut total_attos, num, unit_attos, overall_multiplier);
                 has_duration = true;
             } else {
                 // normal number-first case
@@ -335,9 +497,6 @@ pub(crate) fn natural_duration_to_span(
         return Err(an_err!(DtErrKind::InvalidInput, "{}", input));
     }
 
-    // Convert total nanoseconds → attoseconds and build Dt
-    // (Dt supports the full representable range, so no size checks are needed)
-    let total_attos = total_nanos * 1_000_000_000i128;
     Ok(Dt::from_attos(total_attos, Scale::TAI))
 }
 

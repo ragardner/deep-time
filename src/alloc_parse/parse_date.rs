@@ -42,6 +42,7 @@ impl Dt {
                 ));
             }
         };
+
         // let xx = &classification.date;
         // if xx != trimmed {
         //     eprintln!("NOT EQUAL: {:?}, {:?}", trimmed, xx);
@@ -67,9 +68,9 @@ impl Dt {
             (opts.mode, opts.order)
         };
 
-        // if s == "2460000" {
-        //     std::eprintln!("INPUT CLS: {:?}", classification);
-        // }
+        if s == "15. Januar 2024 um 14:30 Uhr" {
+            std::eprintln!("{:?}", classification);
+        }
 
         if classification.is_pure_numeric {
             match mode {

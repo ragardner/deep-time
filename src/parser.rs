@@ -1,7 +1,175 @@
+#[cfg(feature = "alloc")]
 use crate::error::{DtErr, DtErrKind};
-use crate::{Meridiem, Offset, TimeParts, Weekday, an_err};
+use crate::{Dt, Meridiem, Offset, Scale, TimeParts, Weekday, an_err};
 use core::result::Result;
 use core::str;
+
+const MAX_FORMAT_LEN: usize = 256;
+
+/// A pre-validated, reusable date/time format string.
+///
+/// - Format is validated **once** at construction (`new` returns `Result`).
+/// - Format bytes are copied into an owned fixed-size buffer.
+/// - Only ASCII formats are accepted.
+#[derive(Debug, Clone, Copy)]
+pub struct StrPTimeFmt {
+    fmt: [u8; MAX_FORMAT_LEN],
+    len: usize,
+}
+
+impl StrPTimeFmt {
+    /// Creates a new validated format.
+    ///
+    /// - Validates syntax and supported directives.
+    /// - Requires the format to be valid ASCII and ≤ 256 bytes.
+    /// - Returns a `DtErr` on any failure.
+    pub fn new(fmt: &str) -> Result<Self, DtErr> {
+        if fmt.len() > MAX_FORMAT_LEN {
+            return Err(an_err!(
+                DtErrKind::UnexpectedEnd,
+                "format string too long (max {} bytes)",
+                MAX_FORMAT_LEN
+            ));
+        }
+        let fmt = fmt.as_bytes();
+        if !fmt.is_ascii() {
+            return Err(an_err!(
+                DtErrKind::UnexpectedEnd,
+                "format string must be ASCII"
+            ));
+        }
+
+        Self::validate_format(fmt)?;
+
+        let mut buffer = [0u8; MAX_FORMAT_LEN];
+        buffer[..fmt.len()].copy_from_slice(fmt);
+
+        Ok(Self {
+            fmt: buffer,
+            len: fmt.len(),
+        })
+    }
+
+    fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {
+        while !fmt.is_empty() {
+            if fmt[0] != b'%' {
+                // literal character (including whitespace) — always valid
+                fmt = &fmt[1..];
+                continue;
+            }
+
+            // lone % at end of format
+            if fmt.len() == 1 {
+                return Err(an_err!(DtErrKind::UnexpectedEnd, "after %"));
+            }
+            fmt = &fmt[1..]; // eat %
+
+            // reuse existing helper for flags/width/colons
+            let (_, _, _, new_fmt) = Parser::parse_format_extensions(fmt, 0);
+            fmt = new_fmt;
+
+            if fmt.is_empty() {
+                return Err(an_err!(DtErrKind::UnexpectedEnd, "expected directive"));
+            }
+
+            let directive = fmt[0];
+
+            match directive {
+            // all currently supported directives (exact list from Parser::parse)
+            b'%' | b'A' | b'a' | b'B' | b'b' | b'h' | b'C' | b'd' | b'e' |
+            b'f' | b'N' | b'G' | b'g' | b'H' | b'k' | b'I' | b'l' | b'j' |
+            b'M' | b'm' | b'n' | b't' | b'P' | b'p' | b'Q' | b'S' | b's' |
+            b'U' | b'u' | b'V' | b'W' | b'w' | b'Y' | b'y' | b'z' |
+            // shortcuts
+            b'F' | b'D' | b'T' | b'R' |
+            // library directives
+            b'*' => {
+                fmt = &fmt[1..];
+            }
+
+            b'.' => {
+                // special case for %.f / %.3N etc.
+                fmt = &fmt[1..]; // eat the .
+
+                // optional width digits
+                while !fmt.is_empty() && fmt[0].is_ascii_digit() {
+                    fmt = &fmt[1..];
+                }
+
+                let next = fmt.first().copied().unwrap_or(0);
+                if !matches!(next, b'f' | b'N') {
+                    return Err(an_err!(DtErrKind::BadFractional, "{}", char::from(next)));
+                }
+                fmt = &fmt[1..];
+            }
+
+            // explicitly unsupported (same as Parser)
+            b'c' | b'r' | b'X' | b'x' | b'Z' => {
+                return Err(an_err!(
+                    DtErrKind::UnsupportedDirective,
+                    "{}",
+                    char::from(directive)
+                ));
+            }
+
+            _ => {
+                return Err(an_err!(DtErrKind::UnknownDirective));
+            }
+        }
+        }
+
+        Ok(())
+    }
+
+    #[inline]
+    fn as_bytes(&self) -> &[u8] {
+        &self.fmt[..self.len]
+    }
+
+    #[inline]
+    fn as_str(&self) -> Result<&str, DtErr> {
+        match core::str::from_utf8(self.as_bytes()) {
+            Ok(f) => Ok(f),
+            Err(e) => Err(an_err!(DtErrKind::InvalidBytes, "{}", e)),
+        }
+    }
+
+    /// Parse a date str using this pre-validated format.
+    pub fn to_dt(
+        &self,
+        s: &str,
+        inp_can_end_before_fmt: bool,
+        fmt_can_end_before_inp: bool,
+        allow_partial_date: bool,
+    ) -> Result<Dt, DtErr> {
+        TimeParts::from_str(
+            self.as_str()?,
+            s,
+            inp_can_end_before_fmt,
+            fmt_can_end_before_inp,
+            allow_partial_date,
+        )
+        .and_then(|p| p.to_dt())
+    }
+
+    #[cfg(feature = "alloc")]
+    pub fn to_str(
+        &self,
+        current: Scale,
+        s: &str,
+        inp_can_end_before_fmt: bool,
+        fmt_can_end_before_inp: bool,
+        allow_partial_date: bool,
+    ) -> Result<alloc::string::String, DtErr> {
+        self.to_dt(
+            s,
+            inp_can_end_before_fmt,
+            fmt_can_end_before_inp,
+            allow_partial_date,
+        )?
+        .to_str(current, self.as_str()?)
+    }
+}
 
 pub(crate) struct Parser<'f, 'i, 't> {
     pub(crate) fmt: &'f [u8], // remaining format string

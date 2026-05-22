@@ -1,215 +1,189 @@
-use crate::{
-    DateToken, EN_DAYS, EN_DURATIONS, EN_MONTHS, EN_RELATIVES, EN_SPECIAL, LangData,
-    tz_lowered_keys, tzdb::TZ_ENTRIES,
-};
+use crate::{Cat, EN_WORDS, LangData, Token, Word, tz_lowered_keys, tzdb::TZ_ENTRIES};
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
-use hashbrown::HashMap;
+use hashbrown::{HashMap, HashSet};
 use once_cell::race::OnceBox;
 
-pub(crate) const FR_RELATIVES: &[(&str, &str, DateToken)] = &[
-    ("et", "and", DateToken::Plus),
-    ("plus", "plus", DateToken::Plus),
-    // Temporal
-    ("dans", "in", DateToken::Future),
-    ("en", "in", DateToken::Future),
-    ("prochain", "next", DateToken::Future),
-    ("prochaine", "next", DateToken::Future),
-    ("après", "after", DateToken::Future),
-    ("il y a", "ago", DateToken::Past),
-    ("dernier", "last", DateToken::Past),
-    ("dernière", "last", DateToken::Past),
-    ("précédent", "last", DateToken::Past),
-    ("précédente", "last", DateToken::Past),
-    ("maintenant", "now", DateToken::Now),
-    ("aujourd'hui", "today", DateToken::Today),
-    ("demain", "tomorrow", DateToken::Tomorrow),
-    ("hier", "yesterday", DateToken::Yesterday),
-    // Sub-second units
-    ("nanosecondes", "ns", DateToken::Nanosecond),
-    ("nanoseconde", "ns", DateToken::Nanosecond),
-    ("nanos", "ns", DateToken::Nanosecond),
-    ("microsecondes", "us", DateToken::Microsecond),
-    ("microseconde", "us", DateToken::Microsecond),
-    ("micros", "us", DateToken::Microsecond),
-    ("millisecondes", "ms", DateToken::Millisecond),
-    ("milliseconde", "ms", DateToken::Millisecond),
-    ("millis", "ms", DateToken::Millisecond),
+pub const FR_WORDS: &[Word] = &[
+    // MONTHS
+    Word::new("janv", "Jan", Token::MonthShort, Cat::Month),
+    Word::new("févr", "Feb", Token::MonthShort, Cat::Month),
+    Word::new("mars", "Mar", Token::MonthShort, Cat::Month),
+    Word::new("avr", "Apr", Token::MonthShort, Cat::Month),
+    Word::new("mai", "May", Token::MonthShort, Cat::Month),
+    Word::new("juin", "Jun", Token::MonthShort, Cat::Month),
+    Word::new("juil", "Jul", Token::MonthShort, Cat::Month),
+    Word::new("août", "Aug", Token::MonthShort, Cat::Month),
+    Word::new("sept", "Sep", Token::MonthShort, Cat::Month),
+    Word::new("oct", "Oct", Token::MonthShort, Cat::Month),
+    Word::new("nov", "Nov", Token::MonthShort, Cat::Month),
+    Word::new("déc", "Dec", Token::MonthShort, Cat::Month),
+    Word::new("janvier", "January", Token::MonthLong, Cat::Month),
+    Word::new("février", "February", Token::MonthLong, Cat::Month),
+    Word::new("mars", "March", Token::MonthLong, Cat::Month),
+    Word::new("avril", "April", Token::MonthLong, Cat::Month),
+    Word::new("mai", "May", Token::MonthLong, Cat::Month),
+    Word::new("juin", "June", Token::MonthLong, Cat::Month),
+    Word::new("juillet", "July", Token::MonthLong, Cat::Month),
+    Word::new("août", "August", Token::MonthLong, Cat::Month),
+    Word::new("septembre", "September", Token::MonthLong, Cat::Month),
+    Word::new("octobre", "October", Token::MonthLong, Cat::Month),
+    Word::new("novembre", "November", Token::MonthLong, Cat::Month),
+    Word::new("décembre", "December", Token::MonthLong, Cat::Month),
+    // DAYS
+    Word::new("lun", "Mon", Token::DayShort, Cat::Day),
+    // Word::new("mar", "Tue", Token::DayShort, Cat::Day), // won't parse
+    Word::new("mer", "Wed", Token::DayShort, Cat::Day),
+    Word::new("jeu", "Thu", Token::DayShort, Cat::Day),
+    Word::new("ven", "Fri", Token::DayShort, Cat::Day),
+    Word::new("sam", "Sat", Token::DayShort, Cat::Day),
+    Word::new("dim", "Sun", Token::DayShort, Cat::Day),
+    Word::new("lundi", "Monday", Token::DayLong, Cat::Day),
+    Word::new("mardi", "Tuesday", Token::DayLong, Cat::Day),
+    Word::new("mercredi", "Wednesday", Token::DayLong, Cat::Day),
+    Word::new("jeudi", "Thursday", Token::DayLong, Cat::Day),
+    Word::new("vendredi", "Friday", Token::DayLong, Cat::Day),
+    Word::new("samedi", "Saturday", Token::DayLong, Cat::Day),
+    Word::new("dimanche", "Sunday", Token::DayLong, Cat::Day),
+    // RELATIVES
+    Word::new("et", "and", Token::Plus, Cat::UnamRel),
+    Word::new("plus", "plus", Token::Plus, Cat::UnamRel),
+    Word::new("dans", "in", Token::Future, Cat::UnamRel),
+    Word::new("en", "in", Token::Future, Cat::UnamRel),
+    Word::new("prochain", "next", Token::Future, Cat::UnamRel),
+    Word::new("prochaine", "next", Token::Future, Cat::UnamRel),
+    Word::new("après", "after", Token::Future, Cat::UnamRel),
+    Word::new("il y a", "ago", Token::Past, Cat::UnamRel),
+    Word::new("passé", "last", Token::Past, Cat::UnamRel),
+    Word::new("dernier", "last", Token::Past, Cat::UnamRel),
+    Word::new("dernière", "last", Token::Past, Cat::UnamRel),
+    Word::new("précédent", "last", Token::Past, Cat::UnamRel),
+    Word::new("précédente", "last", Token::Past, Cat::UnamRel),
+    Word::new("maintenant", "now", Token::Now, Cat::UnamRel),
+    Word::new("aujourd'hui", "today", Token::Today, Cat::UnamRel),
+    Word::new("demain", "tomorrow", Token::Tomorrow, Cat::UnamRel),
+    Word::new("hier", "yesterday", Token::Yesterday, Cat::UnamRel),
+    // Sub-second
+    Word::new("nanosecondes", "ns", Token::Nanosecond, Cat::UnamRel),
+    Word::new("nanoseconde", "ns", Token::Nanosecond, Cat::UnamRel),
+    Word::new("nanos", "ns", Token::Nanosecond, Cat::UnamRel),
+    Word::new("microsecondes", "us", Token::Microsecond, Cat::UnamRel),
+    Word::new("microseconde", "us", Token::Microsecond, Cat::UnamRel),
+    Word::new("micros", "us", Token::Microsecond, Cat::UnamRel),
+    Word::new("millisecondes", "ms", Token::Millisecond, Cat::UnamRel),
+    Word::new("milliseconde", "ms", Token::Millisecond, Cat::UnamRel),
+    Word::new("millis", "ms", Token::Millisecond, Cat::UnamRel),
     // Seconds
-    ("secondes", "s", DateToken::Second),
-    ("seconde", "s", DateToken::Second),
-    ("secs", "s", DateToken::Second),
-    ("sec", "s", DateToken::Second),
+    Word::new("secondes", "s", Token::Second, Cat::UnamRel),
+    Word::new("seconde", "s", Token::Second, Cat::UnamRel),
+    Word::new("secs", "s", Token::Second, Cat::UnamRel),
+    Word::new("sec", "s", Token::Second, Cat::UnamRel),
     // Minutes
-    ("minutes", "m", DateToken::Minute),
-    ("minute", "m", DateToken::Minute),
-    ("mins", "m", DateToken::Minute),
-    ("min", "m", DateToken::Minute),
+    Word::new("minutes", "m", Token::Minute, Cat::UnamRel),
+    Word::new("minute", "m", Token::Minute, Cat::UnamRel),
+    Word::new("mins", "m", Token::Minute, Cat::UnamRel),
+    Word::new("min", "m", Token::Minute, Cat::UnamRel),
     // Hours
-    ("heures", "h", DateToken::Hour),
-    ("heure", "h", DateToken::Hour),
-    ("hrs", "h", DateToken::Hour),
-    ("hr", "h", DateToken::Hour),
+    Word::new("heures", "h", Token::Hour, Cat::UnamRel),
+    Word::new("heure", "h", Token::Hour, Cat::UnamRel),
+    Word::new("hrs", "h", Token::Hour, Cat::UnamRel),
+    Word::new("hr", "h", Token::Hour, Cat::UnamRel),
     // Days
-    ("jours", "d", DateToken::Day),
-    ("jour", "d", DateToken::Day),
+    Word::new("jours", "d", Token::Day, Cat::UnamRel),
+    Word::new("jour", "d", Token::Day, Cat::UnamRel),
     // Weeks
-    ("semaines", "w", DateToken::Week),
-    ("semaine", "w", DateToken::Week),
+    Word::new("semaines", "w", Token::Week, Cat::UnamRel),
+    Word::new("semaine", "w", Token::Week, Cat::UnamRel),
+    Word::new("sem", "w", Token::Week, Cat::UnamRel),
     // Months
-    ("mois", "mo", DateToken::Month),
+    Word::new("mois", "mo", Token::Month, Cat::UnamRel),
     // Years
-    ("années", "y", DateToken::Year),
-    ("année", "y", DateToken::Year),
-    ("ans", "y", DateToken::Year),
-    ("an", "y", DateToken::Year),
+    Word::new("années", "y", Token::Year, Cat::UnamRel),
+    Word::new("année", "y", Token::Year, Cat::UnamRel),
+    Word::new("ans", "y", Token::Year, Cat::UnamRel),
+    Word::new("an", "y", Token::Year, Cat::UnamRel),
+    // Large time units
+    Word::new("millénaire", "mil", Token::Millennium, Cat::UnamDur),
+    Word::new("millénaires", "mil", Token::Millennium, Cat::UnamDur),
+    Word::new("siècle", "cen", Token::Century, Cat::UnamDur),
+    Word::new("siècles", "cen", Token::Century, Cat::UnamDur),
+    Word::new("décennie", "dec", Token::Decade, Cat::UnamDur),
+    Word::new("décennies", "dec", Token::Decade, Cat::UnamDur),
+    Word::new("trimestre", "qr", Token::Quarter, Cat::UnamDur),
+    Word::new("trimestres", "qr", Token::Quarter, Cat::UnamDur),
+    Word::new("quinzaine", "fn", Token::Fortnight, Cat::UnamDur),
+    Word::new("quinzaines", "fn", Token::Fortnight, Cat::UnamDur),
+    // SI units
+    Word::new("kilosecondes", "ks", Token::Kilosecond, Cat::UnamDur),
+    Word::new("kiloseconde", "ks", Token::Kilosecond, Cat::UnamDur),
+    Word::new("mégasecondes", "mgs", Token::Megasecond, Cat::UnamDur),
+    Word::new("mégaseconde", "mgs", Token::Megasecond, Cat::UnamDur),
+    Word::new("gigasecondes", "gs", Token::Gigasecond, Cat::UnamDur),
+    Word::new("gigaseconde", "gs", Token::Gigasecond, Cat::UnamDur),
+    Word::new("térasecondes", "ts", Token::Terasecond, Cat::UnamDur),
+    Word::new("téraseconde", "ts", Token::Terasecond, Cat::UnamDur),
+    Word::new("pétasecondes", "pes", Token::Petasecond, Cat::UnamDur),
+    Word::new("pétaseconde", "pes", Token::Petasecond, Cat::UnamDur),
+    Word::new("picosecondes", "ps", Token::Picosecond, Cat::UnamDur),
+    Word::new("picoseconde", "ps", Token::Picosecond, Cat::UnamDur),
+    Word::new("femtosecondes", "fs", Token::Femtosecond, Cat::UnamDur),
+    Word::new("femtoseconde", "fs", Token::Femtosecond, Cat::UnamDur),
+    Word::new("attosecondes", "as", Token::Attosecond, Cat::UnamDur),
+    Word::new("attoseconde", "as", Token::Attosecond, Cat::UnamDur),
+    Word::new("zeptosecondes", "zs", Token::Zeptosecond, Cat::UnamDur),
+    Word::new("zeptoseconde", "zs", Token::Zeptosecond, Cat::UnamDur),
+    Word::new("yoctosecondes", "ys", Token::Yoctosecond, Cat::UnamDur),
+    Word::new("yoctoseconde", "ys", Token::Yoctosecond, Cat::UnamDur),
+    Word::new("rontosecondes", "rs", Token::Rontosecond, Cat::UnamDur),
+    Word::new("rontoseconde", "rs", Token::Rontosecond, Cat::UnamDur),
+    Word::new("quectosecondes", "qs", Token::Quectosecond, Cat::UnamDur),
+    Word::new("quectoseconde", "qs", Token::Quectosecond, Cat::UnamDur),
+    // Short forms
+    Word::new("mil", "mil", Token::Millennium, Cat::UnamDur),
+    Word::new("cen", "cen", Token::Century, Cat::UnamDur),
+    Word::new("qr", "qr", Token::Quarter, Cat::UnamDur),
+    Word::new("fn", "fn", Token::Fortnight, Cat::UnamDur),
+    Word::new("ks", "ks", Token::Kilosecond, Cat::UnamDur),
+    Word::new("mgs", "mgs", Token::Megasecond, Cat::UnamDur),
+    Word::new("gs", "gs", Token::Gigasecond, Cat::UnamDur),
+    Word::new("ts", "ts", Token::Terasecond, Cat::UnamDur),
+    Word::new("pes", "pes", Token::Petasecond, Cat::UnamDur),
+    Word::new("ms", "ms", Token::Millisecond, Cat::UnamDur),
+    Word::new("us", "us", Token::Microsecond, Cat::UnamDur),
+    Word::new("ns", "ns", Token::Nanosecond, Cat::UnamDur),
+    Word::new("ps", "ps", Token::Picosecond, Cat::UnamDur),
+    Word::new("fs", "fs", Token::Femtosecond, Cat::UnamDur),
+    Word::new("as", "as", Token::Attosecond, Cat::UnamDur),
+    Word::new("zs", "zs", Token::Zeptosecond, Cat::UnamDur),
+    Word::new("ys", "ys", Token::Yoctosecond, Cat::UnamDur),
+    Word::new("rs", "rs", Token::Rontosecond, Cat::UnamDur),
+    Word::new("qs", "qs", Token::Quectosecond, Cat::UnamDur),
 ];
-pub(crate) const FR_DURATIONS: &[(&str, &str, DateToken)] = &[
-    ("y", "y", DateToken::Year),
-    ("w", "w", DateToken::Week),
-    ("d", "d", DateToken::Day),
-    ("h", "h", DateToken::Hour),
-    ("m", "m", DateToken::Minute),
-    ("s", "s", DateToken::Second),
-    ("millénaire", "mil", DateToken::Millennium),
-    ("millénaires", "mil", DateToken::Millennium),
-    ("siècle", "cen", DateToken::Century),
-    ("siècles", "cen", DateToken::Century),
-    ("décennie", "dec", DateToken::Decade),
-    ("décennies", "dec", DateToken::Decade),
-    ("trimestre", "qr", DateToken::Quarter),
-    ("trimestres", "qr", DateToken::Quarter),
-    ("quinzaine", "fn", DateToken::Fortnight),
-    ("quinzaines", "fn", DateToken::Fortnight),
-    ("kilosecondes", "ks", DateToken::Kilosecond),
-    ("kiloseconde", "ks", DateToken::Kilosecond),
-    ("mégasecondes", "mgs", DateToken::Megasecond),
-    ("mégaseconde", "mgs", DateToken::Megasecond),
-    ("gigasecondes", "gs", DateToken::Gigasecond),
-    ("gigaseconde", "gs", DateToken::Gigasecond),
-    ("térasecondes", "ts", DateToken::Terasecond),
-    ("téraseconde", "ts", DateToken::Terasecond),
-    ("pétasecondes", "pes", DateToken::Petasecond),
-    ("pétaseconde", "pes", DateToken::Petasecond),
-    ("exasecondes", "es", DateToken::Exasecond),
-    ("exaseconde", "es", DateToken::Exasecond),
-    ("zettasecondes", "zes", DateToken::Zettasecond),
-    ("zettaseconde", "zes", DateToken::Zettasecond),
-    ("yottasecondes", "yos", DateToken::Yottasecond),
-    ("yottaseconde", "yos", DateToken::Yottasecond),
-    ("ronnasecondes", "ros", DateToken::Ronnasecond),
-    ("ronnaseconde", "ros", DateToken::Ronnasecond),
-    ("quettasecondes", "qus", DateToken::Quettasecond),
-    ("quettaseconde", "qus", DateToken::Quettasecond),
-    ("picosecondes", "ps", DateToken::Picosecond),
-    ("picoseconde", "ps", DateToken::Picosecond),
-    ("femtosecondes", "fs", DateToken::Femtosecond),
-    ("femtoseconde", "fs", DateToken::Femtosecond),
-    ("attosecondes", "as", DateToken::Attosecond),
-    ("attoseconde", "as", DateToken::Attosecond),
-    ("zeptosecondes", "zs", DateToken::Zeptosecond),
-    ("zeptoseconde", "zs", DateToken::Zeptosecond),
-    ("yoctosecondes", "ys", DateToken::Yoctosecond),
-    ("yoctoseconde", "ys", DateToken::Yoctosecond),
-    ("rontosecondes", "rs", DateToken::Rontosecond),
-    ("rontoseconde", "rs", DateToken::Rontosecond),
-    ("quectosecondes", "qs", DateToken::Quectosecond),
-    ("quectoseconde", "qs", DateToken::Quectosecond),
-    // Short forms (same as EN)
-    ("mil", "mil", DateToken::Millennium),
-    ("cen", "cen", DateToken::Century),
-    ("dec", "dec", DateToken::Decade),
-    ("qr", "qr", DateToken::Quarter),
-    ("fn", "fn", DateToken::Fortnight),
-    ("ks", "ks", DateToken::Kilosecond),
-    ("mgs", "mgs", DateToken::Megasecond),
-    ("gs", "gs", DateToken::Gigasecond),
-    ("ts", "ts", DateToken::Terasecond),
-    ("pes", "pes", DateToken::Petasecond),
-    ("es", "es", DateToken::Exasecond),
-    ("zes", "zes", DateToken::Zettasecond),
-    ("yos", "yos", DateToken::Yottasecond),
-    ("ros", "ros", DateToken::Ronnasecond),
-    ("qus", "qus", DateToken::Quettasecond),
-    ("ms", "ms", DateToken::Millisecond),
-    ("u", "us", DateToken::Microsecond),
-    ("us", "us", DateToken::Microsecond),
-    ("ns", "ns", DateToken::Nanosecond),
-    ("ps", "ps", DateToken::Picosecond),
-    ("fs", "fs", DateToken::Femtosecond),
-    ("as", "as", DateToken::Attosecond),
-    ("zs", "zs", DateToken::Zeptosecond),
-    ("ys", "ys", DateToken::Yoctosecond),
-    ("rs", "rs", DateToken::Rontosecond),
-    ("qs", "qs", DateToken::Quectosecond),
-];
-pub(crate) const FR_MONTHS: &[(&str, &str, DateToken)] = &[
-    ("janv", "Jan", DateToken::MonthShort),
-    ("févr", "Feb", DateToken::MonthShort),
-    ("mars", "Mar", DateToken::MonthShort),
-    ("avr", "Apr", DateToken::MonthShort),
-    ("mai", "May", DateToken::MonthShort),
-    ("juin", "Jun", DateToken::MonthShort),
-    ("juil", "Jul", DateToken::MonthShort),
-    ("août", "Aug", DateToken::MonthShort),
-    ("sept", "Sep", DateToken::MonthShort),
-    ("oct", "Oct", DateToken::MonthShort),
-    ("nov", "Nov", DateToken::MonthShort),
-    ("déc", "Dec", DateToken::MonthShort),
-    ("janvier", "January", DateToken::MonthLong),
-    ("février", "February", DateToken::MonthLong),
-    ("mars", "March", DateToken::MonthLong),
-    ("avril", "April", DateToken::MonthLong),
-    ("mai", "May", DateToken::MonthLong),
-    ("juin", "June", DateToken::MonthLong),
-    ("juillet", "July", DateToken::MonthLong),
-    ("août", "August", DateToken::MonthLong),
-    ("septembre", "September", DateToken::MonthLong),
-    ("octobre", "October", DateToken::MonthLong),
-    ("novembre", "November", DateToken::MonthLong),
-    ("décembre", "December", DateToken::MonthLong),
-];
-pub(crate) const FR_DAYS: &[(&str, &str, DateToken)] = &[
-    ("lun", "Mon", DateToken::DayShort),
-    ("mar", "Tue", DateToken::DayShort),
-    ("mer", "Wed", DateToken::DayShort),
-    ("jeu", "Thu", DateToken::DayShort),
-    ("ven", "Fri", DateToken::DayShort),
-    ("sam", "Sat", DateToken::DayShort),
-    ("dim", "Sun", DateToken::DayShort),
-    ("lundi", "Monday", DateToken::DayLong),
-    ("mardi", "Tuesday", DateToken::DayLong),
-    ("mercredi", "Wednesday", DateToken::DayLong),
-    ("jeudi", "Thursday", DateToken::DayLong),
-    ("vendredi", "Friday", DateToken::DayLong),
-    ("samedi", "Saturday", DateToken::DayLong),
-    ("dimanche", "Sunday", DateToken::DayLong),
-];
-pub(crate) const FR_SPECIAL: &[(&str, &str, DateToken)] =
-    &[("am", "AM", DateToken::Am), ("pm", "PM", DateToken::Pm)];
 
 static FR_DATE_AC: OnceBox<AhoCorasick> = OnceBox::new();
 pub(crate) fn fr_date_ac() -> &'static AhoCorasick {
     FR_DATE_AC.get_or_init(|| {
-        let mut terms: Vec<&'static str> = Vec::with_capacity(
-            FR_RELATIVES.len()
-                + FR_MONTHS.len()
-                + FR_DAYS.len()
-                + FR_SPECIAL.len()
-                + tz_lowered_keys().len(),
-        );
-        // English base terms (French reuses many)
-        terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
-        terms.extend(EN_MONTHS.iter().map(|&(k, _, _)| k));
-        terms.extend(EN_DAYS.iter().map(|&(k, _, _)| k));
-        terms.extend(EN_SPECIAL.iter().map(|&(k, _, _)| k));
-        // French-specific terms
-        terms.extend(FR_RELATIVES.iter().map(|&(k, _, _)| k));
-        terms.extend(FR_MONTHS.iter().map(|&(k, _, _)| k));
-        terms.extend(FR_DAYS.iter().map(|&(k, _, _)| k));
-        terms.extend(FR_SPECIAL.iter().map(|&(k, _, _)| k));
-        terms.extend(tz_lowered_keys());
+        let mut seen = HashSet::new();
+        let terms: Vec<&'static str> = EN_WORDS
+            .iter()
+            .filter(|w| {
+                matches!(
+                    w.c,
+                    Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day | Cat::AmPm
+                )
+            })
+            .map(|w| w.low)
+            .chain(
+                FR_WORDS
+                    .iter()
+                    .filter(|w| matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day))
+                    .map(|w| w.low),
+            )
+            .chain(tz_lowered_keys().iter().copied())
+            .filter(|&s| seen.insert(s))
+            .collect();
+
         #[allow(clippy::expect_used)]
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
@@ -222,12 +196,22 @@ pub(crate) fn fr_date_ac() -> &'static AhoCorasick {
 static FR_DURATION_AC: OnceBox<AhoCorasick> = OnceBox::new();
 pub(crate) fn fr_duration_ac() -> &'static AhoCorasick {
     FR_DURATION_AC.get_or_init(|| {
-        let mut terms: Vec<&'static str> =
-            Vec::with_capacity(FR_RELATIVES.len() + FR_DURATIONS.len());
-        terms.extend(EN_RELATIVES.iter().map(|&(k, _, _)| k));
-        terms.extend(EN_DURATIONS.iter().map(|&(k, _, _)| k));
-        terms.extend(FR_RELATIVES.iter().map(|&(k, _, _)| k));
-        terms.extend(FR_DURATIONS.iter().map(|&(k, _, _)| k));
+        let mut seen = HashSet::new();
+        let terms: Vec<&'static str> = EN_WORDS
+            .iter()
+            .filter(|w| matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::AmDur | Cat::UnamDur))
+            .map(|w| w.low)
+            .chain(
+                FR_WORDS
+                    .iter()
+                    .filter(|w| {
+                        matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::AmDur | Cat::UnamDur)
+                    })
+                    .map(|w| w.low),
+            )
+            .filter(|&s| seen.insert(s))
+            .collect();
+
         #[allow(clippy::expect_used)]
         let ac = AhoCorasick::builder()
             .match_kind(MatchKind::LeftmostLongest)
@@ -237,47 +221,25 @@ pub(crate) fn fr_duration_ac() -> &'static AhoCorasick {
     })
 }
 
-pub(crate) static FR: OnceBox<HashMap<&'static str, (&'static str, DateToken)>> = OnceBox::new();
-pub(crate) fn fr() -> &'static HashMap<&'static str, (&'static str, DateToken)> {
+pub(crate) static FR: OnceBox<HashMap<&'static str, (&'static str, Token)>> = OnceBox::new();
+pub(crate) fn fr() -> &'static HashMap<&'static str, (&'static str, Token)> {
     FR.get_or_init(|| {
         let mut m = HashMap::new();
-        // English base
-        for &(k, v, token) in EN_RELATIVES {
-            m.insert(k, (v, token));
+
+        for word in FR_WORDS {
+            m.insert(word.low, (word.norm, word.t));
         }
-        for &(k, v, token) in EN_DURATIONS {
-            m.insert(k, (v, token));
+
+        for word in EN_WORDS {
+            m.insert(word.low, (word.norm, word.t));
         }
-        for &(k, v, token) in EN_MONTHS {
-            m.insert(k, (v, token));
-        }
-        for &(k, v, token) in EN_DAYS {
-            m.insert(k, (v, token));
-        }
-        for &(k, v, token) in EN_SPECIAL {
-            m.insert(k, (v, token));
-        }
-        // French-specific
-        for &(k, v, token) in FR_RELATIVES {
-            m.insert(k, (v, token));
-        }
-        for &(k, v, token) in FR_DURATIONS {
-            m.insert(k, (v, token));
-        }
-        for &(k, v, token) in FR_MONTHS {
-            m.insert(k, (v, token));
-        }
-        for &(k, v, token) in FR_DAYS {
-            m.insert(k, (v, token));
-        }
-        for &(k, v, token) in FR_SPECIAL {
-            m.insert(k, (v, token));
-        }
+
         for (&lowered_key, &(original_name, _, _)) in
             tz_lowered_keys().iter().zip(TZ_ENTRIES.iter())
         {
-            m.insert(lowered_key, (original_name, DateToken::Iana));
+            m.insert(lowered_key, (original_name, Token::Iana));
         }
+
         Box::new(m)
     })
 }
@@ -289,6 +251,7 @@ pub(crate) fn fr_lang_data() -> &'static LangData {
             map: fr(),
             date_ac: fr_date_ac(),
             duration_ac: fr_duration_ac(),
+            decimal_char: ',',
         })
     })
 }

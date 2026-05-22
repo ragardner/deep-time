@@ -89,9 +89,7 @@ pub struct ParseCfg {
 
     /// **Reference ("current") time** used for relative expressions:
     /// - "tomorrow", "next Friday", "in 3 days", "next week"
-    /// - dates missing a year/month ("March 15", "15th of next month")
-    ///
-    /// - If `Some(tp)`, this `Dt` is used as "now" (overrides everything).
+    /// - If `Some`, this `Dt` is used as "now" (overrides everything).
     /// - If `None` + `std` feature enabled: automatically uses real system time.
     /// - If `None` + no `std`: parsing relative dates will fail with a clear error.
     #[cfg_attr(feature = "serde", serde(default))]
@@ -145,6 +143,7 @@ pub(crate) fn append_to_all(builders: &mut Vec<AmBuilder>, s: &'static str) {
 /// Language codes following ISO 639-1 standard (two-letter codes)
 /// Default is En (English)
 #[allow(dead_code)]
+#[non_exhaustive]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]

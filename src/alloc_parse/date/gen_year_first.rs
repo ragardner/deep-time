@@ -1,5 +1,5 @@
 use crate::{
-    AmBuilder, DateClassification, DateToken, append_to_all, get_compatible_time_suffixes,
+    AmBuilder, DateClassification, Token, append_to_all, get_compatible_time_suffixes,
 };
 use alloc::string::String;
 use alloc::vec;
@@ -23,12 +23,12 @@ pub(crate) fn generate_ambiguous_year_first_candidates(class: &DateClassificatio
 
     for &token in tokens {
         match token {
-            DateToken::Hyphen => append_to_all(&mut builders, "-"),
-            DateToken::Slash => append_to_all(&mut builders, "/"),
-            DateToken::Dot => append_to_all(&mut builders, "."),
-            DateToken::Space => append_to_all(&mut builders, " "),
-            DateToken::Comma => append_to_all(&mut builders, ","),
-            DateToken::Digits(_) => {
+            Token::Hyphen => append_to_all(&mut builders, "-"),
+            Token::Slash => append_to_all(&mut builders, "/"),
+            Token::Dot => append_to_all(&mut builders, "."),
+            Token::Space => append_to_all(&mut builders, " "),
+            Token::Comma => append_to_all(&mut builders, ","),
+            Token::Digits(_) => {
                 let mut new_builders = Vec::with_capacity(builders.len() * 4);
 
                 for b in &builders {

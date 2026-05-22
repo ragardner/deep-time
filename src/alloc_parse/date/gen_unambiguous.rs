@@ -1,4 +1,4 @@
-use crate::{DateClassification, DateToken, get_compatible_time_suffixes};
+use crate::{DateClassification, Token, get_compatible_time_suffixes};
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -41,15 +41,15 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
         // Walk only the prefix tokens that come before the week-date core
         while i < tokens.len() {
             // Detect the start of the ISO week part and stop prefix processing
-            if matches!(tokens[i], DateToken::Digits(4))
+            if matches!(tokens[i], Token::Digits(4))
                 && i + 2 < tokens.len()
-                && matches!(tokens[i + 1], DateToken::Hyphen)
-                && matches!(tokens[i + 2], DateToken::W)
+                && matches!(tokens[i + 1], Token::Hyphen)
+                && matches!(tokens[i + 2], Token::W)
             {
                 break;
             }
             match tokens[i] {
-                DateToken::DayShort => {
+                Token::DayShort => {
                     let mut new_builders = Vec::with_capacity(builders.len());
                     for b in &builders {
                         if !b.seen_weekday {
@@ -61,7 +61,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                     }
                     builders = new_builders;
                 }
-                DateToken::DayLong => {
+                Token::DayLong => {
                     let mut new_builders = Vec::with_capacity(builders.len());
                     for b in &builders {
                         if !b.seen_weekday {
@@ -73,7 +73,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                     }
                     builders = new_builders;
                 }
-                DateToken::MonthShort => {
+                Token::MonthShort => {
                     let mut new_builders = Vec::with_capacity(builders.len());
                     for b in &builders {
                         if !b.seen_month {
@@ -85,7 +85,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                     }
                     builders = new_builders;
                 }
-                DateToken::MonthLong => {
+                Token::MonthLong => {
                     let mut new_builders = Vec::with_capacity(builders.len());
                     for b in &builders {
                         if !b.seen_month {
@@ -97,11 +97,11 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                     }
                     builders = new_builders;
                 }
-                DateToken::Comma => append_to_all(&mut builders, ","),
-                DateToken::Space => append_to_all(&mut builders, " "),
-                DateToken::Hyphen => append_to_all(&mut builders, "-"),
-                DateToken::Dot => append_to_all(&mut builders, "."),
-                DateToken::Slash => append_to_all(&mut builders, "/"),
+                Token::Comma => append_to_all(&mut builders, ","),
+                Token::Space => append_to_all(&mut builders, " "),
+                Token::Hyphen => append_to_all(&mut builders, "-"),
+                Token::Dot => append_to_all(&mut builders, "."),
+                Token::Slash => append_to_all(&mut builders, "/"),
                 _ => {}
             }
             i += 1;
@@ -130,7 +130,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
         return candidates;
     }
 
-    let starts_with_4digits = matches!(tokens.first(), Some(DateToken::Digits(n)) if *n >= 4);
+    let starts_with_4digits = matches!(tokens.first(), Some(Token::Digits(n)) if *n >= 4);
     let year_fmt = if class.num_date_digits == 4 && !starts_with_4digits {
         "%y"
     } else {
@@ -148,12 +148,12 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
 
     for &token in tokens {
         match token {
-            DateToken::Hyphen => append_to_all(&mut builders, "-"),
-            DateToken::Slash => append_to_all(&mut builders, "/"),
-            DateToken::Dot => append_to_all(&mut builders, "."),
-            DateToken::Space => append_to_all(&mut builders, " "),
-            DateToken::Comma => append_to_all(&mut builders, ", "),
-            DateToken::DayShort => {
+            Token::Hyphen => append_to_all(&mut builders, "-"),
+            Token::Slash => append_to_all(&mut builders, "/"),
+            Token::Dot => append_to_all(&mut builders, "."),
+            Token::Space => append_to_all(&mut builders, " "),
+            Token::Comma => append_to_all(&mut builders, ", "),
+            Token::DayShort => {
                 let mut new_builders = Vec::with_capacity(builders.len());
                 for b in builders {
                     if !b.seen_weekday {
@@ -165,7 +165,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                 }
                 builders = new_builders;
             }
-            DateToken::DayLong => {
+            Token::DayLong => {
                 let mut new_builders = Vec::with_capacity(builders.len());
                 for b in builders {
                     if !b.seen_weekday {
@@ -177,7 +177,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                 }
                 builders = new_builders;
             }
-            DateToken::MonthShort => {
+            Token::MonthShort => {
                 let mut new_builders = Vec::with_capacity(builders.len());
                 for b in builders {
                     if !b.seen_month {
@@ -189,7 +189,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                 }
                 builders = new_builders;
             }
-            DateToken::MonthLong => {
+            Token::MonthLong => {
                 let mut new_builders = Vec::with_capacity(builders.len());
                 for b in builders {
                     if !b.seen_month {
@@ -201,7 +201,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                 }
                 builders = new_builders;
             }
-            DateToken::Digits(_) => {
+            Token::Digits(_) => {
                 let mut new_builders = Vec::with_capacity(builders.len() * 4);
                 for b in builders {
                     let all_opts: &[&'static str] = token.to_fmt_year_first();

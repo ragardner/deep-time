@@ -1,8 +1,8 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(feature = "parse")]
+#[cfg(feature = "lang")]
 mod tests {
-    use deep_time::{Dt, Mode, Order, ParseCfg, Scale};
+    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
 
     #[cfg(feature = "tz")]
     #[test]
@@ -48,9 +48,9 @@ mod tests {
     #[test]
     fn print_stuff() {
         // library zero
-        let x = Dt::from_ymdhms_on(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
-        let y = x.to(Scale::TAI, Scale::UTC);
-        eprintln!("HERE: {}, {}", x.sec, y.sec);
+        // let x = Dt::from_ymdhms_on(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
+        // let y = x.to(Scale::TAI, Scale::UTC);
+        // eprintln!("HERE: {}, {}", x.sec, y.sec);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────
@@ -121,6 +121,7 @@ mod tests {
             ("15:30:45.123", "T15:30:45.123Z"),
             ("15:30:45.123456", "T15:30:45.123456Z"),
             ("15:30:45.123456789", "T15:30:45.123456789Z"),
+            ("03:30:45 AM", "T03:30:45Z"),
             ("03:30:45 PM", "T15:30:45Z"),
             ("03:30:45.123456789 PM", "T15:30:45.123456789Z"),
         ];
@@ -129,132 +130,137 @@ mod tests {
 
         let prefixes = ["", " ", "Thu ", "Thu. ", "Thursday, ", "Thu, "];
 
-        let opts = ParseCfg {
-            order: Order::Year,
-            ..Default::default()
-        };
-
         // ================================================================
         // 2. Generate massive combinatorial coverage
         // ================================================================
+        for lang in [Lang::En, Lang::Es, Lang::De, Lang::Fr] {
+            let opts = ParseCfg {
+                order: Order::Year,
+                lang: lang,
+                ..Default::default()
+            };
+            for date in date_only_bases {
+                for prefix in prefixes {
+                    for dt_sep in dt_separators {
+                        for (time_in, time_expected) in time_variants {
+                            for tz in tz_variants {
+                                // === FIXED: Prevent invalid date-only + timezone (no time) ===
+                                if time_in.is_empty()
+                                    && !tz.is_empty()
+                                    && (dt_sep.is_empty() || dt_sep == " ")
+                                {
+                                    continue;
+                                }
 
-        for date in date_only_bases {
-            for prefix in prefixes {
-                for dt_sep in dt_separators {
-                    for (time_in, time_expected) in time_variants {
-                        for tz in tz_variants {
-                            // === FIXED: Prevent invalid date-only + timezone (no time) ===
-                            if time_in.is_empty()
-                                && !tz.is_empty()
-                                && (dt_sep.is_empty() || dt_sep == " ")
-                            {
-                                continue;
+                                // === UPDATED: Prevent malformed date-only with T or : separator ===
+                                //     (now covers both "2024-03-14T" and "2024-03-14:")
+                                if time_in.is_empty() && (dt_sep == "T" || dt_sep == ":") {
+                                    continue;
+                                }
+
+                                // === NEW: Prevent malformed 12-hour AM/PM + compact timezone suffix ===
+                                //     e.g. "03:30:45 PMZ", "PM+0000", "PM-0000", etc.
+                                //     (still allows valid spaced variants like "PM +0000")
+                                if (time_in.contains("PM") || time_in.contains("AM"))
+                                    && !tz.is_empty()
+                                    && !tz.starts_with(' ')
+                                {
+                                    continue;
+                                }
+
+                                // === Prevent compact NAMED date formats glued directly to time ===
+                                //     e.g. "14Mar2415:30", "14-Mar-2415:30", "March 14, 202415:30"
+                                //     (named = contains letters; numeric compacts like "2024031415:30" are untouched)
+                                if dt_sep.is_empty()
+                                    && !time_in.is_empty()
+                                    && date.chars().any(|c| c.is_alphabetic())
+                                {
+                                    continue;
+                                }
+
+                                // === NEW FIX: Prevent "Thu 2024 03 14:15:30" and similar bad cases ===
+                                //     Day name + purely numeric spaced date (YYYY MM DD) + time glued with ":"
+                                //     (or empty separator). These produce only "2 date digit groups" after the
+                                //     day name (2024 03) before the time starts, which violates the rule you
+                                //     described ("if there's only 2 date digit groups and a named then the
+                                //     named should be the month, not day"). We keep weekday prefixes only
+                                //     with named-month dates like "Thu Mar 14 2024".
+                                if !prefix.trim().is_empty()
+                                    && (prefix.contains("Thu") || prefix.contains("Thursday"))
+                                    && date.contains(' ')
+                                    && !date.chars().any(|c| c.is_alphabetic())
+                                    && (dt_sep == ":" || dt_sep.is_empty())
+                                    && !time_in.is_empty()
+                                {
+                                    continue;
+                                }
+
+                                // === NEW FIX: Prevent "2024 03 14:15:30" (the specific invalid format you asked for) ===
+                                //     Purely numeric spaced date (YYYY MM DD) glued directly to time with ":"
+                                //     This is the exact case you flagged. It is now completely excluded from
+                                //     the generated test cases while leaving every other valid combination intact.
+                                if date.contains(' ')
+                                    && !date.chars().any(|c| c.is_alphabetic())
+                                    && dt_sep == ":"
+                                    && !time_in.is_empty()
+                                {
+                                    continue;
+                                }
+
+                                // === NEW: Prevent julians from being produced with times that dont have a time connector ===
+                                //     e.g. "2024-07415:30" - should not be produced.
+                                //     Only blocks the empty (glued) case; T, space, and colon are still allowed.
+                                if date.len() == 8
+                                    && matches!(
+                                        date.chars().nth(4),
+                                        Some('-') | Some('/') | Some('.')
+                                    )
+                                    && date[5..].chars().all(|c| c.is_ascii_digit())
+                                    && !time_in.is_empty()
+                                    && dt_sep.is_empty()
+                                {
+                                    continue;
+                                }
+
+                                // === Prevent all pure numeric YYYYMMDDHHMM* format tests ===
+                                //     (ONLY REMOVE THE PURE NUMERIC CASES — separators, connectors, T, :, ., space, etc. are OK!)
+                                //     This blocks only fully-glued digit-only cases like "202403141530" or "240314153045".
+                                //     Cases with any separator/connector (including the . in millis) are left untouched.
+                                if dt_sep.is_empty()
+                                    && !time_in.is_empty()
+                                    && date.chars().all(|c| c.is_ascii_digit())
+                                    && time_in.chars().all(|c| c.is_ascii_digit())
+                                {
+                                    continue;
+                                }
+
+                                // === Prevent 6-digit pure numeric date (e.g. 240314) glued directly to time
+                                //     without any connector
+                                //     Bad examples that are now blocked:
+                                //       "24031415:30:00", "24031415:30:45", "24031415:30:45.123"
+                                //     Allowed (they contain a connector):
+                                //       "240314T15:30+0000", "240314 15:30", "240314:15:30:00", etc.
+                                if date.len() == 6
+                                    && date.chars().all(|c| c.is_ascii_digit())
+                                    && dt_sep.is_empty()
+                                    && !time_in.is_empty()
+                                {
+                                    continue;
+                                }
+
+                                let input =
+                                    format!("{}{}{}{}{}", prefix, date, dt_sep, time_in, tz)
+                                        .trim()
+                                        .to_string();
+
+                                let expected = if time_in.is_empty() {
+                                    "2024-03-14T00:00:00Z".to_string()
+                                } else {
+                                    format!("2024-03-14{}", time_expected)
+                                };
+
+                                cases.push((input, expected, Some(opts.clone())));
                             }
-
-                            // === UPDATED: Prevent malformed date-only with T or : separator ===
-                            //     (now covers both "2024-03-14T" and "2024-03-14:")
-                            if time_in.is_empty() && (dt_sep == "T" || dt_sep == ":") {
-                                continue;
-                            }
-
-                            // === NEW: Prevent malformed 12-hour AM/PM + compact timezone suffix ===
-                            //     e.g. "03:30:45 PMZ", "PM+0000", "PM-0000", etc.
-                            //     (still allows valid spaced variants like "PM +0000")
-                            if (time_in.contains("PM") || time_in.contains("AM"))
-                                && !tz.is_empty()
-                                && !tz.starts_with(' ')
-                            {
-                                continue;
-                            }
-
-                            // === Prevent compact NAMED date formats glued directly to time ===
-                            //     e.g. "14Mar2415:30", "14-Mar-2415:30", "March 14, 202415:30"
-                            //     (named = contains letters; numeric compacts like "2024031415:30" are untouched)
-                            if dt_sep.is_empty()
-                                && !time_in.is_empty()
-                                && date.chars().any(|c| c.is_alphabetic())
-                            {
-                                continue;
-                            }
-
-                            // === NEW FIX: Prevent "Thu 2024 03 14:15:30" and similar bad cases ===
-                            //     Day name + purely numeric spaced date (YYYY MM DD) + time glued with ":"
-                            //     (or empty separator). These produce only "2 date digit groups" after the
-                            //     day name (2024 03) before the time starts, which violates the rule you
-                            //     described ("if there's only 2 date digit groups and a named then the
-                            //     named should be the month, not day"). We keep weekday prefixes only
-                            //     with named-month dates like "Thu Mar 14 2024".
-                            if !prefix.trim().is_empty()
-                                && (prefix.contains("Thu") || prefix.contains("Thursday"))
-                                && date.contains(' ')
-                                && !date.chars().any(|c| c.is_alphabetic())
-                                && (dt_sep == ":" || dt_sep.is_empty())
-                                && !time_in.is_empty()
-                            {
-                                continue;
-                            }
-
-                            // === NEW FIX: Prevent "2024 03 14:15:30" (the specific invalid format you asked for) ===
-                            //     Purely numeric spaced date (YYYY MM DD) glued directly to time with ":"
-                            //     This is the exact case you flagged. It is now completely excluded from
-                            //     the generated test cases while leaving every other valid combination intact.
-                            if date.contains(' ')
-                                && !date.chars().any(|c| c.is_alphabetic())
-                                && dt_sep == ":"
-                                && !time_in.is_empty()
-                            {
-                                continue;
-                            }
-
-                            // === NEW: Prevent julians from being produced with times that dont have a time connector ===
-                            //     e.g. "2024-07415:30" - should not be produced.
-                            //     Only blocks the empty (glued) case; T, space, and colon are still allowed.
-                            if date.len() == 8
-                                && matches!(date.chars().nth(4), Some('-') | Some('/') | Some('.'))
-                                && date[5..].chars().all(|c| c.is_ascii_digit())
-                                && !time_in.is_empty()
-                                && dt_sep.is_empty()
-                            {
-                                continue;
-                            }
-
-                            // === Prevent all pure numeric YYYYMMDDHHMM* format tests ===
-                            //     (ONLY REMOVE THE PURE NUMERIC CASES — separators, connectors, T, :, ., space, etc. are OK!)
-                            //     This blocks only fully-glued digit-only cases like "202403141530" or "240314153045".
-                            //     Cases with any separator/connector (including the . in millis) are left untouched.
-                            if dt_sep.is_empty()
-                                && !time_in.is_empty()
-                                && date.chars().all(|c| c.is_ascii_digit())
-                                && time_in.chars().all(|c| c.is_ascii_digit())
-                            {
-                                continue;
-                            }
-
-                            // === Prevent 6-digit pure numeric date (e.g. 240314) glued directly to time
-                            //     without any connector
-                            //     Bad examples that are now blocked:
-                            //       "24031415:30:00", "24031415:30:45", "24031415:30:45.123"
-                            //     Allowed (they contain a connector):
-                            //       "240314T15:30+0000", "240314 15:30", "240314:15:30:00", etc.
-                            if date.len() == 6
-                                && date.chars().all(|c| c.is_ascii_digit())
-                                && dt_sep.is_empty()
-                                && !time_in.is_empty()
-                            {
-                                continue;
-                            }
-
-                            let input = format!("{}{}{}{}{}", prefix, date, dt_sep, time_in, tz)
-                                .trim()
-                                .to_string();
-
-                            let expected = if time_in.is_empty() {
-                                "2024-03-14T00:00:00Z".to_string()
-                            } else {
-                                format!("2024-03-14{}", time_expected)
-                            };
-
-                            cases.push((input, expected, Some(opts.clone())));
                         }
                     }
                 }
@@ -433,12 +439,6 @@ mod tests {
             ("14Mar2024", "2024-03-14T00:00:00Z", None),
             ("14-Mar-24", "2024-03-14T00:00:00Z", None),
             (" 14-Mar-24", "2024-03-14T00:00:00Z", None),
-            // REMOVED pure-numeric YYYYMMDDHHMM* cases (no separators at all) per user request:
-            //   - "2403141530"
-            //   - "202403141530"
-            //   - "20240314153045" (both occurrences)
-            //   - "240314153045"
-            // (cases with separators/T/:/space/. remain)
             ("2024-W11-4", "2024-03-14T00:00:00Z", None),
             ("2024-W11-4", "2024-03-14T00:00:00Z", None),
             ("14 Mar 2024", "2024-03-14T00:00:00Z", None),

@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 pub(crate) struct DateClassification {
     pub bytes_len: usize,
     pub date: String,
-    pub tokens: Vec<DateToken>,
+    pub tokens: Vec<Token>,
     pub is_pure_numeric: bool,
     pub is_decimal: bool,
     pub has_year: bool,
@@ -45,7 +45,7 @@ pub(crate) enum ClassifiedDate {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DateToken {
+pub(crate) enum Token {
     DayShort,
     DayLong,
     MonthShort,
@@ -87,11 +87,6 @@ pub(crate) enum DateToken {
     Gigasecond,
     Terasecond,
     Petasecond,
-    Exasecond,
-    Zettasecond,
-    Yottasecond,
-    Ronnasecond,
-    Quettasecond,
     // Sub-second SI units
     Millisecond,
     Microsecond,
@@ -118,44 +113,44 @@ pub(crate) enum DateToken {
     // Custom,
 }
 
-impl DateToken {
+impl Token {
     #[inline]
     pub(crate) fn is_relative(&self) -> bool {
         matches!(
             self,
-            DateToken::Now
-                | DateToken::Today
-                | DateToken::Tomorrow
-                | DateToken::Yesterday
-                | DateToken::Future
-                | DateToken::Past
-                | DateToken::Nanosecond
-                | DateToken::Microsecond
-                | DateToken::Millisecond
-                | DateToken::Second
-                | DateToken::Minute
-                | DateToken::Hour
-                | DateToken::Day
-                | DateToken::Week
-                | DateToken::Month
-                | DateToken::Year
+            Token::Now
+                | Token::Today
+                | Token::Tomorrow
+                | Token::Yesterday
+                | Token::Future
+                | Token::Past
+                | Token::Nanosecond
+                | Token::Microsecond
+                | Token::Millisecond
+                | Token::Second
+                | Token::Minute
+                | Token::Hour
+                | Token::Day
+                | Token::Week
+                | Token::Month
+                | Token::Year
         )
     }
 
     #[inline]
     pub(crate) fn to_fmt(&self) -> &'static [&'static str] {
         match self {
-            DateToken::DayShort => &["%a"],
-            DateToken::DayLong => &["%A"],
-            DateToken::MonthShort => &["%b"],
-            DateToken::MonthLong => &["%B"],
-            DateToken::W => &["W"],
-            DateToken::Comma => &[","],
-            DateToken::Hyphen => &["-"],
-            DateToken::Dot => &["."],
-            DateToken::Slash => &["/"],
-            DateToken::Space => &[" "],
-            DateToken::Digits(n) => match n {
+            Token::DayShort => &["%a"],
+            Token::DayLong => &["%A"],
+            Token::MonthShort => &["%b"],
+            Token::MonthLong => &["%B"],
+            Token::W => &["W"],
+            Token::Comma => &[","],
+            Token::Hyphen => &["-"],
+            Token::Dot => &["."],
+            Token::Slash => &["/"],
+            Token::Space => &[" "],
+            Token::Digits(n) => match n {
                 1 => &["%e", "%_d", "%-d", "%_m", "%-m"],
                 2 => &["%d", "%m", "%y"],
                 3 => &["%j"],
@@ -171,7 +166,7 @@ impl DateToken {
     #[inline]
     pub(crate) fn to_fmt_year_first(&self) -> &'static [&'static str] {
         match self {
-            DateToken::Digits(n) => match n {
+            Token::Digits(n) => match n {
                 6 => &["%y%m%d"],
                 8 => &["%Y%m%d"],
                 _ => self.to_fmt(),
@@ -183,7 +178,7 @@ impl DateToken {
     #[inline]
     pub(crate) fn to_fmt_month_first(&self) -> &'static [&'static str] {
         match self {
-            DateToken::Digits(n) => match n {
+            Token::Digits(n) => match n {
                 6 => &["%m%d%y"],
                 8 => &["%m%d%Y"],
                 _ => self.to_fmt(),
@@ -195,7 +190,7 @@ impl DateToken {
     #[inline]
     pub(crate) fn to_fmt_day_first(&self) -> &'static [&'static str] {
         match self {
-            DateToken::Digits(n) => match n {
+            Token::Digits(n) => match n {
                 6 => &["%d%m%y"],
                 8 => &["%d%m%Y"],
                 _ => self.to_fmt(),
@@ -310,6 +305,35 @@ pub(crate) enum IndexIn {
 impl IndexIn {
     #[inline]
     pub(crate) fn after_date(&self) -> bool {
-        !matches!(self, IndexIn::Date)
+        !matches!(self, IndexIn::PreDate | IndexIn::Date)
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Cat {
+    /// Ambiguous relative
+    AmRel,
+    /// Unambiguous relative
+    UnamRel,
+    /// Ambiguous duration
+    AmDur,
+    UnamDur,
+    Month,
+    Day,
+    AmPm,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Word {
+    pub low: &'static str,
+    pub norm: &'static str,
+    pub t: Token,
+    pub c: Cat,
+}
+
+impl Word {
+    #[inline]
+    pub const fn new(low: &'static str, norm: &'static str, t: Token, c: Cat) -> Word {
+        Word { low, norm, t, c }
     }
 }

@@ -191,6 +191,7 @@ pub use math::{
     sqrt::{hypot, sqrt},
     tan::tan,
 };
+pub use parser::StrPTimeFmt;
 pub use position::{Position, Velocity};
 pub use scale::Scale;
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
