@@ -1,8 +1,10 @@
-#[cfg(feature = "alloc")]
 use crate::error::{DtErr, DtErrKind};
-use crate::{Dt, Meridiem, Offset, Scale, TimeParts, Weekday, an_err};
+use crate::{Dt, Meridiem, Offset, TimeParts, Weekday, an_err};
 use core::result::Result;
 use core::str;
+
+#[cfg(feature = "alloc")]
+use crate::Scale;
 
 const MAX_FORMAT_LEN: usize = 256;
 

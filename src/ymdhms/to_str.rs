@@ -30,6 +30,9 @@ pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
 ];
 
 impl YmdHmsRich {
+    /// Equivalent of strftime.
+    ///
+    /// Requires `"alloc"` feature.
     #[cfg(feature = "alloc")]
     pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
