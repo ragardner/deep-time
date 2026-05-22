@@ -68,9 +68,9 @@ impl Dt {
             (opts.mode, opts.order)
         };
 
-        if s == "15. Januar 2024 um 14:30 Uhr" {
-            std::eprintln!("{:?}", classification);
-        }
+        // if s == "15. Januar 2024 um 14:30 Uhr" {
+        //     std::eprintln!("{:?}", classification);
+        // }
 
         if classification.is_pure_numeric {
             match mode {
