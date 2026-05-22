@@ -125,8 +125,47 @@ where
 /// - `len` is always in `1..=DEPTH`.
 /// - For every `i` in `0..len`, `kinds[i]` and `locations[i]` are `Some`.
 /// - `reasons[i]` is `Some` only if a non-empty reason was supplied for that level.
+///
+/// # Accessing the stack
+///
+/// In addition to the top-level convenience methods (`kind()`, `location()`, `reason()`),
+/// you can access any level directly or iterate the entire trace.
+///
+/// ### Direct access
+///
+/// ```rust,ignore
+/// let top_kind     = err.kind();           // most recent
+/// let top_loc      = err.location();
+/// let top_reason   = err.reason();
+///
+/// let root_kind    = err.root_kind();      // original error
+/// let root_loc     = err.root_location();
+/// let root_reason  = err.root_reason();
+///
+/// if let Some((kind, loc, reason)) = err.get(1) {
+///     // second level (index 0 = top, index 1 = next, ...)
+/// }
+/// ```
+///
+/// ### Iterating with `trace()`
+///
+/// The most common way to walk the full stack is with [`trace`](Self::trace):
+///
+/// ```rust,ignore
+/// for (kind, location, reason) in err.trace() {
+///     println!("{:?} @ {}:{}", kind, location.file(), location.line());
+///
+///     if let Some(r) = reason {
+///         println!("    reason: {}", r);
+///     }
+/// }
+/// ```
+///
+/// - Iteration order is **most recent → oldest** (same order as `Display`).
+/// - The iterator implements `ExactSizeIterator`, so you can call `.len()`, use it in `for` loops, etc.
+/// - No allocation — it just borrows the `AnErr`.
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[must_use = "this error should be handled or converted to a different type"]
+#[must_use = "this error should be handled or converted to a different type e.g `pub type DtErr = AnErr<MyError, 2, 49>;`"]
 pub struct AnErr<K, const DEPTH: usize = 3, const REASON_LEN: usize = 29>
 where
     K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
@@ -299,78 +338,57 @@ where
         }
     }
 
-    /// Serialize this error into a fixed-size byte buffer for transmission.
+    /// Returns the data for a specific level in the error trace.
     ///
-    /// The caller must provide a buffer that is at least `Self::WIRE_SIZE::<PATH_LEN>()` bytes long.
-    /// Returns the number of bytes actually written (always the same for a given `PATH_LEN`).
+    /// `index == 0` is the **most recent** context (top of the stack / newest `context!`).
+    /// `index == self.depth() - 1` is the **root** (original) error.
     ///
-    /// Recommended usage:
-    /// ```rust,ignore
-    /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    /// #[repr(u8)]   // or #[repr(u16)] for >256 variants
-    /// pub enum MyKind { ... }
-    ///
-    /// let mut buf = [0u8; AnErr::<MyKind, 3, 29>::wire_size::<80>()];
-    /// let written = my_error.to_wire_bytes::<80>(|k| k as u16, &mut buf);
-    /// let packet = &buf[..written];
-    /// ```
-    #[cfg(feature = "wire")]
-    pub fn to_wire_bytes<const PATH_LEN: usize>(
+    /// Returns `None` if `index >= self.depth()`.
+    #[inline]
+    pub fn get(
         &self,
-        kind_to_u16: impl Fn(K) -> u16,
-        buf: &mut [u8],
-    ) -> Result<usize, ()> {
-        let needed = Self::wire_size::<PATH_LEN>();
-        if buf.len() < needed {
-            return Err(());
+        index: usize,
+    ) -> Option<(K, &'static Location<'static>, Option<&AsciiStr<REASON_LEN>>)> {
+        let depth = self.len as usize;
+        if index >= depth {
+            return None;
         }
-
-        let mut offset = 0;
-
-        // Header
-        buf[offset] = 1; // wire format version
-        offset += 1;
-        buf[offset] = self.len;
-        offset += 1;
-
-        for i in 0..DEPTH {
-            if i < self.len as usize {
-                // 1. Kind as u16
-                let kind_val = self.kinds[i].map_or(0, &kind_to_u16);
-                buf[offset..offset + 2].copy_from_slice(&kind_val.to_le_bytes());
-                offset += 2;
-
-                // 2. Reason
-                let reason = self.reasons[i].as_ref().unwrap_or(&AsciiStr::DEFAULT);
-                buf[offset..offset + REASON_LEN].copy_from_slice(&reason.to_wire_bytes());
-                offset += REASON_LEN;
-
-                // 3. Location
-                if let Some(loc) = self.locations[i] {
-                    let file = AsciiStr::<PATH_LEN>::from_str_truncate(loc.file());
-                    buf[offset..offset + PATH_LEN].copy_from_slice(&file.to_wire_bytes());
-                    offset += PATH_LEN;
-
-                    buf[offset..offset + 4].copy_from_slice(&loc.line().to_le_bytes());
-                    offset += 4;
-                    buf[offset..offset + 4].copy_from_slice(&loc.column().to_le_bytes());
-                    offset += 4;
-                } else {
-                    offset += PATH_LEN + 8; // pad
-                }
-            } else {
-                // pad remaining levels
-                offset += 2 + REASON_LEN + PATH_LEN + 8;
-            }
-        }
-
-        Ok(needed)
+        let arr_idx = depth - 1 - index; // 0 in array = root, so we reverse
+        Some((
+            self.kinds[arr_idx]?,
+            self.locations[arr_idx]?,
+            self.reasons[arr_idx].as_ref(),
+        ))
     }
 
-    /// Compile-time size of the wire representation for a given `PATH_LEN`.
-    #[cfg(feature = "wire")]
-    pub const fn wire_size<const PATH_LEN: usize>() -> usize {
-        2 + DEPTH * (2 + REASON_LEN + PATH_LEN + 8)
+    /// Returns the source location where the most recent error/context was created.
+    #[inline]
+    pub fn location(&self) -> Option<&'static Location<'static>> {
+        self.get(0).map(|(_, loc, _)| loc)
+    }
+
+    /// Returns the reason (if any) attached to the most recent error/context.
+    #[inline]
+    pub fn reason(&self) -> Option<&AsciiStr<REASON_LEN>> {
+        self.get(0).and_then(|(_, _, r)| r)
+    }
+
+    /// Returns the original (root) error kind.
+    #[inline]
+    pub fn root_kind(&self) -> Option<K> {
+        (self.len > 0).then(|| self.kinds[0]).flatten()
+    }
+
+    /// Returns the source location of the original (root) error.
+    #[inline]
+    pub fn root_location(&self) -> Option<&'static Location<'static>> {
+        (self.len > 0).then(|| self.locations[0]).flatten()
+    }
+
+    /// Returns the reason (if any) attached to the root error.
+    #[inline]
+    pub fn root_reason(&self) -> Option<&AsciiStr<REASON_LEN>> {
+        (self.len > 0).then(|| self.reasons[0].as_ref()).flatten()
     }
 }
 
@@ -469,6 +487,85 @@ macro_rules! an_err {
     ($kind:expr, $fmt:literal $(, $arg:expr)* $(,)?) => {
         $crate::AnErr::with_fmt($kind, format_args!($fmt $(, $arg)*))
     };
+}
+
+#[cfg(feature = "wire")]
+impl<K, const DEPTH: usize, const REASON_LEN: usize> AnErr<K, DEPTH, REASON_LEN>
+where
+    K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
+{
+    /// Serialize this error into a fixed-size byte buffer for transmission.
+    ///
+    /// The caller must provide a buffer that is at least `Self::WIRE_SIZE::<PATH_LEN>()` bytes long.
+    /// Returns the number of bytes actually written (always the same for a given `PATH_LEN`).
+    ///
+    /// Recommended usage:
+    /// ```rust,ignore
+    /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    /// #[repr(u8)]   // or #[repr(u16)] for >256 variants
+    /// pub enum MyKind { ... }
+    ///
+    /// let mut buf = [0u8; AnErr::<MyKind, 3, 29>::wire_size::<80>()];
+    /// let written = my_error.to_wire_bytes::<80>(|k| k as u16, &mut buf);
+    /// let packet = &buf[..written];
+    /// ```
+    pub fn to_wire_bytes<const PATH_LEN: usize>(
+        &self,
+        kind_to_u16: impl Fn(K) -> u16,
+        buf: &mut [u8],
+    ) -> Result<usize, ()> {
+        let needed = Self::wire_size::<PATH_LEN>();
+        if buf.len() < needed {
+            return Err(());
+        }
+
+        let mut offset = 0;
+
+        // Header
+        buf[offset] = 1; // wire format version
+        offset += 1;
+        buf[offset] = self.len;
+        offset += 1;
+
+        for i in 0..DEPTH {
+            if i < self.len as usize {
+                // 1. Kind as u16
+                let kind_val = self.kinds[i].map_or(0, &kind_to_u16);
+                buf[offset..offset + 2].copy_from_slice(&kind_val.to_le_bytes());
+                offset += 2;
+
+                // 2. Reason
+                let reason = self.reasons[i].as_ref().unwrap_or(&AsciiStr::DEFAULT);
+                buf[offset..offset + REASON_LEN].copy_from_slice(&reason.to_wire_bytes());
+                offset += REASON_LEN;
+
+                // 3. Location
+                if let Some(loc) = self.locations[i] {
+                    let file = AsciiStr::<PATH_LEN>::from_str_truncate(loc.file());
+                    buf[offset..offset + PATH_LEN].copy_from_slice(&file.to_wire_bytes());
+                    offset += PATH_LEN;
+
+                    buf[offset..offset + 4].copy_from_slice(&loc.line().to_le_bytes());
+                    offset += 4;
+                    buf[offset..offset + 4].copy_from_slice(&loc.column().to_le_bytes());
+                    offset += 4;
+                } else {
+                    offset += PATH_LEN + 8; // pad
+                }
+            } else {
+                // pad remaining levels
+                offset += 2 + REASON_LEN + PATH_LEN + 8;
+            }
+        }
+
+        Ok(needed)
+    }
+
+    /// Compile-time size of the wire representation for a given `PATH_LEN`.
+
+    pub const fn wire_size<const PATH_LEN: usize>() -> usize {
+        2 + DEPTH * (2 + REASON_LEN + PATH_LEN + 8)
+    }
 }
 
 /// Portable location for wire transmission.
