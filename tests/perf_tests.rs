@@ -187,6 +187,33 @@ mod perf_tests {
     }
 
     #[test]
+    fn to_str_perf() {
+        const ITERATIONS: usize = 7_000_000;
+
+        let x = Dt::from_str(
+            "2024-03-14T00:00:00",
+            "%Y-%m-%dT%H:%M:%S",
+            true,
+            true,
+            false,
+        )
+        .unwrap();
+
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            let _ = x.to_str(Scale::TAI, "%Y-%m-%dT%H:%M:%S");
+        }
+        let elapsed = start.elapsed();
+
+        let total_fmts = ITERATIONS;
+        let ns_per_fmt = elapsed.as_nanos() as f64 / total_fmts as f64;
+
+        println!("\n=== DATE FMT PERF ===");
+        println!("Avg time     : {:.2} ns/fmt", ns_per_fmt);
+        println!("Throughput   : {:.0} k fmts/sec", 1_000_000.0 / ns_per_fmt);
+    }
+
+    #[test]
     fn tai_tdb_perf() {
         const ITERATIONS: usize = 1_000_000;
 

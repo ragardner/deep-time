@@ -13,6 +13,8 @@ impl Dt {
     /// Automatically parses datetime [`str`] into a [`Dt`] by guessing and generating the format. Supports the vast
     /// majority of date formats.
     ///
+    /// Requires the `"alloc"` feature.
+    ///
     /// ## Parameters
     ///
     /// - `s`: The string to parse. Must be non-empty and no longer than 255 bytes. Empty strings or overly
