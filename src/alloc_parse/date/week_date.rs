@@ -9,28 +9,45 @@ use alloc::string::ToString;
 #[inline]
 pub(crate) fn is_week_date_missing_weekday(cls: &DateClassification) -> bool {
     cls.has_w                                   // has the literal "W"
-        && cls.num_hyphen == 1                  // exactly one hyphen in the date part
         && matches!(cls.tokens.first(), Some(Token::Digits(n)) if *n >= 4)
 }
 
-/// Expects a pre-classified (normalized to English) date string.
+/// For ISO week dates missing the weekday (e.g. "2024W11", "2024-W11"),
+/// defaults the weekday to Monday (`-1`).
 pub(crate) fn parse_week_date_no_weekday(
-    normalized: &str,
+    orig_class: &DateClassification,
     lang: Lang,
     ref_time: &Option<Dt>,
 ) -> Option<Dt> {
-    // Insert "-1" (Monday) right after the week number.
-    // This works whether the string is pure date or date+time.
-    let w_pos = normalized.find("-W")?;
-    let mut normalized = normalized.to_string();
-    let week_end = w_pos + 4; // after "-W" + 2 week digits
-    if week_end <= normalized.len() {
-        let after = &normalized[week_end..];
-        if after.is_empty() || after.starts_with(' ') || after.starts_with('T') {
-            normalized.insert_str(week_end, "-1");
-        }
+    let date = &orig_class.date;
+
+    // Find the start of the week part ("W" or "-W")
+    let w_pos = match date.find("-W") {
+        Some(pos) => pos + 1, // point to the actual 'W'
+        None => date.find('W')?,
+    };
+
+    // Find the end of the week number (dynamically, in case someone writes W5 instead of W05)
+    let mut week_end = w_pos + 1;
+    while week_end < date.len() && date.as_bytes()[week_end].is_ascii_digit() {
+        week_end += 1;
     }
-    let classification = classify_date(&normalized.to_ascii_lowercase(), lang, ref_time).ok()?;
+
+    let mut new_date = date.to_string();
+
+    // Only insert "-1" if there's nothing (or only a separator/time marker) after the week number
+    let after = &new_date[week_end..];
+    if after.is_empty()
+        || after.starts_with(|c: char| matches!(c, ' ' | 'T' | '-' | '.' | '/' | ','))
+    {
+        new_date.insert_str(week_end, "-1");
+    } else {
+        // Already has a weekday or something unexpected — don't touch it
+        return None;
+    }
+
+    let classification = classify_date(&new_date.to_ascii_lowercase(), lang, ref_time).ok()?;
+
     match classification {
         ClassifiedDate::Cls(cls) => {
             try_compatible_formats(&cls.date, generate_unambiguous_candidates(&cls))

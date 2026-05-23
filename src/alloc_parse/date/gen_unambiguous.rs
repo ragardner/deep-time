@@ -40,13 +40,16 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
 
         // Walk only the prefix tokens that come before the week-date core
         while i < tokens.len() {
-            // Detect the start of the ISO week part and stop prefix processing
-            if matches!(tokens[i], Token::Digits(4))
-                && i + 2 < tokens.len()
-                && matches!(tokens[i + 1], Token::Hyphen)
-                && matches!(tokens[i + 2], Token::W)
-            {
-                break;
+            // Detect the start of the ISO week part (handles both YYYYW... and YYYY-W...)
+            if matches!(tokens[i], Token::Digits(4)) && i + 1 < tokens.len() {
+                let next = &tokens[i + 1];
+                if matches!(next, Token::W)
+                    || (matches!(next, Token::Hyphen)
+                        && i + 2 < tokens.len()
+                        && matches!(tokens[i + 2], Token::W))
+                {
+                    break;
+                }
             }
             match tokens[i] {
                 Token::DayShort => {
@@ -112,7 +115,21 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
             for year_fmt in ["%Y", "%G"] {
                 let mut new_b = b.clone();
                 new_b.pieces.push(year_fmt);
-                new_b.pieces.push("-W%V-%u");
+
+                // Walk only the tokens that come after the year we stopped at.
+                // This automatically respects whatever separators the user actually typed.
+                for token in &tokens[i + 1..] {
+                    match token {
+                        Token::W => new_b.pieces.push("W"),
+                        Token::Digits(2) => new_b.pieces.push("%V"), // week of year
+                        Token::Digits(1) => new_b.pieces.push("%u"), // weekday (1-7)
+                        Token::Hyphen => new_b.pieces.push("-"),
+                        Token::Space => new_b.pieces.push(" "),
+                        Token::Dot => new_b.pieces.push("."),
+                        Token::Slash => new_b.pieces.push("/"),
+                        _ => {} // ignore anything unexpected (should never happen for week dates)
+                    }
+                }
 
                 let date_part: String = new_b.pieces.concat();
 
@@ -126,7 +143,6 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                 }
             }
         }
-
         return candidates;
     }
 

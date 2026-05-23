@@ -229,7 +229,7 @@ impl Dt {
 
         if is_week_date_missing_weekday(&classification) {
             // std::eprintln!("IS WEEK DATE MISSING WEEKDAY: {:?}", s);
-            if let Some(dt) = parse_week_date_no_weekday(&classification.date, lang, ref_time) {
+            if let Some(dt) = parse_week_date_no_weekday(&classification, lang, ref_time) {
                 return Ok(dt);
             }
         }
