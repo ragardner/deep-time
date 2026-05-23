@@ -10,7 +10,7 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 
 impl Dt {
-    /// Automatically parses date/time [`str`] into a [`Dt`] by guessing and generating the format. Supports the vast
+    /// Automatically parses datetime [`str`] into a [`Dt`] by guessing and generating the format. Supports the vast
     /// majority of date formats.
     ///
     /// ## Parameters
@@ -342,8 +342,9 @@ impl Dt {
         Err(an_err!(DtErrKind::InvalidInput, "{}", s))
     }
 
-    /// Same parsing logic as `Dt::from_str`, but returns attoseconds since
-    /// the library epoch: 2000-01-01 12:00:00 UTC (on the UTC scale).
+    /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
+    /// but returns attoseconds since the library epoch: 2000-01-01 12:00:00 UTC
+    /// (on the UTC scale).
     ///
     /// Returns `Some(attos)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
@@ -352,8 +353,9 @@ impl Dt {
         Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_attos())
     }
 
-    /// Same parsing logic as `Dt::from_str`, but returns milliseconds since
-    /// the library epoch: 2000-01-01 12:00:00 UTC (on the UTC scale).
+    /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
+    /// but returns milliseconds since the library epoch: 2000-01-01 12:00:00 UTC
+    /// (on the UTC scale).
     ///
     /// Returns `Some(millis)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
@@ -362,8 +364,19 @@ impl Dt {
         Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_ms())
     }
 
-    /// Same parsing logic as `Dt::from_str`, but returns milliseconds since
-    /// the UNIX epoch: (1970-01-01 00:00:00 UTC).
+    /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
+    /// but returns nanoseconds since the library epoch: 2000-01-01 12:00:00 UTC
+    /// (on the UTC scale).
+    ///
+    /// Returns `Some(nanos)` on success (negative for pre-2000 dates) or `None`
+    /// on any parse error.
+    #[inline]
+    pub fn str_to_ns(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+        Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_ns())
+    }
+
+    /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
+    /// but returns milliseconds since the UNIX epoch: (1970-01-01 00:00:00 UTC).
     ///
     /// Returns `Some(millis)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
@@ -372,6 +385,19 @@ impl Dt {
         Dt::from_str_parse(s, opts).ok().map(|tp| {
             tp.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
                 .to_ms()
+        })
+    }
+
+    /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
+    /// but returns nanoseconds since the UNIX epoch: (1970-01-01 00:00:00 UTC).
+    ///
+    /// Returns `Some(nanos)` on success (negative for pre-2000 dates) or `None`
+    /// on any parse error.
+    #[inline]
+    pub fn str_to_unix_ns(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+        Dt::from_str_parse(s, opts).ok().map(|tp| {
+            tp.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+                .to_ns()
         })
     }
 }
