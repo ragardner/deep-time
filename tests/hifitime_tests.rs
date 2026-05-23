@@ -53,7 +53,6 @@ mod tests {
     fn tt_matches_hifitime_latest() {
         use hifitime::{Epoch, TimeScale};
 
-        // Same test instant as your TCL test (2038-01-01 00:00 TAI)
         let tai_sec: f64 = 4_354_905_600.0;
 
         let epoch_tai = Epoch::from_tai_seconds(tai_sec);
@@ -83,7 +82,6 @@ mod tests {
     fn tdb_matches_hifitime_latest() {
         use hifitime::{Epoch, TimeScale};
 
-        // Same test instant as your TCL and TT tests (2038-01-01 00:00 TAI)
         let tai_sec: f64 = 4_354_905_600.0;
 
         let epoch_tai = Epoch::from_tai_seconds(tai_sec);
@@ -110,7 +108,6 @@ mod tests {
     fn utc_matches_hifitime_latest() {
         use hifitime::{Epoch, TimeScale};
 
-        // Same test instant as your TCL / TT / TDB tests (2038-01-01 00:00 TAI)
         let tai_sec: f64 = 4_354_905_600.0;
 
         let epoch_tai = Epoch::from_tai_seconds(tai_sec);
@@ -140,7 +137,6 @@ mod tests {
     fn gps_matches_hifitime_latest() {
         use hifitime::{Epoch, TimeScale};
 
-        // Same test instant as your TCL / TT / TDB / UTC tests (2038-01-01 00:00 TAI)
         let tai_sec: f64 = 4_354_905_600.0;
 
         let epoch_tai = Epoch::from_tai_seconds(tai_sec);
@@ -169,7 +165,6 @@ mod tests {
     fn bdt_matches_hifitime_latest() {
         use hifitime::{Epoch, TimeScale};
 
-        // Same test instant as all your other cross-validation tests (2038-01-01 00:00 TAI)
         let tai_sec: f64 = 4_354_905_600.0;
 
         let epoch_tai = Epoch::from_tai_seconds(tai_sec);

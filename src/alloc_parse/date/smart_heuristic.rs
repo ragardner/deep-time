@@ -1,6 +1,6 @@
 #[cfg(feature = "locale")]
 use crate::locale_prefers_day_first;
-use crate::{ConnectorType, DateClassification, Token, OrderFirst};
+use crate::{ConnectorType, DateClassification, OrderFirst, Token};
 
 /// Returns the most likely **date component ordering** for the input string.
 ///
@@ -17,7 +17,7 @@ use crate::{ConnectorType, DateClassification, Token, OrderFirst};
 #[inline]
 pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> OrderFirst {
     // ------------------------------------------------------------------
-    // 1. Pure-numeric compact formats (the exact case you reported)
+    // 1. Pure-numeric compact formats
     //    `240314153045` = classic YYMMDDHHMMSS → Year.
     //    Research confirms: these are almost always Year (sortable,
     //    ISO-derived, dominant in logs/filenames/DBs). We special-case

@@ -14,7 +14,7 @@ mod tests {
         let provider = EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load real EOP file");
 
-        // The exact row you gave us: MJD 56879.00 → DUT1 = -0.3170554
+        // The exact row: MJD 56879.00 → DUT1 = -0.3170554
         let mjd = 56879.0;
         let dut1_expected = -0.3170554;
 
@@ -65,7 +65,6 @@ mod tests {
         let provider = EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load real EOP file for MJD 60961.00 test");
 
-        // The exact row you provided:
         // 251013 60961.00 I 0.208777 ... I 0.0933562 ...
         // Our Finals2000A parser correctly extracts DUT1 = 0.0933562
         let mjd = 60961.0;
@@ -149,7 +148,7 @@ mod tests {
     }
 
     // ============================================================
-    // Helper to load a provider (reuses your existing test data)
+    // Helper to load a provider
     // ============================================================
     fn load_finals2000a() -> EopData {
         let path = "finals.all.iau2000.txt";

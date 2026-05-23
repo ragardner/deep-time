@@ -153,7 +153,7 @@ mod mars_tests {
         let ltst = date.to_mars_ltst(Scale::TAI, east_lon_deg);
 
         // Convert the returned Dt (seconds into the current sol) to a float for comparison
-        let lmst_sec = lmst.to_sec_f(); // or however your library extracts seconds from the Dt
+        let lmst_sec = lmst.to_sec_f();
         let ltst_sec = ltst.to_sec_f();
 
         assert!(

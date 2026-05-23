@@ -37,7 +37,7 @@ const PIO4: Real = Real::from_bits(0x3fe921fb54442d18);
 const PIO4_LO: Real = Real::from_bits(0x3c81a62633145c07);
 
 /// Exact port of FreeBSD msun `k_tan` using the **original 0/1 calling convention**
-/// that your `s_tan.c` (and the top-level `tan`) expects.
+/// that `s_tan.c` (and the top-level `tan`) expects.
 ///
 /// `odd == 0` → return tan(x+y)
 /// `odd == 1` → return -1/tan(x+y)

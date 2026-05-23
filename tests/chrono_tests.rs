@@ -272,7 +272,6 @@ mod tests {
     // #[cfg(not(feature = "chrono-tz"))]
     #[test]
     fn test_to_chrono_datetime_civil_with_iana_fallback_offset_at() {
-        // Same as above, but using your tzdb::offset_at fallback
         let parsed = TimeParts::from_str(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",

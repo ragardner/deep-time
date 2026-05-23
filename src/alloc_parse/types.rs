@@ -6,12 +6,40 @@ use alloc::vec::Vec;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub enum Order {
-    /// **Default & recommended** — Smart modern heuristic (best of all worlds):
-    /// - Tries **Year-first** formats first (modern/tech bias: JSON, logs, APIs, databases)
-    /// - Then Day-first (international/European)
-    /// - Then Month-first (US fallback)
+    /// **Default & recommended** — Research-backed modern heuristic that
+    /// delivers the highest real-world success rate while remaining predictable.
     ///
-    /// This gives the best real-world success rate while remaining predictable.
+    /// It uses the following prioritized rules (applied in this exact order):
+    ///
+    /// 1. **Pure-numeric compact formats** (≥ 6 digits with no separators,
+    ///    e.g. `240314153045`, `20240315`, `YYMMDDHHMMSS`):
+    ///    treated as **Year-first** (`%Y%m%d` / `%y%m%d`).
+    ///    These are overwhelmingly used in logs, filenames, databases, APIs,
+    ///    configs, and JSON for sortability.
+    ///
+    /// 2. **Delimited formats that start with a plausible 4-digit year**
+    ///    (1900–2100): treated as **Year-first**.
+    ///
+    /// 3. **Numeric plausibility check** (strongest universal signal):
+    ///    - First number is 13–31 → **Day-first** (international/European style).
+    ///    - First number is 1–12 **and** second number is 13–31 → **Month-first**
+    ///      (US style).
+    ///
+    /// 4. **Strong ISO 8601 / timestamp markers** (`T` connector, `Z`, numeric
+    ///    offsets, or IANA timezone names) → **Year-first**.
+    ///
+    /// 5. **Fallback**:
+    ///    - With the `locale` feature enabled: respects the system locale
+    ///      preference (Day-first in most of the world).
+    ///    - Without the `locale` feature: **Day-first** (global majority).
+    ///
+    /// The `/` separator is deliberately ignored in the plausibility step
+    /// because it is culturally ambiguous.
+    ///
+    /// Once the preferred ordering is determined, the parser tries the
+    /// corresponding ambiguous candidate formats (Year-first → Day-first →
+    /// Month-first, or the reverse, depending on the detected order) and falls
+    /// back gracefully.
     #[default]
     Smart,
     /// Force **Year-first** only (YYYY/MM/DD or YY/MM/DD)
