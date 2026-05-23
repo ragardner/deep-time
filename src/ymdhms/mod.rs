@@ -1,4 +1,4 @@
-use crate::{AsciiStr, Dt, Scale, Weekday};
+use crate::{Dt, LiteStr, Scale, Weekday};
 
 mod to_str;
 
@@ -131,9 +131,9 @@ pub struct YmdHmsRich {
     /// A stored offset in seconds, used within the crate.
     pub(crate) offset_sec: Option<i32>,
     /// A stored IANA name, used within the crate, %Q.
-    pub(crate) tz: Option<AsciiStr<49>>,
+    pub(crate) tz: Option<LiteStr<49>>,
     /// UTC, EST, %Z
-    pub(crate) tz_abbrev: Option<AsciiStr<49>>,
+    pub(crate) tz_abbrev: Option<LiteStr<49>>,
     /// Scale the instance was created on
     pub(crate) scale: Scale,
 }
@@ -308,12 +308,12 @@ impl YmdHmsRich {
     }
 
     #[inline]
-    pub(crate) const fn tz(&self) -> Option<&AsciiStr<49>> {
+    pub(crate) const fn tz(&self) -> Option<&LiteStr<49>> {
         self.tz.as_ref()
     }
 
     #[inline]
-    pub(crate) const fn tz_abbrev(&self) -> Option<&AsciiStr<49>> {
+    pub(crate) const fn tz_abbrev(&self) -> Option<&LiteStr<49>> {
         self.tz_abbrev.as_ref()
     }
 
@@ -325,13 +325,13 @@ impl YmdHmsRich {
 
     #[inline]
     pub(crate) fn set_tz(&mut self, tz: Option<&str>) -> &mut Self {
-        self.tz = tz.and_then(|s| AsciiStr::try_from_str(s).ok());
+        self.tz = tz.and_then(|s| Some(LiteStr::from_str(s)));
         self
     }
 
     #[inline]
     pub(crate) fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) -> &mut Self {
-        self.tz_abbrev = tz_abbrev.and_then(|s| AsciiStr::try_from_str(s).ok());
+        self.tz_abbrev = tz_abbrev.and_then(|s| Some(LiteStr::from_str(s)));
         self
     }
 }

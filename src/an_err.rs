@@ -1,5 +1,6 @@
-use crate::AsciiStr;
+use crate::LiteStr;
 use core::fmt;
+use core::fmt::Write;
 use core::panic::Location;
 
 /// Iterator over the error trace levels of an [`AnErr`].
@@ -26,7 +27,7 @@ where
     type Item = (
         K,
         &'static Location<'static>,
-        Option<&'a AsciiStr<REASON_LEN>>,
+        Option<&'a LiteStr<REASON_LEN>>,
     );
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -62,7 +63,7 @@ where
 /// `AnErr` stores up to `DEPTH` levels of error context. Each level contains:
 /// - an error kind of type `K`,
 /// - the source location where the level was created,
-/// - an optional reason specific to that level (`AsciiStr<REASON_LEN>`).
+/// - an optional reason specific to that level (`LiteStr<REASON_LEN>`).
 ///
 /// The kind enum provides the general error category while the per-level reason
 /// carries concrete details (e.g. a bad value, file path, token, etc.).
@@ -172,7 +173,7 @@ where
 {
     /// Per-level reasons. Only the first `len` entries are valid.
     /// `None` means no reason (or an empty reason) was provided for that level.
-    pub reasons: [Option<AsciiStr<REASON_LEN>>; DEPTH],
+    pub reasons: [Option<LiteStr<REASON_LEN>>; DEPTH],
 
     /// Parallel stack of source locations.
     /// Only the first `len` entries are valid.
@@ -214,14 +215,14 @@ where
     /// If the reason is empty, it is stored as `None`.
     #[inline]
     #[track_caller]
-    pub fn with_reason(kind: K, reason: AsciiStr<REASON_LEN>) -> Self {
+    pub fn with_reason(kind: K, reason: LiteStr<REASON_LEN>) -> Self {
         let mut kinds = [None; DEPTH];
         let mut locs = [None; DEPTH];
         let mut reasons = [None; DEPTH];
 
         kinds[0] = Some(kind);
         locs[0] = Some(Location::caller());
-        reasons[0] = if reason.is_empty() {
+        reasons[0] = if reason.len() == 0 {
             None
         } else {
             Some(reason)
@@ -247,8 +248,9 @@ where
 
         kinds[0] = Some(kind);
         locs[0] = Some(Location::caller());
-        let reason = AsciiStr::from_fmt(args);
-        reasons[0] = if reason.is_empty() {
+        let mut reason = LiteStr::<REASON_LEN>::default();
+        let _ = write!(&mut reason, "{}", args);
+        reasons[0] = if reason.len() == 0 {
             None
         } else {
             Some(reason)
@@ -285,10 +287,10 @@ where
     /// If the maximum depth is already reached, the call is a no-op.
     #[inline]
     #[track_caller]
-    pub fn context(&mut self, kind: K, new_reason: AsciiStr<REASON_LEN>) {
+    pub fn context(&mut self, kind: K, new_reason: LiteStr<REASON_LEN>) {
         let idx = self.len as usize;
         if idx < DEPTH {
-            self.reasons[idx] = if new_reason.is_empty() {
+            self.reasons[idx] = if new_reason.len() == 0 {
                 None
             } else {
                 Some(new_reason)
@@ -306,8 +308,10 @@ where
     pub fn context_fmt(&mut self, kind: K, args: core::fmt::Arguments<'_>) {
         let idx = self.len as usize;
         if idx < DEPTH {
-            let reason = AsciiStr::from_fmt(args);
-            self.reasons[idx] = if reason.is_empty() {
+            let mut reason = LiteStr::<REASON_LEN>::default();
+            let _ = write!(&mut reason, "{}", args);
+
+            self.reasons[idx] = if reason.len() == 0 {
                 None
             } else {
                 Some(reason)
@@ -348,7 +352,7 @@ where
     pub fn get(
         &self,
         index: usize,
-    ) -> Option<(K, &'static Location<'static>, Option<&AsciiStr<REASON_LEN>>)> {
+    ) -> Option<(K, &'static Location<'static>, Option<&LiteStr<REASON_LEN>>)> {
         let depth = self.len as usize;
         if index >= depth {
             return None;
@@ -369,7 +373,7 @@ where
 
     /// Returns the reason (if any) attached to the most recent error/context.
     #[inline]
-    pub fn reason(&self) -> Option<&AsciiStr<REASON_LEN>> {
+    pub fn reason(&self) -> Option<&LiteStr<REASON_LEN>> {
         self.get(0).and_then(|(_, _, r)| r)
     }
 
@@ -387,7 +391,7 @@ where
 
     /// Returns the reason (if any) attached to the root error.
     #[inline]
-    pub fn root_reason(&self) -> Option<&AsciiStr<REASON_LEN>> {
+    pub fn root_reason(&self) -> Option<&LiteStr<REASON_LEN>> {
         (self.len > 0).then(|| self.reasons[0].as_ref()).flatten()
     }
 }
@@ -535,14 +539,15 @@ where
                 offset += 2;
 
                 // 2. Reason
-                let reason = self.reasons[i].as_ref().unwrap_or(&AsciiStr::DEFAULT);
-                buf[offset..offset + REASON_LEN].copy_from_slice(&reason.to_wire_bytes());
+                let defaultx = LiteStr::default();
+                let reason = self.reasons[i].as_ref().unwrap_or(&defaultx);
+                buf[offset..offset + REASON_LEN].copy_from_slice(&reason.to_bytes());
                 offset += REASON_LEN;
 
                 // 3. Location
                 if let Some(loc) = self.locations[i] {
-                    let file = AsciiStr::<PATH_LEN>::from_str_truncate(loc.file());
-                    buf[offset..offset + PATH_LEN].copy_from_slice(&file.to_wire_bytes());
+                    let file = LiteStr::<PATH_LEN>::from_str(loc.file());
+                    buf[offset..offset + PATH_LEN].copy_from_slice(&file.to_bytes());
                     offset += PATH_LEN;
 
                     buf[offset..offset + 4].copy_from_slice(&loc.line().to_le_bytes());
@@ -572,7 +577,7 @@ where
 #[cfg(feature = "wire")]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WireLocation<const N: usize> {
-    pub file: AsciiStr<N>,
+    pub file: LiteStr<N>,
     pub line: u32,
     pub column: u32,
 }
@@ -584,7 +589,7 @@ pub struct WireErr<const DEPTH: usize = 3, const REASON_LEN: usize = 29, const F
 {
     pub len: u8,
     pub kinds: [Option<u16>; DEPTH],
-    pub reasons: [Option<AsciiStr<REASON_LEN>>; DEPTH],
+    pub reasons: [Option<LiteStr<REASON_LEN>>; DEPTH],
     pub locations: [Option<WireLocation<FILE_LEN>>; DEPTH],
 }
 
@@ -603,7 +608,7 @@ impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
     /// Parse a wire buffer from `AnErr` into a `WireErr`.
     ///
     /// Returns `None` on any corruption, wrong size, unknown version,
-    /// or invalid `AsciiStr` data.
+    /// or invalid `LiteStr` data.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::wire_size() {
             return None;
@@ -636,12 +641,12 @@ impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
 
             // reason
             let reason_bytes = &bytes[offset..offset + REASON_LEN];
-            reasons[i] = AsciiStr::from_wire_bytes(reason_bytes);
+            reasons[i] = LiteStr::from_bytes(reason_bytes).ok();
             offset += REASON_LEN;
 
             // location
             let file_bytes = &bytes[offset..offset + FILE_LEN];
-            let file = AsciiStr::from_wire_bytes(file_bytes)?;
+            let file = LiteStr::from_bytes(file_bytes).ok()?;
 
             offset += FILE_LEN;
 
@@ -684,9 +689,9 @@ mod tests {
         Io,
     }
 
-    /// Helper for creating `AsciiStr` reasons (turbofish required for const generic).
-    fn r<const N: usize>(s: &str) -> AsciiStr<N> {
-        AsciiStr::from_str_truncate(s)
+    /// Helper for creating `LiteStr` reasons (turbofish required for const generic).
+    fn r<const N: usize>(s: &str) -> LiteStr<N> {
+        LiteStr::from_str(s)
     }
 
     // Use the crate's exact *default* parameters so the an_err! macro + constructors
@@ -715,7 +720,7 @@ mod tests {
 
     #[test]
     fn test_with_reason_and_with_fmt() {
-        // Explicit type fixes const-generic inference (DEPTH cannot be inferred from AsciiStr alone)
+        // Explicit type fixes const-generic inference (DEPTH cannot be inferred from LiteStr alone)
         let e: E3 = AnErr::with_reason(TestKind::Parse, r::<29>("bad token"));
         assert_eq!(e.depth(), 1);
 

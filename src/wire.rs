@@ -1,6 +1,6 @@
 use crate::{
-    AsciiStr, Drift, Dt, Every, Meridiem, Offset, Scale, Spacetime, TimeParts, TimeRange, Weekday,
-    YmdHmsRich,
+    Drift, Dt, Every, Meridiem, LiteStr, Offset, Scale, Spacetime, TimeParts, TimeRange,
+    Weekday, YmdHmsRich,
 };
 
 impl Dt {
@@ -272,8 +272,8 @@ impl YmdHmsRich {
     /// - Byte `50`: `wkday` (`u8`)
     /// - Bytes `51..53`: `wk_of_yr_sun` + `wk_of_yr_mon` (`u8` × 2)
     /// - Bytes `53..58`: `offset_sec` (tag byte + `i32`)
-    /// - Bytes `58..108`: `tz` (tag byte + `AsciiStr<49>`)
-    /// - Bytes `108..158`: `tz_abbrev` (tag byte + `AsciiStr<49>`)
+    /// - Bytes `58..108`: `tz` (tag byte + `LiteStr<49>`)
+    /// - Bytes `108..158`: `tz_abbrev` (tag byte + `LiteStr<49>`)
     /// - Byte `158`: `scale` (1 byte via `to_wire_byte`)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
@@ -337,25 +337,25 @@ impl YmdHmsRich {
         }
         offset += 5;
 
-        // tz (Option<AsciiStr<49>>) — 50 bytes
+        // tz (Option<LiteStr<49>>) — 50 bytes
         if let Some(tz) = &self.tz {
             buf[offset] = 1;
-            let tz_bytes = tz.to_wire_bytes();
-            buf[offset + 1..offset + 1 + AsciiStr::<49>::WIRE_SIZE].copy_from_slice(&tz_bytes);
+            let tz_bytes = tz.to_bytes();
+            buf[offset + 1..offset + 1 + LiteStr::<49>::SIZE].copy_from_slice(&tz_bytes);
         } else {
             buf[offset] = 0;
         }
-        offset += 1 + AsciiStr::<49>::WIRE_SIZE;
+        offset += 1 + LiteStr::<49>::SIZE;
 
-        // tz_abbrev (Option<AsciiStr<49>>) — 50 bytes
+        // tz_abbrev (Option<LiteStr<49>>) — 50 bytes
         if let Some(abbrev) = &self.tz_abbrev {
             buf[offset] = 1;
-            let abbrev_bytes = abbrev.to_wire_bytes();
-            buf[offset + 1..offset + 1 + AsciiStr::<49>::WIRE_SIZE].copy_from_slice(&abbrev_bytes);
+            let abbrev_bytes = abbrev.to_bytes();
+            buf[offset + 1..offset + 1 + LiteStr::<49>::SIZE].copy_from_slice(&abbrev_bytes);
         } else {
             buf[offset] = 0;
         }
-        offset += 1 + AsciiStr::<49>::WIRE_SIZE;
+        offset += 1 + LiteStr::<49>::SIZE;
 
         // scale (1 byte)
         buf[offset] = self.scale.to_wire_byte();
@@ -439,25 +439,23 @@ impl YmdHmsRich {
         };
         offset += 5;
 
-        // tz (Option<AsciiStr<49>>) — 50 bytes
+        // tz (Option<LiteStr<49>>) — 50 bytes
         let tz = if bytes[offset] == 1 {
-            AsciiStr::<49>::from_wire_bytes(
-                &bytes[offset + 1..offset + 1 + AsciiStr::<49>::WIRE_SIZE],
-            )
+            LiteStr::<49>::from_bytes(&bytes[offset + 1..offset + 1 + LiteStr::<49>::SIZE])
+                .ok()
         } else {
             None
         };
-        offset += 1 + AsciiStr::<49>::WIRE_SIZE;
+        offset += 1 + LiteStr::<49>::SIZE;
 
-        // tz_abbrev (Option<AsciiStr<49>>) — 50 bytes
+        // tz_abbrev (Option<LiteStr<49>>) — 50 bytes
         let tz_abbrev = if bytes[offset] == 1 {
-            AsciiStr::<49>::from_wire_bytes(
-                &bytes[offset + 1..offset + 1 + AsciiStr::<49>::WIRE_SIZE],
-            )
+            LiteStr::<49>::from_bytes(&bytes[offset + 1..offset + 1 + LiteStr::<49>::SIZE])
+                .ok()
         } else {
             None
         };
-        offset += 1 + AsciiStr::<49>::WIRE_SIZE;
+        offset += 1 + LiteStr::<49>::SIZE;
 
         // scale (1 byte)
         let scale = Scale::from_u8(bytes[offset]);
@@ -608,7 +606,7 @@ impl TimeParts {
 
         // iana_name (49 bytes)
         if let Some(name) = &self.iana_name {
-            let name_bytes = name.to_wire_bytes();
+            let name_bytes = name.to_bytes();
             buf[offset..offset + 49].copy_from_slice(&name_bytes);
         }
         offset += 49;
@@ -729,8 +727,8 @@ impl TimeParts {
 
         // iana_name (49 bytes) — already nice
         let iana_bytes = &bytes[offset..offset + 49];
-        if let Some(name) = AsciiStr::<49>::from_wire_bytes(iana_bytes)
-            && !name.is_empty()
+        if let Some(name) = LiteStr::<49>::from_bytes(iana_bytes).ok()
+            && !name.len() == 0
         {
             dc.iana_name = Some(name);
         }

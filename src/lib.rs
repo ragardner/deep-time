@@ -111,10 +111,10 @@ mod wire;
 // MOD
 // _________________________________________
 mod an_err;
-mod ascii_str;
 mod drift;
 mod dt;
 mod light_time;
+mod lite_str;
 mod parser;
 mod position;
 mod scale;
@@ -174,12 +174,12 @@ pub use dt::mars;
 // PUB USE
 // _________________________________________
 pub use an_err::AnErr;
-pub use ascii_str::{AsciiStr, AsciiStrError};
 pub use drift::{Drift, Spacetime};
 pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use dt::{Dt, lunar};
 pub use error::{DtErr, DtErrKind};
 pub use light_time::ObserverState;
+pub use lite_str::{LiteStr, LiteStrErr};
 pub use math::{
     atan::atan,
     atan2::atan2,

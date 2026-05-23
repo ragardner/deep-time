@@ -1,4 +1,7 @@
-use crate::{AsciiStr, Dt, DtErr, STRFTIME_SIZE, Scale, YmdHmsRich, tzdb::offset_info_at_utc};
+use crate::{
+    Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, Scale, YmdHmsRich, an_err,
+    tzdb::offset_info_at_utc,
+};
 
 #[cfg(feature = "alloc")]
 use crate::ATTOS_PER_SEC;
@@ -126,13 +129,13 @@ impl Dt {
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
     /// with [`STRFTIME_SIZE`]).
-    pub fn to_str_bin(&self, current: Scale, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
+    pub fn to_str_bin(&self, current: Scale, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
         let mut gt = self.to_ymdhms_rich_on(current, current.to_utc());
         gt.set_offset(Some(0)).set_tz_abbrev(None);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        Ok(AsciiStr::from_filled_buffer(buf))
+        Ok(LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))?)
     }
 
     /// Formats this `Dt` into a fixed-size ASCII string **without** any heap allocation,
@@ -146,12 +149,12 @@ impl Dt {
         current: Scale,
         fmt: &str,
         secs: i32,
-    ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
+    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
         let gt = self.date_time_with_offset(current, secs);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        Ok(AsciiStr::from_filled_buffer(buf))
+        Ok(LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))?)
     }
 
     /// Formats this `Dt` into a fixed-size ASCII string **without** any heap allocation,
@@ -171,12 +174,12 @@ impl Dt {
         current: Scale,
         fmt: &str,
         tz_name: &str,
-    ) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
+    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
         let gt = self.date_time_with_tz(current, tz_name);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         gt.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        Ok(AsciiStr::from_filled_buffer(buf))
+        Ok(LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))?)
     }
 
     /// Low-level no-alloc formatter that writes into a caller-provided slice,

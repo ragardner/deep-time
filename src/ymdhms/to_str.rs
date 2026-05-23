@@ -1,4 +1,4 @@
-use crate::{AsciiStr, Dt, DtErr, DtErrKind, STRFTIME_SIZE, YmdHmsRich, an_err};
+use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHmsRich, an_err};
 
 pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
     b"Sunday",
@@ -42,11 +42,22 @@ impl YmdHmsRich {
     }
 
     /// No-allocation formatting.
-    pub fn to_ascii_str(&self, fmt: &str) -> Result<AsciiStr<STRFTIME_SIZE>, DtErr> {
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2000, 1, 1);
+    /// let y = x.to_ymdhms_rich(Scale::TAI);
+    /// let b = y.to_lite_str("%F").unwrap();
+    /// let s = b.as_str().unwrap();
+    ///
+    /// println!("{}", s);
+    /// ```
+    pub fn to_lite_str(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        Ok(AsciiStr::from_filled_buffer(buf))
+        Ok(LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))?)
     }
 
     pub(crate) fn format_to_buffer(

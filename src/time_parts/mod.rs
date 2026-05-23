@@ -13,7 +13,7 @@ mod to_chrono;
 #[cfg(feature = "jiff")]
 mod to_jiff;
 
-use crate::{AsciiStr, Scale};
+use crate::{LiteStr, Scale};
 
 /// A flexible, partially-filled representation of a civil datetime.
 ///
@@ -49,7 +49,7 @@ pub struct TimeParts {
     /// Timezone offset from UTC.
     pub offset: Option<Offset>,
     /// IANA timezone name (e.g. `"America/New_York"`), stored as ASCII.
-    pub iana_name: Option<AsciiStr<49>>,
+    pub iana_name: Option<LiteStr<49>>,
     /// Whether this instant represents a leap second.
     pub is_leap_sec: bool,
     /// The time scale this value belongs to (TAI, UTC, etc.).
@@ -81,13 +81,10 @@ impl TimeParts {
         }
     }
 
-    /// Sets the IANA timezone name safely.
-    ///
-    /// Uses `AsciiStr::try_from_str` internally. If the name is non-ASCII
-    /// or longer than 49 bytes it is silently dropped (no panics).
+    /// Sets the IANA timezone name.
     #[inline]
     pub fn set_iana_name(&mut self, name: Option<&str>) -> &mut Self {
-        self.iana_name = name.and_then(|s| AsciiStr::try_from_str(s).ok());
+        self.iana_name = name.and_then(|s| Some(LiteStr::from_str(s)));
         self
     }
 }
