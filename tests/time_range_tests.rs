@@ -1,4 +1,3 @@
-#[cfg(test)]
 mod time_range_tests {
     use deep_time::{Dt, Scale, TimeRange};
 

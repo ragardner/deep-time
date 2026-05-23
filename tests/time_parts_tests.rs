@@ -1,6 +1,5 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(test)]
 mod tests {
     use deep_time::constants::ATTOS_PER_SEC_I128;
     use deep_time::error::DtErrKind;
@@ -83,11 +82,7 @@ mod tests {
 
         // 0.123456789 s = 123456789 × 10¹⁸ attoseconds
         let expected = 123_456_789u64 * 1_000_000_000;
-        assert_eq!(
-            tp.attos,
-            expected,
-            "fractional seconds were not preserved"
-        );
+        assert_eq!(tp.attos, expected, "fractional seconds were not preserved");
     }
 
     #[test]

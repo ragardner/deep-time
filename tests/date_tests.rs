@@ -47,10 +47,10 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        // library zero
-        // let x = Dt::from_ymdhms_on(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
-        // let y = x.to(Scale::TAI, Scale::UTC);
-        // eprintln!("HERE: {}, {}", x.sec, y.sec);
+        let x = Dt::from_ymdhms_on(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
+        let g = x.to_gps_wk_and_tow(Scale::TAI);
+        let z = Dt::from_gps_wk_and_tow(g.0, g.1);
+        assert_eq!(x, z);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

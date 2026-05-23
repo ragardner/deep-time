@@ -11,7 +11,7 @@ impl TimeParts {
     /// extracted from the input. After parsing, [`Self::finish`] is called
     /// automatically to apply defaults and validation.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// - `fmt`: The format string containing `%` directives.
     /// - `input`: The string to parse.
@@ -22,7 +22,7 @@ impl TimeParts {
     /// - `allow_partial_date`: If `true`, a missing month/day will be defaulted
     ///   to `1` instead of returning an [`Incomplete`] error.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// Returns [`DtErr`] for:
     /// - Parse failures (`InvalidFormat`, `OutOfRange`, etc.)
@@ -60,7 +60,7 @@ impl TimeParts {
     /// CCSDS parsers, etc.). It ensures the struct is in a consistent state
     /// before being turned into a full [`Dt`] or passed to other converters.
     ///
-    /// # Behavior
+    /// ## Behavior
     ///
     /// - If a Unix timestamp is present, it takes precedence and the time
     ///   components are defaulted to `00:00:00.000000000` with a UTC offset.
@@ -73,7 +73,7 @@ impl TimeParts {
     ///   3. ISO week date (`iso_week_year`, `iso_week`)
     /// - If `allow_partial_date` is `true`, missing month/day are defaulted to `1`.
     ///
-    /// # Errors
+    /// ## Errors
     ///
     /// - [`DtErrKind::Incomplete`] if no valid date representation is present.
     /// - [`DtErrKind::OutOfRange`] for seconds outside `0..=60`.

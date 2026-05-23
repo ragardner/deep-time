@@ -3,7 +3,6 @@
 // spanish won't parse "mar" as tuesday (collision with marzo)
 
 #[cfg(feature = "es")]
-#[cfg(test)]
 mod tests {
     use deep_time::{Dt, Lang, ParseCfg, Scale};
 

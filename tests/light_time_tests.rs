@@ -1,6 +1,5 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(test)]
 mod light_time_tests {
     use deep_time::{Dt, ObserverState, Position, Scale, Spacetime, Velocity, constants::C};
 

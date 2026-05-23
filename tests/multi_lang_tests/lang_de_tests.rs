@@ -1,7 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 #[cfg(feature = "de")]
-#[cfg(test)]
 mod tests {
     use deep_time::{Dt, Lang, ParseCfg, Scale};
 

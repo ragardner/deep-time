@@ -1,7 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 #[cfg(feature = "mars")]
-#[cfg(test)]
 mod mars_tests {
     use deep_time::{Dt, Real, Scale, f, mars::MARS_SOL_LENGTH_SEC, to_sec_f};
 

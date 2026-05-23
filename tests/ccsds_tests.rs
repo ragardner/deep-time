@@ -3,7 +3,6 @@
 use deep_time::constants::SEC_PER_DAYI64;
 use deep_time::{Dt, DtErrKind, Offset, Scale, TimeParts};
 
-#[cfg(test)]
 mod ccsds_tests {
     use super::*;
 
@@ -330,8 +329,7 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     // Special case for n_subsec == 0: fractional seconds are intentionally dropped
     if n_subsec == 0 {
         assert_eq!(
-            recovered_tp.attos,
-            0,
+            recovered_tp.attos, 0,
             "When n_subsec=0 the fractional part must be exactly zero"
         );
     } else {

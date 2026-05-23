@@ -1,6 +1,5 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(test)]
 mod tests {
     use deep_time::{DtErrKind, Offset, TimeParts, Weekday};
 

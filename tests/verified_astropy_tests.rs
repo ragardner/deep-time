@@ -137,7 +137,6 @@ jd_ut1 2458849.499569709
 
 use deep_time::{Dt, Scale};
 
-#[cfg(test)]
 mod astropy_verified_conversions_tests {
     use super::*;
 

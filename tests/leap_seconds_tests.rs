@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128, leap_seconds::get_leap_sec};
+use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128, leap_seconds::leap_sec};
 
 #[test]
 fn to_epoch_leaps_and_tai() {
@@ -40,7 +40,7 @@ fn to_epoch_leaps_and_tai() {
         leap.sec,
     );
     assert!(
-        get_leap_sec(&leap, false).is_leap_sec,
+        leap_sec(&leap, false).is_leap_sec,
         "tai 536500836 should be a leap second",
     );
     let y = Dt::from_ymdhms(2017, 1, 1, 0, 0, 0, 0);
@@ -174,9 +174,10 @@ fn test_leap_second_roundtrip_2015_06_30() {
 #[cfg(feature = "std")]
 #[test]
 fn test_leap_seconds_file() {
-    use deep_time::leap_seconds;
+    use deep_time::leap_seconds::LEAP_SECS;
 
     let leap_seconds_table = Dt::leap_sec_data_from_file("leap-seconds.list.txt").unwrap();
+    assert_eq!(leap_seconds_table, LEAP_SECS);
     let x = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 0);
     let leap_info = Dt::leap_sec_using(&x, false, &leap_seconds_table);
     assert!(leap_info.is_leap_sec == true);

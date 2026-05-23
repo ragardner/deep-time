@@ -201,7 +201,7 @@ pub struct LeapInfo {
 impl Dt {
     #[inline]
     pub const fn leap_sec(&self, is_utc: bool) -> LeapInfo {
-        get_leap_sec(self, is_utc)
+        leap_sec(self, is_utc)
     }
 
     #[inline]
@@ -211,7 +211,7 @@ impl Dt {
 }
 
 #[inline]
-pub const fn get_leap_sec(dt: &Dt, is_utc: bool) -> LeapInfo {
+pub const fn leap_sec(dt: &Dt, is_utc: bool) -> LeapInfo {
     leap_sec_using(dt, is_utc, LEAP_SECS)
 }
 
@@ -345,7 +345,7 @@ impl Dt {
 
             let dt = Dt::from_ntp(f!(ntp_timestamp), Scale::UTC);
             let tai_sec = dt.sec - 1;
-            let utc_sec = dt.to(Scale::TAI, Scale::UTC).sec;
+            let utc_sec = tai_sec - leap_sec_after + 1;
 
             table.push(LeapSec {
                 ntp_timestamp,

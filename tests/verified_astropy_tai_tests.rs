@@ -34,7 +34,6 @@ for iso, scale in test_cases:
 
 use deep_time::{Dt, Scale};
 
-#[cfg(test)]
 mod astropy_verified_tai_sec_tests {
     use super::*;
 

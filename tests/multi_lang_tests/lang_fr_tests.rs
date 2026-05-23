@@ -3,7 +3,6 @@
 // french wont parse "mar" as tuesday
 
 #[cfg(feature = "fr")]
-#[cfg(test)]
 mod tests {
     use deep_time::{Dt, Lang, ParseCfg, Scale};
 

@@ -102,7 +102,6 @@ if __name__ == "__main__":
 */
 
 #[cfg(all(feature = "eop-tests", feature = "sidereal-earth"))]
-#[cfg(test)]
 mod sidereal_tests {
     use deep_time::eop::{EopData, EopFormat, Separator};
     use deep_time::{Dt, Sidereal};

@@ -1,7 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 #[cfg(feature = "eop-tests")]
-#[cfg(test)]
 mod tests {
     use deep_time::constants::{ATTOS_PER_DAY, SEC_PER_DAY_F};
     use deep_time::eop::{EopData, EopFormat, Separator};

@@ -1,6 +1,5 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(test)]
 mod format_tests {
     use deep_time::{Dt, Scale, constants::STRFTIME_SIZE};
 

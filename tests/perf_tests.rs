@@ -1,7 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 #[cfg(feature = "perf-tests")]
-#[cfg(test)]
 mod perf_tests {
     use deep_time::{Dt, Scale};
     use std::time::Instant;

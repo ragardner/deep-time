@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Drift, Dt, Scale, leap_seconds::get_leap_sec};
+use deep_time::{Drift, Dt, Scale};
 
 #[test]
 fn test_ymd_to_jd() {
