@@ -93,7 +93,7 @@ impl Dt {
     /// let cfg = ParseCfg { lang: Lang::De, ..Default::default() };
     /// let dt = Dt::from_str_parse("15. März 2024 um 14:30", &Some(cfg)).unwrap();
     ///
-    /// // Force US month-first
+    /// // Force month-first
     /// let cfg = ParseCfg { order: Order::Month, ..Default::default() };
     /// let dt = Dt::from_str_parse("03/15/2024", &Some(cfg)).unwrap();
     ///
@@ -113,7 +113,7 @@ impl Dt {
     /// let dt = Dt::from_str_parse("15/03/2024", &Some(cfg)).unwrap();
     ///
     /// // Relative date
-    /// // let dt = Dt::from_str_parse("next Friday at 09:00", &None).unwrap();
+    /// let dt = Dt::from_str_parse("2 days from now", &None).unwrap();
     /// ```
     ///
     /// ## Notes

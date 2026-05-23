@@ -10,7 +10,7 @@ impl Dt {
     /// - A positive result means the onboard clock ran fast.
     /// - A negative result means the onboard clock ran slow.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// - `start`: Starting coordinate time of the interval.
     /// - `end`: Ending coordinate time of the interval.
@@ -23,7 +23,7 @@ impl Dt {
     ///   is **not** validated.
     /// - `characteristic_length_scale`: See [`proper_time_from_states`].
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// `Ok(drift)` — the accumulated drift (Δτ − Δt) as a [`Dt`].
     ///
@@ -57,7 +57,7 @@ impl Dt {
     /// - A positive result means the onboard clock ran fast.
     /// - A negative result means the onboard clock ran slow.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// - `start`: Starting coordinate time.
     /// - `end`: Ending coordinate time.
@@ -67,7 +67,7 @@ impl Dt {
     ///   the requested interval (exact first/last time matching is not checked).
     /// - `characteristic_length_scale`: See [`proper_time_from_states`].
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// `Ok(drift)` — the accumulated drift (Δτ − Δt) as a [`Dt`].
     ///
@@ -100,12 +100,12 @@ impl Dt {
     /// The function enforces that coordinate times are monotonically
     /// non-decreasing. It performs a single pass with no heap allocation.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// - `path`: An iterator of `(coordinate_time, Spacetime)` pairs.
     ///   Coordinate times must be monotonically non-decreasing.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// `Ok(total_proper_time)` — the accumulated proper time as a [`Dt`].
     ///
@@ -162,12 +162,12 @@ impl Dt {
     /// This is mathematically equivalent to integrating a constant rate
     /// but is more efficient and expresses intent clearly.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// - `end`: Ending coordinate time.
     /// - `dtau_dt`: Constant proper-time rate (dimensionless, usually between 0 and 1).
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// The accumulated proper time advance as a [`Dt`].
     #[inline]

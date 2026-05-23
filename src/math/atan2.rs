@@ -16,7 +16,7 @@ const PI_LO: Real = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 /// special cases (including signed zeros, infinities, and NaNs) as required
 /// by IEEE 754-2008.
 ///
-/// # Special cases
+/// ## Special cases
 ///
 /// - `atan2(±0, ±0)` returns `±0` or `±π` according to the sign of `x`
 /// - `atan2(±y, ±0)` returns `±π/2`
@@ -25,7 +25,7 @@ const PI_LO: Real = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 /// - `atan2(±∞, ±∞)` returns `±π/4` or `±3π/4`
 /// - Any NaN argument produces NaN
 ///
-/// # Implementation notes
+/// ## Implementation notes
 ///
 /// This is a `const fn`-compatible port of the FreeBSD `libm` implementation
 /// (`e_atan2.c`). The original algorithm uses range reduction and calls to
@@ -39,7 +39,7 @@ const PI_LO: Real = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 /// - Uses the `const fn` version of `atan` from `super::atan`
 /// - Removed `no_panic` attribute and any `f64`-specific hardcoding
 ///
-/// # Testing
+/// ## Testing
 ///
 /// This function has been validated with a comprehensive test suite that
 /// includes:

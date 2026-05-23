@@ -53,14 +53,15 @@ impl Dt {
     ///
     /// The returned value is a signed offset relative to `epoch` in the `to` scale.
     /// While it is most commonly used as a pure duration, it can also be interpreted
-    /// as a timestamp when `epoch` is something like [`Dt::UNIX_EPOCH`] (e.g. for
+    /// as a timestamp when `epoch` is something like
+    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) (e.g. for
     /// generating Unix timestamps via `.to_ms()` or `.to_sec()`).
     ///
     /// ## See also
     ///
-    /// * [`Dt::to_internal`](../struct.Dt.html#method.to_internal) — the conversion step used internally.
-    /// * [`Dt::to_diff_raw`](../struct.Dt.html#method.to_diff_raw) — the raw difference method.
-    /// * [`Dt::from_diff_and_scale`](../struct.Dt.html#method.from_diff_and_scale) — the complementary operation.
+    /// * [`Dt::to`](../struct.Dt.html#method.to).
+    /// * [`Dt::to_diff_raw`](../struct.Dt.html#method.to_diff_raw).
+    /// * [`Dt::from_diff_and_scale`](../struct.Dt.html#method.from_diff_and_scale).
     ///
     /// ## Examples
     ///
@@ -82,13 +83,17 @@ impl Dt {
     /// Creates a **TAI** [`Dt`] by adding a difference to an epoch and interpreting
     /// the result on the given time scale.
     ///
-    /// This is the inverse-style counterpart to [`to_scale_and_then_diff`](Dt::to_scale_and_then_diff)
-    /// and is used by [`from_ymdhms_on`](Dt::from_ymdhms_on) and related constructors.
+    /// This is the inverse-style counterpart to
+    /// [`Dt::to_scale_and_then_diff`](../struct.Dt.html#method.to_scale_and_then_diff)
+    /// and is used by [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on)
+    /// and related constructors.
     ///
     /// ## Arguments
     ///
     /// * `diff` — The signed difference (as a [`Dt`]) to add to the epoch.
-    /// * `epoch` — The reference epoch (commonly [`Dt::UNIX_EPOCH`] or [`Dt::ZERO`]).
+    /// * `epoch` — The reference epoch (commonly
+    ///   [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) or
+    ///   [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)).
     /// * `current` — The time scale on which `diff` + `epoch` should be interpreted.
     ///
     /// ## Returns
@@ -300,7 +305,6 @@ impl Dt {
     ///
     /// * [`Dt::to_tai`](../struct.Dt.html#method.to_tai) — convenience method that always targets TAI.
     /// * [`Dt::from`](../struct.Dt.html#method.from) — the underlying scale conversion logic.
-    /// * [`Dt::to_internal`](../struct.Dt.html#method.to_internal) — the internal implementation (not public API).
     ///
     /// ## Examples
     ///

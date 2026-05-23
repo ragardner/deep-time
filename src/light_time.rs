@@ -40,7 +40,7 @@ impl Dt {
     /// `ObserverState` directly from it, rather than calling
     /// [`ObserverState::new`] or [`ObserverState::new_strong_field`].
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// - `position`: The observer’s position in meters (typically expressed
     ///   in a barycentric or heliocentric frame).
@@ -54,7 +54,7 @@ impl Dt {
     ///   solar-system and weak-field cases. Only provide a non-zero value when
     ///   working in strong gravitational fields.
     ///
-    /// # When to use this method
+    /// ## When to use this method
     ///
     /// Use this method when you already have a time value as a [`Dt`] and
     /// want to construct an `ObserverState` in one step. It is especially
@@ -65,7 +65,8 @@ impl Dt {
     /// [`ObserverState::new_strong_field`] instead if you need to specify
     /// a non-zero `characteristic_length_scale`.
     ///
-    /// # Example
+    /// ## Example
+    ///
     /// ```ignore
     /// let t = Dt::from_sec(1234.5);
     ///
@@ -144,7 +145,8 @@ impl ObserverState {
     /// It sets the `characteristic_length_scale` to `0.0`, which disables
     /// higher-order curvature terms in the proper-time model.
     ///
-    /// # Parameters
+    /// ## Parameters
+    ///
     /// - `time`: The time of the state.
     /// - `position`: Position in meters (usually barycentric or heliocentric).
     /// - `velocity`: Velocity in m/s.
@@ -241,11 +243,13 @@ impl ObserverState {
     /// - The combination with classical Doppler shown above is a first-order
     ///   approximation.
     ///
-    /// # Parameters
+    /// ## Parameters
+    ///
     /// - `self` — Transmitter state at the time of transmission.
     /// - `rx`   — Receiver state at the approximate time of reception.
     ///
-    /// # Example
+    /// ## Example
+    ///
     /// ```rust,ignore
     /// let ratio = transmitter.relativistic_clock_rate_ratio(receiver);
     ///
@@ -282,7 +286,7 @@ impl ObserverState {
     /// [`Self::shapiro_delay`] and [`Self::compute_differential_clock_correction`]
     /// individually and add the results yourself.
     ///
-    /// # When to use this method
+    /// ## When to use this method
     ///
     /// Use this when you need the complete relativistic correction for
     /// one-way light time in a single step — for example when:
@@ -290,7 +294,7 @@ impl ObserverState {
     /// - Building simplified navigation or orbit determination models
     /// - You want the total effect without manually combining the pieces
     ///
-    /// # The `bodies` parameter – which masses to include
+    /// ## The `bodies` parameter – which masses to include
     ///
     /// Pass a slice of `(shapiro_coefficient, body_position)` pairs:
     ///
@@ -318,13 +322,13 @@ impl ObserverState {
     /// Pass an empty slice (`&[]`) to turn off the Shapiro (gravitational)
     /// part of the correction.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// * `rx` — Receiver state at the approximate time the signal arrives.
     /// * `bodies` — List of bodies that should contribute to the gravitational
     ///   propagation delay.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// The total one-way relativistic correction (Shapiro propagation delay
     /// plus differential clock-rate correction), expressed as a `Dt` in the
@@ -360,7 +364,7 @@ impl ObserverState {
     /// The solver is suitable for high-precision one-way light-time calculations
     /// and works with any ephemeris source via the provided closure.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// * `rx_provider` — Closure returning the full [`ObserverState`] of the
     ///   receiver at a given coordinate time.
@@ -373,7 +377,7 @@ impl ObserverState {
     /// * `max_iter` — Maximum number of iterations. Typical values are 12–20
     ///   for solar-system geometries.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// A tuple `(prop_correction, rx_time, final_state)` where:
     /// - `prop_correction` is the converged Shapiro propagation delay,
@@ -434,7 +438,7 @@ impl ObserverState {
     /// delays only**. It does **not** include clock-rate or proper-time
     /// corrections.
     ///
-    /// # When to use this method
+    /// ## When to use this method
     ///
     /// Use this when you need the total gravitational propagation correction
     /// for two-way (round-trip) measurements, for example:
@@ -445,7 +449,7 @@ impl ObserverState {
     /// For one-way signals, use [`Self::shapiro_delay`] or
     /// [`Self::one_way_relativistic_delay`] instead.
     ///
-    /// # How the calculation works
+    /// ## How the calculation works
     ///
     /// 1. Solves the uplink leg (from `self` to the remote receiver) using
     ///    the `rx_provider` closure.
@@ -453,7 +457,7 @@ impl ObserverState {
     /// 3. Solves the downlink leg (from the receiver back to the local
     ///    transmitter) using the `tx_provider` closure.
     ///
-    /// # The `bodies` parameter – which masses to include
+    /// ## The `bodies` parameter – which masses to include
     ///
     /// Pass a slice of `(shapiro_coefficient, body_position)` pairs (the
     /// same slice is used for both legs). See [`Self::shapiro_delay`] for
@@ -462,7 +466,7 @@ impl ObserverState {
     /// **Important: All states returned by the providers must be consistent**
     /// with the same reference frame (same origin and same coordinate axes).
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// * `rx_provider` — Closure that returns the full [`ObserverState`] of
     ///   the remote receiver (planet, spacecraft, etc.) at any given
@@ -477,7 +481,7 @@ impl ObserverState {
     /// * `max_iter` — Maximum number of iterations allowed per leg
     ///   (typical values are 12–20).
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// The total round-trip Shapiro propagation delay (uplink + downlink)
     /// as a `Dt`, in the same time scale as `self.time`.
@@ -527,13 +531,13 @@ impl ObserverState {
     /// [`Self::compute_differential_clock_correction`],
     /// [`Self::proper_time_rate`], and [`Self::relativistic_clock_rate_ratio`].
     ///
-    /// # When to use this method
+    /// ## When to use this method
     ///
     /// Use this when you need the gravitational (Shapiro) contribution to
     /// one-way light time — for example when building high-precision range,
     /// Doppler, or orbit determination models.
     ///
-    /// # The `bodies` parameter – which masses to include
+    /// ## The `bodies` parameter – which masses to include
     ///
     /// Pass a slice of `(shapiro_coefficient, body_position)` pairs:
     ///
@@ -563,12 +567,12 @@ impl ObserverState {
     ///
     /// Pass an empty slice (`&[]`) to turn off Shapiro delay entirely.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// * `rx` — Receiver state at the approximate time the signal arrives.
     /// * `bodies` — List of bodies that should contribute to the delay.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// The total one-way Shapiro gravitational propagation delay, in the
     /// same time scale as `self.time`. This value should normally be
@@ -615,7 +619,7 @@ impl ObserverState {
     /// classic Moyer/DSN-style formula while being far more stable.
     /// Contributions from multiple bodies are summed at a higher level.
     ///
-    /// # Safety / Guards
+    /// ## Safety / Guards
     ///
     /// - Returns [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)
     ///   for any non-positive distance or zero Shapiro coefficient.
@@ -675,11 +679,11 @@ impl ObserverState {
     /// or [`Self::iterative_one_way_light_time_to`] when a combined
     /// relativistic correction (propagation + clock rate) is required.
     ///
-    /// # Parameters
+    /// ## Parameters
     ///
     /// * `rx` — Receiver state at the approximate time of reception.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// The differential clock-rate correction (`rx_proper_advance − tx_proper_advance`).
     pub const fn compute_differential_clock_correction(&self, rx: ObserverState) -> Dt {

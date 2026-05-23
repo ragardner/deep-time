@@ -9,7 +9,7 @@ mod gregorian;
 mod julian_date;
 mod ops;
 mod tdb;
-mod to_ccsds_bin;
+mod to_bin_ccsds;
 mod to_str;
 
 pub mod lunar;
@@ -19,7 +19,7 @@ pub mod trajectory;
 #[cfg(feature = "alloc")]
 mod formatting;
 #[cfg(feature = "alloc")]
-mod to_ccsds_str;
+mod to_str_ccsds;
 
 #[cfg(feature = "mars")]
 pub mod mars;

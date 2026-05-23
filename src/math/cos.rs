@@ -21,13 +21,13 @@ use crate::Real;
 ///
 /// Returns a value in the range `[-1.0, 1.0]`.
 ///
-/// # Special cases
+/// ## Special cases
 ///
 /// - `cos(NaN)` returns `NaN`
 /// - `cos(±∞)` returns `NaN`
 /// - `cos(±0.0)` returns `1.0` (preserves the even property of cosine)
 ///
-/// # Implementation notes
+/// ## Implementation notes
 ///
 /// This is a `const fn`-compatible port of the FreeBSD `libm` implementation
 /// (`s_cos.c`). It first checks whether `|x| ≤ π/4` (fast path via `k_cos`),
@@ -35,13 +35,13 @@ use crate::Real;
 /// `rem_pio2` before dispatching to the appropriate kernel (`k_cos` or
 /// `k_sin`) based on the quadrant.
 ///
-/// # Modifications for this crate
+/// ## Modifications for this crate
 ///
 /// - Adapted to the generic `Real` type (which is `f64` under the hood)
 /// - Made fully `const fn` compatible
 /// - Uses the crate's own `rem_pio2`, `k_cos`, and `k_sin` implementations
 ///
-/// # Testing
+/// ## Testing
 ///
 /// The function is validated by a comprehensive test suite that includes:
 /// - Special values (NaN, infinities, zeros)

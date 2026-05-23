@@ -593,7 +593,7 @@ impl Sidereal {
     /// sidereal time functions (`sidereal_angle_apparent`, `local_sidereal_angle_apparent`,
     /// `sidereal_time_apparent`, and `local_sidereal_time_apparent`).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -639,7 +639,7 @@ impl Sidereal {
     /// sidereal time functions (`sidereal_angle_mean`, `local_sidereal_angle_mean`,
     /// `sidereal_time_mean`, and `local_sidereal_time_mean`).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -680,7 +680,7 @@ impl Sidereal {
     /// sidereal time (for example, when the mean functions are given the apparent
     /// EO + EE).
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```rust
     /// use deep_time::Sidereal;

@@ -71,7 +71,7 @@ where
 /// The type implements `Copy` and performs no heap allocation. Default memory
 /// footprint is small and fully controllable via the generic parameters.
 ///
-/// # Type Parameters
+/// ## Type Parameters
 ///
 /// - `K`: Error kind type. Must implement `Copy + Clone + Debug + PartialEq + Eq`.
 /// - `DEPTH`: Maximum number of context levels (default `3`). Additional context
@@ -79,7 +79,7 @@ where
 /// - `REASON_LEN`: Maximum length of each individual reason in bytes
 ///   (default `29`). Longer reasons are silently truncated.
 ///
-/// # Construction
+/// ## Construction
 ///
 /// ```rust,ignore
 /// use an_error::{AnErr, an_err};
@@ -106,7 +106,7 @@ where
 ///
 /// All constructors and the `context` method capture the call site via `#[track_caller]`.
 ///
-/// # Display
+/// ## Display
 ///
 /// The `Display` implementation produces output of the following form:
 ///
@@ -119,7 +119,7 @@ where
 ///
 /// Each trace level shows its own reason (if present) immediately after the location.
 ///
-/// # Invariants
+/// ## Invariants
 ///
 /// Maintained by all constructors and `context`:
 ///
@@ -127,7 +127,7 @@ where
 /// - For every `i` in `0..len`, `kinds[i]` and `locations[i]` are `Some`.
 /// - `reasons[i]` is `Some` only if a non-empty reason was supplied for that level.
 ///
-/// # Accessing the stack
+/// ## Accessing the stack
 ///
 /// In addition to the top-level convenience methods (`kind()`, `location()`, `reason()`),
 /// you can access any level directly or iterate the entire trace.
@@ -459,7 +459,7 @@ where
 
 /// Ergonomic constructor and chaining macro for [`AnErr`].
 ///
-/// # Forms
+/// ## Forms
 ///
 /// | Form                                              | Equivalent to                                      |
 /// |---------------------------------------------------|----------------------------------------------------|

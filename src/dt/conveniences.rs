@@ -79,7 +79,8 @@ impl Dt {
     /// when expressed in **GPS Time**.
     ///
     /// - GPS Time is continuous (no leap seconds) and starts at the
-    ///   [`Dt::GPS_EPOCH`] (1980-01-06 00:00:00 UTC).
+    ///   [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH)
+    ///   (1980-01-06 00:00:00 UTC).
     /// - The returned TOW is a [`Dt`] on the TAI scale.
     ///
     /// This is the inverse of

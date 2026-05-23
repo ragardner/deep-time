@@ -8,14 +8,14 @@ impl Dt {
     ///
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
-    /// - **Perfect round-trip** with `Dt::from_ccsds_str` / `TimeParts::from_ccsds_str`.
+    /// - **Perfect round-trip** with `Dt::from_str_ccsds` / `TimeParts::from_str_ccsds`.
     #[inline]
-    pub fn to_ccsds_str(&self, current: Scale) -> Result<String, DtErr> {
-        self.to_ccsds_str_nf(current, 18)
+    pub fn to_str_ccsds(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_ccsds_nf(current, 18)
     }
 
-    /// Same as [`to_ccsds_str`] but lets you control the maximum number of fractional digits (0–18).
-    pub fn to_ccsds_str_nf(&self, current: Scale, max_precision: usize) -> Result<String, DtErr> {
+    /// Same as [`to_str_ccsds`] but lets you control the maximum number of fractional digits (0–18).
+    pub fn to_str_ccsds_nf(&self, current: Scale, max_precision: usize) -> Result<String, DtErr> {
         let prec = max_precision.min(18);
         let fmt = alloc::format!("%Y-%m-%dT%H:%M:%S%.{}~fZ", prec);
         self.to_str_with_offset(current, &fmt, 0)

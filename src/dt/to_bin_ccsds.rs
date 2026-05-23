@@ -10,7 +10,8 @@ impl Dt {
     /// Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support for the
     /// extended P-field (second octet) when `n_coarse > 4` or `n_frac > 3`.
     ///
-    /// # Parameters
+    /// ## Parameters
+    ///
     /// - `n_coarse`: 1–7 (number of coarse-time octets)
     /// - `n_frac`:   0–10 (number of fractional octets)
     /// - `extension`: advisory flag (ignored when larger sizes force the second octet)
@@ -91,8 +92,9 @@ impl Dt {
 
     /// Formats this [`Dt`] as a **CCSDS D (CDS)** binary time code.
     ///
-    /// Fully configurable for round-tripping with [`from_ccsds_d`].
-    /// Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since 1958-01-01 UTC.
+    /// - Fully configurable for round-tripping with [`from_ccsds_d`].
+    /// - Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day
+    ///   since 1958-01-01 UTC.
     pub fn to_ccsds_d(
         &self,
         current: Scale,
@@ -184,14 +186,17 @@ impl Dt {
     ///
     /// Implements **CCSDS 301.0-B-4 §3.4** (Level 1 only).
     ///
-    /// # Parameters
+    /// ## Parameters
+    ///
     /// - `use_doy`: `false` = Month/Day variant (most common), `true` = Day-of-Year variant
     /// - `n_subsec`: Number of subsecond BCD octets (`0`–`6`). Each octet holds 2 decimal digits.
     ///
-    /// # Returns
+    /// ## Returns
+    ///
     /// `(buffer, written_len)` — the P-field + T-field (big-endian BCD).
     ///
-    /// # Precision & Rounding
+    /// ## Precision & Rounding
+    ///
     /// Fractional seconds are rounded to the nearest representable value at the chosen precision
     /// (exactly as `to_ccsds_d` does for milliseconds).
     pub fn to_ccsds_ccs(

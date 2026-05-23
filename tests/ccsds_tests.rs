@@ -417,7 +417,7 @@ fn test_ccsds_ccs_invalid_pfield_rejected() {
 
 /// Small helper for tests (from_str already calls .finish() internally on full consumption)
 fn parse(s: &str) -> TimeParts {
-    let x = TimeParts::from_ccsds_str(s);
+    let x = TimeParts::from_str_ccsds(s);
     match x {
         Ok(x) => {
             return x;

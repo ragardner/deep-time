@@ -137,7 +137,7 @@ pub enum Scale {
     ///   reproduces the published LTE440 reference value at J2000.0 TDB.
     TCL,
 
-    /// **Custom / user-defined type**.
+    /// Custom / user-defined type.
     Custom,
 }
 
@@ -274,7 +274,7 @@ impl Scale {
     /// Returns the wire representation of this `Scale` as a single byte.
     ///
     /// The returned byte is the `repr(u8)` discriminant of the enum.
-    /// This is the canonical on-wire form used by [`Dt`] and [`ClockModel`].
+    /// This is the canonical on-wire form used by [`Dt`].
     #[inline]
     pub const fn to_wire_byte(self) -> u8 {
         self as u8

@@ -62,13 +62,13 @@ const AT: [Real; 11] = [
 ///
 /// Returns the principal value in the range `[-π/2, π/2]` radians.
 ///
-/// # Special cases
+/// ## Special cases
 ///
 /// - `atan(NaN)` returns `NaN`
 /// - `atan(±0)` returns `±0` (preserving the sign of zero)
 /// - `atan(±∞)` returns `±π/2`
 ///
-/// # Implementation notes
+/// ## Implementation notes
 ///
 /// This is a `const fn`-compatible port of the FreeBSD `libm` implementation
 /// (`s_atan.c`). The algorithm reduces the argument based on the magnitude
@@ -82,7 +82,7 @@ const AT: [Real; 11] = [
 /// - Replaced the `i!` macro with direct array indexing
 /// - Used the `.abs()` method instead of the `fabs` helper
 ///
-/// # Testing
+/// ## Testing
 ///
 /// This function is tested directly with:
 /// - Sanity checks for standard angles (π/6, π/4, π/3 and their negatives)

@@ -65,21 +65,25 @@ impl TimeParts {
     /// - Month/Day format (most common)
     /// - Day-of-Year format
     ///
-    /// # P-field
+    /// ## P-field
+    ///
     /// - Must not have the extension bit set (only 1-byte P-fields are supported).
     /// - Code ID must be `101`.
     /// - Subsecond resolution: 0 to 6 BCD octets (0–12 decimal digits).
     ///
-    /// # T-field
+    /// ## T-field
+    ///
     /// - Year is encoded as 4 BCD digits (0001–9999).
     /// - Time of day uses BCD with leap second support (`second == 60`).
     /// - When a leap second is present, `second` is normalized to 59 and
     ///   `is_leap_second` is set to `true` in the returned [`TimeParts`].
     ///
-    /// # Epoch
+    /// ## Epoch
+    ///
     /// 1958-01-01 00:00:00 UTC (identical to CDS).
     ///
-    /// # Errors
+    /// ## Errors
+    ///
     /// Returns an error if the P-field is extended, the Code ID is wrong,
     /// BCD digits are invalid, field lengths are insufficient, or any
     /// component (month, day, DOY, hour, minute, second) is out of range.
@@ -223,22 +227,26 @@ impl TimeParts {
     /// Implements **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support
     /// for the extended 2-byte P-field defined in Issue 4.
     ///
-    /// # P-field
+    /// ## P-field
+    ///
     /// - Supports both 1-byte and 2-byte P-fields.
     /// - Code ID must be `001` (1958-01-01 TAI epoch).
     /// - Coarse time: 1–7 octets total.
     /// - Fractional time: 0–10 octets total.
     /// - P-fields longer than 2 bytes are rejected.
     ///
-    /// # T-field
+    /// ## T-field
+    ///
     /// - Coarse time is interpreted as seconds since the 1958 TAI epoch.
     /// - Fractional time is converted to attoseconds using exact integer scaling
     ///   (`value / 2^(8·n_frac)`).
     ///
-    /// # Epoch
+    /// ## Epoch
+    ///
     /// 1958-01-01 00:00:00 TAI.
     ///
-    /// # Errors
+    /// ## Errors
+    ///
     /// Returns an error for empty input, insufficient length, invalid Code ID,
     /// unsupported further P-field extensions, or malformed T-field data.
     ///
@@ -337,27 +345,32 @@ impl TimeParts {
     ///
     /// Implements **CCSDS 301.0-B-4 §3.3 (Level 1)**.
     ///
-    /// # P-field
+    /// ## P-field
+    ///
     /// - Supports optional 2-byte P-field.
     /// - Code ID must be `100`.
     /// - Epoch bit must be `0` (1958-01-01 UTC epoch only).
     /// - Day count: 2 or 3 bytes.
     /// - Sub-millisecond resolution: none, 2 bytes (µs), or 4 bytes (2⁻³² of a ms).
     ///
-    /// # T-field
+    /// ## T-field
+    ///
     /// - Day count is days since 1958-01-01 UTC.
     /// - Milliseconds since midnight are always 4 bytes.
     /// - Sub-millisecond field (if present) is converted to attoseconds.
     ///
-    /// # Leap Second Handling
+    /// ## Leap Second Handling
+    ///
     /// This implementation correctly supports leap seconds. When `millis_of_day`
     /// represents 23:59:60 (i.e. ≥ 86,400,000 ms), `second` is set to 60 and
     /// `is_leap_second` is set to `true` in the returned [`TimeParts`].
     ///
-    /// # Epoch
+    /// ## Epoch
+    ///
     /// 1958-01-01 00:00:00 UTC.
     ///
-    /// # Errors
+    /// ## Errors
+    ///
     /// Returns an error for empty input, wrong Code ID, non-Level-1 epoch,
     /// unsupported sub-millisecond code, insufficient length, or invalid data.
     ///
@@ -480,14 +493,15 @@ impl TimeParts {
     ///
     /// Examines the Code ID in the first P-field byte and dispatches to the
     /// appropriate parser:
-    /// - `001` → [`from_ccsds_c`] (CUC)
-    /// - `100` → [`from_ccsds_d`] (CDS)
-    /// - `101` → [`from_ccsds_ccs`] (CCS)
+    /// - `001` → [`TimeParts::from_ccsds_c`](../struct.TimeParts.html#method.from_ccsds_c) (CUC)
+    /// - `100` → [`TimeParts::from_ccsds_d`](../struct.TimeParts.html#method.from_ccsds_d) (CDS)
+    /// - `101` → [`TimeParts::from_ccsds_ccs`](../struct.TimeParts.html#method.from_ccsds_ccs)
+    ///   (CCS)
     ///
     /// This is a convenience wrapper. For stricter control or when the format
     /// is known in advance, prefer calling the specific `from_ccsds_*` function directly.
     ///
-    /// # Errors
+    /// ## Errors
     /// Returns an error if the input is empty or the Code ID is not one of the
     /// three recognized Level 1 values.
     pub fn from_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtErr> {

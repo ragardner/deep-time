@@ -19,7 +19,7 @@ impl Dt {
     /// This method returns an [`Every`] builder that can be chained with
     /// `.until(end)` or `.up_to(end)` to create a [`TimeRange`] iterator.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use deep_time::{Dt, Scale};
@@ -114,8 +114,7 @@ impl Every {
 /// NumPy's `linspace` / `arange`. It supports both forward and backward
 /// iteration and implements [`ExactSizeIterator`].
 ///
-/// # Construction
-///
+/// ## Construction
 ///
 /// ```
 /// use deep_time::{Dt, Scale, TimeRange};
@@ -133,7 +132,7 @@ impl Every {
 /// TimeRange::exclusive(start, end, step);
 /// ```
 ///
-/// # Iteration Behavior
+/// ## Iteration Behavior
 ///
 /// - Zero step is handled gracefully (yields at most one element).
 /// - Negative steps are supported for reverse iteration.

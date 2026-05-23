@@ -56,7 +56,8 @@ impl Dt {
     /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
     /// from a pre-computed `Drift` value.
     ///
-    /// - This is an optimized variant of [`Dt::adjusted_advance`] for callers that already hold a `Drift` instance.
+    /// - This is an optimized variant of [`Dt::adjusted_advance`](../struct.Dt.html#method.adjusted_advance)
+    ///   for callers that already hold a [`Drift`] instance.
     /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
     /// - For a local hardware proper-time clock, use the plain `add` methods instead.
     #[inline]

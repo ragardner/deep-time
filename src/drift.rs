@@ -313,7 +313,8 @@ impl Spacetime {
     /// \Phi = -\sum_i \frac{GM_i}{r_i}
     /// \]
     ///
-    /// # Example (realistic cislunar trajectory)
+    /// ## Example (realistic cislunar trajectory)
+    ///
     /// ```rust
     /// use deep_time::{Position, Spacetime};
     ///

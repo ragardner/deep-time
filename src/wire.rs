@@ -1,6 +1,6 @@
 use crate::{
-    Drift, Dt, Every, Meridiem, LiteStr, Offset, Scale, Spacetime, TimeParts, TimeRange,
-    Weekday, YmdHmsRich,
+    Drift, Dt, Every, LiteStr, Meridiem, Offset, Scale, Spacetime, TimeParts, TimeRange, Weekday,
+    YmdHmsRich,
 };
 
 impl Dt {
@@ -12,7 +12,7 @@ impl Dt {
 
     /// Serializes this `Dt` into a fixed 17-byte little-endian buffer.
     ///
-    /// # Wire Format
+    /// ## Wire Format
     ///
     /// - Byte `0`: Version (`WIRE_VERSION`)
     /// - Bytes `[1..9]`: `sec` as little-endian `i64`
@@ -259,7 +259,7 @@ impl YmdHmsRich {
 
     /// Serializes this `YmdHmsRich` into a fixed 159-byte buffer.
     ///
-    /// # Wire Format (Version 1)
+    /// ## Wire Format (Version 1)
     ///
     /// - Byte `0`: Version (`WIRE_VERSION`)
     /// - Bytes `1..17`: `unix_attosec` (`i128`)
@@ -441,8 +441,7 @@ impl YmdHmsRich {
 
         // tz (Option<LiteStr<49>>) — 50 bytes
         let tz = if bytes[offset] == 1 {
-            LiteStr::<49>::from_bytes(&bytes[offset + 1..offset + 1 + LiteStr::<49>::SIZE])
-                .ok()
+            LiteStr::<49>::from_bytes(&bytes[offset + 1..offset + 1 + LiteStr::<49>::SIZE]).ok()
         } else {
             None
         };
@@ -450,8 +449,7 @@ impl YmdHmsRich {
 
         // tz_abbrev (Option<LiteStr<49>>) — 50 bytes
         let tz_abbrev = if bytes[offset] == 1 {
-            LiteStr::<49>::from_bytes(&bytes[offset + 1..offset + 1 + LiteStr::<49>::SIZE])
-                .ok()
+            LiteStr::<49>::from_bytes(&bytes[offset + 1..offset + 1 + LiteStr::<49>::SIZE]).ok()
         } else {
             None
         };

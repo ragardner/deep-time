@@ -6,31 +6,51 @@ use core::str;
 #[cfg(feature = "alloc")]
 use crate::Scale;
 
-const MAX_FORMAT_LEN: usize = 256;
-
 /// A pre-validated, reusable date/time format string.
 ///
 /// - Format is validated **once** at construction (`new` returns `Result`).
 /// - Format bytes are copied into an owned fixed-size buffer.
 /// - Only ASCII formats are accepted.
+///
+/// ## See also
+///
+/// - [`StrPTimeFmt::new`]
+/// - [`StrPTimeFmt::to_dt`]
+/// - [`StrPTimeFmt::to_str`]
 #[derive(Debug, Clone, Copy)]
 pub struct StrPTimeFmt {
-    fmt: [u8; MAX_FORMAT_LEN],
+    fmt: [u8; Self::MAX_FORMAT_LEN],
     len: usize,
 }
 
 impl StrPTimeFmt {
+    pub const MAX_FORMAT_LEN: usize = 256;
+
     /// Creates a new validated format.
     ///
     /// - Validates syntax and supported directives.
     /// - Requires the format to be valid ASCII and ≤ 256 bytes.
     /// - Returns a `DtErr` on any failure.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use deep_time::{Dt, StrPTimeFmt};
+    ///
+    /// let fmt = Dt::parse_fmt("%F %T").unwrap();
+    ///
+    /// // parse a datetime
+    /// let dt = fmt.to_dt("2025-05-23 14:30:00", false, false, false).unwrap();
+    ///
+    /// // change a datetimes format
+    /// let s = fmt.to_str("2000-01-01 12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+    /// ```
     pub fn new(fmt: &str) -> Result<Self, DtErr> {
-        if fmt.len() > MAX_FORMAT_LEN {
+        if fmt.len() > Self::MAX_FORMAT_LEN {
             return Err(an_err!(
                 DtErrKind::UnexpectedEnd,
                 "format string too long (max {} bytes)",
-                MAX_FORMAT_LEN
+                Self::MAX_FORMAT_LEN
             ));
         }
         let fmt = fmt.as_bytes();
@@ -43,13 +63,94 @@ impl StrPTimeFmt {
 
         Self::validate_format(fmt)?;
 
-        let mut buffer = [0u8; MAX_FORMAT_LEN];
+        let mut buffer = [0u8; Self::MAX_FORMAT_LEN];
         buffer[..fmt.len()].copy_from_slice(fmt);
 
         Ok(Self {
             fmt: buffer,
             len: fmt.len(),
         })
+    }
+
+    /// Parses a date/time string using this pre-validated format.
+    ///
+    /// The four boolean flags control lenient parsing behavior — see
+    /// [`Dt::from_str`](../struct.Dt.html#method.from_str) for full documentation.
+    ///
+    /// ## Parameters
+    ///
+    /// - `s`: The input string to parse.
+    /// - `inp_can_end_before_fmt`: Allow input to end before format is fully consumed.
+    /// - `fmt_can_end_before_inp`: Allow format to end before input is fully consumed.
+    /// - `allow_partial_date`: Default missing month/day to `1` instead of erroring.
+    ///
+    /// ## Errors
+    ///
+    /// Returns [`DtErr`] for parse failures, incomplete data, trailing characters, etc.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use deep_time::{Dt, StrPTimeFmt};
+    ///
+    /// let fmt = Dt::parse_fmt("%F %T").unwrap();
+    /// let dt = fmt.to_dt("2025-05-23 14:30:00", false, false, false).unwrap();
+    /// ```
+    pub fn to_dt(
+        &self,
+        s: &str,
+        inp_can_end_before_fmt: bool,
+        fmt_can_end_before_inp: bool,
+        allow_partial_date: bool,
+    ) -> Result<Dt, DtErr> {
+        TimeParts::from_str(
+            self.as_str()?,
+            s,
+            inp_can_end_before_fmt,
+            fmt_can_end_before_inp,
+            allow_partial_date,
+        )
+        .and_then(|p| p.to_dt())
+    }
+
+    /// Formats a [`Dt`] into a string using this pre-validated format and a given
+    /// output format.
+    ///
+    /// Effectively parses a [`str`] with the contained format, then outputs a
+    /// [`String`](`alloc::string::String`) to a new given format.
+    ///
+    /// Requires the `alloc` feature.
+    ///
+    /// ## Parameters
+    ///
+    /// - `s`: datetime input [`str`].
+    /// - `output_fmt`: The new format to output the datetime as.
+    /// - The remaining three flags are passed through to the internal `to_dt` call.
+    ///
+    /// ## Example
+    ///
+    /// ```
+    /// use deep_time::{Dt, StrPTimeFmt};
+    ///
+    /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
+    /// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+    /// ```
+    #[cfg(feature = "alloc")]
+    pub fn to_str(
+        &self,
+        s: &str,
+        output_fmt: &str,
+        inp_can_end_before_fmt: bool,
+        fmt_can_end_before_inp: bool,
+        allow_partial_date: bool,
+    ) -> Result<alloc::string::String, DtErr> {
+        self.to_dt(
+            s,
+            inp_can_end_before_fmt,
+            fmt_can_end_before_inp,
+            allow_partial_date,
+        )?
+        .to_str(Scale::TAI, output_fmt)
     }
 
     fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {
@@ -134,42 +235,6 @@ impl StrPTimeFmt {
             Ok(f) => Ok(f),
             Err(e) => Err(an_err!(DtErrKind::InvalidBytes, "{}", e)),
         }
-    }
-
-    /// Parse a date str using this pre-validated format.
-    pub fn to_dt(
-        &self,
-        s: &str,
-        inp_can_end_before_fmt: bool,
-        fmt_can_end_before_inp: bool,
-        allow_partial_date: bool,
-    ) -> Result<Dt, DtErr> {
-        TimeParts::from_str(
-            self.as_str()?,
-            s,
-            inp_can_end_before_fmt,
-            fmt_can_end_before_inp,
-            allow_partial_date,
-        )
-        .and_then(|p| p.to_dt())
-    }
-
-    #[cfg(feature = "alloc")]
-    pub fn to_str(
-        &self,
-        current: Scale,
-        s: &str,
-        inp_can_end_before_fmt: bool,
-        fmt_can_end_before_inp: bool,
-        allow_partial_date: bool,
-    ) -> Result<alloc::string::String, DtErr> {
-        self.to_dt(
-            s,
-            inp_can_end_before_fmt,
-            fmt_can_end_before_inp,
-            allow_partial_date,
-        )?
-        .to_str(current, self.as_str()?)
     }
 }
 

@@ -8,16 +8,15 @@ impl TimeParts {
     ///
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
-    /// - Round-trips with `Dt::from_ccsds_str` / `TimeParts::from_ccsds_str`.
+    /// - Round-trips with `Dt::from_str_ccsds` / `TimeParts::from_str_ccsds`.
     #[inline]
-    pub fn to_ccsds_str(&self) -> Result<String, DtErr> {
-        self.to_dt()?.to_ccsds_str(self.scale)
+    pub fn to_str_ccsds(&self) -> Result<String, DtErr> {
+        self.to_dt()?.to_str_ccsds(self.scale)
     }
 
-    /// Same as [`to_ccsds_str`] but lets you control the maximum number of fractional digits (0–18).
-    pub fn to_ccsds_str_nf(&self, max_precision: usize) -> Result<String, DtErr> {
-        self.to_dt()?
-            .to_ccsds_str_nf(self.scale, max_precision)
+    /// Same as [`to_str_ccsds`] but lets you control the maximum number of fractional digits (0–18).
+    pub fn to_str_ccsds_nf(&self, max_precision: usize) -> Result<String, DtErr> {
+        self.to_dt()?.to_str_ccsds_nf(self.scale, max_precision)
     }
 
     /// Returns this instant as a **CCSDS ASCII Time Code B** (day-of-year variant).
@@ -30,7 +29,6 @@ impl TimeParts {
 
     /// Same as [`to_ccsds_doy_str`] but with configurable fractional precision.
     pub fn to_ccsds_doy_str_nf(&self, max_precision: usize) -> Result<String, DtErr> {
-        self.to_dt()?
-            .to_ccsds_doy_str_nf(self.scale, max_precision)
+        self.to_dt()?.to_ccsds_doy_str_nf(self.scale, max_precision)
     }
 }

@@ -2,6 +2,27 @@ use crate::{
     Dt, DtErr, DtErrKind, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK, SEC_PER_YEAR, Scale,
     StrPTimeFmt, TimeParts, an_err,
 };
+use core::str::FromStr;
+
+#[cfg(feature = "parse")]
+impl FromStr for Dt {
+    type Err = DtErr;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, DtErr> {
+        Dt::from_str_parse(s, &None)
+    }
+}
+
+#[cfg(not(feature = "parse"))]
+impl FromStr for Dt {
+    type Err = DtErr;
+
+    #[inline]
+    fn from_str(s: &str) -> Result<Self, DtErr> {
+        Self::from_str_ccsds(s)
+    }
+}
 
 struct ParsedComponent {
     unit: u8,
@@ -11,6 +32,58 @@ struct ParsedComponent {
 }
 
 impl Dt {
+    /// Parses a date/time string.
+    ///
+    /// - When the `parse` feature is enabled: uses the smart auto-parser.
+    /// - When the `parse` feature is disabled: falls back to CCSDS format.
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse)
+    /// - [`Dt::from_str_ccsds`](../struct.Dt.html#method.from_str_ccsds)
+    #[inline]
+    pub fn parse(s: &str) -> Result<Self, DtErr> {
+        #[cfg(feature = "parse")]
+        {
+            Dt::from_str_parse(s, &None)
+        }
+        #[cfg(not(feature = "parse"))]
+        {
+            Self::from_str_ccsds(s)
+        }
+    }
+
+    /// High-level parser equivalent to C `strptime` (and Python `strptime`).
+    ///
+    /// Parses the input string `s` according to the supplied format string `fmt`
+    /// and returns a [`Dt`] directly. This is a convenience wrapper around
+    /// [`TimeParts::from_str`](../struct.TimeParts.html#method.from_str)
+    /// followed by [`TimeParts::to_dt`](../struct.TimeParts.html#method.to_dt).
+    ///
+    /// It supports the same rich set of `%` directives as the low-level parser
+    /// (similar to C `strptime`, Python `strftime`/`strptime`, `chrono`, `jiff`,
+    /// and common extensions).
+    ///
+    /// ## Parameters
+    ///
+    /// - `s`: The date/time string to parse.
+    /// - `fmt`: The format string containing `%` directives (must be valid ASCII).
+    /// - `inp_can_end_before_fmt`: If `true`, the input may end before the format
+    ///   string is fully consumed (extra format specifiers are ignored).
+    /// - `fmt_can_end_before_inp`: If `true`, the format may end before the input
+    ///   is fully consumed (trailing characters in the input are allowed).
+    /// - `allow_partial_date`: If `true`, a missing month/day will be defaulted
+    ///   to `1` instead of returning an [`Incomplete`] error.
+    ///
+    /// ## Errors
+    ///
+    /// Returns [`DtErr`] for:
+    /// - Parse failures (`InvalidFormat`, `OutOfRange`, `UnknownDirective`, etc.)
+    /// - Incomplete data when `allow_partial_date` is `false`
+    /// - Trailing characters (when `fmt_can_end_before_inp` is `false`)
+    ///
+    /// See [`TimeParts::from_str`] for the complete list of supported directives
+    /// and detailed parsing semantics.
     #[inline]
     pub fn from_str(
         s: &str,
@@ -29,11 +102,65 @@ impl Dt {
         .to_dt()
     }
 
+    /// Parses and validates a `strptime`-style format string into a reusable [`StrPTimeFmt`].
+    ///
+    /// The format is checked once for syntax errors and unsupported directives,
+    /// then stored in a compact fixed-size buffer. The resulting `StrPTimeFmt` is
+    /// `Copy`, cheap to clone, and can be used repeatedly with [`StrPTimeFmt::to_dt`]
+    /// and [`StrPTimeFmt::to_str`] without re-validating.
+    ///
+    /// Only ASCII formats up to 256 bytes are accepted.
+    ///
+    /// ## Parameters
+    ///
+    /// - `strptime_fmt`: The format string using `%` directives (e.g. `"%Y-%m-%d %H:%M:%S"`,
+    ///   `"%F %T"`, `"%Y-%m-%dT%H:%M:%S%.3fZ"`).
+    ///
+    /// ## Errors
+    ///
+    /// Returns [`DtErr`] if the format is:
+    /// - Longer than 256 bytes
+    /// - Not valid ASCII
+    /// - Contains unknown, unsupported, or malformed directives
     #[inline]
     pub fn parse_fmt(strptime_fmt: &str) -> Result<StrPTimeFmt, DtErr> {
         StrPTimeFmt::new(strptime_fmt)
     }
 
+    /// Parses an ISO 8601 duration string into a [`Dt`] representing a pure time interval.
+    ///
+    /// Supports the full `PnYnMnDTnHnMnS` format (case-insensitive), including:
+    /// - Optional leading `+` or `-` sign
+    /// - `P` / `p` prefix (required)
+    /// - Optional `T` / `t` separator between date and time parts
+    /// - Weeks (`W` / `w`)
+    /// - Fractional seconds with up to 18 digits of precision (attosecond resolution)
+    ///
+    /// The returned [`Dt`] is a **duration** (signed interval) on the TAI scale.
+    /// It can be added to/subtracted from other `Dt` values, multiplied/divided,
+    /// rounded, etc.
+    ///
+    /// ## Not Reference-Time Aware
+    ///
+    /// This parser is **not reference-time aware**. Calendar units (`Y`, `M`) are
+    /// converted to a fixed number of seconds using standard average lengths
+    /// rather than being resolved against a specific date. This makes parsing
+    /// fast and allocation-free, but `P1M` always represents exactly the same
+    /// duration regardless of context.
+    ///
+    /// ## Parameters
+    ///
+    /// - `s`: The ISO 8601 duration string (e.g. `"P1Y2M3DT4H5M6.123456789012345678S"`,
+    ///   `"-PT30M"`, `"P7W"`, `"+P1DT12H"`).
+    ///
+    /// ## Errors
+    ///
+    /// Returns [`DtErr`] for:
+    /// - Empty string
+    /// - Missing `P` prefix
+    /// - Invalid syntax (`T` with no time part, multiple `T`s, etc.)
+    /// - Unknown unit designators
+    /// - Numeric values that are out of range or cause overflow
     pub fn from_iso_duration(s: &str) -> Result<Dt, DtErr> {
         let len = s.len();
         if len == 0 {

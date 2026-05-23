@@ -14,8 +14,9 @@ impl Dt {
         self.to_str_rfc3339_nf(current, 9)
     }
 
-    /// Same as [`to_str_rfc3339`] but with a configurable maximum number of fractional digits
-    /// (0–18). Trailing zeros are always trimmed.
+    /// Same as [`Dt::to_str_rfc3339`](../struct.Dt.html#method.to_str_rfc3339) but
+    /// with a configurable maximum number of fractional digits (0–18). Trailing zeros are
+    /// always trimmed.
     pub fn to_str_rfc3339_nf(&self, current: Scale, max_precision: usize) -> Result<String, DtErr> {
         let prec = max_precision.min(18);
         // Uses the formatter with the `~` "trim trailing zeros" flag.

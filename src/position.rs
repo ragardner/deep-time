@@ -73,12 +73,13 @@ impl Position {
     /// you need to generate evenly spaced sample points along a path — for example,
     /// when building the `samples` slice for [`ObserverState::one_way_relativistic_delay_integrated`].
     ///
-    /// # Parameters
+    /// ## Parameters
+    ///
     /// - `other` – the ending position
     /// - `t` – interpolation parameter (0.0 = start point, 1.0 = end point).
     ///   Values outside [0, 1] are allowed and will extrapolate.
     ///
-    /// # Examples
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Position;

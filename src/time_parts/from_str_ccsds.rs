@@ -5,7 +5,7 @@ impl TimeParts {
     /// - Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
     ///     - e.g. 2000-01-01T12:00:00
     /// - All time components after the date portion are optional.
-    pub fn from_ccsds_str(input: &str) -> Result<Self, DtErr> {
+    pub fn from_str_ccsds(input: &str) -> Result<Self, DtErr> {
         let cleaned = input.trim_end_matches(|c: char| c.eq_ignore_ascii_case(&'Z'));
         let bytes = cleaned.as_bytes();
         let len_ = bytes.len();
