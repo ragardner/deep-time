@@ -79,7 +79,7 @@ impl Dt {
         self.to_internal(to).to_diff_raw(epoch)
     }
 
-    /// Creates a TAI [`Dt`] by adding a difference to an epoch and interpreting
+    /// Creates a **TAI** [`Dt`] by adding a difference to an epoch and interpreting
     /// the result on the given time scale.
     ///
     /// This is the inverse-style counterpart to [`to_scale_and_then_diff`](Dt::to_scale_and_then_diff)
@@ -125,7 +125,7 @@ impl Dt {
         Dt::from_dt(epoch.add(diff), current)
     }
 
-    /// Creates a TAI [`Dt`].
+    /// Creates a **TAI** [`Dt`].
     ///
     /// - Assumes the given `sec` and `attos` are on the given scale.
     /// - See [`Scale`] for more information on available time scales.

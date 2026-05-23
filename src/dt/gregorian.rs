@@ -309,7 +309,7 @@ impl Dt {
         yr % 4 == 0 && (yr % 100 != 0 || yr % 400 == 0)
     }
 
-    /// Creates a TAI [`Dt`] from a proleptic gregorian date which is assumed to be on
+    /// Creates a **TAI** [`Dt`] from a proleptic gregorian date which is assumed to be on
     /// the provided time scale.
     ///
     /// - Equivalent to [`Dt::from`](../struct.Dt.html#method.from) for the provided date.
@@ -356,7 +356,7 @@ impl Dt {
         }
     }
 
-    /// Creates a TAI [`Dt`] from a proleptic gregorian date which is assumed to be on
+    /// Creates a **TAI** [`Dt`] from a proleptic gregorian date which is assumed to be on
     /// the provided time scale.
     ///
     /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
@@ -365,7 +365,7 @@ impl Dt {
         Dt::from_ymdhms_on(yr, mo, day, 0, 0, 0, 0, scale)
     }
 
-    /// Creates a TAI [`Dt`] from a proleptic gregorian **UTC** date.
+    /// Creates a **TAI** [`Dt`] from a proleptic gregorian **UTC** date.
     ///
     /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
     #[inline]
@@ -381,7 +381,7 @@ impl Dt {
         Dt::from_ymdhms_on(yr, mo, day, hr, min, sec, attos, Scale::UTC)
     }
 
-    /// Creates a TAI [`Dt`] from a proleptic gregorian **UTC** date.
+    /// Creates a **TAI** [`Dt`] from a proleptic gregorian **UTC** date.
     ///
     /// See [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on).
     #[inline]

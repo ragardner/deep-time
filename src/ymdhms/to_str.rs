@@ -48,12 +48,12 @@ impl YmdHmsRich {
     ///
     /// let x = Dt::from_ymd(2000, 1, 1);
     /// let y = x.to_ymdhms_rich(Scale::TAI);
-    /// let b = y.to_lite_str("%F").unwrap();
+    /// let b = y.to_str_bin("%F").unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
     /// ```
-    pub fn to_lite_str(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    pub fn to_str_bin(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;

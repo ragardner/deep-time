@@ -411,7 +411,7 @@ impl Dt {
     }
 
     /// Returns `true` if this time is exactly zero.
-    #[inline]
+    #[inline(always)]
     pub const fn is_zero(&self) -> bool {
         self.sec == 0 && self.attos == 0
     }
