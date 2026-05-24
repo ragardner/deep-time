@@ -2,10 +2,10 @@ use crate::{Dt, Scale};
 use hifitime::{Duration, Epoch};
 
 impl Dt {
-    /// Converts this `Dt` to a `hifitime::Epoch` (TAI scale).
+    /// Converts this [`Dt`] to a [`hifitime::Epoch`] (TAI scale).
     ///
-    /// Round-trips perfectly with [`Dt::from_hifitime`].
-    pub fn to_hifitime(&self, current: Scale) -> Epoch {
+    /// Round-trips with [`Dt::from_hifitime`].
+    pub fn to_hifitime_epoch(&self, current: Scale) -> Epoch {
         let nanos = self.to(current, Scale::TAI).to_ns();
 
         let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);
@@ -21,20 +21,7 @@ impl Dt {
         Epoch::from_tai_parts(centuries, nanos)
     }
 
-    /// Converts this `Span` to a [`hifitime::Duration`] (nanosecond precision).
-    ///
-    /// - Sub-nanosecond attoseconds are **truncated toward zero**.
-    /// - The conversion is fully exact up to the nanosecond (128-bit integer arithmetic).
-    /// - Internally uses [`hifitime::Duration::from_total_nanoseconds`], which
-    ///   automatically normalizes centuries/nanoseconds and saturates at
-    ///   [`Duration::MAX`] / [`Duration::MIN`] if outside hifitime's range
-    ///   (±32,768 centuries).
-    #[inline]
-    pub fn to_hifitime_duration(&self) -> Duration {
-        Duration::from_total_nanoseconds(self.to_attos() / 1_000_000_000i128)
-    }
-
-    /// Creates a `Dt` from a `hifitime::Epoch`.
+    /// Creates a [`Dt`] from a [`hifitime::Epoch`].
     ///
     /// - The conversion is exact (within hifitime's nanosecond precision).
     /// - Uses a runtime-computed offset so it always matches whatever
@@ -51,9 +38,22 @@ impl Dt {
         Self::from_ns(ns_since_zero_tai, Scale::TAI)
     }
 
-    /// Creates a `Dt` from a `hifitime::Duration` (nanosecond precision).
+    /// Converts this [`Dt`] to a [`hifitime::Duration`] (nanosecond precision).
     ///
-    /// This is the **exact reverse** of [`Dt::to_hifitime_duration`].
+    /// - Sub-nanosecond attoseconds are **truncated toward zero**.
+    /// - The conversion is exact up to the nanosecond (128-bit integer arithmetic).
+    /// - Internally uses [`hifitime::Duration::from_total_nanoseconds`], which
+    ///   automatically normalizes centuries/nanoseconds and saturates at
+    ///   [`Duration::MAX`] / [`Duration::MIN`] if outside hifitime's range
+    ///   (±32,768 centuries).
+    #[inline]
+    pub fn to_hifitime_duration(&self) -> Duration {
+        Duration::from_total_nanoseconds(self.to_attos() / 1_000_000_000i128)
+    }
+
+    /// Creates a [`Dt`] from a [`hifitime::Duration`] (nanosecond precision).
+    ///
+    /// Inverse of [`Dt::to_hifitime_duration`].
     #[inline]
     pub fn from_hifitime_duration(dur: Duration) -> Self {
         Self::from_ns(dur.total_nanoseconds(), Scale::TAI)

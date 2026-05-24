@@ -14,7 +14,19 @@ fn clamp_i128_to_u64(x: i128) -> u64 {
 }
 
 impl Dt {
-    /// Creates a `Dt` from a `chrono::DateTime<chrono::Utc>`.
+    /// Converts this [`Dt`] to a [`chrono::DateTime`].
+    ///
+    /// - Sub-nanosecond attoseconds are truncated toward zero.
+    /// - Saturates at the minimum/maximum representable `DateTime<Utc>`
+    ///   (roughly years 1678–2262) if the instant is out of range.
+    #[inline]
+    pub fn to_chrono_datetime_utc(&self, current: Scale) -> DateTime<Utc> {
+        DateTime::<Utc>::from_timestamp_nanos(Dt::clamp_i128_to_i64(
+            self.to_unix(current, Scale::UTC).to_ns(),
+        ))
+    }
+
+    /// Creates a TAI [`Dt`] from a [`chrono::DateTime`].
     ///
     /// This is the inverse of [`Dt::to_chrono_datetime_utc`].
     pub fn from_chrono_datetime_utc(dt: DateTime<Utc>) -> Self {
@@ -52,18 +64,6 @@ impl Dt {
                 Self::from_ns(ns as i128, Scale::TAI)
             }
         }
-    }
-
-    /// Converts this [`Dt`] to a `chrono::DateTime<chrono::Utc>`.
-    ///
-    /// - Sub-nanosecond attoseconds are truncated toward zero.
-    /// - Saturates at the minimum/maximum representable `DateTime<Utc>`
-    ///   (roughly years 1678–2262) if the instant is out of range.
-    #[inline]
-    pub fn to_chrono_datetime_utc(&self, current: Scale) -> DateTime<Utc> {
-        DateTime::<Utc>::from_timestamp_nanos(Dt::clamp_i128_to_i64(
-            self.to_unix(current, Scale::UTC).to_ns(),
-        ))
     }
 
     /// Converts this [`Dt`] to a `chrono::Duration` (nanosecond precision).

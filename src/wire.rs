@@ -358,7 +358,7 @@ impl YmdHmsRich {
         offset += 1 + LiteStr::<49>::SIZE;
 
         // scale (1 byte)
-        buf[offset] = self.scale.to_wire_byte();
+        buf[offset] = self.scale.to_u8();
 
         buf
     }

@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn roundtrip_j2000() {
         let tp = Dt::ZERO;
-        let h = tp.to_hifitime(Scale::TAI);
+        let h = tp.to_hifitime_epoch(Scale::TAI);
         let tp2 = Dt::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);
     }
@@ -340,7 +340,7 @@ mod tests {
     #[test]
     fn roundtrip_unix_epoch() {
         let tp = Dt::UNIX_EPOCH;
-        let h = tp.to_hifitime(Scale::TAI);
+        let h = tp.to_hifitime_epoch(Scale::TAI);
         let tp2 = Dt::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);
     }
@@ -348,7 +348,7 @@ mod tests {
     #[test]
     fn roundtrip_traditional_gps_epoch() {
         let tp = Dt::GPS_EPOCH;
-        let h = tp.to_hifitime(Scale::TAI);
+        let h = tp.to_hifitime_epoch(Scale::TAI);
         let tp2 = Dt::from_hifitime_epoch(h);
         assert_eq!(tp, tp2);
     }
@@ -357,7 +357,7 @@ mod tests {
     fn hifitime_different_scales() {
         let h_utc = Epoch::from_gregorian_utc(2024, 4, 26, 3, 28, 0, 0);
         let tp = Dt::from_hifitime_epoch(h_utc);
-        let h_tai = tp.to_hifitime(Scale::TAI);
+        let h_tai = tp.to_hifitime_epoch(Scale::TAI);
         assert_eq!(
             h_utc.to_tai_duration().total_nanoseconds(),
             h_tai.to_tai_duration().total_nanoseconds()
@@ -368,7 +368,7 @@ mod tests {
     fn large_positive_time() {
         let h = Epoch::from_gregorian_tai(3000, 1, 1, 12, 0, 0, 0);
         let tp = Dt::from_hifitime_epoch(h);
-        let h2 = tp.to_hifitime(Scale::TAI);
+        let h2 = tp.to_hifitime_epoch(Scale::TAI);
         assert_eq!(
             h.to_tai_duration().total_nanoseconds(),
             h2.to_tai_duration().total_nanoseconds()
@@ -379,7 +379,7 @@ mod tests {
     fn leap_second_boundary() {
         let h = Epoch::from_gregorian_str("2016-12-31T23:59:60 UTC").unwrap();
         let tp = Dt::from_hifitime_epoch(h);
-        let h2 = tp.to_hifitime(Scale::TAI);
+        let h2 = tp.to_hifitime_epoch(Scale::TAI);
         assert_eq!(
             h.to_tai_duration().total_nanoseconds(),
             h2.to_tai_duration().total_nanoseconds()
@@ -398,8 +398,8 @@ mod tests {
     // #[test]
     // fn large_negative_time() {
     //     let h = Epoch::from_gregorian_tai(-1000, 1, 1, 12, 0, 0, 0);
-    //     let tp = Dt::from_hifitime(h);
-    //     let h2 = tp.to_hifitime();
+    //     let tp = Dt::from_hifitime_epoch(h);
+    //     let h2 = tp.to_hifitime_epoch();
     //     assert_eq!(
     //         h.to_tai_duration().total_nanoseconds(),
     //         h2.to_tai_duration().total_nanoseconds()

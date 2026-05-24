@@ -112,6 +112,7 @@ pub(crate) use alloc_parse::{
 // CRATE USE
 // _________________________________________
 pub(crate) use constants::*;
+#[allow(unused_imports)]
 pub(crate) use math::{
     atan2::atan2,
     cos::cos,

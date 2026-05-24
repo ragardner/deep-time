@@ -240,7 +240,7 @@ impl Scale {
     /// Const-friendly equality comparison.
     #[inline]
     pub const fn eq(self, other: Self) -> bool {
-        self.to_wire_byte() == other.to_wire_byte()
+        self.to_u8() == other.to_u8()
     }
 
     /// Size of the canonical wire representation in bytes.
@@ -276,7 +276,7 @@ impl Scale {
     /// The returned byte is the `repr(u8)` discriminant of the enum.
     /// This is the canonical on-wire form used by [`Dt`].
     #[inline]
-    pub const fn to_wire_byte(self) -> u8 {
+    pub const fn to_u8(self) -> u8 {
         self as u8
     }
 }

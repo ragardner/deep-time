@@ -35,6 +35,8 @@ impl StrPTimeFmt {
     /// ## Examples
     ///
     /// ```
+    /// # #[cfg(feature = "parse")]
+    /// # {
     /// use deep_time::{Dt, StrPTimeFmt};
     ///
     /// let fmt = Dt::parse_fmt("%F %T").unwrap();
@@ -44,6 +46,7 @@ impl StrPTimeFmt {
     ///
     /// // change a datetimes format
     /// let s = fmt.to_str("2000-01-01 12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+    /// # }
     /// ```
     pub fn new(fmt: &str) -> Result<Self, DtErr> {
         if fmt.len() > Self::MAX_FORMAT_LEN {

@@ -45,12 +45,24 @@ mod tests {
         assert_eq!(output2, expected_snapped, "round-trip must be stable");
     }
 
+    #[cfg(feature = "tz")]
     #[test]
-    fn print_stuff() {
-        let x = Dt::from_ymdhms_on(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
-        let g = x.to_gps_wk_and_tow(Scale::TAI);
-        let z = Dt::from_gps_wk_and_tow(g.0, g.1);
-        assert_eq!(x, z);
+    fn tz_output() {
+        use deep_time::{Dt, Scale};
+
+        let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
+        let s = x
+            .to_str_with_tz(Scale::TAI, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+            .unwrap();
+        let b = x
+            .to_str_bin_with_tz(Scale::TAI, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+            .unwrap();
+
+        assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
+        assert_eq!(
+            b.as_str().unwrap(),
+            "Saturday, January 01, 2000 07:00:00 America/New_York"
+        );
     }
 
     // ─────────────────────────────────────────────────────────────────────────────

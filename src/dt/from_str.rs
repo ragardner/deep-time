@@ -63,7 +63,7 @@ impl Dt {
     pub fn parse(s: &str) -> Result<Self, DtErr> {
         #[cfg(feature = "parse")]
         {
-            Dt::from_str_parse(s, &None)
+            Self::from_str_parse(s, &None)
         }
         #[cfg(not(feature = "parse"))]
         {
