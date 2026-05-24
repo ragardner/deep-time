@@ -37,6 +37,23 @@ impl Dt {
     /// - When the `parse` feature is enabled: uses the smart auto-parser.
     /// - When the `parse` feature is disabled: falls back to CCSDS format.
     ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
+    ///
+    /// let ymd = x.to_ymdhms(Scale::TAI);
+    /// assert_eq!(ymd.yr(), 2000);
+    /// assert_eq!(ymd.mo(), 1);
+    /// assert_eq!(ymd.day(), 1);
+    /// assert_eq!(ymd.hr(), 12);
+    /// assert_eq!(ymd.min(), 0);
+    /// assert_eq!(ymd.sec(), 0);
+    /// assert_eq!(ymd.attos(), 0);
+    /// ```
+    ///
     /// ## See also
     ///
     /// - [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse)
