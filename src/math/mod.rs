@@ -1,4 +1,4 @@
-//! Tested, `const fn` versions of rust libm floating-point math functions.
+//! Tested, `const fn` versions of libm float math functions. e.g. `use deep_time::math::sin;`
 //!
 //! Re-exports of `sin`, `cos`, `tan`, `atan`, `atan2`, `floor_f`, `rem_euclid_f`, `sqrt`, `log`.
 

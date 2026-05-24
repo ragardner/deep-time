@@ -4,6 +4,7 @@
 mod tests {
     use deep_time::{Dt, Scale, leap_seconds};
     use hifitime::{Duration, Epoch, TimeScale};
+
     /// Seconds between hifitime's TAI reference epoch (1900-01-01 00:00:00 TAI)
     /// and our library's J2000.0 TAI.
     const HIFITIME_TAI_EPOCH_TO_OUR_J2000: i64 = 3_155_716_800;
