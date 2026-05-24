@@ -4,8 +4,7 @@ impl TimeParts {
     /// Low-level parser equivalent to `strptime` with a provided format string.
     ///
     /// This is the core entry point for format-string based parsing in the library.
-    /// It supports a rich set of `%` directives (similar to C `strptime`, Python
-    /// `strftime`/`strptime`, and common extensions used by `chrono`/`jiff`).
+    /// It supports a large range of `%` directives (the same as jiff pretty much).
     ///
     /// The parser populates a [`TimeParts`] struct with all fields that can be
     /// extracted from the input. After parsing, [`Self::finish`] is called

@@ -1,23 +1,21 @@
+//! [`DtErrKind`] and main error type [`DtErr`].
+//!
+//! [`DtErr`] is a type alias to [`AnErr`] — a compact,
+//! zero-allocation error that supports chaining with
+//! source locations and short per-level reasons.
+
 use crate::AnErr;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DtErrKind {
-    /// Format string or input ended unexpectedly (%, ., exhausted input, etc.)
     UnexpectedEnd,
-    /// Unknown % directive (the `_` case)
     UnknownDirective,
-    /// %c, %r, %X, %x, %Z etc. (explicitly unsupported library directives)
     UnsupportedDirective,
-    /// The `.` was followed by something other than f/N
     BadFractional,
-    /// Literal character or % sign in input didn't match format
     MismatchedLiteral,
-    /// Generic "could not parse expected integer" (year, month, day, hour, …)
     ExpectedValue,
-    /// Month name, weekday name, or AM/PM failed to parse
     InvalidName,
-    /// Anything wrong with a timezone offset (+HH:MM:SS syntax)
     InvalidTimezoneOffset,
     MustStartWith,
     InvalidNumber,

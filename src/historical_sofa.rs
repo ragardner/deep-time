@@ -1,3 +1,8 @@
+//! Pre-1972 TAI−UTC historical offsets and linear drift rates
+//! from the official USNO `tai-utc.dat` (used by IAU SOFA).
+//!
+//! Provides the piecewise-linear formula for UTC instants before 1972-01-01.
+
 use crate::{Dt, Real};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -26,7 +31,7 @@ pub struct TaiUtcPre1972 {
 
 /// Authoritative pre-1972 TAI−UTC entries from the official USNO `tai-utc.dat`
 /// [file](https://maia.usno.navy.mil/ser7/tai-utc.dat).  
-/// These 13 intervals contain the exact frequency offsets and linear drifts used by the IAU SOFA library
+/// These 13 intervals contain the frequency offsets and linear drifts used by the IAU SOFA library
 /// and all other high-precision astronomy/time-conversion software before UTC switched to pure leap-second mode.
 pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
     TaiUtcPre1972 {

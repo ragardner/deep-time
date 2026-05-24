@@ -1,9 +1,11 @@
+//! Lunar time-scale constants and conversion methods.
+
 use crate::{ATTOS_PER_SEC, Dt, Real, Scale, sin};
 
-/// TCL secular rate vs TDB (exact value from LTE440).
+/// TCL secular rate vs TDB (value from LTE440).
 pub const TL_NUM: i128 = 6_798_355_240;
 pub const TL_DEN: i128 = 10_000_000_000_000_000_000; // 10^19
-/// L_M = 6.48378 × 10^{-10} (exact secular rate from Ashby & Patla 2024 NIST for LTC ↔ TT)
+/// L_M = 6.48378 × 10^{-10} (secular rate from Ashby & Patla 2024 NIST for LTC ↔ TT)
 /// as fixed-point fraction.
 pub const LM_NUM: i128 = 648_378;
 pub const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
@@ -105,7 +107,7 @@ impl Dt {
     /// Converts LTC → TT using fixed-point iteration to account for the
     /// time-dependent periodic correction.
     ///
-    /// This mirrors the exact strategy used in `tdb_to_tai` for consistency
+    /// This mirrors the strategy used in `tdb_to_tai` for consistency
     /// and sub-attosecond numerical stability. The LTE440 periodic terms
     /// (Lu et al. 2025) are evaluated at the current TT guess on each iteration.
     ///
@@ -133,7 +135,6 @@ impl Dt {
     }
 
     /// Returns the periodic part of (LTC − TT) in Dt (µs-level, evaluated at the TT instant).
-    /// Exactly analogous to your `tdb_minus_tt`.
     const fn ltc_periodic_correction(tt: Self) -> Dt {
         let seconds_since_j2000_tt = f!(tt.sec) + f!(tt.attos) / f!(ATTOS_PER_SEC);
         let t_days = seconds_since_j2000_tt / f!(86400.0); // days since J2000.0 TT
@@ -154,15 +155,15 @@ impl Dt {
     }
 
     /// Zero-point calibration constant for TCL so that our implementation
-    /// exactly reproduces the official LTE440 reference value at every epoch.
+    /// reproduces the official LTE440 reference value at every epoch.
     ///
-    /// LTE440 (Lu et al. 2025) states that at exactly J2000.0 TDB:
+    /// LTE440 (Lu et al. 2025) states that at J2000.0 TDB:
     ///
     /// ```text
     /// published reference: TCL − TDB = +0.49330749643254945 s
     /// ```
     ///
-    /// At this epoch the secular term is exactly zero, so our code produces only
+    /// At this epoch the secular term is zero, so our code produces only
     /// the periodic contribution from the 13-term LTE440 series:
     ///
     /// ```text
@@ -184,8 +185,8 @@ impl Dt {
     /// (README and demo output)
     pub(crate) const TCL_TDB_BIAS_SPAN: Dt = Dt::from_sec_f(0.49334260839797583);
 
-    /// Exact integer helper: elapsed attoseconds since J2000.0 TDB.
-    /// Used exclusively for the TCL pathway to match LTE440 exactly
+    /// Integer helper: elapsed attoseconds since J2000.0 TDB.
+    /// Used exclusively for the TCL pathway to match LTE440
     /// (TCL = TDB + L_D^M × (JD_TDB − 2451545.0) × 86400 + periodic).
     #[inline]
     pub(crate) const fn to_attos_since_j2000_tdb_epoch(numerical_tdb: Self) -> i128 {

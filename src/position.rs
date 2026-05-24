@@ -29,7 +29,7 @@ impl Position {
     pub const ZERO: Self = Self::new(f!(0.0), f!(0.0), f!(0.0));
 
     /// Creates a `Position` from coordinates expressed in Astronomical Units (AU),
-    /// converting them to meters using the exact IAU 2012 definition
+    /// converting them to meters using the IAU 2012 definition
     /// (1 AU = 149 597 870 700 m).
     ///
     /// Especially convenient when working with planetary ephemerides or solar-system
@@ -144,7 +144,7 @@ impl Velocity {
     }
 
     /// Dimensionless 3-velocity β = v/c relative to the local chrono-rest frame.
-    /// This is exactly what the master Lagrangian and `Spacetime` expect.
+    /// This is what the master Lagrangian and `Spacetime` expect.
     #[inline]
     pub const fn beta(self) -> Real {
         sqrt((self.norm_squared() / C_SQUARED).max(f!(0.0)))

@@ -2,14 +2,19 @@ use crate::Dt;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+/// Used by [`ParseCfg`] in
+/// [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse).
+///
+/// Controls how ambiguous numeric dates (e.g. `01/02/03`).
+///
+/// The default `Smart` variant applies a practical heuristic that prefers
+/// year-first for compact formats and uses numeric plausibility checks
+/// for other cases. The other variants force a specific ordering.
 #[derive(Clone, Copy, Debug, PartialEq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub enum Order {
-    /// **Default & recommended** — Research-backed modern heuristic that
-    /// delivers the highest real-world success rate while remaining predictable.
-    ///
-    /// It uses the following prioritized rules (applied in this exact order):
+    /// Heuristic for **mixed data**. Uses the following rules, in this order:
     ///
     /// 1. **Pure-numeric compact formats** (≥ 6 digits with no separators,
     ///    e.g. `240314153045`, `20240315`, `YYMMDDHHMMSS`):
@@ -74,6 +79,14 @@ pub enum Mode {
     Scientific,
 }
 
+/// Configuration options for
+/// [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse).
+///
+/// Controls language, ambiguous date order, numeric parsing mode,
+/// explicit `strptime` formats, relative-date support, and reference time.
+///
+/// These settings will not persist between parse calls and have to be used
+/// as an arg every time you want them.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Debug, PartialEq)]
@@ -102,7 +115,7 @@ pub struct ParseCfg {
     #[cfg_attr(feature = "serde", serde(default))]
     pub order: Order,
 
-    /// Sets language to use, not persistent.
+    /// Sets language to use for a particular parse call.
     #[cfg_attr(feature = "serde", serde(default))]
     pub lang: Lang,
 
@@ -168,7 +181,7 @@ pub(crate) fn append_to_all(builders: &mut Vec<AmBuilder>, s: &'static str) {
     }
 }
 
-/// Language codes following ISO 639-1 standard (two-letter codes)
+/// Language codes following ISO 639-1 standard (two-letter codes).
 /// Default is En (English)
 #[allow(dead_code)]
 #[non_exhaustive]

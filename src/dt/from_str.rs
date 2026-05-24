@@ -78,9 +78,8 @@ impl Dt {
     /// [`TimeParts::from_str`](../struct.TimeParts.html#method.from_str)
     /// followed by [`TimeParts::to_dt`](../struct.TimeParts.html#method.to_dt).
     ///
-    /// It supports the same rich set of `%` directives as the low-level parser
-    /// (similar to C `strptime`, Python `strftime`/`strptime`, `chrono`, `jiff`,
-    /// and common extensions).
+    /// It supports the same set of `%` directives as the low-level parser, pretty
+    /// much the same as jiff.
     ///
     /// ## Parameters
     ///

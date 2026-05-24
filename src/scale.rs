@@ -47,7 +47,7 @@ use core::fmt;
 /// - [`TCL`] (Lunar Coordinate Time): IAU-defined relativistic coordinate time
 ///   in the LCRS. The implementation includes the secular rate vs TDB, the same
 ///   LTE440 periodic terms, and a constant bias calibrated so that the model
-///   exactly reproduces the official LTE440 reference value at J2000.0 TDB.
+///   reproduces the official LTE440 reference value at J2000.0 TDB.
 ///   Inverse conversion also uses fixed-point iteration.
 ///
 /// See the documentation on the individual variants for rates, historical
@@ -133,7 +133,7 @@ pub enum Scale {
     /// The implementation follows the **LTE440** model (Lu et al. 2025):
     /// - Secular rate vs TDB (`L_D^M`).
     /// - The same 13-term LTE440 periodic series used for LTC.
-    /// - A constant bias (`TCL_TDB_BIAS_SPAN`) calibrated so the model exactly
+    /// - A constant bias (`TCL_TDB_BIAS_SPAN`) calibrated so the model
     ///   reproduces the published LTE440 reference value at J2000.0 TDB.
     TCL,
 

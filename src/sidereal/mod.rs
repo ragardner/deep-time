@@ -1,3 +1,11 @@
+//! Sidereal rotation and time calculations for celestial bodies.
+//!
+//! [`Sidereal`] struct with ready-to-use `EARTH`, `MARS`, `MOON` constants.
+//! Computes rotation angle, LMST/LAST, GMST/GAST.
+//!
+//! With the `"sidereal-earth"` feature enabled a rust implementation of the
+//! ERFA Earth Equation of the Origins / Equinoxes are both available as well.
+
 #[cfg(feature = "sidereal-earth")]
 pub mod earth_eo_ee;
 

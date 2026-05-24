@@ -11,7 +11,7 @@ impl Dt {
         Self::jd_to_ymd(jd)
     }
 
-    /// Returns the full "rich" proleptic Gregorian date and wall-clock time for this instant,
+    /// Returns the full proleptic Gregorian date and wall-clock time for this instant,
     /// including all precomputed calendar metadata (ISO week date, day-of-year, multiple
     /// week-numbering systems, etc.).
     ///
@@ -90,7 +90,7 @@ impl Dt {
             Some((ymdhms.yr, ymdhms.mo, ymdhms.day)),
             Some(day_of_yr),
         );
-        ymdhms.to_ymdhms_rich_on(
+        ymdhms.to_ymdhms_rich(
             iso_yr,
             iso_wk,
             iso_wkday,
@@ -98,7 +98,6 @@ impl Dt {
             wkday,
             wk_of_yr_sun,
             wk_of_yr_mon,
-            new,
         )
     }
 
@@ -206,6 +205,7 @@ impl Dt {
             min,
             sec,
             attos: from_unix_epoch.attos,
+            scale: new,
         }
     }
 
@@ -225,7 +225,7 @@ impl Dt {
     /// - Expects **1 based** `mo` and `day`, and **0 based** `hr`, `min`, and `sec`.
     /// - Does not perform any time scale conversions.
     pub const fn ymdhms_to_unix_sec(yr: i64, mo: u8, day: u8, hr: u8, min: u8, sec: u8) -> i64 {
-        let (mo, day, hr, min, sec) = Self::clamp_mdhms(mo, day, hr, min, sec);
+        let (mo, day, hr, min, sec) = Self::clamp_mdhms(yr, mo, day, hr, min, sec);
         let jd = Self::ymd_to_jd(yr, mo, day);
         // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
         let days_since_1970 = jd.saturating_sub(2440588);
@@ -279,6 +279,9 @@ impl Dt {
     /// - This function expects **1 based** `mo` and `day`. Passing `mo = 0` or `day = 0` (or other
     ///   out-of-range values) will produce incorrect results as this function does not perform
     ///   value clamping.
+    /// - Does not deal with bad inputs like February with 30 days, does not do any clamping. If you
+    ///   need to sanitize a year, month, day input use
+    ///   [`Dt::clamp_mdhms`](../struct.Dt.html#method.clamp_mdhms) first.
     /// - The result is the integer JD corresponding to **noon** on the given date.
     #[inline]
     pub const fn ymd_to_jd(yr: i64, mo: u8, day: u8) -> i64 {
@@ -337,7 +340,7 @@ impl Dt {
         attos: u64,
         scale: Scale,
     ) -> Self {
-        let (mo, day, hr, min, sec) = Self::clamp_mdhms(mo, day, hr, min, sec);
+        let (mo, day, hr, min, sec) = Self::clamp_mdhms(yr, mo, day, hr, min, sec);
         let carried_sec = (attos / ATTOS_PER_SEC) as i64;
         let final_attos = attos % ATTOS_PER_SEC;
 
@@ -630,7 +633,30 @@ impl Dt {
         (iso_yr, iso_wk, wkday_enum)
     }
 
-    pub(crate) const fn clamp_mdhms(
+    /// Number of days in a month under proleptic Gregorian rules.
+    #[inline]
+    pub const fn days_in_month(yr: i64, mo: u8) -> u8 {
+        match mo {
+            1 | 3 | 5 | 7 | 8 | 10 | 12 => 31,
+            4 | 6 | 9 | 11 => 30,
+            2 => {
+                if Self::is_leap_yr(yr) {
+                    29
+                } else {
+                    28
+                }
+            }
+            _ => 0,
+        }
+    }
+
+    /// Clamps month, day, hour, minutes, and seconds values. Clamps days to what is
+    /// correct for that particular propleptic gregorian month.
+    ///
+    /// For example the year 2000 is a leap year, and February in that year has 29 days
+    /// so the days are clamped to 1-29 in that year, but 1-28 in non-leap years.
+    pub const fn clamp_mdhms(
+        yr: i64,
         mo: u8,
         day: u8,
         hr: u8,
@@ -638,7 +664,8 @@ impl Dt {
         sec: u8,
     ) -> (u8, u8, u8, u8, u8) {
         let mo = Self::clamp_u8(mo, 1, 12);
-        let day = Self::clamp_u8(day, 1, 31);
+        let max_day = Self::days_in_month(yr, mo);
+        let day = Self::clamp_u8(day, 1, max_day);
         let h = Self::clamp_u8(hr, 0, 23);
         let m = Self::clamp_u8(min, 0, 59);
         let s = Self::clamp_u8(sec, 0, 60);

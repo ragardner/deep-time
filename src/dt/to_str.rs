@@ -403,12 +403,8 @@ impl Dt {
     }
 
     /// Helper for creating a timezone-adjusted YmdHmsRich.
-    ///
-    /// Always converts to UTC first, then does a correct UTC-based lookup
-    /// in the IANA transition table. This avoids the previous bug where
-    /// a non-UTC `unix_ts` was being passed to `offset_info_at_local`.
     pub(crate) fn ymdhms_rich_with_tz(&self, current: Scale, tz_name: &str) -> YmdHmsRich {
-        // 1. Get the true UTC Unix timestamp (this is what we search with)
+        // 1. Get the true UTC Unix timestamp
         let utc_unix = self
             .to(current, current.to_utc())
             .to_diff_raw(Dt::UNIX_EPOCH);

@@ -615,7 +615,7 @@ impl ObserverState {
     /// This avoids the dangerous subtraction that loses precision when
     /// the signal path passes close to the body.
     ///
-    /// The result is **exactly equivalent** (within floating-point) to the
+    /// The result is equivalent (within floating-point) to the
     /// classic Moyer/DSN-style formula while being far more stable.
     /// Contributions from multiple bodies are summed at a higher level.
     ///

@@ -1,3 +1,14 @@
+//! Earth Orientation Parameters (EOP) data parser and interpolator.
+//!
+//! Loads UT1–UTC offsets and polar motion (x, y) from standard IERS formats
+//! (`Finals2000A`, `C04`) or custom column layouts.
+//!
+//! Provides interpolation at any MJD and integrates with [`Dt`]
+//! for UT1 time scale conversions.
+//!
+//! Tries to be planet/body agnostic, such that custom data for any world
+//! might be able to be loaded and used.
+
 #![allow(clippy::indexing_slicing)]
 #![allow(clippy::excessive_precision)]
 #![allow(clippy::approx_constant)]

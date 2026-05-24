@@ -21,7 +21,7 @@ fn panic(_info: &PanicInfo) -> ! {
     }
 }
 
-// maybe one day upgrade to f128 ¯\_(ツ)_/¯
+/// Alias for f64, maybe upgrade one day
 pub type Real = f64;
 
 /// Convert a number to the crates [`Real`] type (f64).
@@ -54,48 +54,6 @@ macro_rules! safe_rem_euc {
             None => $default,
         }
     }};
-}
-
-/// **Lossy** conversion of attoseconds to → float seconds (s).
-#[inline(always)]
-pub const fn to_sec_f(attos: u128) -> Real {
-    f!(attos) / ATTOS_PER_SECF
-}
-
-/// Converts attoseconds → seconds (s)
-#[inline(always)]
-pub fn to_sec(attos: i128) -> i128 {
-    attos / ATTOS_PER_SEC_I128
-}
-
-/// Converts attoseconds → milliseconds (ms)
-#[inline(always)]
-pub fn to_ms(attos: i128) -> i128 {
-    attos / ATTOS_PER_MS_I128
-}
-
-/// Converts attoseconds → microseconds (us)
-#[inline(always)]
-pub fn to_us(attos: i128) -> i128 {
-    attos / ATTOS_PER_US_I128
-}
-
-/// Converts attoseconds → nanoseconds (ns)
-#[inline(always)]
-pub fn to_ns(attos: i128) -> i128 {
-    attos / ATTOS_PER_NS_I128
-}
-
-/// Converts attoseconds → picoseconds (ps)
-#[inline(always)]
-pub fn to_ps(attos: i128) -> i128 {
-    attos / ATTOS_PER_PS_I128
-}
-
-/// Converts attoseconds → femtoseconds (fs)
-#[inline(always)]
-pub fn to_fs(attos: i128) -> i128 {
-    attos / ATTOS_PER_FS_I128
 }
 
 // _________________________________________
@@ -154,6 +112,15 @@ pub(crate) use alloc_parse::{
 // CRATE USE
 // _________________________________________
 pub(crate) use constants::*;
+pub(crate) use math::{
+    atan2::atan2,
+    cos::cos,
+    div::rem_euclid_f,
+    floor::floor_f,
+    log::log,
+    sin::sin,
+    sqrt::{hypot, sqrt},
+};
 
 // _________________________________________
 // FEATURE PUB USE
@@ -180,17 +147,6 @@ pub use dt::{Dt, lunar};
 pub use error::{DtErr, DtErrKind};
 pub use light_time::ObserverState;
 pub use lite_str::{LiteStr, LiteStrErr};
-pub use math::{
-    atan::atan,
-    atan2::atan2,
-    cos::cos,
-    div::rem_euclid_f,
-    floor::floor_f,
-    log::log,
-    sin::sin,
-    sqrt::{hypot, sqrt},
-    tan::tan,
-};
 pub use parser::StrPTimeFmt;
 pub use position::{Position, Velocity};
 pub use scale::Scale;

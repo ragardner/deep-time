@@ -1,6 +1,7 @@
 use crate::{
-    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US, Drift, Dt, Real, Scale, Spacetime, floor_f,
+    ATTOS_PER_FS, ATTOS_PER_FS_I128, ATTOS_PER_MS, ATTOS_PER_MS_I128, ATTOS_PER_NS,
+    ATTOS_PER_NS_I128, ATTOS_PER_PS, ATTOS_PER_PS_I128, ATTOS_PER_SEC, ATTOS_PER_SEC_I128,
+    ATTOS_PER_SECF, ATTOS_PER_US, ATTOS_PER_US_I128, Drift, Dt, Real, Scale, Spacetime, floor_f,
 };
 
 impl Dt {
@@ -78,25 +79,25 @@ impl Dt {
         self.to_sec_f() - other.to_sec_f()
     }
 
-    /// Adds exactly 1 second to this time value using saturating arithmetic.
+    /// Adds 1 second to this time value using saturating arithmetic.
     #[inline]
     pub const fn add_1sec(&mut self) {
         self.sec = self.sec.saturating_add(1);
     }
 
-    /// Adds exactly 1 minute (60 seconds) to this time value using saturating arithmetic.
+    /// Adds 1 minute (60 seconds) to this time value using saturating arithmetic.
     #[inline]
     pub const fn add_1min(&mut self) {
         self.sec = self.sec.saturating_add(60);
     }
 
-    /// Adds exactly 1 hour (3600 seconds) to this time value using saturating arithmetic.
+    /// Adds 1 hour (3600 seconds) to this time value using saturating arithmetic.
     #[inline]
     pub const fn add_1hr(&mut self) {
         self.sec = self.sec.saturating_add(3600);
     }
 
-    /// Adds exactly 1 millisecond to this time value.
+    /// Adds 1 millisecond to this time value.
     ///
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
@@ -104,7 +105,7 @@ impl Dt {
         Self::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_MS);
     }
 
-    /// Adds exactly 1 microsecond to this time value.
+    /// Adds 1 microsecond to this time value.
     ///
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
@@ -112,7 +113,7 @@ impl Dt {
         Self::add_attos_to(&mut self.sec, &mut self.attos, ATTOS_PER_US);
     }
 
-    /// Adds exactly 1 nanosecond to this time value.
+    /// Adds 1 nanosecond to this time value.
     ///
     /// This affects the subsecond component and may cause a carry into the seconds field.
     #[inline]
@@ -186,25 +187,25 @@ impl Dt {
         Self::add_attos_span(&mut self.sec, &mut self.attos, n, 1);
     }
 
-    /// Subtracts exactly 1 hour (3600 seconds) from this time value using saturating arithmetic.
+    /// Subtracts 1 hour (3600 seconds) from this time value using saturating arithmetic.
     #[inline]
     pub const fn sub_1hr(&mut self) {
         self.sec = self.sec.saturating_sub(3600);
     }
 
-    /// Subtracts exactly 1 minute (60 seconds) from this time value using saturating arithmetic.
+    /// Subtracts 1 minute (60 seconds) from this time value using saturating arithmetic.
     #[inline]
     pub const fn sub_1min(&mut self) {
         self.sec = self.sec.saturating_sub(60);
     }
 
-    /// Subtracts exactly 1 second from this time value using saturating arithmetic.
+    /// Subtracts 1 second from this time value using saturating arithmetic.
     #[inline]
     pub const fn sub_1sec(&mut self) {
         self.sec = self.sec.saturating_sub(1);
     }
 
-    /// Subtracts exactly 1 millisecond from this time value.
+    /// Subtracts 1 millisecond from this time value.
     ///
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
@@ -212,7 +213,7 @@ impl Dt {
         Self::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_MS);
     }
 
-    /// Subtracts exactly 1 microsecond from this time value.
+    /// Subtracts 1 microsecond from this time value.
     ///
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
@@ -220,7 +221,7 @@ impl Dt {
         Self::add_attos_span(&mut self.sec, &mut self.attos, -1, ATTOS_PER_US);
     }
 
-    /// Subtracts exactly 1 nanosecond from this time value.
+    /// Subtracts 1 nanosecond from this time value.
     ///
     /// This affects the subsecond component and may cause a borrow from the seconds field.
     #[inline]
@@ -411,7 +412,7 @@ impl Dt {
         (sec, attos)
     }
 
-    /// Returns `true` if this time is exactly zero.
+    /// Returns `true` if this time is zero.
     #[inline(always)]
     pub const fn is_zero(&self) -> bool {
         self.sec == 0 && self.attos == 0
@@ -423,7 +424,7 @@ impl Dt {
         self.to_attos() > 0
     }
 
-    /// Multiplies this time by an integer scalar (exact).
+    /// Multiplies this time by an integer scalar.
     ///
     /// Uses 128-bit arithmetic internally.
     pub const fn mul(self, rhs: i64) -> Self {
@@ -764,5 +765,47 @@ impl Dt {
         } else {
             value
         }
+    }
+
+    /// **Lossy** conversion of u128 attoseconds to → float seconds (s).
+    #[inline(always)]
+    pub const fn attos_to_sec_f(attos: u128) -> Real {
+        f!(attos) / ATTOS_PER_SECF
+    }
+
+    /// Converts i128 attoseconds → seconds (s)
+    #[inline(always)]
+    pub const fn attos_to_sec(attos: i128) -> i128 {
+        attos / ATTOS_PER_SEC_I128
+    }
+
+    /// Converts i128 attoseconds → milliseconds (ms)
+    #[inline(always)]
+    pub const fn attos_to_ms(attos: i128) -> i128 {
+        attos / ATTOS_PER_MS_I128
+    }
+
+    /// Converts i128 attoseconds → microseconds (us)
+    #[inline(always)]
+    pub const fn attos_to_us(attos: i128) -> i128 {
+        attos / ATTOS_PER_US_I128
+    }
+
+    /// Converts i128 attoseconds → nanoseconds (ns)
+    #[inline(always)]
+    pub const fn attos_to_ns(attos: i128) -> i128 {
+        attos / ATTOS_PER_NS_I128
+    }
+
+    /// Converts i128 attoseconds → picoseconds (ps)
+    #[inline(always)]
+    pub const fn attos_to_ps(attos: i128) -> i128 {
+        attos / ATTOS_PER_PS_I128
+    }
+
+    /// Converts i128 attoseconds → femtoseconds (fs)
+    #[inline(always)]
+    pub const fn attos_to_fs(attos: i128) -> i128 {
+        attos / ATTOS_PER_FS_I128
     }
 }

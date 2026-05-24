@@ -1,7 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 mod unified_vs_gr_tests {
-    use deep_time::{Drift, Real, Spacetime, constants::C_SQUARED, f, sqrt};
+    use deep_time::{Drift, Real, Spacetime, constants::C_SQUARED, f, math::sqrt};
 
     /// Classic GR rate (what every existing pipeline uses)
     fn classic_gr_rate(alpha: Real, beta: Real) -> Real {

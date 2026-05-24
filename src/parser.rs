@@ -178,7 +178,7 @@ impl StrPTimeFmt {
             let directive = fmt[0];
 
             match directive {
-            // all currently supported directives (exact list from Parser::parse)
+            // all currently supported directives
             b'%' | b'A' | b'a' | b'B' | b'b' | b'h' | b'C' | b'd' | b'e' |
             b'f' | b'N' | b'G' | b'g' | b'H' | b'k' | b'I' | b'l' | b'j' |
             b'M' | b'm' | b'n' | b't' | b'P' | b'p' | b'Q' | b'S' | b's' |

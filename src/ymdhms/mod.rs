@@ -1,8 +1,35 @@
-use crate::{Dt, LiteStr, Scale, Weekday};
+use crate::{ATTOS_PER_SEC_I128, Dt, LiteStr, Scale, Weekday};
 
 mod to_str;
 
 /// Combined Gregorian date + wall time with subsecond precision.
+///
+/// Has some basic calendar aware math, but not time zone aware.
+///
+/// ## Examples
+///
+/// **Creating a** [`YmdHms`].
+///
+/// ```
+/// use deep_time::{Dt, Scale};
+///
+/// // clamped to 29
+/// let x = Dt::from_ymd(2000, 2, 30).to_ymdhms(Scale::TAI);
+///
+/// assert_eq!(x.day(), 29);
+/// ```
+///
+/// **Adding a year.** 2000 is a leap year and Feb. 29th is possible, but
+/// 2001 isn't a leap year so the day is clamped to the 28th.
+///
+/// ```
+/// use deep_time::{Dt, Scale};
+///
+/// let x = Dt::from_ymd(2000, 2, 29).to_ymdhms(Scale::TAI);
+/// let x = x.add_yr(1);
+///
+/// assert_eq!(x.day(), 28);
+/// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -15,9 +42,118 @@ pub struct YmdHms {
     pub(crate) sec: u8,    // 0–60 (60 only during leap seconds)
     pub(crate) attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
     pub(crate) unix_attosec: i128,
+    pub(crate) scale: Scale,
 }
 
 impl YmdHms {
+    /// Reconstructs a [`Dt`].
+    #[inline]
+    pub const fn to_dt(&self) -> Dt {
+        Dt::from_ymdhms_on(
+            self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
+        )
+    }
+
+    #[inline(always)]
+    const fn reconstruct(
+        yr: i64,
+        mo: u8,
+        day: u8,
+        hr: u8,
+        min: u8,
+        sec: u8,
+        attos: u64,
+        scale: Scale,
+    ) -> Self {
+        Dt::from_ymdhms_on(yr, mo, day, hr, min, sec, attos, scale).to_ymdhms_on(Scale::TAI, scale)
+    }
+
+    /// Adds (or subtracts) whole years, preserving month and day-of-month.
+    /// Negative values subtract years. Uses standard last-day-of-month clamping.
+    pub const fn add_yr(&self, years: i64) -> Self {
+        if years == 0 {
+            return *self;
+        }
+        let new_yr = self.yr.saturating_add(years);
+        let max_day = Dt::days_in_month(new_yr, self.mo);
+        let new_day = Dt::clamp_u8(self.day, 1, max_day);
+        Self::reconstruct(
+            new_yr, self.mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
+        )
+    }
+
+    /// Adds (or subtracts) whole months. Negative values subtract months.
+    /// Uses `i128` total-month arithmetic to avoid overflow at extreme years.
+    pub const fn add_mo(&self, months: i64) -> Self {
+        if months == 0 {
+            return *self;
+        }
+        let yr = self.yr as i128;
+        let mo = self.mo as i128;
+        let delta = months as i128;
+
+        let total_months = yr * 12 + (mo - 1) + delta;
+
+        let new_yr = Dt::clamp_i128_to_i64(total_months.div_euclid(12));
+        let new_mo = Dt::clamp_u8((total_months.rem_euclid(12) + 1) as u8, 1, 12);
+
+        let max_day = Dt::days_in_month(new_yr, new_mo);
+        let new_day = Dt::clamp_u8(self.day, 1, max_day);
+
+        Self::reconstruct(
+            new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
+        )
+    }
+
+    /// Adds (or subtracts) calendar days using Julian Day arithmetic.
+    /// Negative values subtract days.
+    pub const fn add_days(&self, days: i64) -> Self {
+        if days == 0 {
+            return *self;
+        }
+        let jd = Dt::ymd_to_jd(self.yr, self.mo, self.day);
+        let new_jd = jd.saturating_add(days);
+        let (new_yr, new_mo, new_day) = Dt::jd_to_ymd(new_jd);
+        Self::reconstruct(
+            new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
+        )
+    }
+
+    #[inline]
+    pub const fn add_wk(&self, weeks: i64) -> Self {
+        self.add_days(weeks.saturating_mul(7))
+    }
+
+    #[inline(never)]
+    const fn _add_attos(&self, attos_delta: i128) -> Self {
+        let tai = Dt::from_ymdhms_on(
+            self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
+        );
+        let delta_dt = Dt::from_attos(attos_delta, Scale::TAI);
+        let new_tai = tai.add(delta_dt);
+        new_tai.to_ymdhms_on(Scale::TAI, self.scale)
+    }
+
+    #[inline]
+    pub const fn add_attos(&self, attos: i128) -> Self {
+        self._add_attos(attos)
+    }
+
+    #[inline]
+    pub const fn add_sec(&self, sec: i64) -> Self {
+        self._add_attos(sec as i128 * ATTOS_PER_SEC_I128)
+    }
+
+    #[inline]
+    pub const fn add_min(&self, min: i64) -> Self {
+        self._add_attos(min as i128 * 60 * ATTOS_PER_SEC_I128)
+    }
+
+    #[inline]
+    pub const fn add_hr(&self, hr: i64) -> Self {
+        self._add_attos(hr as i128 * 3600 * ATTOS_PER_SEC_I128)
+    }
+
     #[inline]
     pub const fn yr(&self) -> i64 {
         self.yr
@@ -60,7 +196,13 @@ impl YmdHms {
         self.unix_attosec
     }
 
-    pub(crate) const fn to_ymdhms_rich_on(
+    /// The time scale that the object was created on.
+    #[inline]
+    pub const fn scale(&self) -> Scale {
+        self.scale
+    }
+
+    pub(crate) const fn to_ymdhms_rich(
         &self,
         iso_yr: i64,
         iso_wk: u8,
@@ -69,7 +211,6 @@ impl YmdHms {
         wkday: u8,
         wk_of_yr_sun: u8,
         wk_of_yr_mon: u8,
-        scale: Scale,
     ) -> YmdHmsRich {
         YmdHmsRich::new(
             self.unix_attosec,
@@ -87,7 +228,7 @@ impl YmdHms {
             wkday,
             wk_of_yr_sun,
             wk_of_yr_mon,
-            scale,
+            self.scale,
         )
     }
 }
@@ -182,7 +323,7 @@ impl YmdHmsRich {
         }
     }
 
-    /// Reconstructs a [`Dt`]. Round trips with [`Dt::to_date_time`].
+    /// Reconstructs a [`Dt`].
     #[inline]
     pub const fn to_dt(&self) -> Dt {
         Dt::from_ymdhms_on(
@@ -195,6 +336,12 @@ impl YmdHmsRich {
     #[inline]
     pub const fn unix_attosec(&self) -> i128 {
         self.unix_attosec
+    }
+
+    /// The time scale that the object was created on.
+    #[inline]
+    pub const fn scale(&self) -> Scale {
+        self.scale
     }
 
     /// Returns the Unix timestamp since 1970-01-01 00:00:00 as a tuple of

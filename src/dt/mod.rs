@@ -36,7 +36,7 @@ mod jiff;
 use crate::ATTOS_PER_SEC;
 use core::fmt;
 
-/// ## [`Dt`] A high-precision instant or duration with attosecond resolution.
+/// **The library's central type.** A high-precision instant/duration with attosecond resolution.
 ///
 /// This is the core time type of the library. It represents both absolute
 /// instants and durations using the same compact representation, making it
@@ -87,7 +87,7 @@ use core::fmt;
 ///
 /// ## Notes
 ///
-/// - `Dt` does **not** store a time scale internally. The scale is always
+/// - Does **not** store a time scale internally. The scale is always
 ///   an explicit parameter of conversion and construction methods.
 /// - Leap-second handling follows the chosen `Scale` (UTC, UTCSpice, UTCSofa).
 #[derive(Clone, Copy)]

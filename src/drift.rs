@@ -287,7 +287,7 @@ impl Spacetime {
     }
 
     /// Recovers the Newtonian gravitational potential Φ (m²/s²) from the
-    /// gravitational lapse factor α using the exact weak-field relation.
+    /// gravitational lapse factor α using the weak-field relation.
     ///
     /// \[
     /// \alpha = \sqrt{1 + \frac{2\Phi}{c^2}} \quad\implies\quad
@@ -359,9 +359,7 @@ impl Spacetime {
 /// steer clocks, predict time offsets, and maintain synchronization over long
 /// durations.
 ///
-/// All three coefficients are stored using the exact `Dt` type, which
-/// guarantees 36-digit precision with no floating-point rounding errors even
-/// over centuries of integration.
+/// All three coefficients are stored using [`Dt`].
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -383,7 +381,7 @@ pub struct Drift {
 }
 
 impl Drift {
-    /// Creates a new `Drift` polynomial from its three exact coefficients.
+    /// Creates a new `Drift` polynomial from its three coefficients.
     #[inline]
     pub const fn new(constant: Dt, rate: Dt, accel: Dt) -> Self {
         Self {
@@ -423,7 +421,7 @@ impl Drift {
     /// Returns the instantaneous proper-time rate `dτ/dt` (dimensionless).
     ///
     /// This value tells you how fast a real physical clock (such as a spacecraft
-    /// onboard clock) is advancing compared to coordinate time. A value of exactly
+    /// onboard clock) is advancing compared to coordinate time. A value of
     /// `1.0` means the clock runs at the normal rate. Values slightly below `1.0`
     /// are typical when the clock is moving or sitting in a gravitational well.
     ///
@@ -436,7 +434,7 @@ impl Drift {
 
     /// Evaluates the polynomial at the given elapsed coordinate time span.  
     ///
-    /// Returns the exact accumulated time difference (in seconds) between proper
+    /// Returns the accumulated time difference (in seconds) between proper
     /// time and coordinate time after the interval span has passed. All
     /// arithmetic is performed with full 36-digit precision, ensuring no loss of
     /// accuracy even for multi-year integrations.
@@ -489,7 +487,7 @@ impl Drift {
     /// weak-field or strong-field formulation is used:
     ///
     /// - In the weak-field regime (where |Φ|/c² ≪ 1), simply pass
-    ///   `characteristic_length_scale = 0.0`. This returns exactly the same
+    ///   `characteristic_length_scale = 0.0`. This returns the same
     ///   relativistic clock rate used by JPL, ESA, GNSS systems, and all modern
     ///   solar-system navigation pipelines.
     /// - In strong-field conditions, supply a non-zero length scale (in meters)

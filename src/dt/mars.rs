@@ -1,11 +1,13 @@
-use crate::{Dt, Real, Scale, cos, floor_f, rem_euclid_f, sin, to_sec_f};
+//! Mars time-scale constants and conversion methods (MSD, MTC, Ls, LMST, LTST, Mars Year).
 
-/// Exact mean length of one Martian sol in Earth seconds.
+use crate::{Dt, Real, Scale, cos, floor_f, rem_euclid_f, sin};
+
+/// mean length of one Martian sol in Earth seconds.
 /// Current NASA GISS Mars24 value (updated 2025-01-07): 1.0274912517 Earth days.
 pub const MARS_SOL_LENGTH_SEC: Real = 88_775.244_146_88;
 
 /// Martian mean sol length in attoseconds
-/// (88_775.24414688 s × 10¹⁸, exact integer matching the current NASA divisor).
+/// (88_775.24414688 s × 10¹⁸, integer matching the current NASA divisor).
 pub const MARS_SOL_ATTOS: i128 = 88_775_244_146_880_000_000_000;
 
 /// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
@@ -31,7 +33,7 @@ pub const MARS_EOT_COEFF_6LS: Real = f!(0.002);
 
 /// Mars Year epoch: JD 2435208.456 TT (northern vernal equinox Ls = 0° on 1955 April 11).
 ///
-/// This is the exact Clancy et al. (2000) definition used by NASA, ESA, LMD Mars Climate
+/// This is the Clancy et al. (2000) definition used by NASA, ESA, LMD Mars Climate
 /// Database, and every modern Mars mission paper as of 2026.
 pub const MARS_YEAR_EPOCH_JD: Real = f!(2435208.456);
 
@@ -41,13 +43,13 @@ pub const MARS_YEAR_EPOCH_JD: Real = f!(2435208.456);
 pub const MARS_TROPICAL_YEAR_DAYS: Real = f!(686.9725);
 
 impl Dt {
-    /// Exact helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
+    /// helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
     #[inline]
     pub(crate) const fn to_attos_since_mars_msd_epoch(numerical_tt: Dt) -> i128 {
         numerical_tt.to_attos() - MARS_REF_TT_ATTOS
     }
 
-    /// Returns the exact Mars Sol Date (MSD) as a tuple of integer sols and the fractional part of a sol.
+    /// Returns the Mars Sol Date (MSD) as a tuple of integer sols and the fractional part of a sol.
     ///
     /// - The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
     ///  [`Scale`].
@@ -69,7 +71,7 @@ impl Dt {
         Dt::from_attos(frac_attos as i128, Scale::TAI)
     }
 
-    /// Creates a `Dt` (in TT) from an exact Mars Sol Date using full library precision.
+    /// Creates a `Dt` (in TT) from an Mars Sol Date using full library precision.
     pub const fn from_msd(whole_sols: i64, frac_attos: u128) -> Self {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
         let tt = MARS_REF_TT.add(Dt::from_attos(elapsed_attos, Scale::TAI));
@@ -90,7 +92,7 @@ impl Dt {
     #[inline]
     pub const fn to_msd_f(&self, current: Scale) -> Real {
         let (whole, frac) = self.to_msd(current);
-        f!(whole) + to_sec_f(frac) / MARS_SOL_LENGTH_SEC
+        f!(whole) + Dt::attos_to_sec_f(frac) / MARS_SOL_LENGTH_SEC
     }
 
     /// Returns the Areocentric Solar Longitude `Ls` in degrees (range [0, 360)).
@@ -106,7 +108,7 @@ impl Dt {
     /// - Ls = 180° → northern autumnal equinox
     /// - Ls = 270° → northern winter solstice
     ///
-    /// Exactly reproduces the short-series analytic model (B-1 through B-5) used
+    /// Reproduces the short-series analytic model (B-1 through B-5) used
     /// by the current NASA GISS Mars24 Sunclock algorithm, which is based on
     /// Allison & McEwen (2000) with the seven largest planetary perturbations.
     ///
