@@ -42,6 +42,7 @@ impl Dt {
     /// ```
     /// use deep_time::{Dt, Scale};
     ///
+    /// // uses impl FromStr but Dt::parse provides the same functionality
     /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
     ///
     /// let ymd = x.to_ymdhms(Scale::TAI);
