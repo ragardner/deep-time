@@ -1,4 +1,4 @@
-use crate::Dt;
+use crate::{Dt, Real};
 use core::cmp::Ordering;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
@@ -77,6 +77,65 @@ impl DivAssign<i64> for Dt {
     #[inline]
     fn div_assign(&mut self, rhs: i64) {
         *self = self.div(rhs);
+    }
+}
+
+impl Mul<f64> for Dt {
+    type Output = Self;
+
+    #[inline]
+    fn mul(self, rhs: f64) -> Self {
+        self.mul_by_f(rhs)
+    }
+}
+
+impl MulAssign<f64> for Dt {
+    #[inline]
+    fn mul_assign(&mut self, rhs: f64) {
+        *self = self.mul_by_f(rhs);
+    }
+}
+
+impl Div<f64> for Dt {
+    type Output = Self;
+
+    #[inline]
+    fn div(self, rhs: f64) -> Self {
+        self.div_by_f(rhs)
+    }
+}
+
+impl DivAssign<f64> for Dt {
+    #[inline]
+    fn div_assign(&mut self, rhs: f64) {
+        *self = self.div_by_f(rhs);
+    }
+}
+
+impl Mul<Dt> for i64 {
+    type Output = Dt;
+
+    #[inline]
+    fn mul(self, rhs: Dt) -> Dt {
+        rhs.mul(self)
+    }
+}
+
+impl Mul<Dt> for f64 {
+    type Output = Dt;
+
+    #[inline]
+    fn mul(self, rhs: Dt) -> Dt {
+        rhs.mul_by_f(self)
+    }
+}
+
+impl Div<Dt> for Dt {
+    type Output = Real;
+
+    #[inline]
+    fn div(self, rhs: Dt) -> Real {
+        self.div_dt(rhs)
     }
 }
 

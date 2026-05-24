@@ -808,4 +808,35 @@ impl Dt {
     pub const fn attos_to_fs(attos: i128) -> i128 {
         attos / ATTOS_PER_FS_I128
     }
+
+    /// Returns the scalar ratio `self / rhs` expressed in seconds (as `Real`).
+    ///
+    /// This is the floating-point equivalent of `self.to_sec_f() / rhs.to_sec_f()`.
+    ///
+    /// # Special cases (chosen for safety and usability in time arithmetic)
+    /// - `non-zero / ZERO` returns `±Real::INFINITY` (sign matches `self`)
+    /// - `ZERO / non-zero` returns `0.0`
+    /// - `ZERO / ZERO` returns `1.0` (the two durations are identical)
+    ///
+    /// These rules avoid `NaN` entirely while remaining predictable and useful
+    /// in simulations, rate calculations, and control code.
+    ///
+    /// Negative durations are handled correctly (e.g. `(-5 s) / (2 s) == -2.5`).
+    ///
+    /// This method is `const fn` and can be used in const contexts.
+    #[inline]
+    pub const fn div_dt(self, rhs: Self) -> Real {
+        let a = self.to_sec_f();
+        let b = rhs.to_sec_f();
+
+        if b == 0.0 {
+            if a == 0.0 {
+                1.0
+            } else {
+                Real::INFINITY.copysign(a)
+            }
+        } else {
+            a / b
+        }
+    }
 }

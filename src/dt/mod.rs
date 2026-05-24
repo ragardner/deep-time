@@ -36,11 +36,7 @@ mod jiff;
 use crate::ATTOS_PER_SEC;
 use core::fmt;
 
-/// **The library's central type.** A high-precision instant/duration with attosecond resolution.
-///
-/// This is the core time type of the library. It represents both absolute
-/// instants and durations using the same compact representation, making it
-/// convenient anywhere precise time measurement or arithmetic is needed.
+/// **The library's central time type.** A high-precision instant/duration with attosecond resolution.
 ///
 /// ## Representation
 ///
@@ -54,7 +50,7 @@ use core::fmt;
 /// roughly ±292 billion years. An [`i128`] was considered but decided against
 /// due to the difficulty of math without overflow.
 ///
-/// There are many different ways to go to and from a `Dt` see the [`documentation`](../struct.Dt.html)
+/// There are many different ways to go to and from a [`Dt`] see the [`documentation`](../struct.Dt.html)
 /// for the full list of methods.
 ///
 /// It implements `Copy` and `Clone`. Optional derives for `serde` and
@@ -74,9 +70,10 @@ use core::fmt;
 ///
 /// ## Arithmetic and manipulation
 ///
-/// `Dt` provides rich const-friendly arithmetic:
+/// [`Dt`] provides rich const-friendly arithmetic:
 ///
-/// - Addition and subtraction of durations
+/// - Addition and subtraction of durations. Not calendar aware, use [`YmdHms`] for
+///   basic calendar aware math.
 /// - Multiplication and division by integers or `Real` (f64)
 /// - `floor`, `ceil`, `round` to an arbitrary unit
 /// - Many convenience increment/decrement methods (`add_1ns`, `sub_ms`, …)
@@ -90,6 +87,10 @@ use core::fmt;
 /// - Does **not** store a time scale internally. The scale is always
 ///   an explicit parameter of conversion and construction methods.
 /// - Leap-second handling follows the chosen `Scale` (UTC, UTCSpice, UTCSofa).
+///
+/// ## Examples
+///
+///
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
