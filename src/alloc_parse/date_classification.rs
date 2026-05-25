@@ -6,14 +6,14 @@ use alloc::vec::Vec;
 pub(crate) struct DateClassification {
     pub bytes_len: usize,
     pub date: String,
-    pub tokens: Vec<Token>,
+    pub date_tokens: Vec<Token>,
+    pub time_tokens: Vec<Token>,
     pub is_pure_numeric: bool,
     pub is_decimal: bool,
     pub has_year: bool,
+    pub has_time: bool,
     pub num_named: u8,
-    pub time: TimeType,
     pub connector: ConnectorType,
-    pub offset: OffsetType,
     pub has_ampm: bool,
     pub has_fractional: bool,
     pub has_w: bool,
@@ -24,15 +24,15 @@ pub(crate) struct DateClassification {
     pub num_date_digits: u8,
     pub num_non_decimal_digits: u8,
     pub num_date_digit_groups: u8,
-    pub space_before_bracket: bool,
-    pub space_before_offset: bool,
     pub year_maybe_on_end: bool,
 }
 
 impl DateClassification {
-    #[inline]
+    #[inline(always)]
     pub(crate) fn has_offset_or_zone(&self) -> bool {
-        self.offset.is_some()
+        self.time_tokens
+            .iter()
+            .any(|t| matches!(t, Token::Offset | Token::OffsetColon | Token::Iana))
     }
 }
 
@@ -56,10 +56,21 @@ pub(crate) enum Token {
     Pm,
     W,
     Comma,
+    // Colon,
     Hyphen,
     Dot,
     Slash,
     Space,
+    Minus,
+    LBracket,
+    RBracket,
+    Zulu,
+    Hm,
+    HmColon,
+    Hms,
+    HmsColon,
+    Offset,
+    OffsetColon,
     // relative
     Now,
     Today,
@@ -210,11 +221,6 @@ pub(crate) enum ConnectorType {
 
 impl ConnectorType {
     #[inline]
-    pub(crate) fn is_some(&self) -> bool {
-        !matches!(self, ConnectorType::None)
-    }
-
-    #[inline]
     pub(crate) fn as_str(&self) -> &'static str {
         match self {
             ConnectorType::None => "",
@@ -226,72 +232,6 @@ impl ConnectorType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TimeType {
-    None,
-    Hm { colons: bool },
-    HmS { colons: bool },
-}
-
-impl TimeType {
-    #[inline]
-    pub(crate) fn is_none(&self) -> bool {
-        matches!(self, TimeType::None)
-    }
-}
-
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq)]
-pub(crate) enum OffsetType {
-    #[default]
-    None, // no offset or zone at all
-    Zulu,          // just "Z"
-    Iana,          // plain "America/New_York" (usually space-separated)
-    InBracketIana, // "[America/New_York]" (no offset)
-    Hm {
-        colon: bool,
-    }, // +05:00 or +0500
-    HmS {
-        colon: bool,
-    }, // +05:00:00 or +050000
-    InBracketHm {
-        colon: bool,
-    }, // [+05:00]
-    InBracketHmS {
-        colon: bool,
-    }, // [+05:00:00]
-    HmAndIana {
-        colon: bool,
-    }, // -04:00 America/New_York   (space-separated, less common)
-    HmSAndIana {
-        colon: bool,
-    }, // -04:00:00 America/New_York
-    HmAndInbracketIana {
-        colon: bool,
-    }, // -04:00[America/New_York]   ← most common today
-    HmSAndInbracketIana {
-        colon: bool,
-    }, // -04:00:00[America/New_York]
-}
-
-impl OffsetType {
-    #[inline]
-    pub(crate) fn is_bracketed(&self) -> bool {
-        matches!(
-            self,
-            OffsetType::InBracketIana
-                | OffsetType::InBracketHm { .. }
-                | OffsetType::InBracketHmS { .. }
-                | OffsetType::HmAndInbracketIana { .. }
-                | OffsetType::HmSAndInbracketIana { .. }
-        )
-    }
-
-    #[inline]
-    pub(crate) fn is_some(&self) -> bool {
-        !matches!(self, OffsetType::None)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum IndexIn {
     PreDate,
     Date,
@@ -299,11 +239,10 @@ pub(crate) enum IndexIn {
     Time,
     Fraction,
     Offset,
-    Bracket,
 }
 
 impl IndexIn {
-    #[inline]
+    #[inline(always)]
     pub(crate) fn after_date(&self) -> bool {
         !matches!(self, IndexIn::PreDate | IndexIn::Date)
     }

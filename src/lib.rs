@@ -73,9 +73,9 @@ mod drift;
 mod dt;
 mod light_time;
 mod lite_str;
-mod parser;
 mod position;
 mod scale;
+mod strptime;
 mod time_parts;
 mod time_range;
 mod ymdhms;
@@ -122,6 +122,7 @@ pub(crate) use math::{
     sin::sin,
     sqrt::{hypot, sqrt},
 };
+pub(crate) use strptime::*;
 
 // _________________________________________
 // FEATURE PUB USE
@@ -148,9 +149,9 @@ pub use dt::{Dt, lunar};
 pub use error::{DtErr, DtErrKind};
 pub use light_time::ObserverState;
 pub use lite_str::{LiteStr, LiteStrErr};
-pub use parser::StrPTimeFmt;
 pub use position::{Position, Velocity};
 pub use scale::Scale;
+pub use strptime::StrPTimeFmt;
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
 pub use time_range::{Every, TimeRange};
 pub use ymdhms::{YmdHms, YmdHmsRich};

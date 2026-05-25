@@ -196,6 +196,7 @@ impl Dt {
         // if s == "2006-04-02 02:30-05 America/Indiana/Vevay" {
         //     std::eprintln!("{:?}", classification);
         // }
+        // std::eprintln!("{:?}", classification);
 
         if classification.is_pure_numeric {
             match mode {
@@ -413,9 +414,22 @@ pub(crate) fn try_compatible_formats<I>(s: &str, formats: I) -> Option<Dt>
 where
     I: IntoIterator<Item = String>,
 {
-    formats
-        .into_iter()
-        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false).ok())
+    let mut dt = None;
+
+    for fmt in formats.into_iter() {
+        // eprintln!("TRYING FMT: {}", fmt);
+        if let Ok(parsed) = Dt::from_str(s, &fmt, true, true, false) {
+            dt = Some(parsed);
+            break;
+        }
+        // === DEBUG ===
+        // eprintln!("Tried format: {:?}", fmt);
+    }
+
+    dt
+    // formats
+    //     .into_iter()
+    //     .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false).ok())
 }
 
 #[inline]

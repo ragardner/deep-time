@@ -1,6 +1,4 @@
-use crate::{
-    AmBuilder, DateClassification, Token, append_to_all, get_compatible_time_suffixes,
-};
+use crate::{AmBuilder, DateClassification, Token, append_to_all, get_compatible_time_suffixes};
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -13,7 +11,7 @@ pub(crate) fn generate_ambiguous_month_first_candidates(class: &DateClassificati
     let suffixes = get_compatible_time_suffixes(class);
     let mut candidates = Vec::with_capacity(60);
 
-    let tokens = &class.tokens;
+    let tokens = &class.date_tokens;
     let mut builders: Vec<AmBuilder> = vec![AmBuilder {
         pieces: Vec::with_capacity(12),
         seen_year: false,
@@ -80,7 +78,7 @@ pub(crate) fn generate_ambiguous_month_first_candidates(class: &DateClassificati
             continue;
         }
         let date_part: String = b.pieces.concat();
-        if class.time.is_none() {
+        if !class.has_time {
             candidates.push(date_part);
             continue;
         }

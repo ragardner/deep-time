@@ -1,4 +1,4 @@
-use crate::{DtErr, DtErrKind, Offset, TimeParts, an_err, parser::Parser};
+use crate::{DtErr, DtErrKind, Offset, Parser, TimeParts, an_err};
 
 impl TimeParts {
     /// Low-level parser equivalent to `strptime` with a provided format string.

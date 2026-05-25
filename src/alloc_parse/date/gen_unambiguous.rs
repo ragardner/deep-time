@@ -25,7 +25,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
     }
 
     let suffixes = get_compatible_time_suffixes(class);
-    let tokens = &class.tokens;
+    let tokens = &class.date_tokens;
 
     if class.has_w {
         let mut candidates = Vec::with_capacity(4 * suffixes.len() + 2);
@@ -133,7 +133,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
 
                 let date_part: String = new_b.pieces.concat();
 
-                if class.time.is_none() {
+                if !class.has_time {
                     candidates.push(date_part.clone());
                 }
                 for suf in &suffixes {
@@ -294,7 +294,7 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
     let mut candidates = Vec::with_capacity(builders.len() * (suffixes.len() + 2));
     for b in builders {
         let date_part: String = b.pieces.concat();
-        if class.time.is_none() {
+        if !class.has_time {
             let mut s = date_part.clone();
             if class.year_maybe_on_end && !b.seen_year {
                 s.push(' ');

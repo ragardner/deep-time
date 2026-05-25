@@ -9,7 +9,7 @@ use alloc::string::ToString;
 #[inline]
 pub(crate) fn is_week_date_missing_weekday(cls: &DateClassification) -> bool {
     cls.has_w                                   // has the literal "W"
-        && matches!(cls.tokens.first(), Some(Token::Digits(n)) if *n >= 4)
+        && matches!(cls.date_tokens.first(), Some(Token::Digits(n)) if *n >= 4)
 }
 
 /// For ISO week dates missing the weekday (e.g. "2024W11", "2024-W11"),

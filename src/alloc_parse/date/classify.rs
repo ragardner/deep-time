@@ -1,7 +1,7 @@
 use crate::{
     ClassifiedDate, ConnectorType, DateClassification, Dt, DtErr, DtErrKind, EndsWithExt, IndexIn,
-    Lang, LangData, OffsetType, SplitKeepWithPos, TimeType, Token, an_err, lang_map,
-    natural_duration_to_span, to_ascii_digit,
+    Lang, LangData, SplitKeepWithPos, Token, an_err, lang_map, natural_duration_to_span,
+    to_ascii_digit,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -37,39 +37,33 @@ pub(crate) fn classify_date(
     let mut num_digits = 0u8;
     let mut num_non_decimal_digits = 0u8;
     let mut num_date_digit_groups = 0u8;
-
     let mut num_date_digits = 0u8;
-    let mut space_before_bracket = false;
-    let mut space_before_offset = false;
     let mut year_maybe_on_end = false;
     let mut connector = ConnectorType::None;
-    let mut tokens: Vec<Token> = Vec::with_capacity(10);
-
-    let mut in_digit_run_date = false;
-    let mut curr_date_digit_run_len = 0usize;
+    let mut date_tokens: Vec<Token> = Vec::with_capacity(10);
+    let mut time_tokens: Vec<Token> = Vec::with_capacity(10);
+    let mut in_digit_run = false;
+    let mut digit_run_len = 0usize;
+    let mut in_time_digit_run = false;
+    let mut time_digit_run_len = 0usize;
     let mut time_digits = 0u8;
     let mut time_colons = 0u8;
-    let mut seen_dot = false;
-    let mut iana_offset = OffsetType::None;
     let mut currently = IndexIn::PreDate;
-    let mut offset_digits = 0u8;
     let mut offset_colons = 0u8;
-    let mut bracket_digits = 0u8;
-    let mut bracket_colons = 0u8;
-    let mut bracket_has_sign = false;
+    let mut has_time = false;
     let mut part_chars: Vec<char> = Vec::with_capacity(24);
     let mut following_digits: usize;
-
     let mut date_norm = String::with_capacity(bytes_len);
+
     if attach_hyphen {
         date_norm.push('-');
     }
+
     let splitter = SplitKeepWithPos::new(finder, s);
 
     for (part, _) in splitter {
         if let Some((norm_part, token)) = term_map.get(part) {
             if token.is_relative() && !currently.after_date() {
-                // ── Use the reference time (or fall back to system time) ──
                 let now: Dt = if let Some(tp) = ref_time {
                     *tp
                 } else {
@@ -88,13 +82,14 @@ pub(crate) fn classify_date(
                 now.add(natural_duration_to_span(s, lang, false)?);
                 return Ok(ClassifiedDate::Parsed(now));
             }
+
             match token {
                 Token::DayShort | Token::DayLong | Token::MonthShort | Token::MonthLong => {
                     if currently == IndexIn::PreDate {
                         currently = IndexIn::Date;
                     }
                     num_named += 1;
-                    tokens.push(*token);
+                    date_tokens.push(*token);
                     date_norm.push_str(norm_part);
                 }
                 Token::Am | Token::Pm => {
@@ -102,25 +97,19 @@ pub(crate) fn classify_date(
                         has_ampm = true;
                         currently = IndexIn::PostDate;
                         date_norm.push_str(norm_part);
+                        time_tokens.push(*token);
                     }
                 }
                 Token::Iana => {
                     if currently != IndexIn::PreDate {
-                        if currently == IndexIn::Bracket {
-                            iana_offset = OffsetType::InBracketIana;
-                        } else {
-                            iana_offset = OffsetType::Iana;
-                            if date_norm.ends_with_space() {
-                                space_before_offset = true;
-                            }
-                        }
                         date_norm.push_str(norm_part);
+                        time_tokens.push(Token::Iana);
                     }
                 }
                 Token::W => {
                     if currently != IndexIn::PreDate {
                         has_w = true;
-                        tokens.push(Token::W);
+                        date_tokens.push(Token::W);
                         date_norm.push_str(norm_part);
                     }
                 }
@@ -144,14 +133,16 @@ pub(crate) fn classify_date(
                     if currently != IndexIn::Fraction {
                         num_non_decimal_digits += 1;
                     }
+
                     match currently {
                         IndexIn::Date => {
                             num_date_digits += 1;
-                            if !in_digit_run_date {
-                                in_digit_run_date = true;
+                            if !in_digit_run {
+                                in_digit_run = true;
                                 num_date_digit_groups += 1;
                             }
-                            curr_date_digit_run_len += 1;
+                            digit_run_len += 1;
+
                             if match num_date_digits {
                                 8.. => idx + 1 < part_len && part_chars[idx + 1].is_numeric(),
                                 6 => {
@@ -173,29 +164,72 @@ pub(crate) fn classify_date(
                                 }
                                 _ => false,
                             } {
-                                if curr_date_digit_run_len > 0 {
-                                    tokens.push(Token::Digits(curr_date_digit_run_len));
-                                    in_digit_run_date = false;
-                                    curr_date_digit_run_len = 0;
+                                if digit_run_len > 0 {
+                                    date_tokens.push(Token::Digits(digit_run_len));
+                                    in_digit_run = false;
+                                    digit_run_len = 0;
                                 }
                                 currently = IndexIn::Time;
                             }
                         }
-                        IndexIn::Time => time_digits += 1,
-                        IndexIn::Offset => offset_digits += 1,
-                        IndexIn::Bracket => bracket_digits += 1,
-                        IndexIn::PostDate => year_maybe_on_end = true,
+                        IndexIn::Time | IndexIn::Fraction | IndexIn::Offset => {
+                            if currently == IndexIn::Time {
+                                time_digits += 1;
+                            }
+                            if !in_time_digit_run {
+                                in_time_digit_run = true;
+                            }
+                            time_digit_run_len += 1;
+                        }
+                        IndexIn::PostDate => {
+                            year_maybe_on_end = true;
+                            if !in_time_digit_run {
+                                in_time_digit_run = true;
+                            }
+                            time_digit_run_len += 1;
+                        }
                         _ => {}
                     }
                 } else if currently != IndexIn::PreDate {
-                    if in_digit_run_date && curr_date_digit_run_len > 0 {
-                        tokens.push(Token::Digits(curr_date_digit_run_len));
+                    if in_digit_run && digit_run_len > 0 {
+                        date_tokens.push(Token::Digits(digit_run_len));
+                        in_digit_run = false;
+                        digit_run_len = 0;
                     }
-                    in_digit_run_date = false;
-                    curr_date_digit_run_len = 0;
+
+                    if in_time_digit_run && time_digit_run_len > 0 {
+                        if *ch != ':' {
+                            if currently == IndexIn::Offset {
+                                let tok = if offset_colons > 0 {
+                                    Token::OffsetColon
+                                } else {
+                                    Token::Offset
+                                };
+                                time_tokens.push(tok);
+                            } else if currently == IndexIn::Time && time_digits >= 3 {
+                                let tok = if time_digits > 4 {
+                                    if time_colons > 0 {
+                                        Token::HmsColon
+                                    } else {
+                                        Token::Hms
+                                    }
+                                } else if time_colons > 0 {
+                                    Token::HmColon
+                                } else {
+                                    Token::Hm
+                                };
+                                has_time = true;
+                                time_tokens.push(tok);
+                            }
+                        }
+                        in_time_digit_run = false;
+                        time_digit_run_len = 0;
+                    }
+
                     if is_pure_numeric && ch != &'.' {
                         is_pure_numeric = false;
                     }
+
                     match ch {
                         't' => {
                             if date_norm.ends_with_ascii_digit()
@@ -209,9 +243,9 @@ pub(crate) fn classify_date(
                         }
                         'z' => {
                             if date_norm.ends_with_ascii_digit() {
-                                iana_offset = OffsetType::Zulu;
                                 currently = IndexIn::PostDate;
                                 date_norm.push('Z');
+                                time_tokens.push(Token::Zulu);
                             }
                         }
                         'w' => {
@@ -221,7 +255,7 @@ pub(crate) fn classify_date(
                                 && part_chars[idx + 1].is_numeric()
                             {
                                 has_w = true;
-                                tokens.push(Token::W);
+                                date_tokens.push(Token::W);
                                 date_norm.push('W');
                             }
                         }
@@ -270,7 +304,7 @@ pub(crate) fn classify_date(
                                                     }
                                                 }
                                                 1.. => {
-                                                    if num_date_digits >= 6 && in_digit_run_date {
+                                                    if num_date_digits >= 6 && in_digit_run {
                                                         currently = IndexIn::Time;
                                                         connector = ConnectorType::Space;
                                                     }
@@ -281,11 +315,14 @@ pub(crate) fn classify_date(
                                     }
                                 }
                                 _ => {
+                                    if !time_tokens.ends_with(&[Token::Space]) {
+                                        time_tokens.push(Token::Space);
+                                    }
                                     currently = IndexIn::PostDate;
                                 }
                             }
                             if currently == IndexIn::Date {
-                                tokens.push(Token::Space);
+                                date_tokens.push(Token::Space);
                             }
                         }
                         ':' => {
@@ -294,6 +331,7 @@ pub(crate) fn classify_date(
                             }
                             date_norm.push(':');
                             num_colon += 1;
+
                             match currently {
                                 IndexIn::Date => {
                                     connector = ConnectorType::Colon;
@@ -301,7 +339,6 @@ pub(crate) fn classify_date(
                                 }
                                 IndexIn::Time => time_colons += 1,
                                 IndexIn::Offset => offset_colons += 1,
-                                IndexIn::Bracket => bracket_colons += 1,
                                 _ => {}
                             }
                         }
@@ -311,21 +348,20 @@ pub(crate) fn classify_date(
                             }
                             date_norm.push('.');
                             num_dot += 1;
-                            let is_fractional_trigger = !seen_dot
+                            let is_fractional_trigger = !has_fractional
                                 && (currently.after_date() || {
                                     if num_dot > 1 {
                                         is_pure_numeric && num_non_decimal_digits >= 10
                                     } else {
-                                        // mjd
                                         is_pure_numeric && num_non_decimal_digits >= 5
                                     }
                                 });
                             if is_fractional_trigger {
-                                seen_dot = true;
                                 has_fractional = true;
                                 currently = IndexIn::Fraction;
+                                time_tokens.push(Token::Dot);
                             } else if currently == IndexIn::Date {
-                                tokens.push(Token::Dot);
+                                date_tokens.push(Token::Dot);
                             }
                         }
                         '/' => {
@@ -335,7 +371,7 @@ pub(crate) fn classify_date(
                             date_norm.push('/');
                             num_slash += 1;
                             if currently == IndexIn::Date {
-                                tokens.push(Token::Slash);
+                                date_tokens.push(Token::Slash);
                             }
                         }
                         ',' => {
@@ -345,7 +381,7 @@ pub(crate) fn classify_date(
                             date_norm.push(',');
                             num_comma += 1;
                             if currently == IndexIn::Date {
-                                tokens.push(Token::Comma);
+                                date_tokens.push(Token::Comma);
                             }
                         }
                         '+' => {
@@ -353,18 +389,12 @@ pub(crate) fn classify_date(
                                 continue;
                             }
                             date_norm.push('+');
-                            match currently {
-                                IndexIn::Bracket => {
-                                    bracket_has_sign = true;
-                                }
-                                _ => {
-                                    if num_digits >= 8 {
-                                        currently = IndexIn::Offset;
-                                        if idx != 0 && part_chars[idx - 1] == ' ' {
-                                            space_before_offset = true;
-                                        }
-                                    }
-                                }
+                            if currently.after_date() && currently != IndexIn::Offset {
+                                currently = IndexIn::Offset;
+                                offset_colons = 0;
+                            }
+                            if currently != IndexIn::PreDate {
+                                time_tokens.push(Token::Plus);
                             }
                         }
                         '-' => {
@@ -372,21 +402,16 @@ pub(crate) fn classify_date(
                                 continue;
                             }
                             date_norm.push('-');
-                            match currently {
-                                IndexIn::Bracket => {
-                                    bracket_has_sign = true;
-                                }
-                                _ => {
-                                    if num_digits >= 8 {
-                                        currently = IndexIn::Offset;
-                                        if idx != 0 && part_chars[idx - 1] == ' ' {
-                                            space_before_offset = true;
-                                        }
-                                    } else if currently == IndexIn::Date {
-                                        num_hyphen += 1;
-                                        tokens.push(Token::Hyphen);
-                                    }
-                                }
+                            if currently.after_date() && currently != IndexIn::Offset {
+                                currently = IndexIn::Offset;
+                                offset_colons = 0;
+                            }
+                            if currently == IndexIn::Date {
+                                num_hyphen += 1;
+                                date_tokens.push(Token::Hyphen);
+                            }
+                            if currently.after_date() {
+                                time_tokens.push(Token::Minus);
                             }
                         }
                         '[' => {
@@ -394,13 +419,8 @@ pub(crate) fn classify_date(
                                 continue;
                             }
                             date_norm.push('[');
-                            if idx != 0 && part_chars[idx - 1] == ' ' {
-                                space_before_bracket = true;
-                            }
-                            currently = IndexIn::Bracket;
-                            bracket_digits = 0;
-                            bracket_colons = 0;
-                            bracket_has_sign = false;
+                            currently = IndexIn::PostDate;
+                            time_tokens.push(Token::LBracket);
                         }
                         ']' => {
                             if date_norm.ends_with_rbracket() {
@@ -408,10 +428,9 @@ pub(crate) fn classify_date(
                             }
                             date_norm.push(']');
                             currently = IndexIn::PostDate;
+                            time_tokens.push(Token::RBracket);
                         }
                         _ => {
-                            // In date/time and digits both sides
-                            // and an unrecognized character
                             if date_norm.ends_with_ascii_digit()
                                 && idx + 1 < part_len
                                 && part_chars[idx + 1].is_numeric()
@@ -419,7 +438,7 @@ pub(crate) fn classify_date(
                                 if currently == IndexIn::Date {
                                     date_norm.push('-');
                                     num_hyphen += 1;
-                                    tokens.push(Token::Hyphen);
+                                    date_tokens.push(Token::Hyphen);
                                 } else if currently == IndexIn::Time {
                                     date_norm.push(':');
                                     num_colon += 1;
@@ -431,12 +450,39 @@ pub(crate) fn classify_date(
                 }
             }
 
-            // push digit runs after
-            if curr_date_digit_run_len > 0 && matches!(currently, IndexIn::Date | IndexIn::PostDate)
-            {
-                tokens.push(Token::Digits(curr_date_digit_run_len));
-                in_digit_run_date = false;
-                curr_date_digit_run_len = 0;
+            // remaining digit runs (date)
+            if digit_run_len > 0 && matches!(currently, IndexIn::Date | IndexIn::PostDate) {
+                date_tokens.push(Token::Digits(digit_run_len));
+                in_digit_run = false;
+                digit_run_len = 0;
+            }
+
+            // remaining time/offset run
+            if in_time_digit_run && time_digit_run_len > 0 && currently.after_date() {
+                if currently == IndexIn::Offset {
+                    let tok = if offset_colons > 0 {
+                        Token::OffsetColon
+                    } else {
+                        Token::Offset
+                    };
+                    time_tokens.push(tok);
+                } else if currently == IndexIn::Time && time_digits >= 3 {
+                    let tok = if time_digits > 4 {
+                        if time_colons > 0 {
+                            Token::HmsColon
+                        } else {
+                            Token::Hms
+                        }
+                    } else if time_colons > 0 {
+                        Token::HmColon
+                    } else {
+                        Token::Hm
+                    };
+                    has_time = true;
+                    time_tokens.push(tok);
+                }
+                in_time_digit_run = false;
+                time_digit_run_len = 0;
             }
         }
     }
@@ -444,77 +490,42 @@ pub(crate) fn classify_date(
     if num_digits == 0 {
         return Err(an_err!(DtErrKind::InvalidInput, "0 digits"));
     }
-    if curr_date_digit_run_len > 0 && matches!(currently, IndexIn::Date | IndexIn::PostDate) {
-        tokens.push(Token::Digits(curr_date_digit_run_len));
+
+    // final remaining (end of string)
+    if digit_run_len > 0 && matches!(currently, IndexIn::Date | IndexIn::PostDate) {
+        date_tokens.push(Token::Digits(digit_run_len));
     }
+
+    if in_time_digit_run && time_digit_run_len > 0 && currently.after_date() {
+        if currently == IndexIn::Offset {
+            let tok = if offset_colons > 0 {
+                Token::OffsetColon
+            } else {
+                Token::Offset
+            };
+            time_tokens.push(tok);
+        } else if currently == IndexIn::Time && time_digits >= 3 {
+            let tok = if time_digits > 4 {
+                if time_colons > 0 {
+                    Token::HmsColon
+                } else {
+                    Token::Hms
+                }
+            } else if time_colons > 0 {
+                Token::HmColon
+            } else {
+                Token::Hm
+            };
+            has_time = true;
+            time_tokens.push(tok);
+        }
+    }
+
     if num_dot > 1 {
         is_pure_numeric = false;
     }
-    let has_time =
-        time_digits >= 3 || time_colons > 0 || connector.is_some() || has_ampm || has_fractional;
-    let time = if has_time {
-        if time_digits > 4 {
-            TimeType::HmS {
-                colons: time_colons > 0,
-            }
-        } else {
-            TimeType::Hm {
-                colons: time_colons > 0,
-            }
-        }
-    } else {
-        TimeType::None
-    };
 
-    let offset = if iana_offset == OffsetType::Zulu {
-        OffsetType::Zulu
-    } else if iana_offset == OffsetType::Iana {
-        // Plain IANA name (optionally with a leading numeric offset)
-        match offset_digits {
-            0 => OffsetType::Iana,
-            1..=4 => OffsetType::HmAndIana {
-                colon: offset_colons > 0,
-            },
-            _ => OffsetType::HmSAndIana {
-                colon: offset_colons > 0,
-            },
-        }
-    } else if iana_offset == OffsetType::InBracketIana {
-        // IANA name inside brackets (optionally with a leading numeric offset)
-        match offset_digits {
-            0 => OffsetType::InBracketIana,
-            1..=4 => OffsetType::HmAndInbracketIana {
-                colon: offset_colons > 0,
-            },
-            _ => OffsetType::HmSAndInbracketIana {
-                colon: offset_colons > 0,
-            },
-        }
-    } else if bracket_has_sign {
-        // Numeric offset inside brackets (e.g. [+01:00] or [+0100])
-        match bracket_digits {
-            0..=4 => OffsetType::InBracketHm {
-                colon: bracket_colons > 0,
-            },
-            _ => OffsetType::InBracketHmS {
-                colon: bracket_colons > 0,
-            },
-        }
-    } else if offset_digits > 0 {
-        // Plain numeric offset (e.g. +01:00 or +0100)
-        match offset_digits {
-            1..=4 => OffsetType::Hm {
-                colon: offset_colons > 0,
-            },
-            _ => OffsetType::HmS {
-                colon: offset_colons > 0,
-            },
-        }
-    } else {
-        OffsetType::None
-    };
-
-    let has_year = matches!(tokens.first(), Some(Token::Digits(n)) if *n >= 4)
+    let has_year = matches!(date_tokens.first(), Some(Token::Digits(n)) if *n >= 4)
         || num_date_digit_groups >= 3
         || (num_named >= 1 && num_date_digit_groups >= 2)
         || (num_comma > 0 && num_date_digit_groups >= 2)
@@ -525,14 +536,14 @@ pub(crate) fn classify_date(
     Ok(ClassifiedDate::Cls(DateClassification {
         bytes_len,
         date: date_norm,
-        tokens,
+        date_tokens,
+        time_tokens,
         is_pure_numeric,
         is_decimal: num_dot == 1 && is_pure_numeric,
         has_year,
+        has_time,
         num_named,
-        time,
         connector,
-        offset,
         has_ampm,
         has_fractional,
         has_w,
@@ -543,8 +554,6 @@ pub(crate) fn classify_date(
         num_date_digits,
         num_non_decimal_digits,
         num_date_digit_groups,
-        space_before_bracket,
-        space_before_offset,
         year_maybe_on_end,
     }))
 }

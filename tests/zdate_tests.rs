@@ -65,6 +65,22 @@ mod tests {
         );
     }
 
+    #[cfg(feature = "tz")]
+    #[test]
+    fn print_stuff() {
+        use deep_time::{Dt, Scale};
+
+        let x: Dt = "Thu, 240314:03:30:45 PM +0000".parse().unwrap();
+        let x: Dt = "Thu, 240314:03:30:45 PM -01:00".parse().unwrap();
+        let x: Dt = "2006-04-02 02:30 [+01:00] America/Indiana/Vevay"
+            .parse()
+            .unwrap();
+        let x: Dt = "2006-04-02 02:30-05 America/Indiana/Vevay".parse().unwrap();
+        let x: Dt = "2024-06-15 14:30:00.123456789 America/New_York"
+            .parse()
+            .unwrap();
+    }
+
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let dt = Dt::from_str_parse(input.trim(), &opts)
             .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));

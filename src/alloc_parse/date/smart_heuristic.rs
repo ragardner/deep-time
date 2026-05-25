@@ -33,7 +33,7 @@ pub(crate) fn smart_detect_date_order(s: &str, class: &DateClassification) -> Or
     // 2. Delimited formats starting with a 4-digit year
     //    (only reached for non-pure-numeric strings)
     // ------------------------------------------------------------------
-    if matches!(class.tokens.first(), Some(Token::Digits(n)) if *n >= 4)
+    if matches!(class.date_tokens.first(), Some(Token::Digits(n)) if *n >= 4)
         && let Some(year_candidate) = s.get(0..4).and_then(|p| p.parse::<u16>().ok())
         && (1900..=2100).contains(&year_candidate)
     {
