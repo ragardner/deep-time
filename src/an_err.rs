@@ -546,7 +546,7 @@ where
 
                 // 3. Location
                 if let Some(loc) = self.locations[i] {
-                    let file = LiteStr::<PATH_LEN>::from_str(loc.file());
+                    let file = LiteStr::<PATH_LEN>::new(loc.file());
                     buf[offset..offset + PATH_LEN].copy_from_slice(&file.to_bytes());
                     offset += PATH_LEN;
 
@@ -567,7 +567,6 @@ where
     }
 
     /// Compile-time size of the wire representation for a given `PATH_LEN`.
-
     pub const fn wire_size<const PATH_LEN: usize>() -> usize {
         2 + DEPTH * (2 + REASON_LEN + PATH_LEN + 8)
     }
@@ -691,7 +690,7 @@ mod tests {
 
     /// Helper for creating `LiteStr` reasons (turbofish required for const generic).
     fn r<const N: usize>(s: &str) -> LiteStr<N> {
-        LiteStr::from_str(s)
+        LiteStr::new(s)
     }
 
     // Use the crate's exact *default* parameters so the an_err! macro + constructors

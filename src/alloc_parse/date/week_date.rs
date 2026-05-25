@@ -37,9 +37,7 @@ pub(crate) fn parse_week_date_no_weekday(
 
     // Only insert "-1" if there's nothing (or only a separator/time marker) after the week number
     let after = &new_date[week_end..];
-    if after.is_empty()
-        || after.starts_with(|c: char| matches!(c, ' ' | 'T' | '-' | '.' | '/' | ','))
-    {
+    if after.is_empty() || after.starts_with([' ', 'T', '-', '.', '/', ',']) {
         new_date.insert_str(week_end, "-1");
     } else {
         // Already has a weekday or something unexpected — don't touch it

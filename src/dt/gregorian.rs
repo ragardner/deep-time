@@ -306,12 +306,6 @@ impl Dt {
         Dt::clamp_i128_to_i64(day_mo as i128 + yr_part)
     }
 
-    /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.
-    #[inline]
-    pub const fn is_leap_yr(yr: i64) -> bool {
-        yr % 4 == 0 && (yr % 100 != 0 || yr % 400 == 0)
-    }
-
     /// Creates a **TAI** [`Dt`] from a proleptic gregorian date which is assumed to be on
     /// the provided time scale.
     ///
@@ -453,24 +447,26 @@ impl Dt {
         monday_of_wk.saturating_add((wkday.wk_mon() - 1) as i64)
     }
 
+    /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.
+    #[inline(always)]
+    pub const fn is_leap_yr(yr: i64) -> bool {
+        (yr & 3 == 0) && ((yr & 15 == 0) || (yr % 25 != 0))
+    }
+
+    const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     /// Returns `true` if the supplied values form a valid proleptic Gregorian calendar date.
+    #[inline]
     pub const fn is_valid_ymd(yr: i64, mo: u8, day: u8) -> bool {
         if mo < 1 || mo > 12 || day < 1 {
             return false;
         }
-        let days = match mo {
-            1 | 3 | 5 | 7 | 8 | 10 | 12 => 31u8,
-            4 | 6 | 9 | 11 => 30u8,
-            2 => {
-                if Self::is_leap_yr(yr) {
-                    29
-                } else {
-                    28
-                }
-            }
-            _ => return false,
-        };
-        day <= days
+        // 0 = Jan, 1 = Feb, ..., 11 = Dec
+        let days = Self::DAYS[(mo - 1) as usize];
+        if mo == 2 && Self::is_leap_yr(yr) {
+            day <= days + 1 // 28 → 29
+        } else {
+            day <= days
+        }
     }
 
     /// Returns `true` if the given Gregorian year contains an ISO week 53.

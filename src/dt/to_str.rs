@@ -321,7 +321,7 @@ impl Dt {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        Ok(LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))?)
+        LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, applying a fixed UTC offset.
@@ -369,7 +369,7 @@ impl Dt {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        Ok(LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))?)
+        LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, time adjusted to the given
@@ -422,7 +422,7 @@ impl Dt {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        Ok(LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))?)
+        LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))
     }
 
     /// Low-level no-alloc formatter that writes into a caller-provided slice,

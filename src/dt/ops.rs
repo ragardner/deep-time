@@ -143,8 +143,8 @@ impl Dt {
     /// Compares the time values represented by two `Dt`s.
     ///
     /// - This comparison is based on the raw `(sec, attos)` representation
-    /// after normalizing (without mutating self or other) any un-carried
-    /// attoseconds.
+    ///   after normalizing (without mutating self or other) any un-carried
+    ///   attoseconds.
     /// - Does **not** perform scale conversion.
     pub const fn cmp(&self, other: &Self) -> Ordering {
         let a = self.carry_attos();

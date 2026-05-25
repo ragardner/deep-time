@@ -3,12 +3,15 @@ use core::str;
 
 /// Fixed-capacity, stack-only UTF-8 string stored in a single `[u8; N]` array.
 ///
-/// The string is stored as raw bytes with C-style nul termination.
-/// Its logical length is determined at runtime by the position of the first nul byte (`b'\0'`).
-/// All bytes after the string content are guaranteed to be zero.
-///
-/// The type guarantees that the prefix up to the first nul is always valid UTF-8
-/// (when constructed through the safe API).
+/// - The string is stored as raw bytes with C-style nul termination.
+/// - Its logical length is determined at runtime by the position of the first nul byte (`b'\0'`).
+/// - All bytes after the string content are guaranteed to be zero.
+/// - The type guarantees that the prefix up to the first nul is always valid UTF-8
+///   (when constructed through the safe API).
+/// - This type is **intentionally** kept very lightweight. When you use different sizes
+///   (such as `LiteStr<16>`, `LiteStr<32>`, `LiteStr<64>`), Rust creates a full
+///   separate copy of the type **and all of its methods** for each size. This is
+///   why it is important to keep the implementation of `LiteStr` as minimal as possible.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct LiteStr<const N: usize> {
     bytes: [u8; N],
@@ -26,7 +29,7 @@ impl<const N: usize> LiteStr<N> {
 
     /// Recommended ergonomic constructor – truncates at a UTF-8 boundary if necessary.
     #[inline(never)]
-    pub fn from_str(s: &str) -> Self {
+    pub fn new(s: &str) -> Self {
         let mut bytes = [0u8; N];
         copy_valid_utf8_prefix(&mut bytes, s.as_bytes(), N);
         Self { bytes }
@@ -61,6 +64,7 @@ impl<const N: usize> LiteStr<N> {
     }
 
     /// Returns the current len of the utf-8.
+    #[allow(clippy::len_without_is_empty)]
     #[inline(always)]
     pub fn len(&self) -> usize {
         find_first_nul(&self.bytes)
@@ -109,7 +113,7 @@ impl<'de, const N: usize> serde::Deserialize<'de> for LiteStr<N> {
         D: serde::Deserializer<'de>,
     {
         let s: &str = serde::Deserialize::deserialize(deserializer)?;
-        Ok(LiteStr::from_str(s))
+        Ok(LiteStr::new(s))
     }
 }
 

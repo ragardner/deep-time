@@ -3,7 +3,7 @@
 #[cfg(all(feature = "tz", feature = "jiff-tz"))]
 mod tests {
     use deep_time::{Dt, Scale};
-    use jiff::{Zoned, civil::DateTime};
+    use jiff::{Timestamp, Zoned, civil::DateTime};
 
     #[test]
     fn test_historical_iana_with_jiff() {
@@ -367,6 +367,100 @@ mod tests {
              Jiff           : {}\n\
              deep_time      : {}\n",
                 description, our_input, jiff_rfc, our_rfc
+            );
+        }
+    }
+
+    #[test]
+    fn test_offset_handling_with_jiff() {
+        let cases = vec![
+            // === Basic whole-hour offsets ===
+            ("2024-06-15 14:30:00", "+00:00", "UTC / +0"),
+            ("2024-06-15 14:30:00", "+05:00", "UTC+5"),
+            ("2024-06-15 14:30:00", "-04:00", "UTC-4 (EDT-style)"),
+            ("2024-06-15 14:30:00", "-05:00", "UTC-5 (EST)"),
+            ("2024-06-15 14:30:00", "+08:00", "UTC+8"),
+            ("2024-06-15 14:30:00", "-12:00", "UTC-12"),
+            ("2024-06-15 14:30:00", "+14:00", "UTC+14 (easternmost)"),
+            // === Non-whole-hour offsets (the ones that catch bugs) ===
+            ("2024-06-15 14:30:00", "+05:30", "India +5:30"),
+            ("2024-06-15 14:30:00", "+05:45", "Nepal +5:45"),
+            ("2024-06-15 14:30:00", "+08:45", "Australia/Eucla +8:45"),
+            (
+                "2024-06-15 14:30:00",
+                "+10:30",
+                "Lord Howe +10:30 (standard)",
+            ),
+            ("2024-06-15 14:30:00", "-09:30", "Marquesas Islands -9:30"),
+            ("2024-06-15 14:30:00", "+12:45", "Chatham Islands +12:45"),
+            // === Subsecond precision ===
+            (
+                "2024-06-15 14:30:00.123456789",
+                "+05:30",
+                "Full nanosecond precision",
+            ),
+            ("2024-06-15 14:30:00.5", "+08:00", "Half-second precision"),
+            (
+                "2024-11-05 01:30:00.999999999",
+                "-05:00",
+                "Last nanosecond of a second",
+            ),
+            // === Historical / far-future / edge cases ===
+            (
+                "1800-01-01 12:00:00",
+                "-00:44",
+                "Very old fixed offset (LMT era)",
+            ),
+            (
+                "1883-11-18 12:00:00",
+                "-05:00",
+                "US Standard Time adoption day",
+            ),
+            ("9998-12-31 23:59:59", "+14:00", "Far future +14:00"),
+            ("0001-01-01 00:00:00", "+00:00", "Year 1 with fixed offset"),
+            // === Z / Zulu alias ===
+            ("2024-06-15 14:30:00", "Z", "Zulu alias (should be +00:00)"),
+            ("2024-06-15 14:30:00", "z", "Lowercase z alias"),
+        ];
+
+        for (civil_str, offset_str, description) in cases {
+            // ─── Jiff ground truth ─────────────────────────────────────────────────────
+            let civil_with_t = civil_str.replace(' ', "T");
+            let offset_part = if offset_str.eq_ignore_ascii_case("z") {
+                "Z"
+            } else {
+                offset_str
+            };
+
+            let jiff_input = format!("{}{}", civil_with_t, offset_part);
+
+            let jiff_ts: Timestamp = jiff_input.parse().unwrap_or_else(|e| {
+                panic!(
+                    "Jiff Timestamp::parse failed for '{}': {}\n\
+                     (original civil: {}, offset: {})",
+                    jiff_input, e, civil_str, offset_str
+                )
+            });
+
+            let jiff_rfc = jiff_ts.to_string();
+
+            // ─── deep_time ─────────────────────────────────────────────────────────────
+            let our_input = format!("{} {}", civil_str, offset_str);
+
+            let our_dt: Dt = Dt::from_str_parse(&our_input, &None)
+                .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
+
+            let our_rfc = our_dt.to_str_rfc3339(Scale::TAI).unwrap();
+
+            // ─── Assert ────────────────────────────────────────────────────────────────
+            assert_eq!(
+                our_rfc, jiff_rfc,
+                "\n=== Offset Handling Test FAILED: {} ===\n\
+                 Input string   : {}\n\
+                 Jiff input     : {}\n\
+                 Jiff           : {}\n\
+                 deep_time      : {}\n",
+                description, our_input, jiff_input, jiff_rfc, our_rfc
             );
         }
     }

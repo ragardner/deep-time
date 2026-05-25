@@ -52,7 +52,7 @@ impl Dt {
     /// Returns the Mars Sol Date (MSD) as a tuple of integer sols and the fractional part of a sol.
     ///
     /// - The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
-    ///  [`Scale`].
+    ///   [`Scale`].
     /// - Leap seconds are automatically accounted for when converting from UTC.
     pub const fn to_msd(&self, current: Scale) -> (i64, u128) {
         let tt = self.to(current, Scale::TT);

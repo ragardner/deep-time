@@ -84,7 +84,7 @@ impl TimeParts {
     /// Sets the IANA timezone name.
     #[inline]
     pub fn set_iana_name(&mut self, name: Option<&str>) -> &mut Self {
-        self.iana_name = name.and_then(|s| Some(LiteStr::from_str(s)));
+        self.iana_name = name.map(LiteStr::new);
         self
     }
 }

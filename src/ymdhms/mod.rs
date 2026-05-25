@@ -472,13 +472,13 @@ impl YmdHmsRich {
 
     #[inline]
     pub(crate) fn set_tz(&mut self, tz: Option<&str>) -> &mut Self {
-        self.tz = tz.and_then(|s| Some(LiteStr::from_str(s)));
+        self.tz = tz.map(LiteStr::new);
         self
     }
 
     #[inline]
     pub(crate) fn set_tz_abbrev(&mut self, tz_abbrev: Option<&str>) -> &mut Self {
-        self.tz_abbrev = tz_abbrev.and_then(|s| Some(LiteStr::from_str(s)));
+        self.tz_abbrev = tz_abbrev.map(LiteStr::new);
         self
     }
 }

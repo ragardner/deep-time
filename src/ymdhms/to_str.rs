@@ -57,7 +57,7 @@ impl YmdHmsRich {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        Ok(LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))?)
+        LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))
     }
 
     pub(crate) fn format_to_buffer(
