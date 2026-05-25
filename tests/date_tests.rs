@@ -65,10 +65,6 @@ mod tests {
         );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Helpers
-    // ─────────────────────────────────────────────────────────────────────────────
-
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let dt = Dt::from_str_parse(input.trim(), &opts)
             .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
@@ -90,10 +86,6 @@ mod tests {
             input
         );
     }
-
-    // ─────────────────────────────────────────────────────────────────────────────
-    // Comprehensive suite
-    // ─────────────────────────────────────────────────────────────────────────────
 
     fn generate_date_test_cases() -> Vec<(String, String, Option<ParseCfg>)> {
         let mut cases = Vec::new();

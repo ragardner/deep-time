@@ -329,6 +329,7 @@ mod tests {
                 "Australia/Sydney",
                 "Last nanosecond inside Sydney spring-forward gap",
             ),
+            ("2006-04-02 02:30-05", "America/Indiana/Vevay", "github"),
         ];
 
         for (civil_str, iana_name, description) in cases {

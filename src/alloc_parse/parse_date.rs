@@ -193,7 +193,7 @@ impl Dt {
             (opts.mode, opts.order)
         };
 
-        // if s == "15. Januar 2024 um 14:30 Uhr" {
+        // if s == "2006-04-02 02:30-05 America/Indiana/Vevay" {
         //     std::eprintln!("{:?}", classification);
         // }
 
