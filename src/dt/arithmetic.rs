@@ -26,6 +26,12 @@ impl Dt {
         }
     }
 
+    /// Returns the total time in seconds (lossy, integer part only).
+    #[inline(always)]
+    pub const fn to_sec(&self) -> i128 {
+        self.attos.div_euclid(ATTOS_PER_SEC_I128)
+    }
+
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
     /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal digits of precision.
     pub const fn to_sec_f(&self) -> Real {
@@ -162,7 +168,7 @@ impl Dt {
     }
 
     /// Total attoseconds (exact i128 representation).
-    #[inline]
+    #[inline(always)]
     pub const fn to_attos(&self) -> i128 {
         self.attos
     }
@@ -217,7 +223,7 @@ impl Dt {
             return Self::ZERO;
         }
         let total = self.attos.saturating_mul(rhs as i128);
-        Self::from_attos(total, Scale::TAI)
+        Self::from(total, Scale::TAI)
     }
 
     /// Divides this `Dt` by an integer scalar.
@@ -229,7 +235,7 @@ impl Dt {
             return Self::ZERO;
         }
         let result = self.attos / (rhs as i128);
-        Self::from_attos(result, Scale::TAI)
+        Self::from(result, Scale::TAI)
     }
 
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
@@ -242,7 +248,7 @@ impl Dt {
         let b = unit.attos;
         let q = safe_div_euc!(a, b, 0i128);
         let result = q.wrapping_mul(b);
-        Self::from_attos(result, Scale::TAI)
+        Self::from(result, Scale::TAI)
     }
 
     /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
@@ -258,7 +264,7 @@ impl Dt {
         let q = safe_div_euc!(neg_a, b, 0i128);
         let q_ceil = q.wrapping_neg();
         let result = q_ceil.wrapping_mul(b);
-        Self::from_attos(result, Scale::TAI)
+        Self::from(result, Scale::TAI)
     }
 
     /// Returns the nearest multiple of `unit`.
@@ -291,7 +297,7 @@ impl Dt {
 
         let result = if a < 0 { -rounded_abs } else { rounded_abs };
 
-        Self::from_attos(result, Scale::TAI)
+        Self::from(result, Scale::TAI)
     }
 
     /// Returns `floor(|self| / |unit|)` as `usize`, saturating at `usize::MAX`.
@@ -428,7 +434,7 @@ impl Dt {
             total_attos
         };
 
-        Self::from_attos(clamped, Scale::TAI)
+        Self::from(clamped, Scale::TAI)
     }
 
     /// Divides by a real number (routes through the high-precision `mul_by_f`).
@@ -450,11 +456,6 @@ impl Dt {
         self.div_by_f(2.0)
     }
 
-    /// Returns the total time in seconds (lossy, integer part only).
-    pub const fn to_sec(&self) -> i64 {
-        Self::clamp_i128_to_i64(self.attos.div_euclid(ATTOS_PER_SEC_I128))
-    }
-
     /// Clamps an `i128` to the representable range of `i64`.
     #[inline(always)]
     pub(crate) const fn clamp_i128_to_i64(x: i128) -> i64 {
@@ -470,8 +471,8 @@ impl Dt {
 
     /// Converts seconds (i64) → total attoseconds (i128)
     #[inline(always)]
-    pub const fn sec_to_attos(sec: i64) -> i128 {
-        (sec as i128) * ATTOS_PER_SEC_I128
+    pub const fn sec_to_attos(sec: i128) -> i128 {
+        sec.saturating_mul(ATTOS_PER_SEC_I128)
     }
 
     /// Converts total attoseconds → whole seconds as i64

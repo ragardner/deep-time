@@ -4,7 +4,7 @@ mod light_time_tests {
     use deep_time::{Dt, ObserverState, Position, Scale, Spacetime, Velocity, constants::C};
 
     fn make_state(
-        tai_sec: i64,
+        tai_sec: i128,
         pos: Position,
         vel: Velocity,
         phi_m2_s2: f64,
@@ -190,11 +190,11 @@ mod light_time_tests {
         // Full round-trip result from the convenience method
         let round_trip_corr = tx.round_trip_light_time_correction(
             &mut |t: Dt| {
-                let sec = t.to_sec_f() as i64;
+                let sec = t.to_sec();
                 make_state(sec, rx_pos, Velocity::from_speed(24_000.0), -1.3e8, 0.0)
             },
             &mut |t: Dt| {
-                let sec = t.to_sec_f() as i64;
+                let sec = t.to_sec();
                 make_state(sec, tx_pos, Velocity::from_speed(29_780.0), -8.87e8, 0.0)
             },
             bodies,
@@ -205,7 +205,7 @@ mod light_time_tests {
         // 1. Solve uplink iteratively (propagation only)
         let (uplink_corr, _rx_arrival_time, rx_at_arrival) = tx.iterative_one_way_light_time_to(
             &mut |t| {
-                let sec = t.to_sec_f() as i64;
+                let sec = t.to_sec();
                 make_state(sec, rx_pos, Velocity::from_speed(24_000.0), -1.3e8, 0.0)
             },
             bodies,
@@ -217,7 +217,7 @@ mod light_time_tests {
         let (downlink_corr, _final_rx_time, _final_rx_state) = rx_at_arrival
             .iterative_one_way_light_time_to(
                 &mut |t| {
-                    let sec = t.to_sec_f() as i64;
+                    let sec = t.to_sec();
                     make_state(sec, tx_pos, Velocity::from_speed(29_780.0), -8.87e8, 0.0)
                 },
                 bodies,
@@ -282,7 +282,7 @@ mod light_time_tests {
 
         let (prop_correction, final_rx_time, _) = tx.iterative_one_way_light_time_to(
             &mut |t| {
-                let sec = t.to_sec_f() as i64;
+                let sec = t.to_sec();
                 make_state(sec, rx_pos, Velocity::ZERO, -8.80e8, 0.0)
             },
             bodies,

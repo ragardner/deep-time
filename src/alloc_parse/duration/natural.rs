@@ -274,12 +274,12 @@ pub(crate) fn natural_duration_to_span(
                 }
                 Token::Tomorrow => {
                     if !has_duration {
-                        return Ok(Dt::from_attos(AS_PER_DAY, Scale::TAI));
+                        return Ok(Dt::from(AS_PER_DAY, Scale::TAI));
                     }
                 }
                 Token::Yesterday => {
                     if !has_duration {
-                        return Ok(Dt::from_attos(-AS_PER_DAY, Scale::TAI));
+                        return Ok(Dt::from(-AS_PER_DAY, Scale::TAI));
                     }
                 }
                 Token::Year => {
@@ -497,7 +497,7 @@ pub(crate) fn natural_duration_to_span(
         return Err(an_err!(DtErrKind::InvalidInput, "{}", input));
     }
 
-    Ok(Dt::from_attos(total_attos, Scale::TAI))
+    Ok(Dt::from(total_attos, Scale::TAI))
 }
 
 pub(crate) fn natural_duration_to_iso(

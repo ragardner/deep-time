@@ -199,7 +199,7 @@ mod ltc_tests {
     fn tcl_for_lunar_orbit_planning_2038_example() {
         // 2038-01-01 00:00:00 TAI
         // (Unix timestamp 2_145_916_800 on the TAI scale)
-        let unix_tai_sec = 2_145_916_800i64;
+        let unix_tai_sec = 2_145_916_800i128;
 
         let tai_2038 =
             Dt::from_diff_and_scale(Dt::from_tai_sec(unix_tai_sec), Dt::UNIX_EPOCH, Scale::TAI);

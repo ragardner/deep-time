@@ -230,7 +230,7 @@ impl Dt {
 
         // Convert accumulated nanoseconds to attoseconds and build Dt
         let total_attos = total_nanos * 1_000_000_000i128;
-        Ok(Dt::from_attos(total_attos, Scale::TAI))
+        Ok(Dt::from(total_attos, Scale::TAI))
     }
 
     /// Parses a single component (number + optional fraction + unit) from the slice,

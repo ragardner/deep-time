@@ -3,7 +3,7 @@
 mod proper_time_tests {
     use deep_time::{Dt, Scale, Spacetime};
 
-    fn tai(sec: i64) -> Dt {
+    fn tai(sec: i128) -> Dt {
         Dt::from_sec(sec, Scale::TAI)
     }
 
@@ -255,7 +255,7 @@ mod proper_time_tests {
             }
 
             let ls = Spacetime::new(alpha, beta, 0.0);
-            spacecraft_path.push((tai(t as i64), ls));
+            spacecraft_path.push((tai(t as i128), ls));
         }
 
         // === SPACECRAFT proper time (integrated along real trajectory) ===

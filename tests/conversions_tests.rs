@@ -308,10 +308,10 @@ fn ntp_timestamp() {
     let ntp = dt.to_ntp(Scale::TAI, Scale::TAI);
     assert_eq!(
         ntp.to_sec(),
-        2698012800_i64,
+        2698012800_i128,
         "ntp sec for 1985 is wrong, got: {}, expected: {}",
         ntp.to_sec(),
-        2698012800_i64
+        2698012800_i128
     );
     let dt2 = Dt::from_ntp(ntp.to_sec_f(), Scale::TAI);
     assert_eq!(

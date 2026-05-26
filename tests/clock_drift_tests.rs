@@ -28,8 +28,8 @@ mod tests {
     fn evaluate_full_quadratic() {
         let drift = Drift::new(
             Dt::from_sec(2, Scale::TAI),
-            Dt::from_ns(1, Scale::TAI),    // exactly 1e-9 s/s
-            Dt::from_attos(2, Scale::TAI), // exactly 2e-18 s/s²
+            Dt::from_ns(1, Scale::TAI), // exactly 1e-9 s/s
+            Dt::from(2, Scale::TAI),    // exactly 2e-18 s/s²
         );
         let dt = Dt::from_sec(1_000_000, Scale::TAI);
 
@@ -46,8 +46,8 @@ mod tests {
     fn evaluate_negative_dt() {
         let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI),
-            Dt::from_ns(1, Scale::TAI),    // exactly 1e-9 s/s
-            Dt::from_attos(1, Scale::TAI), // exactly 1e-18 s/s²
+            Dt::from_ns(1, Scale::TAI), // exactly 1e-9 s/s
+            Dt::from(1, Scale::TAI),    // exactly 1e-18 s/s²
         );
         let dt = Dt::from_sec(-500_000, Scale::TAI);
 

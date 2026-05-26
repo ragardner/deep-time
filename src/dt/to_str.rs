@@ -485,7 +485,7 @@ impl Dt {
         let local_tp = if secs != 0 {
             *self
                 + Dt {
-                    attos: Dt::sec_to_attos(secs as i64),
+                    attos: Dt::sec_to_attos(secs as i128),
                 }
         } else {
             *self
@@ -511,7 +511,7 @@ impl Dt {
 
         // 3. Build local time = UTC + offset
         let span = Dt {
-            attos: Dt::sec_to_attos(offset_secs as i64),
+            attos: Dt::sec_to_attos(offset_secs as i128),
         };
         let local_tp = *self + span;
 

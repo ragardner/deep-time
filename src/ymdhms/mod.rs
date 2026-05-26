@@ -129,7 +129,7 @@ impl YmdHms {
         let tai = Dt::from_ymdhms_on(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         );
-        let delta_dt = Dt::from_attos(attos_delta, Scale::TAI);
+        let delta_dt = Dt::from(attos_delta, Scale::TAI);
         let new_tai = tai.add(delta_dt);
         new_tai.to_ymdhms_on(Scale::TAI, self.scale)
     }

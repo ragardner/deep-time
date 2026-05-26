@@ -1,4 +1,3 @@
-use crate::ATTOS_PER_SEC_I128;
 use crate::tzdb::offset_info_at_local;
 use crate::{
     Dt, JD_2000_2_451_545, SEC_PER_DAYI64, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
@@ -16,11 +15,11 @@ impl TimeParts {
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
-            let sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-            let subsec = self.attos.unwrap_or(0);
-
-            let total_attos = (sec as i128) * ATTOS_PER_SEC_I128 + (subsec as i128);
-            return Ok(Dt::from(total_attos, Scale::UTC));
+            return Ok(Dt::from_sec_and_attos(
+                unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON),
+                self.attos.unwrap_or(0),
+                Scale::UTC,
+            ));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -148,10 +147,12 @@ impl TimeParts {
         }
 
         // ──────────────────────────────────────────────────────────────
-        // Final construction (new single-i128 path)
+        // Final construction
         // ──────────────────────────────────────────────────────────────
-        let attos = self.attos.unwrap_or(0);
-        let total_attos = (sec_utc as i128) * ATTOS_PER_SEC_I128 + (attos as i128);
-        Ok(Dt::from(total_attos, Scale::UTC))
+        Ok(Dt::from_sec_and_attos(
+            sec_utc,
+            self.attos.unwrap_or(0),
+            Scale::UTC,
+        ))
     }
 }

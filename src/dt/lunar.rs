@@ -100,7 +100,7 @@ impl Dt {
         let secular_attos = Self::mul_lm(elapsed);
         let periodic = Self::ltc_periodic_correction(tt);
 
-        tt.add(Dt::from_attos(secular_attos, Scale::TAI))
+        tt.add(Dt::from(secular_attos, Scale::TAI))
             .add(periodic)
     }
 
@@ -122,7 +122,7 @@ impl Dt {
             let periodic = Self::ltc_periodic_correction(tt);
 
             tt = ltc
-                .sub(Dt::from_attos(secular_attos, Scale::TAI))
+                .sub(Dt::from(secular_attos, Scale::TAI))
                 .sub(periodic);
             i += 1;
         }
@@ -200,7 +200,7 @@ impl Dt {
         let secular_attos = Self::mul_tl(elapsed);
         let periodic = Self::ltc_periodic_correction(tdb);
 
-        tdb.add(Dt::from_attos(secular_attos, Scale::TAI))
+        tdb.add(Dt::from(secular_attos, Scale::TAI))
             .add(periodic)
             .add(Self::TCL_TDB_BIAS_SPAN)
     }
@@ -216,7 +216,7 @@ impl Dt {
             let periodic = Self::ltc_periodic_correction(tdb);
 
             tdb = tcl
-                .sub(Dt::from_attos(secular_attos, Scale::TAI))
+                .sub(Dt::from(secular_attos, Scale::TAI))
                 .sub(periodic)
                 .sub(Self::TCL_TDB_BIAS_SPAN);
             i += 1;

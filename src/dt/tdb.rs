@@ -68,8 +68,8 @@ impl Dt {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let linear_span = Self::mul_lb(elapsed); // LB * elapsed
         let mut tt = tdb
-            .sub(Dt::from_attos(linear_span, Scale::TAI))
-            .sub(Dt::from_attos(TDB0_ATTOS, Scale::TAI));
+            .sub(Dt::from(linear_span, Scale::TAI))
+            .sub(Dt::from(TDB0_ATTOS, Scale::TAI));
 
         // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
         let mut i = 0u32;

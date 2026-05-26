@@ -36,9 +36,9 @@ impl Dt {
     /// let ntp = dt.to_ntp(Scale::TAI, Scale::TAI);
     ///
     /// assert_eq!(
-    ///     ntp.to_attos(), Dt::sec_to_attos(2698012800_i64),
+    ///     ntp.to_attos(), Dt::sec_to_attos(2698012800_i128),
     ///     "ntp sec for 1985 is wrong, got: {}, expected: {}",
-    ///     ntp.to_attos(), Dt::sec_to_attos(2698012800_i64)
+    ///     ntp.to_attos(), Dt::sec_to_attos(2698012800_i128)
     /// );
     ///
     /// let dt2 = Dt::from_ntp(ntp.to_sec_f(), Scale::TAI);
@@ -100,7 +100,7 @@ impl Dt {
         let wk = total_attos.div_euclid(ATTOS_PER_WEEK) as i64;
         let tow_attos = total_attos.rem_euclid(ATTOS_PER_WEEK);
 
-        (wk, Dt::from_attos(tow_attos, Scale::TAI))
+        (wk, Dt::from(tow_attos, Scale::TAI))
     }
 
     /// Creates a [`Dt`] from a GPS week number and Time of Week (TOW).
@@ -125,7 +125,7 @@ impl Dt {
     #[inline]
     pub const fn from_gps_wk_and_tow(wk: i64, tow: Dt) -> Self {
         let total_attos = (wk as i128) * ATTOS_PER_WEEK + tow.to_attos();
-        Self::GPS_EPOCH.add(Dt::from_attos(total_attos, Scale::TAI))
+        Self::GPS_EPOCH.add(Dt::from(total_attos, Scale::TAI))
     }
 
     /// Returns the Time of Week (TOW) as a floating-point value in seconds.

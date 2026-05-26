@@ -42,7 +42,7 @@ mod tests {
         let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI),
             Dt::from_ns(1, Scale::TAI),
-            Dt::from_attos(2, Scale::TAI),
+            Dt::from(2, Scale::TAI),
         );
         assert_roundtrip(
             &drift,

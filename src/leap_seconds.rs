@@ -15,9 +15,9 @@ use alloc::vec::Vec;
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct LeapSec {
     pub ntp_timestamp: i64,
-    pub leap_sec_after: i64,
+    pub leap_sec_after: i128,
     // pub utc_sec: i64,
-    pub tai_sec: i64,
+    pub tai_sec: i128,
 }
 
 pub const LEAP_SECS: &[LeapSec] = &[
@@ -193,24 +193,24 @@ pub const LEAP_SECS: &[LeapSec] = &[
 
 #[derive(Copy, Clone, Debug)]
 pub struct LeapInfo {
-    pub offset: i64,
-    pub leaps_inserted: i64,
+    pub offset: i128,
+    pub leaps_inserted: i128,
     pub is_leap_sec: bool,
 }
 
 impl Dt {
-    #[inline]
+    #[inline(always)]
     pub const fn leap_sec(&self, is_utc: bool) -> LeapInfo {
         leap_sec(self, is_utc)
     }
 
-    #[inline]
+    #[inline(always)]
     pub const fn leap_sec_using(&self, is_utc: bool, table: &[LeapSec]) -> LeapInfo {
         leap_sec_using(self, is_utc, table)
     }
 }
 
-#[inline]
+#[inline(always)]
 pub const fn leap_sec(dt: &Dt, is_utc: bool) -> LeapInfo {
     leap_sec_using(dt, is_utc, LEAP_SECS)
 }
@@ -225,7 +225,7 @@ pub const fn leap_sec_using(dt: &Dt, is_utc: bool, table: &[LeapSec]) -> LeapInf
         };
     }
 
-    let target = Dt::attos_to_sec_i64(dt.attos);
+    let target = dt.to_sec();
 
     // Binary search for upper_bound: first index where entry_sec > target
     let mut low = 0usize;
@@ -273,7 +273,7 @@ pub const fn leap_sec_using(dt: &Dt, is_utc: bool, table: &[LeapSec]) -> LeapInf
 
     LeapInfo {
         offset: entry.leap_sec_after,
-        leaps_inserted: (idx + 1) as i64,
+        leaps_inserted: (idx + 1) as i128,
         is_leap_sec: is_leap,
     }
 }
@@ -298,6 +298,7 @@ impl Dt {
     /// | 2272060800 |     10   |
     /// | 2287785600 |     11   |
     /// | 2303683200 |     12   |
+    #[inline]
     pub fn leap_sec_data_from_file<P: AsRef<Path>>(path: P) -> io::Result<Vec<LeapSec>> {
         let content = fs::read_to_string(path)?;
         Ok(Self::leap_sec_data_from_str(&content))
@@ -334,7 +335,7 @@ impl Dt {
         use crate::Scale;
 
         let mut table = Vec::new();
-        let mut prev_leap_sec_after: i64 = 0;
+        let mut prev_leap_sec_after: i128 = 0;
 
         for line in s.lines() {
             let trimmed = line.trim();
@@ -354,14 +355,14 @@ impl Dt {
             let Ok(leap_sec_after) = parts[1].parse::<i64>() else {
                 continue;
             };
+            let leap_sec_after = leap_sec_after as i128;
 
             // don't use current: UTC because it would use the internal leap table
             let dt = Dt::from_ntp(f!(ntp_timestamp), Scale::TAI);
             let tai_sec = if prev_leap_sec_after == 0 {
-                Dt::attos_to_sec_i64(dt.attos) + leap_sec_after - 1
+                dt.to_sec() + leap_sec_after - 1
             } else {
-                Dt::attos_to_sec_i64(dt.attos) + leap_sec_after
-                    - (leap_sec_after - prev_leap_sec_after)
+                dt.to_sec() + leap_sec_after - (leap_sec_after - prev_leap_sec_after)
             };
 
             table.push(LeapSec {

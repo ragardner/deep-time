@@ -435,9 +435,7 @@ impl Drift {
     /// Evaluates the polynomial at the given elapsed coordinate time span.  
     ///
     /// Returns the accumulated time difference (in seconds) between proper
-    /// time and coordinate time after the interval span has passed. All
-    /// arithmetic is performed with full 36-digit precision, ensuring no loss of
-    /// accuracy even for multi-year integrations.
+    /// time and coordinate time after the interval span has passed.
     pub const fn time_diff_after(&self, span: &Dt) -> Dt {
         let dt_attos = span.to_attos();
         let mut total_attos = self.constant.to_attos();
@@ -455,7 +453,7 @@ impl Drift {
             total_attos = total_attos.saturating_add(accel_term);
         }
 
-        Dt::from_attos(total_attos, Scale::TAI)
+        Dt::from(total_attos, Scale::TAI)
     }
 
     /// Evaluates the deterministic relativistic/polynomial correction **and**

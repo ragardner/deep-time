@@ -9,7 +9,7 @@
 
 use crate::{
     ATTOS_PER_FS_I128, ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, SEC_PER_DAY, SEC_PER_DAY_F, SEC_PER_DAYI64, Scale,
+    ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, SEC_PER_DAY, SEC_PER_DAY_F, SEC_PER_DAYI128, Scale,
 };
 
 /// Trait that adds ergonomic conversions from attoseconds values
@@ -124,7 +124,7 @@ macro_rules! impl_time_units_int {
                 fn ms(self) -> Dt { Dt::from_ms(self as i128, Scale::TAI) }
 
                 #[inline]
-                fn sec(self) -> Dt { Dt::from_sec(self as i64, Scale::TAI) }
+                fn sec(self) -> Dt { Dt::from_sec(self as i128, Scale::TAI) }
 
                 #[inline]
                 fn min(self) -> Dt { Dt::from_min(self as i64, Scale::TAI) }
@@ -133,13 +133,13 @@ macro_rules! impl_time_units_int {
                 fn hr(self) -> Dt { Dt::from_hr(self as i64, Scale::TAI) }
 
                 #[inline]
-                fn days(self) -> Dt { Dt::from_sec((self as i64).saturating_mul(SEC_PER_DAYI64), Scale::TAI) }
+                fn days(self) -> Dt { Dt::from_sec((self as i128).saturating_mul(SEC_PER_DAYI128), Scale::TAI) }
 
                 #[inline]
-                fn wk(self) -> Dt { Dt::from_sec((self as i64).saturating_mul(604_800), Scale::TAI) }
+                fn wk(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(604_800), Scale::TAI) }
 
                 #[inline]
-                fn yr(self) -> Dt { Dt::from_sec((self as i64).saturating_mul(31_557_600), Scale::TAI) }
+                fn yr(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(31_557_600), Scale::TAI) }
 
                 #[inline]
                 fn ago(self, scale: Scale) -> Dt {
@@ -176,7 +176,7 @@ impl TimeTraits for f64 {
 
     #[inline]
     fn sec(self) -> Dt {
-        Dt::from_sec(self as i64, Scale::TAI)
+        Dt::from_sec(self as i128, Scale::TAI)
     }
 
     #[inline]
@@ -233,7 +233,7 @@ impl TimeTraits for f32 {
 
     #[inline]
     fn sec(self) -> Dt {
-        Dt::from_sec(self as i64, Scale::TAI)
+        Dt::from_sec(self as i128, Scale::TAI)
     }
 
     #[inline]

@@ -1,6 +1,6 @@
 use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
 use crate::{
-    Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_SEC_AT_1972,
+    Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_ATTOS_AT_1972,
     TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET,
 };
 
@@ -166,7 +166,7 @@ impl Dt {
                 let tai = Dt {
                     attos: attos.saturating_add(Dt::sec_to_attos(offset)),
                 };
-                if attos < Dt::sec_to_attos(TAI_SEC_AT_1972 - 10) {
+                if attos < TAI_ATTOS_AT_1972 - 10 {
                     tai.add(Dt::from_sec(9, Scale::TAI))
                 } else {
                     tai
@@ -220,11 +220,12 @@ impl Dt {
             Scale::TT => self.add(TT_TAI_OFFSET),
             Scale::UTCSpice => {
                 let offset = self.leap_sec(false).offset;
-                let spice = Dt {
+                let mut spice = Dt {
                     attos: self.attos.saturating_sub(Dt::sec_to_attos(offset)),
                 };
-                if self.attos < Dt::sec_to_attos(TAI_SEC_AT_1972) {
-                    spice.sub(Dt::from_sec_f(f!(9.0)))
+                if self.attos < TAI_ATTOS_AT_1972 {
+                    spice.add_sec(-9);
+                    spice
                 } else {
                     spice
                 }

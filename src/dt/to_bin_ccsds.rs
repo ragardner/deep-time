@@ -33,7 +33,7 @@ impl Dt {
         const EPOCH_OFFSET: i64 = 1_325_419_167;
 
         let rem_attos = tai.frac_attos();
-        let total_tai_seconds = (tai.to_sec()).saturating_add(EPOCH_OFFSET);
+        let total_tai_seconds = (Dt::clamp_i128_to_i64(tai.to_sec())).saturating_add(EPOCH_OFFSET);
 
         let frac_scaled = if n_frac == 0 {
             0u128
@@ -115,7 +115,7 @@ impl Dt {
 
         const EPOCH_OFFSET: i64 = 1_325_419_135;
         let rem_attos = utc.frac_attos();
-        let total_utc_seconds = (utc.to_sec()).saturating_add(EPOCH_OFFSET);
+        let total_utc_seconds = (Dt::clamp_i128_to_i64(utc.to_sec())).saturating_add(EPOCH_OFFSET);
 
         let day_count = (total_utc_seconds / SEC_PER_DAYI64) as u64;
         let sec_of_day = (total_utc_seconds % SEC_PER_DAYI64) as u64;

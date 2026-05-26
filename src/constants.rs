@@ -80,7 +80,7 @@ pub const JD_2000_2_451_545F: Real = f!(2_451_545.0);
 /// MJD 40587.0 = 1970-01-01 00:00:00 UTC
 pub const MJD_1970: i64 = 40_587;
 /// Number of TAI seconds backwards from noon 2000-01-01 to midnight 1972-01-01
-pub const TAI_SEC_AT_1972: i64 = -883_655_990;
+pub const TAI_ATTOS_AT_1972: i128 = -883_655_990_000_000_000_000_000_000;
 
 /// TAI secs from 1970-01-01 midnight to 2000-01-01 noon
 pub(crate) const TAI_SECS_1970_MIDNIGHT_TO_2000_NOON: i64 = 946_728_000;

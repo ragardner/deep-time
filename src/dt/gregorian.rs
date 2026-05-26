@@ -186,7 +186,7 @@ impl Dt {
         let tai = self.to(current, Scale::TAI);
         let from_unix_epoch = tai.to_scale_and_then_diff(new, Dt::UNIX_EPOCH);
 
-        let unix_sec = from_unix_epoch.to_sec();
+        let unix_sec = Dt::clamp_i128_to_i64(from_unix_epoch.to_sec());
         let frac = from_unix_epoch.frac_attos();
 
         let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
@@ -351,7 +351,7 @@ impl Dt {
         let unix_sec =
             Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix).saturating_add(carried_sec);
 
-        let unix_attos = Dt::sec_to_attos(unix_sec) + (final_attos as i128);
+        let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (final_attos as i128);
 
         let tp = Self::from_diff_and_scale(Dt { attos: unix_attos }, Dt::UNIX_EPOCH, scale);
 

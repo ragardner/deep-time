@@ -70,7 +70,7 @@ impl Dt {
     #[inline]
     pub const fn to_mtc(&self, current: Scale) -> Dt {
         let (_, frac_attos) = self.to_msd(current);
-        Dt::from_attos(frac_attos as i128, Scale::TAI)
+        Dt::from(frac_attos as i128, Scale::TAI)
     }
 
     /// Creates a `Dt` (in TT) from an Mars Sol Date using full library precision.

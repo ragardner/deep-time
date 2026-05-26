@@ -2,7 +2,8 @@
 use crate::DtErr;
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC_I128, ATTOS_PER_US, Dt,
-    Real, SEC_PER_DAYI64, SEC_PER_WEEK, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
+    Real, SEC_PER_DAYI64, SEC_PER_DAYI128, SEC_PER_WEEK, Scale,
+    TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
 };
 
 impl Dt {
@@ -85,19 +86,23 @@ impl Dt {
         Self { attos }
     }
 
-    #[inline]
-    pub const fn from_attos(attos: i128, scale: Scale) -> Self {
-        Self::from(attos, scale)
+    #[inline(always)]
+    pub(crate) fn from_sec_and_attos(sec: i64, attos: u64, scale: Scale) -> Dt {
+        if attos == 0 {
+            Dt::from((sec as i128) * ATTOS_PER_SEC_I128, scale)
+        } else {
+            Dt::from((sec as i128) * ATTOS_PER_SEC_I128 + (attos as i128), scale)
+        }
     }
 
     #[inline]
-    pub const fn from_tai_sec(sec: i64) -> Self {
-        Self::from_attos((sec as i128) * ATTOS_PER_SEC_I128, Scale::TAI)
+    pub const fn from_tai_sec(sec: i128) -> Self {
+        Self::from(sec.saturating_mul(ATTOS_PER_SEC_I128), Scale::TAI)
     }
 
     #[inline]
-    pub const fn from_sec(sec: i64, scale: Scale) -> Self {
-        Self::from_attos((sec as i128) * ATTOS_PER_SEC_I128, scale)
+    pub const fn from_sec(sec: i128, scale: Scale) -> Self {
+        Self::from(sec.saturating_mul(ATTOS_PER_SEC_I128), scale)
     }
 
     #[inline]
@@ -132,12 +137,12 @@ impl Dt {
 
     #[inline]
     pub const fn from_min(m: i64, scale: Scale) -> Self {
-        Self::from_sec(m * 60, scale)
+        Self::from_sec((m as i128) * 60, scale)
     }
 
     #[inline]
     pub const fn from_hr(h: i64, scale: Scale) -> Self {
-        Self::from_sec(h * 3600, scale)
+        Self::from_sec((h as i128) * 3600, scale)
     }
 
     /// Creates a `Dt` from hours, minutes, seconds, milliseconds, microseconds,
@@ -156,7 +161,7 @@ impl Dt {
         let sub_ns = ms * 1_000_000i128 + us * 1_000i128 + ns;
 
         if sub_ns == 0 {
-            return Self::from_sec(total_sec, scale);
+            return Self::from_sec(total_sec as i128, scale);
         }
 
         let abs_ns = sub_ns.unsigned_abs();
@@ -173,34 +178,34 @@ impl Dt {
                 + (ATTOS_PER_SEC_I128 - frac_attos as i128)
         };
 
-        Self::from_attos(attos, scale)
+        Self::from(attos, scale)
     }
 
     #[inline]
     pub const fn from_days(d: i64, scale: Scale) -> Dt {
-        Self::from_sec(d.saturating_mul(SEC_PER_DAYI64), scale)
+        Self::from_sec((d as i128).saturating_mul(SEC_PER_DAYI128), scale)
     }
 
     #[inline]
     pub const fn wk(wk: i64, scale: Scale) -> Dt {
-        Dt::from_sec(wk.saturating_mul(SEC_PER_WEEK), scale)
+        Dt::from_sec((wk as i128).saturating_mul(SEC_PER_WEEK as i128), scale)
     }
 
     #[inline]
     pub const fn yr(yr: i64, scale: Scale) -> Dt {
-        Dt::from_sec(yr.saturating_mul(31_557_600), scale)
+        Dt::from_sec((yr as i128).saturating_mul(31_557_600), scale)
     }
 
     /// Returns a `Dt` that is this duration ago from the given scale.
     #[inline]
     pub const fn ago(self, scale: Scale) -> Dt {
-        Dt::from_attos(0, scale).sub(self)
+        Dt::from(0, scale).sub(self)
     }
 
     /// Returns a `Dt` that is this duration from now in the given scale.
     #[inline]
     pub const fn from_now(self, scale: Scale) -> Dt {
-        Dt::from_attos(0, scale).add(self)
+        Dt::from(0, scale).add(self)
     }
 
     /// Returns the negation of this duration.
@@ -223,9 +228,9 @@ impl Dt {
         Self::from_sec_f_on(sec_f, Scale::TAI)
     }
 
-    /// High-precision conversion from f64 seconds to total attoseconds (i128).
+    /// High-precision conversion from [`Real`] seconds to total attoseconds (i128).
     /// Uses IEEE 754 bit extraction + exact integer multiplication by 5^18.
-    pub const fn sec_f_to_total_attos(sec_f: f64) -> i128 {
+    pub const fn sec_f_to_total_attos(sec_f: Real) -> i128 {
         if sec_f == 0.0 {
             return 0;
         }
@@ -304,7 +309,7 @@ impl Dt {
 
         let total_attos = Self::sec_f_to_total_attos(sec_f);
 
-        Self::from_attos(total_attos, s)
+        Self::from(total_attos, s)
     }
 
     /// Returns the current system time as TAI from 2000-01-01 noon.
@@ -326,10 +331,12 @@ impl Dt {
                 (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
             }
         };
-        Ok(
-            Dt::from_diff_and_scale(Dt::new(Dt::sec_to_attos(secs)), Dt::UNIX_EPOCH, Scale::UTC)
-                .add(Dt::from_ns(nanos as i128, Scale::TAI)),
+        Ok(Dt::from_diff_and_scale(
+            Dt::new(Dt::sec_to_attos(secs as i128)),
+            Dt::UNIX_EPOCH,
+            Scale::UTC,
         )
+        .add(Dt::from_ns(nanos as i128, Scale::TAI)))
     }
 
     /// Returns the current system time as TAI from 2000-01-01 noon.

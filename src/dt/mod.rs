@@ -227,38 +227,35 @@ impl Default for Dt {
 impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let total = self.attos;
-        let precision = f.precision().unwrap_or(9);
+        let precision = f.precision().unwrap_or(9).min(18);
 
-        if f.sign_plus() && total >= 0 {
-            write!(f, "+")?;
+        let is_negative = total < 0;
+        let abs_attos = if is_negative {
+            total.wrapping_neg() as u128
+        } else {
+            total as u128
+        };
+
+        if is_negative {
+            f.write_str("-")?;
+        } else if f.sign_plus() {
+            f.write_str("+")?;
         }
 
-        if total >= 0 {
-            let secs = total / ATTOS_PER_SEC as i128;
-            let attos_frac = total % ATTOS_PER_SEC as i128;
-            write!(f, "{}", secs)?;
+        let attos_per_sec = ATTOS_PER_SEC as u128;
+        let whole_seconds = abs_attos / attos_per_sec;
+        let fractional_attos = abs_attos % attos_per_sec;
 
-            if precision > 0 && attos_frac > 0 {
-                let prec = precision.min(18);
-                let scale = 10u128.pow(18 - prec as u32);
-                let value = (attos_frac as u128) / scale;
-                write!(f, ".{:0>width$}", value, width = prec)?;
-            }
-        } else {
-            let abs_total = (-total) as u128;
-            let int_secs = (abs_total / ATTOS_PER_SEC as u128) as u64;
-            let frac_attos = (abs_total % ATTOS_PER_SEC as u128) as u64;
+        // Integer seconds
+        write!(f, "{}", whole_seconds)?;
 
-            if frac_attos == 0 {
-                write!(f, "-{}", int_secs)?;
-            } else {
-                write!(f, "-{}", int_secs)?;
-                if precision > 0 {
-                    let prec = precision.min(18);
-                    let scale = 10u128.pow(18 - prec as u32);
-                    let value = (frac_attos as u128) / scale;
-                    write!(f, ".{:0>width$}", value, width = prec)?;
-                }
+        // Fractional part (only when requested *and* non-zero after truncation)
+        if precision > 0 && fractional_attos > 0 {
+            let scale = 10u128.pow(18 - precision as u32);
+            let frac_value = fractional_attos / scale;
+
+            if frac_value > 0 {
+                write!(f, ".{:0>width$}", frac_value, width = precision)?;
             }
         }
 
