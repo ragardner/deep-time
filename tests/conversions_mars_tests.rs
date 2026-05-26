@@ -7,8 +7,8 @@ mod mars_tests {
     #[test]
     fn utc_leap_seconds_are_handled_in_mars_time() {
         // One second before vs after a leap second insertion
-        let utc_pre = Dt::new(1_485_779_199, 0);
-        let utc_post = Dt::new(1_485_779_200, 0);
+        let utc_pre = Dt::from_tai_sec(1_485_779_199);
+        let utc_post = Dt::from_tai_sec(1_485_779_200);
 
         let msd_pre = utc_pre.to_msd_f(Scale::TAI);
         let msd_post = utc_post.to_msd_f(Scale::TAI);

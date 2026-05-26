@@ -379,8 +379,8 @@ mod tests {
 
     #[test]
     fn date_parser_roundtrip() {
-        let tp1 = Dt::from(5, 0, Scale::LTC);
-        let tp2 = Dt::from(5, 0, Scale::GPS);
+        let tp1 = Dt::from_sec(5, Scale::LTC);
+        let tp2 = Dt::from_sec(5, Scale::GPS);
         let xp1 = tp1.to_str(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
         let xp2 = tp2.to_str(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
         let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
@@ -391,7 +391,7 @@ mod tests {
 
     #[test]
     fn round_trip_fixed_offsets() {
-        for tp in [Dt::new(5, 0), Dt::new(5, 0)] {
+        for tp in [Dt::from_tai_sec(5), Dt::from_tai_sec(-5)] {
             let xp1 = tp
                 .to_str_with_offset(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
                 .unwrap();
@@ -1060,7 +1060,7 @@ mod tests {
     fn relative_date_parser_comprehensive() {
         let cases = generate_relative_date_test_cases();
         let opts = Some(ParseCfg {
-            ref_time: Some(Dt::new(5_000_000, 0)),
+            ref_time: Some(Dt::from_tai_sec(5_000_000)),
             ..Default::default()
         });
 

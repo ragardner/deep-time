@@ -10,9 +10,11 @@ pub const MARS_SOL_LENGTH_SEC: Real = 88_775.244_146_88;
 /// (88_775.24414688 s × 10¹⁸, integer matching the current NASA divisor).
 pub const MARS_SOL_ATTOS: i128 = 88_775_244_146_880_000_000_000;
 
-/// Precomputed numerical values of the Mars reference epoch on the TT scale (seconds since J2000).
-pub const MARS_REF_TT: Dt = Dt::new(-3_976_386_952, 650_560_000_000_000_000);
-pub const MARS_REF_TT_ATTOS: i128 = MARS_REF_TT.to_attos();
+/// Precomputed numerical value of the Mars reference epoch on the TT scale (total attoseconds since J2000).
+pub const MARS_REF_TT_ATTOS: i128 = -3_976_386_951_349_440_000_000_000_000;
+pub const MARS_REF_TT: Dt = Dt {
+    attos: MARS_REF_TT_ATTOS,
+};
 
 /// Areocentric solar longitude (Ls) constants from the current NASA GISS Mars24
 /// algorithm (AM2000 short series, updated 2025-01-07).
@@ -74,8 +76,10 @@ impl Dt {
     /// Creates a `Dt` (in TT) from an Mars Sol Date using full library precision.
     pub const fn from_msd(whole_sols: i64, frac_attos: u128) -> Self {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
-        let tt = MARS_REF_TT.add(Dt::from_attos(elapsed_attos, Scale::TAI));
-        Self::from(tt.sec, tt.attos, Scale::TT)
+        let tt = MARS_REF_TT.add(Dt {
+            attos: elapsed_attos,
+        });
+        tt.to_tai(Scale::TT)
     }
 
     /// Creates a `Dt` (in TT) from a floating-point Mars Sol Date.

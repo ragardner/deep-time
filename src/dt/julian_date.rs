@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, Dt, JD_2000_2_451_545, Real,
-    SEC_PER_DAYI64, Scale, floor_f,
+    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, Dt, JD_2000_2_451_545, Real, Scale,
+    floor_f,
 };
 
 impl Dt {
@@ -11,14 +11,11 @@ impl Dt {
     ///
     /// For a float value use [`Self::to_jd_f`].
     pub const fn to_jd(&self) -> (i64, u128) {
-        let days_since_j2000 = self.sec.div_euclid(SEC_PER_DAYI64);
-        let remaining_sec = self.sec.rem_euclid(SEC_PER_DAYI64);
+        let days_since_j2000 = self.attos.div_euclid(ATTOS_PER_DAY);
+        let remaining_attos = self.attos.rem_euclid(ATTOS_PER_DAY);
 
-        let frac_attos =
-            (remaining_sec as u128) * ATTOS_PER_SEC_I128 as u128 + (self.attos as u128);
-
-        let jd_int = JD_2000_2_451_545.saturating_add(days_since_j2000);
-        (jd_int, frac_attos)
+        let jd_int = JD_2000_2_451_545.saturating_add(days_since_j2000 as i64);
+        (jd_int, remaining_attos as u128)
     }
 
     /// Returns the Julian Date of this instant as a floating-point `Real`.
@@ -67,21 +64,10 @@ impl Dt {
     /// pass the same `on: Scale` that matches the scale of the original [`Dt`].
     pub const fn from_jd(jd_days: i64, frac_attos: u128, on: Scale) -> Self {
         let days_since_j2000 = jd_days.saturating_sub(JD_2000_2_451_545);
-        let seconds_from_days = days_since_j2000.saturating_mul(SEC_PER_DAYI64);
+        let attos_from_days = (days_since_j2000 as i128) * ATTOS_PER_DAY;
+        let total_attos = attos_from_days + (frac_attos as i128);
 
-        let extra_seconds = {
-            let quot = frac_attos / (ATTOS_PER_SEC_I128 as u128);
-            if quot > i64::MAX as u128 {
-                i64::MAX
-            } else {
-                quot as i64
-            }
-        };
-
-        let total_sec = seconds_from_days.saturating_add(extra_seconds);
-        let attos = (frac_attos % (ATTOS_PER_SEC_I128 as u128)) as u64;
-
-        Dt::from(total_sec, attos, on)
+        Self::from(total_attos, on)
     }
 
     /// Creates a `Dt` from an exact Modified Julian Date.
@@ -127,15 +113,15 @@ impl Dt {
         let attos_frac_f = frac_sec * 1_000_000_000_000_000_000.0;
         let attos_frac: i128 = floor_f(attos_frac_f + 0.5) as i128;
 
-        let mut total_attos: i128 = attos_whole + attos_frac;
+        let mut total_attos: i128 = attos_whole.saturating_add(attos_frac);
 
         let mut extra_days: i64 = 0;
         if total_attos >= ATTOS_PER_DAY {
             extra_days = 1;
-            total_attos -= ATTOS_PER_DAY;
+            total_attos = total_attos.saturating_sub(ATTOS_PER_DAY);
         } else if total_attos < 0 {
             extra_days = -1;
-            total_attos += ATTOS_PER_DAY;
+            total_attos = total_attos.saturating_add(ATTOS_PER_DAY);
         }
 
         let final_jd_days = jd_days.saturating_add(extra_days);

@@ -80,9 +80,15 @@ mod tests {
         .unwrap();
         let tp = parsed.to_dt().unwrap();
 
-        // 0.123456789 s = 123456789 × 10¹⁸ attoseconds
+        // Extract only the fractional part from the new total-attos field
+        let aps = ATTOS_PER_SEC_I128;
+        let fractional = (tp.attos.rem_euclid(aps)) as u64; // always in [0, 10¹⁸)
+
         let expected = 123_456_789u64 * 1_000_000_000;
-        assert_eq!(tp.attos, expected, "fractional seconds were not preserved");
+        assert_eq!(
+            fractional, expected,
+            "fractional seconds were not preserved"
+        );
     }
 
     #[test]

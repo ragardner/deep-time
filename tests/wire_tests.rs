@@ -33,7 +33,7 @@ mod tests {
 
     #[test]
     fn test_timepoint_roundtrip() {
-        let tp = Dt::new(9876543210, 123456789012345678);
+        let tp = Dt::new(Dt::sec_to_attos(9876543210) + 123456789012345678);
         assert_roundtrip(&tp, |t| t.to_wire_bytes().to_vec(), Dt::from_wire_bytes);
     }
 
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn test_timerange_roundtrip() {
-        let start = Dt::new(1000000000, 0);
+        let start = Dt::from_tai_sec(1000000000);
         let end = start + Dt::from_hr(24, Scale::TAI);
         let step = Dt::from_hr(1, Scale::TAI);
         let range = start.range(end, step);

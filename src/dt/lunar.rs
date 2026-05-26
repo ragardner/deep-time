@@ -1,6 +1,6 @@
 //! Lunar time-scale constants and conversion methods.
 
-use crate::{ATTOS_PER_SEC, Dt, Real, Scale, sin};
+use crate::{Dt, Real, Scale, sin};
 
 /// TCL secular rate vs TDB (value from LTE440).
 pub const TL_NUM: i128 = 6_798_355_240;
@@ -136,7 +136,7 @@ impl Dt {
 
     /// Returns the periodic part of (LTC − TT) in Dt (µs-level, evaluated at the TT instant).
     const fn ltc_periodic_correction(tt: Self) -> Dt {
-        let seconds_since_j2000_tt = f!(tt.sec) + f!(tt.attos) / f!(ATTOS_PER_SEC);
+        let seconds_since_j2000_tt = tt.to_sec_f();
         let t_days = seconds_since_j2000_tt / f!(86400.0); // days since J2000.0 TT
 
         let mut delta_us = f!(0.0);

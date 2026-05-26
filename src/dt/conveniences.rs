@@ -3,9 +3,7 @@ use crate::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
 use crate::{Dt, Real, Scale};
 
 impl Dt {
-    /// Returns this [`Dt`] but as a unix timestamp where the:
-    /// - `.sec` field is seconds since the UNIX epoch (1970-01-01 00:00:00).
-    /// - `.attos` field is remaining fractional seconds.
+    /// Returns this [`Dt`] but as a unix timestamp since the UNIX epoch (1970-01-01 00:00:00).
     ///
     /// ## Notes:
     ///
@@ -22,10 +20,7 @@ impl Dt {
         Self::from_diff_and_scale(Self::from_sec_f(unix), Dt::UNIX_EPOCH, current)
     }
 
-    /// Returns this [`Dt`] but as an ntp timestamp where the:
-    ///
-    /// - `.sec` field is seconds since the epoch 1900-01-01 00:00:00 UTC.
-    /// - `.attos` field is remaining fractional seconds.
+    /// Returns this [`Dt`] but as an ntp timestamp since the epoch 1900-01-01 00:00:00 UTC.
     ///
     /// ## Notes:
     ///
@@ -41,17 +36,17 @@ impl Dt {
     /// let ntp = dt.to_ntp(Scale::TAI, Scale::TAI);
     ///
     /// assert_eq!(
-    ///     ntp.sec, 2698012800_i64,
+    ///     ntp.to_attos(), Dt::sec_to_attos(2698012800_i64),
     ///     "ntp sec for 1985 is wrong, got: {}, expected: {}",
-    ///     ntp.sec, 2698012800_i64
+    ///     ntp.to_attos(), Dt::sec_to_attos(2698012800_i64)
     /// );
     ///
     /// let dt2 = Dt::from_ntp(ntp.to_sec_f(), Scale::TAI);
     ///
     /// assert_eq!(
-    ///     dt.sec, dt2.sec,
+    ///     dt.to_attos(), dt2.to_attos(),
     ///     "round trip to Dt got wrong sec, old: {}, new: {}",
-    ///     dt.sec, dt2.sec
+    ///     dt.to_attos(), dt2.to_attos()
     /// );
     ///
     /// let ymd = dt2.to_ymdhms_on(Scale::TAI, Scale::TAI);

@@ -1,7 +1,4 @@
-use crate::{Dt, NS_PER_SEC, Scale};
-use crate::{TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos};
-
-// TODO: inefficient calculations
+use crate::{Dt, NS_PER_SEC, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos};
 
 /// Pure-numeric Unix timestamp fallback with automatic unit detection.
 /// - 10–12 digit traditional Unix seconds timestamps
@@ -36,7 +33,8 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let total_subsec_nanos = (rem_millis as u64) * 1_000_000 + (frac_nanos as u64);
             let subsec_attos = total_subsec_nanos * 1_000_000_000;
 
-            Dt::from(secs, subsec_attos, Scale::UTC)
+            let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
+            Dt::from(total_attos, Scale::UTC)
         }
 
         // 16–18 digits → microseconds
@@ -52,7 +50,8 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let total_subsec_nanos = (rem_micros as u64) * 1_000 + (frac_nanos as u64);
             let subsec_attos = total_subsec_nanos * 1_000_000_000;
 
-            Dt::from(secs, subsec_attos, Scale::UTC)
+            let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
+            Dt::from(total_attos, Scale::UTC)
         }
 
         // 19+ digits → nanoseconds (uses existing `frac_to_nanos` for perfect precision)
@@ -73,7 +72,8 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
                 let secs: i64 = secs_i128.try_into().ok()?;
 
                 let subsec_attos = rem_nanos * 1_000_000_000;
-                Dt::from(secs, subsec_attos, Scale::UTC)
+                let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
+                Dt::from(total_attos, Scale::UTC)
             } else {
                 // Extremely rare fallback
                 let unix_secs = ts_f64.trunc() as i64;
@@ -81,7 +81,8 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
                 let nanos = ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32)
                     .min(999_999_999) as u64;
                 let subsec_attos = nanos * 1_000_000_000;
-                Dt::from(secs, subsec_attos, Scale::UTC)
+                let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
+                Dt::from(total_attos, Scale::UTC)
             }
         }
 
@@ -92,7 +93,8 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
             let nanos =
                 ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32).min(999_999_999) as u64;
             let subsec_attos = nanos * 1_000_000_000;
-            Dt::from(secs, subsec_attos, Scale::UTC)
+            let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
+            Dt::from(total_attos, Scale::UTC)
         }
     };
 

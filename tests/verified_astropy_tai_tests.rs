@@ -35,22 +35,27 @@ for iso, scale in test_cases:
 use deep_time::{Dt, Scale};
 
 mod astropy_verified_tai_sec_tests {
+    use deep_time::constants::ATTOS_PER_SEC_I128;
+
     use super::*;
 
     #[test]
     fn tai_sec_at_unix_epoch() {
         let dt = Dt::from_ymdhms_on(1970, 1, 1, 0, 0, 0, 0, Scale::UTCSofa);
-        // 1970-01-01 00:00:00 (UTC) -> -946727991.99991798400878906250
-        assert_eq!(dt.sec, -946727992);
 
-        // Astropy ground truth for the fractional part
-        let astropy_attos = 82015991210938u64;
-        let diff = dt.attos.abs_diff(astropy_attos);
+        let got = dt.to_sec_f();
+
+        // 1970-01-01 00:00:00 (UTC) -> -946727991.99991798400878906250
+        let diff = (got - -946727991.99991798400878906250).abs();
+
         assert!(
-            diff < 100_000_000_000,
-            "attos difference too large (got {}, expected {}, diff = {})",
-            dt.attos,
-            astropy_attos,
+            diff < 1e-12,
+            "UTCSofa seconds differ from Astropy ground truth\n\
+         got      = {:.15}\n\
+         expected = {:.15}\n\
+         diff     = {:.3e}",
+            got,
+            -946727991.99991798400878906250,
             diff
         );
     }
@@ -58,43 +63,43 @@ mod astropy_verified_tai_sec_tests {
     #[test]
     fn tai_sec_at_2000_01_01_12utc() {
         let dt = Dt::from_ymdhms(2000, 1, 1, 12, 0, 0, 0);
-        assert_eq!(dt.sec, 32);
-        assert_eq!(dt.attos, 0);
+        assert_eq!(dt.to_sec(), 32);
+        assert_eq!(dt.frac_attos(), 0);
     }
 
     #[test]
     fn tai_sec_at_2025_04_16() {
         let dt = Dt::from_ymdhms(2025, 4, 16, 0, 0, 0, 0);
-        assert_eq!(dt.sec, 798033637);
-        assert_eq!(dt.attos, 0);
+        assert_eq!(dt.to_sec(), 798033637);
+        assert_eq!(dt.frac_attos(), 0);
     }
 
     #[test]
     fn tai_sec_around_2015_leap_second() {
         let before = Dt::from_ymdhms(2015, 6, 30, 23, 59, 59, 0);
-        assert_eq!(before.sec, 488980834);
-        assert_eq!(before.attos, 0);
+        assert_eq!(before.to_sec(), 488980834);
+        assert_eq!(before.frac_attos(), 0);
 
         let leap = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 0);
-        assert_eq!(leap.sec, 488980835);
-        assert_eq!(leap.attos, 0);
+        assert_eq!(leap.to_sec(), 488980835);
+        assert_eq!(leap.frac_attos(), 0);
 
         let after = Dt::from_ymdhms(2015, 7, 1, 0, 0, 0, 0);
-        assert_eq!(after.sec, 488980836);
-        assert_eq!(after.attos, 0);
+        assert_eq!(after.to_sec(), 488980836);
+        assert_eq!(after.frac_attos(), 0);
     }
 
     #[test]
     fn tai_sec_at_2100_01_01() {
         let dt = Dt::from_ymdhms(2100, 1, 1, 0, 0, 0, 0);
-        assert_eq!(dt.sec, 3155716837);
-        assert_eq!(dt.attos, 0);
+        assert_eq!(dt.to_sec(), 3155716837);
+        assert_eq!(dt.frac_attos(), 0);
     }
 
     #[test]
     fn tai_sec_at_1900_01_01() {
         let dt = Dt::from_ymdhms(1900, 1, 1, 0, 0, 0, 0);
-        assert_eq!(dt.sec, -3155716800);
-        assert_eq!(dt.attos, 0);
+        assert_eq!(dt.to_sec(), -3155716800);
+        assert_eq!(dt.frac_attos(), 0);
     }
 }

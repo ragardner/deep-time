@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::constants::SEC_PER_DAYI64;
+use deep_time::constants::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
 use deep_time::{Dt, DtErrKind, Offset, Scale, TimeParts};
 
 mod ccsds_tests {
@@ -9,18 +9,18 @@ mod ccsds_tests {
     const CUC_EPOCH_OFFSET: i64 = 1_325_419_167;
     const CDS_EPOCH_OFFSET: i64 = 1_325_419_135;
 
-    // ====================== Helpers ======================
+    // ====================== Helpers (new i128 style) ======================
 
     fn tai_epoch() -> Dt {
-        Dt::new(-CUC_EPOCH_OFFSET, 0)
+        Dt::from(-(CUC_EPOCH_OFFSET as i128) * ATTOS_PER_SEC_I128, Scale::TAI)
     }
 
     fn j2000() -> Dt {
-        Dt::new(0, 0)
+        Dt::from(0, Scale::TAI)
     }
 
     fn utc_epoch() -> Dt {
-        Dt::new(-CDS_EPOCH_OFFSET, 0)
+        Dt::from(-(CDS_EPOCH_OFFSET as i128) * ATTOS_PER_SEC_I128, Scale::UTC)
     }
 
     fn y2k() -> Dt {
@@ -39,8 +39,8 @@ mod ccsds_tests {
 
     #[test]
     fn cuc_one_second_after() {
-        let dt = tai_epoch();
-        let dt = Dt::new(dt.sec + 1, dt.attos);
+        let mut dt = tai_epoch();
+        dt.add_sec(1);
         let (buf, len) = dt.to_ccsds_c(Scale::TAI, 4, 0, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x1C, 0x00, 0x00, 0x00, 0x01]);
@@ -48,8 +48,8 @@ mod ccsds_tests {
 
     #[test]
     fn cuc_fractional() {
-        let dt = tai_epoch();
-        let dt = Dt::new(dt.sec, 500_000_000_000_000_000);
+        let mut dt = tai_epoch();
+        dt.add_attos(500_000_000_000_000_000);
         let (buf, len) = dt.to_ccsds_c(Scale::TAI, 1, 3, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x13, 0x00, 0x80, 0x00, 0x00]);
@@ -85,8 +85,8 @@ mod ccsds_tests {
 
     #[test]
     fn cds_submillisecond() {
-        let dt = utc_epoch();
-        let dt = Dt::new(dt.sec, 123_456_789_012_345_678);
+        let mut dt = utc_epoch();
+        dt.add_attos(123_456_789_012_345_678);
         let (buf, len) = dt.to_ccsds_d(Scale::TAI, 2, 1, false).unwrap();
         assert_eq!(len, 9);
         assert_eq!(buf[0], 0x41);
@@ -115,14 +115,14 @@ mod ccsds_tests {
 
     #[test]
     fn ccs_subsecond() {
-        let dt = y2k();
-        let dt = Dt::new(dt.sec, 123_456_789_012_345_678);
+        let mut dt = y2k();
+        dt.add_attos(123_456_789_012_345_678);
         let (buf, len) = dt.to_ccsds_ccs(Scale::TAI, false, 2).unwrap();
         assert_eq!(len, 10);
         assert_eq!(buf[0], 0x52);
     }
 
-    // ====================== Error Cases (fixed for Option) ======================
+    // ====================== Error Cases ======================
 
     #[test]
     fn invalid_parameters() {
@@ -168,13 +168,11 @@ mod ccsds_tests {
     }
 }
 
+// ====================== Parsing roundtrip tests (unchanged logic) ======================
+
 #[test]
 fn test_ccsds_c_direct_frac() {
-    // P-field = 0x15 (binary 00010101)
-    //   → 2 coarse bytes, 1 fractional byte
-    // T-field = coarse 0x0001 (1 second) + frac 0x80 (0.5 seconds)
     let c_bytes = &[0x15u8, 0x00, 0x01, 0x80];
-
     let parsed = TimeParts::from_ccsds_c(c_bytes).unwrap();
 
     assert_eq!(parsed.yr, Some(1958));
@@ -183,16 +181,13 @@ fn test_ccsds_c_direct_frac() {
     assert_eq!(parsed.hr, Some(0));
     assert_eq!(parsed.min, Some(0));
     assert_eq!(parsed.sec, Some(1));
-    assert!(parsed.attos.unwrap() > 499_000_000_000_000_000); // ~0.5 s
+    assert!(parsed.attos.unwrap() > 499_000_000_000_000_000);
     assert_eq!(parsed.scale, Scale::TAI);
 }
 
 #[test]
 fn test_ccsds_c_2byte_pfield() {
-    // P-field = 0x90 (extension=1) + second byte 0x00
-    // n_coarse=1, n_frac=0, T-field = 0x64 → 100 seconds
     let c_bytes = &[0x90u8, 0x00, 0x64];
-
     let parsed = TimeParts::from_ccsds_c(c_bytes).unwrap();
 
     assert_eq!(parsed.yr, Some(1958));
@@ -205,11 +200,7 @@ fn test_ccsds_c_2byte_pfield() {
 
 #[test]
 fn test_ccsds_d_direct() {
-    // P-field = 0x40 (n_day=2, sub_ms=00)
-    // Day = 0x0000
-    // Millis-of-day = 0x00000001 → 1 ms → 0 seconds + 1 ms
     let d_bytes = &[0x40u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01];
-
     let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
 
     assert_eq!(parsed.yr, Some(1958));
@@ -218,39 +209,32 @@ fn test_ccsds_d_direct() {
     assert_eq!(parsed.hr, Some(0));
     assert_eq!(parsed.min, Some(0));
     assert_eq!(parsed.sec, Some(0));
-    assert_eq!(parsed.attos, Some(1_000_000_000_000_000)); // 1 ms
+    assert_eq!(parsed.attos, Some(1_000_000_000_000_000));
     assert_eq!(parsed.scale, Scale::UTC);
 }
 
 #[test]
 fn test_ccsds_d_direct_frac() {
-    // P-field = 0x41 (n_day=2, sub_ms=01 → 2 bytes)
-    // Day count = 0x0000
-    // Millis-of-day = 0x00000001 → 1 ms
-    // Sub-ms = 0x8000 → exactly 0.5 ms
     let d_bytes = &[0x41u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00];
-
     let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
 
     assert_eq!(parsed.sec, Some(0));
-    assert_eq!(parsed.attos, Some(1_500_000_000_000_000)); // 1.5 ms
+    assert_eq!(parsed.attos, Some(1_500_000_000_000_000));
 }
 
 #[test]
 fn test_ccsds_c_roundtrip() {
-    // Desired CCSDS C (TAI) civil time: 2025-04-17 14:30:45.123456789 TAI
-    // We compute the *exact* total TAI seconds since the CCSDS epoch (1958-01-01 00:00:00 TAI)
-    // using the same Gregorian logic as the parser. This is 100% independent of the library's
-    // JD, leap-second table, or to_time_point path.
     let days_since_1958 = TimeParts::gregorian_to_days_since_1958(2025, 4, 17);
     let sec_of_day = (14 * 3600) + (30 * 60) + 45;
     let total_tai_seconds = days_since_1958 * SEC_PER_DAYI64 + sec_of_day;
 
-    // Library-internal TAI representation (TAI zero = library epoch)
     const EPOCH_OFFSET: i64 = 1_325_419_167;
     let tai_sec = total_tai_seconds - EPOCH_OFFSET;
 
-    let t = Dt::new(tai_sec, 123_456_789_000_000_000);
+    let t = Dt::from(
+        (tai_sec as i128) * ATTOS_PER_SEC_I128 + 123_456_789_000_000_000,
+        Scale::TAI,
+    );
 
     let (buf, len) = t.to_ccsds_c(Scale::TAI, 4, 3, false).unwrap();
     let parsed = TimeParts::from_ccsds_c(&buf[0..len]).unwrap();
@@ -263,7 +247,6 @@ fn test_ccsds_c_roundtrip() {
     assert_eq!(parsed.sec, Some(45));
     assert_eq!(parsed.scale, Scale::TAI);
 
-    // 3 fractional bytes → max ~59.6 ns quantization error
     let diff = (parsed.attos.unwrap() as i64 - 123_456_789_000_000_000i64).abs();
     assert!(
         diff < 60_000_000_000,
@@ -274,17 +257,17 @@ fn test_ccsds_c_roundtrip() {
 
 #[test]
 fn test_ccsds_d_roundtrip() {
-    // Desired CCSDS D (CDS) civil time: 2025-04-17 14:30:45.000400000 UTC
-    // Same pure-CCSDS-epoch calculation as above (no library conversions).
     let days_since_1958 = TimeParts::gregorian_to_days_since_1958(2025, 4, 17);
     let sec_of_day = (14 * 3600) + (30 * 60) + 45;
     let total_utc_seconds = days_since_1958 * SEC_PER_DAYI64 + sec_of_day;
 
-    // Library-internal UTC representation
     const EPOCH_OFFSET: i64 = 1_325_419_135;
     let utc_sec = total_utc_seconds - EPOCH_OFFSET;
 
-    let t = Dt::from(utc_sec, 400_000_000_000, Scale::UTC);
+    let t = Dt::from(
+        (utc_sec as i128) * ATTOS_PER_SEC_I128 + 400_000_000_000,
+        Scale::UTC,
+    );
 
     let (buf, len) = t.to_ccsds_d(Scale::TAI, 2, 1, false).unwrap();
     let parsed = TimeParts::from_ccsds_d(&buf[0..len]).unwrap();
@@ -299,14 +282,12 @@ fn test_ccsds_d_roundtrip() {
 
     let diff = (parsed.attos.unwrap() as i64 - 400_000_000_000i64).abs();
     assert!(
-        diff < 16_000_000_000, // ~16 ns tolerance (2-byte sub-ms resolution)
+        diff < 16_000_000_000,
         "Fractional error too large: {} attos",
         diff
     );
 }
 
-/// Helper that performs a full round-trip and verifies both the binary bytes
-/// and the recovered TimeParts are correct.
 /// Helper that performs a full round-trip and verifies both the binary bytes
 /// and the recovered TimeParts are correct.
 fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
@@ -324,19 +305,30 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
 
     let recovered_tp = parsed_parts.to_dt().unwrap();
 
-    assert_eq!(tp.sec, recovered_tp.sec);
+    // New single-field extraction (exactly matches old "sec + always-positive attos" rule)
+    let aps = ATTOS_PER_SEC_I128;
+    let tp_sec = tp.attos.div_euclid(aps);
+    let tp_frac = (tp.attos.rem_euclid(aps)) as u64; // always ≥ 0
+
+    let recovered_sec = recovered_tp.attos.div_euclid(aps);
+    let recovered_frac = (recovered_tp.attos.rem_euclid(aps)) as u64;
+
+    assert_eq!(
+        tp_sec, recovered_sec,
+        "Whole seconds mismatch after roundtrip"
+    );
 
     // Special case for n_subsec == 0: fractional seconds are intentionally dropped
     if n_subsec == 0 {
         assert_eq!(
-            recovered_tp.attos, 0,
+            recovered_frac, 0,
             "When n_subsec=0 the fractional part must be exactly zero"
         );
     } else {
         // Allowed quantization error = half the smallest representable unit at this precision
         let unit = 1_000_000_000_000_000_000u64 / 10u64.pow((2 * n_subsec) as u32);
         let max_error = unit / 2;
-        let diff = (tp.attos as i64 - recovered_tp.attos as i64).abs() as u64;
+        let diff = (tp_frac as i64 - recovered_frac as i64).abs() as u64;
         assert!(
             diff <= max_error,
             "Fractional round-trip error too large for n_subsec={}: {} attos (max allowed {})",

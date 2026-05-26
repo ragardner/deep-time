@@ -483,7 +483,10 @@ impl Dt {
     /// Helper for creating an offset adjusted YmdHmsRich.
     pub(crate) fn ymdhms_rich_with_offset(&self, current: Scale, secs: i32) -> YmdHmsRich {
         let local_tp = if secs != 0 {
-            *self + Dt::new(secs as i64, 0)
+            *self
+                + Dt {
+                    attos: Dt::sec_to_attos(secs as i64),
+                }
         } else {
             *self
         };
@@ -500,13 +503,16 @@ impl Dt {
             .to_diff_raw(Dt::UNIX_EPOCH);
 
         // 2. Look up offset + abbrev at that exact UTC instant
-        let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, utc_unix.sec) {
+        let unix_sec = Dt::attos_to_sec_i64(utc_unix.attos);
+        let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, unix_sec) {
             Some(info) => (info.offset, info.abbrev),
             None => (0, "UTC"), // fallback for unknown timezone
         };
 
         // 3. Build local time = UTC + offset
-        let span = Dt::new(offset_secs as i64, 0);
+        let span = Dt {
+            attos: Dt::sec_to_attos(offset_secs as i64),
+        };
         let local_tp = *self + span;
 
         let mut ymdhms = local_tp.to_ymdhms_rich_on(current, current.to_utc());

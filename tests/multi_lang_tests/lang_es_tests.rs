@@ -123,7 +123,7 @@ mod tests {
         let cases = generate_relative_date_test_cases_es();
         let opts = Some(ParseCfg {
             lang: Lang::Es,
-            ref_time: Some(Dt::new(5_000_000, 0)),
+            ref_time: Some(Dt::from_tai_sec(5_000_000)),
             ..Default::default()
         });
 

@@ -225,7 +225,7 @@ pub const fn leap_sec_using(dt: &Dt, is_utc: bool, table: &[LeapSec]) -> LeapInf
         };
     }
 
-    let target = dt.sec;
+    let target = Dt::attos_to_sec_i64(dt.attos);
 
     // Binary search for upper_bound: first index where entry_sec > target
     let mut low = 0usize;
@@ -358,16 +358,15 @@ impl Dt {
             // don't use current: UTC because it would use the internal leap table
             let dt = Dt::from_ntp(f!(ntp_timestamp), Scale::TAI);
             let tai_sec = if prev_leap_sec_after == 0 {
-                dt.sec + leap_sec_after - 1
+                Dt::attos_to_sec_i64(dt.attos) + leap_sec_after - 1
             } else {
-                dt.sec + leap_sec_after - (leap_sec_after - prev_leap_sec_after)
+                Dt::attos_to_sec_i64(dt.attos) + leap_sec_after
+                    - (leap_sec_after - prev_leap_sec_after)
             };
-            // let utc_sec = tai_sec - leap_sec_after + 1;
 
             table.push(LeapSec {
                 ntp_timestamp,
                 leap_sec_after,
-                // utc_sec,
                 tai_sec,
             });
 

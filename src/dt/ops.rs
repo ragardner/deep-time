@@ -142,21 +142,12 @@ impl Div<Dt> for Dt {
 impl Dt {
     /// Compares the time values represented by two `Dt`s.
     ///
-    /// - This comparison is based on the raw `(sec, attos)` representation
-    ///   after normalizing (without mutating self or other) any un-carried
-    ///   attoseconds.
+    /// - This comparison is based on the total attosecond value (`self.attos` vs `other.attos`).
     /// - Does **not** perform scale conversion.
     pub const fn cmp(&self, other: &Self) -> Ordering {
-        let a = self.carry_attos();
-        let b = other.carry_attos();
-
-        if a.sec < b.sec {
+        if self.attos < other.attos {
             Ordering::Less
-        } else if a.sec > b.sec {
-            Ordering::Greater
-        } else if a.attos < b.attos {
-            Ordering::Less
-        } else if a.attos > b.attos {
+        } else if self.attos > other.attos {
             Ordering::Greater
         } else {
             Ordering::Equal
@@ -187,40 +178,40 @@ impl Dt {
         }
     }
 
-    /// True if both sides have matching `sec` and `attos` fields.
+    /// True if both sides have the same total attosecond value.
     ///
     /// This is a `const fn` so it can be used in const contexts.
     #[inline]
     pub const fn eq(&self, other: &Self) -> bool {
-        matches!(Dt::cmp(self, other), Ordering::Equal)
+        self.attos == other.attos
     }
 
     /// Returns `true` if this `Dt` is less than the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
     pub const fn lt(&self, other: &Self) -> bool {
-        matches!(self.cmp(other), Ordering::Less)
+        self.attos < other.attos
     }
 
     /// Returns `true` if this `Dt` is greater than the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
     pub const fn gt(&self, other: &Self) -> bool {
-        matches!(self.cmp(other), Ordering::Greater)
+        self.attos > other.attos
     }
 
     /// Returns `true` if this `Dt` is less than or equal to the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
     pub const fn le(&self, other: &Self) -> bool {
-        !matches!(self.cmp(other), Ordering::Greater)
+        self.attos <= other.attos
     }
 
     /// Returns `true` if this `Dt` is greater than or equal to the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
     pub const fn ge(&self, other: &Self) -> bool {
-        !matches!(self.cmp(other), Ordering::Less)
+        self.attos >= other.attos
     }
 }
 
@@ -252,7 +243,6 @@ impl core::hash::Hash for Dt {
     /// physically equal (after conversion) produce the same hash, regardless of
     /// the original [`Scale`].
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
-        self.sec.hash(state);
         self.attos.hash(state);
     }
 }

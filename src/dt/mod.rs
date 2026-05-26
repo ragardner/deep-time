@@ -39,13 +39,11 @@ use core::fmt;
 ///
 /// **Fields:**
 ///
-/// - `pub sec: i64` — whole seconds (signed).
-/// - `pub attos: u64` — fractional seconds in attoseconds (`0 ≤ attos < 10¹⁸`). These always
-///   push towards the positive.
+/// - `pub attos: i128` — total time in attoseconds since the reference epoch (2000-01-01 noon), as a signed integer. Negative values represent times before the epoch.
 ///
 /// **Notes:**
 ///
-/// - Supports a range of roughly ±292 billion years.
+/// - Supports a range of roughly ±5.39 trillion years.
 /// - Implements `Copy` and `Clone`. Optional derives for `serde` and `tsify` are available
 ///   behind the corresponding features.
 /// - Does **not** store a time scale internally. The scale is always an explicit parameter
@@ -216,32 +214,7 @@ use core::fmt;
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct Dt {
-    pub sec: i64,
-    pub attos: u64,
-}
-
-impl Dt {
-    /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOS_PER_SEC)`.
-    #[inline]
-    pub const fn carry_attos_mut(&mut self) -> &mut Self {
-        if self.attos >= ATTOS_PER_SEC {
-            self.sec = self.sec.saturating_add((self.attos / ATTOS_PER_SEC) as i64);
-            self.attos %= ATTOS_PER_SEC;
-        }
-        self
-    }
-
-    /// Normalizes the representation so that the attosecond part lies in the range `[0, ATTOS_PER_SEC)`.
-    #[inline]
-    pub const fn carry_attos(&self) -> Self {
-        if self.attos < ATTOS_PER_SEC {
-            return *self;
-        }
-        Self {
-            sec: self.sec.saturating_add((self.attos / ATTOS_PER_SEC) as i64),
-            attos: self.attos % ATTOS_PER_SEC,
-        }
-    }
+    pub attos: i128,
 }
 
 impl Default for Dt {
@@ -252,36 +225,39 @@ impl Default for Dt {
 
 impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let sec = self.sec;
-        let attos = self.attos;
+        let total = self.attos;
         let precision = f.precision().unwrap_or(9);
 
-        if f.sign_plus() && sec >= 0 {
+        if f.sign_plus() && total >= 0 {
             write!(f, "+")?;
         }
 
-        if sec >= 0 || attos == 0 {
-            // Positive or zero-fraction case — just print directly
-            write!(f, "{}", sec)?;
+        if total >= 0 {
+            let secs = total / ATTOS_PER_SEC as i128;
+            let attos_frac = total % ATTOS_PER_SEC as i128;
+            write!(f, "{}", secs)?;
 
-            if precision > 0 && attos > 0 {
+            if precision > 0 && attos_frac > 0 {
                 let prec = precision.min(18);
-                let scale = 10u64.pow(18 - prec as u32);
-                let value = attos / scale;
+                let scale = 10u128.pow(18 - prec as u32);
+                let value = (attos_frac as u128) / scale;
                 write!(f, ".{:0>width$}", value, width = prec)?;
             }
         } else {
-            // negative value
-            let integer_part = sec + 1;
-            let frac_attos = ATTOS_PER_SEC - attos;
+            let abs_total = (-total) as u128;
+            let int_secs = (abs_total / ATTOS_PER_SEC as u128) as u64;
+            let frac_attos = (abs_total % ATTOS_PER_SEC as u128) as u64;
 
-            write!(f, "-{}", (-integer_part) as u64)?;
-
-            if precision > 0 {
-                let prec = precision.min(18);
-                let scale = 10u64.pow(18 - prec as u32);
-                let value = frac_attos / scale;
-                write!(f, ".{:0>width$}", value, width = prec)?;
+            if frac_attos == 0 {
+                write!(f, "-{}", int_secs)?;
+            } else {
+                write!(f, "-{}", int_secs)?;
+                if precision > 0 {
+                    let prec = precision.min(18);
+                    let scale = 10u128.pow(18 - prec as u32);
+                    let value = (frac_attos as u128) / scale;
+                    write!(f, ".{:0>width$}", value, width = prec)?;
+                }
             }
         }
 
@@ -291,9 +267,6 @@ impl fmt::Display for Dt {
 
 impl fmt::Debug for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Dt")
-            .field("sec", &self.sec)
-            .field("attos", &self.attos)
-            .finish()
+        f.debug_struct("Dt").field("attos", &self.attos).finish()
     }
 }

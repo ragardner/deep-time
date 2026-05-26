@@ -1,4 +1,6 @@
-use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, YmdHmsRich};
+use crate::{
+    ATTOS_PER_SEC, ATTOS_PER_SEC_I128, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, YmdHmsRich,
+};
 
 impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
@@ -184,12 +186,21 @@ impl Dt {
         let tai = self.to(current, Scale::TAI);
         let from_unix_epoch = tai.to_scale_and_then_diff(new, Dt::UNIX_EPOCH);
 
-        let (yr, mo, day) = Self::unix_sec_to_ymd(from_unix_epoch.sec);
+        let total_attos = from_unix_epoch.attos;
+
+        // === CRITICAL FIX: use Euclidean division for correct negative handling ===
+        let aps = ATTOS_PER_SEC_I128;
+        let unix_sec_i128 = total_attos.div_euclid(aps); // floor division
+        let rem_attos = total_attos.rem_euclid(aps); // always ≥ 0
+
+        let unix_sec = Dt::clamp_i128_to_i64(unix_sec_i128);
+
+        let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
 
         let (hr, min, sec) = if new.uses_leap_seconds() && tai.leap_sec(false).is_leap_sec {
             (23, 59, 60)
         } else {
-            let seconds_since_midnight = from_unix_epoch.sec.rem_euclid(SEC_PER_DAYI64);
+            let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAYI64);
             let hr = (seconds_since_midnight / 3600) as u8;
             let min = ((seconds_since_midnight % 3600) / 60) as u8;
             let sec = (seconds_since_midnight % 60) as u8;
@@ -197,14 +208,14 @@ impl Dt {
         };
 
         YmdHms {
-            unix_attosec: from_unix_epoch.to_attos(),
+            unix_attosec: total_attos,
             yr,
             mo,
             day,
             hr,
             min,
             sec,
-            attos: from_unix_epoch.attos,
+            attos: rem_attos as u64, // guaranteed in [0, 10¹⁸)
             scale: new,
         }
     }
@@ -335,6 +346,7 @@ impl Dt {
         scale: Scale,
     ) -> Self {
         let (mo, day, hr, min, sec) = Self::clamp_mdhms(yr, mo, day, hr, min, sec);
+
         let carried_sec = (attos / ATTOS_PER_SEC) as i64;
         let final_attos = attos % ATTOS_PER_SEC;
 
@@ -342,12 +354,22 @@ impl Dt {
         let s_for_unix = if is_exact_leap_second { 59 } else { sec };
 
         let civil_unix_sec =
-            Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix) + carried_sec;
+            Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix).saturating_add(carried_sec);
 
-        let tp =
-            Self::from_diff_and_scale(Dt::new(civil_unix_sec, final_attos), Dt::UNIX_EPOCH, scale);
+        // Total attoseconds since UNIX epoch on the civil/target scale
+        let total_unix_attos =
+            (civil_unix_sec as i128) * ATTOS_PER_SEC_I128 + (final_attos as i128);
+
+        let diff = Dt {
+            attos: total_unix_attos,
+        };
+        let tp = Self::from_diff_and_scale(diff, Dt::UNIX_EPOCH, scale);
+
         if is_exact_leap_second {
-            Dt::new(tp.sec.saturating_add(1), tp.attos)
+            // Restore the leap second (exact same intent as the old `tp.sec.saturating_add(1)`)
+            Dt {
+                attos: tp.attos.saturating_add(ATTOS_PER_SEC_I128),
+            }
         } else {
             tp
         }

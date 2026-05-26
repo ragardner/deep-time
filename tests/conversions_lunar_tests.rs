@@ -10,7 +10,7 @@
 /// authoritative published reference value. All tolerances are set to be
 /// substantially tighter than any operational requirement for cislunar PNT.
 mod ltc_tests {
-    use deep_time::{Dt, Scale};
+    use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128};
 
     /// Verifies round-trip conversion accuracy between TAI and LTC.
     ///
@@ -96,7 +96,7 @@ mod ltc_tests {
 
             // At the ~100-year point the secular offset must be ~2.516 s
             // (L_M × ~123 years of elapsed time from the 1977 reference epoch).
-            if p.sec > 86_400 * 365 * 50 {
+            if p.to_sec() > 86_400 * 365 * 50 {
                 assert!(
                     (corr_s > 2.4 && corr_s < 2.6),
                     "Secular LTC-TT offset at ~100 years from J2000.0 should be ~2.516 s (got {} s)",
@@ -202,7 +202,7 @@ mod ltc_tests {
         let unix_tai_sec = 2_145_916_800i64;
 
         let tai_2038 =
-            Dt::from_diff_and_scale(Dt::new(unix_tai_sec, 0), Dt::UNIX_EPOCH, Scale::TAI);
+            Dt::from_diff_and_scale(Dt::from_tai_sec(unix_tai_sec), Dt::UNIX_EPOCH, Scale::TAI);
 
         let tcl_span = tai_2038.to(Scale::TAI, Scale::TCL); // Dt on TCL scale
         let tdb_span = tai_2038.to(Scale::TAI, Scale::TDB); // Dt on TDB scale
@@ -216,7 +216,7 @@ mod ltc_tests {
         );
 
         // Round-trip sanity check
-        let tai = Dt::from(tcl_span.sec, tcl_span.attos, Scale::TCL);
+        let tai = tcl_span.to(Scale::TCL, Scale::TAI);
 
         let roundtrip_error = tai.to_diff_raw(tai_2038).to_sec_f().abs();
 

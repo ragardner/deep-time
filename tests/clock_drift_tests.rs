@@ -38,7 +38,7 @@ mod tests {
         // = 2.001002 s = 2 s + 1_002_000_000_000_000 attoseconds
         assert_eq!(
             drift.time_diff_after(&dt),
-            Dt::new(2, 1_002_000_000_000_000)
+            Dt::new(2_001_002_000_000_000_000i128)
         );
     }
 
@@ -116,9 +116,9 @@ mod tests {
             let expected_drift =
                 Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(expected_offset));
             // Only allow difference when seconds match
-            assert_eq!(drift.rate.sec, expected_drift.rate.sec);
+            assert_eq!(drift.rate.to_sec(), expected_drift.rate.to_sec());
 
-            let attos_diff = (drift.rate.attos as i128 - expected_drift.rate.attos as i128).abs();
+            let attos_diff = (drift.rate.to_attos() - expected_drift.rate.to_attos()).abs();
             assert!(
                 attos_diff <= 200, // Allow up to 200 attoseconds difference
                 "Attos difference too large for δ = {}: {} attos",

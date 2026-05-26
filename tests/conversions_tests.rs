@@ -307,15 +307,19 @@ fn ntp_timestamp() {
     let dt = Dt::from_ymd_on(1985, 7, 1, Scale::TAI);
     let ntp = dt.to_ntp(Scale::TAI, Scale::TAI);
     assert_eq!(
-        ntp.sec, 2698012800_i64,
+        ntp.to_sec(),
+        2698012800_i64,
         "ntp sec for 1985 is wrong, got: {}, expected: {}",
-        ntp.sec, 2698012800_i64
+        ntp.to_sec(),
+        2698012800_i64
     );
     let dt2 = Dt::from_ntp(ntp.to_sec_f(), Scale::TAI);
     assert_eq!(
-        dt.sec, dt2.sec,
+        dt.to_sec(),
+        dt2.to_sec(),
         "round trip to Dt got wrong sec, old: {}, new: {}",
-        dt.sec, dt2.sec
+        dt.to_sec(),
+        dt2.to_sec()
     );
     let ymd = dt2.to_ymdhms_on(Scale::TAI, Scale::TAI);
     assert_eq!(ymd.yr(), 1985_i64);
