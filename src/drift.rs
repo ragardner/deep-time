@@ -444,12 +444,12 @@ impl Drift {
 
         if !self.rate.is_zero() || !self.accel.is_zero() {
             // Linear term: rate * dt
-            let rate_attos = self.rate.to_attos();
+            let rate_attos: i128 = self.rate.to_attos();
             let rate_term = rate_attos.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
             total_attos = total_attos.wrapping_add(rate_term);
 
             // Quadratic term: accel * dt²
-            let accel_attos = self.accel.to_attos();
+            let accel_attos: i128 = self.accel.to_attos();
             let accel_dt = accel_attos.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
             let accel_term = accel_dt.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
             total_attos = total_attos.saturating_add(accel_term);

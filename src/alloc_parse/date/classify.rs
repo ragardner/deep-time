@@ -353,6 +353,7 @@ pub(crate) fn classify_date(
                                     if num_dot > 1 {
                                         is_pure_numeric && num_non_decimal_digits >= 10
                                     } else {
+                                        // mjd
                                         is_pure_numeric && num_non_decimal_digits >= 5
                                     }
                                 });
@@ -392,8 +393,7 @@ pub(crate) fn classify_date(
                             if currently.after_date() && currently != IndexIn::Offset {
                                 currently = IndexIn::Offset;
                                 offset_colons = 0;
-                            }
-                            if currently != IndexIn::PreDate {
+                            } else if currently != IndexIn::PreDate {
                                 time_tokens.push(Token::Plus);
                             }
                         }
@@ -409,8 +409,7 @@ pub(crate) fn classify_date(
                             if currently == IndexIn::Date {
                                 num_hyphen += 1;
                                 date_tokens.push(Token::Hyphen);
-                            }
-                            if currently.after_date() {
+                            } else if currently.after_date() {
                                 time_tokens.push(Token::Minus);
                             }
                         }

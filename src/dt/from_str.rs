@@ -101,7 +101,7 @@ impl Dt {
     ///
     /// See [`TimeParts::from_str`] for the complete list of supported directives
     /// and detailed parsing semantics.
-    #[inline]
+    #[inline(always)]
     pub fn from_str(
         s: &str,
         fmt: &str,

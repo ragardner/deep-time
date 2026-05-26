@@ -254,22 +254,35 @@ impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let sec = self.sec;
         let attos = self.attos;
-
-        // Default to nanosecond precision (9 digits) — most useful for everyday use
         let precision = f.precision().unwrap_or(9);
 
-        // Respect the `+` sign when the user writes {:+}
         if f.sign_plus() && sec >= 0 {
             write!(f, "+")?;
         }
 
-        write!(f, "{}", sec)?;
+        if sec >= 0 || attos == 0 {
+            // Positive or zero-fraction case — just print directly
+            write!(f, "{}", sec)?;
 
-        if precision > 0 {
-            let prec = precision.min(18);
-            let scale = 10u64.pow(18 - prec as u32);
-            let value = attos / scale;
-            write!(f, ".{:0>width$}", value, width = prec)?;
+            if precision > 0 && attos > 0 {
+                let prec = precision.min(18);
+                let scale = 10u64.pow(18 - prec as u32);
+                let value = attos / scale;
+                write!(f, ".{:0>width$}", value, width = prec)?;
+            }
+        } else {
+            // negative value
+            let integer_part = sec + 1;
+            let frac_attos = ATTOS_PER_SEC - attos;
+
+            write!(f, "-{}", (-integer_part) as u64)?;
+
+            if precision > 0 {
+                let prec = precision.min(18);
+                let scale = 10u64.pow(18 - prec as u32);
+                let value = frac_attos / scale;
+                write!(f, ".{:0>width$}", value, width = prec)?;
+            }
         }
 
         Ok(())
