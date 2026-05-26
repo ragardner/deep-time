@@ -186,14 +186,8 @@ impl Dt {
         let tai = self.to(current, Scale::TAI);
         let from_unix_epoch = tai.to_scale_and_then_diff(new, Dt::UNIX_EPOCH);
 
-        let total_attos = from_unix_epoch.attos;
-
-        // === CRITICAL FIX: use Euclidean division for correct negative handling ===
-        let aps = ATTOS_PER_SEC_I128;
-        let unix_sec_i128 = total_attos.div_euclid(aps); // floor division
-        let rem_attos = total_attos.rem_euclid(aps); // always ≥ 0
-
-        let unix_sec = Dt::clamp_i128_to_i64(unix_sec_i128);
+        let unix_sec = from_unix_epoch.to_sec();
+        let frac = from_unix_epoch.frac_attos();
 
         let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
 
@@ -208,14 +202,14 @@ impl Dt {
         };
 
         YmdHms {
-            unix_attosec: total_attos,
+            unix_attosec: from_unix_epoch.attos,
             yr,
             mo,
             day,
             hr,
             min,
             sec,
-            attos: rem_attos as u64, // guaranteed in [0, 10¹⁸)
+            attos: frac,
             scale: new,
         }
     }
@@ -350,23 +344,18 @@ impl Dt {
         let carried_sec = (attos / ATTOS_PER_SEC) as i64;
         let final_attos = attos % ATTOS_PER_SEC;
 
-        let is_exact_leap_second = sec == 60 && carried_sec == 0;
-        let s_for_unix = if is_exact_leap_second { 59 } else { sec };
+        let is_leap_second = (sec as i64) + carried_sec == 60;
 
-        let civil_unix_sec =
+        let s_for_unix = if is_leap_second { 59 } else { sec };
+
+        let unix_sec =
             Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix).saturating_add(carried_sec);
 
-        // Total attoseconds since UNIX epoch on the civil/target scale
-        let total_unix_attos =
-            (civil_unix_sec as i128) * ATTOS_PER_SEC_I128 + (final_attos as i128);
+        let unix_attos = Dt::sec_to_attos(unix_sec) + (final_attos as i128);
 
-        let diff = Dt {
-            attos: total_unix_attos,
-        };
-        let tp = Self::from_diff_and_scale(diff, Dt::UNIX_EPOCH, scale);
+        let tp = Self::from_diff_and_scale(Dt { attos: unix_attos }, Dt::UNIX_EPOCH, scale);
 
-        if is_exact_leap_second {
-            // Restore the leap second (exact same intent as the old `tp.sec.saturating_add(1)`)
+        if is_leap_second {
             Dt {
                 attos: tp.attos.saturating_add(ATTOS_PER_SEC_I128),
             }

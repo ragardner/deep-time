@@ -5,24 +5,24 @@ use crate::{
 
 impl Dt {
     #[inline]
-    pub const fn add(self, span: Dt) -> Self {
+    pub const fn add(&self, span: Dt) -> Self {
         if !span.is_zero() {
             Self {
                 attos: self.attos.saturating_add(span.attos),
             }
         } else {
-            self
+            *self
         }
     }
 
     #[inline]
-    pub const fn sub(self, span: Dt) -> Self {
+    pub const fn sub(&self, span: Dt) -> Self {
         if !span.is_zero() {
             Self {
                 attos: self.attos.saturating_sub(span.attos),
             }
         } else {
-            self
+            *self
         }
     }
 
@@ -94,192 +94,71 @@ impl Dt {
         self.attos.rem_euclid(ATTOS_PER_SEC_I128) as u64
     }
 
-    /// Adds 1 second to this time value using saturating arithmetic.
-    #[inline]
-    pub const fn add_1sec(&mut self) {
-        self.attos = self.attos.saturating_add(ATTOS_PER_SEC_I128);
-    }
-
-    /// Adds 1 minute (60 seconds) to this time value using saturating arithmetic.
-    #[inline]
-    pub const fn add_1min(&mut self) {
-        self.attos = self.attos.saturating_add(60 * ATTOS_PER_SEC_I128);
-    }
-
-    /// Adds 1 hour (3600 seconds) to this time value using saturating arithmetic.
-    #[inline]
-    pub const fn add_1hr(&mut self) {
-        self.attos = self.attos.saturating_add(3600 * ATTOS_PER_SEC_I128);
-    }
-
-    /// Adds 1 millisecond to this time value.
-    #[inline]
-    pub const fn add_1ms(&mut self) {
-        self.attos = self.attos.saturating_add(ATTOS_PER_MS_I128);
-    }
-
-    /// Adds 1 microsecond to this time value.
-    #[inline]
-    pub const fn add_1us(&mut self) {
-        self.attos = self.attos.saturating_add(ATTOS_PER_US_I128);
-    }
-
-    /// Adds 1 nanosecond to this time value.
-    #[inline]
-    pub const fn add_1ns(&mut self) {
-        self.attos = self.attos.saturating_add(ATTOS_PER_NS_I128);
-    }
-
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
     #[inline]
-    pub const fn add_sec(&mut self, n: i64) {
+    pub const fn add_sec(&mut self, n: i64) -> &mut Self {
         self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_SEC_I128);
+        self
     }
 
     /// Adds the specified number of minutes to this time value using saturating arithmetic.
     #[inline]
-    pub const fn add_min(&mut self, n: i64) {
+    pub const fn add_min(&mut self, n: i64) -> &mut Self {
         self.attos = self
             .attos
             .saturating_add((n as i128) * 60 * ATTOS_PER_SEC_I128);
+        self
     }
 
     /// Adds the specified number of hours to this time value using saturating arithmetic.
     #[inline]
-    pub const fn add_hr(&mut self, n: i64) {
+    pub const fn add_hr(&mut self, n: i64) -> &mut Self {
         self.attos = self
             .attos
             .saturating_add((n as i128) * 3600 * ATTOS_PER_SEC_I128);
+        self
     }
 
     /// Adds the specified number of milliseconds to this time value.
     #[inline]
-    pub const fn add_ms(&mut self, n: i64) {
+    pub const fn add_ms(&mut self, n: i64) -> &mut Self {
         self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_MS_I128);
+        self
     }
 
     /// Adds the specified number of microseconds to this time value.
     #[inline]
-    pub const fn add_us(&mut self, n: i64) {
+    pub const fn add_us(&mut self, n: i64) -> &mut Self {
         self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_US_I128);
+        self
     }
 
     /// Adds the specified number of nanoseconds to this time value.
     #[inline]
-    pub const fn add_ns(&mut self, n: i64) {
+    pub const fn add_ns(&mut self, n: i64) -> &mut Self {
         self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_NS_I128);
+        self
     }
 
     /// Adds the specified number of picoseconds to this time value.
     #[inline]
-    pub const fn add_ps(&mut self, n: i64) {
+    pub const fn add_ps(&mut self, n: i64) -> &mut Self {
         self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_PS_I128);
+        self
     }
 
     /// Adds the specified number of femtoseconds to this time value.
     #[inline]
-    pub const fn add_fs(&mut self, n: i64) {
+    pub const fn add_fs(&mut self, n: i64) -> &mut Self {
         self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_FS_I128);
+        self
     }
 
     /// Adds the specified number of attoseconds to this time value.
     #[inline]
-    pub const fn add_attos(&mut self, n: i64) {
-        self.attos = self.attos.saturating_add(n as i128);
-    }
-
-    /// Subtracts 1 hour (3600 seconds) from this time value using saturating arithmetic.
-    #[inline]
-    pub const fn sub_1hr(&mut self) {
-        self.attos = self.attos.saturating_sub(3600 * ATTOS_PER_SEC_I128);
-    }
-
-    /// Subtracts 1 minute (60 seconds) from this time value using saturating arithmetic.
-    #[inline]
-    pub const fn sub_1min(&mut self) {
-        self.attos = self.attos.saturating_sub(60 * ATTOS_PER_SEC_I128);
-    }
-
-    /// Subtracts 1 second from this time value using saturating arithmetic.
-    #[inline]
-    pub const fn sub_1sec(&mut self) {
-        self.attos = self.attos.saturating_sub(ATTOS_PER_SEC_I128);
-    }
-
-    /// Subtracts 1 millisecond from this time value.
-    #[inline]
-    pub const fn sub_1ms(&mut self) {
-        self.attos = self.attos.saturating_sub(ATTOS_PER_MS_I128);
-    }
-
-    /// Subtracts 1 microsecond from this time value.
-    #[inline]
-    pub const fn sub_1us(&mut self) {
-        self.attos = self.attos.saturating_sub(ATTOS_PER_US_I128);
-    }
-
-    /// Subtracts 1 nanosecond from this time value.
-    #[inline]
-    pub const fn sub_1ns(&mut self) {
-        self.attos = self.attos.saturating_sub(ATTOS_PER_NS_I128);
-    }
-
-    /// Subtracts the specified number of seconds from this time value using saturating arithmetic.
-    #[inline]
-    pub const fn sub_sec(&mut self, n: i64) {
-        self.attos = self.attos.saturating_sub((n as i128) * ATTOS_PER_SEC_I128);
-    }
-
-    /// Subtracts the specified number of minutes from this time value using saturating arithmetic.
-    #[inline]
-    pub const fn sub_min(&mut self, n: i64) {
-        self.attos = self
-            .attos
-            .saturating_sub((n as i128) * 60 * ATTOS_PER_SEC_I128);
-    }
-
-    /// Subtracts the specified number of hours from this time value using saturating arithmetic.
-    #[inline]
-    pub const fn sub_hr(&mut self, n: i64) {
-        self.attos = self
-            .attos
-            .saturating_sub((n as i128) * 3600 * ATTOS_PER_SEC_I128);
-    }
-
-    /// Subtracts the specified number of milliseconds from this time value.
-    #[inline]
-    pub const fn sub_ms(&mut self, n: i64) {
-        self.attos = self.attos.saturating_sub((n as i128) * ATTOS_PER_MS_I128);
-    }
-
-    /// Subtracts the specified number of microseconds from this time value.
-    #[inline]
-    pub const fn sub_us(&mut self, n: i64) {
-        self.attos = self.attos.saturating_sub((n as i128) * ATTOS_PER_US_I128);
-    }
-
-    /// Subtracts the specified number of nanoseconds from this time value.
-    #[inline]
-    pub const fn sub_ns(&mut self, n: i64) {
-        self.attos = self.attos.saturating_sub((n as i128) * ATTOS_PER_NS_I128);
-    }
-
-    /// Subtracts the specified number of picoseconds from this time value.
-    #[inline]
-    pub const fn sub_ps(&mut self, n: i64) {
-        self.attos = self.attos.saturating_sub((n as i128) * ATTOS_PER_PS_I128);
-    }
-
-    /// Subtracts the specified number of femtoseconds from this time value.
-    #[inline]
-    pub const fn sub_fs(&mut self, n: i64) {
-        self.attos = self.attos.saturating_sub((n as i128) * ATTOS_PER_FS_I128);
-    }
-
-    /// Subtracts the specified number of attoseconds from this time value.
-    #[inline]
-    pub const fn sub_attos(&mut self, n: i64) {
-        self.attos = self.attos.saturating_sub(n as i128);
+    pub const fn add_attos(&mut self, n: i128) -> &mut Self {
+        self.attos = self.attos.saturating_add(n);
+        self
     }
 
     /// Total attoseconds (exact i128 representation).
@@ -572,9 +451,8 @@ impl Dt {
     }
 
     /// Returns the total time in seconds (lossy, integer part only).
-    #[inline]
     pub const fn to_sec(&self) -> i64 {
-        Self::clamp_i128_to_i64(self.attos / ATTOS_PER_SEC_I128)
+        Self::clamp_i128_to_i64(self.attos.div_euclid(ATTOS_PER_SEC_I128))
     }
 
     /// Clamps an `i128` to the representable range of `i64`.

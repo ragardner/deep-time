@@ -151,8 +151,7 @@ impl Dt {
     pub const fn from(attos: i128, current: Scale) -> Dt {
         match current {
             Scale::UTC => {
-                let raw = Dt { attos };
-                let offset = raw.leap_sec(true).offset;
+                let offset = Dt { attos }.leap_sec(true).offset;
                 Dt {
                     attos: attos.saturating_add(Dt::sec_to_attos(offset)),
                 }
@@ -418,29 +417,31 @@ impl Dt {
         Self::mul_rate(attos, LB_NUM, LB_DEN)
     }
 
-    pub(crate) const fn tt_to_tcg(tt: Self) -> Self {
+    pub(crate) const fn tt_to_tcg(mut tt: Self) -> Self {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
         let span_attos = Self::mul_lg(elapsed);
-        tt.add(Dt { attos: span_attos })
+        tt.add_attos(span_attos);
+        tt
     }
 
-    pub(crate) const fn tcg_to_tt(tcg: Self) -> Self {
+    pub(crate) const fn tcg_to_tt(mut tcg: Self) -> Self {
         let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
-        tcg.sub(Dt { attos: span_attos })
+        tcg.add_attos(-span_attos);
+        tcg
     }
 
-    pub(crate) const fn tcb_to_tdb(tcb: Self) -> Self {
+    pub(crate) const fn tcb_to_tdb(mut tcb: Self) -> Self {
         let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
-        tcb.sub(Dt { attos: span_attos })
-            .sub(Dt { attos: TDB0_ATTOS })
+        tcb.add_attos(-span_attos).add_attos(-TDB0_ATTOS);
+        tcb
     }
 
-    pub(crate) const fn tdb_to_tcb(tdb: Self) -> Self {
+    pub(crate) const fn tdb_to_tcb(mut tdb: Self) -> Self {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
-        tdb.add(Dt { attos: span_attos })
-            .add(Dt { attos: TDB0_ATTOS })
+        tdb.add_attos(span_attos).add_attos(TDB0_ATTOS);
+        tdb
     }
 }

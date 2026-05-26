@@ -326,12 +326,10 @@ impl Dt {
                 (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
             }
         };
-        Ok(Dt::from_diff_and_scale(
-            Dt::new((secs as i128) * ATTOS_PER_SEC_I128),
-            Dt::UNIX_EPOCH,
-            Scale::UTC,
+        Ok(
+            Dt::from_diff_and_scale(Dt::new(Dt::sec_to_attos(secs)), Dt::UNIX_EPOCH, Scale::UTC)
+                .add(Dt::from_ns(nanos as i128, Scale::TAI)),
         )
-        .add(Dt::from_ns(nanos as i128, Scale::TAI)))
     }
 
     /// Returns the current system time as TAI from 2000-01-01 noon.
@@ -342,11 +340,9 @@ impl Dt {
         let ms: f64 = js_sys::Date::now();
         let secs = (ms / 1000.0).floor() as i64;
         let nanos = ((ms % 1000.0) * 1_000_000.0) as i128;
-        Ok(Dt::from_diff_and_scale(
-            Dt::new((secs as i128) * ATTOS_PER_SEC_I128),
-            Dt::UNIX_EPOCH,
-            Scale::UTC,
+        Ok(
+            Dt::from_diff_and_scale(Dt::new(Dt::sec_to_attos(secs)), Dt::UNIX_EPOCH, Scale::UTC)
+                .add(Dt::from_ns(nanos as i128, Scale::TAI)),
         )
-        .add(Dt::from_ns(nanos as i128, Scale::TAI)))
     }
 }

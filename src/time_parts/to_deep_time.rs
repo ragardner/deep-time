@@ -16,10 +16,9 @@ impl TimeParts {
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
-            let sec = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
+            let sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
             let subsec = self.attos.unwrap_or(0);
 
-            // New single-field construction (exactly matches old Dt::from(sec, subsec, Scale::UTC))
             let total_attos = (sec as i128) * ATTOS_PER_SEC_I128 + (subsec as i128);
             return Ok(Dt::from(total_attos, Scale::UTC));
         }

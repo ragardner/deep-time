@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, SEC_PER_DAYI64, Scale, an_err};
+use crate::{Dt, DtErr, DtErrKind, SEC_PER_DAYI64, Scale, an_err};
 
 impl Dt {
     /// Maximum size needed for a CCSDS C & D (CUC) binary packet (with extended P-field).
@@ -32,10 +32,8 @@ impl Dt {
 
         const EPOCH_OFFSET: i64 = 1_325_419_167;
 
-        let total_sec = tai.attos.div_euclid(ATTOS_PER_SEC_I128);
-        let rem_attos = tai.attos.rem_euclid(ATTOS_PER_SEC_I128);
-
-        let total_tai_seconds = (total_sec as i64).saturating_add(EPOCH_OFFSET);
+        let rem_attos = tai.frac_attos();
+        let total_tai_seconds = (tai.to_sec()).saturating_add(EPOCH_OFFSET);
 
         let frac_scaled = if n_frac == 0 {
             0u128
@@ -48,12 +46,14 @@ impl Dt {
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
         let mut pos = 0usize;
 
-        // ── P-field (unchanged) ─────────────────────────────
+        // Decide whether extension byte is needed
         let needs_extension = n_coarse > 4 || n_frac > 3 || extension;
 
+        // Base values for Octet 1
         let base_coarse = if n_coarse <= 4 { n_coarse - 1 } else { 3 };
         let base_frac = if n_frac <= 3 { n_frac } else { 3 };
 
+        // Build P-field Octet 1
         let mut p1 = 0b0001_0000u8; // Code ID = 001
         p1 |= (base_coarse << 2) & 0b0000_1100;
         p1 |= base_frac & 0b0000_0011;
@@ -64,12 +64,15 @@ impl Dt {
         pos += 1;
 
         if needs_extension {
-            let add_coarse = n_coarse.saturating_sub(4);
-            let add_frac = n_frac.saturating_sub(3);
+            // Build P-field Octet 2
+            let add_coarse = n_coarse.saturating_sub(4); // 0–3
+            let add_frac = n_frac.saturating_sub(3); // 0–7
 
             let mut p2 = 0u8;
-            p2 |= (add_coarse & 0b11) << 5;
-            p2 |= (add_frac & 0b111) << 2;
+            p2 |= (add_coarse & 0b11) << 5; // spec Bits 1-2 → u8 bits
+            p2 |= (add_frac & 0b111) << 2; // spec Bits 3-5 → u8 bits 4-2
+            // Bit 0 (further extension) = 0
+            // Bits 6-7 reserved = 0
             buf[pos] = p2;
             pos += 1;
         }
@@ -111,13 +114,8 @@ impl Dt {
         let utc = self.to(current, Scale::UTC);
 
         const EPOCH_OFFSET: i64 = 1_325_419_135;
-
-        // New single-field extraction — exactly matches the old "always positive attos" rule
-        let aps = ATTOS_PER_SEC_I128;
-        let total_sec = utc.attos.div_euclid(aps); // signed whole seconds
-        let rem_attos = utc.attos.rem_euclid(aps); // guaranteed [0, ATTOS_PER_SEC_I128)
-
-        let total_utc_seconds = (total_sec as i64).saturating_add(EPOCH_OFFSET);
+        let rem_attos = utc.frac_attos();
+        let total_utc_seconds = (utc.to_sec()).saturating_add(EPOCH_OFFSET);
 
         let day_count = (total_utc_seconds / SEC_PER_DAYI64) as u64;
         let sec_of_day = (total_utc_seconds % SEC_PER_DAYI64) as u64;

@@ -43,7 +43,8 @@ use core::fmt;
 ///
 /// **Notes:**
 ///
-/// - Supports a range of roughly ±5.39 trillion years.
+/// - In theory it supports a range of roughly ±5.39 trillion years but many of the to and
+///   from functions cap at i64 seconds, which can mean a range of ±292 billion years in practice.
 /// - Implements `Copy` and `Clone`. Optional derives for `serde` and `tsify` are available
 ///   behind the corresponding features.
 /// - Does **not** store a time scale internally. The scale is always an explicit parameter

@@ -64,8 +64,13 @@ impl Dt {
     /// pass the same `on: Scale` that matches the scale of the original [`Dt`].
     pub const fn from_jd(jd_days: i64, frac_attos: u128, on: Scale) -> Self {
         let days_since_j2000 = jd_days.saturating_sub(JD_2000_2_451_545);
-        let attos_from_days = (days_since_j2000 as i128) * ATTOS_PER_DAY;
-        let total_attos = attos_from_days + (frac_attos as i128);
+        let frac_attos_i128 = if frac_attos > i128::MAX as u128 {
+            i128::MAX
+        } else {
+            frac_attos as i128
+        };
+        let attos_from_days = (days_since_j2000 as i128).saturating_mul(ATTOS_PER_DAY);
+        let total_attos = attos_from_days.saturating_add(frac_attos_i128);
 
         Self::from(total_attos, on)
     }

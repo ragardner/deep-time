@@ -1,4 +1,6 @@
-use crate::{Dt, NS_PER_SEC, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos};
+use crate::{
+    ATTOS_PER_SEC_I128, Dt, NS_PER_SEC, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos,
+};
 
 /// Pure-numeric Unix timestamp fallback with automatic unit detection.
 /// - 10–12 digit traditional Unix seconds timestamps
@@ -17,86 +19,67 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
     trimmed: &str,
     integer_digits: usize,
 ) -> Option<Dt> {
-    let ts_f64: f64 = trimmed.parse().ok()?;
-
-    let tp = match integer_digits {
-        // 12–15 digits → milliseconds
-        12..=15 => {
-            let total_millis = ts_f64.trunc() as i64;
-            let unix_secs = total_millis.div_euclid(1_000);
-            let secs = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
-            let rem_millis = total_millis.rem_euclid(1_000) as u32;
-
-            let frac_nanos =
-                ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32).min(999_999_999);
-
-            let total_subsec_nanos = (rem_millis as u64) * 1_000_000 + (frac_nanos as u64);
-            let subsec_attos = total_subsec_nanos * 1_000_000_000;
-
-            let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
-            Dt::from(total_attos, Scale::UTC)
-        }
-
-        // 16–18 digits → microseconds
-        16..=18 => {
-            let total_micros = ts_f64.trunc() as i64;
-            let unix_secs = total_micros.div_euclid(1_000_000);
-            let secs = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
-            let rem_micros = total_micros.rem_euclid(1_000_000) as u32;
-
-            let frac_nanos =
-                ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32).min(999_999_999);
-
-            let total_subsec_nanos = (rem_micros as u64) * 1_000 + (frac_nanos as u64);
-            let subsec_attos = total_subsec_nanos * 1_000_000_000;
-
-            let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
-            Dt::from(total_attos, Scale::UTC)
-        }
-
-        // 19+ digits → nanoseconds (uses existing `frac_to_nanos` for perfect precision)
-        19.. => {
-            let (int_part, frac_part) = if let Some(dot) = trimmed.find('.') {
-                (&trimmed[..dot], &trimmed[dot + 1..])
-            } else {
-                (trimmed, "")
-            };
-            if let Ok(int_nanos) = int_part.parse::<i128>() {
-                let frac_nanos = frac_to_nanos(frac_part).unwrap_or(0);
-                let total_nanos = int_nanos + frac_nanos;
-
-                let unix_secs_i128 = total_nanos.div_euclid(NS_PER_SEC);
-                let secs_i128 = unix_secs_i128 - (TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128);
-                let rem_nanos = total_nanos.rem_euclid(NS_PER_SEC) as u64;
-
-                let secs: i64 = secs_i128.try_into().ok()?;
-
-                let subsec_attos = rem_nanos * 1_000_000_000;
-                let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
-                Dt::from(total_attos, Scale::UTC)
-            } else {
-                // Extremely rare fallback
-                let unix_secs = ts_f64.trunc() as i64;
-                let secs = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
-                let nanos = ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32)
-                    .min(999_999_999) as u64;
-                let subsec_attos = nanos * 1_000_000_000;
-                let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
-                Dt::from(total_attos, Scale::UTC)
-            }
-        }
-
-        // Everything else (1–11 digits + huge future seconds) → classic Unix seconds
-        _ => {
-            let unix_secs = ts_f64.trunc() as i64;
-            let secs = unix_secs - TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
-            let nanos =
-                ((ts_f64.fract().abs() * 1_000_000_000.0).round() as u32).min(999_999_999) as u64;
-            let subsec_attos = nanos * 1_000_000_000;
-            let total_attos = Dt::sec_to_attos(secs) + (subsec_attos as i128);
-            Dt::from(total_attos, Scale::UTC)
-        }
+    // Clean sign handling once at the top (handles +, -, and no sign)
+    let (s, sign) = if let Some(stripped) = trimmed.strip_prefix('+') {
+        (stripped, 1i128)
+    } else if let Some(stripped) = trimmed.strip_prefix('-') {
+        (stripped, -1i128)
+    } else {
+        (trimmed, 1i128)
     };
 
-    Some(tp)
+    let (int_part, frac_part) = if let Some(dot) = s.find('.') {
+        (&s[..dot], &s[dot + 1..])
+    } else {
+        (s, "")
+    };
+
+    // Integer part is always parsed as non-negative for maximum precision
+    let int_val: i128 = if int_part.is_empty() || int_part == "0" {
+        0
+    } else {
+        int_part.parse().ok()?
+    };
+
+    // High-precision path (≥ 19 integer digits) — now uses exact i128 + correct sign
+    if integer_digits >= 19 {
+        let frac_nanos = frac_to_nanos(frac_part).unwrap_or(0) as i128;
+        // FIXED: sign now applies to the whole value (int + frac)
+        let total_nanos = (int_val + frac_nanos) * sign;
+
+        let unix_secs_i128 = total_nanos.div_euclid(NS_PER_SEC);
+        let secs_i128 = unix_secs_i128 - (TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128);
+        let rem_nanos = total_nanos.rem_euclid(NS_PER_SEC) as u64;
+        let secs: i64 = secs_i128.try_into().ok()?;
+
+        let total_attos = Dt::sec_to_attos(secs) + (rem_nanos * 1_000_000_000) as i128;
+        return Some(Dt::from(total_attos, Scale::UTC));
+    }
+
+    // Common path (1–18 digits) — unchanged logic but now with perfect sign handling
+    let attos_per_unit = match integer_digits {
+        12..=15 => 1_000_000_000_000_000i128, // milliseconds
+        16..=18 => 1_000_000_000_000i128,     // microseconds
+        _ => ATTOS_PER_SEC_I128,              // seconds
+    };
+
+    let frac_attos = if frac_part.is_empty() {
+        0i128
+    } else {
+        let frac_str = if frac_part.len() > 18 {
+            &frac_part[..18]
+        } else {
+            frac_part
+        };
+        let frac_val: f64 = frac_str.parse().ok()?;
+        let divisor = 10f64.powi(frac_str.len() as i32);
+        let frac_f64 = frac_val / divisor;
+        (frac_f64 * attos_per_unit as f64).round() as i128
+    };
+
+    let total_attos_since_unix = (int_val * attos_per_unit + frac_attos) * sign;
+    let epoch_offset = (TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128;
+    let total_attos = total_attos_since_unix - epoch_offset;
+
+    Some(Dt::from(total_attos, Scale::UTC))
 }

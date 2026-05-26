@@ -7,7 +7,7 @@ impl Add<Dt> for Dt {
 
     #[inline]
     fn add(self, rhs: Dt) -> Self {
-        self.add(rhs)
+        Dt::add(&self, rhs)
     }
 }
 
@@ -23,7 +23,7 @@ impl Sub<Dt> for Dt {
 
     #[inline]
     fn sub(self, rhs: Dt) -> Self {
-        self.sub(rhs)
+        Dt::sub(&self, rhs)
     }
 }
 
