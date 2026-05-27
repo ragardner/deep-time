@@ -143,10 +143,10 @@ use core::fmt;
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
 ///
 /// let s = x
-///  .to_str_with_tz(Scale::TAI, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_with_tz(Scale::TAI, Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
 ///  .unwrap();
 /// let b = x
-///  .to_str_bin_with_tz(Scale::TAI, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_bin_with_tz(Scale::TAI, Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
 ///  .unwrap();
 ///
 /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
@@ -210,6 +210,8 @@ use core::fmt;
 ///
 /// # #[cfg(feature = "alloc")]
 /// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+///
+/// assert_eq!(s, "01 01 2000 12:00:00", "expected: {}, got: {}", "01 01 2000 12:00:00", s);
 /// ```
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

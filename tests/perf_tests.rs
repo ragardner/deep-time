@@ -212,7 +212,7 @@ mod perf_tests {
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = x.to_str(Scale::TAI, "%Y-%m-%dT%H:%M:%S");
+                let _ = x.to_str(Scale::TAI, Scale::UTC, "%Y-%m-%dT%H:%M:%S");
             }
             let elapsed = start.elapsed();
 

@@ -1,14 +1,11 @@
 pub mod parser;
 
-pub(crate) use parser::*;
-
 use crate::error::{DtErr, DtErrKind};
 use crate::{Dt, TimeParts, an_err};
 use core::result::Result;
 use core::str;
 
-#[cfg(feature = "alloc")]
-use crate::Scale;
+pub(crate) use parser::*;
 
 /// A pre-validated, reusable date/time format string.
 ///
@@ -50,6 +47,8 @@ impl StrPTimeFmt {
     ///
     /// // change a datetimes format
     /// let s = fmt.to_str("2000-01-01 12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+    ///
+    /// assert_eq!(s, "01 01 2000 12:00:00");
     /// # }
     /// ```
     pub fn new(fmt: &str) -> Result<Self, DtErr> {
@@ -141,6 +140,8 @@ impl StrPTimeFmt {
     ///
     /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
     /// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+    ///
+    /// assert_eq!(s, "01 01 2000 12:00:00");
     /// ```
     #[cfg(feature = "alloc")]
     pub fn to_str(
@@ -151,13 +152,17 @@ impl StrPTimeFmt {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<alloc::string::String, DtErr> {
-        self.to_dt(
+        use crate::Scale;
+
+        let parts = TimeParts::from_str(
+            self.as_str()?,
             s,
             inp_can_end_before_fmt,
             fmt_can_end_before_inp,
             allow_partial_date,
-        )?
-        .to_str(Scale::TAI, output_fmt)
+        )?;
+        let scale = parts.scale;
+        parts.to_dt()?.to_str(Scale::TAI, scale, output_fmt)
     }
 
     fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {

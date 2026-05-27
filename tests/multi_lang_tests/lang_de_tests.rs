@@ -7,7 +7,7 @@ mod tests {
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let dt = Dt::from_str_parse(input.trim(), &opts)
             .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
-        let actual = dt.to_str_rfc3339(Scale::TAI).unwrap();
+        let actual = dt.to_str_rfc3339(Scale::TAI, Scale::UTC).unwrap();
 
         assert_eq!(actual, expected_rfc3339, "Input: {}", input);
     }
