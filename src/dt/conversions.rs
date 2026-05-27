@@ -152,7 +152,7 @@ impl Dt {
         match current {
             Scale::UTC => {
                 let raw = Dt::new(attos);
-                raw.add_sec(raw.leap_sec(true).offset)
+                raw.add_sec(raw.leap_sec(true).offset as i128)
             }
             Scale::TAI => Dt::new(attos),
             Scale::TT => Dt::new(attos.saturating_sub(TT_TAI_OFFSET.to_attos())),
@@ -161,7 +161,7 @@ impl Dt {
                 if attos < TAI_ATTOS_AT_1972 - 10 {
                     raw.add_sec(9)
                 } else {
-                    raw.add_sec(raw.leap_sec(true).offset)
+                    raw.add_sec(raw.leap_sec(true).offset as i128)
                 }
             }
             Scale::UTCSofa => {
@@ -169,7 +169,7 @@ impl Dt {
                 if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(&raw) {
                     raw.add(Dt::from_sec_f(sofa_offset))
                 } else {
-                    raw.add_sec(raw.leap_sec(true).offset)
+                    raw.add_sec(raw.leap_sec(true).offset as i128)
                 }
             }
             Scale::GPS | Scale::QZSS | Scale::GST => {
@@ -200,7 +200,7 @@ impl Dt {
             Scale::TAI | Scale::Custom => *self,
             Scale::UTC => {
                 let offset = self.leap_sec(false).offset;
-                self.add_sec(-offset)
+                self.add_sec(-offset as i128)
             }
             Scale::TT => self.add(TT_TAI_OFFSET),
             Scale::UTCSpice => {
@@ -208,7 +208,7 @@ impl Dt {
                     self.add_sec(-9)
                 } else {
                     let offset = self.leap_sec(false).offset;
-                    self.add_sec(-offset)
+                    self.add_sec(-offset as i128)
                 }
             }
             Scale::UTCSofa => {
@@ -216,7 +216,7 @@ impl Dt {
                     self.sub(Dt::from_sec_f(sofa_offset))
                 } else {
                     let offset = self.leap_sec(false).offset;
-                    self.add_sec(-offset)
+                    self.add_sec(-offset as i128)
                 }
             }
             Scale::GPS | Scale::QZSS | Scale::GST => self.add_attos(-Dt::SEC_19.to_attos()),

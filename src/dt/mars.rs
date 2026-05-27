@@ -62,7 +62,7 @@ impl Dt {
         let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS);
         let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;
 
-        (Dt::clamp_i128_to_i64(whole_sols), frac_attos)
+        (Dt::i128_to_i64(whole_sols), frac_attos)
     }
 
     /// Returns Mars Coordinated Time (MTC) as a [`Dt`] representing

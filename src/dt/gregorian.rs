@@ -202,7 +202,7 @@ impl Dt {
         let tai = self.to(current, Scale::TAI);
         let from_unix_epoch = tai.to_scale_and_then_diff(new, Dt::UNIX_EPOCH);
 
-        let unix_sec = Dt::clamp_i128_to_i64(from_unix_epoch.to_sec());
+        let unix_sec = Dt::i128_to_i64(from_unix_epoch.to_sec());
         let frac = from_unix_epoch.to_sec_frac();
 
         let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
@@ -287,7 +287,7 @@ impl Dt {
         let mo = (m + 3 - 12 * floor_div_pos(m, 10)) as u8;
         let yr = b * 100 + d - 4800 + floor_div_pos(m, 10);
 
-        (Dt::clamp_i128_to_i64(yr), mo, day)
+        (Dt::i128_to_i64(yr), mo, day)
     }
 
     /// Computes the Julian Day Number (JD) for a proleptic Gregorian calendar date at noon UT.
@@ -331,7 +331,7 @@ impl Dt {
         let day_mo = d + (153 * m + 2) / 5;
         let yr_part = 365 * y + y4 - y100 + y400 - 32045;
 
-        Dt::clamp_i128_to_i64(day_mo as i128 + yr_part)
+        Dt::i128_to_i64(day_mo as i128 + yr_part)
     }
 
     /// Creates a **TAI** [`Dt`] from a proleptic gregorian date which is assumed to be on

@@ -21,7 +21,7 @@ impl Dt {
     ///   (roughly years 1678–2262) if the instant is out of range.
     #[inline]
     pub fn to_chrono_datetime_utc(&self, current: Scale) -> DateTime<Utc> {
-        DateTime::<Utc>::from_timestamp_nanos(Dt::clamp_i128_to_i64(
+        DateTime::<Utc>::from_timestamp_nanos(Dt::i128_to_i64(
             self.to_unix(current, Scale::UTC).to_ns(),
         ))
     }
@@ -74,6 +74,6 @@ impl Dt {
     ///   (roughly ±292 million years) if the value is out of range.
     #[inline]
     pub fn to_chrono_duration(&self) -> Duration {
-        TimeDelta::nanoseconds(Dt::clamp_i128_to_i64(self.to_ns()))
+        TimeDelta::nanoseconds(Dt::i128_to_i64(self.to_ns()))
     }
 }

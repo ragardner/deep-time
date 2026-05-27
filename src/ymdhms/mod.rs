@@ -94,7 +94,7 @@ impl YmdHms {
 
         let total_months = yr * 12 + (mo - 1) + delta;
 
-        let new_yr = Dt::clamp_i128_to_i64(total_months.div_euclid(12));
+        let new_yr = Dt::i128_to_i64(total_months.div_euclid(12));
         let new_mo = Dt::clamp_u8((total_months.rem_euclid(12) + 1) as u8, 1, 12);
 
         let max_day = Dt::days_in_month(new_yr, new_mo);

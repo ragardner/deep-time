@@ -42,7 +42,7 @@ fn to_epoch_leaps_and_tai() {
         leap.to_sec(),
     );
     assert!(
-        leap_sec(&leap, false).is_leap_sec,
+        leap_sec(leap.to_sec64(), false).is_leap_sec,
         "tai 536500836 should be a leap second",
     );
     let y = Dt::from_ymdhms(2017, 1, 1, 0, 0, 0, 0);

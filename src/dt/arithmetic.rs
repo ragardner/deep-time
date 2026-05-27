@@ -32,6 +32,12 @@ impl Dt {
         self.attos.div_euclid(ATTOS_PER_SEC_I128)
     }
 
+    /// Returns the seconds integer part of the [`Dt`] as an i64.
+    #[inline(always)]
+    pub const fn to_sec64(&self) -> i64 {
+        Self::i128_to_i64(self.attos.div_euclid(ATTOS_PER_SEC_I128))
+    }
+
     /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
     /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal digits of precision.
     pub const fn to_sec_f(&self) -> Real {
@@ -451,7 +457,7 @@ impl Dt {
 
     /// Clamps an `i128` to the representable range of `i64`.
     #[inline(always)]
-    pub(crate) const fn clamp_i128_to_i64(x: i128) -> i64 {
+    pub(crate) const fn i128_to_i64(x: i128) -> i64 {
         let y = x as i64;
         if x == y as i128 {
             y
@@ -471,7 +477,7 @@ impl Dt {
     /// Converts total attoseconds → whole seconds as i64
     #[inline(always)]
     pub const fn attos_to_sec_i64(attos: i128) -> i64 {
-        Self::clamp_i128_to_i64(attos / ATTOS_PER_SEC_I128)
+        Self::i128_to_i64(attos / ATTOS_PER_SEC_I128)
     }
 
     /// Clamps `value` to the range `[min, max]`.

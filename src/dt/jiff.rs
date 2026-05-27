@@ -21,8 +21,8 @@ impl Dt {
     /// Converts this `Dt` to a [`jiff::Span`] (seconds + nanoseconds only).
     pub fn to_jiff_span(&self) -> Span {
         let total_nanos = self.to_ns();
-        let seconds = Dt::clamp_i128_to_i64(total_nanos.div_euclid(1_000_000_000));
-        let nanoseconds = Dt::clamp_i128_to_i64(total_nanos.rem_euclid(1_000_000_000));
+        let seconds = Dt::i128_to_i64(total_nanos.div_euclid(1_000_000_000));
+        let nanoseconds = Dt::i128_to_i64(total_nanos.rem_euclid(1_000_000_000));
 
         if let Ok(base) = Span::new().try_seconds(seconds)
             && let Ok(span) = base.try_nanoseconds(nanoseconds)
