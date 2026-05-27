@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHmsRich, an_err};
+use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, Scale, YmdHmsRich, an_err};
 
 pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
     b"Sunday",
@@ -260,7 +260,11 @@ impl YmdHmsRich {
                         }
                     }
                 }
-                // b'L' => Self::write_bytes(buf, pos, Scale::TAI.abbrev().as_bytes()),
+                b'L' => {
+                    if self.scale != Scale::UTC {
+                        Self::write_bytes(buf, pos, self.scale.abbrev().as_bytes())
+                    }
+                }
                 b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
 
                 b'c' | b'r' | b'X' | b'x' => self.write_unsupported(buf, pos),

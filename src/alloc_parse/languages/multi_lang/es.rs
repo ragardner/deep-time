@@ -166,7 +166,12 @@ pub(crate) fn es_date_ac() -> &'static AhoCorasick {
         let mut seen = HashSet::new();
         let terms: Vec<&'static str> = EN_WORDS
             .iter()
-            .filter(|w| matches!(w.c, Cat::UnamRel | Cat::Month | Cat::Day | Cat::AmPm))
+            .filter(|w| {
+                matches!(
+                    w.c,
+                    Cat::UnamRel | Cat::Month | Cat::Day | Cat::AmPm | Cat::TScl
+                )
+            })
             .map(|w| w.low)
             .chain(
                 ES_WORDS

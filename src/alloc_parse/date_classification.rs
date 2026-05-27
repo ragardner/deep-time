@@ -109,19 +109,7 @@ pub(crate) enum Token {
     Yoctosecond,
     Rontosecond,
     Quectosecond,
-    // TAI,
-    // TT,
-    // ET,
-    // TDB,
-    // UTC, // avoid overlap with iana
-    // GPS,
-    // GST,
-    // BDT,
-    // QZSS,
-    // TCG,
-    // TCB,
-    // LTC,
-    // Custom,
+    Scale,
 }
 
 impl Token {
@@ -260,6 +248,7 @@ pub enum Cat {
     Month,
     Day,
     AmPm,
+    TScl,
 }
 
 #[derive(Clone, Copy, Debug)]

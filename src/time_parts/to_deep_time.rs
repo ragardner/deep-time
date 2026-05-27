@@ -16,12 +16,20 @@ impl TimeParts {
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
-            let sec_utc = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-            return Ok(Dt::from_sec_and_attos(
-                sec_utc + leap_sec(sec_utc, true).offset,
-                self.attos.unwrap_or(0),
-                Scale::TAI,
-            ));
+            let total_sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
+            if self.scale == Scale::UTC {
+                return Ok(Dt::from_sec_and_attos(
+                    total_sec + leap_sec(total_sec, true).offset,
+                    self.attos.unwrap_or(0),
+                    Scale::TAI,
+                ));
+            } else {
+                return Ok(Dt::from_sec_and_attos(
+                    total_sec,
+                    self.attos.unwrap_or(0),
+                    self.scale,
+                ));
+            }
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -104,7 +112,7 @@ impl TimeParts {
         let second = self.sec.unwrap_or(0) as i64;
         let days_since_j2000 = jd.saturating_sub(JD_2000_2_451_545);
         let seconds_from_noon_utc = (hour as i64 - 12) * 3600 + minute * 60 + second;
-        let mut sec_utc: i64 = days_since_j2000
+        let mut total_sec: i64 = days_since_j2000
             .saturating_mul(SEC_PER_DAYI64)
             .saturating_add(seconds_from_noon_utc);
 
@@ -123,15 +131,16 @@ impl TimeParts {
             })?;
 
             if !name_str.is_empty() {
-                let provisional_unix = sec_utc.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
+                let provisional_unix =
+                    total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
                 match offset_info_at_local(name_str, provisional_unix) {
                     Some(info) => {
                         if info.is_gap {
                             // Non-existent time (spring-forward gap) — shift forward
-                            sec_utc = sec_utc.saturating_add(info.gap_size);
-                            sec_utc = sec_utc.saturating_sub(info.offset as i64);
+                            total_sec = total_sec.saturating_add(info.gap_size);
+                            total_sec = total_sec.saturating_sub(info.offset as i64);
                         } else {
-                            sec_utc = sec_utc.saturating_sub(info.offset as i64);
+                            total_sec = total_sec.saturating_sub(info.offset as i64);
                         }
                     }
                     None => {
@@ -145,16 +154,24 @@ impl TimeParts {
             }
         } else if let Some(Offset::Fixed(offset)) = self.offset {
             // local civil time → true UTC instant
-            sec_utc = sec_utc.saturating_sub(offset as i64);
+            total_sec = total_sec.saturating_sub(offset as i64);
         }
 
         // ──────────────────────────────────────────────────────────────
         // Final construction
         // ──────────────────────────────────────────────────────────────
-        Ok(Dt::from_sec_and_attos(
-            sec_utc + leap_sec(sec_utc, true).offset,
-            self.attos.unwrap_or(0),
-            Scale::TAI,
-        ))
+        if self.scale == Scale::UTC {
+            Ok(Dt::from_sec_and_attos(
+                total_sec + leap_sec(total_sec, true).offset,
+                self.attos.unwrap_or(0),
+                Scale::TAI,
+            ))
+        } else {
+            Ok(Dt::from_sec_and_attos(
+                total_sec,
+                self.attos.unwrap_or(0),
+                self.scale,
+            ))
+        }
     }
 }

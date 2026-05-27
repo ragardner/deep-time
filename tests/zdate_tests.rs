@@ -70,15 +70,8 @@ mod tests {
     fn print_stuff() {
         use deep_time::{Dt, Scale};
 
-        let x: Dt = "Thu, 240314:03:30:45 PM +0000".parse().unwrap();
-        let x: Dt = "Thu, 240314:03:30:45 PM -01:00".parse().unwrap();
-        let x: Dt = "2006-04-02 02:30 [+01:00] America/Indiana/Vevay"
-            .parse()
-            .unwrap();
-        let x: Dt = "2006-04-02 02:30-05 America/Indiana/Vevay".parse().unwrap();
-        let x: Dt = "2024-06-15 14:30:00.123456789 America/New_York"
-            .parse()
-            .unwrap();
+        let x: Dt = "01-01-2000T12:00:00 PM +0000 TAI".parse().unwrap();
+        // eprintln!("HERE: {}", x);
     }
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {

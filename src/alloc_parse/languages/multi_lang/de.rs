@@ -172,7 +172,7 @@ pub(crate) fn de_date_ac() -> &'static AhoCorasick {
             .filter(|w| {
                 matches!(
                     w.c,
-                    Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day | Cat::AmPm
+                    Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day | Cat::AmPm | Cat::TScl
                 )
             })
             .map(|w| w.low)

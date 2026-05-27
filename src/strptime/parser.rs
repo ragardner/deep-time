@@ -1,5 +1,5 @@
 use crate::error::{DtErr, DtErrKind};
-use crate::{Meridiem, Offset, TimeParts, Weekday, an_err};
+use crate::{Meridiem, Offset, Scale, TimeParts, Weekday, an_err};
 use core::result::Result;
 use core::str;
 
@@ -138,7 +138,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'R' => self.parse_time_without_seconds_shortcut()?,
                 // Library directives
                 b'*' => self.parse_unbounded_year()?,
-                // b'L' => self.parse_scale()?,
+                b'L' => self.parse_scale()?,
                 b'c' | b'r' | b'X' | b'x' | b'Z' => {
                     return Err(an_err!(
                         DtErrKind::UnsupportedDirective,
@@ -954,27 +954,27 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    // fn parse_scale(&mut self) -> Result<(), DtErr> {
-    //     if self.inp.is_empty() || !self.inp[0].is_ascii_alphabetic() {
-    //         return Err(an_err!(DtErrKind::InvalidItem, "invalid clocktype"));
-    //     }
-    //     let start = self.inp;
-    //     let mut pos = 0usize;
-    //     // Use `start[pos]`, not `self.inp[pos]`
-    //     while pos < start.len() && pos < 8 && start[pos].is_ascii_alphanumeric() {
-    //         pos += 1;
-    //     }
-    //     let abbrev = core::str::from_utf8(&start[..pos])
-    //         .map_err(|_| an_err!(DtErrKind::InvalidItem, "invalid clocktype"))?;
-    //     self.inp = &start[pos..];
-    //     self.advance_format();
-    //     if let Some(ct) = Scale::from_abbrev(abbrev) {
-    //         self.tm.scale = ct;
-    //         Ok(())
-    //     } else {
-    //         Err(an_err!(DtErrKind::InvalidItem, "invalid clocktype"))
-    //     }
-    // }
+    fn parse_scale(&mut self) -> Result<(), DtErr> {
+        if self.inp.is_empty() || !self.inp[0].is_ascii_alphabetic() {
+            return Err(an_err!(DtErrKind::InvalidItem, "invalid scale"));
+        }
+        let start = self.inp;
+        let mut pos = 0usize;
+        // Use `start[pos]`, not `self.inp[pos]`
+        while pos < start.len() && pos < 8 && start[pos].is_ascii_alphanumeric() {
+            pos += 1;
+        }
+        let abbrev = core::str::from_utf8(&start[..pos])
+            .map_err(|_| an_err!(DtErrKind::InvalidItem, "invalid scale"))?;
+        self.inp = &start[pos..];
+        self.advance_format();
+        if let Some(ct) = Scale::from_abbrev(abbrev) {
+            self.tm.scale = ct;
+            Ok(())
+        } else {
+            Err(an_err!(DtErrKind::InvalidItem, "invalid scale"))
+        }
+    }
 
     #[inline]
     fn parse_iso_date(&mut self) -> Result<(), DtErr> {

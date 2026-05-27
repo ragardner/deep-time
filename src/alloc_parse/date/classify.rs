@@ -113,6 +113,12 @@ pub(crate) fn classify_date(
                         date_norm.push_str(norm_part);
                     }
                 }
+                Token::Scale => {
+                    if currently.after_date() {
+                        time_tokens.push(Token::Scale);
+                        date_norm.push_str(norm_part);
+                    }
+                }
                 _ => {}
             }
             is_pure_numeric = false;

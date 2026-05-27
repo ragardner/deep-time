@@ -184,6 +184,23 @@ pub const EN_WORDS: &[Word] = &[
     Word::new("ys", "ys", Token::Yoctosecond, Cat::UnamDur),
     Word::new("rs", "rs", Token::Rontosecond, Cat::UnamDur),
     Word::new("qs", "qs", Token::Quectosecond, Cat::UnamDur),
+    // time scales for round tripping
+    Word::new("tai", "TAI", Token::Scale, Cat::TScl),
+    Word::new("tt", "TT", Token::Scale, Cat::TScl),
+    Word::new("et", "ET", Token::Scale, Cat::TScl),
+    Word::new("tdb", "TDB", Token::Scale, Cat::TScl),
+    // ("utc", "UTC", Token::UTC), // avoid overlap with iana
+    Word::new("utcspice", "UTCSpice", Token::Scale, Cat::TScl),
+    Word::new("utcsofa", "UTCSofa", Token::Scale, Cat::TScl),
+    Word::new("gps", "GPS", Token::Scale, Cat::TScl),
+    Word::new("gst", "GST", Token::Scale, Cat::TScl),
+    Word::new("bdt", "BDT", Token::Scale, Cat::TScl),
+    Word::new("qzss", "QZSS", Token::Scale, Cat::TScl),
+    Word::new("tcg", "TCG", Token::Scale, Cat::TScl),
+    Word::new("tcb", "TCB", Token::Scale, Cat::TScl),
+    Word::new("ltc", "LTC", Token::Scale, Cat::TScl),
+    Word::new("tcl", "TCL", Token::Scale, Cat::TScl),
+    Word::new("custom", "Custom", Token::Scale, Cat::TScl),
 ];
 
 static EN_DATE_AC: OnceBox<AhoCorasick> = OnceBox::new();
@@ -195,7 +212,7 @@ pub(crate) fn en_date_ac() -> &'static AhoCorasick {
             .filter(|w| {
                 matches!(
                     w.c,
-                    Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day | Cat::AmPm
+                    Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day | Cat::AmPm | Cat::TScl
                 )
             })
             .map(|w| w.low)

@@ -50,8 +50,8 @@ fn build_zone_suffix(class: &DateClassification) -> String {
     while i < tokens.len() {
         match tokens[i] {
             Token::Pm | Token::Am => {
+                s.push_str("%p");
                 i += 1;
-                continue;
             }
             Token::Space => {
                 s.push(' ');
@@ -82,6 +82,10 @@ fn build_zone_suffix(class: &DateClassification) -> String {
             }
             Token::Zulu => {
                 s.push('Z');
+                i += 1;
+            }
+            Token::Scale => {
+                s.push_str("%L");
                 i += 1;
             }
             _ => {
@@ -137,14 +141,11 @@ fn build_time_bases(class: &DateClassification) -> Vec<String> {
 
             if use_fractional {
                 base.push_str(time_sep);
-                base.push_str("%S%.f %p");
+                base.push_str("%S%.f");
                 suffixes.push(base);
             } else if sec {
                 base.push_str(time_sep);
-                base.push_str("%S %p");
-                suffixes.push(base);
-            } else {
-                base.push_str(" %p");
+                base.push_str("%S");
                 suffixes.push(base);
             }
         }

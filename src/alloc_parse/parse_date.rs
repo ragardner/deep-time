@@ -417,7 +417,7 @@ where
     // let mut dt = None;
 
     // for fmt in formats.into_iter() {
-    //     // eprintln!("TRYING FMT: {}", fmt);
+    //     eprintln!("TRYING FMT: {}", fmt);
     //     if let Ok(parsed) = Dt::from_str(s, &fmt, true, true, false) {
     //         dt = Some(parsed);
     //         break;
