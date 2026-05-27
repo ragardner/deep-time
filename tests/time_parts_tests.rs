@@ -82,7 +82,7 @@ mod tests {
 
         let expected = 123_456_789u64 * 1_000_000_000;
         assert_eq!(
-            tp.frac_attos(),
+            tp.to_sec_frac(),
             expected,
             "fractional seconds were not preserved"
         );

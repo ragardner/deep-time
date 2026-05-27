@@ -903,6 +903,7 @@ mod tests {
             ("2024/03/14", "2024-03-14T00:00:00Z", None),
             ("14.03.2024", "2024-03-14T00:00:00Z", None),
             ("14/03.2024", "2024-03-14T00:00:00Z", None),
+            ("14/03.2024T00:00  -1", "2024-03-14T01:00:00Z", None),
             // Pure-numeric special cases (date-only or epoch — kept; only full datetime smashed cases were removed)
             ("240314", "2024-03-14T00:00:00Z", None),
             ("202403", "2024-03-01T00:00:00Z", None),

@@ -64,42 +64,42 @@ mod astropy_verified_tai_sec_tests {
     fn tai_sec_at_2000_01_01_12utc() {
         let dt = Dt::from_ymdhms(2000, 1, 1, 12, 0, 0, 0);
         assert_eq!(dt.to_sec(), 32);
-        assert_eq!(dt.frac_attos(), 0);
+        assert_eq!(dt.to_sec_frac(), 0);
     }
 
     #[test]
     fn tai_sec_at_2025_04_16() {
         let dt = Dt::from_ymdhms(2025, 4, 16, 0, 0, 0, 0);
         assert_eq!(dt.to_sec(), 798033637);
-        assert_eq!(dt.frac_attos(), 0);
+        assert_eq!(dt.to_sec_frac(), 0);
     }
 
     #[test]
     fn tai_sec_around_2015_leap_second() {
         let before = Dt::from_ymdhms(2015, 6, 30, 23, 59, 59, 0);
         assert_eq!(before.to_sec(), 488980834);
-        assert_eq!(before.frac_attos(), 0);
+        assert_eq!(before.to_sec_frac(), 0);
 
         let leap = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 0);
         assert_eq!(leap.to_sec(), 488980835);
-        assert_eq!(leap.frac_attos(), 0);
+        assert_eq!(leap.to_sec_frac(), 0);
 
         let after = Dt::from_ymdhms(2015, 7, 1, 0, 0, 0, 0);
         assert_eq!(after.to_sec(), 488980836);
-        assert_eq!(after.frac_attos(), 0);
+        assert_eq!(after.to_sec_frac(), 0);
     }
 
     #[test]
     fn tai_sec_at_2100_01_01() {
         let dt = Dt::from_ymdhms(2100, 1, 1, 0, 0, 0, 0);
         assert_eq!(dt.to_sec(), 3155716837);
-        assert_eq!(dt.frac_attos(), 0);
+        assert_eq!(dt.to_sec_frac(), 0);
     }
 
     #[test]
     fn tai_sec_at_1900_01_01() {
         let dt = Dt::from_ymdhms(1900, 1, 1, 0, 0, 0, 0);
         assert_eq!(dt.to_sec(), -3155716800);
-        assert_eq!(dt.frac_attos(), 0);
+        assert_eq!(dt.to_sec_frac(), 0);
     }
 }

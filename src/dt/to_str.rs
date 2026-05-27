@@ -503,7 +503,7 @@ impl Dt {
             .to_diff_raw(Dt::UNIX_EPOCH);
 
         // 2. Look up offset + abbrev at that exact UTC instant
-        let unix_sec = Dt::attos_to_sec_i64(utc_unix.attos);
+        let unix_sec = Dt::attos_to_sec_i64(utc_unix.to_attos());
         let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, unix_sec) {
             Some(info) => (info.offset, info.abbrev),
             None => (0, "UTC"), // fallback for unknown timezone

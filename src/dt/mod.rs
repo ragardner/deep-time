@@ -226,7 +226,7 @@ impl Default for Dt {
 
 impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let total = self.attos;
+        let total = self.to_attos();
         let precision = f.precision().unwrap_or(9).min(18);
 
         let is_negative = total < 0;
@@ -265,6 +265,8 @@ impl fmt::Display for Dt {
 
 impl fmt::Debug for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Dt").field("attos", &self.attos).finish()
+        f.debug_struct("Dt")
+            .field("attos", &self.to_attos())
+            .finish()
     }
 }

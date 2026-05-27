@@ -133,7 +133,7 @@ impl Dt {
 
             let dt = t.to_diff_raw(prev_t);
             if !dt.is_zero() {
-                let sign = if dt.attos < 0 { f!(-1.0) } else { f!(1.0) };
+                let sign = if dt.to_attos() < 0 { f!(-1.0) } else { f!(1.0) };
                 let dt_pos = if sign < f!(0.0) { dt.neg() } else { dt };
                 let dt_sec = dt_pos.to_sec_f();
 

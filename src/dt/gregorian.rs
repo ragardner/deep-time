@@ -5,12 +5,28 @@ use crate::{
 impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
     /// to a proleptic Gregorian date (year, month, day).
-    #[inline]
     pub const fn unix_sec_to_ymd(unix_sec: i64) -> (i64, u8, u8) {
-        let days_since_1970 = unix_sec.div_euclid(SEC_PER_DAYI64);
-        // 1970-01-01 00:00:00 is JD 2440588.0
-        let jd = days_since_1970.saturating_add(2440588);
-        Self::jd_to_ymd(jd)
+        let days = unix_sec.div_euclid(86400);
+
+        // Shift so we work relative to 0000-03-01 (makes leap year math cleaner)
+        let z = days + 719468;
+
+        let era = if z >= 0 {
+            z / 146097
+        } else {
+            (z - 146096) / 146097
+        };
+        let doe = z - era * 146097; // [0, 146096]
+        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365; // [0, 399]
+        let y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
+        let mp = (5 * doy + 2) / 153; // [0, 11]
+        let d = doy - (153 * mp + 2) / 5 + 1; // [1, 31]
+        let m = if mp < 10 { mp + 3 } else { mp - 9 }; // [1, 12]
+
+        let yr = y + if m <= 2 { 1 } else { 0 };
+
+        (yr, m as u8, d as u8)
     }
 
     /// Returns the full proleptic Gregorian date and wall-clock time for this instant,
@@ -187,7 +203,7 @@ impl Dt {
         let from_unix_epoch = tai.to_scale_and_then_diff(new, Dt::UNIX_EPOCH);
 
         let unix_sec = Dt::clamp_i128_to_i64(from_unix_epoch.to_sec());
-        let frac = from_unix_epoch.frac_attos();
+        let frac = from_unix_epoch.to_sec_frac();
 
         let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
 
@@ -202,7 +218,7 @@ impl Dt {
         };
 
         YmdHms {
-            unix_attosec: from_unix_epoch.attos,
+            unix_attosec: from_unix_epoch.to_attos(),
             yr,
             mo,
             day,
@@ -229,8 +245,15 @@ impl Dt {
     ///
     /// - Expects **1 based** `mo` and `day`, and **0 based** `hr`, `min`, and `sec`.
     /// - Does not perform any time scale conversions.
-    pub const fn ymdhms_to_unix_sec(yr: i64, mo: u8, day: u8, hr: u8, min: u8, sec: u8) -> i64 {
-        let (mo, day, hr, min, sec) = Self::clamp_mdhms(yr, mo, day, hr, min, sec);
+    /// - Expects clamped values.
+    pub(crate) const fn ymdhms_to_unix_sec(
+        yr: i64,
+        mo: u8,
+        day: u8,
+        hr: u8,
+        min: u8,
+        sec: u8,
+    ) -> i64 {
         let jd = Self::ymd_to_jd(yr, mo, day);
         // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
         let days_since_1970 = jd.saturating_sub(2440588);
@@ -357,7 +380,7 @@ impl Dt {
 
         if is_leap_second {
             Dt {
-                attos: tp.attos.saturating_add(ATTOS_PER_SEC_I128),
+                attos: tp.to_attos().saturating_add(ATTOS_PER_SEC_I128),
             }
         } else {
             tp

@@ -414,22 +414,22 @@ pub(crate) fn try_compatible_formats<I>(s: &str, formats: I) -> Option<Dt>
 where
     I: IntoIterator<Item = String>,
 {
-    let mut dt = None;
+    // let mut dt = None;
 
-    for fmt in formats.into_iter() {
-        // eprintln!("TRYING FMT: {}", fmt);
-        if let Ok(parsed) = Dt::from_str(s, &fmt, true, true, false) {
-            dt = Some(parsed);
-            break;
-        }
-        // === DEBUG ===
-        // eprintln!("Tried format: {:?}", fmt);
-    }
+    // for fmt in formats.into_iter() {
+    //     // eprintln!("TRYING FMT: {}", fmt);
+    //     if let Ok(parsed) = Dt::from_str(s, &fmt, true, true, false) {
+    //         dt = Some(parsed);
+    //         break;
+    //     }
+    //     // === DEBUG ===
+    //     // eprintln!("Tried format: {:?}", fmt);
+    // }
 
-    dt
-    // formats
-    //     .into_iter()
-    //     .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false).ok())
+    // dt
+    formats
+        .into_iter()
+        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false).ok())
 }
 
 #[inline]

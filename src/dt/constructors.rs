@@ -81,7 +81,7 @@ impl Dt {
     pub const ONE_DAY: Self = Self::new((SEC_PER_DAYI64 as i128) * ATTOS_PER_SEC_I128);
 
     /// Creates a new `Dt` from a total number of attoseconds (signed i128).
-    #[inline]
+    #[inline(always)]
     pub const fn new(attos: i128) -> Self {
         Self { attos }
     }

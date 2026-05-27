@@ -12,7 +12,7 @@ struct Builder {
     seen_year: bool,
 }
 
-#[inline]
+#[inline(always)]
 fn append_to_all(builders: &mut Vec<Builder>, s: &'static str) {
     for b in builders {
         b.pieces.push(s);

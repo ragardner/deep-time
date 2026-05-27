@@ -36,8 +36,7 @@ mod time_range_tests {
         assert_eq!(v.len(), 24);
         assert_eq!(v.first(), Some(&start));
         // last should be 2000-01-01 23:00
-        let mut expected_last = start;
-        expected_last.add_hr(23);
+        let expected_last = start.add_hr(23);
         assert_eq!(v.last(), Some(&expected_last));
         assert_eq!(start.every(step).to_excluding(end).len(), 24);
     }
@@ -45,8 +44,7 @@ mod time_range_tests {
     #[test]
     fn exclusive_when_end_not_on_step_boundary() {
         let start = ymd(2000, 1, 1);
-        let mut end = ymd(2000, 1, 1);
-        end.add_hr(25); // ← must be mut
+        let end = ymd(2000, 1, 1).add_hr(25);
         let step = hr(6);
 
         let v: Vec<_> = start.every(step).to_excluding(end).collect();
@@ -108,8 +106,8 @@ mod time_range_tests {
         assert_eq!(v.len(), 5);
         assert_eq!(v[0], start);
 
-        let mut expected_last = start;
-        expected_last.add_hr(8); // 0 + 4*2h
+        let expected_last = start.add_hr(8); // 0 + 4*2h
+
         assert_eq!(v[4], expected_last);
 
         // This now works because we return impl ExactSizeIterator
@@ -124,8 +122,7 @@ mod time_range_tests {
         let v: Vec<_> = start.next_n(4, step).collect();
 
         assert_eq!(v.len(), 4);
-        let mut first = start;
-        first.add_hr(3);
+        let first = start.add_hr(3);
         assert_eq!(v[0], first);
     }
 

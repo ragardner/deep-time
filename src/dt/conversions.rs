@@ -8,7 +8,7 @@ impl Dt {
     /// Convenience wrapper for [`Dt::from`](../struct.Dt.html#method.from)
     #[inline]
     pub const fn from_dt(dt: Dt, scale: Scale) -> Dt {
-        Self::from(dt.attos, scale)
+        Self::from(dt.to_attos(), scale)
     }
 
     /// Low level constructor from total attoseconds since a given `epoch`.
@@ -31,7 +31,7 @@ impl Dt {
     /// ```
     #[inline]
     pub const fn from_attos_since(attos: i128, epoch: Dt) -> Self {
-        epoch.add(Dt { attos })
+        epoch.add(Dt::new(attos))
     }
 
     /// Converts this instant to the target scale and returns the signed difference
@@ -127,7 +127,7 @@ impl Dt {
     /// ```
     #[inline]
     pub const fn from_diff_and_scale(diff: Dt, epoch: Dt, current: Scale) -> Self {
-        Self::from(epoch.attos.saturating_add(diff.attos), current)
+        Self::from(epoch.to_attos().saturating_add(diff.to_attos()), current)
     }
 
     /// Creates a **TAI** [`Dt`].
@@ -146,107 +146,81 @@ impl Dt {
     ///
     /// // leap seconds were added to the `-32` UTC sec
     /// // and the returned [`Dt`] is on the TAI scale
-    /// assert_eq!(dt.attos, 0);
+    /// assert_eq!(dt.to_attos(), 0);
     /// ```
     pub const fn from(attos: i128, current: Scale) -> Dt {
         match current {
             Scale::UTC => {
-                let offset = Dt { attos }.leap_sec(true).offset;
-                Dt {
-                    attos: attos.saturating_add(Dt::sec_to_attos(offset)),
-                }
+                let raw = Dt::new(attos);
+                raw.add_sec(raw.leap_sec(true).offset)
             }
-            Scale::TAI => Dt { attos },
-            Scale::TT => Dt {
-                attos: attos.saturating_sub(TT_TAI_OFFSET.attos),
-            },
+            Scale::TAI => Dt::new(attos),
+            Scale::TT => Dt::new(attos.saturating_sub(TT_TAI_OFFSET.to_attos())),
             Scale::UTCSpice => {
-                let raw = Dt { attos };
-                let offset = raw.leap_sec(true).offset;
-                let tai = Dt {
-                    attos: attos.saturating_add(Dt::sec_to_attos(offset)),
-                };
+                let raw = Dt::new(attos);
                 if attos < TAI_ATTOS_AT_1972 - 10 {
-                    tai.add(Dt::from_sec(9, Scale::TAI))
+                    raw.add_sec(9)
                 } else {
-                    tai
+                    raw.add_sec(raw.leap_sec(true).offset)
                 }
             }
             Scale::UTCSofa => {
-                let raw = Dt { attos };
-                let offset = raw.leap_sec(true).offset;
-                let tai = Dt {
-                    attos: attos.saturating_add(Dt::sec_to_attos(offset)),
-                };
+                let raw = Dt::new(attos);
                 if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(&raw) {
-                    tai.add(Dt::from_sec_f(sofa_offset))
+                    raw.add(Dt::from_sec_f(sofa_offset))
                 } else {
-                    tai
+                    raw.add_sec(raw.leap_sec(true).offset)
                 }
             }
-            Scale::GPS | Scale::QZSS | Scale::GST => Dt {
-                attos: attos.saturating_add(Dt::SEC_19.attos),
-            },
-            Scale::BDT => Dt {
-                attos: attos.saturating_add(Dt::SEC_33.attos),
-            },
-            Scale::TDB | Scale::ET => Self::tdb_to_tai(Dt { attos }),
+            Scale::GPS | Scale::QZSS | Scale::GST => {
+                Dt::new(attos.saturating_add(Dt::SEC_19.to_attos()))
+            }
+            Scale::BDT => Dt::new(attos.saturating_add(Dt::SEC_33.to_attos())),
+            Scale::TDB | Scale::ET => Self::tdb_to_tai(Dt::new(attos)),
             Scale::TCG => {
-                let tt = Self::tcg_to_tt(Dt { attos });
+                let tt = Self::tcg_to_tt(Dt::new(attos));
                 tt.sub(TT_TAI_OFFSET)
             }
             Scale::TCB => {
-                let tdb = Self::tcb_to_tdb(Dt { attos });
+                let tdb = Self::tcb_to_tdb(Dt::new(attos));
                 Self::tdb_to_tai(tdb)
             }
             Scale::LTC => {
-                let tt = Self::ltc_to_tt(Dt { attos });
+                let tt = Self::ltc_to_tt(Dt::new(attos));
                 tt.sub(TT_TAI_OFFSET)
             }
-            Scale::TCL => Self::tcl_to_tai(Dt { attos }),
-            _ => Dt { attos },
+            Scale::TCL => Self::tcl_to_tai(Dt::new(attos)),
+            _ => Dt::new(attos),
         }
     }
 
+    /// From TAI -> `scale`
     pub(crate) const fn to_internal(&self, scale: Scale) -> Dt {
         match scale {
             Scale::TAI | Scale::Custom => *self,
             Scale::UTC => {
                 let offset = self.leap_sec(false).offset;
-                Dt {
-                    attos: self.attos.saturating_sub(Dt::sec_to_attos(offset)),
-                }
+                self.add_sec(-offset)
             }
             Scale::TT => self.add(TT_TAI_OFFSET),
             Scale::UTCSpice => {
-                let offset = self.leap_sec(false).offset;
-                let mut spice = Dt {
-                    attos: self.attos.saturating_sub(Dt::sec_to_attos(offset)),
-                };
-                if self.attos < TAI_ATTOS_AT_1972 {
-                    spice.add_sec(-9);
-                    spice
+                if self.to_attos() < TAI_ATTOS_AT_1972 {
+                    self.add_sec(-9)
                 } else {
-                    spice
+                    let offset = self.leap_sec(false).offset;
+                    self.add_sec(-offset)
                 }
             }
             Scale::UTCSofa => {
-                let offset = self.leap_sec(false).offset;
-                let sofa = Dt {
-                    attos: self.attos.saturating_sub(Dt::sec_to_attos(offset)),
-                };
                 if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(self) {
-                    sofa.sub(Dt::from_sec_f(sofa_offset))
+                    self.sub(Dt::from_sec_f(sofa_offset))
                 } else {
-                    sofa
+                    let offset = self.leap_sec(false).offset;
+                    self.add_sec(-offset)
                 }
             }
-            Scale::GPS | Scale::QZSS | Scale::GST => Dt {
-                attos: self.attos.saturating_sub(Dt::SEC_19.attos),
-            },
-            Scale::BDT => Dt {
-                attos: self.attos.saturating_sub(Dt::SEC_33.attos),
-            },
+            Scale::GPS | Scale::QZSS | Scale::GST => self.add_attos(-Dt::SEC_19.to_attos()),
+            Scale::BDT => self.add_attos(-Dt::SEC_33.to_attos()),
             Scale::TDB | Scale::ET => Self::tai_to_tdb(*self),
             Scale::TCG => Self::tai_to_tcg(*self),
             Scale::TCB => Self::tai_to_tcb(*self),
@@ -274,7 +248,7 @@ impl Dt {
     /// ## Notes
     ///
     /// - The numerical attosecond value of `self` is assumed to be on `current`.
-    /// - This method is equivalent to `Dt::from(self.attos, current)`.
+    /// - This method is equivalent to `Dt::from(self.to_attos(), current)`.
     ///
     /// ## See also
     ///
@@ -293,7 +267,7 @@ impl Dt {
     /// ```
     #[inline]
     pub const fn to_tai(&self, current: Scale) -> Dt {
-        Self::from(self.attos, current)
+        Self::from(self.to_attos(), current)
     }
 
     /// Converts this instant from one time scale to another.
@@ -342,7 +316,7 @@ impl Dt {
     #[inline]
     pub const fn to(&self, current: Scale, new: Scale) -> Dt {
         if !current.eq(new) {
-            Self::from(self.attos, current).to_internal(new)
+            Self::from(self.to_attos(), current).to_internal(new)
         } else {
             *self
         }
@@ -418,31 +392,27 @@ impl Dt {
         Self::mul_rate(attos, LB_NUM, LB_DEN)
     }
 
-    pub(crate) const fn tt_to_tcg(mut tt: Self) -> Self {
+    pub(crate) const fn tt_to_tcg(tt: Self) -> Self {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
         let span_attos = Self::mul_lg(elapsed);
-        tt.add_attos(span_attos);
-        tt
+        tt.add_attos(span_attos)
     }
 
-    pub(crate) const fn tcg_to_tt(mut tcg: Self) -> Self {
+    pub(crate) const fn tcg_to_tt(tcg: Self) -> Self {
         let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
-        tcg.add_attos(-span_attos);
-        tcg
+        tcg.add_attos(-span_attos)
     }
 
-    pub(crate) const fn tcb_to_tdb(mut tcb: Self) -> Self {
+    pub(crate) const fn tcb_to_tdb(tcb: Self) -> Self {
         let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
-        tcb.add_attos(-span_attos).add_attos(-TDB0_ATTOS);
-        tcb
+        tcb.add_attos(-span_attos).add_attos(-TDB0_ATTOS)
     }
 
-    pub(crate) const fn tdb_to_tcb(mut tdb: Self) -> Self {
+    pub(crate) const fn tdb_to_tcb(tdb: Self) -> Self {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
-        tdb.add_attos(span_attos).add_attos(TDB0_ATTOS);
-        tdb
+        tdb.add_attos(span_attos).add_attos(TDB0_ATTOS)
     }
 }

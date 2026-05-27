@@ -79,7 +79,7 @@ impl Dt {
 
             // Early exit when change is smaller than ~1 atto-second
             let delta = new_tt.to_diff_raw(tt);
-            if delta.attos.abs() < 1 {
+            if delta.to_attos().abs() < 1 {
                 tt = new_tt;
                 break;
             }

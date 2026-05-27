@@ -26,7 +26,7 @@ impl Dt {
         }
     }
 
-    /// Returns the total time in seconds (lossy, integer part only).
+    /// Returns the seconds integer part of the [`Dt`].
     #[inline(always)]
     pub const fn to_sec(&self) -> i128 {
         self.attos.div_euclid(ATTOS_PER_SEC_I128)
@@ -51,6 +51,15 @@ impl Dt {
         } else {
             (sec as f64) + f!(rem as u64) / ATTOS_PER_SECF
         }
+    }
+
+    /// Returns the fractional part of this time **in attoseconds** as a `u64`.
+    ///
+    /// Equivalent to the remainder after removing whole seconds.
+    /// Always returns a value in the range `0 ≤ x < ATTOS_PER_SEC`.
+    #[inline(always)]
+    pub const fn to_sec_frac(&self) -> u64 {
+        self.attos.rem_euclid(ATTOS_PER_SEC_I128) as u64
     }
 
     /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
@@ -91,114 +100,98 @@ impl Dt {
         self.to_sec_f() - other.to_sec_f()
     }
 
-    /// Returns the fractional part of this time **in attoseconds** as a `u64`.
-    ///
-    /// Equivalent to the remainder after removing whole seconds.
-    /// Always returns a value in the range `0 ≤ x < ATTOS_PER_SEC_I128`.
+    /// Adds the specified number of attoseconds to this time value.
     #[inline(always)]
-    pub const fn frac_attos(&self) -> u64 {
-        self.attos.rem_euclid(ATTOS_PER_SEC_I128) as u64
+    pub const fn add_attos(&self, n: i128) -> Self {
+        Dt::new(self.attos.saturating_add(n))
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
-    #[inline]
-    pub const fn add_sec(&mut self, n: i64) -> &mut Self {
-        self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_SEC_I128);
-        self
+    #[inline(always)]
+    pub const fn add_sec(&self, n: i128) -> Self {
+        self.add_attos(n.saturating_mul(ATTOS_PER_SEC_I128))
+    }
+
+    /// Adds the specified number of milliseconds to this time value.
+    #[inline(always)]
+    pub const fn add_ms(&self, n: i128) -> Self {
+        self.add_attos(n.saturating_mul(ATTOS_PER_MS_I128))
+    }
+
+    /// Adds the specified number of microseconds to this time value.
+    #[inline(always)]
+    pub const fn add_us(&self, n: i128) -> Self {
+        self.add_attos(n.saturating_mul(ATTOS_PER_US_I128))
+    }
+
+    /// Adds the specified number of nanoseconds to this time value.
+    #[inline(always)]
+    pub const fn add_ns(&self, n: i128) -> Self {
+        self.add_attos(n.saturating_mul(ATTOS_PER_NS_I128))
+    }
+
+    /// Adds the specified number of picoseconds to this time value.
+    #[inline(always)]
+    pub const fn add_ps(&self, n: i128) -> Self {
+        self.add_attos(n.saturating_mul(ATTOS_PER_PS_I128))
+    }
+
+    /// Adds the specified number of femtoseconds to this time value.
+    #[inline(always)]
+    pub const fn add_fs(&self, n: i128) -> Self {
+        self.add_attos(n.saturating_mul(ATTOS_PER_FS_I128))
     }
 
     /// Adds the specified number of minutes to this time value using saturating arithmetic.
     #[inline]
-    pub const fn add_min(&mut self, n: i64) -> &mut Self {
-        self.attos = self
-            .attos
-            .saturating_add((n as i128) * 60 * ATTOS_PER_SEC_I128);
-        self
+    pub const fn add_min(&self, n: i64) -> Self {
+        Dt::new(
+            self.attos
+                .saturating_add((n as i128) * 60 * ATTOS_PER_SEC_I128),
+        )
     }
 
     /// Adds the specified number of hours to this time value using saturating arithmetic.
     #[inline]
-    pub const fn add_hr(&mut self, n: i64) -> &mut Self {
-        self.attos = self
-            .attos
-            .saturating_add((n as i128) * 3600 * ATTOS_PER_SEC_I128);
-        self
+    pub const fn add_hr(&self, n: i64) -> Self {
+        Dt::new(
+            self.attos
+                .saturating_add((n as i128) * 3600 * ATTOS_PER_SEC_I128),
+        )
     }
 
-    /// Adds the specified number of milliseconds to this time value.
-    #[inline]
-    pub const fn add_ms(&mut self, n: i64) -> &mut Self {
-        self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_MS_I128);
-        self
-    }
-
-    /// Adds the specified number of microseconds to this time value.
-    #[inline]
-    pub const fn add_us(&mut self, n: i64) -> &mut Self {
-        self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_US_I128);
-        self
-    }
-
-    /// Adds the specified number of nanoseconds to this time value.
-    #[inline]
-    pub const fn add_ns(&mut self, n: i64) -> &mut Self {
-        self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_NS_I128);
-        self
-    }
-
-    /// Adds the specified number of picoseconds to this time value.
-    #[inline]
-    pub const fn add_ps(&mut self, n: i64) -> &mut Self {
-        self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_PS_I128);
-        self
-    }
-
-    /// Adds the specified number of femtoseconds to this time value.
-    #[inline]
-    pub const fn add_fs(&mut self, n: i64) -> &mut Self {
-        self.attos = self.attos.saturating_add((n as i128) * ATTOS_PER_FS_I128);
-        self
-    }
-
-    /// Adds the specified number of attoseconds to this time value.
-    #[inline]
-    pub const fn add_attos(&mut self, n: i128) -> &mut Self {
-        self.attos = self.attos.saturating_add(n);
-        self
-    }
-
-    /// Total attoseconds (exact i128 representation).
+    /// Returns the total time in attoseconds.
     #[inline(always)]
     pub const fn to_attos(&self) -> i128 {
         self.attos
     }
 
     /// Returns the total time in milliseconds.
-    #[inline]
+    #[inline(always)]
     pub const fn to_ms(&self) -> i128 {
         self.attos / ATTOS_PER_MS_I128
     }
 
     /// Returns the total time in microseconds.
-    #[inline]
+    #[inline(always)]
     pub const fn to_us(&self) -> i128 {
         self.attos / ATTOS_PER_US_I128
     }
 
     /// Returns the total time in nanoseconds.
-    #[inline]
+    #[inline(always)]
     pub const fn to_ns(&self) -> i128 {
         self.attos / ATTOS_PER_NS_I128
     }
 
     /// Returns the total time in picoseconds.
-    #[inline]
+    #[inline(always)]
     pub const fn to_ps(&self) -> i128 {
         self.attos / ATTOS_PER_PS_I128
     }
 
     /// Returns the total time in femtoseconds.
-    #[inline]
+    #[inline(always)]
     pub const fn to_fs(&self) -> i128 {
         self.attos / ATTOS_PER_FS_I128
     }

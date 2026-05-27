@@ -199,7 +199,9 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
 /// **Do not use this for round tripping.**
 pub const fn historical_sofa_offset_for_non_adjusted(dt: &Dt) -> Option<Real> {
     // < 1961-1-1 midnight, or >= 1972-1-1 midnight
-    if dt.attos < -1230724800000000000000000000 || dt.attos >= -883656990000000000000000000 {
+    if dt.to_attos() < -1230724800000000000000000000
+        || dt.to_attos() >= -883656990000000000000000000
+    {
         return None;
     }
     let jd = dt.to_jd_f();

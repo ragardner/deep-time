@@ -10,16 +10,11 @@ use crate::{
 ///
 /// Unit detection is chosen for maximum real-world compatibility and uses
 /// `div_euclid`/`rem_euclid` everywhere for correct negative-timestamp handling.
-///
-/// All paths correctly convert from Unix epoch to the library's internal epoch
-/// (2000-01-01 12:00:00 UTC) before constructing the `Dt`.
-///
-/// Returns a `Dt` in `Scale::UTC`.
 pub(crate) fn parse_pure_numeric_unix_timestamp(
     trimmed: &str,
     integer_digits: usize,
 ) -> Option<Dt> {
-    // Clean sign handling once at the top (handles +, -, and no sign)
+    // sign handling
     let (s, sign) = if let Some(stripped) = trimmed.strip_prefix('+') {
         (stripped, 1i128)
     } else if let Some(stripped) = trimmed.strip_prefix('-') {
@@ -34,14 +29,13 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
         (s, "")
     };
 
-    // Integer part is always parsed as non-negative for maximum precision
     let int_val: i128 = if int_part.is_empty() || int_part == "0" {
         0
     } else {
         int_part.parse().ok()?
     };
 
-    // High-precision path (≥ 19 integer digits) — now uses exact i128 + correct sign
+    // High-precision path (≥ 19 integer digits)
     if integer_digits >= 19 {
         let frac_nanos = frac_to_nanos(frac_part).unwrap_or(0) as i128;
         // FIXED: sign now applies to the whole value (int + frac)
@@ -56,7 +50,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
         return Some(Dt::from(total_attos, Scale::UTC));
     }
 
-    // Common path (1–18 digits) — unchanged logic but now with perfect sign handling
+    // Common path (1–18 digits)
     let attos_per_unit = match integer_digits {
         12..=15 => 1_000_000_000_000_000i128, // milliseconds
         16..=18 => 1_000_000_000_000i128,     // microseconds

@@ -128,7 +128,10 @@ pub(crate) fn classify_date(
                     }
                     if let Some(d) = to_ascii_digit(*ch) {
                         date_norm.push(d);
+                    } else {
+                        continue;
                     }
+
                     num_digits += 1;
                     if currently != IndexIn::Fraction {
                         num_non_decimal_digits += 1;

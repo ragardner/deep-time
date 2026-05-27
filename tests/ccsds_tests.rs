@@ -39,8 +39,7 @@ mod ccsds_tests {
 
     #[test]
     fn cuc_one_second_after() {
-        let mut dt = tai_epoch();
-        dt.add_sec(1);
+        let mut dt = tai_epoch().add_sec(1);
         let (buf, len) = dt.to_ccsds_c(Scale::TAI, 4, 0, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x1C, 0x00, 0x00, 0x00, 0x01]);
@@ -48,8 +47,7 @@ mod ccsds_tests {
 
     #[test]
     fn cuc_fractional() {
-        let mut dt = tai_epoch();
-        dt.add_attos(500_000_000_000_000_000);
+        let dt = tai_epoch().add_attos(500_000_000_000_000_000);
         let (buf, len) = dt.to_ccsds_c(Scale::TAI, 1, 3, false).unwrap();
         assert_eq!(len, 5);
         assert_eq!(&buf[..len], &[0x13, 0x00, 0x80, 0x00, 0x00]);
@@ -85,8 +83,7 @@ mod ccsds_tests {
 
     #[test]
     fn cds_submillisecond() {
-        let mut dt = utc_epoch();
-        dt.add_attos(123_456_789_012_345_678);
+        let dt = utc_epoch().add_attos(123_456_789_012_345_678);
         let (buf, len) = dt.to_ccsds_d(Scale::TAI, 2, 1, false).unwrap();
         assert_eq!(len, 9);
         assert_eq!(buf[0], 0x41);
@@ -115,8 +112,7 @@ mod ccsds_tests {
 
     #[test]
     fn ccs_subsecond() {
-        let mut dt = y2k();
-        dt.add_attos(123_456_789_012_345_678);
+        let dt = y2k().add_attos(123_456_789_012_345_678);
         let (buf, len) = dt.to_ccsds_ccs(Scale::TAI, false, 2).unwrap();
         assert_eq!(len, 10);
         assert_eq!(buf[0], 0x52);

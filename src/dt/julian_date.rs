@@ -11,8 +11,8 @@ impl Dt {
     ///
     /// For a float value use [`Self::to_jd_f`].
     pub const fn to_jd(&self) -> (i64, u128) {
-        let days_since_j2000 = self.attos.div_euclid(ATTOS_PER_DAY);
-        let remaining_attos = self.attos.rem_euclid(ATTOS_PER_DAY);
+        let days_since_j2000 = self.to_attos().div_euclid(ATTOS_PER_DAY);
+        let remaining_attos = self.to_attos().rem_euclid(ATTOS_PER_DAY);
 
         let jd_int = JD_2000_2_451_545.saturating_add(days_since_j2000 as i64);
         (jd_int, remaining_attos as u128)
