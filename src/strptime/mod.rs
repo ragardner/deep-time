@@ -198,7 +198,7 @@ impl StrPTimeFmt {
             // shortcuts
             b'F' | b'D' | b'T' | b'R' |
             // library directives
-            b'*' => {
+            b'L' | b'*' => {
                 fmt = &fmt[1..];
             }
 

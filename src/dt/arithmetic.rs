@@ -59,12 +59,19 @@ impl Dt {
         }
     }
 
-    /// Returns the fractional part of this time **in attoseconds** as a `u64`.
-    ///
-    /// Equivalent to the remainder after removing whole seconds.
-    /// Always returns a value in the range `0 ≤ x < ATTOS_PER_SEC`.
+    /// If this time were turned into seconds, this returns the fractional attoseconds part.
     #[inline(always)]
-    pub const fn to_sec_frac(&self) -> u64 {
+    pub const fn to_sec_frac(&self) -> i64 {
+        (self.attos % ATTOS_PER_SEC_I128) as i64
+    }
+
+    /// If this time were turned into i64 seconds and u64 (always pushing to the positive)
+    /// fractional attoseconds, this returns the fractional attoseconds part.
+    ///
+    /// - Always returns a value in the range `0 ≤ x < ATTOS_PER_SEC`.
+    /// - For negative [`Dt`]s this is not simply the decimal part of the time in seconds.
+    #[inline(always)]
+    pub const fn to_sec_ufrac(&self) -> u64 {
         self.attos.rem_euclid(ATTOS_PER_SEC_I128) as u64
     }
 

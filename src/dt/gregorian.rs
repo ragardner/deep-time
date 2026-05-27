@@ -202,8 +202,8 @@ impl Dt {
         let tai = self.to(current, Scale::TAI);
         let from_unix_epoch = tai.to_scale_and_then_diff(new, Dt::UNIX_EPOCH);
 
-        let unix_sec = Dt::i128_to_i64(from_unix_epoch.to_sec());
-        let frac = from_unix_epoch.to_sec_frac();
+        let unix_sec = from_unix_epoch.to_sec64();
+        let frac = from_unix_epoch.to_sec_ufrac();
 
         let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
 
