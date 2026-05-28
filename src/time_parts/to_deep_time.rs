@@ -113,14 +113,9 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
 
         if let Some(name) = &self.iana_name {
-            let name_str = name.as_str().map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidBytes,
-                    "invalid iana ascii: {:?}: {}",
-                    name,
-                    e
-                )
-            })?;
+            let name_str = name
+                .as_str()
+                .map_err(|e| an_err!(DtErrKind::InvalidBytes, "iana ascii: {:?}: {}", name, e))?;
 
             if !name_str.is_empty() {
                 let provisional_unix =
@@ -138,7 +133,7 @@ impl TimeParts {
                     None => {
                         return Err(an_err!(
                             DtErrKind::InvalidTimezoneOffset,
-                            "invalid iana: {}",
+                            "iana: {}",
                             name_str
                         ));
                     }
