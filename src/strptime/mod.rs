@@ -1,5 +1,7 @@
 pub mod parser;
 
+#[cfg(feature = "alloc")]
+use crate::Scale;
 use crate::error::{DtErr, DtErrKind};
 use crate::{Dt, TimeParts, an_err};
 use core::result::Result;
@@ -105,13 +107,15 @@ impl StrPTimeFmt {
     pub fn to_dt(
         &self,
         s: &str,
+        scale: Scale,
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<Dt, DtErr> {
         TimeParts::from_str(
-            self.as_str()?,
             s,
+            self.as_str()?,
+            scale,
             inp_can_end_before_fmt,
             fmt_can_end_before_inp,
             allow_partial_date,
@@ -147,7 +151,8 @@ impl StrPTimeFmt {
     pub fn to_str(
         &self,
         s: &str,
-        output_fmt: &str,
+        inp_scale: Scale,
+        out_fmt: &str,
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
@@ -155,14 +160,15 @@ impl StrPTimeFmt {
         use crate::Scale;
 
         let parts = TimeParts::from_str(
-            self.as_str()?,
             s,
+            self.as_str()?,
+            inp_scale,
             inp_can_end_before_fmt,
             fmt_can_end_before_inp,
             allow_partial_date,
         )?;
         let scale = parts.scale;
-        parts.to_dt()?.to_str(Scale::TAI, scale, output_fmt)
+        parts.to_dt()?.to_str(Scale::TAI, scale, out_fmt)
     }
 
     fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {

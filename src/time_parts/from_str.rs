@@ -1,4 +1,4 @@
-use crate::{DtErr, DtErrKind, Offset, Parser, TimeParts, an_err};
+use crate::{DtErr, DtErrKind, Offset, Parser, Scale, TimeParts, an_err};
 
 impl TimeParts {
     /// Low-level parser equivalent to `strptime` with a provided format string.
@@ -28,8 +28,9 @@ impl TimeParts {
     /// - Incomplete data when `allow_partial_date` is `false`
     /// - Trailing characters (when `fmt_can_end_before_inp` is `false`)
     pub fn from_str(
-        fmt: &str,
         input: &str,
+        fmt: &str,
+        scale: Scale,
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,

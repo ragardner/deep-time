@@ -1,4 +1,4 @@
-use crate::Dt;
+use crate::{Dt, Scale};
 use alloc::string::String;
 use alloc::vec::Vec;
 
@@ -91,6 +91,9 @@ pub enum Mode {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Debug, PartialEq)]
 pub struct ParseCfg {
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub scale: Scale,
+
     /// Explicit list of formats to try **in the exact order given**.
     ///
     /// If this is provided and the vec is non-empty and the mode is Explicit
@@ -145,6 +148,7 @@ fn default_true() -> bool {
 impl Default for ParseCfg {
     fn default() -> Self {
         Self {
+            scale: Scale::default(),
             parse: None,
             mode: Mode::default(),
             order: Order::default(),
@@ -164,21 +168,6 @@ pub(crate) enum OrderFirst {
     Month,
     /// Day-Month-Year ordering (most of the world, `DD/MM/YYYY`, `DD.MM.YYYY`)
     Day,
-}
-
-#[derive(Clone)]
-pub(crate) struct AmBuilder {
-    pub pieces: Vec<&'static str>,
-    pub seen_year: bool,
-    pub seen_month: bool,
-    pub seen_day: bool,
-}
-
-#[inline]
-pub(crate) fn append_to_all(builders: &mut Vec<AmBuilder>, s: &'static str) {
-    for b in builders {
-        b.pieces.push(s);
-    }
 }
 
 /// Language codes following ISO 639-1 standard (two-letter codes).

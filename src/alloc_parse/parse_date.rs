@@ -179,7 +179,9 @@ impl Dt {
         let (mode, date_order) = if let Some(formats) = &opts.parse {
             if !formats.is_empty() {
                 for fmt in formats {
-                    if let Ok(value) = Self::from_str(normalized, fmt, true, true, false) {
+                    if let Ok(value) =
+                        Self::from_str(normalized, fmt, opts.scale, true, true, false)
+                    {
                         return Ok(value);
                     }
                 }
@@ -209,13 +211,7 @@ impl Dt {
                     }
                 }
                 _ => {
-                    if let Some(dt) = try_pure_numeric(
-                        normalized,
-                        classification.num_digits,
-                        classification.num_non_decimal_digits,
-                        classification.is_decimal,
-                        mode,
-                    ) {
+                    if let Some(dt) = try_pure_numeric(normalized, &classification, mode) {
                         // std::eprintln!("NUMERIC INPUT SUCCESS: {:?}", s);
                         return Ok(dt);
                     }
@@ -410,7 +406,7 @@ impl Dt {
 /// The `fmt` we get from the iterator is still `'static`, but it coerces automatically
 /// to `&str`, so everything continues to work.
 #[inline]
-pub(crate) fn try_compatible_formats<I>(s: &str, formats: I) -> Option<Dt>
+pub(crate) fn try_compatible_formats<I>(s: &str, scale: Scale, formats: I) -> Option<Dt>
 where
     I: IntoIterator<Item = String>,
 {
@@ -429,11 +425,15 @@ where
     // dt
     formats
         .into_iter()
-        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false).ok())
+        .find_map(|fmt| Dt::from_str(s, &fmt, scale, true, true, false).ok())
 }
 
 #[inline]
-pub(crate) fn try_unambiguous(s: &str, classification: &DateClassification) -> Option<Dt> {
+pub(crate) fn try_unambiguous(
+    s: &str,
+    scale: Scale,
+    classification: &DateClassification,
+) -> Option<Dt> {
     if matches!(classification.bytes_len, 6..=8)
         && let Some(dt) = parse_yyyy_mm(s.as_bytes())
     {

@@ -53,7 +53,7 @@ pub struct TimeParts {
     /// Whether this instant represents a leap second.
     pub is_leap_sec: bool,
     /// The time scale this value belongs to (TAI, UTC, etc.).
-    pub scale: Scale,
+    pub scale: Option<Scale>,
     /// Day of the week.
     pub wkday: Option<Weekday>,
     /// Day of the year (1–366), corresponding to `%j`.

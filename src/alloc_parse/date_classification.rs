@@ -265,3 +265,18 @@ impl Word {
         Word { low, norm, t, c }
     }
 }
+
+#[derive(Clone)]
+pub(crate) struct AmBuilder {
+    pub pieces: Vec<&'static str>,
+    pub seen_year: bool,
+    pub seen_month: bool,
+    pub seen_day: bool,
+}
+
+#[inline]
+pub(crate) fn append_to_all(builders: &mut Vec<AmBuilder>, s: &'static str) {
+    for b in builders {
+        b.pieces.push(s);
+    }
+}

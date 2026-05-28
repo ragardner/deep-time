@@ -1,6 +1,6 @@
 use crate::{
-    Dt, MAX_YEAR, MIN_YEAR, Mode, NS_PER_DAY, PLAUSIBLE_YYYYMM_YEAR_RANGE, parse_jd, parse_mjd,
-    parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
+    DateClassification, Dt, MAX_YEAR, MIN_YEAR, Mode, NS_PER_DAY, PLAUSIBLE_YYYYMM_YEAR_RANGE,
+    parse_jd, parse_mjd, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
 };
 
 #[inline]
@@ -42,19 +42,17 @@ pub(crate) fn frac_to_nanos(frac_part: &str) -> Option<i128> {
     Some(result)
 }
 
-pub(crate) fn try_pure_numeric(
-    input: &str,
-    total_digits: u8,
-    integer_digits: u8,
-    is_decimal: bool,
-    mode: Mode,
-) -> Option<Dt> {
+pub(crate) fn try_pure_numeric(input: &str, cls: &DateClassification, mode: Mode) -> Option<Dt> {
+    let num_digits = cls.num_digits;
+    let num_non_decimal_digits = cls.num_non_decimal_digits;
+    let is_decimal = cls.is_decimal;
+
     // Year-only (1-4 digits)
-    if (1..=4).contains(&total_digits) {
+    if (1..=4).contains(&num_digits) {
         return match mode {
             Mode::Scientific => parse_i32_year(input),
             _ => {
-                match total_digits {
+                match num_digits {
                     2 => parse_two_digit_year(input),
                     4 => parse_i32_year(input),
                     _ => None, // 1 or 3 digits are too ambiguous
@@ -63,7 +61,7 @@ pub(crate) fn try_pure_numeric(
         };
     }
     // 5-digit handling — now also supports fractional MJD (e.g. "60400.75")
-    if total_digits == 5 || (is_decimal && integer_digits == 5) {
+    if num_digits == 5 || (is_decimal && num_non_decimal_digits == 5) {
         return match mode {
             Mode::Legacy => parse_yyddd(input),
             Mode::Scientific => parse_mjd(input).or_else(|| parse_yyddd(input)),
@@ -78,7 +76,7 @@ pub(crate) fn try_pure_numeric(
         };
     }
     // 6-digit pure numeric — explicit per-mode strategy
-    if total_digits == 6 {
+    if num_digits == 6 {
         return match mode {
             Mode::Legacy => parse_yymmdd(input).or_else(|| parse_yyyymm(input)),
             Mode::Scientific => parse_yyyymm(input).or_else(|| parse_yymmdd(input)),
@@ -95,7 +93,7 @@ pub(crate) fn try_pure_numeric(
         };
     }
     // 7-digit handling — integer JD and fractional JD
-    if integer_digits == 7 {
+    if num_non_decimal_digits == 7 {
         return match mode {
             Mode::Legacy => parse_yyyyjjj(input),
             Mode::Scientific => parse_jd(input, !is_decimal).or_else(|| parse_yyyyjjj(input)),

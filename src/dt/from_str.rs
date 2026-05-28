@@ -105,13 +105,15 @@ impl Dt {
     pub fn from_str(
         s: &str,
         fmt: &str,
+        scale: Scale,
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<Dt, DtErr> {
         TimeParts::from_str(
-            fmt,
             s,
+            fmt,
+            scale,
             inp_can_end_before_fmt,
             fmt_can_end_before_inp,
             allow_partial_date,

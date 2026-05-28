@@ -139,6 +139,6 @@ impl TimeParts {
             }
         };
 
-        TimeParts::from_str(format, cleaned, false, false, false)
+        TimeParts::from_str(cleaned, format, Scale::UTC, false, false, false)
     }
 }
