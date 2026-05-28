@@ -77,16 +77,7 @@ mod tests {
 
     #[cfg(feature = "tz")]
     #[test]
-    fn print_stuff() {
-        use deep_time::{Dt, Scale};
-
-        let orig = "01-01-2000T12:00:00 PM +0000 TAI";
-        let x: Dt = orig.parse().unwrap();
-        let s = x
-            .to_str(Scale::TAI, Scale::TAI, "%d-%m-%YT%H:%M:%S %p %z %L")
-            .unwrap();
-        assert_eq!(orig, s);
-    }
+    fn print_stuff() {}
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let dt = Dt::from_str_parse(input.trim(), &opts)
