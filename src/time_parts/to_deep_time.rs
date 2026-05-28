@@ -1,7 +1,7 @@
-use crate::leap_seconds::leap_sec;
+use crate::Scale;
 use crate::tzdb::offset_info_at_local;
 use crate::{
-    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
+    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
@@ -17,19 +17,11 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
             let total_sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-            if self.scale == Scale::UTC {
-                return Ok(Dt::from_sec_and_attos(
-                    total_sec + leap_sec(total_sec, true).offset,
-                    self.attos.unwrap_or(0),
-                    Scale::TAI,
-                ));
-            } else {
-                return Ok(Dt::from_sec_and_attos(
-                    total_sec,
-                    self.attos.unwrap_or(0),
-                    self.scale,
-                ));
-            }
+            return Ok(Dt::from_sec_and_attos(
+                total_sec,
+                self.attos.unwrap_or(0),
+                Scale::TAI,
+            ));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -160,18 +152,10 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Final construction
         // ──────────────────────────────────────────────────────────────
-        if self.scale == Scale::UTC {
-            Ok(Dt::from_sec_and_attos(
-                total_sec + leap_sec(total_sec, true).offset,
-                self.attos.unwrap_or(0),
-                Scale::TAI,
-            ))
-        } else {
-            Ok(Dt::from_sec_and_attos(
-                total_sec,
-                self.attos.unwrap_or(0),
-                self.scale,
-            ))
-        }
+        Ok(Dt::from_sec_and_attos(
+            total_sec,
+            self.attos.unwrap_or(0),
+            Scale::TAI,
+        ))
     }
 }

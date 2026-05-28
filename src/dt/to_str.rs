@@ -77,7 +77,7 @@ impl Dt {
     /// use deep_time::{Dt, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1);
-    /// let s = x.to_str(Scale::TAI, Scale::UTC, "%F").unwrap();
+    /// let s = x.to_str(Scale::UTC, "%F").unwrap();
     ///
     /// println!("{}", s);
     /// ```
@@ -93,13 +93,8 @@ impl Dt {
     /// - [`Dt::to_str_with_offset`](../struct.Dt.html#method.to_str_with_offset)
     /// - [`Dt::to_str_with_tz`](../struct.Dt.html#method.to_str_with_tz)
     #[inline]
-    pub fn to_str(
-        &self,
-        current: Scale,
-        new: Scale,
-        fmt: &str,
-    ) -> Result<alloc::string::String, DtErr> {
-        self.to_str_with_offset(current, new, fmt, 0)
+    pub fn to_str(&self, current: Scale, fmt: &str) -> Result<alloc::string::String, DtErr> {
+        self.to_str_with_offset(current, fmt, 0)
     }
 
     /// Formats this [`Dt`] into a String, applying a fixed UTC offset.  Requires the
@@ -122,7 +117,7 @@ impl Dt {
     /// let x = Dt::from_ymd(2000, 1, 1);
     ///
     /// // offset of minus one hour
-    /// let s = x.to_str_with_offset(Scale::TAI, Scale::UTC, "%F", -3600).unwrap();
+    /// let s = x.to_str_with_offset(Scale::UTC, "%F", -3600).unwrap();
     ///
     /// println!("{}", s);
     /// ```
@@ -141,12 +136,11 @@ impl Dt {
     pub fn to_str_with_offset(
         &self,
         current: Scale,
-        new: Scale,
         fmt: &str,
         secs: i32,
     ) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self._to_u8_with_offset(current, new, fmt, &mut buf, secs)?;
+        let n = self._to_u8_with_offset(current, fmt, &mut buf, secs)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
@@ -176,7 +170,7 @@ impl Dt {
     ///
     /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
     ///
-    /// let s = x.to_str_with_tz(Scale::TAI, Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
+    /// let s = x.to_str_with_tz(Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
     ///
     /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
     /// # }
@@ -196,12 +190,11 @@ impl Dt {
     pub fn to_str_with_tz(
         &self,
         current: Scale,
-        new: Scale,
         fmt: &str,
         tz_name: &str,
     ) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self._to_u8_with_tz(current, new, fmt, &mut buf, tz_name)?;
+        let n = self._to_u8_with_tz(current, fmt, &mut buf, tz_name)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
@@ -213,19 +206,14 @@ impl Dt {
     /// - If fractional part is zero → no decimal point at all (e.g. `...45Z`).
     /// - Example: `"2024-03-14T15:30:45.123Z"`
     #[inline]
-    pub fn to_str_rfc3339(&self, current: Scale, new: Scale) -> Result<String, DtErr> {
-        self.to_str_rfc3339_nf(current, new, 9)
+    pub fn to_str_rfc3339(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_rfc3339_nf(current, 9)
     }
 
     /// Same as [`Dt::to_str_rfc3339`](../struct.Dt.html#method.to_str_rfc3339) but
     /// with a configurable maximum number of fractional digits (0–18). Trailing zeros are
     /// always trimmed.
-    pub fn to_str_rfc3339_nf(
-        &self,
-        current: Scale,
-        new: Scale,
-        max_precision: usize,
-    ) -> Result<String, DtErr> {
+    pub fn to_str_rfc3339_nf(&self, current: Scale, max_precision: usize) -> Result<String, DtErr> {
         let prec = max_precision.min(18);
         // Uses the formatter with the `~` "trim trailing zeros" flag.
         // The formatter already handles:
@@ -233,7 +221,7 @@ impl Dt {
         //   - full-width years otherwise
         //   - suppressing the decimal point entirely when the trimmed fraction is zero
         let fmt = alloc::format!("%Y-%m-%dT%H:%M:%S%.{}~fZ", prec);
-        self.to_str_with_offset(current, new, &fmt, 0)
+        self.to_str_with_offset(current, &fmt, 0)
     }
 
     /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style).
@@ -242,8 +230,8 @@ impl Dt {
     /// - Still trims trailing zeros in the fractional part.
     /// - Example: `"2025-04-16T14:30:45.123+00:00"`
     #[inline]
-    pub fn to_str_iso8601(&self, current: Scale, new: Scale) -> Result<String, DtErr> {
-        self.to_str_with_offset(current, new, "%Y-%m-%dT%H:%M:%S%.~f%:z", 0)
+    pub fn to_str_iso8601(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_with_offset(current, "%Y-%m-%dT%H:%M:%S%.~f%:z", 0)
     }
 
     /// **Compact ISO 8601 basic format** (no separators).
@@ -251,8 +239,8 @@ impl Dt {
     /// - Useful for filenames, URLs, database keys, etc.
     /// - Example: `"20250416T143045.123456789Z"`
     #[inline]
-    pub fn to_str_iso8601_basic(&self, current: Scale, new: Scale) -> Result<String, DtErr> {
-        self.to_str_with_offset(current, new, "%Y%m%dT%H%M%S%.~fZ", 0)
+    pub fn to_str_iso8601_basic(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_with_offset(current, "%Y%m%dT%H%M%S%.~fZ", 0)
     }
 
     /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
@@ -260,40 +248,40 @@ impl Dt {
     /// This is the format used in `Date`, `Expires`, `Last-Modified` headers.
     /// Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
     #[inline]
-    pub fn to_str_http(&self, current: Scale, new: Scale) -> Result<String, DtErr> {
-        self.to_str_with_offset(current, new, "%a, %d %b %Y %H:%M:%S GMT", 0)
+    pub fn to_str_http(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_with_offset(current, "%a, %d %b %Y %H:%M:%S GMT", 0)
     }
 
     /// **RFC 2822** date format (used in email `Date` headers).
     ///
     /// Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
     #[inline]
-    pub fn to_str_rfc2822(&self, current: Scale, new: Scale) -> Result<String, DtErr> {
-        self.to_str_with_offset(current, new, "%a, %d %b %Y %H:%M:%S %z", 0)
+    pub fn to_str_rfc2822(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_with_offset(current, "%a, %d %b %Y %H:%M:%S %z", 0)
     }
 
     /// **ISO 8601 week date**.
     ///
     /// Example: `"2025-W16-3"` (year-week-day)
     #[inline]
-    pub fn to_str_iso_week_date(&self, current: Scale, new: Scale) -> Result<String, DtErr> {
-        self.to_str_with_offset(current, new, "%G-W%V-%u", 0)
+    pub fn to_str_iso_week_date(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_with_offset(current, "%G-W%V-%u", 0)
     }
 
     /// Just the **ISO date** part (no time).
     ///
     /// Example: `"2025-04-16"`
     #[inline]
-    pub fn to_str_iso_date(&self, current: Scale, new: Scale) -> Result<String, DtErr> {
-        self.to_str_with_offset(current, new, "%Y-%m-%d", 0)
+    pub fn to_str_iso_date(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_with_offset(current, "%Y-%m-%d", 0)
     }
 
     /// Just the **time** part with fractional seconds (trimmed).
     ///
     /// Example: `"14:30:45.123456789"`
     #[inline]
-    pub fn to_str_iso_time(&self, current: Scale, new: Scale) -> Result<String, DtErr> {
-        self.to_str_with_offset(current, new, "%H:%M:%S%.~f", 0)
+    pub fn to_str_iso_time(&self, current: Scale) -> Result<String, DtErr> {
+        self.to_str_with_offset(current, "%H:%M:%S%.~f", 0)
     }
 }
 
@@ -360,7 +348,7 @@ impl Dt {
     /// let x = Dt::from_ymd(2000, 1, 1);
     ///
     /// // offset of minus one hour
-    /// let b = x.to_str_bin_with_offset(Scale::TAI, Scale::UTC, "%F", -3600).unwrap();
+    /// let b = x.to_str_bin_with_offset(Scale::UTC, "%F", -3600).unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -379,11 +367,10 @@ impl Dt {
     pub fn to_str_bin_with_offset(
         &self,
         current: Scale,
-        new: Scale,
         fmt: &str,
         secs: i32,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_offset(current, new, secs);
+        let ymdhms = self.ymdhms_rich_with_offset(current, secs);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -414,7 +401,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2000, 1, 1);
     ///
-    /// let b = x.to_str_bin_with_tz(Scale::TAI, Scale::UTC, "%F", "America/New_York").unwrap();
+    /// let b = x.to_str_bin_with_tz(Scale::UTC, "%F", "America/New_York").unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -433,11 +420,10 @@ impl Dt {
     pub fn to_str_bin_with_tz(
         &self,
         current: Scale,
-        new: Scale,
         fmt: &str,
         tz_name: &str,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_tz(current, new, tz_name);
+        let ymdhms = self.ymdhms_rich_with_tz(current, tz_name);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -452,12 +438,11 @@ impl Dt {
     pub fn _to_u8_with_offset(
         &self,
         current: Scale,
-        new: Scale,
         fmt: &str,
         dest: &mut [u8],
         secs: i32,
     ) -> Result<usize, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_offset(current, new, secs);
+        let ymdhms = self.ymdhms_rich_with_offset(current, secs);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
@@ -476,12 +461,11 @@ impl Dt {
     pub fn _to_u8_with_tz(
         &self,
         current: Scale,
-        new: Scale,
         fmt: &str,
         dest: &mut [u8],
         tz_name: &str,
     ) -> Result<usize, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_tz(current, new, tz_name);
+        let ymdhms = self.ymdhms_rich_with_tz(current, tz_name);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
@@ -502,12 +486,7 @@ impl Dt {
     }
 
     /// Helper for creating an offset adjusted YmdHmsRich.
-    pub(crate) fn ymdhms_rich_with_offset(
-        &self,
-        current: Scale,
-        new: Scale,
-        secs: i32,
-    ) -> YmdHmsRich {
+    pub(crate) fn ymdhms_rich_with_offset(&self, current: Scale, secs: i32) -> YmdHmsRich {
         let local_tp = if secs != 0 {
             *self
                 + Dt {
@@ -516,20 +495,15 @@ impl Dt {
         } else {
             *self
         };
-        let mut ymdhms = local_tp.to_ymdhms_rich_on(current, new);
+        let mut ymdhms = local_tp.to_ymdhms_rich_on(current, current);
         ymdhms.set_offset(Some(secs));
         ymdhms
     }
 
     /// Helper for creating a timezone-adjusted YmdHmsRich.
-    pub(crate) fn ymdhms_rich_with_tz(
-        &self,
-        current: Scale,
-        new: Scale,
-        tz_name: &str,
-    ) -> YmdHmsRich {
+    pub(crate) fn ymdhms_rich_with_tz(&self, current: Scale, tz_name: &str) -> YmdHmsRich {
         // 1. Get the true UTC Unix timestamp
-        let utc_unix = self.to(current, new).to_diff_raw(Dt::UNIX_EPOCH);
+        let utc_unix = self.to_diff_raw(Dt::UNIX_EPOCH);
 
         // 2. Look up offset + abbrev at that exact UTC instant
         let unix_sec = Dt::attos_to_sec_i64(utc_unix.to_attos());
@@ -544,7 +518,7 @@ impl Dt {
         };
         let local_tp = *self + span;
 
-        let mut ymdhms = local_tp.to_ymdhms_rich_on(current, new);
+        let mut ymdhms = local_tp.to_ymdhms_rich_on(current, current);
         ymdhms.set_offset(Some(offset_secs));
         ymdhms.set_tz(Some(tz_name));
         ymdhms.set_tz_abbrev(Some(abbrev));

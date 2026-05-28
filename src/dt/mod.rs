@@ -123,7 +123,7 @@ use core::fmt;
 /// // uses impl FromStr but Dt::parse provides the same functionality
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
 ///
-/// let ymd = x.to_ymdhms(Scale::TAI);
+/// let ymd = x.to_ymdhms(Scale::UTC);
 /// assert_eq!(ymd.yr(), 2000);
 /// assert_eq!(ymd.mo(), 1);
 /// assert_eq!(ymd.day(), 1);
@@ -143,10 +143,10 @@ use core::fmt;
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
 ///
 /// let s = x
-///  .to_str_with_tz(Scale::TAI, Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_with_tz(Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
 ///  .unwrap();
 /// let b = x
-///  .to_str_bin_with_tz(Scale::TAI, Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_bin_with_tz(Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
 ///  .unwrap();
 ///
 /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");

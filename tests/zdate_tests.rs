@@ -16,9 +16,7 @@ mod tests {
 
         // Verify internal representation (the snapped UTC instant)
         assert_eq!(
-            our_dt
-                .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
-                .to_sec(),
+            our_dt.to_diff_raw(Dt::UNIX_EPOCH).to_sec(),
             1678604400,
             "internal unix timestamp should be the snapped UTC instant"
         );
@@ -26,7 +24,7 @@ mod tests {
         // Format back using the IANA zone
         let fmt = "%Y-%m-%d %H:%M:%S %Q";
         let output = our_dt
-            .to_str_with_tz(Scale::TAI, Scale::UTC, fmt, "America/New_York")
+            .to_str_with_tz(Scale::UTC, fmt, "America/New_York")
             .expect("to_str_with_tz should succeed");
 
         // === THE KEY REGRESSION ASSERT ===
@@ -39,7 +37,7 @@ mod tests {
         let our_dt2: Dt =
             Dt::from_str_parse(&output, &None).expect("second parse should also succeed");
         let output2 = our_dt2
-            .to_str_with_tz(Scale::TAI, Scale::UTC, fmt, "America/New_York")
+            .to_str_with_tz(Scale::UTC, fmt, "America/New_York")
             .expect("second format should succeed");
 
         assert_eq!(output2, expected_snapped, "round-trip must be stable");
@@ -52,20 +50,10 @@ mod tests {
 
         let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
         let s = x
-            .to_str_with_tz(
-                Scale::TAI,
-                Scale::UTC,
-                "%A, %B %d, %Y %H:%M:%S %Q",
-                "America/New_York",
-            )
+            .to_str_with_tz(Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
             .unwrap();
         let b = x
-            .to_str_bin_with_tz(
-                Scale::TAI,
-                Scale::UTC,
-                "%A, %B %d, %Y %H:%M:%S %Q",
-                "America/New_York",
-            )
+            .to_str_bin_with_tz(Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
             .unwrap();
 
         assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
@@ -82,16 +70,14 @@ mod tests {
 
         let orig = "01-01-2000T12:00:00 PM +0000 TAI";
         let x: Dt = orig.parse().unwrap();
-        let s = x
-            .to_str(Scale::TAI, Scale::TAI, "%d-%m-%YT%H:%M:%S %p %z %L")
-            .unwrap();
+        let s = x.to_str(Scale::TAI, "%d-%m-%YT%H:%M:%S %p %z %L").unwrap();
         assert_eq!(orig, s);
     }
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let dt = Dt::from_str_parse(input.trim(), &opts)
             .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
-        let actual = dt.to_str_rfc3339(Scale::TAI, Scale::UTC).unwrap();
+        let actual = dt.to_str_rfc3339(Scale::UTC).unwrap();
 
         assert_eq!(actual, expected_rfc3339, "Input: {}", input);
     }
@@ -388,27 +374,23 @@ mod tests {
     fn date_parser_roundtrip() {
         let tp1 = Dt::from_sec(5, Scale::LTC);
         let tp2 = Dt::from_sec(5, Scale::GPS);
-        let xp1 = tp1
-            .to_str(Scale::TAI, Scale::UTC, "%Y-%m-%dT%H:%M:%S%.f")
-            .unwrap();
-        let xp2 = tp2
-            .to_str(Scale::TAI, Scale::UTC, "%Y-%m-%dT%H:%M:%S%.f")
-            .unwrap();
+        let xp1 = tp1.to_str(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
+        let xp2 = tp2.to_str(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.f").unwrap();
         let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
         let res_tp2 = Dt::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
-        assert!(tp1 == res_tp1);
-        assert!(tp2 == res_tp2);
+        assert!(tp1 == res_tp1, "got: {}, {}", tp1, res_tp1);
+        assert!(tp2 == res_tp2, "got: {}, {}", tp2, res_tp2);
     }
 
     #[test]
     fn round_trip_fixed_offsets() {
         for tp in [Dt::from_tai_sec(5), Dt::from_tai_sec(-5)] {
             let xp1 = tp
-                .to_str_with_offset(Scale::TAI, Scale::UTC, "%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
+                .to_str_with_offset(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
                 .unwrap();
             let tp2 = Dt::from_str_parse(&xp1, &None).unwrap();
             let xp2 = tp2
-                .to_str_with_offset(Scale::TAI, Scale::UTC, "%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
+                .to_str_with_offset(Scale::TAI, "%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
                 .unwrap();
             let tp3 = Dt::from_str_parse(&xp2, &None).unwrap();
             assert_eq!(tp, tp3);

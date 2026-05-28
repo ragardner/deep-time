@@ -299,7 +299,7 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     let parsed_via_bin = TimeParts::from_ccsds_bin(bytes).unwrap();
     assert_eq!(parsed_parts, parsed_via_bin, "auto-detector failed");
 
-    let recovered_tp = parsed_parts.to_dt().unwrap();
+    let recovered_tp = parsed_parts.to_dt().unwrap().to(Scale::UTC, Scale::TAI);
 
     // New single-field extraction (exactly matches old "sec + always-positive attos" rule)
     let aps = ATTOS_PER_SEC_I128;

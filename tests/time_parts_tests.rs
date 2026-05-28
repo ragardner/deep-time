@@ -100,7 +100,7 @@ mod tests {
         .unwrap();
 
         let tp = parsed.to_dt().unwrap();
-        let (_, frac_attos) = tp.to(Scale::TAI, Scale::TT).to_jd();
+        let (_, frac_attos) = tp.to(Scale::UTC, Scale::TT).to_jd();
 
         // Convert attoseconds → seconds
         let seconds_past_noon = (frac_attos as f64) / (ATTOS_PER_SEC_I128 as f64);

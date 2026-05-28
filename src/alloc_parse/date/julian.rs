@@ -7,7 +7,7 @@ pub(crate) fn parse_mjd(s: &str) -> Option<Dt> {
     if !MJD_RANGE.contains(&days) {
         return None;
     }
-    Some(Dt::from_mjd_f(mjd, Scale::UTC))
+    Some(Dt::from_mjd_f(mjd, Scale::TAI))
 }
 
 /// Julian Day (JD) interpreted as UTC
@@ -20,5 +20,5 @@ pub(crate) fn parse_jd(s: &str, astronomical_noon: bool) -> Option<Dt> {
     if astronomical_noon {
         jd += f!(0.5);
     }
-    Some(Dt::from_jd_f(jd, Scale::UTC))
+    Some(Dt::from_jd_f(jd, Scale::TAI))
 }

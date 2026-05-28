@@ -357,7 +357,7 @@ mod tests {
             let our_dt: Dt = Dt::from_str_parse(&our_input, &None)
                 .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
 
-            let our_rfc = our_dt.to_str_rfc3339(Scale::TAI, Scale::UTC).unwrap();
+            let our_rfc = our_dt.to_str_rfc3339(Scale::UTC).unwrap();
 
             // ─── Assert (no more manual prints) ────────────────────────────────────────
             assert_eq!(
@@ -450,7 +450,7 @@ mod tests {
             let our_dt: Dt = Dt::from_str_parse(&our_input, &None)
                 .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
 
-            let our_rfc = our_dt.to_str_rfc3339(Scale::TAI, Scale::UTC).unwrap();
+            let our_rfc = our_dt.to_str_rfc3339(Scale::UTC).unwrap();
 
             // ─── Assert ────────────────────────────────────────────────────────────────
             assert_eq!(
