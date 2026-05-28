@@ -80,12 +80,39 @@ mod tests {
     fn print_stuff() {
         use deep_time::{Dt, Scale};
 
-        let orig = "01-01-2000T12:00:00 PM +0000 TAI";
-        let x: Dt = orig.parse().unwrap();
-        let s = x
-            .to_str(Scale::TAI, Scale::TAI, "%d-%m-%YT%H:%M:%S %p %z %L")
-            .unwrap();
-        assert_eq!(orig, s);
+        let orig = Dt::from_ymdhms_on(2000, 1, 1, 23, 59, 60, 0, Scale::UTC);
+        let new = Dt::from_ymdhms_on(2000, 1, 2, 0, 0, 0, 0, Scale::UTC);
+
+        assert_eq!(orig, new);
+
+        let orig = Dt::from_str_parse("2000-01-01T23:59:60", &None).unwrap();
+        let new = Dt::from_str_parse("2000-01-02T00:00:00", &None).unwrap();
+
+        assert_eq!(orig, new);
+
+        let before = Dt::from_ymdhms(2015, 6, 30, 23, 59, 59, 0);
+        assert_eq!(before.to_sec(), 488980834);
+        assert_eq!(before.to_sec_ufrac(), 0);
+
+        let leap = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 0);
+        assert_eq!(leap.to_sec(), 488980835);
+        assert_eq!(leap.to_sec_ufrac(), 0);
+
+        let after = Dt::from_ymdhms(2015, 7, 1, 0, 0, 0, 0);
+        assert_eq!(after.to_sec(), 488980836);
+        assert_eq!(after.to_sec_ufrac(), 0);
+
+        let before = Dt::from_str_parse("2015-06-30T23:59:59", &None).unwrap();
+        assert_eq!(before.to_sec(), 488980834, "59 failed");
+        assert_eq!(before.to_sec_ufrac(), 0);
+
+        let leap = Dt::from_str_parse("2015-06-30T23:59:60", &None).unwrap();
+        assert_eq!(leap.to_sec(), 488980835, "60 failed");
+        assert_eq!(leap.to_sec_ufrac(), 0);
+
+        let after = Dt::from_str_parse("2015-07-01T00:00:00", &None).unwrap();
+        assert_eq!(after.to_sec(), 488980836, "00 failed");
+        assert_eq!(after.to_sec_ufrac(), 0);
     }
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {

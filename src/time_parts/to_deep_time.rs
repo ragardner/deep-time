@@ -162,7 +162,7 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         if self.scale == Scale::UTC {
             Ok(Dt::from_sec_and_attos(
-                total_sec + leap_sec(total_sec, true).offset,
+                total_sec + leap_sec(total_sec - if second == 60 { 1 } else { 0 }, true).offset,
                 self.attos.unwrap_or(0),
                 Scale::TAI,
             ))

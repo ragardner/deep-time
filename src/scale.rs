@@ -69,7 +69,6 @@ use core::fmt;
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub enum Scale {
     /// TAI is the representation of an Epoch internally.
-    #[default]
     TAI,
 
     /// Terrestrial Time (TT) (previously called Terrestrial Dynamical Time (TDT)).
@@ -82,6 +81,7 @@ pub enum Scale {
     TDB,
 
     /// Universal Coordinated Time using modern IERS leap second rules.
+    #[default]
     UTC,
 
     /// Universal Coordinated Time using the SPICE historical model
