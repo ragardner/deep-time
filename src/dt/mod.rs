@@ -39,7 +39,8 @@ use core::fmt;
 ///
 /// **Fields:**
 ///
-/// - `pub attos: i128` — total time in attoseconds since the reference epoch (2000-01-01 noon), as a signed integer. Negative values represent times before the epoch.
+/// - `pub attos: i128` — total time in attoseconds since the reference epoch (2000-01-01 noon), as a signed integer.
+///   Negative values represent times before the epoch.
 ///
 /// **Notes:**
 ///

@@ -376,7 +376,7 @@ impl Dt {
 
         let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (final_attos as i128);
 
-        let tp = Self::from_diff_and_scale(Dt { attos: unix_attos }, Dt::UNIX_EPOCH, scale);
+        let tp = Self::from_diff_and_scale(Dt::new(unix_attos), Dt::UNIX_EPOCH, scale);
 
         if is_leap_second {
             Dt {
