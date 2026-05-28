@@ -509,10 +509,7 @@ impl Dt {
         secs: i32,
     ) -> YmdHmsRich {
         let local_tp = if secs != 0 {
-            *self
-                + Dt {
-                    attos: Dt::sec_to_attos(secs as i128),
-                }
+            self.add_sec(secs as i128)
         } else {
             *self
         };
@@ -539,10 +536,7 @@ impl Dt {
         };
 
         // 3. Build local time = UTC + offset
-        let span = Dt {
-            attos: Dt::sec_to_attos(offset_secs as i128),
-        };
-        let local_tp = *self + span;
+        let local_tp = self.add_sec(offset_secs as i128);
 
         let mut ymdhms = local_tp.to_ymdhms_rich_on(current, new);
         ymdhms.set_offset(Some(offset_secs));

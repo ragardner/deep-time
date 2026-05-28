@@ -211,6 +211,7 @@ use core::fmt;
 /// # #[cfg(feature = "alloc")]
 /// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
 ///
+/// # #[cfg(feature = "alloc")]
 /// assert_eq!(s, "01 01 2000 12:00:00", "expected: {}, got: {}", "01 01 2000 12:00:00", s);
 /// ```
 #[derive(Clone, Copy)]

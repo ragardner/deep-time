@@ -1,6 +1,6 @@
 use crate::{
-    Dt, MAX_YEAR, MIN_YEAR, Mode, NS_PER_DAY, PLAUSIBLE_YYYYMM_YEAR_RANGE, parse_jd, parse_mjd,
-    parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
+    Dt, MAX_YEAR, MIN_YEAR, Mode, NS_PER_DAY, PLAUSIBLE_YYYYMM_YEAR_RANGE, Scale, parse_jd,
+    parse_mjd, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
 };
 
 #[inline]
@@ -9,7 +9,7 @@ pub(crate) fn parse_i32_year(input: &str) -> Option<Dt> {
     if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
         return None;
     }
-    Some(Dt::from_ymd(year as i64, 1, 1))
+    Some(Dt::from_ymd_on(year as i64, 1, 1, Scale::UTC))
 }
 
 #[inline]
@@ -19,7 +19,7 @@ pub(crate) fn parse_two_digit_year(input: &str) -> Option<Dt> {
     if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
         return None;
     }
-    Some(Dt::from_ymd(year as i64, 1, 1))
+    Some(Dt::from_ymd_on(year as i64, 1, 1, Scale::UTC))
 }
 
 /// Fractional day string → nanoseconds (exact integer math, max 9 digits)

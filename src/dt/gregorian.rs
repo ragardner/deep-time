@@ -1,6 +1,4 @@
-use crate::{
-    ATTOS_PER_SEC, ATTOS_PER_SEC_I128, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, YmdHmsRich,
-};
+use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, YmdHmsRich};
 
 impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
@@ -338,6 +336,8 @@ impl Dt {
     /// the provided time scale.
     ///
     /// - Equivalent to [`Dt::from`](../struct.Dt.html#method.from) for the provided date.
+    ///   Except that conversion is performed prior to adding an extra second if the given
+    ///   `sec` is `60`.
     /// - Returned [`Dt`] will be on the **TAI** time scale.
     ///
     /// All input components are clamped to their valid ranges:
@@ -346,12 +346,7 @@ impl Dt {
     /// - `hr`   → 0..=23 **0 based**
     /// - `min`  → 0..=59 **0 based**
     /// - `sec`  → 0..=60 **0 based** (permits leap seconds)
-    /// - `attos` → values ≥ 10¹⁸ are carried into the seconds field
-    ///
-    /// ### Notes:
-    ///
-    /// - Does not perform validation on leap seconds. If 60 seconds are
-    ///   provided then an extra second will be added to the resulting [`Dt`].
+    /// - `attos` → 10¹⁸ **0 based** (clamped to under 1 second)
     pub const fn from_ymdhms_on(
         yr: i64,
         mo: u8,
@@ -363,28 +358,16 @@ impl Dt {
         scale: Scale,
     ) -> Self {
         let (mo, day, hr, min, sec) = Self::clamp_mdhms(yr, mo, day, hr, min, sec);
+        let attos = Dt::clamp_u64(attos, 0, ATTOS_PER_SEC - 1);
 
-        let carried_sec = (attos / ATTOS_PER_SEC) as i64;
-        let final_attos = attos % ATTOS_PER_SEC;
-
-        let is_leap_second = (sec as i64) + carried_sec == 60;
-
+        let is_leap_second = sec == 60;
         let s_for_unix = if is_leap_second { 59 } else { sec };
 
-        let unix_sec =
-            Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix).saturating_add(carried_sec);
+        let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
+        let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (attos as i128);
 
-        let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (final_attos as i128);
-
-        let tp = Self::from_diff_and_scale(Dt { attos: unix_attos }, Dt::UNIX_EPOCH, scale);
-
-        if is_leap_second {
-            Dt {
-                attos: tp.to_attos().saturating_add(ATTOS_PER_SEC_I128),
-            }
-        } else {
-            tp
-        }
+        let tp = Self::from_diff_and_scale(Dt::new(unix_attos), Dt::UNIX_EPOCH, scale);
+        if is_leap_second { tp.add_sec(1) } else { tp }
     }
 
     /// Creates a **TAI** [`Dt`] from a proleptic gregorian date which is assumed to be on

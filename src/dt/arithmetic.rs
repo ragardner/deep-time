@@ -503,6 +503,22 @@ impl Dt {
         }
     }
 
+    /// Clamps `value` to the range `[min, max]`.
+    ///
+    /// This is a `const fn`, so it can be used in const contexts
+    /// (e.g. const generics, statics, const evaluation, etc.).
+    ///
+    /// If `min > max`, the result is equivalent to clamping to `[max, min]`.
+    pub(crate) const fn clamp_u64(value: u64, min: u64, max: u64) -> u64 {
+        if value < min {
+            min
+        } else if value > max {
+            max
+        } else {
+            value
+        }
+    }
+
     /// **Lossy** conversion of u128 attoseconds to → float seconds (s).
     #[inline(always)]
     pub const fn attos_to_sec_f(attos: u128) -> Real {
