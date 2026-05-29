@@ -12,10 +12,7 @@ pub const MARS_SOL_ATTOS: i128 = 88_775_244_146_880_000_000_000;
 
 /// Precomputed numerical value of the Mars reference epoch on the TT scale (total attoseconds since J2000).
 pub const MARS_REF_TT_ATTOS: i128 = -3_976_386_951_349_440_000_000_000_000;
-pub const MARS_REF_TT: Dt = Dt {
-    attos: MARS_REF_TT_ATTOS,
-    scale: Scale::TT,
-};
+pub const MARS_REF_TT: Dt = Dt::new(MARS_REF_TT_ATTOS, Scale::TT);
 
 /// Areocentric solar longitude (Ls) constants from the current NASA GISS Mars24
 /// algorithm (AM2000 short series, updated 2025-01-07).
@@ -57,8 +54,8 @@ impl Dt {
     /// - The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
     ///   [`Scale`].
     /// - Leap seconds are automatically accounted for when converting from UTC.
-    pub const fn to_msd(&self, current: Scale) -> (i64, u128) {
-        let tt = self.to(current, Scale::TT);
+    pub const fn to_msd(&self) -> (i64, u128) {
+        let tt = self.convert_internal(Scale::TT);
         let elapsed = Self::to_attos_since_mars_msd_epoch(tt);
         let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS);
         let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;
@@ -69,35 +66,33 @@ impl Dt {
     /// Returns Mars Coordinated Time (MTC) as a [`Dt`] representing
     /// seconds into the current sol (range `[0, one Martian sol)`).
     #[inline]
-    pub const fn to_mtc(&self, current: Scale) -> Dt {
-        let (_, frac_attos) = self.to_msd(current);
-        Dt::from(frac_attos as i128, Scale::TAI)
+    pub const fn to_mtc(&self) -> Dt {
+        let (_, frac_attos) = self.to_msd();
+        Dt::span(frac_attos as i128)
     }
 
     /// Creates a `Dt` (in TT) from an Mars Sol Date using full library precision.
     pub const fn from_msd(whole_sols: i64, frac_attos: u128) -> Self {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
-        let tt = MARS_REF_TT.add(Dt {
-            attos: elapsed_attos,
-            scale: Scale::TT,
-        });
-        tt.to_tai(Scale::TT)
+        let tt = MARS_REF_TT.add(Dt::new(elapsed_attos, Scale::TT));
+        tt.convert_internal(Scale::TAI)
     }
 
+    // TODO: negatives?
     /// Creates a `Dt` (in TT) from a floating-point Mars Sol Date.
     /// Non-exact Real.
     pub const fn from_msd_f(msd: Real) -> Self {
         let whole = floor_f(msd) as i64;
         let frac = msd - f!(whole);
-        let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC);
+        let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC, Scale::TAI);
         Self::from_msd(whole, frac_span.to_attos() as u128)
     }
 
     /// Returns the Mars Sol Date (MSD) as a floating-point value (matches NASA Mars24 output).
     /// Non-exact Real.
     #[inline]
-    pub const fn to_msd_f(&self, current: Scale) -> Real {
-        let (whole, frac) = self.to_msd(current);
+    pub const fn to_msd_f(&self) -> Real {
+        let (whole, frac) = self.to_msd();
         f!(whole) + Dt::attos_to_sec_f(frac) / MARS_SOL_LENGTH_SEC
     }
 
@@ -124,8 +119,8 @@ impl Dt {
     /// Updated: 2025-01-07
     ///
     /// Works for any input [`Scale`] because it internally converts to TT.
-    pub const fn to_mars_ls(&self, current: Scale) -> Real {
-        let tt = self.to(current, Scale::TT);
+    pub const fn to_mars_ls(&self) -> Real {
+        let tt = self.convert_internal(Scale::TT);
 
         // Δt_J2000 = days since J2000.0 TT
         let jd_tt = tt.to_jd_f();
@@ -183,8 +178,8 @@ impl Dt {
     ///
     /// Longitude is east-positive (standard planetocentric convention, 0–360° E).
     /// Internally converts to TT and uses the current NASA GISS Mars24 definition of MST.
-    pub const fn to_mars_lmst(&self, current: Scale, east_longitude_deg: Real) -> Dt {
-        let tt = self.to(current, Scale::TT);
+    pub const fn to_mars_lmst(&self, east_longitude_deg: Real) -> Dt {
+        let tt = self.convert_internal(Scale::TT);
         let jd_tt = tt.to_jd_f();
 
         // MST in hours (0–24) — prime-meridian mean solar time (NASA Mars24 formula)
@@ -203,7 +198,7 @@ impl Dt {
 
         // Convert hours → seconds into the sol and return as Dt (consistent with to_mtc)
         let seconds_into_sol = lmst_hours * f!(3600.0);
-        Dt::from_sec_f(seconds_into_sol)
+        Dt::from_sec_f(seconds_into_sol, Scale::TAI)
     }
 
     /// Returns Local True Solar Time (LTST) at the given planetocentric east longitude
@@ -213,14 +208,14 @@ impl Dt {
     /// local observer would see on a sundial. It equals LMST plus the Equation of Time.
     ///
     /// Longitude is east-positive (standard planetocentric convention, 0–360° E).
-    pub const fn to_mars_ltst(&self, current: Scale, east_longitude_deg: Real) -> Dt {
-        let lmst = self.to_mars_lmst(current, east_longitude_deg);
+    pub const fn to_mars_ltst(&self, east_longitude_deg: Real) -> Dt {
+        let lmst = self.to_mars_lmst(east_longitude_deg);
 
         // We already have Ls; reuse it for EOT
-        let ls = self.to_mars_ls(current);
+        let ls = self.to_mars_ls();
 
         // Equation of center (ν − M) — same term used in to_mars_ls
-        let dt_j2000 = self.to(current, Scale::TT).to_jd_f() - f!(2451545.0);
+        let dt_j2000 = self.convert_internal(Scale::TT).to_jd_f() - f!(2451545.0);
         let m = MARS_LS_M0 + MARS_LS_M_RATE * dt_j2000;
         let pbs = Self::mars_perturber_sum(dt_j2000);
         let eq_center = (f!(10.691) + f!(3.0e-7) * dt_j2000) * sin(m.to_radians())
@@ -240,7 +235,7 @@ impl Dt {
         let eot_seconds = eot_deg * f!(240.0);
 
         // LTST = LMST + EOT (as duration)
-        lmst.add(Dt::from_sec_f(eot_seconds))
+        lmst.add(Dt::from_sec_f(eot_seconds, Scale::TAI))
     }
 
     /// Returns the integer Mars Year (MY) for this instant.
@@ -258,8 +253,8 @@ impl Dt {
     ///
     /// To get the fractional progress through the year, simply use:
     /// `self.to_mars_ls(current) / 360.0`
-    pub const fn to_mars_year(&self, current: Scale) -> i64 {
-        let tt = self.to(current, Scale::TT);
+    pub const fn to_mars_year(&self) -> i64 {
+        let tt = self.convert_internal(Scale::TT);
         let jd_tt = tt.to_jd_f();
 
         let days_since_epoch = jd_tt - MARS_YEAR_EPOCH_JD;

@@ -60,12 +60,12 @@ impl Dt {
     /// - Exact integer arithmetic for the year boundaries, then a high-precision
     ///   `to_sec_f` division (lossy only at the final `Real` step, same as Astropy).
     #[inline]
-    pub fn to_decimalyear(&self, current: Scale) -> Real {
-        let ymd = self.to_ymdhms(current);
+    pub fn to_decimalyear(&self) -> Real {
+        let ymd = self.to_ymd();
         let year = ymd.yr;
 
-        let start = Self::from_ymd_on(year, 1, 1, current);
-        let next_start = Self::from_ymd_on(year + 1, 1, 1, current);
+        let start = Self::from_ymd(year, 1, 1, 0, 0, 0, 0, self.tag);
+        let next_start = Self::from_ymd(year + 1, 1, 1, 0, 0, 0, 0, self.tag);
 
         let elapsed = self.to_diff_raw(start).to_sec_f();
         let year_length = next_start.to_diff_raw(start).to_sec_f();

@@ -49,7 +49,7 @@ impl YmdHms {
     /// Reconstructs a [`Dt`].
     #[inline]
     pub fn to_dt(&self) -> Dt {
-        Dt::from_ymdhms_on(
+        Dt::from_ymd(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
     }
@@ -65,7 +65,7 @@ impl YmdHms {
         attos: u64,
         scale: Scale,
     ) -> Self {
-        Dt::from_ymdhms_on(yr, mo, day, hr, min, sec, attos, scale).to_ymdhms_on(Scale::TAI, scale)
+        Dt::from_ymd(yr, mo, day, hr, min, sec, attos, scale).to_ymd()
     }
 
     /// Adds (or subtracts) whole years, preserving month and day-of-month.
@@ -126,12 +126,11 @@ impl YmdHms {
 
     #[inline(never)]
     fn _add_attos(&self, attos_delta: i128) -> Self {
-        let tai = Dt::from_ymdhms_on(
+        let tai = Dt::from_ymd(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         );
-        let delta_dt = Dt::from(attos_delta, Scale::TAI);
-        let new_tai = tai.add(delta_dt);
-        new_tai.to_ymdhms_on(Scale::TAI, self.scale)
+        let new_tai = tai.add(Dt::span(attos_delta));
+        new_tai.to_ymd()
     }
 
     #[inline]
@@ -326,7 +325,7 @@ impl YmdHmsRich {
     /// Reconstructs a [`Dt`].
     #[inline]
     pub fn to_dt(&self) -> Dt {
-        Dt::from_ymdhms_on(
+        Dt::from_ymd(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
     }

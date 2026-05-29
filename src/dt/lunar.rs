@@ -100,8 +100,7 @@ impl Dt {
         let secular_attos = Self::mul_lm(elapsed);
         let periodic = Self::ltc_periodic_correction(tt);
 
-        tt.add(Dt::from(secular_attos, Scale::TAI))
-            .add(periodic)
+        tt.add(Dt::span(secular_attos)).add(periodic)
     }
 
     /// Converts LTC → TT using fixed-point iteration to account for the
@@ -121,9 +120,7 @@ impl Dt {
             let secular_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
             let periodic = Self::ltc_periodic_correction(tt);
 
-            tt = ltc
-                .sub(Dt::from(secular_attos, Scale::TAI))
-                .sub(periodic);
+            tt = ltc.sub(Dt::span(secular_attos)).sub(periodic);
             i += 1;
         }
         tt
@@ -151,7 +148,7 @@ impl Dt {
         }
 
         // Convert µs → Dt (positive = lunar time runs ahead)
-        Dt::from_sec_f(delta_us * 1e-6)
+        Dt::from_sec_f(delta_us * 1e-6, Scale::TAI)
     }
 
     /// Zero-point calibration constant for TCL so that our implementation
@@ -183,7 +180,7 @@ impl Dt {
     ///
     /// Reference: https://github.com/xlucn/LTE440
     /// (README and demo output)
-    pub(crate) const TCL_TDB_BIAS_SPAN: Dt = Dt::from_sec_f(0.49334260839797583);
+    pub(crate) const TCL_TDB_BIAS_SPAN: Dt = Dt::from_sec_f(0.49334260839797583, Scale::TAI);
 
     /// Integer helper: elapsed attoseconds since J2000.0 TDB.
     /// Used exclusively for the TCL pathway to match LTE440
@@ -200,7 +197,7 @@ impl Dt {
         let secular_attos = Self::mul_tl(elapsed);
         let periodic = Self::ltc_periodic_correction(tdb);
 
-        tdb.add(Dt::from(secular_attos, Scale::TAI))
+        tdb.add(Dt::span(secular_attos))
             .add(periodic)
             .add(Self::TCL_TDB_BIAS_SPAN)
     }
@@ -216,7 +213,7 @@ impl Dt {
             let periodic = Self::ltc_periodic_correction(tdb);
 
             tdb = tcl
-                .sub(Dt::from(secular_attos, Scale::TAI))
+                .sub(Dt::span(secular_attos))
                 .sub(periodic)
                 .sub(Self::TCL_TDB_BIAS_SPAN);
             i += 1;

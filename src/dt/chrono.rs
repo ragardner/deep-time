@@ -20,10 +20,8 @@ impl Dt {
     /// - Saturates at the minimum/maximum representable `DateTime<Utc>`
     ///   (roughly years 1678–2262) if the instant is out of range.
     #[inline]
-    pub fn to_chrono_datetime_utc(&self, current: Scale) -> DateTime<Utc> {
-        DateTime::<Utc>::from_timestamp_nanos(Dt::i128_to_i64(
-            self.to_unix(current, Scale::UTC).to_ns(),
-        ))
+    pub fn to_chrono_datetime_utc(&self) -> DateTime<Utc> {
+        DateTime::<Utc>::from_timestamp_nanos(Dt::i128_to_i64(self.to_unix().to_ns()))
     }
 
     /// Creates a TAI [`Dt`] from a [`chrono::DateTime`].
@@ -39,7 +37,7 @@ impl Dt {
         let subsec_nanos = dt.nanosecond();
         let attos = Dt::from_ns(subsec_nanos as i128, Scale::TAI).to_attos();
 
-        Dt::from_ymdhms_on(
+        Dt::from_ymd(
             yr,
             mo,
             day,

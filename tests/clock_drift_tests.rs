@@ -12,16 +12,16 @@ mod tests {
 
     #[test]
     fn evaluate_constant_only() {
-        let drift = Drift::from_constant(Dt::from_sec_f(0.5));
+        let drift = Drift::from_constant(Dt::span_f(0.5));
         let dt = Dt::from_sec(1_000, Scale::TAI);
-        assert_eq!(drift.time_diff_after(&dt), Dt::from_sec_f(0.5));
+        assert_eq!(drift.time_diff_after(&dt), Dt::span_f(0.5));
     }
 
     #[test]
     fn evaluate_rate_only() {
-        let drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(1e-9)); // 1 ns/s
+        let drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::span_f(1e-9)); // 1 ns/s
         let dt = Dt::from_sec(1_000_000, Scale::TAI); // 1 million seconds
-        assert_eq!(drift.time_diff_after(&dt), Dt::from_sec_f(0.001)); // 1 µs
+        assert_eq!(drift.time_diff_after(&dt), Dt::span_f(0.001)); // 1 µs
     }
 
     #[test]
@@ -29,7 +29,7 @@ mod tests {
         let drift = Drift::new(
             Dt::from_sec(2, Scale::TAI),
             Dt::from_ns(1, Scale::TAI), // exactly 1e-9 s/s
-            Dt::from(2, Scale::TAI),    // exactly 2e-18 s/s²
+            Dt::span(2),                // exactly 2e-18 s/s²
         );
         let dt = Dt::from_sec(1_000_000, Scale::TAI);
 
@@ -46,8 +46,8 @@ mod tests {
     fn evaluate_negative_dt() {
         let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI),
-            Dt::from_ns(1, Scale::TAI), // exactly 1e-9 s/s
-            Dt::from(1, Scale::TAI),    // exactly 1e-18 s/s²
+            Dt::from_ns(1, Scale::TAI),    // exactly 1e-9 s/s
+            Dt::from_attos(1, Scale::TAI), // exactly 1e-18 s/s²
         );
         let dt = Dt::from_sec(-500_000, Scale::TAI);
 
@@ -62,9 +62,9 @@ mod tests {
 
     #[test]
     fn evaluate_large_dt_exact() {
-        let drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(1e-12));
+        let drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::span_f(1e-12));
         let dt = Dt::from_sec(1_000_000_000, Scale::TAI); // ~31.7 years
-        assert_eq!(drift.time_diff_after(&dt), Dt::from_sec_f(0.001));
+        assert_eq!(drift.time_diff_after(&dt), Dt::span_f(0.001));
     }
 
     // ========================================================================
@@ -87,8 +87,7 @@ mod tests {
         for &(u, k, expected_rate) in test_cases {
             let drift = Drift::from_unified_proper_time_rate(u, k);
             let expected_offset = expected_rate - 1.0;
-            let expected_drift =
-                Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(expected_offset));
+            let expected_drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::span_f(expected_offset));
             assert_eq!(
                 drift, expected_drift,
                 "Low-curvature GR recovery failed for u={}, k={}",
@@ -113,8 +112,7 @@ mod tests {
             let expected_rate = k_eff_limit.sqrt().max(0.0);
             let expected_offset = expected_rate - 1.0;
 
-            let expected_drift =
-                Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(expected_offset));
+            let expected_drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::span_f(expected_offset));
             // Only allow difference when seconds match
             assert_eq!(drift.rate.to_sec(), expected_drift.rate.to_sec());
 
@@ -134,7 +132,7 @@ mod tests {
         let drift_neg_u = Drift::from_unified_proper_time_rate(-0.5, 0.0);
 
         // Semantic check using .to_sec_f() — this is the robust way.
-        // (Dt::from_sec_f(-1.0) currently produces a non-canonical internal
+        // (Dt::span_f(-1.0) currently produces a non-canonical internal
         // representation while the unified function produces the canonical one.
         // The two Dts are mathematically identical but not ==.)
         assert_eq!(
@@ -168,8 +166,7 @@ mod tests {
         let x = PLANCK_LENGTH_4 * kretschmann;
         let k_eff = x / (1.0 + x);
         let expected_null_rate: f64 = k_eff.sqrt() - 1.0;
-        let expected_null =
-            Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(expected_null_rate));
+        let expected_null = Drift::from_offset_and_rate(Dt::ZERO, Dt::span_f(expected_null_rate));
 
         assert_eq!(drift_null, expected_null);
     }

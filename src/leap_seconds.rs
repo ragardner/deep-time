@@ -351,7 +351,8 @@ impl Dt {
             };
 
             // don't use current: UTC because it would use the internal leap table
-            let utc_sec = Dt::i128_to_i64(Dt::from_ntp(f!(ntp_timestamp), Scale::TAI).to_sec());
+            let utc_sec = Dt::from_ntp(Dt::from_sec(ntp_timestamp as i128, Scale::TAI)).to_sec64();
+
             let tai_sec = if prev_leap_sec_after == 0 {
                 utc_sec + leap_sec_after - 1
             } else {

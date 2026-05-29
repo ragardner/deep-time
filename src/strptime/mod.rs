@@ -152,8 +152,6 @@ impl StrPTimeFmt {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<alloc::string::String, DtErr> {
-        use crate::Scale;
-
         let parts = TimeParts::from_str(
             self.as_str()?,
             s,
@@ -161,8 +159,7 @@ impl StrPTimeFmt {
             fmt_can_end_before_inp,
             allow_partial_date,
         )?;
-        let scale = parts.scale;
-        parts.to_dt()?.to_str(Scale::TAI, scale, output_fmt)
+        parts.to_dt()?.to_str(output_fmt)
     }
 
     fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {

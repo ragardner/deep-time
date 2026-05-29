@@ -45,7 +45,7 @@ mod tests {
         let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI),
             Dt::from_ns(1, Scale::TAI),
-            Dt::from(2, Scale::TAI),
+            Dt::span(2),
         );
         assert_roundtrip(
             &drift,
@@ -70,8 +70,8 @@ mod tests {
 
     #[test]
     fn test_date_time_roundtrip() {
-        let dt = Dt::from_ymdhms_on(2024, 12, 25, 12, 0, 0, 123456789012345678, Scale::UTC);
-        let gp = dt.to_ymdhms_rich_on(Scale::TAI, Scale::UTC);
+        let dt = Dt::from_ymd(2024, 12, 25, 12, 0, 0, 123456789012345678, Scale::UTC);
+        let gp = dt.to_ymd_rich();
 
         assert_roundtrip(
             &gp,

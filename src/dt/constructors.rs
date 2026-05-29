@@ -12,7 +12,7 @@ impl Dt {
     /// [`Dt::new(0)`].
     pub const ZERO: Self = Self::new(0, Scale::TAI);
 
-    /// UTP epoch.
+    /// NTP epoch.
     /// - 1900-01-01 midnight UTC.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -3_155_716_800_000_000_000_000_000_000 attoseconds
@@ -27,7 +27,7 @@ impl Dt {
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
     pub const UNIX_EPOCH: Self = Self::new(
         -(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128,
-        Scale::TAI,
+        Scale::UTC,
     );
 
     /// TT/TCG/TCB/TDB epoch.
@@ -42,28 +42,28 @@ impl Dt {
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -63_115_232_184_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const CXC_EPOCH: Self = Self::new(-63115232184000000000000000i128, Scale::TAI);
+    pub const CXC_EPOCH: Self = Self::new(-63115232184000000000000000i128, Scale::TT);
 
     /// GPS/Galileo Experiment (GALEX) Time epoch.
     /// - **1980-01-06 00:00:00 UTC**.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -630_763_181_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const GPS_EPOCH: Self = Self::new(-630763181000000000000000000i128, Scale::TAI);
+    pub const GPS_EPOCH: Self = Self::new(-630763181000000000000000000i128, Scale::GPS);
 
     /// Galileo System Time (GST) epoch.
     /// - 1999-08-22 00:00:00 GST.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -11_447_981_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const GALILEO_EPOCH: Self = Self::new(-11447981000000000000000000i128, Scale::TAI);
+    pub const GALILEO_EPOCH: Self = Self::new(-11447981000000000000000000i128, Scale::GST);
 
     /// BeiDou Time (BDT) epoch.
     /// - 2006-01-01 00:00:00 UTC.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - 189_345_633_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const BDT_EPOCH: Self = Self::new(189345633000000000000000000i128, Scale::TAI);
+    pub const BDT_EPOCH: Self = Self::new(189345633000000000000000000i128, Scale::BDT);
 
     /// Maximum representable duration.
     pub const MAX: Self = Self::new(i128::MAX, Scale::TAI);
@@ -78,57 +78,72 @@ impl Dt {
 
     /// Creates a new `Dt` from a total number of attoseconds (signed i128).
     #[inline(always)]
-    pub const fn new(attos: i128, scale: Scale) -> Self {
-        Self { attos, scale }
+    pub const fn new(attos: i128, tag: Scale) -> Self {
+        Self { attos, tag }
+    }
+
+    /// Creates a new [`Dt`] from a total number of attoseconds (signed i128) without
+    /// performing any time scale conversions.
+    ///
+    /// Easy way to create a duration.
+    #[inline(always)]
+    pub const fn span(attos: i128) -> Self {
+        Dt::new(attos, Scale::TAI)
+    }
+
+    /// Creates a [`Dt`] from a floating-point number of seconds.
+    #[inline(always)]
+    pub const fn span_f(sec_f: Real) -> Self {
+        Self::from_sec_f_on(sec_f, Scale::TAI)
     }
 
     #[inline(always)]
     pub(crate) fn from_sec_and_attos(sec: i64, attos: u64, scale: Scale) -> Dt {
         if attos == 0 {
-            Dt::from((sec as i128) * ATTOS_PER_SEC_I128, scale)
+            Dt::from_attos((sec as i128) * ATTOS_PER_SEC_I128, scale)
         } else {
-            Dt::from((sec as i128) * ATTOS_PER_SEC_I128 + (attos as i128), scale)
+            Dt::from_attos((sec as i128) * ATTOS_PER_SEC_I128 + (attos as i128), scale)
         }
     }
 
     #[inline]
     pub const fn from_tai_sec(sec: i128) -> Self {
-        Self::from(sec.saturating_mul(ATTOS_PER_SEC_I128), Scale::TAI)
+        Self::from_attos(sec.saturating_mul(ATTOS_PER_SEC_I128), Scale::TAI)
     }
 
     #[inline]
     pub const fn from_sec(sec: i128, scale: Scale) -> Self {
-        Self::from(sec.saturating_mul(ATTOS_PER_SEC_I128), scale)
+        Self::from_attos(sec.saturating_mul(ATTOS_PER_SEC_I128), scale)
     }
 
     #[inline]
     pub const fn from_ms(ms: i128, scale: Scale) -> Self {
         let attos = ms.saturating_mul(ATTOS_PER_MS as i128);
-        Self::from(attos, scale)
+        Self::from_attos(attos, scale)
     }
 
     #[inline]
     pub const fn from_us(us: i128, scale: Scale) -> Self {
         let attos = us.saturating_mul(ATTOS_PER_US as i128);
-        Self::from(attos, scale)
+        Self::from_attos(attos, scale)
     }
 
     #[inline]
     pub const fn from_ns(ns: i128, scale: Scale) -> Self {
         let attos = ns.saturating_mul(ATTOS_PER_NS as i128);
-        Self::from(attos, scale)
+        Self::from_attos(attos, scale)
     }
 
     #[inline]
     pub const fn from_ps(ps: i128, scale: Scale) -> Self {
         let attos = ps.saturating_mul(ATTOS_PER_PS as i128);
-        Self::from(attos, scale)
+        Self::from_attos(attos, scale)
     }
 
     #[inline]
     pub const fn from_fs(fs: i128, scale: Scale) -> Self {
         let attos = fs.saturating_mul(ATTOS_PER_FS as i128);
-        Self::from(attos, scale)
+        Self::from_attos(attos, scale)
     }
 
     #[inline]
@@ -174,7 +189,7 @@ impl Dt {
                 + (ATTOS_PER_SEC_I128 - frac_attos as i128)
         };
 
-        Self::from(attos, scale)
+        Self::from_attos(attos, scale)
     }
 
     #[inline]
@@ -195,37 +210,31 @@ impl Dt {
     /// Returns a `Dt` that is this duration ago from the given scale.
     #[inline]
     pub const fn ago(self, scale: Scale) -> Dt {
-        Dt::from(0, scale).sub(self)
+        Dt::from_attos(0, scale).sub(self)
     }
 
     /// Returns a `Dt` that is this duration from now in the given scale.
     #[inline]
     pub const fn from_now(self, scale: Scale) -> Dt {
-        Dt::from(0, scale).add(self)
+        Dt::from_attos(0, scale).add(self)
     }
 
     /// Returns the negation of this duration.
     #[inline]
     pub const fn neg(self) -> Self {
-        Self {
-            attos: -self.attos,
-            scale: self.scale,
-        }
+        Dt::new(-self.attos, self.tag)
     }
 
     /// Returns the positive of this duration.
     #[inline]
     pub const fn abs(self) -> Self {
-        Self {
-            attos: self.attos.saturating_abs(),
-            scale: self.scale,
-        }
+        Dt::new(self.attos.saturating_abs(), self.tag)
     }
 
     /// Creates a [`Dt`] from a floating-point number of seconds.
     #[inline]
-    pub const fn from_sec_f(sec_f: Real) -> Self {
-        Self::from_sec_f_on(sec_f, Scale::TAI)
+    pub const fn from_sec_f(sec_f: Real, scale: Scale) -> Self {
+        Self::from_sec_f_on(sec_f, scale)
     }
 
     /// High-precision conversion from [`Real`] seconds to total attoseconds (i128).
@@ -309,7 +318,7 @@ impl Dt {
 
         let total_attos = Self::sec_f_to_total_attos(sec_f);
 
-        Self::from(total_attos, s)
+        Self::from_attos(total_attos, s)
     }
 
     /// Returns the current system time as TAI from 2000-01-01 noon.
@@ -334,7 +343,7 @@ impl Dt {
         Ok(Dt::from_diff_and_scale(
             Dt::new(Dt::sec_to_attos(secs as i128), Scale::UTC),
             Dt::UNIX_EPOCH,
-            Scale::UTC,
+            false,
         )
         .add(Dt::from_ns(nanos as i128, Scale::TAI)))
     }
@@ -350,7 +359,7 @@ impl Dt {
         Ok(Dt::from_diff_and_scale(
             Dt::new(Dt::sec_to_attos(secs), Scale::UTC),
             Dt::UNIX_EPOCH,
-            Scale::UTC,
+            false,
         )
         .add(Dt::from_ns(nanos as i128, Scale::TAI)))
     }

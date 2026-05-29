@@ -59,7 +59,7 @@ impl Dt {
     pub const fn tai_to_tdb(tai: Self) -> Self {
         let tt = tai.add(TT_TAI_OFFSET);
         let correction = Self::tdb_minus_tt(tt.to_sec_f());
-        tt.add(Dt::from_sec_f(correction))
+        tt.add(Dt::from_sec_f(correction, Scale::TAI))
     }
 
     /// Converts a TDB [`Dt`] to TAI.
@@ -67,15 +67,13 @@ impl Dt {
         // Linear-rate + constant initial guess (dominant part of the forward transformation)
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let linear_span = Self::mul_lb(elapsed); // LB * elapsed
-        let mut tt = tdb
-            .sub(Dt::from(linear_span, Scale::TAI))
-            .sub(Dt::from(TDB0_ATTOS, Scale::TAI));
+        let mut tt = tdb.sub(Dt::span(linear_span)).sub(Dt::span(TDB0_ATTOS));
 
         // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
         let mut i = 0u32;
         while i < 8 {
             let p = Self::tdb_minus_tt(tt.to_sec_f());
-            let new_tt = tdb.sub(Dt::from_sec_f(p));
+            let new_tt = tdb.sub(Dt::from_sec_f(p, Scale::TAI));
 
             // Early exit when change is smaller than ~1 atto-second
             let delta = new_tt.to_diff_raw(tt);

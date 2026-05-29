@@ -30,7 +30,7 @@ fn test_from_sec_f() {
     ];
 
     for (sec_f, label) in test_cases {
-        let dt = Dt::from_sec_f(*sec_f);
+        let dt = Dt::span_f(*sec_f);
         let roundtrip = dt.to_sec_f();
 
         assert_eq!(

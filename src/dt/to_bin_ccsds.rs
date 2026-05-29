@@ -17,7 +17,6 @@ impl Dt {
     /// - `extension`: advisory flag (ignored when larger sizes force the second octet)
     pub fn to_ccsds_c(
         &self,
-        current: Scale,
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
@@ -28,12 +27,10 @@ impl Dt {
             return Err(an_err!(DtErrKind::OutOfRange, "frac: {}", n_frac));
         }
 
-        let tai = self.to(current, Scale::TAI);
-
         const EPOCH_OFFSET: i64 = 1_325_419_167;
 
-        let rem_attos = tai.to_sec_ufrac();
-        let total_tai_seconds = (Dt::i128_to_i64(tai.to_sec())).saturating_add(EPOCH_OFFSET);
+        let rem_attos = self.to_sec_ufrac();
+        let total_tai_seconds = self.to_sec64().saturating_add(EPOCH_OFFSET);
 
         let frac_scaled = if n_frac == 0 {
             0u128
@@ -100,7 +97,6 @@ impl Dt {
     ///   since 1958-01-01 UTC.
     pub fn to_ccsds_d(
         &self,
-        current: Scale,
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
@@ -111,7 +107,7 @@ impl Dt {
             return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
         }
 
-        let utc = self.to(current, Scale::UTC);
+        let utc = self.convert_internal(Scale::UTC);
 
         const EPOCH_OFFSET: i64 = 1_325_419_135;
         let rem_attos = utc.to_sec_ufrac();
@@ -204,7 +200,6 @@ impl Dt {
     /// (exactly as `to_ccsds_d` does for milliseconds).
     pub fn to_ccsds_ccs(
         &self,
-        current: Scale,
         use_doy: bool,
         n_subsec: u8,
     ) -> Result<([u8; Self::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
@@ -213,12 +208,7 @@ impl Dt {
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
-        let gt = if current.uses_leap_seconds() {
-            self.to_ymdhms_rich_on(current, current)
-        } else {
-            let utc = self.to(current, Scale::UTC);
-            utc.to_ymdhms_rich_on(Scale::UTC, Scale::UTC)
-        };
+        let gt = self.tag(Scale::UTC).to_ymd_rich();
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
         let mut pos = 0usize;
@@ -293,14 +283,11 @@ impl Dt {
     /// - If the `current` [`Scale`] **uses leap seconds** then **ccsds_d is chosen**.
     /// - Otherwise ccsds_c is chosen.
     #[inline]
-    pub fn to_ccsds_bin(
-        &self,
-        current: Scale,
-    ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        if current.uses_leap_seconds() {
-            self.to_ccsds_d(current, 2, 1, false)
+    pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
+        if self.tag.uses_leap_seconds() {
+            self.to_ccsds_d(2, 1, false)
         } else {
-            self.to_ccsds_c(current, 4, 4, false)
+            self.to_ccsds_c(4, 4, false)
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    ClassifiedDate, Dt, Lang, Scale, TimeTraits, classify_date, generate_syslog_candidates,
+    ClassifiedDate, Dt, Lang, TimeTraits, classify_date, generate_syslog_candidates,
     try_compatible_formats,
 };
 
@@ -26,7 +26,7 @@ pub(crate) fn parse_syslog_no_year(input: &str, lang: Lang, ref_time: &Option<Dt
         }
     };
 
-    let g = now.to_ymdhms(Scale::UTC);
+    let g = now.to_ymd();
     let this_year = g.yr;
 
     let try_with_year = |year: i64| -> Option<Dt> {

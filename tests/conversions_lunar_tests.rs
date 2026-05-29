@@ -29,8 +29,8 @@ mod ltc_tests {
         ];
 
         for &p in &test_points {
-            let ltc = p.to(Scale::TAI, Scale::LTC);
-            let back = ltc.to_tai(Scale::LTC);
+            let ltc = p.convert_internal(Scale::LTC);
+            let back = ltc.convert_internal(Scale::TAI);
 
             let diff = back.to_diff_raw(p).to_sec_f().abs();
 
@@ -51,7 +51,7 @@ mod ltc_tests {
     #[test]
     fn ltc_minus_tai_at_j2000() {
         let tai = Dt::ZERO;
-        let ltc = tai.to(Scale::TAI, Scale::LTC);
+        let ltc = tai.convert_internal(Scale::LTC);
 
         let diff_s = ltc.to_diff_raw(tai).to_sec_f();
 
@@ -82,8 +82,8 @@ mod ltc_tests {
         ];
 
         for &p in &points {
-            let tt = p.to(Scale::TAI, Scale::TT);
-            let ltc = p.to(Scale::TAI, Scale::LTC);
+            let tt = p.convert_internal(Scale::TT);
+            let ltc = p.convert_internal(Scale::LTC);
 
             let corr_s = ltc.to_diff_raw(tt).to_sec_f();
 
@@ -117,8 +117,8 @@ mod ltc_tests {
     #[test]
     fn ltc_agrees_with_lte440_j2000_reference() {
         let tai = Dt::ZERO;
-        let ltc = tai.to(Scale::TAI, Scale::LTC);
-        let tdb = tai.to(Scale::TAI, Scale::TDB);
+        let ltc = tai.convert_internal(Scale::LTC);
+        let tdb = tai.convert_internal(Scale::TDB);
 
         let diff_s = ltc.to_diff_raw(tdb).to_sec_f();
 
@@ -152,8 +152,8 @@ mod ltc_tests {
     #[test]
     fn tcl_agrees_with_lte440_j2000_reference() {
         let tai = Dt::ZERO;
-        let tcl = tai.to(Scale::TAI, Scale::TCL);
-        let tdb = tai.to(Scale::TAI, Scale::TDB);
+        let tcl = tai.convert_internal(Scale::TCL);
+        let tdb = tai.convert_internal(Scale::TDB);
 
         let diff_s = tcl.to_diff_raw(tdb).to_sec_f();
 
@@ -171,17 +171,17 @@ mod ltc_tests {
     ///
     /// According to the official LTE440 ephemeris (Lu et al. 2025, A&A 704, A76):
     ///
-    /// - At J2000.0 (JD 2451545.0 TDB):  
+    /// - At J2000.0 (JD 2451545.0 TDB):
     ///   TCL − TDB = **+0.49330749643254945 s** (exact published reference value).
     ///
     /// - Secular (linear) rate: ⟨dTCL/dTDB⟩ − 1 = **+6.798355238 × 10⁻¹⁰**
     ///   (from the LTE440 `.tpc` kernel constant `BODY1000000005_RATE`).
     ///
-    /// - Representative epoch: 2038-01-01 12:00 TDB (JD 2465425.0)  
-    ///   ΔJD = 13 880 days  
+    /// - Representative epoch: 2038-01-01 12:00 TDB (JD 2465425.0)
+    ///   ΔJD = 13 880 days
     ///   Linear accumulation = 6.798355238 × 10⁻¹⁰ × 13 880 × 86 400 ≈ **+0.815280515 s**
     ///
-    /// - Therefore the expected mean value is:  
+    /// - Therefore the expected mean value is:
     ///   TCL − TDB ≈ 0.493307496 + 0.815280515 = **+1.308588011 s**
     ///
     /// The periodic contribution (13-term Fourier series) varies by up to ±1.65 ms
@@ -193,7 +193,7 @@ mod ltc_tests {
     /// secular mean plus the full periodic oscillation while remaining tight enough
     /// to verify correct implementation.
     ///
-    /// Reference kernels and exact values:  
+    /// Reference kernels and exact values:
     /// https://github.com/xlucn/LTE440 (lte440.bsp + lte440.tpc, README, and demo scripts)
     #[test]
     fn tcl_for_lunar_orbit_planning_2038_example() {
@@ -202,10 +202,10 @@ mod ltc_tests {
         let unix_tai_sec = 2_145_916_800i128;
 
         let tai_2038 =
-            Dt::from_diff_and_scale(Dt::from_tai_sec(unix_tai_sec), Dt::UNIX_EPOCH, Scale::TAI);
+            Dt::from_diff_and_scale(Dt::from_tai_sec(unix_tai_sec), Dt::UNIX_EPOCH, false);
 
-        let tcl_span = tai_2038.to(Scale::TAI, Scale::TCL); // Dt on TCL scale
-        let tdb_span = tai_2038.to(Scale::TAI, Scale::TDB); // Dt on TDB scale
+        let tcl_span = tai_2038.convert_internal(Scale::TCL); // Dt on TCL scale
+        let tdb_span = tai_2038.convert_internal(Scale::TDB); // Dt on TDB scale
 
         let diff_s = tcl_span.to_diff_raw(tdb_span).to_sec_f();
 
@@ -216,7 +216,7 @@ mod ltc_tests {
         );
 
         // Round-trip sanity check
-        let tai = tcl_span.to(Scale::TCL, Scale::TAI);
+        let tai = tcl_span.convert_internal(Scale::TAI);
 
         let roundtrip_error = tai.to_diff_raw(tai_2038).to_sec_f().abs();
 
@@ -251,9 +251,10 @@ mod ltc_tests {
         // The numeric value on the TCL time scale (seconds since TCL reference epoch 1977)
         let tcl_sec = epoch_tcl.duration.to_seconds();
 
-        let my_2038_tai = Dt::from_ymd_on(2038, 1, 1, Scale::TAI);
+        let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
         let my_tcl = my_2038_tai
-            .to_scale_and_then_diff(Scale::TCL, Dt::TAI_1977_EPOCH.to(Scale::TAI, Scale::TCL));
+            .tag(Scale::TCL)
+            .to_scale_and_then_diff(Dt::TAI_1977_EPOCH, true);
 
         let diff = (my_tcl.to_sec_f() - tcl_sec).abs();
 

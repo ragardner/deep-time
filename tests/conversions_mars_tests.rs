@@ -10,8 +10,8 @@ mod mars_tests {
         let utc_pre = Dt::from_tai_sec(1_485_779_199);
         let utc_post = Dt::from_tai_sec(1_485_779_200);
 
-        let msd_pre = utc_pre.to_msd_f(Scale::TAI);
-        let msd_post = utc_post.to_msd_f(Scale::TAI);
+        let msd_pre = utc_pre.to_msd_f();
+        let msd_post = utc_post.to_msd_f();
 
         let diff_sols = (msd_post - msd_pre).abs();
         assert!(
@@ -32,7 +32,7 @@ mod mars_tests {
         ];
 
         for &p in &test_points {
-            let (whole, frac) = p.to_msd(Scale::TAI);
+            let (whole, frac) = p.to_msd();
             let back = Dt::from_msd(whole, frac);
 
             let diff = back.to_diff_raw(p).to_sec_f().abs();
@@ -54,7 +54,7 @@ mod mars_tests {
         ];
 
         for &p in &test_points {
-            let msd_float = p.to_msd_f(Scale::TAI);
+            let msd_float = p.to_msd_f();
             let back = Dt::from_msd_f(msd_float);
 
             let diff = back.to_diff_raw(p).to_sec_f().abs();
@@ -76,7 +76,7 @@ mod mars_tests {
         ];
 
         for &p in &test_points {
-            let mtc = p.to_mtc(Scale::TAI);
+            let mtc = p.to_mtc();
             let mtc_sec = mtc.to_sec_f();
             assert!(
                 mtc_sec >= 0.0 && mtc_sec < MARS_SOL_LENGTH_SEC,
@@ -90,7 +90,7 @@ mod mars_tests {
     #[test]
     fn msd_at_j2000_is_correct() {
         let tai = Dt::ZERO;
-        let (whole, frac) = tai.to_msd(Scale::TAI);
+        let (whole, frac) = tai.to_msd();
 
         assert_eq!(whole, 44791, "Integer part of MSD at J2000 should be 44791");
     }
@@ -112,16 +112,16 @@ mod mars_tests {
 
         const TOLERANCE: f64 = 0.01;
 
-        let date = Dt::from_ymd(2000, 1, 6);
-        let ls = date.to_mars_ls(Scale::TAI);
+        let date = Dt::from_ymd(2000, 1, 6, 0, 0, 0, 0, Scale::UTC);
+        let ls = date.to_mars_ls();
         assert!(
             (ls - 277.18758).abs() < TOLERANCE,
             "2000-01-06 Ls is wrong, got: {}",
             ls
         );
 
-        let date = Dt::from_ymdhms(2004, 1, 3, 13, 46, 41, 0);
-        let ls = date.to_mars_ls(Scale::TAI);
+        let date = Dt::from_ymd(2004, 1, 3, 13, 46, 41, 0, Scale::UTC);
+        let ls = date.to_mars_ls();
         assert!(
             (ls - 327.32416).abs() < TOLERANCE,
             "2004-01-03 Ls is wrong, got: {}",
@@ -146,11 +146,11 @@ mod mars_tests {
         // These values are taken verbatim from the published NASA algorithm page
         // (Table of worked examples, rows C-2/C-3 and C-4).
 
-        let date = Dt::from_ymd(2000, 1, 6);
+        let date = Dt::from_ymd(2000, 1, 6, 0, 0, 0, 0, Scale::UTC);
         let east_lon_deg = f!(0.0); // prime meridian
 
-        let lmst = date.to_mars_lmst(Scale::TAI, east_lon_deg);
-        let ltst = date.to_mars_ltst(Scale::TAI, east_lon_deg);
+        let lmst = date.to_mars_lmst(east_lon_deg);
+        let ltst = date.to_mars_ltst(east_lon_deg);
 
         // Convert the returned Dt (seconds into the current sol) to a float for comparison
         let lmst_sec = lmst.to_sec_f();
@@ -191,9 +191,9 @@ mod mars_tests {
         //   Smith et al. (2006) "One Martian year of atmospheric observations
         //   using MER Mini-TES", J. Geophys. Res. Planets, 111(E12S13).
         //   https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2006JE002770
-        let spirit = Dt::from_ymd(2004, 1, 4);
+        let spirit = Dt::from_ymd(2004, 1, 4, 0, 0, 0, 0, Scale::UTC);
         assert_eq!(
-            spirit.to_mars_year(Scale::TAI),
+            spirit.to_mars_year(),
             26,
             "Spirit landing (2004-01-04) should be Mars Year 26"
         );
@@ -202,9 +202,9 @@ mod mars_tests {
         // Landed in Mars Year 36 (widely used in mission papers and
         // confirmed by the epoch + tropical year calculation; e.g.
         // "Mars Year 36" references in post-landing MEDA/Mars 2020 literature).
-        let perseverance = Dt::from_ymd(2021, 2, 18);
+        let perseverance = Dt::from_ymd(2021, 2, 18, 0, 0, 0, 0, Scale::UTC);
         assert_eq!(
-            perseverance.to_mars_year(Scale::TAI),
+            perseverance.to_mars_year(),
             36,
             "Perseverance landing (2021-02-18) should be Mars Year 36"
         );

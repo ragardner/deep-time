@@ -1,6 +1,6 @@
 use crate::{
     ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, MAX_DATE_STRING_LEN, Mode, Order,
-    OrderFirst, ParseCfg, Scale, an_err, classify_date, default_date_parse_options,
+    OrderFirst, ParseCfg, an_err, classify_date, default_date_parse_options,
     generate_ambiguous_day_first_candidates, generate_ambiguous_month_first_candidates,
     generate_ambiguous_year_first_candidates, generate_unambiguous_candidates,
     is_week_date_missing_weekday, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
@@ -385,10 +385,9 @@ impl Dt {
     /// on any parse error.
     #[inline]
     pub fn str_to_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        Dt::from_str_parse(s, opts).ok().map(|tp| {
-            tp.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
-                .to_ms()
-        })
+        Dt::from_str_parse(s, opts)
+            .ok()
+            .map(|tp| tp.to_scale_and_then_diff(Dt::UNIX_EPOCH, false).to_ms())
     }
 
     /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
@@ -398,10 +397,9 @@ impl Dt {
     /// on any parse error.
     #[inline]
     pub fn str_to_unix_ns(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
-        Dt::from_str_parse(s, opts).ok().map(|tp| {
-            tp.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
-                .to_ns()
-        })
+        Dt::from_str_parse(s, opts)
+            .ok()
+            .map(|tp| tp.to_scale_and_then_diff(Dt::UNIX_EPOCH, false).to_ns())
     }
 }
 

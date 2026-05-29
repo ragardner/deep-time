@@ -1,5 +1,5 @@
 use crate::{
-    C, C_SQUARED, Drift, Dt, Position, Real, Spacetime, TWO_GM_SUN_OVER_C3, Velocity, log,
+    C, C_SQUARED, Drift, Dt, Position, Real, Scale, Spacetime, TWO_GM_SUN_OVER_C3, Velocity, log,
 };
 
 impl Dt {
@@ -8,7 +8,7 @@ impl Dt {
     /// Recommended value for the Sun when building the `bodies` slice passed to
     /// [`ObserverState::shapiro_delay`], [`ObserverState::shapiro_delay`],
     /// and related methods.
-    pub const SHAPIRO_SOLAR: Self = Self::from_sec_f(TWO_GM_SUN_OVER_C3);
+    pub const SHAPIRO_SOLAR: Self = Self::from_sec_f(TWO_GM_SUN_OVER_C3, Scale::TAI);
 
     /// Creates the Shapiro delay scale for an arbitrary central body
     /// from its standard gravitational parameter `GM` (μ) in m³ s⁻².
@@ -23,7 +23,7 @@ impl Dt {
     #[inline]
     pub const fn shapiro_from_grav_param(gm: Real) -> Self {
         let secs = 2.0 * gm / (C * C_SQUARED);
-        Self::from_sec_f(secs)
+        Self::from_sec_f(secs, Scale::TAI)
     }
 
     /// Creates an [`ObserverState`] using this time value along with the
@@ -396,7 +396,7 @@ impl ObserverState {
         // Initial geometric guess
         let initial_rx = rx_provider(self.time);
         let initial_r_sep = self.position.distance_to(initial_rx.position);
-        let initial_geometric = Dt::from_sec_f(initial_r_sep / C);
+        let initial_geometric = Dt::from_sec_f(initial_r_sep / C, Scale::TAI);
 
         let mut rx_time = self.time.add(initial_geometric);
         let mut prop_correction = Dt::ZERO;
@@ -407,7 +407,7 @@ impl ObserverState {
             prop_correction = self.shapiro_delay(rx, bodies);
 
             let r_sep = self.position.distance_to(rx.position);
-            let geometric = Dt::from_sec_f(r_sep / C);
+            let geometric = Dt::from_sec_f(r_sep / C, Scale::TAI);
             let full_delay = geometric.add(prop_correction);
 
             let new_rx_time = self.time.add(full_delay);
@@ -665,7 +665,7 @@ impl ObserverState {
         }
 
         let delay_sec = shapiro_sec * log(arg);
-        Dt::from_sec_f(delay_sec)
+        Dt::from_sec_f(delay_sec, Scale::TAI)
     }
 
     /// Computes the differential proper-time correction between `self`

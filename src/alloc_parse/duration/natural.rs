@@ -1,7 +1,7 @@
 use crate::{
     AS_PER_DAY, AS_PER_HOUR, AS_PER_MINUTE, AS_PER_MONTH, AS_PER_WEEK, AS_PER_YEAR,
     ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_US_I128, Dt, DtErr,
-    DtErrKind, Lang, LangData, Scale, SplitKeepWithPos, Token, an_err, lang_map, to_ascii_digit,
+    DtErrKind, Lang, LangData, SplitKeepWithPos, Token, an_err, lang_map, to_ascii_digit,
 };
 use alloc::{
     string::{String, ToString},
@@ -274,12 +274,12 @@ pub(crate) fn natural_duration_to_span(
                 }
                 Token::Tomorrow => {
                     if !has_duration {
-                        return Ok(Dt::from(AS_PER_DAY, Scale::TAI));
+                        return Ok(Dt::span(AS_PER_DAY));
                     }
                 }
                 Token::Yesterday => {
                     if !has_duration {
-                        return Ok(Dt::from(-AS_PER_DAY, Scale::TAI));
+                        return Ok(Dt::span(-AS_PER_DAY));
                     }
                 }
                 Token::Year => {
@@ -497,7 +497,7 @@ pub(crate) fn natural_duration_to_span(
         return Err(an_err!(DtErrKind::InvalidInput, "{}", input));
     }
 
-    Ok(Dt::from(total_attos, Scale::TAI))
+    Ok(Dt::span(total_attos))
 }
 
 pub(crate) fn natural_duration_to_iso(

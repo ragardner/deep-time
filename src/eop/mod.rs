@@ -14,7 +14,7 @@
 #![allow(clippy::approx_constant)]
 #![allow(clippy::eq_op)]
 
-use crate::{Dt, DtErr, DtErrKind, Real, an_err};
+use crate::{Dt, DtErr, DtErrKind, Real, Scale, an_err};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
@@ -429,10 +429,10 @@ impl Dt {
     /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
     #[inline]
     pub fn to_eop(&self, op_data: &EopData) -> Result<Self, DtErr> {
-        Ok(self.add(Dt::from_sec_f(Self::mjd_to_eop_offset_f(
-            self.to_mjd_f(),
-            op_data,
-        )?)))
+        Ok(self.add(Dt::from_sec_f(
+            Self::mjd_to_eop_offset_f(self.to_mjd_f(), op_data)?,
+            Scale::TAI,
+        )))
     }
 
     /// Convert a [`Dt`] already offset using orientation parameters data back to whatever
@@ -453,7 +453,7 @@ impl Dt {
                 .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?
                 .offset;
 
-            guess = self.sub(Dt::from_sec_f(offset)); // TODO: guess or self?
+            guess = self.sub(Dt::from_sec_f(offset, Scale::TAI)); // TODO: guess or self?
         }
 
         Ok(guess)

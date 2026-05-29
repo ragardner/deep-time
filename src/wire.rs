@@ -24,7 +24,7 @@ impl Dt {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
         buf[1..17].copy_from_slice(&self.attos.to_le_bytes());
-        buf[17] = self.scale as u8;
+        buf[17] = self.tag as u8;
         buf
     }
 
@@ -51,9 +51,9 @@ impl Dt {
             bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15], bytes[16],
         ]);
 
-        let scale = Scale::from_u8(bytes[17]);
+        let tag = Scale::from_u8(bytes[17]);
 
-        Some(Self { attos, scale })
+        Some(Self { attos, tag })
     }
 }
 

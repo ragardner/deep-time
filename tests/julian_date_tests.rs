@@ -32,7 +32,7 @@ fn jd_tt_exact_roundtrip() {
     ];
 
     for &p in &test_points {
-        let (jd, frac) = p.to(Scale::TAI, Scale::TT).to_jd();
+        let (jd, frac) = p.convert_internal(Scale::TT).to_jd();
         let back = Dt::from_jd(jd, frac, Scale::TT);
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(diff < 1e-10, "JD round-trip error {} s at {:?}", diff, p);
@@ -48,7 +48,7 @@ fn mjd_tt_exact_roundtrip() {
     ];
 
     for &p in &test_points {
-        let (mjd, frac) = p.to(Scale::TAI, Scale::TT).to_mjd();
+        let (mjd, frac) = p.convert_internal(Scale::TT).to_mjd();
         let back = Dt::from_mjd(mjd, frac, Scale::TT);
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(diff < 1e-10, "MJD round-trip error {} s at {:?}", diff, p);
@@ -58,7 +58,7 @@ fn mjd_tt_exact_roundtrip() {
 #[test]
 fn test_mjd_utc_roundtrip() {
     // Normal instant (non-leap)
-    let original = Dt::from_ymdhms(2025, 4, 27, 14, 30, 0, 123_456_789_000_000_000);
+    let original = Dt::from_ymd(2025, 4, 27, 14, 30, 0, 123_456_789_000_000_000, Scale::UTC);
     let (mjd, frac) = original.to_mjd();
     let roundtrip = Dt::from_mjd(mjd, frac, Scale::TAI);
     assert_eq!(
@@ -72,7 +72,7 @@ fn test_mjd_utc_roundtrip() {
     assert_eq!(original, roundtrip_jd, "JD UTC round-trip failed");
 
     // Leap-second case (2015-06-30 23:59:60 UTC) — the trickiest path
-    let leap = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 0);
+    let leap = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 0, Scale::UTC);
     let (mjd_leap, frac_leap) = leap.to_mjd();
     let roundtrip_leap = Dt::from_mjd(mjd_leap, frac_leap, Scale::TAI);
     assert_eq!(

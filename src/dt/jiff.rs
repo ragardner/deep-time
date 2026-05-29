@@ -2,9 +2,9 @@ use crate::{Dt, DtErr, DtErrKind, Scale, an_err};
 use jiff::{SignedDuration, Span, Timestamp};
 
 impl Dt {
-    /// Converts this [`Dt`] to a [`jiff::Timestamp`] (always in UTC).
-    pub fn to_jiff_timestamp(&self, current: Scale) -> Timestamp {
-        let nanos = self.to(current, Scale::UTC).to_ns();
+    /// Converts this [`Dt`] to a [`jiff::Timestamp`].
+    pub fn to_jiff_timestamp(&self) -> Timestamp {
+        let nanos = self.to_unix().to_ns();
 
         match Timestamp::from_nanosecond(nanos) {
             Ok(ts) => ts,
@@ -55,7 +55,11 @@ impl Dt {
     /// This is the inverse of [`Dt::to_jiff_timestamp`].
     #[inline]
     pub fn from_jiff_timestamp(ts: Timestamp) -> Self {
-        Dt::from_dt(Dt::from_ns(ts.as_nanosecond(), Scale::TAI), Scale::UTC)
+        Dt::from_diff_and_scale(
+            Dt::from_ns(ts.as_nanosecond(), Scale::UTC),
+            Self::UNIX_EPOCH,
+            false,
+        )
     }
 
     /// Creates a [`Dt`] from a `jiff::SignedDuration` (nanosecond precision).

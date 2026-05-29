@@ -72,7 +72,7 @@ impl Dt {
         let attos_from_days = (days_since_j2000 as i128).saturating_mul(ATTOS_PER_DAY);
         let total_attos = attos_from_days.saturating_add(frac_attos_i128);
 
-        Self::from(total_attos, on)
+        Self::from_attos(total_attos, on)
     }
 
     /// Creates a `Dt` from an exact Modified Julian Date.

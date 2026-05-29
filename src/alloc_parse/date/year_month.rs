@@ -65,7 +65,16 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<Dt> {
         return None;
     }
 
-    Some(Dt::from_ymd_on(year as i64, month as u8, 1, Scale::UTC))
+    Some(Dt::from_ymd(
+        year as i64,
+        month as u8,
+        1,
+        0,
+        0,
+        0,
+        0,
+        Scale::UTC,
+    ))
 }
 
 /// 6-digit year-month: "202403" or "-202403"

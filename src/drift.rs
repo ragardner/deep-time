@@ -453,7 +453,7 @@ impl Drift {
             total_attos = total_attos.saturating_add(accel_term);
         }
 
-        Dt::from(total_attos, Scale::TAI)
+        Dt::span(total_attos)
     }
 
     /// Evaluates the deterministic relativistic/polynomial correction **and**
@@ -470,7 +470,7 @@ impl Drift {
     #[inline]
     pub fn time_diff_after_with_noise(&self, span: &Dt, stochastic_offset_sec: Real) -> Dt {
         self.time_diff_after(span)
-            .add(Dt::from_sec_f(stochastic_offset_sec))
+            .add(Dt::from_sec_f(stochastic_offset_sec, Scale::TAI))
     }
 
     /// Creates a `Drift` directly from an observer’s velocity and total
@@ -532,7 +532,7 @@ impl Drift {
         let rate_factor = sqrt(k_eff).max(f!(0.0));
         let rate_offset = rate_factor - f!(1.0);
 
-        Self::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(rate_offset))
+        Self::from_offset_and_rate(Dt::ZERO, Dt::from_sec_f(rate_offset, Scale::TAI))
     }
 
     /// Creates a `Drift` from a fully resolved `Spacetime` snapshot.  

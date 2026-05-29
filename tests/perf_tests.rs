@@ -212,7 +212,7 @@ mod perf_tests {
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = x.to_str(Scale::TAI, Scale::UTC, "%Y-%m-%dT%H:%M:%S");
+                let _ = x.to_str("%Y-%m-%dT%H:%M:%S");
             }
             let elapsed = start.elapsed();
 
@@ -231,9 +231,9 @@ mod perf_tests {
             const ITERATIONS: usize = 1_000_000;
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TAI, Scale::TDB);
+                let _ = x.convert_internal(Scale::TDB);
             }
             let elapsed = start.elapsed();
 
@@ -244,9 +244,9 @@ mod perf_tests {
             println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1).to(Scale::TAI, Scale::TDB);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).convert_internal(Scale::TDB);
             for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TDB, Scale::TAI);
+                let _ = x.convert_internal(Scale::TAI);
             }
             let elapsed = start.elapsed();
             let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
@@ -263,9 +263,9 @@ mod perf_tests {
             const ITERATIONS: usize = 1_000_000;
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TAI, Scale::TT);
+                let _ = x.convert_internal(Scale::TT);
             }
             let elapsed = start.elapsed();
 
@@ -276,9 +276,9 @@ mod perf_tests {
             println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1).to(Scale::TAI, Scale::TT);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).convert_internal(Scale::TT);
             for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TT, Scale::TAI);
+                let _ = x.convert_internal(Scale::TAI);
             }
             let elapsed = start.elapsed();
             let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
@@ -297,7 +297,7 @@ mod perf_tests {
 
             const ITERATIONS: usize = 10_000_000;
 
-            let deep_tai = Dt::from_ymd(2000, 1, 1);
+            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 0, 0, 0, 0);
 
             println!("\n=== TAI ↔ UTC PERF — deep_time vs hifitime 4.x ===");
@@ -305,7 +305,7 @@ mod perf_tests {
             // TAI → UTC
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).to(black_box(Scale::TAI), black_box(Scale::UTC));
+                let _ = black_box(deep_tai).convert_internal(black_box(Scale::UTC));
             }
             let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -316,12 +316,12 @@ mod perf_tests {
             let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // UTC → TAI
-            let deep_utc = deep_tai.to(Scale::TAI, Scale::UTC);
+            let deep_utc = deep_tai.convert_internal(Scale::UTC);
             let hifi_utc = hifi_tai.to_time_scale(TimeScale::UTC);
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_utc).to(black_box(Scale::UTC), black_box(Scale::TAI));
+                let _ = black_box(deep_utc).convert_internal(black_box(Scale::TAI));
             }
             let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -357,7 +357,7 @@ mod perf_tests {
             const ITERATIONS: usize = 1_000_000;
 
             // Same reference instant: J2000.0 (2000-01-01 12:00:00 TAI)
-            let deep_tai = Dt::from_ymd(2000, 1, 1);
+            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
 
             println!("\n=== TAI ↔ TDB PERF — deep_time vs hifitime 4.x ===");
@@ -365,7 +365,7 @@ mod perf_tests {
             // ── TAI → TDB ─────────────────────────────────────────────────────
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).to(black_box(Scale::TAI), black_box(Scale::TDB));
+                let _ = black_box(deep_tai).convert_internal(black_box(Scale::TDB));
             }
             let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -376,12 +376,12 @@ mod perf_tests {
             let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── TDB → TAI ─────────────────────────────────────────────────────
-            let deep_tdb = deep_tai.to(Scale::TAI, Scale::TDB);
+            let deep_tdb = deep_tai.convert_internal(Scale::TDB);
             let hifi_tdb = hifi_tai.to_time_scale(TimeScale::TDB);
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tdb).to(black_box(Scale::TDB), black_box(Scale::TAI));
+                let _ = black_box(deep_tdb).convert_internal(black_box(Scale::TAI));
             }
             let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -417,14 +417,14 @@ mod perf_tests {
 
             const ITERATIONS: usize = 10_000_000;
 
-            let deep_tai = Dt::from_ymd(2000, 1, 1);
+            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
 
             println!("\n=== GPS CONVERSION PERF — deep_time vs hifitime 4.x ===");
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).to_gps(black_box(Scale::TAI));
+                let _ = black_box(deep_tai).to_gps();
             }
             let deep_gps = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -436,7 +436,7 @@ mod perf_tests {
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).to_gps_wk_and_tow(black_box(Scale::TAI));
+                let _ = black_box(deep_tai).to_gps_wk_and_tow();
             }
             let deep_tow = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
             let start = Instant::now();
@@ -468,9 +468,9 @@ mod perf_tests {
             const ITERATIONS: usize = 1_000_000;
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TAI, Scale::UTC);
+                let _ = x.convert_internal(Scale::UTC);
             }
             let elapsed = start.elapsed();
 
@@ -481,9 +481,9 @@ mod perf_tests {
             println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1).to(Scale::TAI, Scale::UTC);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).convert_internal(Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::UTC, Scale::TAI);
+                let _ = x.convert_internal(Scale::TAI);
             }
             let elapsed = start.elapsed();
             let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
@@ -500,9 +500,9 @@ mod perf_tests {
             const ITERATIONS: usize = 1_000_000;
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.to_gps(Scale::TAI);
+                let _ = x.to_gps();
             }
             let elapsed = start.elapsed();
 

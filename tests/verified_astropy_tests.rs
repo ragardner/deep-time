@@ -142,8 +142,9 @@ mod astropy_verified_conversions_tests {
 
     #[test]
     fn galexsec() {
-        let galexsec = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
-            .to_galexsec(Scale::TAI)
+        let galexsec = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+            .tag(Scale::UTC)
+            .to_galexsec()
             .to_sec_f();
         // galexsec  : 1261871963.0
         assert_eq!(galexsec, 1261871963.0);
@@ -151,8 +152,9 @@ mod astropy_verified_conversions_tests {
 
     #[test]
     fn gps() {
-        let gps = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
-            .to_gps(Scale::TAI)
+        let gps = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+            .tag(Scale::GPS)
+            .to_gps()
             .to_sec_f();
         // gps       : 1261871981.0
         assert_eq!(gps, 1261871981.0);
@@ -160,8 +162,8 @@ mod astropy_verified_conversions_tests {
 
     #[test]
     fn unix_tai() {
-        let unix_tai = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
-            .to_unix(Scale::TAI, Scale::TAI)
+        let unix_tai = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+            .to_unix()
             .to_sec_f();
         // unix_tai 1577836800.0
         assert_eq!(unix_tai, 1577836800.0);
@@ -169,8 +171,9 @@ mod astropy_verified_conversions_tests {
 
     #[test]
     fn unix_utc() {
-        let unix = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
-            .to_unix(Scale::TAI, Scale::UTC)
+        let unix = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+            .tag(Scale::UTC)
+            .to_unix()
             .to_sec_f();
         // unix_utc 1577836763.0
         assert_eq!(unix, 1577836763.0);
@@ -178,8 +181,9 @@ mod astropy_verified_conversions_tests {
 
     #[test]
     fn cxcsec() {
-        let cxc = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
-            .to_cxcsec(Scale::TAI)
+        let cxc = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+            .tag(Scale::TT)
+            .to_cxcsec()
             .to_sec_f();
         // cxcsec 694224032.184
         assert_eq!(cxc, 694224032.184);
@@ -187,29 +191,29 @@ mod astropy_verified_conversions_tests {
 
     #[test]
     fn decimal_year() {
-        let x = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
-        let y = Dt::from_ymdhms_on(-2000, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let x = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let y = Dt::from_ymd(-2000, 1, 1, 0, 0, 0, 0, Scale::TAI);
         // jyear 2019.9986310746065
         assert_eq!(x.to_jyear(), 2019.9986310746065);
         // byear 2020.000335739628
         assert!((x.to_byear() - 2020.000335739628).abs() < 1e-12);
         // decimalyear 2020.0
-        assert_eq!(x.to_decimalyear(Scale::TAI), 2020.0);
+        assert_eq!(x.to_decimalyear(), 2020.0);
         // Negative decimal year
-        assert_eq!(y.to_decimalyear(Scale::TAI), -2000.0);
+        assert_eq!(y.to_decimalyear(), -2000.0);
     }
 
     #[test]
     fn tai_jd() {
-        let jd = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI).to_jd_f();
+        let jd = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI).to_jd_f();
         // jd_tai 2458849.5
         assert_eq!(jd, 2458849.5);
     }
 
     #[test]
     fn tt_jd() {
-        let jd = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
-            .to(Scale::TAI, Scale::TT)
+        let jd = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+            .convert_internal(Scale::TT)
             .to_jd_f();
         // jd_tt 2458849.5003725
         assert_eq!(jd, 2458849.5003725);
@@ -217,8 +221,8 @@ mod astropy_verified_conversions_tests {
 
     #[test]
     fn tcg_jd() {
-        let jd = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
-            .to(Scale::TAI, Scale::TCG)
+        let jd = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+            .convert_internal(Scale::TCG)
             .to_jd_f();
         // jd_tcg 2458849.500383445
         assert_eq!(jd, 2458849.500383445);
@@ -226,8 +230,8 @@ mod astropy_verified_conversions_tests {
 
     #[test]
     fn tcb_jd() {
-        let jd = Dt::from_ymdhms_on(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
-            .to(Scale::TAI, Scale::TCB)
+        let jd = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+            .convert_internal(Scale::TCB)
             .to_jd_f();
         // jd_tcb 2458849.500616009
         assert_eq!(jd, 2458849.500616009);
@@ -302,8 +306,8 @@ mod astropy_verified_conversions_tests {
         .iter()
         {
             for mo in [1, 4] {
-                let jd = Dt::from_ymdhms_on(*yr as i64, mo, 1, 0, 0, 0, 0, Scale::TAI)
-                    .to(Scale::TAI, Scale::TDB)
+                let jd = Dt::from_ymd(*yr as i64, mo, 1, 0, 0, 0, 0, Scale::TAI)
+                    .convert_internal(Scale::TDB)
                     .to_jd_f();
                 let expected = results[results_idx];
                 let diff = (jd - expected).abs();

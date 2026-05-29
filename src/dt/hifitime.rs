@@ -5,8 +5,8 @@ impl Dt {
     /// Converts this [`Dt`] to a [`hifitime::Epoch`] (TAI scale).
     ///
     /// Round-trips with [`Dt::from_hifitime`].
-    pub fn to_hifitime_epoch(&self, current: Scale) -> Epoch {
-        let nanos = self.to(current, Scale::TAI).to_ns();
+    pub fn to_hifitime_epoch(&self) -> Epoch {
+        let nanos = self.to_ns();
 
         let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);
         let j2000 = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);

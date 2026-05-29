@@ -1,4 +1,4 @@
-use crate::{C_SQUARED, Drift, Dt, DtErr, DtErrKind, Real, Spacetime, Velocity, an_err};
+use crate::{C_SQUARED, Drift, Dt, DtErr, DtErrKind, Real, Scale, Spacetime, Velocity, an_err};
 
 impl Dt {
     /// Computes the relativistic clock drift (proper time minus coordinate time)
@@ -141,7 +141,7 @@ impl Dt {
                 let rate1 = Self::rate_from_local(&ls);
 
                 let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt_sec;
-                let dtau_segment = Dt::from_sec_f(sign * (dt_sec + integral));
+                let dtau_segment = Dt::from_sec_f(sign * (dt_sec + integral), Scale::TAI);
 
                 accumulated = accumulated.add(dtau_segment);
             }
@@ -173,7 +173,7 @@ impl Dt {
     #[inline]
     pub const fn proper_time_between_constant_rate(self, end: Dt, dtau_dt: Real) -> Dt {
         let dt_sec = end.to_diff_raw(self).to_sec_f();
-        Dt::from_sec_f(dtau_dt * dt_sec)
+        Dt::from_sec_f(dtau_dt * dt_sec, Scale::TAI)
     }
 
     /// Returns the instantaneous proper-time rate (dτ/dt) from a local

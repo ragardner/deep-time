@@ -89,15 +89,15 @@ fn tdb_tt_difference_matches_spice_approximation() {
 
     for &tai in &test_points {
         // These give the *numerical* values on each scale (correct usage of .to)
-        let tt_num = tai.to(Scale::TAI, Scale::TT);
-        let tdb_num = tai.to(Scale::TAI, Scale::TDB);
+        let tt_num = tai.convert_internal(Scale::TT);
+        let tdb_num = tai.convert_internal(Scale::TDB);
 
         // This is exactly TDB − TT in seconds (the quantity SPICE approximates)
         let diff = tdb_num.to_diff_raw(tt_num).to_sec_f().abs();
 
         assert!(
             diff < 0.002,
-            "TDB−TT difference of {:.9} s exceeds expected max amplitude (~1.658 ms) at TAI = {:?}",
+            "TDB-TT difference of {:.9} s exceeds expected max amplitude (~1.658 ms) at TAI = {:?}",
             diff,
             tai
         );
@@ -114,8 +114,8 @@ fn tdb_tt_difference_matches_spice_approximation() {
 fn et_tai_roundtrip_is_lossless() {
     let original = Dt::from_sec(987_654_321_098, Scale::TAI);
 
-    let et = original.to(Scale::TAI, Scale::ET);
-    let xt = et.to_tai(Scale::ET);
+    let et = original.convert_internal(Scale::ET);
+    let xt = et.convert_internal(Scale::TAI);
 
     assert_eq!(original, xt, "ET round-trip must be lossless");
 }
@@ -132,8 +132,8 @@ fn tdb_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let tdb = p.to(Scale::TAI, Scale::TDB);
-        let back = tdb.to_tai(Scale::TDB);
+        let tdb = p.convert_internal(Scale::TDB);
+        let back = tdb.convert_internal(Scale::TAI);
 
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
@@ -155,8 +155,8 @@ fn tdb_correction_stays_within_bounds() {
     ];
 
     for &p in &points {
-        let tt = p.to(Scale::TAI, Scale::TT);
-        let tdb = p.to(Scale::TAI, Scale::TDB);
+        let tt = p.convert_internal(Scale::TT);
+        let tdb = p.convert_internal(Scale::TDB);
 
         // TDB - TT (periodic term only)
         let corr_s = tdb.to_diff_raw(tt).to_sec_f();
@@ -188,7 +188,7 @@ fn proper_to_tt_with_drift_roundtrip() {
 #[test]
 fn tt_tai_offset_exact() {
     let tai = Dt::ZERO;
-    let tt = tai.to(Scale::TAI, Scale::TT);
+    let tt = tai.convert_internal(Scale::TT);
     let diff_s = tt.to_diff_raw(tai).to_sec_f();
     assert!(
         (diff_s - 32.184).abs() < 1e-12,
@@ -202,16 +202,16 @@ fn tt_tai_offset_exact() {
 fn gnss_offsets_are_correct() {
     let tai = Dt::ZERO;
 
-    let gpst = tai.to(Scale::TAI, Scale::GPS);
+    let gpst = tai.convert_internal(Scale::GPS);
     assert!((gpst.to_diff_raw(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
-    let qzsst = tai.to(Scale::TAI, Scale::QZSS);
+    let qzsst = tai.convert_internal(Scale::QZSS);
     assert!((qzsst.to_diff_raw(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
-    let gst = tai.to(Scale::TAI, Scale::GST);
+    let gst = tai.convert_internal(Scale::GST);
     assert!((gst.to_diff_raw(tai).to_sec_f() + 19.0).abs() < 1e-12);
 
-    let bdt = tai.to(Scale::TAI, Scale::BDT);
+    let bdt = tai.convert_internal(Scale::BDT);
     assert!((bdt.to_diff_raw(tai).to_sec_f() + 33.0).abs() < 1e-12);
 }
 
@@ -227,8 +227,8 @@ fn tcg_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let tcg = p.to(Scale::TAI, Scale::TCG);
-        let back = tcg.to_tai(Scale::TCG);
+        let tcg = p.convert_internal(Scale::TCG);
+        let back = tcg.convert_internal(Scale::TAI);
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
             diff < 1e-9,
@@ -251,8 +251,8 @@ fn tcb_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let tcb = p.to(Scale::TAI, Scale::TCB);
-        let back = tcb.to_tai(Scale::TCB);
+        let tcb = p.convert_internal(Scale::TCB);
+        let back = tcb.convert_internal(Scale::TAI);
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(
             diff < 1e-9,
@@ -276,8 +276,8 @@ fn utc_tai_roundtrip_is_accurate() {
     ];
 
     for &p in &test_points {
-        let utc = p.to(Scale::TAI, Scale::UTC);
-        let back = utc.to_tai(Scale::UTC);
+        let utc = p.convert_internal(Scale::UTC);
+        let back = utc.convert_internal(Scale::TAI);
         assert_eq!(back, p, "UTC round-trip failed at {:?}", p);
     }
 }
@@ -304,8 +304,8 @@ fn is_leap_year_and_valid_date() {
 #[test]
 fn ntp_timestamp() {
     // 2698012800
-    let dt = Dt::from_ymd_on(1985, 7, 1, Scale::TAI);
-    let ntp = dt.to_ntp(Scale::TAI, Scale::TAI);
+    let dt = Dt::from_ymd(1985, 7, 1, 0, 0, 0, 0, Scale::TAI);
+    let ntp = dt.to_ntp();
     assert_eq!(
         ntp.to_sec(),
         2698012800_i128,
@@ -313,7 +313,7 @@ fn ntp_timestamp() {
         ntp.to_sec(),
         2698012800_i128
     );
-    let dt2 = Dt::from_ntp(ntp.to_sec_f(), Scale::TAI);
+    let dt2 = Dt::from_ntp(ntp);
     assert_eq!(
         dt.to_sec(),
         dt2.to_sec(),
@@ -321,7 +321,7 @@ fn ntp_timestamp() {
         dt.to_sec(),
         dt2.to_sec()
     );
-    let ymd = dt2.to_ymdhms_on(Scale::TAI, Scale::TAI);
+    let ymd = dt2.to_ymd();
     assert_eq!(ymd.yr(), 1985_i64);
     assert_eq!(ymd.mo(), 7);
     assert_eq!(ymd.day(), 1);

@@ -7,7 +7,7 @@ impl Dt {
     #[inline]
     pub const fn add(&self, span: Dt) -> Self {
         if !span.is_zero() {
-            Dt::new(self.attos.saturating_add(span.attos), self.scale)
+            Dt::new(self.attos.saturating_add(span.attos), self.tag)
         } else {
             *self
         }
@@ -16,7 +16,7 @@ impl Dt {
     #[inline]
     pub const fn sub(&self, span: Dt) -> Self {
         if !span.is_zero() {
-            Dt::new(self.attos.saturating_sub(span.attos), self.scale)
+            Dt::new(self.attos.saturating_sub(span.attos), self.tag)
         } else {
             *self
         }
@@ -98,7 +98,7 @@ impl Dt {
     /// Computes the signed duration between this `Dt` and another `Dt`.
     #[inline]
     pub const fn to_diff_raw(&self, other: Self) -> Dt {
-        Dt::new(self.attos.saturating_sub(other.attos), self.scale)
+        Dt::new(self.attos.saturating_sub(other.attos), self.tag)
     }
 
     /// Computes the signed duration between this `Dt` and another `Dt` as a float.
@@ -110,7 +110,7 @@ impl Dt {
     /// Adds the specified number of attoseconds to this time value.
     #[inline(always)]
     pub const fn add_attos(&self, n: i128) -> Self {
-        Dt::new(self.attos.saturating_add(n), self.scale)
+        Dt::new(self.attos.saturating_add(n), self.tag)
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
@@ -155,7 +155,7 @@ impl Dt {
         Dt::new(
             self.attos
                 .saturating_add((n as i128) * 60 * ATTOS_PER_SEC_I128),
-            self.scale,
+            self.tag,
         )
     }
 
@@ -165,7 +165,7 @@ impl Dt {
         Dt::new(
             self.attos
                 .saturating_add((n as i128) * 3600 * ATTOS_PER_SEC_I128),
-            self.scale,
+            self.tag,
         )
     }
 
@@ -225,7 +225,7 @@ impl Dt {
             return Self::ZERO;
         }
         let total = self.attos.saturating_mul(rhs as i128);
-        Self::from(total, Scale::TAI)
+        Self::from_attos(total, Scale::TAI)
     }
 
     /// Divides this `Dt` by an integer scalar.
@@ -237,7 +237,7 @@ impl Dt {
             return Self::ZERO;
         }
         let result = self.attos / (rhs as i128);
-        Self::from(result, Scale::TAI)
+        Self::from_attos(result, Scale::TAI)
     }
 
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
@@ -250,7 +250,7 @@ impl Dt {
         let b = unit.attos;
         let q = safe_div_euc!(a, b, 0i128);
         let result = q.wrapping_mul(b);
-        Self::from(result, Scale::TAI)
+        Self::from_attos(result, Scale::TAI)
     }
 
     /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
@@ -266,7 +266,7 @@ impl Dt {
         let q = safe_div_euc!(neg_a, b, 0i128);
         let q_ceil = q.wrapping_neg();
         let result = q_ceil.wrapping_mul(b);
-        Self::from(result, Scale::TAI)
+        Self::from_attos(result, Scale::TAI)
     }
 
     /// Returns the nearest multiple of `unit`.
@@ -299,7 +299,7 @@ impl Dt {
 
         let result = if a < 0 { -rounded_abs } else { rounded_abs };
 
-        Self::from(result, Scale::TAI)
+        Self::from_attos(result, Scale::TAI)
     }
 
     /// Returns `floor(|self| / |unit|)` as `usize`, saturating at `usize::MAX`.
@@ -436,7 +436,7 @@ impl Dt {
             total_attos
         };
 
-        Self::from(clamped, Scale::TAI)
+        Self::from_attos(clamped, Scale::TAI)
     }
 
     /// Divides by a real number (routes through the high-precision `mul_by_f`).

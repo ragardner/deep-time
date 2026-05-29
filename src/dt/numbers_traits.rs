@@ -143,12 +143,12 @@ macro_rules! impl_time_units_int {
 
                 #[inline]
                 fn ago(self, scale: Scale) -> Dt {
-                    Dt::from(0, scale).sub(self.sec())
+                    Dt::from_attos(0, scale).sub(self.sec())
                 }
 
                 #[inline]
                 fn from_now(self, scale: Scale) -> Dt {
-                    Dt::from(0, scale).add(self.sec())
+                    Dt::from_attos(0, scale).add(self.sec())
                 }
             }
         )*
@@ -206,12 +206,12 @@ impl TimeTraits for f64 {
 
     #[inline]
     fn ago(self, scale: Scale) -> Dt {
-        Dt::from(0, scale).sub(self.sec())
+        Dt::from_attos(0, scale).sub(self.sec())
     }
 
     #[inline]
     fn from_now(self, scale: Scale) -> Dt {
-        Dt::from(0, scale).add(self.sec())
+        Dt::from_attos(0, scale).add(self.sec())
     }
 }
 
@@ -263,11 +263,11 @@ impl TimeTraits for f32 {
 
     #[inline]
     fn ago(self, scale: Scale) -> Dt {
-        Dt::from(0, scale).sub(self.sec())
+        Dt::from_attos(0, scale).sub(self.sec())
     }
 
     #[inline]
     fn from_now(self, scale: Scale) -> Dt {
-        Dt::from(0, scale).add(self.sec())
+        Dt::from_attos(0, scale).add(self.sec())
     }
 }

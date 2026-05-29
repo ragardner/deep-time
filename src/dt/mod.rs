@@ -219,7 +219,7 @@ use core::fmt;
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct Dt {
     pub attos: i128,
-    pub scale: Scale,
+    pub tag: Scale,
 }
 
 impl Default for Dt {

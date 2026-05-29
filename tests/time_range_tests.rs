@@ -3,7 +3,7 @@ mod time_range_tests {
 
     #[inline]
     fn ymd(yr: i64, mo: u8, day: u8) -> Dt {
-        Dt::from_ymd(yr, mo, day)
+        Dt::from_ymd(yr, mo, day, 0, 0, 0, 0, Scale::UTC)
     }
 
     #[inline]
