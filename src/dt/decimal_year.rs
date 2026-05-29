@@ -60,7 +60,7 @@ impl Dt {
     /// - Exact integer arithmetic for the year boundaries, then a high-precision
     ///   `to_sec_f` division (lossy only at the final `Real` step, same as Astropy).
     #[inline]
-    pub const fn to_decimalyear(&self, current: Scale) -> Real {
+    pub fn to_decimalyear(&self, current: Scale) -> Real {
         let ymd = self.to_ymdhms(current);
         let year = ymd.yr;
 

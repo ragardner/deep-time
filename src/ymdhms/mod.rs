@@ -48,14 +48,14 @@ pub struct YmdHms {
 impl YmdHms {
     /// Reconstructs a [`Dt`].
     #[inline]
-    pub const fn to_dt(&self) -> Dt {
+    pub fn to_dt(&self) -> Dt {
         Dt::from_ymdhms_on(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
     }
 
     #[inline(always)]
-    const fn reconstruct(
+    fn reconstruct(
         yr: i64,
         mo: u8,
         day: u8,
@@ -70,7 +70,7 @@ impl YmdHms {
 
     /// Adds (or subtracts) whole years, preserving month and day-of-month.
     /// Negative values subtract years. Uses standard last-day-of-month clamping.
-    pub const fn add_yr(&self, years: i64) -> Self {
+    pub fn add_yr(&self, years: i64) -> Self {
         if years == 0 {
             return *self;
         }
@@ -84,7 +84,7 @@ impl YmdHms {
 
     /// Adds (or subtracts) whole months. Negative values subtract months.
     /// Uses `i128` total-month arithmetic to avoid overflow at extreme years.
-    pub const fn add_mo(&self, months: i64) -> Self {
+    pub fn add_mo(&self, months: i64) -> Self {
         if months == 0 {
             return *self;
         }
@@ -107,7 +107,7 @@ impl YmdHms {
 
     /// Adds (or subtracts) calendar days using Julian Day arithmetic.
     /// Negative values subtract days.
-    pub const fn add_days(&self, days: i64) -> Self {
+    pub fn add_days(&self, days: i64) -> Self {
         if days == 0 {
             return *self;
         }
@@ -120,12 +120,12 @@ impl YmdHms {
     }
 
     #[inline]
-    pub const fn add_wk(&self, weeks: i64) -> Self {
+    pub fn add_wk(&self, weeks: i64) -> Self {
         self.add_days(weeks.saturating_mul(7))
     }
 
     #[inline(never)]
-    const fn _add_attos(&self, attos_delta: i128) -> Self {
+    fn _add_attos(&self, attos_delta: i128) -> Self {
         let tai = Dt::from_ymdhms_on(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         );
@@ -135,74 +135,74 @@ impl YmdHms {
     }
 
     #[inline]
-    pub const fn add_attos(&self, attos: i128) -> Self {
+    pub fn add_attos(&self, attos: i128) -> Self {
         self._add_attos(attos)
     }
 
     #[inline]
-    pub const fn add_sec(&self, sec: i64) -> Self {
+    pub fn add_sec(&self, sec: i64) -> Self {
         self._add_attos(sec as i128 * ATTOS_PER_SEC_I128)
     }
 
     #[inline]
-    pub const fn add_min(&self, min: i64) -> Self {
+    pub fn add_min(&self, min: i64) -> Self {
         self._add_attos(min as i128 * 60 * ATTOS_PER_SEC_I128)
     }
 
     #[inline]
-    pub const fn add_hr(&self, hr: i64) -> Self {
+    pub fn add_hr(&self, hr: i64) -> Self {
         self._add_attos(hr as i128 * 3600 * ATTOS_PER_SEC_I128)
     }
 
     #[inline]
-    pub const fn yr(&self) -> i64 {
+    pub fn yr(&self) -> i64 {
         self.yr
     }
 
     #[inline]
-    pub const fn mo(&self) -> u8 {
+    pub fn mo(&self) -> u8 {
         self.mo
     }
 
     #[inline]
-    pub const fn day(&self) -> u8 {
+    pub fn day(&self) -> u8 {
         self.day
     }
 
     #[inline]
-    pub const fn hr(&self) -> u8 {
+    pub fn hr(&self) -> u8 {
         self.hr
     }
 
     #[inline]
-    pub const fn min(&self) -> u8 {
+    pub fn min(&self) -> u8 {
         self.min
     }
 
     #[inline]
-    pub const fn sec(&self) -> u8 {
+    pub fn sec(&self) -> u8 {
         self.sec
     }
 
     #[inline]
-    pub const fn attos(&self) -> u64 {
+    pub fn attos(&self) -> u64 {
         self.attos
     }
 
     /// Attoseconds since 1970-01-01 midnight, on whatever time scale
     /// the object was created on.
     #[inline]
-    pub const fn unix_attosec(&self) -> i128 {
+    pub fn unix_attosec(&self) -> i128 {
         self.unix_attosec
     }
 
     /// The time scale that the object was created on.
     #[inline]
-    pub const fn scale(&self) -> Scale {
+    pub fn scale(&self) -> Scale {
         self.scale
     }
 
-    pub(crate) const fn to_ymdhms_rich(
+    pub(crate) fn to_ymdhms_rich(
         &self,
         iso_yr: i64,
         iso_wk: u8,
@@ -325,7 +325,7 @@ impl YmdHmsRich {
 
     /// Reconstructs a [`Dt`].
     #[inline]
-    pub const fn to_dt(&self) -> Dt {
+    pub fn to_dt(&self) -> Dt {
         Dt::from_ymdhms_on(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
