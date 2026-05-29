@@ -31,7 +31,7 @@ mod chrono;
 #[cfg(feature = "jiff")]
 mod jiff;
 
-use crate::ATTOS_PER_SEC;
+use crate::{ATTOS_PER_SEC, Scale};
 use core::fmt;
 
 /// **The library's central time type.** A high-precision instant/duration with attosecond
@@ -219,6 +219,7 @@ use core::fmt;
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct Dt {
     pub attos: i128,
+    pub scale: Scale,
 }
 
 impl Default for Dt {

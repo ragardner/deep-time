@@ -31,7 +31,7 @@ impl Dt {
     /// ```
     #[inline]
     pub const fn from_attos_since(attos: i128, epoch: Dt) -> Self {
-        epoch.add(Dt::new(attos))
+        epoch.add(Dt::new(attos, epoch.scale))
     }
 
     /// Converts this instant to the target scale and returns the signed difference
@@ -77,7 +77,7 @@ impl Dt {
     /// ```
     #[inline]
     pub const fn to_scale_and_then_diff(&self, to: Scale, epoch: Dt) -> Dt {
-        self.to_internal(to).to_diff_raw(epoch)
+        self.tai_to(to).to_diff_raw(epoch)
     }
 
     /// Creates a **TAI** [`Dt`] by adding a difference to an epoch and interpreting
@@ -151,13 +151,13 @@ impl Dt {
     pub const fn from(attos: i128, current: Scale) -> Dt {
         match current {
             Scale::UTC => {
-                let raw = Dt::new(attos);
+                let raw = Dt::new(attos, current);
                 raw.add_sec(raw.leap_sec(true).offset as i128)
             }
-            Scale::TAI => Dt::new(attos),
-            Scale::TT => Dt::new(attos.saturating_sub(TT_TAI_OFFSET.to_attos())),
+            Scale::TAI => Dt::new(attos, current),
+            Scale::TT => Dt::new(attos.saturating_sub(TT_TAI_OFFSET.to_attos()), current),
             Scale::UTCSpice => {
-                let raw = Dt::new(attos);
+                let raw = Dt::new(attos, current);
                 if attos < TAI_ATTOS_AT_1972 - 10 {
                     raw.add_sec(9)
                 } else {
@@ -165,7 +165,7 @@ impl Dt {
                 }
             }
             Scale::UTCSofa => {
-                let raw = Dt::new(attos);
+                let raw = Dt::new(attos, current);
                 if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(&raw) {
                     raw.add(Dt::from_sec_f(sofa_offset))
                 } else {
@@ -173,29 +173,29 @@ impl Dt {
                 }
             }
             Scale::GPS | Scale::QZSS | Scale::GST => {
-                Dt::new(attos.saturating_add(Dt::SEC_19.to_attos()))
+                Dt::new(attos.saturating_add(Dt::SEC_19.to_attos()), current)
             }
-            Scale::BDT => Dt::new(attos.saturating_add(Dt::SEC_33.to_attos())),
-            Scale::TDB | Scale::ET => Self::tdb_to_tai(Dt::new(attos)),
+            Scale::BDT => Dt::new(attos.saturating_add(Dt::SEC_33.to_attos()), current),
+            Scale::TDB | Scale::ET => Self::tdb_to_tai(Dt::new(attos, current)),
             Scale::TCG => {
-                let tt = Self::tcg_to_tt(Dt::new(attos));
+                let tt = Self::tcg_to_tt(Dt::new(attos, current));
                 tt.sub(TT_TAI_OFFSET)
             }
             Scale::TCB => {
-                let tdb = Self::tcb_to_tdb(Dt::new(attos));
+                let tdb = Self::tcb_to_tdb(Dt::new(attos, current));
                 Self::tdb_to_tai(tdb)
             }
             Scale::LTC => {
-                let tt = Self::ltc_to_tt(Dt::new(attos));
+                let tt = Self::ltc_to_tt(Dt::new(attos, current));
                 tt.sub(TT_TAI_OFFSET)
             }
-            Scale::TCL => Self::tcl_to_tai(Dt::new(attos)),
-            _ => Dt::new(attos),
+            Scale::TCL => Self::tcl_to_tai(Dt::new(attos, current)),
+            _ => Dt::new(attos, current),
         }
     }
 
     /// From TAI -> `scale`
-    pub(crate) const fn to_internal(&self, scale: Scale) -> Dt {
+    pub(crate) const fn tai_to(&self, scale: Scale) -> Dt {
         match scale {
             Scale::TAI | Scale::Custom => *self,
             Scale::UTC => {
@@ -316,7 +316,7 @@ impl Dt {
     #[inline]
     pub const fn to(&self, current: Scale, new: Scale) -> Dt {
         if !current.eq(new) {
-            Self::from(self.to_attos(), current).to_internal(new)
+            Self::from(self.to_attos(), current).tai_to(new)
         } else {
             *self
         }

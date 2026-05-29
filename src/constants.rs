@@ -1,7 +1,7 @@
 //! Fundamental constants for time-scale conversions,
 //! relativistic corrections, and astronomical calculations.
 
-use crate::{Dt, Real};
+use crate::{Dt, Real, Scale};
 
 pub const STRFTIME_SIZE: usize = 512;
 
@@ -72,6 +72,7 @@ pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 Ã
 /// Helper that returns the TTâ€“TAI offset as a `Dt`. 32.184 s
 pub const TT_TAI_OFFSET: Dt = Dt {
     attos: 32_184_000_000_000_000_000i128,
+    scale: Scale::TAI,
 };
 
 /// Julian Date of the J2000.0 epoch.

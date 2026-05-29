@@ -11,7 +11,7 @@ impl Dt {
     #[inline]
     pub const fn to_unix(&self, current: Scale, new: Scale) -> Dt {
         self.to(current, new)
-            .to_diff_raw(Dt::UNIX_EPOCH.to_internal(new))
+            .to_diff_raw(Dt::UNIX_EPOCH.tai_to(new))
     }
 
     /// Creates a TAI [`Dt`] from a unix (1970 epoch) timestamp.
@@ -60,8 +60,7 @@ impl Dt {
     /// ```
     #[inline]
     pub const fn to_ntp(&self, current: Scale, new: Scale) -> Dt {
-        self.to(current, new)
-            .to_diff_raw(Dt::NTP_EPOCH.to_internal(new))
+        self.to(current, new).to_diff_raw(Dt::NTP_EPOCH.tai_to(new))
     }
 
     /// Creates a TAI [`Dt`] from an ntp (1900 epoch) timestamp.

@@ -10,14 +10,14 @@ impl Dt {
     /// The library’s internal reference epoch: exactly **2000-01-01 12:00:00 TAI**.
     ///
     /// [`Dt::new(0)`].
-    pub const ZERO: Self = Self::new(0);
+    pub const ZERO: Self = Self::new(0, Scale::TAI);
 
     /// UTP epoch.
     /// - 1900-01-01 midnight UTC.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -3_155_716_800_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const NTP_EPOCH: Self = Self::new(-3155716800000000000000000000i128);
+    pub const NTP_EPOCH: Self = Self::new(-3155716800000000000000000000i128, Scale::TAI);
 
     /// UNIX epoch.
     /// - 1970-01-01 midnight TAI.
@@ -25,65 +25,61 @@ impl Dt {
     /// - -946_728_000_000_000_000_000_000_000 attoseconds
     /// - Does not take into account historical UTC offsets from the "rubber time" era.
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const UNIX_EPOCH: Self =
-        Self::new(-(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128);
+    pub const UNIX_EPOCH: Self = Self::new(
+        -(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128,
+        Scale::TAI,
+    );
 
     /// TT/TCG/TCB/TDB epoch.
     /// - 1977-01-01 midnight TAI.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -725_803_200_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const TAI_1977_EPOCH: Self = Self::new(-725803200000000000000000000i128);
-
-    /// TT/TCG/TCB/TDB/TCL epoch.
-    /// - 1977-01-01 midnight TAI.
-    /// - Stored here on the **TCL** timescale as an offset from [`Self::ZERO`].
-    /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const TCL_1977_EPOCH: Self = { Self::TAI_1977_EPOCH.to(Scale::TAI, Scale::TCL) };
+    pub const TAI_1977_EPOCH: Self = Self::new(-725803200000000000000000000i128, Scale::TAI);
 
     /// Chandra X-ray Center (CXC) Time epoch.
     /// - 1998-01-01 midnight TT.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -63_115_232_184_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const CXC_EPOCH: Self = Self::new(-63115232184000000000000000i128);
+    pub const CXC_EPOCH: Self = Self::new(-63115232184000000000000000i128, Scale::TAI);
 
     /// GPS/Galileo Experiment (GALEX) Time epoch.
     /// - **1980-01-06 00:00:00 UTC**.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -630_763_181_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const GPS_EPOCH: Self = Self::new(-630763181000000000000000000i128);
+    pub const GPS_EPOCH: Self = Self::new(-630763181000000000000000000i128, Scale::TAI);
 
     /// Galileo System Time (GST) epoch.
     /// - 1999-08-22 00:00:00 GST.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - -11_447_981_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const GALILEO_EPOCH: Self = Self::new(-11447981000000000000000000i128);
+    pub const GALILEO_EPOCH: Self = Self::new(-11447981000000000000000000i128, Scale::TAI);
 
     /// BeiDou Time (BDT) epoch.
     /// - 2006-01-01 00:00:00 UTC.
     /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
     /// - 189_345_633_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 noon.
-    pub const BDT_EPOCH: Self = Self::new(189345633000000000000000000i128);
+    pub const BDT_EPOCH: Self = Self::new(189345633000000000000000000i128, Scale::TAI);
 
     /// Maximum representable duration.
-    pub const MAX: Self = Self { attos: i128::MAX };
+    pub const MAX: Self = Self::new(i128::MAX, Scale::TAI);
 
     /// Minimum (most negative) representable duration.
-    pub const MIN: Self = Self { attos: i128::MIN };
+    pub const MIN: Self = Self::new(i128::MIN, Scale::TAI);
 
-    pub const SEC_19: Self = Self::new(19i128 * ATTOS_PER_SEC_I128);
-    pub const SEC_33: Self = Self::new(33i128 * ATTOS_PER_SEC_I128);
-    pub const SEC_37: Self = Self::new(37i128 * ATTOS_PER_SEC_I128);
-    pub const ONE_DAY: Self = Self::new((SEC_PER_DAYI64 as i128) * ATTOS_PER_SEC_I128);
+    pub const SEC_19: Self = Self::new(19i128 * ATTOS_PER_SEC_I128, Scale::TAI);
+    pub const SEC_33: Self = Self::new(33i128 * ATTOS_PER_SEC_I128, Scale::TAI);
+    pub const SEC_37: Self = Self::new(37i128 * ATTOS_PER_SEC_I128, Scale::TAI);
+    pub const ONE_DAY: Self = Self::new((SEC_PER_DAYI64 as i128) * ATTOS_PER_SEC_I128, Scale::TAI);
 
     /// Creates a new `Dt` from a total number of attoseconds (signed i128).
     #[inline(always)]
-    pub const fn new(attos: i128) -> Self {
-        Self { attos }
+    pub const fn new(attos: i128, scale: Scale) -> Self {
+        Self { attos, scale }
     }
 
     #[inline(always)]
@@ -211,7 +207,10 @@ impl Dt {
     /// Returns the negation of this duration.
     #[inline]
     pub const fn neg(self) -> Self {
-        Self { attos: -self.attos }
+        Self {
+            attos: -self.attos,
+            scale: self.scale,
+        }
     }
 
     /// Returns the positive of this duration.
@@ -219,6 +218,7 @@ impl Dt {
     pub const fn abs(self) -> Self {
         Self {
             attos: self.attos.saturating_abs(),
+            scale: self.scale,
         }
     }
 
@@ -332,7 +332,7 @@ impl Dt {
             }
         };
         Ok(Dt::from_diff_and_scale(
-            Dt::new(Dt::sec_to_attos(secs as i128)),
+            Dt::new(Dt::sec_to_attos(secs as i128), Scale::UTC),
             Dt::UNIX_EPOCH,
             Scale::UTC,
         )
@@ -345,11 +345,13 @@ impl Dt {
     #[inline]
     pub fn now() -> Result<Self, DtErr> {
         let ms: f64 = js_sys::Date::now();
-        let secs = (ms / 1000.0).floor() as i64;
+        let secs = (ms / 1000.0).floor() as i128;
         let nanos = ((ms % 1000.0) * 1_000_000.0) as i128;
-        Ok(
-            Dt::from_diff_and_scale(Dt::new(Dt::sec_to_attos(secs)), Dt::UNIX_EPOCH, Scale::UTC)
-                .add(Dt::from_ns(nanos as i128, Scale::TAI)),
+        Ok(Dt::from_diff_and_scale(
+            Dt::new(Dt::sec_to_attos(secs), Scale::UTC),
+            Dt::UNIX_EPOCH,
+            Scale::UTC,
         )
+        .add(Dt::from_ns(nanos as i128, Scale::TAI)))
     }
 }

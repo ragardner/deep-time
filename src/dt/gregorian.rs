@@ -366,7 +366,7 @@ impl Dt {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
         let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (attos as i128);
 
-        let tp = Self::from_diff_and_scale(Dt::new(unix_attos), Dt::UNIX_EPOCH, scale);
+        let tp = Self::from_diff_and_scale(Dt::new(unix_attos, scale), Dt::UNIX_EPOCH, scale);
         if is_leap_second { tp.add_sec(1) } else { tp }
     }
 

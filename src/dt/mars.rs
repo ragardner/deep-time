@@ -14,6 +14,7 @@ pub const MARS_SOL_ATTOS: i128 = 88_775_244_146_880_000_000_000;
 pub const MARS_REF_TT_ATTOS: i128 = -3_976_386_951_349_440_000_000_000_000;
 pub const MARS_REF_TT: Dt = Dt {
     attos: MARS_REF_TT_ATTOS,
+    scale: Scale::TT,
 };
 
 /// Areocentric solar longitude (Ls) constants from the current NASA GISS Mars24
@@ -78,6 +79,7 @@ impl Dt {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
         let tt = MARS_REF_TT.add(Dt {
             attos: elapsed_attos,
+            scale: Scale::TT,
         });
         tt.to_tai(Scale::TT)
     }
