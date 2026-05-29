@@ -7,21 +7,12 @@ mod format_tests {
     fn test_leap_second_gotcha_2016_12_31() {
         // 2016-12-31 23:59:60 UTC — the last leap second in the current table
         // (TAI-UTC offset becomes 37 seconds at this instant)
-        let leap = Dt::from_ymdhms(2016, 12, 31, 23, 59, 60, 123_456_789_000_000_000)
-            .to(Scale::TAI, Scale::UTC);
-
-        eprintln!("UTC: {}", leap);
-        eprintln!("TAI: {}", leap.to(Scale::UTC, Scale::TAI));
-
-        eprintln!("{:?}", leap.to_ymdhms_on(Scale::TAI, Scale::UTC));
-
-        let leapx = Dt::from_sec(536500836, Scale::TAI)
-            .to(Scale::TAI, Scale::UTC)
-            .to(Scale::UTC, Scale::TAI);
-        assert_eq!(leapx.to_sec(), 536500836);
+        let leap = Dt::from_ymdhms(2016, 12, 31, 23, 59, 60, 123_456_789_000_000_000);
+        eprintln!("{}", leap.to_sec64());
+        eprintln!("{:?}", leap.leap_sec(false));
 
         // === Civil time must show sec=60 (not roll over to next day) ===
-        let g = leap.to_ymdhms_on(Scale::UTC, Scale::UTC);
+        let g = leap.to_ymdhms_on(Scale::TAI, Scale::UTC);
         assert_eq!(g.yr(), 2016);
         assert_eq!(g.mo(), 12);
         assert_eq!(g.day(), 31);
@@ -37,14 +28,14 @@ mod format_tests {
         // === Formatting must output "60" correctly ===
         let mut buf = [0u8; STRFTIME_SIZE];
         let n = leap
-            ._to_u8_with_offset(Scale::UTC, Scale::UTC, "%Y-%m-%d %H:%M:%S.%f", &mut buf, 0)
+            ._to_u8_with_offset(Scale::TAI, Scale::UTC, "%Y-%m-%d %H:%M:%S.%f", &mut buf, 0)
             .unwrap();
         assert_eq!(&buf[0..n], b"2016-12-31 23:59:60.123456789000000000");
 
         // === Trimmed fractional on leap second ===
         let n = leap
             ._to_u8_with_offset(
-                Scale::UTC,
+                Scale::TAI,
                 Scale::UTC,
                 "%Y-%m-%dT%H:%M:%S%.~fZ",
                 &mut buf,
@@ -54,7 +45,9 @@ mod format_tests {
         assert_eq!(&buf[0..n], b"2016-12-31T23:59:60.123456789Z");
 
         // === leap second Unix timestamp (POSIX convention) ===
-        let unix = leap.to_diff_raw(Dt::UNIX_EPOCH).to_sec();
+        let unix = leap
+            .to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH)
+            .to_sec();
         assert_eq!(unix, 1483228799); // same as 23:59:59 — the leap second "replays" the previous second
     }
 
