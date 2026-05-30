@@ -14,8 +14,8 @@ impl Dt {
         // TODO: go around and check all fns
         // that use this fn and need utc correctly set scale to utc before
         // calling it
-        self.convert_internal(self.tag)
-            .to_diff_raw(Dt::UNIX_EPOCH.convert_internal(self.tag))
+        self.to(self.target)
+            .to_diff_raw(Dt::UNIX_EPOCH.to(self.target))
     }
 
     /// Creates a TAI [`Dt`] from a unix (1970 epoch) timestamp.
@@ -64,8 +64,8 @@ impl Dt {
     /// ```
     #[inline]
     pub const fn to_ntp(&self) -> Dt {
-        self.convert_internal(self.tag)
-            .to_diff_raw(Dt::NTP_EPOCH.convert_internal(self.tag))
+        self.to(self.target)
+            .to_diff_raw(Dt::NTP_EPOCH.to(self.target))
     }
 
     /// Creates a TAI [`Dt`] from an ntp (1900 epoch) timestamp.
@@ -104,7 +104,7 @@ impl Dt {
         let wk = total_attos.div_euclid(ATTOS_PER_WEEK) as i64;
         let tow_attos = total_attos.rem_euclid(ATTOS_PER_WEEK);
 
-        (wk, Dt::new(tow_attos, self.tag))
+        (wk, Dt::new(tow_attos, Scale::GPS, self.target))
     }
 
     /// Creates a [`Dt`] from a GPS week number and Time of Week (TOW).
@@ -132,7 +132,7 @@ impl Dt {
             .saturating_mul(ATTOS_PER_WEEK)
             .saturating_add(tow.to_attos());
 
-        Self::from_gps(Dt::new(total_attos, tow.tag))
+        Self::from_gps(Dt::new(total_attos, Scale::GPS, tow.target))
     }
 
     /// Returns the elapsed time since the GPS epoch as a [`Dt`] on the GPS scale.
@@ -170,7 +170,6 @@ impl Dt {
         self.to_scale_and_then_diff(Self::CXC_EPOCH, true)
     }
 
-    /// TODO: scale conversion?
     /// Inverse of [`Self::to_cxcsec`].
     #[inline]
     pub const fn from_cxcsec(elapsed: Dt) -> Self {

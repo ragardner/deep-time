@@ -59,9 +59,7 @@ fn test_sofa_historical_offsets() {
         999_999_999_999_999_999,
         Scale::UTCSofa,
     );
-    let tp2 = tp
-        .convert_internal(Scale::UTCSofa)
-        .convert_internal(Scale::TAI);
+    let tp2 = tp.to(Scale::UTCSofa).to(Scale::TAI);
     assert_eq!(
         tp.to_sec(),
         tp2.to_sec(),

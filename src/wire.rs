@@ -7,8 +7,8 @@ impl Dt {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
-    /// Size of the canonical wire representation in bytes (18 bytes).
-    pub const WIRE_SIZE: usize = 18;
+    /// Size of the canonical wire representation in bytes.
+    pub const WIRE_SIZE: usize = 19;
 
     /// Serializes this `Dt` into a fixed 18-byte little-endian buffer using the
     /// `attos: i128` + `scale: Scale` representation.
@@ -18,20 +18,26 @@ impl Dt {
     /// - Byte `0`: Version (`WIRE_VERSION`)
     /// - Bytes `[1..17]`: total attoseconds as little-endian `i128`
     /// - Byte `17`: scale as `u8` (enum discriminant)
-    ///
-    /// This is the clean, native format for the `attos` + `scale` representation.
+    /// - Byte `18`: target as `u8` (enum discriminant)
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
         buf[1..17].copy_from_slice(&self.attos.to_le_bytes());
-        buf[17] = self.tag as u8;
+        buf[17] = self.target as u8;
         buf
     }
 
-    /// Deserializes a `Dt` from exactly 18 bytes of wire data.
+    /// Deserializes a [`Dt`] from exactly 18 bytes of wire data.
     ///
     /// Returns `None` if the version byte is unknown, the length is wrong,
     /// or the scale byte is not a valid `Scale` variant.
+    ///
+    /// ## Wire Format
+    ///
+    /// - Byte `0`: Version (`WIRE_VERSION`)
+    /// - Bytes `[1..17]`: total attoseconds as little-endian `i128`
+    /// - Byte `17`: scale as `u8` (enum discriminant)
+    /// - Byte `18`: target as `u8` (enum discriminant)
     ///
     /// ## Security
     ///
@@ -51,9 +57,10 @@ impl Dt {
             bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15], bytes[16],
         ]);
 
-        let tag = Scale::from_u8(bytes[17]);
+        let scale = Scale::from_u8(bytes[17]);
+        let target = Scale::from_u8(bytes[18]);
 
-        Some(Self { attos, tag })
+        Some(Dt::new(attos, scale, target))
     }
 }
 

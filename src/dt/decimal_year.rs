@@ -64,8 +64,8 @@ impl Dt {
         let ymd = self.to_ymd();
         let year = ymd.yr;
 
-        let start = Self::from_ymd(year, 1, 1, 0, 0, 0, 0, self.tag);
-        let next_start = Self::from_ymd(year + 1, 1, 1, 0, 0, 0, 0, self.tag);
+        let start = Self::from_ymd(year, 1, 1, 0, 0, 0, 0, self.target);
+        let next_start = Self::from_ymd(year + 1, 1, 1, 0, 0, 0, 0, self.target);
 
         let elapsed = self.to_diff_raw(start).to_sec_f();
         let year_length = next_start.to_diff_raw(start).to_sec_f();

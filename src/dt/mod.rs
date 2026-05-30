@@ -259,7 +259,20 @@ use core::fmt;
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub struct Dt {
     pub attos: i128,
-    pub tag: Scale,
+    pub scale: Scale,
+    pub target: Scale,
+}
+
+impl Dt {
+    #[inline(always)]
+    pub const fn target(&self, t: Scale) -> Dt {
+        Dt::new(self.attos, self.scale, t)
+    }
+
+    #[inline(always)]
+    pub(crate) const fn with(&self, s: Scale) -> Dt {
+        Dt::new(self.attos, s, self.target)
+    }
 }
 
 impl Default for Dt {

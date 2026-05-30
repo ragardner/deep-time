@@ -32,7 +32,7 @@ fn jd_tt_exact_roundtrip() {
     ];
 
     for &p in &test_points {
-        let (jd, frac) = p.convert_internal(Scale::TT).to_jd();
+        let (jd, frac) = p.to(Scale::TT).to_jd();
         let back = Dt::from_jd(jd, frac, Scale::TT);
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(diff < 1e-10, "JD round-trip error {} s at {:?}", diff, p);
@@ -48,7 +48,7 @@ fn mjd_tt_exact_roundtrip() {
     ];
 
     for &p in &test_points {
-        let (mjd, frac) = p.convert_internal(Scale::TT).to_mjd();
+        let (mjd, frac) = p.to(Scale::TT).to_mjd();
         let back = Dt::from_mjd(mjd, frac, Scale::TT);
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(diff < 1e-10, "MJD round-trip error {} s at {:?}", diff, p);

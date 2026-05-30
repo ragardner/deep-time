@@ -11,7 +11,7 @@ mod light_time_tests {
         char_scale: f64,
     ) -> ObserverState {
         ObserverState {
-            time: Dt::new(Dt::sec_to_attos(tai_sec), Scale::TAI),
+            time: Dt::span(Dt::sec_to_attos(tai_sec)),
             position: pos,
             velocity: vel,
             grav_potential_m2_s2: phi_m2_s2,

@@ -7,7 +7,11 @@ impl Dt {
     #[inline]
     pub const fn add(&self, span: Dt) -> Self {
         if !span.is_zero() {
-            Dt::new(self.attos.saturating_add(span.attos), self.tag)
+            Dt::new(
+                self.attos.saturating_add(span.attos),
+                self.scale,
+                self.target,
+            )
         } else {
             *self
         }
@@ -16,7 +20,11 @@ impl Dt {
     #[inline]
     pub const fn sub(&self, span: Dt) -> Self {
         if !span.is_zero() {
-            Dt::new(self.attos.saturating_sub(span.attos), self.tag)
+            Dt::new(
+                self.attos.saturating_sub(span.attos),
+                self.scale,
+                self.target,
+            )
         } else {
             *self
         }
@@ -98,7 +106,11 @@ impl Dt {
     /// Computes the signed duration between this `Dt` and another `Dt`.
     #[inline]
     pub const fn to_diff_raw(&self, other: Self) -> Dt {
-        Dt::new(self.attos.saturating_sub(other.attos), self.tag)
+        Dt::new(
+            self.attos.saturating_sub(other.attos),
+            self.scale,
+            self.target,
+        )
     }
 
     /// Computes the signed duration between this `Dt` and another `Dt` as a float.
@@ -110,7 +122,7 @@ impl Dt {
     /// Adds the specified number of attoseconds to this time value.
     #[inline(always)]
     pub const fn add_attos(&self, n: i128) -> Self {
-        Dt::new(self.attos.saturating_add(n), self.tag)
+        Dt::new(self.attos.saturating_add(n), self.scale, self.target)
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
@@ -155,7 +167,8 @@ impl Dt {
         Dt::new(
             self.attos
                 .saturating_add((n as i128) * 60 * ATTOS_PER_SEC_I128),
-            self.tag,
+            self.scale,
+            self.target,
         )
     }
 
@@ -165,7 +178,8 @@ impl Dt {
         Dt::new(
             self.attos
                 .saturating_add((n as i128) * 3600 * ATTOS_PER_SEC_I128),
-            self.tag,
+            self.scale,
+            self.target,
         )
     }
 

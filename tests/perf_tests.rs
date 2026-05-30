@@ -233,7 +233,7 @@ mod perf_tests {
             let start = Instant::now();
             let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.convert_internal(Scale::TDB);
+                let _ = x.to(Scale::TDB);
             }
             let elapsed = start.elapsed();
 
@@ -244,9 +244,9 @@ mod perf_tests {
             println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).convert_internal(Scale::TDB);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).to(Scale::TDB);
             for _ in 0..ITERATIONS {
-                let _ = x.convert_internal(Scale::TAI);
+                let _ = x.to(Scale::TAI);
             }
             let elapsed = start.elapsed();
             let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
@@ -265,7 +265,7 @@ mod perf_tests {
             let start = Instant::now();
             let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.convert_internal(Scale::TT);
+                let _ = x.to(Scale::TT);
             }
             let elapsed = start.elapsed();
 
@@ -276,9 +276,9 @@ mod perf_tests {
             println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).convert_internal(Scale::TT);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).to(Scale::TT);
             for _ in 0..ITERATIONS {
-                let _ = x.convert_internal(Scale::TAI);
+                let _ = x.to(Scale::TAI);
             }
             let elapsed = start.elapsed();
             let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
@@ -305,7 +305,7 @@ mod perf_tests {
             // TAI → UTC
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).convert_internal(black_box(Scale::UTC));
+                let _ = black_box(deep_tai).to(black_box(Scale::UTC));
             }
             let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -316,12 +316,12 @@ mod perf_tests {
             let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // UTC → TAI
-            let deep_utc = deep_tai.convert_internal(Scale::UTC);
+            let deep_utc = deep_tai.to(Scale::UTC);
             let hifi_utc = hifi_tai.to_time_scale(TimeScale::UTC);
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_utc).convert_internal(black_box(Scale::TAI));
+                let _ = black_box(deep_utc).to(black_box(Scale::TAI));
             }
             let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -365,7 +365,7 @@ mod perf_tests {
             // ── TAI → TDB ─────────────────────────────────────────────────────
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).convert_internal(black_box(Scale::TDB));
+                let _ = black_box(deep_tai).to(black_box(Scale::TDB));
             }
             let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -376,12 +376,12 @@ mod perf_tests {
             let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── TDB → TAI ─────────────────────────────────────────────────────
-            let deep_tdb = deep_tai.convert_internal(Scale::TDB);
+            let deep_tdb = deep_tai.to(Scale::TDB);
             let hifi_tdb = hifi_tai.to_time_scale(TimeScale::TDB);
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tdb).convert_internal(black_box(Scale::TAI));
+                let _ = black_box(deep_tdb).to(black_box(Scale::TAI));
             }
             let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -470,7 +470,7 @@ mod perf_tests {
             let start = Instant::now();
             let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.convert_internal(Scale::UTC);
+                let _ = x.to(Scale::UTC);
             }
             let elapsed = start.elapsed();
 
@@ -481,9 +481,9 @@ mod perf_tests {
             println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
 
             let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).convert_internal(Scale::UTC);
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).to(Scale::UTC);
             for _ in 0..ITERATIONS {
-                let _ = x.convert_internal(Scale::TAI);
+                let _ = x.to(Scale::TAI);
             }
             let elapsed = start.elapsed();
             let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;

@@ -29,8 +29,8 @@ mod ltc_tests {
         ];
 
         for &p in &test_points {
-            let ltc = p.convert_internal(Scale::LTC);
-            let back = ltc.convert_internal(Scale::TAI);
+            let ltc = p.to(Scale::LTC);
+            let back = ltc.to(Scale::TAI);
 
             let diff = back.to_diff_raw(p).to_sec_f().abs();
 
@@ -51,7 +51,7 @@ mod ltc_tests {
     #[test]
     fn ltc_minus_tai_at_j2000() {
         let tai = Dt::ZERO;
-        let ltc = tai.convert_internal(Scale::LTC);
+        let ltc = tai.to(Scale::LTC);
 
         let diff_s = ltc.to_diff_raw(tai).to_sec_f();
 
@@ -82,8 +82,8 @@ mod ltc_tests {
         ];
 
         for &p in &points {
-            let tt = p.convert_internal(Scale::TT);
-            let ltc = p.convert_internal(Scale::LTC);
+            let tt = p.to(Scale::TT);
+            let ltc = p.to(Scale::LTC);
 
             let corr_s = ltc.to_diff_raw(tt).to_sec_f();
 
@@ -117,8 +117,8 @@ mod ltc_tests {
     #[test]
     fn ltc_agrees_with_lte440_j2000_reference() {
         let tai = Dt::ZERO;
-        let ltc = tai.convert_internal(Scale::LTC);
-        let tdb = tai.convert_internal(Scale::TDB);
+        let ltc = tai.to(Scale::LTC);
+        let tdb = tai.to(Scale::TDB);
 
         let diff_s = ltc.to_diff_raw(tdb).to_sec_f();
 
@@ -152,8 +152,8 @@ mod ltc_tests {
     #[test]
     fn tcl_agrees_with_lte440_j2000_reference() {
         let tai = Dt::ZERO;
-        let tcl = tai.convert_internal(Scale::TCL);
-        let tdb = tai.convert_internal(Scale::TDB);
+        let tcl = tai.to(Scale::TCL);
+        let tdb = tai.to(Scale::TDB);
 
         let diff_s = tcl.to_diff_raw(tdb).to_sec_f();
 
@@ -204,8 +204,8 @@ mod ltc_tests {
         let tai_2038 =
             Dt::from_diff_and_scale(Dt::from_tai_sec(unix_tai_sec), Dt::UNIX_EPOCH, false);
 
-        let tcl_span = tai_2038.convert_internal(Scale::TCL); // Dt on TCL scale
-        let tdb_span = tai_2038.convert_internal(Scale::TDB); // Dt on TDB scale
+        let tcl_span = tai_2038.to(Scale::TCL); // Dt on TCL scale
+        let tdb_span = tai_2038.to(Scale::TDB); // Dt on TDB scale
 
         let diff_s = tcl_span.to_diff_raw(tdb_span).to_sec_f();
 
@@ -216,7 +216,7 @@ mod ltc_tests {
         );
 
         // Round-trip sanity check
-        let tai = tcl_span.convert_internal(Scale::TAI);
+        let tai = tcl_span.to(Scale::TAI);
 
         let roundtrip_error = tai.to_diff_raw(tai_2038).to_sec_f().abs();
 
@@ -253,7 +253,7 @@ mod ltc_tests {
 
         let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
         let my_tcl = my_2038_tai
-            .tag(Scale::TCL)
+            .target(Scale::TCL)
             .to_scale_and_then_diff(Dt::TAI_1977_EPOCH, true);
 
         let diff = (my_tcl.to_sec_f() - tcl_sec).abs();

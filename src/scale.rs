@@ -238,7 +238,7 @@ impl Scale {
     }
 
     /// Const-friendly equality comparison.
-    #[inline]
+    #[inline(always)]
     pub const fn eq(self, other: Self) -> bool {
         self.to_u8() == other.to_u8()
     }
@@ -275,7 +275,7 @@ impl Scale {
     ///
     /// The returned byte is the `repr(u8)` discriminant of the enum.
     /// This is the canonical on-wire form used by [`Dt`].
-    #[inline]
+    #[inline(always)]
     pub const fn to_u8(self) -> u8 {
         self as u8
     }

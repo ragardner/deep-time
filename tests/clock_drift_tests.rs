@@ -38,7 +38,7 @@ mod tests {
         // = 2.001002 s = 2 s + 1_002_000_000_000_000 attoseconds
         assert_eq!(
             drift.time_diff_after(&dt),
-            Dt::new(2_001_002_000_000_000_000i128, Scale::TAI)
+            Dt::span(2_001_002_000_000_000_000i128)
         );
     }
 

@@ -33,10 +33,7 @@ mod tests {
 
     #[test]
     fn test_timepoint_roundtrip() {
-        let tp = Dt::new(
-            Dt::sec_to_attos(9876543210) + 123456789012345678,
-            Scale::TAI,
-        );
+        let tp = Dt::span(Dt::sec_to_attos(9876543210) + 123456789012345678);
         assert_roundtrip(&tp, |t| t.to_wire_bytes().to_vec(), Dt::from_wire_bytes);
     }
 

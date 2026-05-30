@@ -23,7 +23,7 @@ impl TimeParts {
                     self.attos.unwrap_or(0),
                     Scale::TAI,
                 )
-                .tag(Scale::UTC)); // TODO: perf
+                .target(Scale::UTC)); // TODO: perf
             } else {
                 return Ok(Dt::from_sec_and_attos(
                     total_sec,
@@ -168,7 +168,7 @@ impl TimeParts {
                 self.attos.unwrap_or(0),
                 Scale::TAI,
             )
-            .tag(Scale::UTC)) // TODO perf
+            .target(Scale::UTC)) // TODO perf
         } else {
             Ok(Dt::from_sec_and_attos(
                 total_sec,

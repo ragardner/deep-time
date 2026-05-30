@@ -7,7 +7,7 @@ mod tests {
 
     /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_f()`).
     fn jd_tt(tp: &Dt) -> f64 {
-        tp.convert_internal(Scale::TT).to_jd_f()
+        tp.to(Scale::TT).to_jd_f()
     }
 
     #[test]
@@ -100,7 +100,7 @@ mod tests {
         .unwrap();
 
         let tp = parsed.to_dt().unwrap();
-        let (_, frac_attos) = tp.convert_internal(Scale::TT).to_jd();
+        let (_, frac_attos) = tp.to(Scale::TT).to_jd();
 
         // Convert attoseconds → seconds
         let seconds_past_noon = (frac_attos as f64) / (ATTOS_PER_SEC_I128 as f64);

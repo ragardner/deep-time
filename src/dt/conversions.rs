@@ -31,7 +31,7 @@ impl Dt {
     /// ```
     #[inline]
     pub const fn from_attos_since(attos: i128, epoch: Dt) -> Self {
-        epoch.add(Dt::new(attos, epoch.tag))
+        epoch.add(Dt::new(attos, epoch.scale, epoch.target))
     }
 
     /// Converts this instant to the target scale and returns the signed difference
@@ -78,10 +78,9 @@ impl Dt {
     #[inline]
     pub const fn to_scale_and_then_diff(&self, epoch: Dt, convert_epoch: bool) -> Dt {
         if convert_epoch {
-            self.convert_internal(self.tag)
-                .to_diff_raw(epoch.convert_internal(self.tag))
+            self.to(self.target).to_diff_raw(epoch.to(self.target))
         } else {
-            self.convert_internal(self.tag).to_diff_raw(epoch)
+            self.to(self.target).to_diff_raw(epoch)
         }
     }
 
@@ -135,13 +134,16 @@ impl Dt {
         if convert_epoch {
             Self::from_attos(
                 epoch
-                    .convert_internal(diff.tag)
+                    .to(diff.target)
                     .to_attos()
                     .saturating_add(diff.to_attos()),
-                diff.tag,
+                diff.target,
             )
         } else {
-            Self::from_attos(epoch.to_attos().saturating_add(diff.to_attos()), diff.tag)
+            Self::from_attos(
+                epoch.to_attos().saturating_add(diff.to_attos()),
+                diff.target,
+            )
         }
     }
 
@@ -166,13 +168,17 @@ impl Dt {
     pub const fn from_attos(attos: i128, current: Scale) -> Dt {
         match current {
             Scale::UTC => {
-                let raw = Dt::new(attos, current);
+                let raw = Dt::new(attos, Scale::TAI, current);
                 raw.add_sec(raw.leap_sec(true).offset as i128)
             }
-            Scale::TAI => Dt::new(attos, current),
-            Scale::TT => Dt::new(attos.saturating_sub(TT_TAI_OFFSET.to_attos()), current),
+            Scale::TAI => Dt::new(attos, Scale::TAI, current),
+            Scale::TT => Dt::new(
+                attos.saturating_sub(TT_TAI_OFFSET.to_attos()),
+                Scale::TAI,
+                current,
+            ),
             Scale::UTCSpice => {
-                let raw = Dt::new(attos, current);
+                let raw = Dt::new(attos, Scale::TAI, current);
                 if attos < TAI_ATTOS_AT_1972 - 10 {
                     raw.add_sec(9)
                 } else {
@@ -180,79 +186,135 @@ impl Dt {
                 }
             }
             Scale::UTCSofa => {
-                let raw = Dt::new(attos, current);
+                let raw = Dt::new(attos, Scale::TAI, current);
                 if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(&raw) {
                     raw.add(Dt::from_sec_f(sofa_offset, Scale::TAI))
                 } else {
                     raw.add_sec(raw.leap_sec(true).offset as i128)
                 }
             }
-            Scale::GPS | Scale::QZSS | Scale::GST => {
-                Dt::new(attos.saturating_add(Dt::SEC_19.to_attos()), current)
-            }
-            Scale::BDT => Dt::new(attos.saturating_add(Dt::SEC_33.to_attos()), current),
-            Scale::TDB | Scale::ET => Self::tdb_to_tai(Dt::new(attos, current)),
+            Scale::GPS | Scale::QZSS | Scale::GST => Dt::new(
+                attos.saturating_add(Dt::SEC_19.to_attos()),
+                Scale::TAI,
+                current,
+            ),
+            Scale::BDT => Dt::new(
+                attos.saturating_add(Dt::SEC_33.to_attos()),
+                Scale::TAI,
+                current,
+            ),
+            Scale::TDB | Scale::ET => Self::tdb_to_tai(Dt::new(attos, Scale::TAI, current)),
             Scale::TCG => {
-                let tt = Self::tcg_to_tt(Dt::new(attos, current));
+                let tt = Self::tcg_to_tt(Dt::new(attos, Scale::TAI, current));
                 tt.sub(TT_TAI_OFFSET)
             }
             Scale::TCB => {
-                let tdb = Self::tcb_to_tdb(Dt::new(attos, current));
+                let tdb = Self::tcb_to_tdb(Dt::new(attos, Scale::TAI, current));
                 Self::tdb_to_tai(tdb)
             }
             Scale::LTC => {
-                let tt = Self::ltc_to_tt(Dt::new(attos, current));
+                let tt = Self::ltc_to_tt(Dt::new(attos, Scale::TAI, current));
                 tt.sub(TT_TAI_OFFSET)
             }
-            Scale::TCL => Self::tcl_to_tai(Dt::new(attos, current)),
-            _ => Dt::new(attos, current),
+            Scale::TCL => Self::tcl_to_tai(Dt::new(attos, Scale::TAI, current)),
+            _ => Dt::new(attos, Scale::TAI, current),
         }
     }
 
-    /// From TAI -> `scale`
-    pub const fn convert_internal(&self, scale: Scale) -> Dt {
-        match scale {
-            Scale::TAI => Self::from_attos(self.attos, self.tag),
+    /// Converts directly to `scale`, without first converting to TAI.
+    pub(crate) const fn convert(&self, new: Scale) -> Dt {
+        match new {
+            Scale::TAI => Self::from_attos(self.attos, self.scale),
             Scale::UTC => {
                 let offset = self.leap_sec(false).offset;
-                self.add_sec(-offset as i128).tag(scale)
+                self.add_sec(-offset as i128).with(new)
             }
-            Scale::TT => self.add(TT_TAI_OFFSET).tag(scale),
+            Scale::TT => self.add(TT_TAI_OFFSET).with(new),
             Scale::UTCSpice => {
                 if self.to_attos() < TAI_ATTOS_AT_1972 {
-                    self.add_sec(-9).tag(scale)
+                    self.add_sec(-9).with(new)
                 } else {
                     let offset = self.leap_sec(false).offset;
-                    self.add_sec(-offset as i128).tag(scale)
+                    self.add_sec(-offset as i128).with(new)
                 }
             }
             Scale::UTCSofa => {
                 if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(&self) {
-                    self.sub(Dt::span_f(sofa_offset)).tag(scale)
+                    self.sub(Dt::span_f(sofa_offset)).with(new)
                 } else {
                     let offset = self.leap_sec(false).offset;
-                    self.add_sec(-offset as i128).tag(scale)
+                    self.add_sec(-offset as i128).with(new)
                 }
             }
             Scale::GPS | Scale::QZSS | Scale::GST => {
-                self.add_attos(-Dt::SEC_19.to_attos()).tag(scale)
+                self.add_attos(-Dt::SEC_19.to_attos()).with(new)
             }
-            Scale::BDT => self.add_attos(-Dt::SEC_33.to_attos()).tag(scale),
-            Scale::TDB | Scale::ET => Self::tai_to_tdb(*self).tag(scale),
-            Scale::TCG => Self::tai_to_tcg(*self).tag(scale),
-            Scale::TCB => Self::tai_to_tcb(*self).tag(scale),
+            Scale::BDT => self.add_attos(-Dt::SEC_33.to_attos()).with(new),
+            Scale::TDB | Scale::ET => Self::tai_to_tdb(*self).with(new),
+            Scale::TCG => Self::tai_to_tcg(*self).with(new),
+            Scale::TCB => Self::tai_to_tcb(*self).with(new),
             Scale::LTC => {
                 let tt = self.add(TT_TAI_OFFSET);
-                Self::tt_to_ltc(tt).tag(scale)
+                Self::tt_to_ltc(tt).with(new)
             }
-            Scale::TCL => Self::tai_to_tcl(*self).tag(scale),
+            Scale::TCL => Self::tai_to_tcl(*self).with(new),
             _ => *self,
         }
     }
 
+    /// Converts this instant from one time scale to another.
+    ///
+    /// - It is not necessary to do this if you just want to use such function
+    ///   as [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) as these internally
+    ///   convert to the scale of the objects `target` field before output.
+    /// - The internal `attos` field changes to be on the new time scale.
+    /// - The [`Dt`]s `target` field is ignored and left unchanged.
+    /// - The [`Dt`]s `scale` field is changed to the new [`Scale`].
+    ///
+    /// ## Returns
+    ///
+    /// - A [`Dt`] representing the same physical instant but on the `new` scale.
+    /// - The returned objects `scale` field has been changed to `new`.
+    ///
+    /// If `current == new`, this method returns `*self` without any computation.
+    ///
+    /// ## See also
+    ///
+    /// * [`Dt::to_tai`](../struct.Dt.html#method.to_tai)
+    /// * [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt_tai = Dt::from_ymd(2024, 6, 15, 12, 0, 0, 0, Scale::UTC);
+    ///
+    /// // Convert internal representation from TAI to UTC
+    /// let dt_utc = dt_tai.to(Scale::TAI, Scale::UTC);
+    /// let ymd = dt_utc.to_ymdhms(Scale::UTC);
+    ///
+    /// assert_eq!(ymd.yr(), 2024);
+    /// assert_eq!(ymd.mo(), 6);
+    /// assert_eq!(ymd.day(), 15);
+    /// ```
     #[inline]
-    pub const fn tag(&self, s: Scale) -> Dt {
-        Dt::new(self.attos, s)
+    pub const fn to(&self, new: Scale) -> Dt {
+        if self.scale.eq(Scale::TAI) {
+            self.convert(new)
+        } else if self.scale.eq(new) {
+            *self
+        } else {
+            Self::from_attos(self.attos, self.scale).convert(new)
+        }
+    }
+
+    /// Converts the internal attos to be on the TAI time [`Scale`].
+    ///
+    /// See [`Dt::to`](../struct.Dt.html#method.to) for more info.
+    #[inline(always)]
+    pub const fn to_tai(&self) -> Dt {
+        self.to(Scale::TAI)
     }
 
     /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic

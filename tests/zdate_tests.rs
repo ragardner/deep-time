@@ -367,8 +367,14 @@ mod tests {
     fn date_parser_roundtrip() {
         let tp1 = Dt::from_sec(5, Scale::LTC);
         let tp2 = Dt::from_sec(5, Scale::GPS);
-        let xp1 = tp1.tag(Scale::UTC).to_str("%Y-%m-%dT%H:%M:%S%.f").unwrap();
-        let xp2 = tp2.tag(Scale::UTC).to_str("%Y-%m-%dT%H:%M:%S%.f").unwrap();
+        let xp1 = tp1
+            .target(Scale::UTC)
+            .to_str("%Y-%m-%dT%H:%M:%S%.f")
+            .unwrap();
+        let xp2 = tp2
+            .target(Scale::UTC)
+            .to_str("%Y-%m-%dT%H:%M:%S%.f")
+            .unwrap();
         let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
         let res_tp2 = Dt::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
         assert!(tp1 == res_tp1);
@@ -379,7 +385,7 @@ mod tests {
     fn round_trip_fixed_offsets() {
         for tp in [Dt::from_tai_sec(5), Dt::from_tai_sec(-5)] {
             let xp1 = tp
-                .tag(Scale::UTC)
+                .target(Scale::UTC)
                 .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
                 .unwrap();
             let tp2 = Dt::from_str_parse(&xp1, &None).unwrap();

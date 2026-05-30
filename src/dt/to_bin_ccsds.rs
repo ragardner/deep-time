@@ -107,7 +107,7 @@ impl Dt {
             return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
         }
 
-        let utc = self.convert_internal(Scale::UTC);
+        let utc = self.to(Scale::UTC);
 
         const EPOCH_OFFSET: i64 = 1_325_419_135;
         let rem_attos = utc.to_sec_ufrac();
@@ -208,7 +208,7 @@ impl Dt {
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
-        let gt = self.tag(Scale::UTC).to_ymd_rich();
+        let gt = self.target(Scale::UTC).to_ymd_rich();
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
         let mut pos = 0usize;
@@ -284,7 +284,7 @@ impl Dt {
     /// - Otherwise ccsds_c is chosen.
     #[inline]
     pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        if self.tag.uses_leap_seconds() {
+        if self.target.uses_leap_seconds() {
             self.to_ccsds_d(2, 1, false)
         } else {
             self.to_ccsds_c(4, 4, false)

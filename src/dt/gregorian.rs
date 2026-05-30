@@ -194,7 +194,7 @@ impl Dt {
             min,
             sec,
             attos: frac,
-            scale: self.tag,
+            scale: self.target,
         }
     }
 
@@ -326,7 +326,11 @@ impl Dt {
         let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
         let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (attos as i128);
 
-        let tp = Self::from_diff_and_scale(Dt::new(unix_attos, scale), Dt::UNIX_EPOCH, false);
+        let tp = Self::from_diff_and_scale(
+            Dt::new(unix_attos, Scale::TAI, scale),
+            Dt::UNIX_EPOCH,
+            false,
+        );
         if is_leap_second && matches!(scale, Scale::UTC) {
             tp.add_sec(1)
         } else {

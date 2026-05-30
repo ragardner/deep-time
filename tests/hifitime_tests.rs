@@ -62,8 +62,8 @@ mod tests {
 
         let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
 
-        let my_tt_sec = my_2038_tai.convert_internal(Scale::TT).to_sec_f()
-            + (HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
+        let my_tt_sec =
+            my_2038_tai.to(Scale::TT).to_sec_f() + (HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
 
         let diff = (my_tt_sec - hifi_tt_sec).abs();
 
@@ -88,7 +88,7 @@ mod tests {
 
         let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
 
-        let my_tdb_sec = my_2038_tai.convert_internal(Scale::TDB).to_sec_f();
+        let my_tdb_sec = my_2038_tai.to(Scale::TDB).to_sec_f();
 
         let diff = (my_tdb_sec - hifi_tdb_sec).abs();
 
@@ -113,8 +113,8 @@ mod tests {
 
         let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
 
-        let my_utc_sec = my_2038_tai.convert_internal(Scale::UTC).to_sec_f()
-            + (HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
+        let my_utc_sec =
+            my_2038_tai.to(Scale::UTC).to_sec_f() + (HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
 
         let diff = (my_utc_sec - hifi_utc_sec).abs();
 
@@ -139,7 +139,7 @@ mod tests {
 
         let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
 
-        let my_gps_sec = my_2038_tai.convert_internal(Scale::GPS).to_sec_f() + 630_763_200.0;
+        let my_gps_sec = my_2038_tai.to(Scale::GPS).to_sec_f() + 630_763_200.0;
 
         let diff = (my_gps_sec - hifi_gps_sec).abs();
 
@@ -164,7 +164,7 @@ mod tests {
 
         let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
 
-        let my_bdt_sec = my_2038_tai.convert_internal(Scale::BDT).to_sec_f() - 189_345_600.0;
+        let my_bdt_sec = my_2038_tai.to(Scale::BDT).to_sec_f() - 189_345_600.0;
 
         let diff = (my_bdt_sec - hifi_bdt_sec).abs();
 
