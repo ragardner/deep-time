@@ -36,8 +36,8 @@ impl Dt {
     /// use deep_time::{Dt, Scale};
     ///
     /// // 2698012800
-    /// let dt = Dt::from_ymd_on(1985, 7, 1, Scale::TAI);
-    /// let ntp = dt.to_ntp(Scale::TAI, Scale::TAI);
+    /// let dt = Dt::from_ymd(1985, 7, 1, 0, 0, 0, 0, Scale::TAI);
+    /// let ntp = dt.to_ntp();
     ///
     /// assert_eq!(
     ///     ntp.to_attos(), Dt::sec_to_attos(2698012800_i128),
@@ -45,7 +45,7 @@ impl Dt {
     ///     ntp.to_attos(), Dt::sec_to_attos(2698012800_i128)
     /// );
     ///
-    /// let dt2 = Dt::from_ntp(ntp.to_sec_f(), Scale::TAI);
+    /// let dt2 = Dt::from_ntp(ntp);
     ///
     /// assert_eq!(
     ///     dt.to_attos(), dt2.to_attos(),
@@ -53,7 +53,7 @@ impl Dt {
     ///     dt.to_attos(), dt2.to_attos()
     /// );
     ///
-    /// let ymd = dt2.to_ymdhms_on(Scale::TAI, Scale::TAI);
+    /// let ymd = dt2.to_ymd();
     /// assert_eq!(ymd.yr(), 1985_i64);
     /// assert_eq!(ymd.mo(), 7);
     /// assert_eq!(ymd.day(), 1);
@@ -94,8 +94,8 @@ impl Dt {
     /// ```
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymdhms_on(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
-    /// let g = x.to_gps_wk_and_tow(Scale::TAI);
+    /// let x = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
+    /// let g = x.to_gps_wk_and_tow();
     /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
     /// assert_eq!(x, z);
     /// ```
@@ -121,8 +121,8 @@ impl Dt {
     /// ```
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymdhms_on(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
-    /// let g = x.to_gps_wk_and_tow(Scale::TAI);
+    /// let x = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
+    /// let g = x.to_gps_wk_and_tow();
     /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
     /// assert_eq!(x, z);
     /// ```

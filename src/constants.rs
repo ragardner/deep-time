@@ -69,7 +69,7 @@ pub const ATTOS_PER_FS_I128: i128 = ATTOS_PER_FS as i128;
 /// 0.184 sec as u64 attoseconds
 pub(crate) const TT_TAI_OFFSET_SUBSEC: u64 = 184_000_000_000_000_000; // 0.184 × 10¹⁸
 
-/// Helper that returns the TT–TAI offset as a `Dt`. 32.184 s
+/// Helper that returns the TT–TAI offset as a `Dt` 32.184 s
 pub const TT_TAI_OFFSET: Dt = Dt::new(32_184_000_000_000_000_000i128, Scale::TAI);
 
 /// Julian Date of the J2000.0 epoch.

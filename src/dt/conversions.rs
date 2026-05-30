@@ -21,7 +21,7 @@ impl Dt {
     /// use deep_time::Dt;
     ///
     /// // A leap second from the middle of the table (36 leap seconds accumulated)
-    /// let original = Dt::from_ymdhms(2015, 6, 30, 23, 59, 60, 123_456_789_000_000_000);
+    /// let original = Dt::from(2015, 6, 30, 23, 59, 60, 123_456_789_000_000_000, Scale::UTC);
     ///
     /// // Round-trip through canonical attoseconds
     /// let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();

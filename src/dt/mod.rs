@@ -39,7 +39,17 @@ use core::fmt;
 ///
 /// **Fields:**
 ///
-/// - `pub attos: i128` — total time in attoseconds since the reference epoch (2000-01-01 noon), as a signed integer. Negative values represent times before the epoch.
+/// - pub attos: [`i128`] - total time in attoseconds since the reference epoch
+///   (2000-01-01 noon), as a signed integer. Negative values represent times
+///   before the epoch.
+/// - pub tag: [`Scale`] - a timescale tag, for example when a `Dt` is created by
+///   [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd) despite being TAI
+///   internally, the timescale tag will be whatever [`Scale`] was used for
+///   [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd). This timescale tag
+///   is then used by the many functions such as
+///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) which **expect** a TAI
+///   internal representation, but use the tag to determine which timescale to
+///   output the date as.
 ///
 /// **Notes:**
 ///
@@ -65,11 +75,8 @@ use core::fmt;
 /// ### From and to calendar dates
 ///
 /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
-/// - [`Dt::from_ymdhms`](../struct.Dt.html#method.from_ymdhms)
-/// - [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on)
-/// - [`Dt::to_ymdhms`](../struct.Dt.html#method.to_ymdhms)
-/// - [`Dt::to_ymdhms_on`](../struct.Dt.html#method.to_ymdhms_on)
-/// - [`Dt::to_ymdhms_rich_on`](../struct.Dt.html#method.to_ymdhms_rich_on)
+/// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
+/// - [`Dt::to_ymd_rich`](../struct.Dt.html#method.to_ymd_rich)
 ///
 /// ### From and to str and bytes
 ///
@@ -98,8 +105,11 @@ use core::fmt;
 ///
 /// ### Conversions, time scales etc.
 ///
-/// - [`Dt::from`](../struct.Dt.html#method.from)
-/// - [`Dt::to`](../struct.Dt.html#method.to)
+/// - [`Dt::tag`](../struct.Dt.html#method.tag)
+/// - [`Dt::from_sec`](../struct.Dt.html#method.from_sec)
+/// - [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64)
+/// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
+/// - [`Dt::convert_internal`](../struct.Dt.html#method.convert_internal)
 /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
 /// - [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp)
 /// - [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
@@ -143,10 +153,10 @@ use core::fmt;
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
 ///
 /// let s = x
-///  .to_str_with_tz(Scale::TAI, Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
 ///  .unwrap();
 /// let b = x
-///  .to_str_bin_with_tz(Scale::TAI, Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_bin_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
 ///  .unwrap();
 ///
 /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
@@ -160,10 +170,10 @@ use core::fmt;
 /// use deep_time::{Dt, Scale};
 ///
 /// // this fn converts from UTC and creates a TAI Dt
-/// let dt = Dt::from_ymdhms(2000, 1, 1, 12, 0, 0, 0);
+/// let dt = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
 ///
-/// // dt is now TAI so the current Scale is TAI, it was originally UTC though
-/// let unix_ms = dt.to_unix(Scale::TAI, Scale::UTC).to_ms();
+/// // dt is internally TAI but has a UTC tag
+/// let unix_ms = dt.to_unix().to_ms();
 ///
 /// // unix timestamp in ms for 2000-01-01 noon UTC
 /// assert_eq!(unix_ms, 946728000000);
@@ -171,11 +181,41 @@ use core::fmt;
 ///
 /// ### Converting time scales
 ///
+/// There are two ways to mess about with time scales. **Most output
+/// functions such as [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
+/// and [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) require the
+/// internal `attos` of the [`Dt`] to be TAI.** This rule is dependent
+/// on the function.
+///
+/// So to simply make some output functions output on a particular timescale
+/// you merely need to change the tag to a different scale.
+///
+/// ```
+/// use deep_time::{Dt, Scale};
+///
+/// // Leap seconds were added to the secounds count
+/// // This Dt has attos that are now on the TAI timescale
+/// let dt = Dt::from_ymd(2025, 1, 1, 0, 0, 0, 0, Scale::UTC);
+///
+/// // The internal tag is currently UTC so we don't need to do
+/// // anything to output back to UTC and round trip
+/// let bytes = dt.to_str_bin("%d %m %Y").unwrap();
+///
+/// assert_eq!(bytes.as_str().unwrap(), "01 01 2025");
+///
+/// // But if we wanted to change the tag to effectively convert
+/// // to something like TT before output:
+/// let tt = dt.tag(Scale::TT);
+///
+///
+///
+/// ```
+///
 /// ```
 /// use deep_time::{Dt, Scale};
 ///
 /// // this fn converts from UTC and creates a TAI Dt
-/// let dt = Dt::from_ymdhms(2000, 1, 1, 12, 0, 0, 0);
+/// let dt = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
 ///
 /// // to tdb
 /// let tdb = dt.to(Scale::TAI, Scale::TDB);
