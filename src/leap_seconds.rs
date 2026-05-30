@@ -199,14 +199,19 @@ pub struct LeapInfo {
 }
 
 impl Dt {
+    /// Get the leap seconds info for this instant.
+    ///
+    /// Uses the library's in-built leap seconds table.
+    /// TODO: use rounded seconds?
     #[inline(always)]
     pub const fn leap_sec(&self, is_utc: bool) -> LeapInfo {
-        leap_sec(Dt::i128_to_i64(self.to_sec()), is_utc)
+        leap_sec(self.to_sec64(), is_utc)
     }
 
+    /// Get the leap seconds info for this instant with a given table.
     #[inline(always)]
     pub const fn leap_sec_using(&self, is_utc: bool, table: &[LeapSec]) -> LeapInfo {
-        leap_sec_using(Dt::i128_to_i64(self.to_sec()), is_utc, table)
+        leap_sec_using(self.to_sec64(), is_utc, table)
     }
 }
 
@@ -320,7 +325,7 @@ impl Dt {
     /// | 2287785600 |     11   |
     /// | 2303683200 |     12   |
     ///
-    /// ## Example:
+    /// ## Examples
     ///
     /// ```ignore
     /// let table = Self::leap_sec_from_str(&file_content_as_str);

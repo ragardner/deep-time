@@ -56,14 +56,14 @@ impl Dt {
     }
 
     /// Converts a TAI [`Dt`] to TDB.
-    pub const fn tai_to_tdb(tai: Self) -> Self {
+    pub const fn tai_to_tdb(tai: Dt) -> Dt {
         let tt = tai.add(TT_TAI_OFFSET);
         let correction = Self::tdb_minus_tt(tt.to_sec_f());
         tt.add(Dt::from_sec_f(correction, Scale::TAI))
     }
 
     /// Converts a TDB [`Dt`] to TAI.
-    pub const fn tdb_to_tai(tdb: Self) -> Self {
+    pub const fn tdb_to_tai(tdb: Dt) -> Dt {
         // Linear-rate + constant initial guess (dominant part of the forward transformation)
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let linear_span = Self::mul_lb(elapsed); // LB * elapsed

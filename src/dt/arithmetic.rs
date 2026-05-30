@@ -4,46 +4,116 @@ use crate::{
 };
 
 impl Dt {
+    /// Saturating add, keeps `self`'s `scale` and `target`.
     #[inline]
-    pub const fn add(&self, span: Dt) -> Self {
-        if !span.is_zero() {
-            Dt::new(
-                self.attos.saturating_add(span.attos),
-                self.scale,
-                self.target,
-            )
+    pub const fn add(&self, dt: Dt) -> Dt {
+        if !dt.is_zero() {
+            Dt::new(self.attos.saturating_add(dt.attos), self.scale, self.target)
         } else {
             *self
         }
     }
 
+    /// Saturating sub, keeps `self`'s `scale` and `target`.
     #[inline]
-    pub const fn sub(&self, span: Dt) -> Self {
-        if !span.is_zero() {
-            Dt::new(
-                self.attos.saturating_sub(span.attos),
-                self.scale,
-                self.target,
-            )
+    pub const fn sub(&self, dt: Dt) -> Dt {
+        if !dt.is_zero() {
+            Dt::new(self.attos.saturating_sub(dt.attos), self.scale, self.target)
         } else {
             *self
         }
     }
 
-    /// Returns the seconds integer part of the [`Dt`].
+    /// If this time were turned into [`i128`] seconds and [`u64`] (always
+    /// pushing to the positive) fractional attoseconds, this returns the
+    /// whole seconds part.
+    ///
+    /// To just get seconds rounded to the nearest second use
+    /// [`Dt::to_sec_rounded`](../struct.Dt.html#method.to_sec_rounded)
+    /// instead.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // negative 1.3 seconds
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    ///
+    /// // becomes positive 700ms
+    /// let frac = dt.to_sec_ufrac();
+    /// assert_eq!(frac, 700_000_000_000_000_000);
+    ///
+    /// // becomes negative 2 seconds
+    /// let sec = dt.to_sec();
+    /// assert_eq!(sec, -2);
+    ///
+    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    ///
+    /// assert_eq!(dt.to_sec(), 1);
+    /// assert_eq!(dt.to_sec_ufrac(), 300_000_000_000_000_000);
+    ///
+    /// // if you just want rounded seconds
+    /// // use to_sec_rounded() instead
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let sec = dt.to_sec_rounded();
+    /// assert_eq!(sec, -1);
+    /// ```
     #[inline(always)]
     pub const fn to_sec(&self) -> i128 {
         self.attos.div_euclid(ATTOS_PER_SEC_I128)
     }
 
-    /// Returns the seconds integer part of the [`Dt`] as an i64.
+    #[inline(always)]
+    pub const fn to_sec_rounded(&self) -> i128 {
+        self.round_to_sec().to_sec()
+    }
+
+    /// If this time were turned into [`i64`] seconds and [`u64`] (always
+    /// pushing to the positive) fractional attoseconds, this returns the
+    /// whole seconds part.
+    ///
+    /// To just get seconds rounded to the nearest second use
+    /// [`Dt::to_sec_rounded`](../struct.Dt.html#method.to_sec_rounded)
+    /// instead.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // negative 1.3 seconds
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    ///
+    /// // becomes positive 700ms
+    /// let frac = dt.to_sec_ufrac();
+    /// assert_eq!(frac, 700_000_000_000_000_000);
+    ///
+    /// // becomes negative 2 seconds
+    /// let sec = dt.to_sec64();
+    /// assert_eq!(sec, -2);
+    ///
+    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    ///
+    /// assert_eq!(dt.to_sec64(), 1);
+    /// assert_eq!(dt.to_sec_ufrac(), 300_000_000_000_000_000);
+    ///
+    /// // if you just want rounded seconds
+    /// // use to_sec_rounded() instead
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let sec = dt.to_sec_rounded();
+    /// assert_eq!(sec, -1);
+    /// ```
     #[inline(always)]
     pub const fn to_sec64(&self) -> i64 {
         Self::i128_to_i64(self.attos.div_euclid(ATTOS_PER_SEC_I128))
     }
 
-    /// Converts this `Dt` to a floating-point number of seconds since the reference epoch of its associated scale.
-    /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal digits of precision.
+    /// Converts this `Dt` to a floating-point number of seconds since the reference
+    /// epoch of its associated scale.
+    ///
+    /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal
+    ///   digits of precision.
     pub const fn to_sec_f(&self) -> Real {
         let attos = self.attos;
 
@@ -73,39 +143,43 @@ impl Dt {
     /// fractional attoseconds, this returns the fractional attoseconds part.
     ///
     /// - Always returns a value in the range `0 ≤ x < ATTOS_PER_SEC`.
-    /// - For negative [`Dt`]s this is not simply the decimal part of the time in seconds.
+    /// - For negative [`Dt`]s this is **not** simply the decimal part of the time in seconds.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // negative 1.3 seconds
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    ///
+    /// // becomes positive 700ms
+    /// let frac = dt.to_sec_ufrac();
+    /// assert_eq!(frac, 700_000_000_000_000_000);
+    ///
+    /// // becomes -2 seconds
+    /// let sec = dt.to_sec64();
+    /// assert_eq!(sec, -2);
+    ///
+    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    ///
+    /// assert_eq!(dt.to_sec64(), 1);
+    /// assert_eq!(dt.to_sec_ufrac(), 300_000_000_000_000_000);
+    /// ```
     #[inline(always)]
     pub const fn to_sec_ufrac(&self) -> u64 {
         self.attos.rem_euclid(ATTOS_PER_SEC_I128) as u64
     }
 
-    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
-    /// derived from the supplied `Spacetime` model.
-    ///
-    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
-    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
-    #[inline]
-    pub const fn adjusted_advance(&mut self, elapsed: &Dt, spacetime: &Spacetime) {
-        let dtau = elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
-        *self = self.add(dtau);
+    /// Returns a new [`Dt`] rounded to the nearest second.
+    #[inline(always)]
+    pub const fn round_to_sec(&self) -> Dt {
+        self.round(Dt::span(ATTOS_PER_SEC_I128))
     }
 
-    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
-    /// from a pre-computed `Drift` value.
-    ///
-    /// - This is an optimized variant of [`Dt::adjusted_advance`](../struct.Dt.html#method.adjusted_advance)
-    ///   for callers that already hold a [`Drift`] instance.
-    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
-    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
+    /// Computes the signed duration between this [`Dt`] and another [`Dt`].
     #[inline]
-    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &Drift) {
-        let dtau = elapsed.add(drift.time_diff_after(elapsed));
-        *self = self.add(dtau);
-    }
-
-    /// Computes the signed duration between this `Dt` and another `Dt`.
-    #[inline]
-    pub const fn to_diff_raw(&self, other: Self) -> Dt {
+    pub const fn to_diff_raw(&self, other: Dt) -> Dt {
         Dt::new(
             self.attos.saturating_sub(other.attos),
             self.scale,
@@ -113,57 +187,81 @@ impl Dt {
         )
     }
 
-    /// Computes the signed duration between this `Dt` and another `Dt` as a float.
+    /// Computes the signed duration between this [`Dt`] and another [`Dt`] as a float.
     #[inline]
-    pub const fn to_diff_raw_f(&self, other: Self) -> Real {
+    pub const fn to_diff_raw_f(&self, other: Dt) -> Real {
         self.to_sec_f() - other.to_sec_f()
+    }
+
+    /// Low level constructor from total attoseconds since a given epoch.
+    ///
+    /// Simply adds the total attoseconds to the epoch. Does not perform
+    /// any time scale conversions.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // A leap second from the middle of the table (36 leap seconds accumulated)
+    /// let original = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 123_456_789_000_000_000, Scale::UTC);
+    ///
+    /// // Round-trip through canonical attoseconds
+    /// let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
+    /// let roundtrip1 = Dt::from_diff_raw(canon, Dt::UNIX_EPOCH);
+    ///
+    /// assert_eq!(original, roundtrip1, "Canonical round-trip failed");
+    /// ```
+    #[inline]
+    pub const fn from_diff_raw(attos: i128, epoch: Dt) -> Dt {
+        epoch.add(Dt::new(attos, epoch.scale, epoch.target))
     }
 
     /// Adds the specified number of attoseconds to this time value.
     #[inline(always)]
-    pub const fn add_attos(&self, n: i128) -> Self {
+    pub const fn add_attos(&self, n: i128) -> Dt {
         Dt::new(self.attos.saturating_add(n), self.scale, self.target)
     }
 
     /// Adds the specified number of seconds to this time value using saturating arithmetic.
     #[inline(always)]
-    pub const fn add_sec(&self, n: i128) -> Self {
+    pub const fn add_sec(&self, n: i128) -> Dt {
         self.add_attos(n.saturating_mul(ATTOS_PER_SEC_I128))
     }
 
     /// Adds the specified number of milliseconds to this time value.
     #[inline(always)]
-    pub const fn add_ms(&self, n: i128) -> Self {
+    pub const fn add_ms(&self, n: i128) -> Dt {
         self.add_attos(n.saturating_mul(ATTOS_PER_MS_I128))
     }
 
     /// Adds the specified number of microseconds to this time value.
     #[inline(always)]
-    pub const fn add_us(&self, n: i128) -> Self {
+    pub const fn add_us(&self, n: i128) -> Dt {
         self.add_attos(n.saturating_mul(ATTOS_PER_US_I128))
     }
 
     /// Adds the specified number of nanoseconds to this time value.
     #[inline(always)]
-    pub const fn add_ns(&self, n: i128) -> Self {
+    pub const fn add_ns(&self, n: i128) -> Dt {
         self.add_attos(n.saturating_mul(ATTOS_PER_NS_I128))
     }
 
     /// Adds the specified number of picoseconds to this time value.
     #[inline(always)]
-    pub const fn add_ps(&self, n: i128) -> Self {
+    pub const fn add_ps(&self, n: i128) -> Dt {
         self.add_attos(n.saturating_mul(ATTOS_PER_PS_I128))
     }
 
     /// Adds the specified number of femtoseconds to this time value.
     #[inline(always)]
-    pub const fn add_fs(&self, n: i128) -> Self {
+    pub const fn add_fs(&self, n: i128) -> Dt {
         self.add_attos(n.saturating_mul(ATTOS_PER_FS_I128))
     }
 
     /// Adds the specified number of minutes to this time value using saturating arithmetic.
     #[inline]
-    pub const fn add_min(&self, n: i64) -> Self {
+    pub const fn add_min(&self, n: i64) -> Dt {
         Dt::new(
             self.attos
                 .saturating_add((n as i128) * 60 * ATTOS_PER_SEC_I128),
@@ -174,7 +272,7 @@ impl Dt {
 
     /// Adds the specified number of hours to this time value using saturating arithmetic.
     #[inline]
-    pub const fn add_hr(&self, n: i64) -> Self {
+    pub const fn add_hr(&self, n: i64) -> Dt {
         Dt::new(
             self.attos
                 .saturating_add((n as i128) * 3600 * ATTOS_PER_SEC_I128),
@@ -234,7 +332,7 @@ impl Dt {
     /// Multiplies this time by an integer scalar.
     ///
     /// Uses 128-bit arithmetic internally.
-    pub const fn mul(self, rhs: i64) -> Self {
+    pub const fn mul(self, rhs: i64) -> Dt {
         if rhs == 0 || self.is_zero() {
             return Self::ZERO;
         }
@@ -246,7 +344,7 @@ impl Dt {
     ///
     /// Uses truncating division (rounds toward zero), same as normal integer division.
     /// Returns `ZERO` if `rhs == 0`.
-    pub const fn div(self, rhs: i64) -> Self {
+    pub const fn div(self, rhs: i64) -> Dt {
         if rhs == 0 || self.is_zero() {
             return Self::ZERO;
         }
@@ -256,7 +354,7 @@ impl Dt {
 
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
-    pub const fn floor(&self, unit: Self) -> Self {
+    pub const fn floor(&self, unit: Dt) -> Dt {
         if unit.is_zero() {
             return *self;
         }
@@ -269,7 +367,7 @@ impl Dt {
 
     /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
     /// If `unit` is zero, returns `self` unchanged (exact, full precision).
-    pub const fn ceil(&self, unit: Self) -> Self {
+    pub const fn ceil(&self, unit: Dt) -> Dt {
         if unit.is_zero() {
             return *self;
         }
@@ -291,7 +389,7 @@ impl Dt {
     /// - If `unit` is zero, returns `self` unchanged (preserves full precision).
     /// - Uses Euclidean division internally for correct behavior on negative values.
     /// - The result is always a multiple of `unit`.
-    pub const fn round(&self, unit: Self) -> Self {
+    pub const fn round(&self, unit: Dt) -> Dt {
         if unit.is_zero() {
             return *self;
         }
@@ -319,7 +417,7 @@ impl Dt {
     /// Returns `floor(|self| / |unit|)` as `usize`, saturating at `usize::MAX`.
     ///
     /// Fully exact integer arithmetic using 128-bit intermediaries. Used by `TimeRange::len`.
-    pub const fn abs_div_floor(&self, unit: Self) -> usize {
+    pub const fn abs_div_floor(&self, unit: Dt) -> usize {
         if unit.is_zero() {
             return 0;
         }
@@ -336,7 +434,7 @@ impl Dt {
 
     /// - Integer part of `rhs` is multiplied **exactly** (pure i128 arithmetic).
     /// - Fractional part (|frac| < 1) uses the 10¹⁵ scaling.
-    pub const fn mul_by_f(&self, rhs: Real) -> Self {
+    pub const fn mul_by_f(&self, rhs: Real) -> Dt {
         if rhs.is_nan() {
             return Self::ZERO;
         }
@@ -380,7 +478,7 @@ impl Dt {
 
         let frac_part = rhs - f!(int_part); // always in [0, 1)
 
-        // --- Integer part with explicit type-range saturation ---
+        // Integer part with explicit type-range saturation
         let int_attos = if int_part == 0 {
             0
         } else if int_part > 0 {
@@ -440,7 +538,7 @@ impl Dt {
             pos.wrapping_neg()
         };
 
-        // Combine + final clamp (manual version because clamp is not const yet)
+        // Combine + final clamp
         let total_attos = int_attos.saturating_add(frac_attos);
         let clamped = if total_attos > max_attos {
             max_attos
@@ -455,7 +553,7 @@ impl Dt {
 
     /// Divides by a real number (routes through the high-precision `mul_by_f`).
     #[inline]
-    pub const fn div_by_f(&self, rhs: Real) -> Self {
+    pub const fn div_by_f(&self, rhs: Real) -> Dt {
         if rhs == 0.0 || rhs.is_nan() {
             return if self.attos >= 0 {
                 Self::MAX
@@ -468,7 +566,7 @@ impl Dt {
 
     /// Divides this Dt by 2 (convenience wrapper).
     #[inline]
-    pub const fn div_by_2(&self) -> Self {
+    pub const fn div_by_2(&self) -> Dt {
         self.div_by_f(2.0)
     }
 
@@ -587,7 +685,7 @@ impl Dt {
     ///
     /// This method is `const fn` and can be used in const contexts.
     #[inline]
-    pub const fn div_dt(self, rhs: Self) -> Real {
+    pub const fn div_dt(self, rhs: Dt) -> Real {
         let a = self.to_sec_f();
         let b = rhs.to_sec_f();
 
@@ -600,5 +698,29 @@ impl Dt {
         } else {
             a / b
         }
+    }
+
+    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
+    /// derived from the supplied `Spacetime` model.
+    ///
+    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
+    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
+    #[inline]
+    pub const fn adjusted_advance(&mut self, elapsed: &Dt, spacetime: &Spacetime) {
+        let dtau = elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
+        *self = self.add(dtau);
+    }
+
+    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
+    /// from a pre-computed `Drift` value.
+    ///
+    /// - This is an optimized variant of [`Dt::adjusted_advance`](../struct.Dt.html#method.adjusted_advance)
+    ///   for callers that already hold a [`Drift`] instance.
+    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
+    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
+    #[inline]
+    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &Drift) {
+        let dtau = elapsed.add(drift.time_diff_after(elapsed));
+        *self = self.add(dtau);
     }
 }

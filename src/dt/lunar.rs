@@ -95,7 +95,7 @@ impl Dt {
         Self::mul_rate(attos, LM_NUM, LM_DEN)
     }
 
-    pub(crate) const fn tt_to_ltc(tt: Self) -> Self {
+    pub(crate) const fn tt_to_ltc(tt: Self) -> Dt {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
         let secular_attos = Self::mul_lm(elapsed);
         let periodic = Self::ltc_periodic_correction(tt);
@@ -112,7 +112,7 @@ impl Dt {
     ///
     /// Convergence: the periodic amplitude is only ~±1.65 ms, so 6 iterations
     /// are more than enough (error drops below 10^{-18} s after ~3–4 steps).
-    pub(crate) const fn ltc_to_tt(ltc: Self) -> Self {
+    pub(crate) const fn ltc_to_tt(ltc: Self) -> Dt {
         let mut tt = ltc; // initial guess (already within ~2 ms)
         let mut i = 0u32;
         while i < 6 {
@@ -190,7 +190,7 @@ impl Dt {
         numerical_tdb.to_attos()
     }
 
-    pub(crate) const fn tai_to_tcl(tai: Self) -> Self {
+    pub(crate) const fn tai_to_tcl(tai: Self) -> Dt {
         let tdb = Self::tai_to_tdb(tai);
 
         let elapsed = Self::to_attos_since_j2000_tdb_epoch(tdb);
@@ -204,7 +204,7 @@ impl Dt {
 
     /// Dedicated inverse for TCL → TT.
     /// Returns a Dt on the TT scale (consistent with ltc_to_tt, tcg_to_tt, etc.).
-    pub(crate) const fn tcl_to_tai(tcl: Self) -> Self {
+    pub(crate) const fn tcl_to_tai(tcl: Self) -> Dt {
         let mut tdb = tcl;
         let mut i = 0u32;
         while i < 6 {

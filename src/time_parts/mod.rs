@@ -17,7 +17,7 @@ use crate::{LiteStr, Scale};
 
 /// A flexible, partially-filled representation of a civil datetime.
 ///
-/// `TimeParts` is the central intermediate type used throughout the library
+/// [`TimeParts`] is the central intermediate type used throughout the library
 /// for parsing, formatting, and converting between different time representations
 /// (CCSDS, ISO-like strings, `chrono`, `jiff`, `Dt`, etc.).
 ///
@@ -74,7 +74,7 @@ pub struct TimeParts {
 
 impl TimeParts {
     #[inline]
-    pub fn new_utc() -> Self {
+    pub fn new_utc() -> TimeParts {
         Self {
             scale: Scale::UTC,
             ..Default::default()

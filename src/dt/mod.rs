@@ -42,14 +42,10 @@ use core::fmt;
 /// - pub attos: [`i128`] - total time in attoseconds since the reference epoch
 ///   (2000-01-01 noon), as a signed integer. Negative values represent times
 ///   before the epoch.
-/// - pub tag: [`Scale`] - a timescale tag, for example when a `Dt` is created by
-///   [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd) despite being TAI
-///   internally, the timescale tag will be whatever [`Scale`] was used for
-///   [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd). This timescale tag
-///   is then used by the many functions such as
-///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) which **expect** a TAI
-///   internal representation, but use the tag to determine which timescale to
-///   output the date as.
+/// - pub scale: [`Scale`] - the current time scale of the object.
+/// - pub target: [`Scale`] - a target time scale used by many output functions such as
+///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) and
+///   [`Dt::to_unix`](../struct.Dt.html#method.to_unix).
 ///
 /// **Notes:**
 ///
@@ -57,8 +53,6 @@ use core::fmt;
 ///   from functions cap at i64 seconds, which can mean a range of ±292 billion years in practice.
 /// - Implements `Copy` and `Clone`. Optional derives for `serde` and `tsify` are available
 ///   behind the corresponding features.
-/// - Does **not** store a time scale internally. The scale is always an explicit parameter
-///   of conversion and construction methods.
 /// - A wide range of math is available for this type, but it's not calendar aware, for basic
 ///   calendar aware math use the [`YmdHms`] type.
 ///
@@ -66,8 +60,6 @@ use core::fmt;
 ///
 /// - The librarys epoch for nearly all functionality such as the conversion functions is
 ///   **2000-01-01 noon**. See also: [`Scale`](../enum.Scale.html).
-/// - When using the conversion functions
-///   and [`Dt::from`](../struct.Dt.html#method.from) etc. the epoch is
 /// - Leap-second handling follows the chosen `Scale` (UTC, UTCSpice, UTCSofa).
 ///
 /// ## See also (non-exhaustive list)
@@ -105,7 +97,7 @@ use core::fmt;
 ///
 /// ### Conversions, time scales etc.
 ///
-/// - [`Dt::tag`](../struct.Dt.html#method.tag)
+/// - [`Dt::target`](../struct.Dt.html#method.target)
 /// - [`Dt::from_sec`](../struct.Dt.html#method.from_sec)
 /// - [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64)
 /// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
@@ -133,7 +125,7 @@ use core::fmt;
 /// // uses impl FromStr but Dt::parse provides the same functionality
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
 ///
-/// let ymd = x.to_ymdhms(Scale::TAI);
+/// let ymd = x.to_ymd();
 /// assert_eq!(ymd.yr(), 2000);
 /// assert_eq!(ymd.mo(), 1);
 /// assert_eq!(ymd.day(), 1);
@@ -181,14 +173,16 @@ use core::fmt;
 ///
 /// ### Converting time scales
 ///
-/// There are two ways to mess about with time scales. **Most output
-/// functions such as [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
-/// and [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) require the
-/// internal `attos` of the [`Dt`] to be TAI.** This rule is dependent
-/// on the function.
+/// Many functions such as
+/// [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) will convert to
+/// `TAI` from the [`Dt`]s current `scale` then to the [`Dt`]s `target`
+/// [`Scale`] prior to producing an output.
 ///
-/// So to simply make some output functions output on a particular timescale
-/// you merely need to change the tag to a different scale.
+/// So you don't necessarily have to convert time scales prior to using
+/// many of the output functions. You just have to change the `target`
+/// time scale.
+///
+/// #### Using the target field
 ///
 /// ```
 /// use deep_time::{Dt, Scale};
@@ -197,19 +191,19 @@ use core::fmt;
 /// // This Dt has attos that are now on the TAI timescale
 /// let dt = Dt::from_ymd(2025, 1, 1, 0, 0, 0, 0, Scale::UTC);
 ///
-/// // The internal tag is currently UTC so we don't need to do
+/// // The internal target is currently UTC so we don't need to do
 /// // anything to output back to UTC and round trip
-/// let bytes = dt.to_str_bin("%d %m %Y").unwrap();
+/// let bytes = dt.to_str_bin("%d %m %Y %H:%M:%S").unwrap();
 ///
-/// assert_eq!(bytes.as_str().unwrap(), "01 01 2025");
+/// assert_eq!(bytes.as_str().unwrap(), "01 01 2025 00:00:00");
 ///
-/// // But if we wanted to change the tag to effectively convert
-/// // to something like TT before output:
-/// let tt = dt.tag(Scale::TT);
-///
-///
-///
+/// // Perhaps we want to make a GPS timestamp out of our Dt
+/// // If we want it to be on the GPS time scale we have to set the
+/// // target prior to calling to_gps()
+/// let gps = dt.target(Scale::GPS).to_gps().to_sec_f();
 /// ```
+///
+/// #### Converting the internal attos to a new time scale
 ///
 /// ```
 /// use deep_time::{Dt, Scale};
@@ -218,13 +212,13 @@ use core::fmt;
 /// let dt = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
 ///
 /// // to tdb
-/// let tdb = dt.to(Scale::TAI, Scale::TDB);
+/// let tdb = dt.to(Scale::TDB);
 ///
 /// // then to tt, the current scale is TDB
-/// let tt = tdb.to(Scale::TDB, Scale::TT);
+/// let tt = tdb.to(Scale::TT);
 ///
 /// // then back to TAI
-/// let tai = tt.to(Scale::TT, Scale::TAI);
+/// let tai = tt.to(Scale::TAI);
 ///
 /// // round trip equality
 /// assert_eq!(dt, tai);
@@ -235,7 +229,7 @@ use core::fmt;
 /// ```
 /// use deep_time::{Dt, Scale};
 ///
-/// let x = Dt::from_ymd(2000, 2, 29).to_ymdhms(Scale::TAI);
+/// let x = Dt::from_ymd(2000, 2, 29, 0, 0, 0, 0, Scale::UTC).to_ymd();
 /// let x = x.add_yr(1);
 ///
 /// assert_eq!(x.day(), 28);
@@ -264,6 +258,8 @@ pub struct Dt {
 }
 
 impl Dt {
+    /// Returns a new [`Dt`] with the `target` field set to the given
+    /// `t` arg.
     #[inline(always)]
     pub const fn target(&self, t: Scale) -> Dt {
         Dt::new(self.attos, self.scale, t)
@@ -276,7 +272,7 @@ impl Dt {
 }
 
 impl Default for Dt {
-    fn default() -> Self {
+    fn default() -> Dt {
         Self::ZERO
     }
 }
@@ -324,6 +320,8 @@ impl fmt::Debug for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Dt")
             .field("attos", &self.to_attos())
+            .field("scale", &self.scale)
+            .field("target", &self.target)
             .finish()
     }
 }

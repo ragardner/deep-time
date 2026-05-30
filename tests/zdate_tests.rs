@@ -4,6 +4,26 @@
 mod tests {
     use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
 
+    #[test]
+    fn print_stuff() {
+        use deep_time::{Dt, Scale};
+
+        // negative 1.3 seconds
+        let dt = Dt::span(-1_300_000_000_000_000_000);
+
+        // becomes positive 700ms
+        let frac = dt.to_sec_ufrac();
+        assert_eq!(frac, 700_000_000_000_000_000);
+
+        // becomes -2 seconds
+        let sec = dt.to_sec64();
+        assert_eq!(sec, -2);
+
+        // if you just want rounded seconds
+        let sec = dt.to_sec_rounded();
+        assert_eq!(sec, -1);
+    }
+
     #[cfg(feature = "tz")]
     #[test]
     fn roundtrip_gap_boundary_new_york() {
@@ -62,10 +82,6 @@ mod tests {
             "Saturday, January 01, 2000 07:00:00 America/New_York"
         );
     }
-
-    #[cfg(feature = "tz")]
-    #[test]
-    fn print_stuff() {}
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let dt = Dt::from_str_parse(input.trim(), &opts)

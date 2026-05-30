@@ -14,7 +14,7 @@ mod to_str;
 /// use deep_time::{Dt, Scale};
 ///
 /// // clamped to 29
-/// let x = Dt::from_ymd(2000, 2, 30).to_ymdhms(Scale::TAI);
+/// let x = Dt::from_ymd(2000, 2, 30, 0, 0, 0, 0, Scale::UTC).to_ymd();
 ///
 /// assert_eq!(x.day(), 29);
 /// ```
@@ -25,7 +25,7 @@ mod to_str;
 /// ```
 /// use deep_time::{Dt, Scale};
 ///
-/// let x = Dt::from_ymd(2000, 2, 29).to_ymdhms(Scale::TAI);
+/// let x = Dt::from_ymd(2000, 2, 29, 0, 0, 0, 0, Scale::UTC).to_ymd();
 /// let x = x.add_yr(1);
 ///
 /// assert_eq!(x.day(), 28);
@@ -201,7 +201,7 @@ impl YmdHms {
         self.scale
     }
 
-    pub(crate) fn to_ymdhms_rich(
+    pub(crate) fn to_ymd_rich(
         &self,
         iso_yr: i64,
         iso_wk: u8,

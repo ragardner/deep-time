@@ -21,7 +21,7 @@ impl Dt {
     /// when calling [`ObserverState::shapiro_delay`] or
     /// [`ObserverState::shapiro_delay`].
     #[inline]
-    pub const fn shapiro_from_grav_param(gm: Real) -> Self {
+    pub const fn shapiro_from_grav_param(gm: Real) -> Dt {
         let secs = 2.0 * gm / (C * C_SQUARED);
         Self::from_sec_f(secs, Scale::TAI)
     }
@@ -65,7 +65,7 @@ impl Dt {
     /// [`ObserverState::new_strong_field`] instead if you need to specify
     /// a non-zero `characteristic_length_scale`.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```ignore
     /// let t = Dt::from_sec(1234.5);
@@ -158,7 +158,7 @@ impl ObserverState {
         position: Position,
         velocity: Velocity,
         grav_potential_m2_s2: Real,
-    ) -> Self {
+    ) -> ObserverState {
         Self {
             time,
             position,
@@ -248,7 +248,7 @@ impl ObserverState {
     /// - `self` — Transmitter state at the time of transmission.
     /// - `rx`   — Receiver state at the approximate time of reception.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust,ignore
     /// let ratio = transmitter.relativistic_clock_rate_ratio(receiver);
@@ -605,10 +605,10 @@ impl ObserverState {
     ///
     /// The algorithm uses the identity:
     ///
-    /// ```ignore
+    ///
     ///   ln((r_tx + r_rx + r_sep) / (r_tx + r_rx - r_sep))
     ///   ≡ 2·ln(num) − ln(denom_term)
-    /// ```
+    ///
     ///
     /// where denom_term is computed from the dot-product identity
     /// (r_tx + r_rx)² − r_sep² = 2(r_tx·r_rx + p_tx · p_rx).

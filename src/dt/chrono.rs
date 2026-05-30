@@ -21,13 +21,15 @@ impl Dt {
     ///   (roughly years 1678–2262) if the instant is out of range.
     #[inline]
     pub fn to_chrono_datetime_utc(&self) -> DateTime<Utc> {
-        DateTime::<Utc>::from_timestamp_nanos(Dt::i128_to_i64(self.to_unix().to_ns()))
+        DateTime::<Utc>::from_timestamp_nanos(Dt::i128_to_i64(
+            self.target(Scale::UTC).to_unix().to_ns(),
+        ))
     }
 
     /// Creates a TAI [`Dt`] from a [`chrono::DateTime`].
     ///
     /// This is the inverse of [`Dt::to_chrono_datetime_utc`].
-    pub fn from_chrono_datetime_utc(dt: DateTime<Utc>) -> Self {
+    pub fn from_chrono_datetime_utc(dt: DateTime<Utc>) -> Dt {
         let yr = dt.year() as i64;
         let mo = dt.month().clamp(1, 12) as u8;
         let day = dt.day().clamp(1, 31) as u8;
@@ -50,7 +52,7 @@ impl Dt {
     }
 
     /// Creates a [`Dt`] from a [`chrono::Duration`] (nanosecond precision).
-    pub fn from_chrono_duration(dur: Duration) -> Self {
+    pub fn from_chrono_duration(dur: Duration) -> Dt {
         match dur.num_nanoseconds() {
             Some(ns) => Self::from_ns(ns as i128, Scale::TAI),
             None => {

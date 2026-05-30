@@ -5,40 +5,11 @@ use crate::{
 };
 
 impl Dt {
-    /// Convenience wrapper for [`Dt::from`](../struct.Dt.html#method.from)
-    #[inline]
-    pub const fn from_dt(dt: Dt, scale: Scale) -> Dt {
-        Self::from_attos(dt.to_attos(), scale)
-    }
-
-    /// Low level constructor from total attoseconds since a given `epoch`.
-    ///
-    /// Simply adds the total attoseconds to the epoch.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Dt;
-    ///
-    /// // A leap second from the middle of the table (36 leap seconds accumulated)
-    /// let original = Dt::from(2015, 6, 30, 23, 59, 60, 123_456_789_000_000_000, Scale::UTC);
-    ///
-    /// // Round-trip through canonical attoseconds
-    /// let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
-    /// let roundtrip1 = Dt::from_attos_since(canon, Dt::UNIX_EPOCH);
-    ///
-    /// assert_eq!(original, roundtrip1, "Canonical round-trip failed");
-    /// ```
-    #[inline]
-    pub const fn from_attos_since(attos: i128, epoch: Dt) -> Self {
-        epoch.add(Dt::new(attos, epoch.scale, epoch.target))
-    }
-
     /// Converts this instant to the target scale and returns the signed difference
     /// from the given epoch.
     ///
     /// This is a low-level `const fn` used internally by higher-level conversion
-    /// methods such as [`to_ymdhms_on`](Dt::to_ymdhms_on).
+    /// methods such as [`to_ymd`](Dt::to_ymd).
     ///
     /// ## Arguments
     ///
@@ -68,15 +39,14 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let dt = Dt::from_ymdhms(2024, 6, 15, 12, 0, 0, 0);
-    /// let diff = dt.to_scale_and_then_diff(Scale::UTC, Dt::UNIX_EPOCH);
+    /// let dt = Dt::from_ymd(2024, 6, 15, 12, 0, 0, 0, Scale::UTC);
+    /// let diff = dt.to_scale_and_diff(Dt::UNIX_EPOCH, true);
     ///
     /// // diff can be used as a Unix timestamp offset
     /// let unix_ms = diff.to_ms();
     /// assert!(unix_ms > 1_700_000_000_000);
     /// ```
-    #[inline]
-    pub const fn to_scale_and_then_diff(&self, epoch: Dt, convert_epoch: bool) -> Dt {
+    pub const fn to_scale_and_diff(&self, epoch: Dt, convert_epoch: bool) -> Dt {
         if convert_epoch {
             self.to(self.target).to_diff_raw(epoch.to(self.target))
         } else {
@@ -87,18 +57,18 @@ impl Dt {
     /// Creates a **TAI** [`Dt`] by adding a difference to an epoch and interpreting
     /// the result on the given time scale.
     ///
-    /// This is the inverse-style counterpart to
-    /// [`Dt::to_scale_and_then_diff`](../struct.Dt.html#method.to_scale_and_then_diff)
-    /// and is used by [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on)
+    /// This is the inverse counterpart to
+    /// [`Dt::to_scale_and_diff`](../struct.Dt.html#method.to_scale_and_diff)
+    /// and is used by [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
     /// and related constructors.
     ///
     /// ## Arguments
     ///
-    /// * `diff` — The signed difference (as a [`Dt`]) to add to the epoch.
-    /// * `epoch` — The reference epoch (commonly
+    /// - `diff` — The signed difference (as a [`Dt`]) to add to the epoch.
+    /// - `epoch` — The reference epoch (commonly
     ///   [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) or
     ///   [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)).
-    /// * `current` — The time scale on which `diff` + `epoch` should be interpreted.
+    /// - `current` — The time scale on which `diff` + `epoch` should be interpreted.
     ///
     /// ## Returns
     ///
@@ -112,81 +82,75 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// * [`Dt::from_dt`](../struct.Dt.html#method.from_dt) — the underlying constructor.
-    /// * [`Dt::to_scale_and_then_diff`](../struct.Dt.html#method.to_scale_and_then_diff) — the complementary operation.
-    /// * [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on) — a higher-level user of this function.
+    /// - [`Dt::to_scale_and_diff`](../struct.Dt.html#method.to_scale_and_diff)
+    /// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
     ///
     /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let diff = Dt::from_sec(1_718_467_200, Scale::TAI); // ~2024-06-15
-    /// let dt = Dt::from_diff_and_scale(diff, Dt::UNIX_EPOCH, Scale::UTC);
+    /// let diff = Dt::from_tai_sec(1_718_467_200); // ~2024-06-15
+    /// let dt = Dt::from_diff_and_scale(diff, Dt::UNIX_EPOCH, true);
     ///
-    /// let ymd = dt.to_ymdhms(Scale::TAI);
+    /// let ymd = dt.to_ymd();
     /// assert_eq!(ymd.yr(), 2024);
     /// assert_eq!(ymd.mo(), 6);
     /// assert_eq!(ymd.day(), 15);
     /// ```
-    #[inline]
-    pub const fn from_diff_and_scale(diff: Dt, epoch: Dt, convert_epoch: bool) -> Self {
+    pub const fn from_diff_and_scale(diff: Dt, epoch: Dt, convert_epoch: bool) -> Dt {
         if convert_epoch {
             Self::from_attos(
                 epoch
-                    .to(diff.target)
+                    .to(diff.scale)
                     .to_attos()
                     .saturating_add(diff.to_attos()),
-                diff.target,
+                diff.scale,
             )
         } else {
-            Self::from_attos(
-                epoch.to_attos().saturating_add(diff.to_attos()),
-                diff.target,
-            )
+            Self::from_attos(epoch.to_attos().saturating_add(diff.to_attos()), diff.scale)
         }
     }
 
-    /// Creates a **TAI** [`Dt`].
-    ///
-    /// - Assumes the given total attoseconds value is the numerical representation
-    ///   on the given scale (i.e. the value you would get from `sec * 10¹⁸ + attos`
-    ///   on that scale).
-    /// - See [`Scale`] for more information on available time scales.
-    ///
-    /// ## Example
+    /// Converts the internal attos to be on the TAI time [`Scale`].
     ///
     /// ```
     /// use deep_time::{Dt, Scale};
     ///
-    /// let dt = Dt::from_sec(-32, Scale::UTC);
+    /// let tai = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+    /// let tt = tai.to(Scale::TT);
     ///
-    /// // leap seconds were added to the `-32` UTC sec
-    /// // and the returned [`Dt`] is on the TAI scale
-    /// assert_eq!(dt.to_attos(), 0);
+    /// assert_eq!(tt.scale, Scale::TT);
+    ///
+    /// let roundtrip = tt.to_tai();
+    ///
+    /// assert_eq!(tai.scale, Scale::TAI);
+    /// assert_eq!(roundtrip, tai);
     /// ```
-    pub const fn from_attos(attos: i128, current: Scale) -> Dt {
-        match current {
+    ///
+    /// See [`Dt::to`](../struct.Dt.html#method.to) for more info.
+    pub const fn to_tai(&self) -> Dt {
+        match self.scale {
             Scale::UTC => {
-                let raw = Dt::new(attos, Scale::TAI, current);
+                let raw = Dt::new(self.attos, Scale::TAI, self.target);
                 raw.add_sec(raw.leap_sec(true).offset as i128)
             }
-            Scale::TAI => Dt::new(attos, Scale::TAI, current),
+            Scale::TAI => *self,
             Scale::TT => Dt::new(
-                attos.saturating_sub(TT_TAI_OFFSET.to_attos()),
+                self.attos.saturating_sub(TT_TAI_OFFSET.to_attos()),
                 Scale::TAI,
-                current,
+                self.target,
             ),
             Scale::UTCSpice => {
-                let raw = Dt::new(attos, Scale::TAI, current);
-                if attos < TAI_ATTOS_AT_1972 - 10 {
+                let raw = Dt::new(self.attos, Scale::TAI, self.target);
+                if self.attos < TAI_ATTOS_AT_1972 - 10 {
                     raw.add_sec(9)
                 } else {
                     raw.add_sec(raw.leap_sec(true).offset as i128)
                 }
             }
             Scale::UTCSofa => {
-                let raw = Dt::new(attos, Scale::TAI, current);
+                let raw = Dt::new(self.attos, Scale::TAI, self.target);
                 if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(&raw) {
                     raw.add(Dt::from_sec_f(sofa_offset, Scale::TAI))
                 } else {
@@ -194,37 +158,47 @@ impl Dt {
                 }
             }
             Scale::GPS | Scale::QZSS | Scale::GST => Dt::new(
-                attos.saturating_add(Dt::SEC_19.to_attos()),
+                self.attos.saturating_add(Dt::SEC_19.to_attos()),
                 Scale::TAI,
-                current,
+                self.target,
             ),
             Scale::BDT => Dt::new(
-                attos.saturating_add(Dt::SEC_33.to_attos()),
+                self.attos.saturating_add(Dt::SEC_33.to_attos()),
                 Scale::TAI,
-                current,
+                self.target,
             ),
-            Scale::TDB | Scale::ET => Self::tdb_to_tai(Dt::new(attos, Scale::TAI, current)),
+            Scale::TDB | Scale::ET => {
+                Self::tdb_to_tai(Dt::new(self.attos, Scale::TAI, self.target))
+            }
             Scale::TCG => {
-                let tt = Self::tcg_to_tt(Dt::new(attos, Scale::TAI, current));
+                let tt = Self::tcg_to_tt(Dt::new(self.attos, Scale::TAI, self.target));
                 tt.sub(TT_TAI_OFFSET)
             }
             Scale::TCB => {
-                let tdb = Self::tcb_to_tdb(Dt::new(attos, Scale::TAI, current));
+                let tdb = Self::tcb_to_tdb(Dt::new(self.attos, Scale::TAI, self.target));
                 Self::tdb_to_tai(tdb)
             }
             Scale::LTC => {
-                let tt = Self::ltc_to_tt(Dt::new(attos, Scale::TAI, current));
+                let tt = Self::ltc_to_tt(Dt::new(self.attos, Scale::TAI, self.target));
                 tt.sub(TT_TAI_OFFSET)
             }
-            Scale::TCL => Self::tcl_to_tai(Dt::new(attos, Scale::TAI, current)),
-            _ => Dt::new(attos, Scale::TAI, current),
+            Scale::TCL => Self::tcl_to_tai(Dt::new(self.attos, Scale::TAI, self.target)),
+            _ => Dt::new(self.attos, Scale::TAI, self.target),
         }
     }
 
-    /// Converts directly to `scale`, without first converting to TAI.
-    pub(crate) const fn convert(&self, new: Scale) -> Dt {
+    /// Converts directly to `new` [`Scale`], without first converting to TAI.
+    ///
+    /// **Warning:**
+    ///
+    /// - This function should really only be used if the [`Dt`] is on the TAI
+    ///   time scale, OR if you really know what you're doing.
+    /// - For the normal time scale conversion function see
+    ///   [`Dt::to`](../struct.Dt.html#method.to) which first converts to TAI
+    ///   before converting to the target scale.
+    pub const fn convert(&self, new: Scale) -> Dt {
         match new {
-            Scale::TAI => Self::from_attos(self.attos, self.scale),
+            Scale::TAI => self.to_tai(),
             Scale::UTC => {
                 let offset = self.leap_sec(false).offset;
                 self.add_sec(-offset as i128).with(new)
@@ -262,11 +236,22 @@ impl Dt {
         }
     }
 
-    /// Converts this instant from one time scale to another.
+    /// Converts this instant to another time scale, going via TAI.
     ///
-    /// - It is not necessary to do this if you just want to use such function
+    /// Essentially when converting TT to TDB the internal process goes like TT
+    /// -> TAI -> TDB. It uses the [`Dt`]s `scale` field to determine what scale
+    /// to convert from to TAI, and then the `new` arg dictates the new time scale.
+    ///
+    /// - It is not necessary to do this if you just want to use such functions
     ///   as [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) as these internally
-    ///   convert to the scale of the objects `target` field before output.
+    ///   convert to the scale of the object's `target` field before output.
+    /// - If a TAI [`Dt`] was created using
+    ///   [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd) and the datetime
+    ///   had 60 seconds, converting to UTC would lose that info. To round trip a
+    ///   60 second UTC datetime you need only set the
+    ///   [`Dt::target`](../struct.Dt.html#method.target) [`Scale`] to `UTC` and
+    ///   then call the desired output function, such as
+    ///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd).
     /// - The internal `attos` field changes to be on the new time scale.
     /// - The [`Dt`]s `target` field is ignored and left unchanged.
     /// - The [`Dt`]s `scale` field is changed to the new [`Scale`].
@@ -288,39 +273,36 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let dt_tai = Dt::from_ymd(2024, 6, 15, 12, 0, 0, 0, Scale::UTC);
+    /// let tai = Dt::from_ymd(2024, 6, 15, 12, 0, 0, 0, Scale::UTC);
+    /// let tt = tai.to(Scale::TT);
+    /// let tdb = tt.to(Scale::TDB);
+    /// let roundtrip = tdb.to(Scale::TAI);
     ///
-    /// // Convert internal representation from TAI to UTC
-    /// let dt_utc = dt_tai.to(Scale::TAI, Scale::UTC);
-    /// let ymd = dt_utc.to_ymdhms(Scale::UTC);
+    /// let ymd = roundtrip.to_ymd();
     ///
     /// assert_eq!(ymd.yr(), 2024);
     /// assert_eq!(ymd.mo(), 6);
     /// assert_eq!(ymd.day(), 15);
+    /// assert_eq!(ymd.hr(), 12);
+    /// assert_eq!(ymd.min(), 0);
+    /// assert_eq!(ymd.sec(), 0);
+    /// assert_eq!(ymd.attos(), 0);
     /// ```
     #[inline]
     pub const fn to(&self, new: Scale) -> Dt {
-        if self.scale.eq(Scale::TAI) {
+        if matches!(self.scale, Scale::TAI) {
             self.convert(new)
-        } else if self.scale.eq(new) {
-            *self
+        } else if !self.scale.eq(new) {
+            self.to_tai().convert(new)
         } else {
-            Self::from_attos(self.attos, self.scale).convert(new)
+            *self
         }
-    }
-
-    /// Converts the internal attos to be on the TAI time [`Scale`].
-    ///
-    /// See [`Dt::to`](../struct.Dt.html#method.to) for more info.
-    #[inline(always)]
-    pub const fn to_tai(&self) -> Dt {
-        self.to(Scale::TAI)
     }
 
     /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
     /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
     #[inline]
-    pub const fn convert_using_drift(self, reference: Self, drift: Drift) -> Self {
+    pub const fn convert_using_drift(self, reference: Dt, drift: Drift) -> Dt {
         let span = self.to_diff_raw(reference);
         let correction = drift.time_diff_after(&span);
         self.add(correction)
@@ -331,7 +313,7 @@ impl Dt {
     ///
     /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
     /// case of a pure constant offset the function returns immediately without iteration.
-    pub const fn convert_back_using_drift(self, reference: Self, drift: Drift) -> Self {
+    pub const fn convert_back_using_drift(self, reference: Dt, drift: Drift) -> Dt {
         if drift.rate.is_zero() && drift.accel.is_zero() {
             return self.sub(drift.constant);
         }
@@ -347,13 +329,13 @@ impl Dt {
     }
 
     #[inline]
-    pub(crate) const fn tai_to_tcg(tai: Self) -> Self {
+    pub(crate) const fn tai_to_tcg(tai: Dt) -> Dt {
         let tt = tai.add(TT_TAI_OFFSET);
         Self::tt_to_tcg(tt)
     }
 
     #[inline]
-    pub(crate) const fn tai_to_tcb(tai: Self) -> Self {
+    pub(crate) const fn tai_to_tcb(tai: Dt) -> Dt {
         let tdb = Self::tai_to_tdb(tai);
         Self::tdb_to_tcb(tdb)
     }
@@ -361,7 +343,7 @@ impl Dt {
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
     /// using only the numerical value of the supplied `Dt` (scale is ignored).
     #[inline]
-    pub(crate) const fn to_attos_since_tcg_tcb_epoch(numerical: Self) -> i128 {
+    pub(crate) const fn to_attos_since_tcg_tcb_epoch(numerical: Dt) -> i128 {
         numerical.to_attos() - TCG_TCB_REF_ATTOS_SINCE_J2000
     }
 
@@ -387,25 +369,25 @@ impl Dt {
         Self::mul_rate(attos, LB_NUM, LB_DEN)
     }
 
-    pub(crate) const fn tt_to_tcg(tt: Self) -> Self {
+    pub(crate) const fn tt_to_tcg(tt: Dt) -> Dt {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
         let span_attos = Self::mul_lg(elapsed);
         tt.add_attos(span_attos)
     }
 
-    pub(crate) const fn tcg_to_tt(tcg: Self) -> Self {
+    pub(crate) const fn tcg_to_tt(tcg: Dt) -> Dt {
         let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcg);
         let span_attos = Self::mul_rate(elapsed_cg, LG_NUM, LG_DEN + LG_NUM);
         tcg.add_attos(-span_attos)
     }
 
-    pub(crate) const fn tcb_to_tdb(tcb: Self) -> Self {
+    pub(crate) const fn tcb_to_tdb(tcb: Dt) -> Dt {
         let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
         tcb.add_attos(-span_attos).add_attos(-TDB0_ATTOS)
     }
 
-    pub(crate) const fn tdb_to_tcb(tdb: Self) -> Self {
+    pub(crate) const fn tdb_to_tcb(tdb: Dt) -> Dt {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
         tdb.add_attos(span_attos).add_attos(TDB0_ATTOS)

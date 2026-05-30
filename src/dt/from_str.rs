@@ -45,7 +45,7 @@ impl Dt {
     /// // uses impl FromStr but Dt::parse provides the same functionality
     /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
     ///
-    /// let ymd = x.to_ymdhms(Scale::TAI);
+    /// let ymd = x.to_ymd();
     /// assert_eq!(ymd.yr(), 2000);
     /// assert_eq!(ymd.mo(), 1);
     /// assert_eq!(ymd.day(), 1);

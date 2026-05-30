@@ -3,7 +3,7 @@ use core::fmt;
 /// Time scales supported for conversions.
 ///
 /// This `#[non_exhaustive]` enum defines the complete set of time scales used by
-/// the library for representing instants (`Epoch`) and performing conversions
+/// the library for representing instants [`Dt`] and performing conversions
 /// between them.
 ///
 /// It covers atomic, dynamical, coordinate, civil/coordinated, GNSS, and emerging
@@ -26,10 +26,6 @@ use core::fmt;
 ///   satellite constellations.
 /// - **Custom**: Fallback for custom scales.
 ///
-/// The default variant is [`TAI`], which serves as the internal canonical
-/// representation in many high-precision time libraries because it is
-/// continuous and forms the foundation for most conversions.
-///
 /// The library's epoch when performing conversions between all scales is
 /// 2000-01-01 noon.
 ///
@@ -43,7 +39,6 @@ use core::fmt;
 ///   Conversions use fixed-point iteration for numerical stability.
 ///   Achieves sub-nanosecond accuracy (< 0.15 ns before 2050) when the periodic
 ///   terms are included.
-///
 /// - [`TCL`] (Lunar Coordinate Time): IAU-defined relativistic coordinate time
 ///   in the LCRS. The implementation includes the secular rate vs TDB, the same
 ///   LTE440 periodic terms, and a constant bias calibrated so that the model
@@ -152,7 +147,7 @@ impl Scale {
     /// - If the scale is already one of the UTC variants
     ///   including historical UTC then no change occurs.
     #[inline]
-    pub const fn to_utc(&self) -> Self {
+    pub const fn to_utc(&self) -> Scale {
         if self.uses_leap_seconds() {
             *self
         } else {
@@ -250,7 +245,7 @@ impl Scale {
     ///
     /// - Returns `Custom` for any value that does not correspond to a known variant.
     /// - This provides safe deserialization from untrusted sources.
-    pub const fn from_u8(v: u8) -> Self {
+    pub const fn from_u8(v: u8) -> Scale {
         match v {
             0 => Self::TAI,
             1 => Self::TT,

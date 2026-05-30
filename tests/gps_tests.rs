@@ -16,7 +16,7 @@ fn to_gps_roundtrips() {
     let roundtrip = Dt::from_cxcsec(x.to_cxcsec());
     assert_eq!(
         x, roundtrip,
-        "Round trip gps was not equal: {}, {}",
+        "Round trip cxcsec was not equal: {}, {}",
         x, roundtrip
     );
 
@@ -24,7 +24,7 @@ fn to_gps_roundtrips() {
     let roundtrip = Dt::from_gps_wk_and_tow(w, tow);
     assert_eq!(
         x, roundtrip,
-        "Round trip gps was not equal: {}, {}",
+        "Round trip gps wk and tow was not equal: {}, {}",
         x, roundtrip
     );
 }

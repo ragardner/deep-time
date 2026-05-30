@@ -143,7 +143,7 @@ fn default_true() -> bool {
 }
 
 impl Default for ParseCfg {
-    fn default() -> Self {
+    fn default() -> ParseCfg {
         Self {
             parse: None,
             mode: Mode::default(),

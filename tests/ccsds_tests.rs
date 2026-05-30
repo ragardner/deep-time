@@ -23,10 +23,6 @@ mod ccsds_tests {
         Dt::from_attos(-(CDS_EPOCH_OFFSET as i128) * ATTOS_PER_SEC_I128, Scale::UTC)
     }
 
-    fn y2k() -> Dt {
-        Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC)
-    }
-
     // ====================== CUC ======================
 
     #[test]
@@ -93,7 +89,7 @@ mod ccsds_tests {
 
     #[test]
     fn ccs_y2k_month_day() {
-        let dt = y2k();
+        let dt = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
         let (buf, len) = dt.to_ccsds_ccs(false, 0).unwrap();
         assert_eq!(len, 8);
         let expected = [0x50, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00];
@@ -102,7 +98,7 @@ mod ccsds_tests {
 
     #[test]
     fn ccs_doy() {
-        let dt = y2k();
+        let dt = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
         let (buf, len) = dt.to_ccsds_ccs(true, 0).unwrap();
         assert_eq!(len, 8);
         assert_eq!(buf[0], 0x58);
@@ -112,7 +108,8 @@ mod ccsds_tests {
 
     #[test]
     fn ccs_subsecond() {
-        let dt = y2k().add_attos(123_456_789_012_345_678);
+        let dt =
+            Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).add_attos(123_456_789_012_345_678);
         let (buf, len) = dt.to_ccsds_ccs(false, 2).unwrap();
         assert_eq!(len, 10);
         assert_eq!(buf[0], 0x52);
@@ -158,7 +155,7 @@ mod ccsds_tests {
         let (buf, _) = tai.to_ccsds_bin().unwrap();
         assert_eq!(buf[0] & 0b0111_0000, 0b0001_0000);
 
-        let utc = y2k();
+        let utc = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
         let (buf, _) = utc.to_ccsds_bin().unwrap();
         assert_eq!(buf[0] & 0b0111_0000, 0b0100_0000);
     }

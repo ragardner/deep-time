@@ -19,17 +19,17 @@ impl Dt {
     /// This method returns an [`Every`] builder that can be chained with
     /// `.until(end)` or `.up_to(end)` to create a [`TimeRange`] iterator.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```
     /// use deep_time::{Dt, Scale};
     ///
-    /// let start = Dt::from_ymd(2000, 1, 1);
-    /// let end = Dt::from_ymd(2000, 1, 2);
+    /// let start = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let end = Dt::from_ymd(2000, 1, 2, 0, 0, 0, 0, Scale::UTC);
     /// let step = Dt::from_hr(1, Scale::TAI);
     ///
     /// for timestamp in start.every(step).to_including(end) {
-    ///     println!("{:?}", timestamp.to_ymdhms(Scale::TAI));
+    ///     println!("{:?}", timestamp.to_ymd());
     /// }
     /// ```
     #[inline]
@@ -119,12 +119,12 @@ impl Every {
 /// ```
 /// use deep_time::{Dt, Scale, TimeRange};
 ///
-/// let start = Dt::from_ymd(2000, 1, 1);
-/// let end = Dt::from_ymd(2000, 1, 2);
+/// let start = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+/// let end = Dt::from_ymd(2000, 1, 2, 0, 0, 0, 0, Scale::UTC);
 /// let step = Dt::from_hr(1, Scale::TAI);
 ///
 /// for timestamp in start.every(step).to_including(end) {
-///     println!("{:?}", timestamp.to_ymdhms(Scale::TAI));
+///     println!("{:?}", timestamp.to_ymd());
 /// }
 ///
 /// // Or use the explicit constructors:
@@ -155,7 +155,7 @@ impl TimeRange {
     ///
     /// The iterator will yield `end` if it is exactly reachable.
     #[inline]
-    pub const fn inclusive(start: Dt, end: Dt, step: Dt) -> Self {
+    pub const fn inclusive(start: Dt, end: Dt, step: Dt) -> TimeRange {
         Self::new(start, end, step, true)
     }
 
@@ -163,13 +163,13 @@ impl TimeRange {
     ///
     /// The iterator will **not** yield `end`.
     #[inline]
-    pub const fn exclusive(start: Dt, end: Dt, step: Dt) -> Self {
+    pub const fn exclusive(start: Dt, end: Dt, step: Dt) -> TimeRange {
         Self::new(start, end, step, false)
     }
 
     /// Internal constructor.
     #[inline]
-    pub const fn new(start: Dt, end: Dt, step: Dt, inclusive: bool) -> Self {
+    pub const fn new(start: Dt, end: Dt, step: Dt, inclusive: bool) -> TimeRange {
         Self {
             start,
             current: start,

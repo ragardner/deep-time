@@ -10,7 +10,7 @@ impl Dt {
 
     /// Inverse of [`Self::to_jyear`].
     #[inline]
-    pub const fn from_jyear(jyear: Real, scale: Scale) -> Self {
+    pub const fn from_jyear(jyear: Real, scale: Scale) -> Dt {
         if jyear.is_nan() {
             return Self::ZERO;
         }
@@ -35,7 +35,7 @@ impl Dt {
 
     /// Inverse of [`Self::to_byear`].
     #[inline]
-    pub const fn from_byear(byear: Real, scale: Scale) -> Self {
+    pub const fn from_byear(byear: Real, scale: Scale) -> Dt {
         if byear.is_nan() {
             return Self::ZERO;
         }

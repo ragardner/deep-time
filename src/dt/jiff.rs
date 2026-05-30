@@ -54,7 +54,7 @@ impl Dt {
     ///
     /// This is the inverse of [`Dt::to_jiff_timestamp`].
     #[inline]
-    pub fn from_jiff_timestamp(ts: Timestamp) -> Self {
+    pub fn from_jiff_timestamp(ts: Timestamp) -> Dt {
         Dt::from_diff_and_scale(
             Dt::from_ns(ts.as_nanosecond(), Scale::UTC),
             Self::UNIX_EPOCH,
@@ -66,7 +66,7 @@ impl Dt {
     ///
     /// This is the inverse of [`Dt::to_jiff_signed_duration`].
     #[inline]
-    pub fn from_jiff_signed_duration(dur: SignedDuration) -> Self {
+    pub fn from_jiff_signed_duration(dur: SignedDuration) -> Dt {
         Self::from_ns(dur.as_nanos(), Scale::TAI)
     }
 

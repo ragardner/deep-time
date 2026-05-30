@@ -12,6 +12,7 @@ impl Dt {
     ///
     /// - This method is only available when the **`alloc`** feature is enabled.
     /// - It returns `alloc::string::String` (no_std + alloc compatible).
+    /// - Performs no time scale conversions prior to output.
     pub fn to_iso_duration(&self) -> alloc::string::String {
         if self.is_zero() {
             return alloc::string::String::from("PT0S");
@@ -65,18 +66,16 @@ impl Dt {
 
     /// Formats this [`Dt`] into a String. Requires the `"alloc"` feature.
     ///
-    /// - It is first converted from the `current` [`Scale`] into
-    ///   the `UTC` time scale.
-    /// - Historical UTC time scales such as `UTCSofa` and `UTCSpice`
-    ///   are preserved. See [`Scale`] for more info on time scales.
+    /// Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    /// time scale before producing the result.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1);
-    /// let s = x.to_str(Scale::TAI, Scale::UTC, "%F").unwrap();
+    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let s = x.to_str("%F").unwrap();
     ///
     /// println!("{}", s);
     /// ```
@@ -102,21 +101,19 @@ impl Dt {
     /// - A copy of the [`Dt`] is adjusted by the given `secs` offset **before**
     ///   formatting, and the offset is stored so that `%z` / `%:z` format directives
     ///   will reflect it.
-    /// - Then it's converted from the `current` [`Scale`] into the
-    ///   `UTC` time scale.
-    /// - Historical UTC time scales such as `UTCSofa` and `UTCSpice` are preserved.
-    ///   See [`Scale`] for more info on time scales.
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
     /// - No IANA timezone name or abbreviation is set.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1);
+    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
     /// // offset of minus one hour
-    /// let s = x.to_str_with_offset(Scale::TAI, Scale::UTC, "%F", -3600).unwrap();
+    /// let s = x.to_str_with_offset("%F", -3600).unwrap();
     ///
     /// println!("{}", s);
     /// ```
@@ -149,13 +146,11 @@ impl Dt {
     ///     - Correct numeric offset (for `%z` / `%:z`).
     ///     - Timezone abbreviation (for `%Z`). These **do not** round-trip.
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
-    /// - Then it's converted from the `current` [`Scale`] into the
-    ///   `UTC` time scale.
-    /// - Historical UTC time scales such as `UTCSofa` and `UTCSpice` are preserved.
-    ///   See [`Scale`] for more info on time scales.
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
     /// - No IANA timezone name or abbreviation is set.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```
     /// # #[cfg(all(feature = "tz", feature = "parse"))]
@@ -164,7 +159,7 @@ impl Dt {
     ///
     /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
     ///
-    /// let s = x.to_str_with_tz(Scale::TAI, Scale::UTC, "%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
+    /// let s = x.to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
     ///
     /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
     /// # }
@@ -187,10 +182,11 @@ impl Dt {
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
-    /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp in **UTC**
-    /// with the `Z` suffix.
+    /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp with a
+    /// `Z` suffix.
     ///
-    /// - Always uses UTC (`Z` = Zulu = UTC).
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
     /// - Default = 9 digits (nanoseconds) but **automatically trims trailing zeros**.
     /// - If fractional part is zero → no decimal point at all (e.g. `...45Z`).
     /// - Example: `"2024-03-14T15:30:45.123Z"`
@@ -202,6 +198,9 @@ impl Dt {
     /// Same as [`Dt::to_str_rfc3339`](../struct.Dt.html#method.to_str_rfc3339) but
     /// with a configurable maximum number of fractional digits (0–18). Trailing zeros are
     /// always trimmed.
+    ///
+    /// Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    /// time scale before producing the result.
     pub fn to_str_rfc3339_nf(&self, max_precision: usize) -> Result<String, DtErr> {
         let prec = max_precision.min(18);
         // Uses the formatter with the `~` "trim trailing zeros" flag.
@@ -215,6 +214,8 @@ impl Dt {
 
     /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style).
     ///
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
     /// - Uses colon-separated offset (`%:z`) instead of forcing `Z`.
     /// - Still trims trailing zeros in the fractional part.
     /// - Example: `"2025-04-16T14:30:45.123+00:00"`
@@ -225,6 +226,8 @@ impl Dt {
 
     /// **Compact ISO 8601 basic format** (no separators).
     ///
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
     /// - Useful for filenames, URLs, database keys, etc.
     /// - Example: `"20250416T143045.123456789Z"`
     #[inline]
@@ -234,8 +237,10 @@ impl Dt {
 
     /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
     ///
-    /// This is the format used in `Date`, `Expires`, `Last-Modified` headers.
-    /// Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
+    /// - This is the format used in `Date`, `Expires`, `Last-Modified` headers.
+    /// - Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
     #[inline]
     pub fn to_str_http(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%a, %d %b %Y %H:%M:%S GMT", 0)
@@ -243,7 +248,9 @@ impl Dt {
 
     /// **RFC 2822** date format (used in email `Date` headers).
     ///
-    /// Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
+    /// - Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
     #[inline]
     pub fn to_str_rfc2822(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%a, %d %b %Y %H:%M:%S %z", 0)
@@ -251,7 +258,9 @@ impl Dt {
 
     /// **ISO 8601 week date**.
     ///
-    /// Example: `"2025-W16-3"` (year-week-day)
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
+    /// - Example: `"2025-W16-3"` (year-week-day)
     #[inline]
     pub fn to_str_iso_week_date(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%G-W%V-%u", 0)
@@ -259,7 +268,9 @@ impl Dt {
 
     /// Just the **ISO date** part (no time).
     ///
-    /// Example: `"2025-04-16"`
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
+    /// - Example: `"2025-04-16"`
     #[inline]
     pub fn to_str_iso_date(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%Y-%m-%d", 0)
@@ -267,7 +278,9 @@ impl Dt {
 
     /// Just the **time** part with fractional seconds (trimmed).
     ///
-    /// Example: `"14:30:45.123456789"`
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
+    /// - Example: `"14:30:45.123456789"`
     #[inline]
     pub fn to_str_iso_time(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%H:%M:%S%.~f", 0)
@@ -277,18 +290,16 @@ impl Dt {
 impl Dt {
     /// Formats this [`Dt`] into a fixed-size binary string.
     ///
-    /// - It is first converted from the `current` [`Scale`] into
-    ///   the `UTC` time scale.
-    /// - Historical UTC time scales such as `UTCSofa` and `UTCSpice`
-    ///   are preserved. See [`Scale`] for more info on time scales.
+    /// Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    /// time scale before producing the result.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1);
-    /// let b = x.to_str_bin(Scale::TAI, Scale::UTC, "%F").unwrap();
+    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let b = x.to_str_bin("%F").unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -318,21 +329,19 @@ impl Dt {
     /// - A copy of the [`Dt`] is adjusted by the given `secs` offset **before**
     ///   formatting, and the offset is stored so that `%z` / `%:z` format directives
     ///   will reflect it.
-    /// - Then it's converted from the `current` [`Scale`] into the
-    ///   `UTC` time scale.
-    /// - Historical UTC time scales such as `UTCSofa` and `UTCSpice` are preserved.
-    ///   See [`Scale`] for more info on time scales.
     /// - No IANA timezone name or abbreviation is set.
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1);
+    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
     /// // offset of minus one hour
-    /// let b = x.to_str_bin_with_offset(Scale::TAI, Scale::UTC, "%F", -3600).unwrap();
+    /// let b = x.to_str_bin_with_offset("%F", -3600).unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -371,20 +380,18 @@ impl Dt {
     ///     - Correct numeric offset (for `%z` / `%:z`).
     ///     - Timezone abbreviation (for `%Z`). These **do not** round-trip.
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
-    /// - Then it's converted from the `current` [`Scale`] into the
-    ///   `UTC` time scale.
-    /// - Historical UTC time scales such as `UTCSofa` and `UTCSpice` are preserved.
-    ///   See [`Scale`] for more info on time scales.
     /// - No IANA timezone name or abbreviation is set.
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1);
+    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
-    /// let b = x.to_str_bin_with_tz(Scale::TAI, Scale::UTC, "%F", "America/New_York").unwrap();
+    /// let b = x.to_str_bin_with_tz("%F", "America/New_York").unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -415,8 +422,10 @@ impl Dt {
     /// Low-level no-alloc formatter that writes into a caller-provided slice,
     /// using a fixed UTC offset.
     ///
-    /// Same logic as [`Self::to_str_bin_with_offset`], but writes directly into
-    /// `dest` (truncated to `dest.len()`) and returns the number of bytes written.
+    /// Same logic as
+    /// [`Dt::to_str_bin_with_offset`](../struct.Dt.html#method.to_str_bin_with_offset)
+    /// but writes directly into `dest` (truncated to `dest.len()`) and returns the
+    /// number of bytes written.
     pub fn _to_u8_with_offset(
         &self,
         fmt: &str,
@@ -437,8 +446,10 @@ impl Dt {
     /// Low-level no-alloc formatter that writes into a caller-provided slice,
     /// using a full IANA timezone.
     ///
-    /// Same logic as [`Self::to_str_bin_with_tz`], but writes directly into
-    /// `dest` (truncated to `dest.len()`) and returns the number of bytes written.
+    /// Same logic as
+    /// [`Dt::to_str_bin_with_tz`](../struct.Dt.html#method.to_str_bin_with_tz)
+    /// but writes directly into `dest` (truncated to `dest.len()`) and returns the
+    /// number of bytes written.
     pub fn _to_u8_with_tz(
         &self,
         fmt: &str,

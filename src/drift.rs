@@ -137,7 +137,7 @@ pub struct Spacetime {
 
 impl Spacetime {
     #[inline]
-    pub const fn new(alpha: Real, beta: Real, kretschmann: Real) -> Self {
+    pub const fn new(alpha: Real, beta: Real, kretschmann: Real) -> Spacetime {
         Self {
             alpha,
             beta,
@@ -160,7 +160,7 @@ impl Spacetime {
         alpha: Real,
         velocity: Velocity,
         kretschmann: Real,
-    ) -> Self {
+    ) -> Spacetime {
         Self::new(alpha, velocity.beta(), kretschmann)
     }
 
@@ -277,7 +277,7 @@ impl Spacetime {
         grav_potential_over_c2: Real, // Φ/c² (total local potential)
         velocity: Velocity,
         characteristic_length_scale: Real,
-    ) -> Self {
+    ) -> Spacetime {
         let alpha: Real = Self::alpha_from_weak_field_potential(grav_potential_over_c2);
         let kretschmann: Real = Self::kretschmann_from_potential_and_scale(
             grav_potential_over_c2,
@@ -313,7 +313,9 @@ impl Spacetime {
     /// \Phi = -\sum_i \frac{GM_i}{r_i}
     /// \]
     ///
-    /// ## Example (realistic cislunar trajectory)
+    /// ## Examples
+    ///
+    /// Realistic cislunar trajectory
     ///
     /// ```rust
     /// use deep_time::{Position, Spacetime};
@@ -383,7 +385,7 @@ pub struct Drift {
 impl Drift {
     /// Creates a new `Drift` polynomial from its three coefficients.
     #[inline]
-    pub const fn new(constant: Dt, rate: Dt, accel: Dt) -> Self {
+    pub const fn new(constant: Dt, rate: Dt, accel: Dt) -> Drift {
         Self {
             constant,
             rate,
@@ -403,7 +405,7 @@ impl Drift {
     /// (for example, after a one-time clock synchronization or leap-second
     /// adjustment).
     #[inline]
-    pub const fn from_constant(c: Dt) -> Self {
+    pub const fn from_constant(c: Dt) -> Drift {
         Self::new(c, Dt::ZERO, Dt::ZERO)
     }
 
@@ -414,7 +416,7 @@ impl Drift {
     /// where a steady fractional frequency offset must be corrected in addition
     /// to any fixed bias.
     #[inline]
-    pub const fn from_offset_and_rate(offset: Dt, rate: Dt) -> Self {
+    pub const fn from_offset_and_rate(offset: Dt, rate: Dt) -> Drift {
         Self::new(offset, rate, Dt::ZERO)
     }
 
@@ -496,7 +498,7 @@ impl Drift {
         velocity_m_s: Real,
         grav_potential_m2_s2: Real,
         characteristic_length_scale: Real,
-    ) -> Self {
+    ) -> Drift {
         let phi = grav_potential_m2_s2 / C_SQUARED;
         let velocity = Velocity::from_speed(velocity_m_s);
         let spacetime = Spacetime::from_potential_velocity_and_scale(
@@ -521,7 +523,7 @@ impl Drift {
     ///
     /// The returned rate offset is then applied as a linear term in the `Drift`
     /// polynomial.
-    pub const fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Self {
+    pub const fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Drift {
         let delta = u.max(f!(0.0));
         let x = PLANCK_LENGTH_4 * kretschmann.max(f!(0.0));
 
@@ -543,7 +545,7 @@ impl Drift {
     /// unified proper-time rate and packages the result as a `Drift`
     /// polynomial ready for evaluation at any future time.
     #[inline]
-    pub const fn from_spacetime(spacetime: &Spacetime) -> Self {
+    pub const fn from_spacetime(spacetime: &Spacetime) -> Drift {
         let u = spacetime.alpha * spacetime.alpha * (f!(1.0) - spacetime.beta * spacetime.beta);
         Self::from_unified_proper_time_rate(u, spacetime.kretschmann)
     }

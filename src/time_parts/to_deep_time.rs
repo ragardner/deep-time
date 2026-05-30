@@ -23,7 +23,7 @@ impl TimeParts {
                     self.attos.unwrap_or(0),
                     Scale::TAI,
                 )
-                .target(Scale::UTC)); // TODO: perf
+                .target(Scale::UTC));
             } else {
                 return Ok(Dt::from_sec_and_attos(
                     total_sec,
@@ -161,17 +161,40 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Final construction
         // ──────────────────────────────────────────────────────────────
-        let lookup_offset = if second == 60 { 1 } else { 0 };
-        if self.scale == Scale::UTC {
-            Ok(Dt::from_sec_and_attos(
-                total_sec + leap_sec(total_sec - lookup_offset, true).offset,
-                self.attos.unwrap_or(0),
-                Scale::TAI,
-            )
-            .target(Scale::UTC)) // TODO perf
+        let sec_is_60 = second == 60;
+
+        if self.scale.uses_leap_seconds() {
+            if !sec_is_60 {
+                Ok(Dt::from_sec_and_attos(
+                    total_sec.saturating_add(leap_sec(total_sec, true).offset),
+                    self.attos.unwrap_or(0),
+                    Scale::TAI,
+                )
+                .target(self.scale))
+            } else {
+                let leap_info = leap_sec(total_sec, true);
+
+                let offset = if leap_info.is_leap_sec {
+                    leap_info.offset - 1
+                } else {
+                    total_sec = total_sec.saturating_sub(1);
+                    leap_info.offset
+                };
+
+                Ok(Dt::from_sec_and_attos(
+                    total_sec.saturating_add(offset),
+                    self.attos.unwrap_or(0),
+                    Scale::TAI,
+                )
+                .target(self.scale))
+            }
         } else {
             Ok(Dt::from_sec_and_attos(
-                total_sec,
+                if sec_is_60 {
+                    total_sec.saturating_sub(1)
+                } else {
+                    total_sec
+                },
                 self.attos.unwrap_or(0),
                 self.scale,
             ))

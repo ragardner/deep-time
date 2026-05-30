@@ -46,8 +46,8 @@ impl YmdHmsRich {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1);
-    /// let y = x.to_ymdhms_rich(Scale::TAI);
+    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let y = x.to_ymd_rich();
     /// let b = y.to_str_bin("%F").unwrap();
     /// let s = b.as_str().unwrap();
     ///

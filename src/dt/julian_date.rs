@@ -62,7 +62,7 @@ impl Dt {
     ///
     /// This is the inverse of [`Self::to_jd`]. For correct round-tripping you must
     /// pass the same `on: Scale` that matches the scale of the original [`Dt`].
-    pub const fn from_jd(jd_days: i64, frac_attos: u128, on: Scale) -> Self {
+    pub const fn from_jd(jd_days: i64, frac_attos: u128, on: Scale) -> Dt {
         let days_since_j2000 = jd_days.saturating_sub(JD_2000_2_451_545);
         let frac_attos_i128 = if frac_attos > i128::MAX as u128 {
             i128::MAX
@@ -79,7 +79,7 @@ impl Dt {
     ///
     /// This is the inverse of [`Self::to_mjd`]. For correct round-tripping you must
     /// pass the same `on: Scale` that matches the scale of the original [`Dt`].
-    pub const fn from_mjd(mjd_days: i64, frac_attos: u128, on: Scale) -> Self {
+    pub const fn from_mjd(mjd_days: i64, frac_attos: u128, on: Scale) -> Dt {
         let jd_days = mjd_days.saturating_add(2_400_000);
         let jd_attos = frac_attos.saturating_add(ATTOS_PER_HALF_DAY as u128);
 
@@ -98,7 +98,7 @@ impl Dt {
     ///
     /// This is the inverse of [`Self::to_jd_f`]. For correct round-tripping you must
     /// pass the same `on: Scale` that matches the scale of the original [`Dt`].
-    pub const fn from_jd_f(jd: Real, on: Scale) -> Self {
+    pub const fn from_jd_f(jd: Real, on: Scale) -> Dt {
         let jd_days_f = floor_f(jd);
         let jd_days = jd_days_f as i64;
 
@@ -140,7 +140,7 @@ impl Dt {
     /// This is the inverse of [`Self::to_mjd_f`]. For correct round-tripping you must
     /// pass the same `on: Scale` that matches the scale of the original [`Dt`].
     #[inline]
-    pub const fn from_mjd_f(mjd: Real, on: Scale) -> Self {
+    pub const fn from_mjd_f(mjd: Real, on: Scale) -> Dt {
         let jd = mjd + f!(2_400_000.5);
         Self::from_jd_f(jd, on)
     }

@@ -20,7 +20,7 @@ pub struct Position {
 impl Position {
     /// Creates a new `Position` directly from its Cartesian components in meters.
     #[inline]
-    pub const fn new(x: Real, y: Real, z: Real) -> Self {
+    pub const fn new(x: Real, y: Real, z: Real) -> Position {
         Self { x, y, z }
     }
 
@@ -35,7 +35,7 @@ impl Position {
     /// Especially convenient when working with planetary ephemerides or solar-system
     /// models that are natively given in AU.
     #[inline]
-    pub const fn from_au(x: Real, y: Real, z: Real) -> Self {
+    pub const fn from_au(x: Real, y: Real, z: Real) -> Position {
         const AU: Real = f!(1.495978707e11);
         Self {
             x: x * AU,
@@ -92,7 +92,7 @@ impl Position {
     /// let beyond    = a.lerp(b, 1.5);          // (15.0, 30.0, 45.0)
     /// ```
     #[inline]
-    pub const fn lerp(self, other: Self, t: Real) -> Self {
+    pub const fn lerp(self, other: Self, t: Real) -> Position {
         Self::new(
             self.x * (f!(1.0) - t) + other.x * t,
             self.y * (f!(1.0) - t) + other.y * t,
@@ -115,7 +115,7 @@ pub struct Velocity {
 impl Velocity {
     /// Creates a new `Velocity` directly from its Cartesian components in m/s.
     #[inline]
-    pub const fn new(vx: Real, vy: Real, vz: Real) -> Self {
+    pub const fn new(vx: Real, vy: Real, vz: Real) -> Velocity {
         Self { vx, vy, vz }
     }
 
@@ -127,7 +127,7 @@ impl Velocity {
     /// for relativistic calculations (`beta()`, `norm_squared()`, etc.).
     /// This is the convenience constructor used by `Drift::from_velocity_potential_and_scale`.
     #[inline]
-    pub const fn from_speed(speed_m_s: Real) -> Self {
+    pub const fn from_speed(speed_m_s: Real) -> Velocity {
         Self::new(speed_m_s, f!(0.0), f!(0.0))
     }
 

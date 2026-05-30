@@ -26,7 +26,7 @@ impl Dt {
     /// - The conversion is exact (within hifitime's nanosecond precision).
     /// - Uses a runtime-computed offset so it always matches whatever
     ///   calendar math hifitime uses (including negative years).
-    pub fn from_hifitime_epoch(epoch: Epoch) -> Self {
+    pub fn from_hifitime_epoch(epoch: Epoch) -> Dt {
         let ns_since_j1900 = epoch.to_tai_duration().total_nanoseconds();
 
         let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);
@@ -55,7 +55,7 @@ impl Dt {
     ///
     /// Inverse of [`Dt::to_hifitime_duration`].
     #[inline]
-    pub fn from_hifitime_duration(dur: Duration) -> Self {
+    pub fn from_hifitime_duration(dur: Duration) -> Dt {
         Self::from_ns(dur.total_nanoseconds(), Scale::TAI)
     }
 }

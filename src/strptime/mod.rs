@@ -94,7 +94,7 @@ impl StrPTimeFmt {
     ///
     /// Returns [`DtErr`] for parse failures, incomplete data, trailing characters, etc.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```
     /// use deep_time::{Dt, StrPTimeFmt};
@@ -133,7 +133,7 @@ impl StrPTimeFmt {
     /// - `output_fmt`: The new format to output the datetime as.
     /// - The remaining three flags are passed through to the internal `to_dt` call.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```
     /// use deep_time::{Dt, StrPTimeFmt};

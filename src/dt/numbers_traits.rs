@@ -15,7 +15,7 @@ use crate::{
 /// Trait that adds ergonomic conversions from attoseconds values
 /// for i64, i128, and f64.
 ///
-/// ## Example:
+/// ## Examples
 ///
 /// ```
 /// use deep_time::AttosTraits;
@@ -85,7 +85,7 @@ impl AttosTraits for i128 {
 
 /// Trait that adds ergonomic time-unit methods to integers and floats.
 ///
-/// ## Example:
+/// ## Examples
 ///
 /// ```
 /// use deep_time::TimeTraits;

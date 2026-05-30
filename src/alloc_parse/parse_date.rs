@@ -13,7 +13,9 @@ impl Dt {
     /// Automatically parses datetime [`str`] into a [`Dt`] by guessing and generating the format. Supports the vast
     /// majority of date formats.
     ///
-    /// Requires the `"alloc"` feature.
+    /// - Requires the `"alloc"` feature.
+    /// - The returned [`Dt`] is internally on the TAI time scale. The `attos` field is an [`i128`] attosecond
+    ///   count since TAI 2000-01-01 noon. See [`Scale`] for more information.
     ///
     /// ## Parameters
     ///
@@ -387,7 +389,7 @@ impl Dt {
     pub fn str_to_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
         Dt::from_str_parse(s, opts)
             .ok()
-            .map(|tp| tp.to_scale_and_then_diff(Dt::UNIX_EPOCH, false).to_ms())
+            .map(|tp| tp.to_scale_and_diff(Dt::UNIX_EPOCH, false).to_ms())
     }
 
     /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
@@ -399,7 +401,7 @@ impl Dt {
     pub fn str_to_unix_ns(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
         Dt::from_str_parse(s, opts)
             .ok()
-            .map(|tp| tp.to_scale_and_then_diff(Dt::UNIX_EPOCH, false).to_ns())
+            .map(|tp| tp.to_scale_and_diff(Dt::UNIX_EPOCH, false).to_ns())
     }
 }
 

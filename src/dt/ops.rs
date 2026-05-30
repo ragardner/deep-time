@@ -181,7 +181,7 @@ impl Dt {
     /// True if both sides have the same total attosecond value.
     ///
     /// This is a `const fn` so it can be used in const contexts.
-    #[inline]
+    #[inline(always)]
     pub const fn eq(&self, other: &Self) -> bool {
         self.attos == other.attos
     }
@@ -189,6 +189,7 @@ impl Dt {
     /// Returns `true` if this `Dt` is less than the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
+    #[inline(always)]
     pub const fn lt(&self, other: &Self) -> bool {
         self.attos < other.attos
     }
@@ -196,6 +197,7 @@ impl Dt {
     /// Returns `true` if this `Dt` is greater than the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
+    #[inline(always)]
     pub const fn gt(&self, other: &Self) -> bool {
         self.attos > other.attos
     }
@@ -203,6 +205,7 @@ impl Dt {
     /// Returns `true` if this `Dt` is less than or equal to the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
+    #[inline(always)]
     pub const fn le(&self, other: &Self) -> bool {
         self.attos <= other.attos
     }
@@ -210,6 +213,7 @@ impl Dt {
     /// Returns `true` if this `Dt` is greater than or equal to the other.
     ///
     /// This is a `const fn` so it can be used in const contexts.
+    #[inline(always)]
     pub const fn ge(&self, other: &Self) -> bool {
         self.attos >= other.attos
     }

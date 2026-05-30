@@ -1,4 +1,6 @@
-use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, YmdHmsRich};
+use crate::{
+    ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, YmdHmsRich, leap_seconds::leap_sec,
+};
 
 impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
@@ -31,7 +33,8 @@ impl Dt {
     /// including all precomputed calendar metadata (ISO week date, day-of-year, multiple
     /// week-numbering systems, etc.).
     ///
-    /// This is the "heavy" version of [`to_ymdhms_on`](../struct.Dt.html#method.to_ymdhms_on).
+    /// This is the "heavy" version of [`to_ymd`](../struct.Dt.html#method.to_ymd).
+    ///
     /// It performs the same scale conversion but additionally computes and stores every common
     /// calendar-derived field. This means downstream formatting code does not have to
     /// re-calculate these numbers for the same object.
@@ -40,16 +43,9 @@ impl Dt {
     /// the object into a datetime - an array of [`u8`] or [`String`](alloc::string::String)
     /// (requires `"alloc"` feature).
     ///
-    /// ## Arguments
-    ///
-    /// * `current` — The time scale in which `self` is currently expressed.
-    /// * `new` — The time scale to convert to before creating the rich datetime.
-    ///
     /// ## See also
     ///
-    /// * [`Dt::to_ymdhms_rich`](../struct.Dt.html#method.to_ymdhms_rich) — convenience
-    ///   wrapper that always targets `Scale::UTC`.
-    /// * [`Dt::to_ymdhms_on`](../struct.Dt.html#method.to_ymdhms_on) — the lightweight
+    /// * [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) — the lightweight
     ///   version.
     /// * [`YmdHmsRich`] — the rich struct type and its accessor methods.
     /// * [`YmdHmsRich::to_str`](../struct.YmdHmsRich.html#method.to_str) — basically like
@@ -57,7 +53,7 @@ impl Dt {
     ///
     /// ## What you get in `YmdHmsRich`
     ///
-    /// In addition to the fields returned by [`to_ymdhms_on`](Self::to_ymdhms_on),
+    /// In addition to the fields returned by [`to_ymd`](Self::to_ymd),
     /// the returned struct also contains:
     ///
     /// - `iso_yr`, `iso_wk`, `iso_wkday` — ISO 8601 week date (Monday-based week)
@@ -74,15 +70,15 @@ impl Dt {
     ///
     /// This function performs several extra calendar calculations (ISO week date,
     /// day-of-year, both week-numbering systems). If you only need the basic YMDHMS
-    /// components, prefer [`to_ymdhms_on`](Self::to_ymdhms_on) for speed.
+    /// components, prefer [`to_ymd`](Self::to_ymd) for speed.
     ///
     /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let dt = Dt::from_ymdhms(2024, 6, 15, 12, 30, 45, 0);
-    /// let rich = dt.to_ymdhms_rich_on(Scale::TAI, Scale::UTC);
+    /// let dt = Dt::from_ymd(2024, 6, 15, 12, 30, 45, 0, Scale::UTC);
+    /// let rich = dt.to_ymd_rich();
     ///
     /// assert_eq!(rich.yr(), 2024);
     /// assert_eq!(rich.iso_wk(), 24);           // ISO week 24
@@ -98,7 +94,7 @@ impl Dt {
         let wkday = Self::jd_to_wkday(jd);
         let wk_of_yr_sun = self.wk_sun(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
         let wk_of_yr_mon = self.wk_mon(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
-        ymdhms.to_ymdhms_rich(
+        ymdhms.to_ymd_rich(
             iso_yr,
             iso_wk,
             iso_wkday,
@@ -109,21 +105,10 @@ impl Dt {
         )
     }
 
-    /// Returns the proleptic Gregorian date and wall-clock time for this instant,
-    /// interpreted on the `current` time scale and expressed on the `new` time scale.
+    /// Returns the proleptic Gregorian date and wall-clock time for this instant.
     ///
-    /// ## Arguments
-    ///
-    /// * `current` — The time scale in which `self` is currently expressed.
-    /// * `new` — The time scale to convert to before creating the gregorian datetime.
-    ///
-    /// **To note:**
-    ///
-    /// If you created your [`Dt`] via [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
-    /// or other similar functions, then these effectively used UTC -> TAI when creating the [`Dt`].
-    ///
-    /// So, if you want to roundtrip when calling this function with such a [`Dt`] you'll have to
-    /// use the args `(Scale::TAI, Scale::UTC)`.
+    /// Converts to this [`Dt`]s `target` time scale using the internal current
+    /// `scale` before producing a result.
     ///
     /// ## Returns
     ///
@@ -146,18 +131,16 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// * [`Dt::to_ymdhms`](../struct.Dt.html#method.to_ymdhms) — convenience wrapper
-    ///   that always targets `Scale::UTC`.
-    /// * [`Dt::from_ymdhms_on`](../struct.Dt.html#method.from_ymdhms_on) — the inverse operation.
+    /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
     ///
     /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// // `from_ymdhms` always returns a TAI instant
-    /// let dt = Dt::from_ymdhms(2024, 6, 15, 12, 30, 45, 0);
-    /// let ymd = dt.to_ymdhms_on(Scale::TAI, Scale::UTC);
+    /// // `from_ymd` always returns a TAI instant
+    /// let dt = Dt::from_ymd(2024, 6, 15, 12, 30, 45, 0, Scale::UTC);
+    /// let ymd = dt.to_ymd();
     ///
     /// assert_eq!(ymd.yr(), 2024);
     /// assert_eq!(ymd.mo(), 6);
@@ -168,22 +151,20 @@ impl Dt {
     /// assert!(ymd.attos() == 0);
     /// ```
     pub fn to_ymd(&self) -> YmdHms {
-        let from_unix_epoch = self.to_scale_and_then_diff(Dt::UNIX_EPOCH, false);
+        let tai = self.to_tai();
+        let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, false);
 
         let unix_sec = from_unix_epoch.to_sec64();
         let frac = from_unix_epoch.to_sec_ufrac();
-
         let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
 
-        let (hr, min, sec) = if self.leap_sec(false).is_leap_sec {
-            (23, 59, 60)
-        } else {
-            let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAYI64);
-            let hr = (seconds_since_midnight / 3600) as u8;
-            let min = ((seconds_since_midnight % 3600) / 60) as u8;
-            let sec = (seconds_since_midnight % 60) as u8;
-            (hr, min, sec)
-        };
+        let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAYI64);
+        let hr = (seconds_since_midnight / 3600) as u8;
+        let min = ((seconds_since_midnight % 3600) / 60) as u8;
+        let mut sec = (seconds_since_midnight % 60) as u8;
+        if self.target.uses_leap_seconds() && tai.leap_sec(false).is_leap_sec {
+            sec += 1;
+        }
 
         YmdHms {
             unix_attosec: from_unix_epoch.to_attos(),
@@ -316,25 +297,25 @@ impl Dt {
         sec: u8,
         attos: u64,
         scale: Scale,
-    ) -> Self {
-        let (mo, day, hr, min, sec) = Self::clamp_mdhms(yr, mo, day, hr, min, sec);
+    ) -> Dt {
+        let (mo, day, hr, min, sec) = Dt::clamp_mdhms(yr, mo, day, hr, min, sec);
         let attos = Dt::clamp_u64(attos, 0, ATTOS_PER_SEC - 1);
 
-        let is_leap_second = sec == 60;
-        let s_for_unix = if is_leap_second { 59 } else { sec };
+        let sec_is_60 = sec == 60;
+        let s_for_unix = if sec_is_60 { 59 } else { sec };
 
-        let unix_sec = Self::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
+        let unix_sec = Dt::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
         let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (attos as i128);
 
-        let tp = Self::from_diff_and_scale(
-            Dt::new(unix_attos, Scale::TAI, scale),
-            Dt::UNIX_EPOCH,
-            false,
-        );
-        if is_leap_second && matches!(scale, Scale::UTC) {
-            tp.add_sec(1)
+        if sec_is_60 && scale.uses_leap_seconds() {
+            let t =
+                Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false);
+
+            let is_leap_sec = leap_sec(t.add_sec(1).to_sec64(), false).is_leap_sec;
+
+            if is_leap_sec { t.add_sec(1) } else { t }
         } else {
-            tp
+            Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false)
         }
     }
 

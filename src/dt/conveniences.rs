@@ -8,18 +8,30 @@ impl Dt {
     /// ## Notes:
     ///
     /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
-    ///
-    #[inline]
+    #[inline(always)]
     pub const fn to_unix(&self) -> Dt {
-        // TODO: go around and check all fns
-        // that use this fn and need utc correctly set scale to utc before
-        // calling it
         self.to(self.target)
             .to_diff_raw(Dt::UNIX_EPOCH.to(self.target))
     }
 
     /// Creates a TAI [`Dt`] from a unix (1970 epoch) timestamp.
-    #[inline]
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt = Dt::from_ymd(1970, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    ///
+    /// let unix = dt.to_unix().to_sec();
+    ///
+    /// assert_eq!(unix, 0);
+    ///
+    /// let roundtrip = Dt::from_unix(Dt::from_tai_sec(unix));
+    ///
+    /// assert_eq!(roundtrip, dt);
+    /// ```
+    #[inline(always)]
     pub const fn from_unix(unix: Dt) -> Dt {
         Self::from_diff_and_scale(unix, Dt::UNIX_EPOCH, true)
     }
@@ -30,7 +42,7 @@ impl Dt {
     ///
     /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
     ///
-    /// ## Example:
+    /// ## Examples
     ///
     /// ```
     /// use deep_time::{Dt, Scale};
@@ -62,14 +74,14 @@ impl Dt {
     /// assert_eq!(ymd.sec(), 0);
     /// assert_eq!(ymd.attos(), 0);
     /// ```
-    #[inline]
+    #[inline(always)]
     pub const fn to_ntp(&self) -> Dt {
         self.to(self.target)
             .to_diff_raw(Dt::NTP_EPOCH.to(self.target))
     }
 
     /// Creates a TAI [`Dt`] from an ntp (1900 epoch) timestamp.
-    #[inline]
+    #[inline(always)]
     pub const fn from_ntp(ntp: Dt) -> Dt {
         Self::from_diff_and_scale(ntp, Dt::NTP_EPOCH, true)
     }
@@ -89,7 +101,7 @@ impl Dt {
     /// - `tow`: Time of Week as a [`Dt`]. Values ≥ 604800 seconds are
     ///   automatically carried into the week number.
     ///
-    /// ## Examples:
+    /// ## Examples
     ///
     /// ```
     /// use deep_time::{Dt, Scale};
@@ -103,8 +115,8 @@ impl Dt {
         let total_attos = self.to_gps().to_attos();
         let wk = total_attos.div_euclid(ATTOS_PER_WEEK) as i64;
         let tow_attos = total_attos.rem_euclid(ATTOS_PER_WEEK);
-
-        (wk, Dt::new(tow_attos, Scale::GPS, self.target))
+        // was converted to target scale, scale is now target
+        (wk, Dt::new(tow_attos, self.target, self.target))
     }
 
     /// Creates a [`Dt`] from a GPS week number and Time of Week (TOW).
@@ -116,7 +128,7 @@ impl Dt {
     /// - `tow`: Time of Week as a [`Dt`]. Values ≥ 604800 seconds are
     ///   automatically carried into the week number.
     ///
-    /// ## Examples:
+    /// ## Examples
     ///
     /// ```
     /// use deep_time::{Dt, Scale};
@@ -127,26 +139,25 @@ impl Dt {
     /// assert_eq!(x, z);
     /// ```
     #[inline]
-    pub const fn from_gps_wk_and_tow(wk: i64, tow: Dt) -> Self {
+    pub const fn from_gps_wk_and_tow(wk: i64, tow: Dt) -> Dt {
         let total_attos = (wk as i128)
             .saturating_mul(ATTOS_PER_WEEK)
             .saturating_add(tow.to_attos());
 
-        Self::from_gps(Dt::new(total_attos, Scale::GPS, tow.target))
+        Self::from_gps(Dt::new(total_attos, tow.scale, tow.target))
     }
 
     /// Returns the elapsed time since the GPS epoch as a [`Dt`] on the GPS scale.
     ///
     /// The GPS epoch is [`Dt::GPS_EPOCH`].
-    #[inline]
+    #[inline(always)]
     pub const fn to_gps(&self) -> Dt {
-        self.to_scale_and_then_diff(Self::GPS_EPOCH, true)
+        self.to_scale_and_diff(Self::GPS_EPOCH, true)
     }
 
-    /// TODO: scale conversion?
     /// Inverse of [`Self::to_gps`].
-    #[inline]
-    pub const fn from_gps(elapsed: Dt) -> Self {
+    #[inline(always)]
+    pub const fn from_gps(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
     }
 
@@ -167,18 +178,18 @@ impl Dt {
     /// The CXC epoch is [`Dt::CXC_EPOCH`].
     #[inline]
     pub const fn to_cxcsec(&self) -> Dt {
-        self.to_scale_and_then_diff(Self::CXC_EPOCH, true)
+        self.to_scale_and_diff(Self::CXC_EPOCH, true)
     }
 
     /// Inverse of [`Self::to_cxcsec`].
     #[inline]
-    pub const fn from_cxcsec(elapsed: Dt) -> Self {
+    pub const fn from_cxcsec(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::CXC_EPOCH, true)
     }
 
     /// Floating-point counterpart of [`Self::from_cxcsec`].
     #[inline]
-    pub const fn from_cxcsec_f(elapsed_sec: Real) -> Self {
+    pub const fn from_cxcsec_f(elapsed_sec: Real) -> Dt {
         Self::from_cxcsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))
     }
 
@@ -188,18 +199,18 @@ impl Dt {
     /// The GALEX epoch is [`Self::GPS_EPOCH`].
     #[inline]
     pub const fn to_galexsec(&self) -> Dt {
-        self.to_scale_and_then_diff(Self::GPS_EPOCH, true)
+        self.to_scale_and_diff(Self::GPS_EPOCH, true)
     }
 
     /// Inverse of [`Self::to_galexsec`].
     #[inline]
-    pub const fn from_galexsec(elapsed: Dt) -> Self {
+    pub const fn from_galexsec(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
     }
 
     /// Floating-point counterpart of [`Self::from_galexsec`].
     #[inline]
-    pub const fn from_galexsec_f(elapsed_sec: Real) -> Self {
+    pub const fn from_galexsec_f(elapsed_sec: Real) -> Dt {
         Self::from_galexsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))
     }
 }

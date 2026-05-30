@@ -8,7 +8,7 @@
 //! It provides both a minimal mode (UTC + identical zones only) and a full
 //! mode (`tz` feature) which has full historical transitions.
 
-     //! Generator source: https://github.com/ragardner/tz-info-generator-rs
+//! Generator source: https://github.com/ragardner/tz-info-generator-rs
 
 pub static VERSION: &str = "2026a";
 

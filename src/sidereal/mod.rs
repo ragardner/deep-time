@@ -164,7 +164,7 @@ impl Sidereal {
     /// Matches Astropy's `Time.earth_rotation_angle(longitude=None)`
     /// (or with `longitude=0`).
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -195,7 +195,7 @@ impl Sidereal {
     /// HA = local_rotation_angle(mjd) - RA
     /// ```
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -235,7 +235,7 @@ impl Sidereal {
     ///   Time (GMST) referred to the mean equinox. This is the traditional
     ///   equinox-based mean sidereal time.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -288,7 +288,7 @@ impl Sidereal {
     /// HA = local_sidereal_angle_mean(mjd, eo) − RA
     /// ```
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -336,7 +336,7 @@ impl Sidereal {
     /// `Time.sidereal_time("mean").to_value("sec")` (when no longitude is
     /// specified) when using matching UT1 time and the mean Equation of the Origins.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -382,7 +382,7 @@ impl Sidereal {
     /// `Time.sidereal_time("mean", longitude=...).to_value("sec")` when using
     /// matching UT1 time and the mean Equation of the Origins.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -430,7 +430,7 @@ impl Sidereal {
     /// `Time.sidereal_time("apparent").rad` (when no longitude is specified)
     /// when using matching UT1 time and the apparent Equation of the Origins.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -472,7 +472,7 @@ impl Sidereal {
     /// `Time.sidereal_time("apparent", longitude=...).rad` when using
     /// matching UT1 time and the apparent Equation of the Origins.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -518,7 +518,7 @@ impl Sidereal {
     /// `Time.sidereal_time("apparent").to_value("sec")` (Greenwich) when using
     /// matching UT1 time and the apparent Equation of the Origins.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -563,7 +563,7 @@ impl Sidereal {
     /// `Time.sidereal_time("apparent", longitude=...).to_value("sec")` when using
     /// matching UT1 time and the apparent Equation of the Origins.
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -601,7 +601,7 @@ impl Sidereal {
     /// sidereal time functions (`sidereal_angle_apparent`, `local_sidereal_angle_apparent`,
     /// `sidereal_time_apparent`, and `local_sidereal_time_apparent`).
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -647,7 +647,7 @@ impl Sidereal {
     /// sidereal time functions (`sidereal_angle_mean`, `local_sidereal_angle_mean`,
     /// `sidereal_time_mean`, and `local_sidereal_time_mean`).
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;
@@ -688,7 +688,7 @@ impl Sidereal {
     /// sidereal time (for example, when the mean functions are given the apparent
     /// EO + EE).
     ///
-    /// ## Example
+    /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Sidereal;

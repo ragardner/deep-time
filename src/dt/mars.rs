@@ -72,16 +72,15 @@ impl Dt {
     }
 
     /// Creates a `Dt` (in TT) from an Mars Sol Date using full library precision.
-    pub const fn from_msd(whole_sols: i64, frac_attos: u128) -> Self {
+    pub const fn from_msd(whole_sols: i64, frac_attos: u128) -> Dt {
         let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
         let tt = MARS_REF_TT.add(Dt::span(elapsed_attos));
         tt.convert(Scale::TAI)
     }
 
-    // TODO: negatives?
     /// Creates a `Dt` (in TT) from a floating-point Mars Sol Date.
     /// Non-exact Real.
-    pub const fn from_msd_f(msd: Real) -> Self {
+    pub const fn from_msd_f(msd: Real) -> Dt {
         let whole = floor_f(msd) as i64;
         let frac = msd - f!(whole);
         let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC, Scale::TAI);

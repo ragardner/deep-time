@@ -254,7 +254,7 @@ mod ltc_tests {
         let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
         let my_tcl = my_2038_tai
             .target(Scale::TCL)
-            .to_scale_and_then_diff(Dt::TAI_1977_EPOCH, true);
+            .to_scale_and_diff(Dt::TAI_1977_EPOCH, true);
 
         let diff = (my_tcl.to_sec_f() - tcl_sec).abs();
 

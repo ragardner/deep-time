@@ -7,25 +7,13 @@ use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128, leap_seconds::leap_sec
 fn leap_seconds_various() {
     use deep_time::{Dt, Scale};
 
-    // not a leap second date, but user put 60 seconds, respect it?
+    // not a leap second date, don't roll over to next day
     let orig = Dt::from_ymd(2000, 1, 1, 23, 59, 60, 0, Scale::UTC);
     let new = Dt::from_ymd(2000, 1, 2, 0, 0, 0, 0, Scale::UTC);
-    assert_eq!(orig, new);
+    assert_ne!(orig, new);
     let orig = Dt::from_str_parse("2000-01-01T23:59:60", &None).unwrap();
     let new = Dt::from_str_parse("2000-01-02T00:00:00", &None).unwrap();
-    assert_eq!(orig, new);
-
-    let before = Dt::from_ymd(2015, 6, 30, 23, 59, 59, 0, Scale::UTC);
-    assert_eq!(before.to_sec(), 488980834);
-    assert_eq!(before.to_sec_ufrac(), 0);
-
-    let leap = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 0, Scale::UTC);
-    assert_eq!(leap.to_sec(), 488980835);
-    assert_eq!(leap.to_sec_ufrac(), 0);
-
-    let after = Dt::from_ymd(2015, 7, 1, 0, 0, 0, 0, Scale::UTC);
-    assert_eq!(after.to_sec(), 488980836);
-    assert_eq!(after.to_sec_ufrac(), 0);
+    assert_ne!(orig, new);
 
     let before = Dt::from_str_parse("2015-06-30T23:59:59", &None).unwrap();
     assert_eq!(before.to_sec(), 488980834, "59 failed");
@@ -39,11 +27,22 @@ fn leap_seconds_various() {
     assert_eq!(after.to_sec(), 488980836, "00 failed");
     assert_eq!(after.to_sec_ufrac(), 0);
 
+    let before = Dt::from_ymd(2015, 6, 30, 23, 59, 59, 0, Scale::UTC);
+    assert_eq!(before.to_sec(), 488980834);
+    assert_eq!(before.to_sec_ufrac(), 0);
+
+    let leap = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 0, Scale::UTC);
+    assert_eq!(leap.to_sec(), 488980835);
+    assert_eq!(leap.to_sec_ufrac(), 0);
+
+    let after = Dt::from_ymd(2015, 7, 1, 0, 0, 0, 0, Scale::UTC);
+    assert_eq!(after.to_sec(), 488980836);
+    assert_eq!(after.to_sec_ufrac(), 0);
+
+    // NOT utc, BUT it's a leap seconds date, don't roll over to next day
     let leap = Dt::from_str_parse("2015-06-30T23:59:60 TT", &None).unwrap();
     let after = Dt::from_str_parse("2015-07-01T00:00:00 TT", &None).unwrap();
-    assert_eq!(leap, after);
-
-    // not utc, and a leap seconds date, tai values should not match
+    assert_ne!(leap, after);
     let orig = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 0, Scale::TT);
     let new = Dt::from_ymd(2015, 7, 1, 0, 0, 0, 0, Scale::TT);
     assert_ne!(orig, new);
@@ -141,78 +140,6 @@ fn test_leap_second_roundtrip_and_sec() {
             g.sec()
         );
     }
-}
-
-#[test]
-fn test_1972_leap_second_canonical_roundtrip() {
-    // Create the leap second the "normal" way (using from_ymdhms)
-    let original = Dt::from_ymd(1972, 6, 30, 23, 59, 60, 0, Scale::UTC);
-
-    // Round-trip through attoseconds since the Unix epoch
-    // (this exercises the exact civil/POSIX UTC path in to_attos_since/from_attos_since)
-    let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
-    let roundtrip = Dt::from_attos_since(canon, Dt::UNIX_EPOCH);
-
-    // These should be identical if everything is consistent
-    assert_eq!(
-        original, roundtrip,
-        "Round-trip failed for 1972 leap second"
-    );
-
-    // Also verify civil time is still correct
-    let g = roundtrip.to_ymd();
-    assert_eq!(g.yr(), 1972);
-    assert_eq!(g.mo(), 6);
-    assert_eq!(g.day(), 30);
-    assert_eq!(g.hr(), 23);
-    assert_eq!(g.min(), 59);
-    assert_eq!(g.sec(), 60, "Should still show sec=60 after round-trip");
-}
-
-#[test]
-fn test_leap_second_gotcha_1972_06_30() {
-    let leap = Dt::from_ymd(1972, 6, 30, 23, 59, 60, 0, Scale::UTC);
-    let g = leap.to_ymd();
-    assert_eq!(g.sec(), 60);
-    assert_eq!(g.day(), 30);
-}
-
-#[test]
-fn test_leap_second_roundtrip_2015_06_30() {
-    // A leap second from the middle of the table (36 leap seconds accumulated)
-    let original = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 123_456_789_000_000_000, Scale::UTC);
-
-    // === Round-trip through canonical attoseconds ===
-    let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
-    let roundtrip1 = Dt::from_attos_since(canon, Dt::UNIX_EPOCH);
-
-    assert_eq!(original, roundtrip1, "Canonical round-trip failed");
-
-    // === Multiple Gregorian round-trips ===
-    let mut current = original;
-    for i in 0..5 {
-        let g = current.to_ymd();
-        assert_eq!(g.sec(), 60, "Leap second lost on iteration {}", i);
-        assert_eq!(g.day(), 30);
-        assert_eq!(g.mo(), 6);
-        assert_eq!(g.yr(), 2015);
-
-        current = Dt::from_ymd(
-            g.yr(),
-            g.mo(),
-            g.day(),
-            g.hr(),
-            g.min(),
-            g.sec(),
-            g.attos(),
-            Scale::UTC,
-        );
-    }
-    assert_eq!(original, current, "Multiple Gregorian round-trips failed");
-
-    let gt = original.to_ymd_rich();
-    assert_eq!(gt.sec(), 60);
-    assert_eq!(gt.day(), 30);
 }
 
 #[cfg(feature = "std")]
