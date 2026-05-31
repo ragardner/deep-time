@@ -122,7 +122,7 @@ impl Dt {
     ///
     /// ## Leap-second handling
     ///
-    /// If `new` is one of the scales that use leap seconds (`UTC`, `UTCSpice`, or `UTCSofa`)
+    /// If `new` is one of the scales that use leap seconds (`UTC`, `UtcSpice`, or `UtcHist`)
     /// **and** the instant falls exactly on a leap second, the returned `sec` will be `60`.
     /// In every other case `sec` is in the range `0..=59`.
     ///

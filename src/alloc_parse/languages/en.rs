@@ -190,8 +190,8 @@ pub const EN_WORDS: &[Word] = &[
     Word::new("et", "ET", Token::Scale, Cat::TScl),
     Word::new("tdb", "TDB", Token::Scale, Cat::TScl),
     // ("utc", "UTC", Token::UTC), // avoid overlap with iana
-    Word::new("utcspice", "UTCSpice", Token::Scale, Cat::TScl),
-    Word::new("utcsofa", "UTCSofa", Token::Scale, Cat::TScl),
+    Word::new("utcspice", "UtcSpice", Token::Scale, Cat::TScl),
+    Word::new("utchist", "UtcHist", Token::Scale, Cat::TScl),
     Word::new("gps", "GPS", Token::Scale, Cat::TScl),
     Word::new("gst", "GST", Token::Scale, Cat::TScl),
     Word::new("bdt", "BDT", Token::Scale, Cat::TScl),

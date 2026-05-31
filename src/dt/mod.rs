@@ -60,7 +60,7 @@ use core::fmt;
 ///
 /// - The librarys epoch for nearly all functionality such as the conversion functions is
 ///   **2000-01-01 noon**. See also: [`Scale`](../enum.Scale.html).
-/// - Leap-second handling follows the chosen `Scale` (UTC, UTCSpice, UTCSofa).
+/// - Leap-second handling follows the chosen `Scale` (UTC, UtcSpice, UtcHist).
 ///
 /// ## See also (non-exhaustive list)
 ///

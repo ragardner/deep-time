@@ -55,7 +55,7 @@ impl Dt {
     ///
     /// This is the direct equivalent of Astropy’s `Time.decimalyear`:
     /// - Uses the *actual* length of the specific Gregorian year (365 or 366 days,
-    ///   plus any leap seconds on UTC/UTCSpice/etc.).
+    ///   plus any leap seconds on UTC/UtcSpice/etc.).
     /// - Fully scale-aware (TAI, TT, UTC, TDB, custom clocks, …).
     /// - Exact integer arithmetic for the year boundaries, then a high-precision
     ///   `to_sec_f` division (lossy only at the final `Real` step, same as Astropy).

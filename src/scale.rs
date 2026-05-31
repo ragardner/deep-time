@@ -81,11 +81,16 @@ pub enum Scale {
 
     /// Universal Coordinated Time using the SPICE historical model
     /// (fixed +9 s offset against TAI for all dates before 1972-01-01).
-    UTCSpice,
+    /// Includes modern leap seconds for dates after 1972.
+    UtcSpice,
 
     /// Universal Coordinated Time using the full SOFA historical model
-    /// (varying fractional "rubber second" offsets from 1960–1971).
-    UTCSofa,
+    /// (varying fractional "rubber second" offsets from 1960–1972).
+    /// Includes modern leap seconds for dates after 1972.
+    ///
+    /// Round tripping is not possible with this time scale, only convert
+    /// once.
+    UtcHist,
 
     /// GPS Time scale whose reference epoch is UTC midnight between 05 January and
     /// 06 January 1980.
@@ -159,7 +164,7 @@ impl Scale {
     /// (or historical UTC civil time rules).
     #[inline]
     pub const fn uses_leap_seconds(&self) -> bool {
-        matches!(self, Self::UTC | Self::UTCSpice | Self::UTCSofa)
+        matches!(self, Self::UTC | Self::UtcSpice | Self::UtcHist)
     }
 
     /// Returns `true` if this scale is based off a GNSS constellation.
@@ -195,8 +200,8 @@ impl Scale {
             "ET" => Some(Self::ET),
             "TDB" => Some(Self::TDB),
             "UTC" => Some(Self::UTC),
-            "UTCSPICE" => Some(Self::UTCSpice),
-            "UTCSOFA" => Some(Self::UTCSofa),
+            "UTCSPICE" => Some(Self::UtcSpice),
+            "UTCHIST" => Some(Self::UtcHist),
             "GPS" => Some(Self::GPS),
             "GST" => Some(Self::GST),
             "BDT" => Some(Self::BDT),
@@ -210,7 +215,7 @@ impl Scale {
         }
     }
 
-    /// Short abbreviation used for formatting / display (e.g. "TAI", "UTC", "UTCSpice").
+    /// Short abbreviation used for formatting / display (e.g. "TAI", "UTC", "UtcSpice").
     pub const fn abbrev(&self) -> &'static str {
         match self {
             Self::TAI => "TAI",
@@ -218,8 +223,8 @@ impl Scale {
             Self::ET => "ET",
             Self::TDB => "TDB",
             Self::UTC => "UTC",
-            Self::UTCSpice => "UTCSPICE",
-            Self::UTCSofa => "UTCSOFA",
+            Self::UtcSpice => "UTCSPICE",
+            Self::UtcHist => "UTCHIST",
             Self::TCG => "TCG",
             Self::TCB => "TCB",
             Self::GPS => "GPS",
@@ -252,8 +257,8 @@ impl Scale {
             2 => Self::ET,
             3 => Self::TDB,
             4 => Self::UTC,
-            5 => Self::UTCSpice,
-            6 => Self::UTCSofa,
+            5 => Self::UtcSpice,
+            6 => Self::UtcHist,
             7 => Self::GPS,
             8 => Self::GST,
             9 => Self::BDT,

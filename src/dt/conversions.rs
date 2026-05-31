@@ -133,16 +133,16 @@ impl Dt {
         match self.scale {
             // we're going utc -> tai, check if it's
             // post 1972 using the leap seconds table
-            Scale::UTC | Scale::UTCSofa | Scale::UTCSpice => match self.utc_to_tai() {
+            Scale::UTC | Scale::UtcHist | Scale::UtcSpice => match self.utc_to_tai() {
                 // leap seconds table returned an offset, so use that
                 Some(dt) => dt.with(Scale::TAI),
                 // leap seconds table returned None so it must be pre 1972
                 None => match self.scale {
-                    Scale::UTCSofa => match historical_utc_offset(&self) {
+                    Scale::UtcHist => match historical_utc_offset(&self) {
                         Some(offset) => self.add(Dt::span_f(offset)).with(Scale::TAI),
                         None => self.with(Scale::TAI),
                     },
-                    Scale::UTCSpice => self.add_sec(9).with(Scale::TAI),
+                    Scale::UtcSpice => self.add_sec(9).with(Scale::TAI),
                     _ => self.with(Scale::TAI),
                 },
             },
@@ -194,16 +194,16 @@ impl Dt {
     pub const fn convert(&self, new: Scale) -> Dt {
         match new {
             Scale::TAI => self.to_tai(),
-            Scale::UTC | Scale::UTCSofa | Scale::UTCSpice => match self.tai_to_utc() {
+            Scale::UTC | Scale::UtcHist | Scale::UtcSpice => match self.tai_to_utc() {
                 // leap seconds table returned an offset, so use that
                 Some(dt) => dt.with(new),
                 // leap seconds table returned None so it must be pre 1972
                 None => match self.scale {
-                    Scale::UTCSofa => match historical_utc_offset(&self) {
+                    Scale::UtcHist => match historical_utc_offset(&self) {
                         Some(offset) => self.sub(Dt::span_f(offset)).with(new),
                         None => self.with(new),
                     },
-                    Scale::UTCSpice => self.add_sec(-9).with(new),
+                    Scale::UtcSpice => self.add_sec(-9).with(new),
                     _ => self.with(new),
                 },
             },

@@ -91,42 +91,42 @@ fn leap_seconds_various() {
 
     // boundary 1972
 
-    let before = Dt::from_str_parse("1971-12-31T23:59:59 UTCSOFA", &None).unwrap();
+    let before = Dt::from_str_parse("1971-12-31T23:59:59 UtcHist", &None).unwrap();
     assert!(
         (before.to_sec_f() - -883655991.10775816440582275391).abs() < 1e-6,
         "59 failed {}",
         (before.to_sec_f() - -883655991.10775816440582275391).abs()
     );
 
-    let leap = Dt::from_str_parse("1971-12-31T23:59:60 UTCSOFA", &None).unwrap();
+    let leap = Dt::from_str_parse("1971-12-31T23:59:60 UtcHist", &None).unwrap();
     assert_eq!(
         leap.to_sec_f(),
         -883655990.10775804519653320312,
         "60 failed"
     );
 
-    let after = Dt::from_str_parse("1972-01-01T00:00:00 UTCSOFA", &None).unwrap();
+    let after = Dt::from_str_parse("1972-01-01T00:00:00 UtcHist", &None).unwrap();
     assert_eq!(
         after.to_sec_f(),
         -883655990.00000000000000000000,
         "00 failed"
     );
 
-    let before = Dt::from_ymd(1971, 12, 31, 23, 59, 59, 0, Scale::UTCSofa);
+    let before = Dt::from_ymd(1971, 12, 31, 23, 59, 59, 0, Scale::UtcHist);
     assert!(
         (before.to_sec_f() - -883655991.10775816440582275391).abs() < 1e-6,
         "ymd 59 failed {}",
         (before.to_sec_f() - -883655991.10775816440582275391).abs()
     );
 
-    let leap = Dt::from_ymd(1971, 12, 31, 23, 59, 60, 0, Scale::UTCSofa);
+    let leap = Dt::from_ymd(1971, 12, 31, 23, 59, 60, 0, Scale::UtcHist);
     assert_eq!(
         leap.to_sec_f(),
         -883655990.10775804519653320312,
         "ymd 60 failed"
     );
 
-    let after = Dt::from_ymd(1972, 1, 1, 0, 0, 0, 0, Scale::UTCSofa);
+    let after = Dt::from_ymd(1972, 1, 1, 0, 0, 0, 0, Scale::UtcHist);
     assert_eq!(
         after.to_sec_f(),
         -883655990.00000000000000000000,
