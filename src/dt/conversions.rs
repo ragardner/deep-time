@@ -1,7 +1,7 @@
-use crate::historical_sofa::historical_sofa_offset_for_non_adjusted;
+use crate::historical_utc::historical_utc_offset;
 use crate::{
-    Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TAI_ATTOS_AT_1972,
-    TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS, TT_TAI_OFFSET,
+    Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS,
+    TT_TAI_OFFSET,
 };
 
 impl Dt {
@@ -131,32 +131,27 @@ impl Dt {
     /// See [`Dt::to`](../struct.Dt.html#method.to) for more info.
     pub const fn to_tai(&self) -> Dt {
         match self.scale {
-            Scale::UTC => {
-                let raw = Dt::new(self.attos, Scale::TAI, self.target);
-                raw.add_sec(raw.leap_sec(true).offset as i128)
-            }
+            // we're going utc -> tai, check if it's
+            // post 1972 using the leap seconds table
+            Scale::UTC | Scale::UTCSofa | Scale::UTCSpice => match self.utc_to_tai() {
+                // leap seconds table returned an offset, so use that
+                Some(dt) => dt.with(Scale::TAI),
+                // leap seconds table returned None so it must be pre 1972
+                None => match self.scale {
+                    Scale::UTCSofa => match historical_utc_offset(&self) {
+                        Some(offset) => self.add(Dt::span_f(offset)).with(Scale::TAI),
+                        None => self.with(Scale::TAI),
+                    },
+                    Scale::UTCSpice => self.add_sec(9).with(Scale::TAI),
+                    _ => self.with(Scale::TAI),
+                },
+            },
             Scale::TAI => *self,
             Scale::TT => Dt::new(
                 self.attos.saturating_sub(TT_TAI_OFFSET.to_attos()),
                 Scale::TAI,
                 self.target,
             ),
-            Scale::UTCSpice => {
-                let raw = Dt::new(self.attos, Scale::TAI, self.target);
-                if self.attos < TAI_ATTOS_AT_1972 - 10 {
-                    raw.add_sec(9)
-                } else {
-                    raw.add_sec(raw.leap_sec(true).offset as i128)
-                }
-            }
-            Scale::UTCSofa => {
-                let raw = Dt::new(self.attos, Scale::TAI, self.target);
-                if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(&raw) {
-                    raw.add(Dt::from_sec_f(sofa_offset, Scale::TAI))
-                } else {
-                    raw.add_sec(raw.leap_sec(true).offset as i128)
-                }
-            }
             Scale::GPS | Scale::QZSS | Scale::GST => Dt::new(
                 self.attos.saturating_add(Dt::SEC_19.to_attos()),
                 Scale::TAI,
@@ -192,34 +187,27 @@ impl Dt {
     /// **Warning:**
     ///
     /// - This function should really only be used if the [`Dt`] is on the TAI
-    ///   time scale, OR if you really know what you're doing.
+    ///   time scale, or if you really know what you're doing.
     /// - For the normal time scale conversion function see
-    ///   [`Dt::to`](../struct.Dt.html#method.to) which first converts to TAI
-    ///   before converting to the target scale.
+    ///   [`Dt::to`](../struct.Dt.html#method.to) which correctly first converts
+    ///   to TAI before converting to the target scale.
     pub const fn convert(&self, new: Scale) -> Dt {
         match new {
             Scale::TAI => self.to_tai(),
-            Scale::UTC => {
-                let offset = self.leap_sec(false).offset;
-                self.add_sec(-offset as i128).with(new)
-            }
+            Scale::UTC | Scale::UTCSofa | Scale::UTCSpice => match self.tai_to_utc() {
+                // leap seconds table returned an offset, so use that
+                Some(dt) => dt.with(new),
+                // leap seconds table returned None so it must be pre 1972
+                None => match self.scale {
+                    Scale::UTCSofa => match historical_utc_offset(&self) {
+                        Some(offset) => self.sub(Dt::span_f(offset)).with(new),
+                        None => self.with(new),
+                    },
+                    Scale::UTCSpice => self.add_sec(-9).with(new),
+                    _ => self.with(new),
+                },
+            },
             Scale::TT => self.add(TT_TAI_OFFSET).with(new),
-            Scale::UTCSpice => {
-                if self.to_attos() < TAI_ATTOS_AT_1972 {
-                    self.add_sec(-9).with(new)
-                } else {
-                    let offset = self.leap_sec(false).offset;
-                    self.add_sec(-offset as i128).with(new)
-                }
-            }
-            Scale::UTCSofa => {
-                if let Some(sofa_offset) = historical_sofa_offset_for_non_adjusted(&self) {
-                    self.sub(Dt::span_f(sofa_offset)).with(new)
-                } else {
-                    let offset = self.leap_sec(false).offset;
-                    self.add_sec(-offset as i128).with(new)
-                }
-            }
             Scale::GPS | Scale::QZSS | Scale::GST => {
                 self.add_attos(-Dt::SEC_19.to_attos()).with(new)
             }
@@ -299,33 +287,20 @@ impl Dt {
         }
     }
 
-    /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
-    /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
-    #[inline]
-    pub const fn convert_using_drift(self, reference: Dt, drift: Drift) -> Dt {
-        let span = self.to_diff_raw(reference);
-        let correction = drift.time_diff_after(&span);
-        self.add(correction)
+    #[inline(always)]
+    pub(crate) const fn utc_to_tai(&self) -> Option<Dt> {
+        match self.leap_sec(true) {
+            Some(info) => Some(self.add_sec(info.offset as i128)),
+            None => None,
+        }
     }
 
-    /// Performs the inverse conversion of [`Dt::convert_using_drift`], recovering the original proper
-    /// time on the source clock scale.
-    ///
-    /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
-    /// case of a pure constant offset the function returns immediately without iteration.
-    pub const fn convert_back_using_drift(self, reference: Dt, drift: Drift) -> Dt {
-        if drift.rate.is_zero() && drift.accel.is_zero() {
-            return self.sub(drift.constant);
+    #[inline(always)]
+    pub(crate) const fn tai_to_utc(&self) -> Option<Dt> {
+        match self.leap_sec(false) {
+            Some(info) => Some(self.add_sec(-info.offset as i128)),
+            None => None,
         }
-        let mut guess = self;
-        let mut i = 0u32;
-        while i < 16 {
-            let span = guess.to_diff_raw(reference);
-            let correction = drift.time_diff_after(&span);
-            guess = self.sub(correction);
-            i += 1;
-        }
-        guess
     }
 
     #[inline]
@@ -391,5 +366,34 @@ impl Dt {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
         tdb.add_attos(span_attos).add_attos(TDB0_ATTOS)
+    }
+
+    /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
+    /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
+    #[inline]
+    pub const fn convert_using_drift(self, reference: Dt, drift: Drift) -> Dt {
+        let span = self.to_diff_raw(reference);
+        let correction = drift.time_diff_after(&span);
+        self.add(correction)
+    }
+
+    /// Performs the inverse conversion of [`Dt::convert_using_drift`], recovering the original proper
+    /// time on the source clock scale.
+    ///
+    /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
+    /// case of a pure constant offset the function returns immediately without iteration.
+    pub const fn convert_back_using_drift(self, reference: Dt, drift: Drift) -> Dt {
+        if drift.rate.is_zero() && drift.accel.is_zero() {
+            return self.sub(drift.constant);
+        }
+        let mut guess = self;
+        let mut i = 0u32;
+        while i < 16 {
+            let span = guess.to_diff_raw(reference);
+            let correction = drift.time_diff_after(&span);
+            guess = self.sub(correction);
+            i += 1;
+        }
+        guess
     }
 }

@@ -85,7 +85,7 @@ mod ymdhms;
 // _________________________________________
 pub mod constants;
 pub mod error;
-pub mod historical_sofa;
+pub mod historical_utc;
 pub mod leap_seconds;
 pub mod math;
 pub mod tzdb;

@@ -1,7 +1,7 @@
 use crate::leap_seconds::leap_sec;
 use crate::tzdb::offset_info_at_local;
 use crate::{
-    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
+    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, TimeParts, Weekday},
 };
@@ -17,20 +17,11 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
             let total_sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-            if self.scale == Scale::UTC {
-                return Ok(Dt::from_sec_and_attos(
-                    total_sec + leap_sec(total_sec, true).offset,
-                    self.attos.unwrap_or(0),
-                    Scale::TAI,
-                )
-                .target(Scale::UTC));
-            } else {
-                return Ok(Dt::from_sec_and_attos(
-                    total_sec,
-                    self.attos.unwrap_or(0),
-                    self.scale,
-                ));
-            }
+            return Ok(Dt::from_sec_and_attos(
+                total_sec,
+                self.attos.unwrap_or(0),
+                self.scale,
+            ));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -64,21 +55,21 @@ impl TimeParts {
                     return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
                 }
                 let wd = self.wkday.unwrap_or(Weekday::Monday);
-                jd = Some(Dt::ymd_to_jd_from_iso_wk(iso_y, iso_w, wd));
+                jd = Some(Dt::iso_wk_to_jd(iso_y, iso_w, wd));
             } else if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
                 // Sunday-based week (%U)
                 if w > 53 {
                     return Err(an_err!(DtErrKind::OutOfRange, "week number"));
                 }
                 let wd = self.wkday.unwrap_or(Weekday::Sunday);
-                jd = Some(Dt::ymd_to_jd_from_wk_sun(y, w, wd));
+                jd = Some(Dt::wk_sun_to_jd(y, w, wd));
             } else if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
                 // Monday-based week (%W)
                 if w > 53 {
                     return Err(an_err!(DtErrKind::OutOfRange, "week number"));
                 }
                 let wd = self.wkday.unwrap_or(Weekday::Monday);
-                jd = Some(Dt::ymd_to_jd_from_wk_mon(y, w, wd));
+                jd = Some(Dt::wk_mon_to_jd(y, w, wd));
             }
         }
 
@@ -161,40 +152,28 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Final construction
         // ──────────────────────────────────────────────────────────────
-        let sec_is_60 = second == 60;
-
-        if self.scale.uses_leap_seconds() {
-            if !sec_is_60 {
-                Ok(Dt::from_sec_and_attos(
-                    total_sec.saturating_add(leap_sec(total_sec, true).offset),
+        if second == 60 {
+            if self.scale.uses_leap_seconds() {
+                let t = Dt::from_sec_and_attos(
+                    total_sec.saturating_sub(1),
                     self.attos.unwrap_or(0),
-                    Scale::TAI,
-                )
-                .target(self.scale))
-            } else {
-                let leap_info = leap_sec(total_sec, true);
-
-                let offset = if leap_info.is_leap_sec {
-                    leap_info.offset - 1
-                } else {
-                    total_sec = total_sec.saturating_sub(1);
-                    leap_info.offset
+                    self.scale,
+                );
+                let is_leap_sec = match leap_sec(total_sec, true) {
+                    Some(info) => info.is_leap_sec,
+                    None => false,
                 };
-
+                if is_leap_sec { Ok(t.add_sec(1)) } else { Ok(t) }
+            } else {
                 Ok(Dt::from_sec_and_attos(
-                    total_sec.saturating_add(offset),
+                    total_sec.saturating_sub(1),
                     self.attos.unwrap_or(0),
-                    Scale::TAI,
-                )
-                .target(self.scale))
+                    self.scale,
+                ))
             }
         } else {
             Ok(Dt::from_sec_and_attos(
-                if sec_is_60 {
-                    total_sec.saturating_sub(1)
-                } else {
-                    total_sec
-                },
+                total_sec,
                 self.attos.unwrap_or(0),
                 self.scale,
             ))

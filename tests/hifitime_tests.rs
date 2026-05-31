@@ -239,7 +239,9 @@ mod tests {
             let utc = Epoch::from_gregorian(year, month, day, hour, min, sec, 0, TimeScale::UTC);
 
             let my_utc = Dt::from_ymd(year as i64, month, day, 0, 0, 0, 0, Scale::UTC);
-            let my_offset = leap_seconds::leap_sec(my_utc.to_sec64(), true).offset as i32;
+            let my_offset = leap_seconds::leap_sec(my_utc.to_sec64(), true)
+                .unwrap()
+                .offset as i32;
 
             let offset = utc
                 .leap_seconds(true)

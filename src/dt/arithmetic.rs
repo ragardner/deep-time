@@ -69,6 +69,11 @@ impl Dt {
         self.round_to_sec().to_sec()
     }
 
+    #[inline(always)]
+    pub const fn to_sec64_rounded(&self) -> i64 {
+        Self::i128_to_i64(self.round_to_sec().to_sec())
+    }
+
     /// If this time were turned into [`i64`] seconds and [`u64`] (always
     /// pushing to the positive) fractional attoseconds, this returns the
     /// whole seconds part.

@@ -9,7 +9,7 @@ mod ccsds_tests {
     const CUC_EPOCH_OFFSET: i64 = 1_325_419_167;
     const CDS_EPOCH_OFFSET: i64 = 1_325_419_135;
 
-    // ====================== Helpers (new i128 style) ======================
+    // ====================== Helpers ======================
 
     fn tai_epoch() -> Dt {
         Dt::from_attos(-(CUC_EPOCH_OFFSET as i128) * ATTOS_PER_SEC_I128, Scale::TAI)
@@ -161,7 +161,7 @@ mod ccsds_tests {
     }
 }
 
-// ====================== Parsing roundtrip tests (unchanged logic) ======================
+// ====================== Parsing roundtrip tests ======================
 
 #[test]
 fn test_ccsds_c_direct_frac() {

@@ -162,7 +162,11 @@ impl Dt {
         let hr = (seconds_since_midnight / 3600) as u8;
         let min = ((seconds_since_midnight % 3600) / 60) as u8;
         let mut sec = (seconds_since_midnight % 60) as u8;
-        if self.target.uses_leap_seconds() && tai.leap_sec(false).is_leap_sec {
+        let is_leap = match tai.leap_sec(false) {
+            Some(i) => i.is_leap_sec,
+            None => false,
+        };
+        if self.target.uses_leap_seconds() && is_leap {
             sec += 1;
         }
 
@@ -185,14 +189,7 @@ impl Dt {
     /// - Expects **1 based** `mo` and `day`, and **0 based** `hr`, `min`, and `sec`.
     /// - Does not perform any time scale conversions.
     /// - Expects clamped values.
-    pub(crate) const fn ymdhms_to_unix_sec(
-        yr: i64,
-        mo: u8,
-        day: u8,
-        hr: u8,
-        min: u8,
-        sec: u8,
-    ) -> i64 {
+    pub const fn ymd_to_unix_sec(yr: i64, mo: u8, day: u8, hr: u8, min: u8, sec: u8) -> i64 {
         let jd = Self::ymd_to_jd(yr, mo, day);
         // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
         let days_since_1970 = jd.saturating_sub(2440588);
@@ -304,16 +301,17 @@ impl Dt {
         let sec_is_60 = sec == 60;
         let s_for_unix = if sec_is_60 { 59 } else { sec };
 
-        let unix_sec = Dt::ymdhms_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
+        let unix_sec = Dt::ymd_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
         let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (attos as i128);
 
         if sec_is_60 && scale.uses_leap_seconds() {
             let t =
                 Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false);
-
-            let is_leap_sec = leap_sec(t.add_sec(1).to_sec64(), false).is_leap_sec;
-
-            if is_leap_sec { t.add_sec(1) } else { t }
+            let is_leap = match leap_sec(t.add_sec(1).to_sec64(), false) {
+                Some(i) => i.is_leap_sec,
+                None => false,
+            };
+            if is_leap { t.add_sec(1) } else { t }
         } else {
             Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false)
         }
@@ -335,7 +333,7 @@ impl Dt {
     }
 
     /// Computes the Julian Day Number from an ISO week date (Monday-based week).
-    pub const fn ymd_to_jd_from_iso_wk(iso_yr: i64, iso_wk: u8, wkday: Weekday) -> i64 {
+    pub const fn iso_wk_to_jd(iso_yr: i64, iso_wk: u8, wkday: Weekday) -> i64 {
         let jan4_jd = Self::ymd_to_jd(iso_yr, 1, 4);
         let wd_jan4 = Self::jd_to_wkday(jan4_jd);
 
@@ -353,7 +351,7 @@ impl Dt {
     }
 
     /// Computes the Julian Day Number from a Sunday-based week-of-year (`%U`).
-    pub const fn ymd_to_jd_from_wk_sun(yr: i64, wk: u8, wkday: Weekday) -> i64 {
+    pub const fn wk_sun_to_jd(yr: i64, wk: u8, wkday: Weekday) -> i64 {
         let jan1_jd = Self::ymd_to_jd(yr, 1, 1);
         let wd_jan1 = Self::jd_to_wkday(jan1_jd);
 
@@ -367,7 +365,7 @@ impl Dt {
     }
 
     /// Computes the Julian Day Number from a Monday-based week-of-year (`%W`).
-    pub const fn ymd_to_jd_from_wk_mon(yr: i64, wk: u8, wkday: Weekday) -> i64 {
+    pub const fn wk_mon_to_jd(yr: i64, wk: u8, wkday: Weekday) -> i64 {
         let jan1_jd = Self::ymd_to_jd(yr, 1, 1);
         let wd_jan1 = Self::jd_to_wkday(jan1_jd);
 

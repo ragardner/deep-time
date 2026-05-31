@@ -202,32 +202,27 @@ impl Dt {
     /// Get the leap seconds info for this instant.
     ///
     /// Uses the library's in-built leap seconds table.
-    /// TODO: use rounded seconds?
     #[inline(always)]
-    pub const fn leap_sec(&self, is_utc: bool) -> LeapInfo {
+    pub const fn leap_sec(&self, is_utc: bool) -> Option<LeapInfo> {
         leap_sec(self.to_sec64(), is_utc)
     }
 
     /// Get the leap seconds info for this instant with a given table.
     #[inline(always)]
-    pub const fn leap_sec_using(&self, is_utc: bool, table: &[LeapSec]) -> LeapInfo {
+    pub const fn leap_sec_using(&self, is_utc: bool, table: &[LeapSec]) -> Option<LeapInfo> {
         leap_sec_using(self.to_sec64(), is_utc, table)
     }
 }
 
 #[inline(always)]
-pub const fn leap_sec(target: i64, is_utc: bool) -> LeapInfo {
+pub const fn leap_sec(target: i64, is_utc: bool) -> Option<LeapInfo> {
     leap_sec_using(target, is_utc, LEAP_SECS)
 }
 
-pub const fn leap_sec_using(target: i64, is_utc: bool, table: &[LeapSec]) -> LeapInfo {
+pub const fn leap_sec_using(target: i64, is_utc: bool, table: &[LeapSec]) -> Option<LeapInfo> {
     let len = table.len();
     if len == 0 {
-        return LeapInfo {
-            offset: 0,
-            leaps_inserted: 0,
-            is_leap_sec: false,
-        };
+        return None;
     }
 
     // Binary search for upper_bound: first index where entry_sec > target
@@ -257,11 +252,7 @@ pub const fn leap_sec_using(target: i64, is_utc: bool, table: &[LeapSec]) -> Lea
 
     // low == first index with entry_sec > target (or len)
     if low == 0 {
-        return LeapInfo {
-            offset: 0,
-            leaps_inserted: 0,
-            is_leap_sec: false,
-        };
+        return None;
     }
 
     let idx = low - 1;
@@ -270,11 +261,11 @@ pub const fn leap_sec_using(target: i64, is_utc: bool, table: &[LeapSec]) -> Lea
 
     let is_leap = target == entry_sec;
 
-    LeapInfo {
+    Some(LeapInfo {
         offset: entry.leap_sec_after,
         leaps_inserted: (idx + 1) as i64,
         is_leap_sec: is_leap,
-    }
+    })
 }
 
 #[cfg(feature = "std")]

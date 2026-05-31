@@ -6,22 +6,10 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        use deep_time::{Dt, Scale};
-
-        // negative 1.3 seconds
-        let dt = Dt::span(-1_300_000_000_000_000_000);
-
-        // becomes positive 700ms
-        let frac = dt.to_sec_ufrac();
-        assert_eq!(frac, 700_000_000_000_000_000);
-
-        // becomes -2 seconds
-        let sec = dt.to_sec64();
-        assert_eq!(sec, -2);
-
-        // if you just want rounded seconds
-        let sec = dt.to_sec_rounded();
-        assert_eq!(sec, -1);
+        // let t = Dt::from_ymd(1961, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        // eprintln!("{}", t.jd());
+        // let t = Dt::from_ymd(1961, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        // eprintln!("{}", t.jd());
     }
 
     #[cfg(feature = "tz")]

@@ -46,6 +46,92 @@ fn leap_seconds_various() {
     let orig = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 0, Scale::TT);
     let new = Dt::from_ymd(2015, 7, 1, 0, 0, 0, 0, Scale::TT);
     assert_ne!(orig, new);
+
+    // ---- pre 2000 -------------------------------------------------
+
+    // not a leap second date, don't roll over to next day
+    let orig = Dt::from_ymd(1972, 2, 1, 23, 59, 60, 0, Scale::UTC);
+    let new = Dt::from_ymd(1972, 2, 2, 0, 0, 0, 0, Scale::UTC);
+    assert_ne!(orig, new);
+    let orig = Dt::from_str_parse("1972-02-01T23:59:60", &None).unwrap();
+    let new = Dt::from_str_parse("1972-02-02T00:00:00", &None).unwrap();
+    assert_ne!(orig, new);
+
+    let before = Dt::from_str_parse("1972-12-31T23:59:59", &None).unwrap();
+    assert_eq!(before.to_sec(), -852033590, "59 failed");
+    assert_eq!(before.to_sec_ufrac(), 0);
+
+    let leap = Dt::from_str_parse("1972-12-31T23:59:60", &None).unwrap();
+    assert_eq!(leap.to_sec(), -852033589, "60 failed");
+    assert_eq!(leap.to_sec_ufrac(), 0);
+
+    let after = Dt::from_str_parse("1973-01-01T00:00:00", &None).unwrap();
+    assert_eq!(after.to_sec(), -852033588, "00 failed");
+    assert_eq!(after.to_sec_ufrac(), 0);
+
+    let before = Dt::from_ymd(1972, 12, 31, 23, 59, 59, 0, Scale::UTC);
+    assert_eq!(before.to_sec(), -852033590);
+    assert_eq!(before.to_sec_ufrac(), 0);
+
+    let leap = Dt::from_ymd(1972, 12, 31, 23, 59, 60, 0, Scale::UTC);
+    assert_eq!(leap.to_sec(), -852033589);
+    assert_eq!(leap.to_sec_ufrac(), 0);
+
+    let after = Dt::from_ymd(1973, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    assert_eq!(after.to_sec(), -852033588);
+    assert_eq!(after.to_sec_ufrac(), 0);
+
+    // NOT utc, BUT it's a leap seconds date, don't roll over to next day
+    let leap = Dt::from_str_parse("1972-12-31T23:59:60 TT", &None).unwrap();
+    let after = Dt::from_str_parse("1973-01-01T00:00:00 TT", &None).unwrap();
+    assert_ne!(leap, after);
+    let orig = Dt::from_ymd(1973, 6, 30, 23, 59, 60, 0, Scale::TT);
+    let new = Dt::from_ymd(1973, 7, 1, 0, 0, 0, 0, Scale::TT);
+    assert_ne!(orig, new);
+
+    // boundary 1972
+
+    let before = Dt::from_str_parse("1971-12-31T23:59:59 UTCSOFA", &None).unwrap();
+    assert!(
+        (before.to_sec_f() - -883655991.10775816440582275391).abs() < 1e-6,
+        "59 failed {}",
+        (before.to_sec_f() - -883655991.10775816440582275391).abs()
+    );
+
+    let leap = Dt::from_str_parse("1971-12-31T23:59:60 UTCSOFA", &None).unwrap();
+    assert_eq!(
+        leap.to_sec_f(),
+        -883655990.10775804519653320312,
+        "60 failed"
+    );
+
+    let after = Dt::from_str_parse("1972-01-01T00:00:00 UTCSOFA", &None).unwrap();
+    assert_eq!(
+        after.to_sec_f(),
+        -883655990.00000000000000000000,
+        "00 failed"
+    );
+
+    let before = Dt::from_ymd(1971, 12, 31, 23, 59, 59, 0, Scale::UTCSofa);
+    assert!(
+        (before.to_sec_f() - -883655991.10775816440582275391).abs() < 1e-6,
+        "ymd 59 failed {}",
+        (before.to_sec_f() - -883655991.10775816440582275391).abs()
+    );
+
+    let leap = Dt::from_ymd(1971, 12, 31, 23, 59, 60, 0, Scale::UTCSofa);
+    assert_eq!(
+        leap.to_sec_f(),
+        -883655990.10775804519653320312,
+        "ymd 60 failed"
+    );
+
+    let after = Dt::from_ymd(1972, 1, 1, 0, 0, 0, 0, Scale::UTCSofa);
+    assert_eq!(
+        after.to_sec_f(),
+        -883655990.00000000000000000000,
+        "ymd 00 failed"
+    );
 }
 
 #[test]
@@ -70,7 +156,7 @@ fn to_epoch_leaps_and_tai() {
         leap.to_sec(),
     );
     assert!(
-        leap_sec(leap.to_sec64(), false).is_leap_sec,
+        leap_sec(leap.to_sec64(), false).unwrap().is_leap_sec,
         "tai 536500836 should be a leap second",
     );
     let y = Dt::from_ymd(2017, 1, 1, 0, 0, 0, 0, Scale::UTC);
@@ -150,6 +236,6 @@ fn test_leap_seconds_file() {
     let leap_seconds_table = Dt::leap_sec_data_from_file("leap-seconds.list.txt").unwrap();
     assert_eq!(leap_seconds_table[1], LEAP_SECS[1]);
     let x = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 0, Scale::UTC);
-    let leap_info = Dt::leap_sec_using(&x, false, &leap_seconds_table);
+    let leap_info = Dt::leap_sec_using(&x, false, &leap_seconds_table).unwrap();
     assert!(leap_info.is_leap_sec == true);
 }

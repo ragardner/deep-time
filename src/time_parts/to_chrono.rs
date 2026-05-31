@@ -53,21 +53,21 @@ impl TimeParts {
         // ISO week date (%G/%V + weekday)
         if let (Some(iso_y), Some(w)) = (self.iso_wk_yr, self.iso_wk) {
             let wd = self.wkday.unwrap_or(Weekday::Monday);
-            let jd = Dt::ymd_to_jd_from_iso_wk(iso_y, w, wd);
+            let jd = Dt::iso_wk_to_jd(iso_y, w, wd);
             return jd_to_naive_date(jd);
         }
 
         // Sunday-based week number (%U)
         if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
             let wd = self.wkday.unwrap_or(Weekday::Sunday);
-            let jd = Dt::ymd_to_jd_from_wk_sun(y, w, wd);
+            let jd = Dt::wk_sun_to_jd(y, w, wd);
             return jd_to_naive_date(jd);
         }
 
         // Monday-based week number (%W)
         if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
             let wd = self.wkday.unwrap_or(Weekday::Monday);
-            let jd = Dt::ymd_to_jd_from_wk_mon(y, w, wd);
+            let jd = Dt::wk_mon_to_jd(y, w, wd);
             return jd_to_naive_date(jd);
         }
 

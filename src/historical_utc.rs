@@ -33,7 +33,7 @@ pub struct TaiUtcPre1972 {
 /// [file](https://maia.usno.navy.mil/ser7/tai-utc.dat).  
 /// These 13 intervals contain the frequency offsets and linear drifts used by the IAU SOFA library
 /// and all other high-precision astronomy/time-conversion software before UTC switched to pure leap-second mode.
-pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
+pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
     TaiUtcPre1972 {
         yr: 1961,
         mo: 1,
@@ -192,26 +192,34 @@ pub const SOFA_TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
     },
 ];
 
-/// Returns the SOFA historical TAI−UTC offset (in seconds) for a given UTC instant.
+/// Returns the SOFA historical TAI−UTC offset (in seconds)
+/// for an **un-adjusted instant**.
 ///
-/// Only for use with [`Dt`]s that are not already offset by a historical sofa offset.
-///
-/// **Do not use this for round tripping.**
-pub const fn historical_sofa_offset_for_non_adjusted(dt: &Dt) -> Option<Real> {
+/// - Only for instants that have not already been offset
+///   by a historical UTC offset value.
+/// - Not as accurate as ERFA / Astropy.
+/// - **Do not use this for round tripping.**
+/// - Unlike ERFA it does not support dates between 1960
+///   and 1961.
+pub const fn historical_utc_offset(dt: &Dt) -> Option<Real> {
     // < 1961-1-1 midnight, or >= 1972-1-1 midnight
     if dt.to_attos() < -1230724800000000000000000000
-        || dt.to_attos() >= -883656990000000000000000000
+        // tai attos for 1972 (10 leap seconds added)
+        || dt.to_attos() >= -883655990000000000000000000
     {
         return None;
     }
+    // if dt.to_attos() >= -883656000000000000000000000 {
+    //     return None;
+    // }
+
     let jd = dt.to_jd_f();
     let mjd = dt.to_mjd_f();
-    let len = SOFA_TAI_UTC_PRE_1972.len();
+    let len = TAI_UTC_PRE_1972.len();
     let mut i = len;
     while i > 0 {
         i -= 1;
-        let entry = &SOFA_TAI_UTC_PRE_1972[i];
-
+        let entry = &TAI_UTC_PRE_1972[i];
         if jd >= entry.jd {
             let offset = entry.offset + (mjd - entry.mjd_ref) * entry.drift;
             return Some(offset);
