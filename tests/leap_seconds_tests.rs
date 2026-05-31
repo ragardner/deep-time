@@ -132,6 +132,24 @@ fn leap_seconds_various() {
         -883655990.00000000000000000000,
         "ymd 00 failed"
     );
+
+    // negative fractionals
+    // Just before 1972 leap second (last attosecond of 23:59:59)
+    let before = Dt::from_ymd(
+        1972,
+        12,
+        31,
+        23,
+        59,
+        59,
+        999_999_999_999_999_999,
+        Scale::UTC,
+    );
+    assert_eq!(before.to_sec64(), -852033590);
+
+    // During 1972 leap second (fractional attosecond into 23:59:60)
+    let during = Dt::from_ymd(1972, 12, 31, 23, 59, 60, 1, Scale::UTC);
+    assert_eq!(during.to_sec64(), -852033589);
 }
 
 #[test]

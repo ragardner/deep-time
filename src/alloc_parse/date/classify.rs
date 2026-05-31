@@ -21,7 +21,6 @@ pub(crate) fn classify_date(
         return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
     };
 
-    let (s, attach_hyphen) = s.strip_prefix('-').map_or((s, false), |s| (s, true));
     let bytes_len = s.len();
 
     let mut has_ampm = false;
@@ -54,10 +53,6 @@ pub(crate) fn classify_date(
     let mut part_chars: Vec<char> = Vec::with_capacity(24);
     let mut following_digits: usize;
     let mut date_norm = String::with_capacity(bytes_len);
-
-    if attach_hyphen {
-        date_norm.push('-');
-    }
 
     let splitter = SplitKeepWithPos::new(finder, s);
 
@@ -240,34 +235,6 @@ pub(crate) fn classify_date(
                     }
 
                     match ch {
-                        't' => {
-                            if date_norm.ends_with_ascii_digit()
-                                && idx + 1 < part_len
-                                && part_chars[idx + 1].is_numeric()
-                            {
-                                connector = ConnectorType::UpperT;
-                                currently = IndexIn::Time;
-                                date_norm.push('T');
-                            }
-                        }
-                        'z' => {
-                            if date_norm.ends_with_ascii_digit() {
-                                currently = IndexIn::PostDate;
-                                date_norm.push('Z');
-                                time_tokens.push(Token::Zulu);
-                            }
-                        }
-                        'w' => {
-                            if currently == IndexIn::Date
-                                && !has_w
-                                && idx + 1 < part_len
-                                && part_chars[idx + 1].is_numeric()
-                            {
-                                has_w = true;
-                                date_tokens.push(Token::W);
-                                date_norm.push('W');
-                            }
-                        }
                         ' ' => {
                             if !date_norm.ends_with_space() {
                                 date_norm.push(' ');
@@ -351,6 +318,22 @@ pub(crate) fn classify_date(
                                 _ => {}
                             }
                         }
+                        '-' => {
+                            if date_norm.ends_with_minus() {
+                                continue;
+                            }
+                            date_norm.push('-');
+                            if currently.after_date() && currently != IndexIn::Offset {
+                                currently = IndexIn::Offset;
+                                offset_colons = 0;
+                            }
+                            if currently == IndexIn::Date {
+                                num_hyphen += 1;
+                                date_tokens.push(Token::Hyphen);
+                            } else if currently.after_date() {
+                                time_tokens.push(Token::Minus);
+                            }
+                        }
                         '.' => {
                             if date_norm.ends_with_dot() {
                                 continue;
@@ -394,6 +377,34 @@ pub(crate) fn classify_date(
                                 date_tokens.push(Token::Comma);
                             }
                         }
+                        't' => {
+                            if date_norm.ends_with_ascii_digit()
+                                && idx + 1 < part_len
+                                && part_chars[idx + 1].is_numeric()
+                            {
+                                connector = ConnectorType::UpperT;
+                                currently = IndexIn::Time;
+                                date_norm.push('T');
+                            }
+                        }
+                        'z' => {
+                            if date_norm.ends_with_ascii_digit() {
+                                currently = IndexIn::PostDate;
+                                date_norm.push('Z');
+                                time_tokens.push(Token::Zulu);
+                            }
+                        }
+                        'w' => {
+                            if currently == IndexIn::Date
+                                && !has_w
+                                && idx + 1 < part_len
+                                && part_chars[idx + 1].is_numeric()
+                            {
+                                has_w = true;
+                                date_tokens.push(Token::W);
+                                date_norm.push('W');
+                            }
+                        }
                         '+' => {
                             if date_norm.ends_with_plus() {
                                 continue;
@@ -404,22 +415,6 @@ pub(crate) fn classify_date(
                                 offset_colons = 0;
                             } else if currently != IndexIn::PreDate {
                                 time_tokens.push(Token::Plus);
-                            }
-                        }
-                        '-' => {
-                            if date_norm.ends_with_minus() {
-                                continue;
-                            }
-                            date_norm.push('-');
-                            if currently.after_date() && currently != IndexIn::Offset {
-                                currently = IndexIn::Offset;
-                                offset_colons = 0;
-                            }
-                            if currently == IndexIn::Date {
-                                num_hyphen += 1;
-                                date_tokens.push(Token::Hyphen);
-                            } else if currently.after_date() {
-                                time_tokens.push(Token::Minus);
                             }
                         }
                         '[' => {
@@ -454,6 +449,18 @@ pub(crate) fn classify_date(
                                 }
                             }
                         }
+                    }
+                } else {
+                    match ch {
+                        '-' => {
+                            if date_norm.ends_with_minus() {
+                                continue;
+                            }
+                            if idx + 1 < part_len && part_chars[idx + 1].is_numeric() {
+                                date_norm.push('-');
+                            }
+                        }
+                        _ => {}
                     }
                 }
             }

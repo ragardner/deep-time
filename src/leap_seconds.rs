@@ -231,8 +231,7 @@ pub const fn leap_sec_using(target: i64, is_utc: bool, table: &[LeapSec]) -> Opt
     if is_utc {
         while low < high {
             let mid = low + (high - low) / 2;
-            let entry_sec = table[mid].utc_sec;
-            if entry_sec <= target {
+            if table[mid].utc_sec <= target {
                 low = mid + 1;
             } else {
                 high = mid;
@@ -241,8 +240,7 @@ pub const fn leap_sec_using(target: i64, is_utc: bool, table: &[LeapSec]) -> Opt
     } else {
         while low < high {
             let mid = low + (high - low) / 2;
-            let entry_sec = table[mid].tai_sec;
-            if entry_sec <= target {
+            if table[mid].tai_sec <= target {
                 low = mid + 1;
             } else {
                 high = mid;
@@ -258,12 +256,11 @@ pub const fn leap_sec_using(target: i64, is_utc: bool, table: &[LeapSec]) -> Opt
     let idx = low - 1;
     let entry = &table[idx];
     let entry_sec = if is_utc { entry.utc_sec } else { entry.tai_sec };
-
     let is_leap = target == entry_sec;
 
     Some(LeapInfo {
         offset: entry.leap_sec_after,
-        leaps_inserted: (idx + 1) as i64,
+        leaps_inserted: low as i64,
         is_leap_sec: is_leap,
     })
 }
