@@ -102,7 +102,9 @@ jiff = [
 jiff-tz = [
     "jiff",
     "std",
-    "jiff?/tzdb-bundle-always",
+    "jiff?/tz-system",
+    "jiff?/tzdb-zoneinfo",
+    "jiff?/tzdb-bundle-platform",
 ]
 
 chrono = [
