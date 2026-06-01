@@ -76,7 +76,7 @@ impl TimeParts {
     ///
     /// - [`DtErrKind::Incomplete`] if no valid date representation is present.
     /// - [`DtErrKind::OutOfRange`] for seconds outside `0..=60`.
-    pub fn finish(&mut self, allow_partial_date: bool) -> core::result::Result<&mut Self, DtErr> {
+    pub fn finish(&mut self, allow_partial_date: bool) -> Result<&mut Self, DtErr> {
         if self.unix_timestamp_seconds.is_some() {
             if self.hr.is_none() {
                 self.hr = Some(0);

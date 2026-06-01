@@ -29,7 +29,7 @@ pub enum Separator {
     Semicolon,
 }
 
-/// Body Orientation Parameters Format.
+/// Earth/Body Orientation Parameters Format.
 ///
 /// Formats to provide to the parser, including a
 /// custom one to allow specific column indices.
@@ -51,7 +51,10 @@ pub enum EopFormat {
     Custom(CustomEopCols),
 }
 
-/// For use with [`EopFormat`].
+/// For use with [`EopFormat::Custom`].
+///
+/// Allows you to specify exactly which 0-based column contains each value
+/// when your input file does not match a standard IERS layout.
 #[derive(Debug, Clone, Copy)]
 pub struct CustomEopCols {
     pub mjd: usize,
@@ -60,6 +63,11 @@ pub struct CustomEopCols {
     pub pm_y: Option<usize>,
 }
 
+/// A single parsed row of Earth Orientation Parameters.
+///
+/// - `mjd` — Modified Julian Date
+/// - `offset` — UT1 − UTC (or equivalent) in **seconds**
+/// - `pm_x`, `pm_y` — Polar motion in **arcseconds**
 #[derive(Debug, Clone, Copy)]
 pub struct EopDataRow {
     pub mjd: Real,
@@ -71,7 +79,7 @@ pub struct EopDataRow {
     pub pm_y: Real,
 }
 
-/// Container for Body Orientation Parameters data.
+/// Container for Earth/Body Orientation Parameters data.
 ///
 /// - On Earth this would enable time scale conversions to and from
 ///   the **UT1 time scale**.
@@ -83,6 +91,10 @@ pub struct EopData {
 
 #[cfg(feature = "std")]
 impl EopData {
+    /// Parse EOP data from any `std::io::BufRead` (file, network stream, etc.).
+    ///
+    /// Lines starting with `#` or longer than [`MAX_LINE_LEN`] are skipped.
+    /// The returned vector is always sorted by MJD.
     pub fn data_from_reader<R: std::io::BufRead>(
         mut reader: R,
         format: EopFormat,
@@ -124,6 +136,23 @@ impl EopData {
         Ok(rows)
     }
 
+    /// Returns a [`Vec`] of [`EopDataRow`] from a text file on disk.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "eop-tests")]
+    /// # {
+    /// use deep_time::eop::{EopData, EopFormat, Separator};
+    ///
+    /// let path = "finals.all.iau2000.txt";
+    /// let rows = EopData::data_from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace).unwrap();
+    /// # }
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`EopData::from_text_file`](../eop/struct.EopData.html#method.from_text_file)
     pub fn data_from_text_file<P: AsRef<std::path::Path>>(
         path: P,
         format: EopFormat,
@@ -140,6 +169,19 @@ impl EopData {
         Self::data_from_reader(reader, format, separator)
     }
 
+    /// Create an [`EopData`] by loading from a text file on disk.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// # #[cfg(feature = "eop-tests")]
+    /// # {
+    /// use deep_time::eop::{EopData, EopFormat, Separator};
+    ///
+    /// let path = "finals.all.iau2000.txt";
+    /// let provider = EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace).unwrap();
+    /// # }
+    /// ```
     pub fn from_text_file<P: AsRef<std::path::Path>>(
         path: P,
         format: EopFormat,
@@ -298,6 +340,10 @@ impl EopData {
         Ok(rows)
     }
 
+    /// Parse EOP data from a `&str`.
+    ///
+    /// Useful when the data is already in memory (embedded resource,
+    /// downloaded string, etc.).
     pub fn data_from_str(
         s: &str,
         format: EopFormat,
@@ -306,6 +352,10 @@ impl EopData {
         Self::parse_lines(s.lines(), format, separator)
     }
 
+    /// Parse EOP data from raw bytes.
+    ///
+    /// The bytes are interpreted as UTF-8. Invalid UTF-8 sequences
+    /// result in an empty string (and therefore an error).
     pub fn data_from_bytes(
         bytes: &[u8],
         format: EopFormat,
@@ -315,11 +365,13 @@ impl EopData {
         Self::data_from_str(s, format, separator)
     }
 
+    /// Create an [`EopData`] from a string slice.
     pub fn from_str(s: &str, format: EopFormat, separator: Separator) -> Result<Self, DtErr> {
         let rows = Self::data_from_str(s, format, separator)?;
         Ok(Self { rows })
     }
 
+    /// Create an [`EopData`] from raw bytes.
     pub fn from_bytes(
         bytes: &[u8],
         format: EopFormat,
