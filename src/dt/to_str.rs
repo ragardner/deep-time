@@ -1,6 +1,4 @@
-use crate::{
-    Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHmsRich, an_err, tzdb::offset_info_at_utc,
-};
+use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHmsRich, an_err, tz::offset_for_utc};
 
 #[cfg(feature = "alloc")]
 use crate::ATTOS_PER_SEC;
@@ -495,7 +493,7 @@ impl Dt {
 
         // 2. Look up offset + abbrev at that exact UTC instant
         let unix_sec = Dt::attos_to_sec_i64(utc_unix.to_attos());
-        let (offset_secs, abbrev) = match offset_info_at_utc(tz_name, unix_sec) {
+        let (offset_secs, abbrev) = match offset_for_utc(tz_name, unix_sec) {
             Some(info) => (info.offset, info.abbrev),
             None => (0, "UTC"), // fallback for unknown timezone
         };

@@ -1,5 +1,5 @@
 use crate::leap_seconds::leap_sec;
-use crate::tzdb::offset_info_at_local;
+use crate::tz::offset_for_local;
 use crate::{
     Dt, JD_2000_2_451_545, SEC_PER_DAYI64, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
     error::{DtErr, DtErrKind},
@@ -125,7 +125,7 @@ impl TimeParts {
             if !name_str.is_empty() {
                 let provisional_unix =
                     total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-                match offset_info_at_local(name_str, provisional_unix) {
+                match offset_for_local(name_str, provisional_unix) {
                     Some(info) => {
                         if info.is_gap {
                             // Non-existent time (spring-forward gap) — shift forward

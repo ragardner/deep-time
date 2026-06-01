@@ -88,7 +88,7 @@ pub mod error;
 pub mod historical_utc;
 pub mod leap_seconds;
 pub mod math;
-pub mod tzdb;
+pub mod tz;
 
 // _________________________________________
 // FEATURE PUB MOD

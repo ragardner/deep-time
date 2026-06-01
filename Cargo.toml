@@ -100,8 +100,8 @@ jiff = [
 ]
 
 jiff-tz = [
-    "std",
     "jiff",
+    "std",
     "jiff?/tzdb-bundle-always",
 ]
 
