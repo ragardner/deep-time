@@ -848,12 +848,12 @@ impl YmdHmsRich {
         let (negative, hours, minutes) = Dt::sec_as_hhmm(offset_sec);
         let sign = if negative { b'-' } else { b'+' };
 
-        // seconds component — only used by %::z
+        // seconds component — only needed for %::z and %:::z+
         let seconds = ((offset_sec.saturating_abs() % 3600) % 60) as u8;
 
         match colons {
+            // %z → +HHMM
             0 => {
-                // %z     → +HHMM
                 let mut tmp = [0u8; 5];
                 tmp[0] = sign;
                 tmp[1] = b'0' + hours / 10;
@@ -862,8 +862,9 @@ impl YmdHmsRich {
                 tmp[4] = b'0' + minutes % 10;
                 Self::write_bytes(buf, pos, &tmp);
             }
+
+            // %:z → +HH:MM
             1 => {
-                // %:z    → +HH:MM
                 let mut tmp = [0u8; 6];
                 tmp[0] = sign;
                 tmp[1] = b'0' + hours / 10;
@@ -873,8 +874,9 @@ impl YmdHmsRich {
                 tmp[5] = b'0' + minutes % 10;
                 Self::write_bytes(buf, pos, &tmp);
             }
+
+            // %::z → +HH:MM:SS (always include seconds)
             2 => {
-                // %::z   → +HH:MM:SS
                 let mut tmp = [0u8; 9];
                 tmp[0] = sign;
                 tmp[1] = b'0' + hours / 10;
@@ -887,7 +889,41 @@ impl YmdHmsRich {
                 tmp[8] = b'0' + seconds % 10;
                 Self::write_bytes(buf, pos, &tmp);
             }
-            _ => Self::write_bytes(buf, pos, b"+0000"),
+
+            // %:::z and higher → use colons, but only show minutes/seconds when non-zero
+            _ => {
+                let mut tmp = [0u8; 9];
+                let mut len = 0usize;
+
+                tmp[len] = sign;
+                len += 1;
+                tmp[len] = b'0' + hours / 10;
+                len += 1;
+                tmp[len] = b'0' + hours % 10;
+                len += 1;
+
+                // Include minutes only if non-zero (or if seconds are present)
+                if minutes != 0 || seconds != 0 {
+                    tmp[len] = b':';
+                    len += 1;
+                    tmp[len] = b'0' + minutes / 10;
+                    len += 1;
+                    tmp[len] = b'0' + minutes % 10;
+                    len += 1;
+
+                    // Include seconds only if non-zero
+                    if seconds != 0 {
+                        tmp[len] = b':';
+                        len += 1;
+                        tmp[len] = b'0' + seconds / 10;
+                        len += 1;
+                        tmp[len] = b'0' + seconds % 10;
+                        len += 1;
+                    }
+                }
+
+                Self::write_bytes(buf, pos, &tmp[..len]);
+            }
         }
     }
 

@@ -216,7 +216,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         _colons: u8,
         advance: bool,
     ) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_padded_i64(self.inp, flag, width, 4, b'0') {
+        let (y, remaining) = match Self::parse_padded_number(self.inp, flag, width, 4, b'0', false)
+        {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "year")),
         };
@@ -230,7 +231,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline]
     fn parse_unbounded_year(&mut self) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_arbitrary_i64(self.inp) {
+        let (y, remaining) = match Self::parse_padded_number(self.inp, None, None, 0, b'0', true) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "year")),
         };
@@ -272,14 +273,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (sign, after_sign) = Self::parse_optional_sign(self.inp);
-        let (c, remaining) = match Self::parse_padded_i64(after_sign, flag, width, 2, b'_') {
+        let (c, remaining) = match Self::parse_padded_number(self.inp, flag, width, 2, b'_', false)
+        {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "century")),
         };
+        self.tm.yr = Some(c * 100);
         self.inp = remaining;
-        let year = if sign < 0 { -c * 100 } else { c * 100 };
-        self.tm.yr = Some(year);
         self.advance_format();
         Ok(())
     }
@@ -291,7 +291,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_padded_i64(self.inp, flag, width, 4, b'0') {
+        let (y, remaining) = match Self::parse_padded_number(self.inp, flag, width, 4, b'0', false)
+        {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "iso week year")),
         };
@@ -378,7 +379,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (n, remaining) = match Self::parse_padded_number(self.inp, flag, width, 3, b'0') {
+        let (n, remaining) = match Self::parse_padded_number(self.inp, flag, width, 3, b'0', false)
+        {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "day of year")),
         };
@@ -533,20 +535,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         _colons: u8,
     ) -> Result<(), DtErr> {
-        let (sign, after_sign) = Self::parse_optional_sign(self.inp);
-        let (n, remaining) = match Self::parse_padded_number(after_sign, flag, width, 19, b' ') {
+        let (n, remaining) = match Self::parse_padded_number(self.inp, flag, width, 19, b' ', false)
+        {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "timestamp")),
         };
-        let timestamp = if sign < 0 {
-            match n.checked_neg() {
-                Some(ts) => ts,
-                None => return Err(an_err!(DtErrKind::OutOfRange, "timestamp")),
-            }
-        } else {
-            n
-        };
-        self.tm.unix_timestamp_seconds = Some(timestamp);
+        self.tm.unix_timestamp_seconds = Some(n);
         self.inp = remaining;
         self.advance_format();
         Ok(())
@@ -954,6 +948,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
+    #[inline]
     fn parse_scale(&mut self) -> Result<(), DtErr> {
         if self.inp.is_empty() || !self.inp[0].is_ascii_alphabetic() {
             return Err(an_err!(DtErrKind::InvalidItem, "invalid scale"));
@@ -1071,61 +1066,102 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
     }
 
-    #[inline]
-    fn parse_digits(inp: &[u8]) -> (&[u8], &[u8]) {
-        let mut pos = 0;
-        while pos < inp.len() && inp[pos].is_ascii_digit() {
-            pos += 1;
-        }
-        (&inp[..pos], &inp[pos..])
-    }
-
-    #[inline]
     fn parse_padded_number(
-        inp: &[u8],
+        input: &[u8],
         flag: Option<u8>,
         width: Option<u8>,
         default_pad_width: usize,
         default_flag: u8,
+        arbitrary: bool,
     ) -> Result<(i64, &[u8]), ()> {
+        // Skip leading ASCII whitespace
         let mut pos = 0;
-        // Skip leading whitespace
-        while pos < inp.len() && inp[pos].is_ascii_whitespace() {
+        while pos < input.len() && input[pos].is_ascii_whitespace() {
             pos += 1;
         }
-        if pos >= inp.len() {
+
+        let bytes = &input[pos..];
+        if bytes.is_empty() {
             return Err(());
         }
-        // Resolve effective padding flag (ignore ^ and # for numeric parsing – they are no-ops)
+
         let effective_flag = match flag {
             Some(b'^') | Some(b'#') => default_flag,
             Some(f) => f,
             None => default_flag,
         };
-        let zero_pad_width = match effective_flag {
-            b'_' | b' ' | b'-' => 0, // PadSpace or NoPad
-            _ => width.map(usize::from).unwrap_or(default_pad_width),
-        };
-        let max_digits = default_pad_width.max(zero_pad_width);
-        let mut n: i64 = 0;
-        let mut digits = 0usize;
-        while digits < zero_pad_width && pos + digits < inp.len() && inp[pos + digits] == b'0' {
-            digits += 1;
-        }
-        // Then parse the rest of the digits up to max_digits
-        while digits < max_digits && pos + digits < inp.len() && inp[pos + digits].is_ascii_digit()
-        {
-            let digit = i64::from(inp[pos + digits] - b'0');
-            n = n
-                .checked_mul(10)
-                .and_then(|x| x.checked_add(digit))
-                .ok_or(())?;
-            digits += 1;
-        }
-        if digits == 0 {
+
+        // Sign handling
+        let (sign, after_sign) = Self::parse_optional_sign(bytes);
+        if after_sign.is_empty() || !after_sign[0].is_ascii_digit() {
             return Err(());
         }
-        Ok((n, &inp[pos + digits..]))
+
+        let is_negative = sign < 0;
+
+        let zero_pad_width = if arbitrary || matches!(effective_flag, b'_' | b' ' | b'-') {
+            0
+        } else {
+            width.map_or(0, usize::from)
+        };
+
+        let max_digits = if arbitrary {
+            usize::MAX
+        } else {
+            zero_pad_width.max(default_pad_width)
+        };
+
+        // Padding zero skip
+        let mut consumed = 0usize;
+        while consumed < zero_pad_width
+            && consumed < after_sign.len()
+            && after_sign[consumed] == b'0'
+        {
+            consumed += 1;
+        }
+
+        // Unified robust accumulation
+        let max_allowed: u64 = if is_negative {
+            (i64::MAX as u64).wrapping_add(1)
+        } else {
+            i64::MAX as u64
+        };
+
+        let mut acc: u64 = if consumed < after_sign.len() {
+            (after_sign[consumed] - b'0') as u64
+        } else {
+            0
+        };
+        if consumed < after_sign.len() {
+            consumed += 1;
+        }
+
+        while consumed < max_digits && consumed < after_sign.len() {
+            let b = after_sign[consumed];
+            if !b.is_ascii_digit() {
+                break;
+            }
+            let d = (b - b'0') as u64;
+
+            if acc > max_allowed / 10 || (acc == max_allowed / 10 && d > max_allowed % 10) {
+                return Err(());
+            }
+
+            acc = acc * 10 + d;
+            consumed += 1;
+        }
+
+        let n = if is_negative {
+            if acc == max_allowed {
+                i64::MIN
+            } else {
+                -(acc as i64)
+            }
+        } else {
+            acc as i64
+        };
+
+        Ok((n, &after_sign[consumed..]))
     }
 
     #[inline]
@@ -1137,7 +1173,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         default_flag: u8,
     ) -> Result<(u8, &[u8]), ()> {
         let (n, remaining) =
-            Self::parse_padded_number(inp, flag, width, default_pad_width, default_flag)?;
+            Self::parse_padded_number(inp, flag, width, default_pad_width, default_flag, false)?;
         if !(0..=255).contains(&n) {
             return Err(());
         }
@@ -1187,41 +1223,5 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         let iana = core::str::from_utf8(&start[..pos]).map_err(|_| ())?;
         Ok((iana, &start[pos..]))
-    }
-
-    #[inline]
-    fn parse_padded_i64(
-        inp: &[u8],
-        flag: Option<u8>,
-        width: Option<u8>,
-        default_pad_width: usize,
-        default_flag: u8,
-    ) -> Result<(i64, &[u8]), ()> {
-        let (sign, after_sign) = Self::parse_optional_sign(inp);
-        let (n, remaining) =
-            Self::parse_padded_number(after_sign, flag, width, default_pad_width, default_flag)?;
-        let mut y = n;
-        if sign < 0 {
-            y = -y;
-        }
-        Ok((y, remaining))
-    }
-
-    #[inline]
-    fn parse_arbitrary_i64(inp: &[u8]) -> Result<(i64, &[u8]), ()> {
-        let (sign, after_sign) = Self::parse_optional_sign(inp);
-        let (digits, remaining) = Self::parse_digits(after_sign);
-        if digits.is_empty() {
-            return Err(());
-        }
-        let mut y: i64 = 0;
-        for &byte in digits {
-            let d = (byte - b'0') as i64;
-            y = y.checked_mul(10).and_then(|x| x.checked_add(d)).ok_or(())?;
-        }
-        if sign < 0 {
-            y = y.checked_neg().ok_or(())?;
-        }
-        Ok((y, remaining))
     }
 }

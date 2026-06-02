@@ -175,7 +175,7 @@ impl TimeParts {
     }
 
     /// Converts [`TimeParts`] → [`jiff::Timestamp`].
-    #[inline]
+    #[inline(always)]
     pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtErr> {
         self.to_jiff_zoned().map(|z| z.timestamp())
     }
