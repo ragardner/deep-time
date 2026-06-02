@@ -221,10 +221,12 @@ impl YmdHmsRich {
                 b'j' => self.write_day_of_year(buf, pos, flag, width, colons),
                 b'M' => self.write_minute(buf, pos, flag, width, colons, true),
                 b'm' => self.write_month_number(buf, pos, flag, width, colons, true),
+                b'q' => self.write_quarter(buf, pos, flag, width, colons),
                 b'n' => self.write_whitespace(buf, pos, b'n'),
                 b't' => self.write_whitespace(buf, pos, b't'),
                 b'P' => self.write_ampm(buf, pos, false),
                 b'p' => self.write_ampm(buf, pos, true),
+                b'r' => self.write_12hour_time_with_ampm(buf, pos),
                 b'S' => self.write_second(buf, pos, flag, width, colons, true),
                 b's' => self.write_unix_timestamp(buf, pos, flag, width, colons),
                 b'U' => self.write_week_number_sunday_based(buf, pos, flag, width, colons),
@@ -267,7 +269,7 @@ impl YmdHmsRich {
                 }
                 b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
 
-                b'c' | b'r' | b'X' | b'x' => self.write_unsupported(buf, pos),
+                b'c' | b'X' | b'x' => self.write_unsupported(buf, pos),
                 _ => return Err(an_err!(DtErrKind::UnknownDirective)),
             }
         }
@@ -615,6 +617,25 @@ impl YmdHmsRich {
     }
 
     #[inline]
+    pub(crate) fn write_12hour_time_with_ampm(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+    ) {
+        // Hour (12-hour, zero-padded)
+        self.write_hour12(buf, pos, b'0', Some(2), 0);
+        Self::write_bytes(buf, pos, b":");
+        // Minute (zero-padded)
+        self.write_minute(buf, pos, b'0', Some(2), 0, true);
+        Self::write_bytes(buf, pos, b":");
+        // Second (zero-padded)
+        self.write_second(buf, pos, b'0', Some(2), 0, true);
+        Self::write_bytes(buf, pos, b" ");
+        // AM/PM (uppercase, matching classic POSIX %r)
+        self.write_ampm(buf, pos, true);
+    }
+
+    #[inline]
     pub(crate) fn write_day_of_year(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
@@ -659,6 +680,22 @@ impl YmdHmsRich {
     ) {
         let default_pad = if pad { b'0' } else { b' ' };
         Self::write_u32_padded(buf, pos, self.mo as u32, flag, width, default_pad);
+    }
+
+    #[inline]
+    pub(crate) fn write_quarter(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        flag: u8,
+        width: Option<u8>,
+        _colons: u8,
+    ) {
+        // Month is 1–12, so this gives 1, 2, 3, or 4
+        let quarter = ((self.mo - 1) / 3 + 1) as u32;
+
+        // Default width is 1 (no leading zero unless requested)
+        Self::write_u32_padded(buf, pos, quarter, flag, width.or(Some(1)), b'0');
     }
 
     #[inline]
