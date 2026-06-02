@@ -2,15 +2,10 @@
 
 #[cfg(feature = "lang")]
 mod tests {
-    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
+    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale, TimeParts};
 
     #[test]
-    fn print_stuff() {
-        // let t = Dt::from_ymd(1961, 1, 1, 0, 0, 0, 0, Scale::TAI);
-        // eprintln!("{}", t.jd());
-        // let t = Dt::from_ymd(1961, 1, 1, 0, 0, 0, 0, Scale::TAI);
-        // eprintln!("{}", t.jd());
-    }
+    fn print_stuff() {}
 
     #[cfg(feature = "tz")]
     #[test]

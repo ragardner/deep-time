@@ -152,24 +152,16 @@ locale = [
     "std",
     "dep:sys-locale",
 ]
-all = [
-    "parse",
-    "tz",
-    "lang",
-    "locale",
-    "eop",
-    "mars",
-    "sidereal",
-    "sidereal-earth",
-    "wire",
-    "js",
-    "chrono-tz",
-    "jiff-tz",
-    "hifitime",
-    "serde",
-]
+
 perf-tests = ["parse", "std"]
 eop-tests = ["eop", "std"]
+tz-tests = [
+    "jiff",
+    "std",
+    "jiff?/tz-system",
+    "jiff?/tzdb-zoneinfo",
+    "jiff?/tzdb-bundle-platform",
+]
 
 [lints.clippy]
 non_canonical_partial_ord_impl = "allow"

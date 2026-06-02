@@ -2,7 +2,7 @@
 
 #[cfg(feature = "perf-tests")]
 mod perf_tests {
-    use deep_time::{Dt, Scale};
+    use deep_time::{Dt, Scale, TimeParts};
     use std::time::Instant;
 
     #[test]
@@ -64,14 +64,14 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 2. DATE FROM STR PERF
+        // 2. TIMEPARTS FROM STR PERF
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = Dt::from_str(
+                let _ = TimeParts::from_str(
                     "2024-03-14T00:00:00",
                     "%Y-%m-%dT%H:%M:%S",
                     true,
@@ -84,7 +84,7 @@ mod perf_tests {
             let total_parses = ITERATIONS;
             let ns_per_parse = elapsed.as_nanos() as f64 / total_parses as f64;
 
-            println!("\n=== DATE FROM STR PERF ===");
+            println!("\n=== TIMEPARTS FROM STR PERF ===");
             println!("Avg time     : {:.2} ns/parse", ns_per_parse);
             println!(
                 "Throughput   : {:.0} k parses/sec",

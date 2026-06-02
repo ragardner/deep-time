@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(all(feature = "tz", feature = "jiff-tz"))]
+#[cfg(all(feature = "tz", feature = "tz-tests"))]
 mod tests {
     use deep_time::{Dt, Scale};
     use jiff::{Timestamp, Zoned, civil::DateTime};
@@ -354,7 +354,8 @@ mod tests {
             // ─── Your library ──────────────────────────────────────────────────────────
             let our_input = format!("{} {}", civil_str, iana_name);
 
-            let our_dt: Dt = Dt::from_str_parse(&our_input, &None)
+            let our_dt: Dt = our_input
+                .parse()
                 .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
 
             let our_rfc = our_dt.to_str_rfc3339().unwrap();
