@@ -1,4 +1,4 @@
-use crate::{Cat, EN_WORDS, LangData, Token, Word, tz::TZ_ENTRIES, tz_lowered_keys};
+use crate::{Cat, EN_WORDS, LangData, Token, Word, tz::available_timezones, tz_lowered_keys};
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -234,9 +234,7 @@ pub(crate) fn es() -> &'static HashMap<&'static str, (&'static str, Token)> {
             m.insert(word.low, (word.norm, word.t));
         }
 
-        for (&lowered_key, &(original_name, _, _)) in
-            tz_lowered_keys().iter().zip(TZ_ENTRIES.iter())
-        {
+        for (&lowered_key, original_name) in tz_lowered_keys().iter().zip(available_timezones()) {
             m.insert(lowered_key, (original_name, Token::Iana));
         }
 

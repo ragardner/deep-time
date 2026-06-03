@@ -1,4 +1,4 @@
-use crate::{Cat, LangData, Token, Word, tz::TZ_ENTRIES};
+use crate::{Cat, LangData, Token, Word, tz::available_timezones};
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -8,9 +8,11 @@ use once_cell::race::OnceBox;
 pub(crate) static TZ_LOWERED_KEYS: OnceBox<&'static [&'static str]> = OnceBox::new();
 pub(crate) fn tz_lowered_keys() -> &'static [&'static str] {
     TZ_LOWERED_KEYS.get_or_init(|| {
-        let keys: Vec<&'static str> = TZ_ENTRIES
-            .iter()
-            .map(|&(name, _, _)| Box::leak(name.to_lowercase().into_boxed_str()) as &'static str)
+        let keys: Vec<&'static str> = available_timezones()
+            .map(|name| {
+                let lower = name.to_lowercase();
+                Box::leak(lower.into_boxed_str()) as &'static str
+            })
             .collect();
 
         let leaked: &'static [&'static str] = Box::leak(keys.into_boxed_slice());
@@ -258,9 +260,7 @@ pub(crate) fn en() -> &'static HashMap<&'static str, (&'static str, Token)> {
             m.insert(word.low, (word.norm, word.t));
         }
 
-        for (&lowered_key, &(original_name, _, _)) in
-            tz_lowered_keys().iter().zip(TZ_ENTRIES.iter())
-        {
+        for (&lowered_key, original_name) in tz_lowered_keys().iter().zip(available_timezones()) {
             m.insert(lowered_key, (original_name, Token::Iana));
         }
 

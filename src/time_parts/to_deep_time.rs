@@ -1,8 +1,8 @@
 use crate::leap_seconds::leap_sec;
-use crate::tz::offset_for_local;
 use crate::{
-    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
+    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
     error::{DtErr, DtErrKind},
+    tz::is_utc_iana,
     {Meridiem, Offset, TimeParts, Weekday},
 };
 
@@ -11,6 +11,38 @@ impl TimeParts {
     /// - Resulting [`Dt`] is on the TAI timescale.
     /// - If this [`TimeParts`] has a unix timestamp then it is used
     ///   instead of anything else.
+    pub(crate) fn to_dt_tz(&self) -> Result<Dt, DtErr> {
+        let ts = self.to_jiff_timestamp()?;
+        let mut dt = Dt::from_jiff_timestamp(ts, Scale::TAI);
+        dt.target = Scale::UTC;
+
+        let sec = self.sec.unwrap_or(0);
+
+        if sec == 60 {
+            if self.scale.uses_leap_seconds() {
+                let is_leap_sec = match leap_sec(dt.to_sec64().saturating_add(1), true) {
+                    Some(info) => info.is_leap_sec,
+                    None => false,
+                };
+                if is_leap_sec {
+                    Ok(dt.add_sec(1))
+                } else {
+                    Ok(dt)
+                }
+            } else {
+                Ok(dt)
+            }
+        } else {
+            Ok(dt)
+        }
+    }
+
+    /// Converts [`TimeParts`] → [`Dt`].
+    /// - Resulting [`Dt`] is on the TAI timescale.
+    /// - If this [`TimeParts`] has a unix timestamp then it is used
+    ///   instead of anything else.
+    ///
+    /// Non-UTC IANA timezones are supported only when the `jiff` feature is enabled.
     pub fn to_dt(&self) -> Result<Dt, DtErr> {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
@@ -25,7 +57,40 @@ impl TimeParts {
         }
 
         // ──────────────────────────────────────────────────────────────
-        // Civil date path
+        // IANA timezone check (after fast path)
+        // If a non-UTC IANA name is present we must use the jiff path
+        // (which properly handles DST, historical offsets, etc.)
+        // ──────────────────────────────────────────────────────────────
+        if let Some(name) = &self.iana_name {
+            let name_str = name.as_str().map_err(|e| {
+                an_err!(
+                    DtErrKind::InvalidBytes,
+                    "invalid iana ascii: {:?}: {}",
+                    name,
+                    e
+                )
+            })?;
+
+            if !name_str.is_empty() && !is_utc_iana(name_str) {
+                #[cfg(feature = "jiff")]
+                {
+                    return self.to_dt_tz();
+                }
+                #[cfg(not(feature = "jiff"))]
+                {
+                    return Err(an_err!(
+                        DtErrKind::InvalidTimezoneOffset,
+                        "non-utc tz not supported without jiff feature: {}",
+                        name_str
+                    ));
+                }
+            }
+            // If we get here the IANA name is either empty or a UTC alias.
+            // Fall through to the civil-date path (which treats it as UTC, i.e. no offset adjustment).
+        }
+
+        // ──────────────────────────────────────────────────────────────
+        // Civil date path (used for no TZ, UTC IANA, or fixed offsets)
         // ──────────────────────────────────────────────────────────────
         let mut jd: Option<i64> = None;
 
@@ -109,44 +174,17 @@ impl TimeParts {
             .saturating_add(seconds_from_noon_utc);
 
         // ──────────────────────────────────────────────────────────────
-        // Apply timezone correction (IANA or Fixed offset)
+        // Apply timezone correction (Fixed offset only)
+        // - If an IANA name is present we already know (from the check right
+        //   after the Unix fast-path) that it is either empty or a UTC alias,
+        //   so we treat the civil time as UTC and do **not** apply any offset.
+        // - Fixed offsets are only applied when there is no IANA name at all.
         // ──────────────────────────────────────────────────────────────
-
-        if let Some(name) = &self.iana_name {
-            let name_str = name.as_str().map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidBytes,
-                    "invalid iana ascii: {:?}: {}",
-                    name,
-                    e
-                )
-            })?;
-
-            if !name_str.is_empty() {
-                let provisional_unix =
-                    total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-                match offset_for_local(name_str, provisional_unix) {
-                    Some(info) => {
-                        if info.is_gap {
-                            // Non-existent time (spring-forward gap) — shift forward
-                            total_sec = total_sec.saturating_add(info.gap_size);
-                            total_sec = total_sec.saturating_sub(info.offset as i64);
-                        } else {
-                            total_sec = total_sec.saturating_sub(info.offset as i64);
-                        }
-                    }
-                    None => {
-                        return Err(an_err!(
-                            DtErrKind::InvalidTimezoneOffset,
-                            "invalid iana: {}",
-                            name_str
-                        ));
-                    }
-                }
+        if self.iana_name.is_none() {
+            if let Some(Offset::Fixed(offset)) = self.offset {
+                // local civil time → true UTC instant
+                total_sec = total_sec.saturating_sub(offset as i64);
             }
-        } else if let Some(Offset::Fixed(offset)) = self.offset {
-            // local civil time → true UTC instant
-            total_sec = total_sec.saturating_sub(offset as i64);
         }
 
         // ──────────────────────────────────────────────────────────────

@@ -138,17 +138,17 @@ use core::fmt;
 /// ### Outputting a date to string / bytes
 ///
 /// ```
-/// # #[cfg(all(feature = "tz", feature = "parse"))]
+/// # #[cfg(all(feature = "jiff", feature = "parse"))]
 /// # {
 /// use deep_time::{Dt, Scale};
 ///
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
 ///
 /// let s = x
-///  .to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", true)
 ///  .unwrap();
 /// let b = x
-///  .to_str_bin_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_bin_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", true)
 ///  .unwrap();
 ///
 /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");

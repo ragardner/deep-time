@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(all(feature = "tz", feature = "tz-tests"))]
+#[cfg(all(feature = "jiff", feature = "tz-tests"))]
 mod tests {
     use deep_time::{Dt, Scale};
     use jiff::{Timestamp, Zoned, civil::DateTime};
@@ -462,6 +462,50 @@ mod tests {
                  Jiff           : {}\n\
                  deep_time      : {}\n",
                 description, our_input, jiff_input, jiff_rfc, our_rfc
+            );
+        }
+    }
+
+    #[test]
+    fn test_iana_leap_seconds() {
+        let cases = vec![(
+            "2015-06-30T19:59:60",
+            "America/New_York",
+            "NY summer (EDT = UTC-4)",
+        )];
+
+        for (civil_str, iana_name, description) in cases {
+            // ─── Jiff ground truth ─────────────────────────────────────────────────────
+            let civil_dt: DateTime = civil_str
+                .parse()
+                .unwrap_or_else(|e| panic!("Jiff civil parse failed for '{}': {}", civil_str, e));
+
+            let jiff_zoned: Zoned = civil_dt
+                .in_tz(iana_name)
+                .unwrap_or_else(|e| panic!("Jiff in_tz('{}') failed: {}", iana_name, e));
+            let jiff_rfc = jiff_zoned.timestamp().to_string();
+
+            // ─── Your library ──────────────────────────────────────────────────────────
+            let our_input = format!("{} {}", civil_str, iana_name);
+
+            let our_dt: Dt = our_input
+                .parse()
+                .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
+
+            eprintln!("{:?}", our_dt.to_sec64());
+            // 488980799
+            // should be for 60: 488980800
+
+            let our_rfc = our_dt.to_str_rfc3339().unwrap();
+
+            // ─── Assert (no more manual prints) ────────────────────────────────────────
+            assert_eq!(
+                our_rfc, jiff_rfc,
+                "\n=== IANA Historical Test FAILED: {} ===\n\
+             Input string   : {}\n\
+             Jiff           : {}\n\
+             deep_time      : {}\n",
+                description, our_input, jiff_rfc, our_rfc
             );
         }
     }

@@ -54,9 +54,9 @@ impl Dt {
     ///
     /// This is the inverse of [`Dt::to_jiff_timestamp`].
     #[inline]
-    pub fn from_jiff_timestamp(ts: Timestamp) -> Dt {
+    pub fn from_jiff_timestamp(ts: Timestamp, scale: Scale) -> Dt {
         Dt::from_diff_and_scale(
-            Dt::from_ns(ts.as_nanosecond(), Scale::UTC),
+            Dt::from_ns(ts.as_nanosecond(), scale),
             Self::UNIX_EPOCH,
             false,
         )

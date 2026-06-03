@@ -7,7 +7,7 @@ mod tests {
     #[test]
     fn print_stuff() {}
 
-    #[cfg(feature = "tz")]
+    #[cfg(feature = "jiff")]
     #[test]
     fn roundtrip_gap_boundary_new_york() {
         let our_input = "2023-03-12 02:00:00 America/New_York";
@@ -27,7 +27,7 @@ mod tests {
         // Format back using the IANA zone
         let fmt = "%Y-%m-%d %H:%M:%S %Q";
         let output = our_dt
-            .to_str_with_tz(fmt, "America/New_York")
+            .to_str_with_tz(fmt, "America/New_York", true)
             .expect("to_str_with_tz should succeed");
 
         // === THE KEY REGRESSION ASSERT ===
@@ -40,23 +40,23 @@ mod tests {
         let our_dt2: Dt =
             Dt::from_str_parse(&output, &None).expect("second parse should also succeed");
         let output2 = our_dt2
-            .to_str_with_tz(fmt, "America/New_York")
+            .to_str_with_tz(fmt, "America/New_York", true)
             .expect("second format should succeed");
 
         assert_eq!(output2, expected_snapped, "round-trip must be stable");
     }
 
-    #[cfg(feature = "tz")]
+    #[cfg(feature = "jiff")]
     #[test]
     fn tz_output() {
         use deep_time::{Dt, Scale};
 
         let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
         let s = x
-            .to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+            .to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", true)
             .unwrap();
         let b = x
-            .to_str_bin_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+            .to_str_bin_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", true)
             .unwrap();
 
         assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");

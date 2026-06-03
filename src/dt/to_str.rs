@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHmsRich, an_err, tz::offset_for_utc};
+use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHmsRich, an_err, tz::is_utc_iana};
 
 #[cfg(feature = "alloc")]
 use crate::ATTOS_PER_SEC;
@@ -151,13 +151,13 @@ impl Dt {
     /// ## Examples
     ///
     /// ```
-    /// # #[cfg(all(feature = "tz", feature = "parse"))]
+    /// # #[cfg(all(feature = "jiff", feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Scale};
     ///
     /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
     ///
-    /// let s = x.to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
+    /// let s = x.to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", true).unwrap();
     ///
     /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
     /// # }
@@ -174,9 +174,14 @@ impl Dt {
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_with_offset`](../struct.Dt.html#method.to_str_with_offset)
     #[inline]
-    pub fn to_str_with_tz(&self, fmt: &str, tz_name: &str) -> Result<alloc::string::String, DtErr> {
+    pub fn to_str_with_tz(
+        &self,
+        fmt: &str,
+        tz_name: &str,
+        add_offset: bool,
+    ) -> Result<alloc::string::String, DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self._to_u8_with_tz(fmt, &mut buf, tz_name)?;
+        let n = self._to_u8_with_tz(fmt, &mut buf, tz_name, add_offset)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
     }
 
@@ -389,7 +394,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
-    /// let b = x.to_str_bin_with_tz("%F", "America/New_York").unwrap();
+    /// let b = x.to_str_bin_with_tz("%F", "America/New_York", true).unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -409,8 +414,9 @@ impl Dt {
         &self,
         fmt: &str,
         tz_name: &str,
+        add_offset: bool,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_tz(tz_name);
+        let ymdhms = self.ymdhms_rich_with_tz(tz_name, add_offset);
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
@@ -453,8 +459,9 @@ impl Dt {
         fmt: &str,
         dest: &mut [u8],
         tz_name: &str,
+        add_offset: bool,
     ) -> Result<usize, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_tz(tz_name);
+        let ymdhms = self.ymdhms_rich_with_tz(tz_name, add_offset);
         let mut internal_buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         ymdhms.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
@@ -483,28 +490,42 @@ impl Dt {
         };
         let mut ymdhms = local_tp.to_ymd_rich();
         ymdhms.set_offset(Some(secs));
+        eprintln!("{}", ymdhms.sec());
         ymdhms
     }
 
     /// Helper for creating a timezone-adjusted YmdHmsRich.
-    pub(crate) fn ymdhms_rich_with_tz(&self, tz_name: &str) -> YmdHmsRich {
-        // 1. Get the true UTC Unix timestamp
-        let utc_unix = self.to_unix();
+    pub(crate) fn ymdhms_rich_with_tz(&self, tz_name: &str, add_offset: bool) -> YmdHmsRich {
+        let mut ymdhms = self.to_ymd_rich(); // start with current (usually UTC) time
+        let mut offset_secs = 0i32;
 
-        // 2. Look up offset + abbrev at that exact UTC instant
-        let unix_sec = Dt::attos_to_sec_i64(utc_unix.to_attos());
-        let (offset_secs, abbrev) = match offset_for_utc(tz_name, unix_sec) {
-            Some(info) => (info.offset, info.abbrev),
-            None => (0, "UTC"), // fallback for unknown timezone
-        };
+        if add_offset && !is_utc_iana(tz_name) {
+            #[cfg(feature = "jiff")]
+            {
+                use jiff::tz::TimeZone;
 
-        // 3. Build local time = UTC + offset
-        let local_tp = self.add_sec(offset_secs as i128);
+                if let Ok(tz) = TimeZone::get(tz_name) {
+                    let ts = self.to_jiff_timestamp();
+                    let info = tz.to_offset_info(ts);
+                    offset_secs = info.offset().seconds();
+                    ymdhms.set_tz_abbrev(Some(info.abbreviation()));
+                }
+            }
+            #[cfg(not(feature = "jiff"))]
+            {
+                ymdhms.set_tz_abbrev(Some("UTC"));
+            }
+        }
 
-        let mut ymdhms = local_tp.to_ymd_rich();
+        // If we want to show local time instead of UTC
+        if add_offset {
+            let local_tp = self.add_sec(offset_secs as i128);
+            ymdhms = local_tp.to_ymd_rich();
+        }
+
         ymdhms.set_offset(Some(offset_secs));
         ymdhms.set_tz(Some(tz_name));
-        ymdhms.set_tz_abbrev(Some(abbrev));
+
         ymdhms
     }
 }

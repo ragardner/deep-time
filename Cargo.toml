@@ -96,11 +96,6 @@ serde = [
 
 jiff = [
     "dep:jiff",
-    "jiff?/alloc",
-]
-
-jiff-tz = [
-    "jiff",
     "std",
     "jiff?/tz-system",
     "jiff?/tzdb-zoneinfo",
