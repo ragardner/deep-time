@@ -640,12 +640,12 @@ impl<const DEPTH: usize, const REASON_LEN: usize, const FILE_LEN: usize>
 
             // reason
             let reason_bytes = &bytes[offset..offset + REASON_LEN];
-            reasons[i] = LiteStr::from_bytes(reason_bytes).ok();
+            reasons[i] = Some(LiteStr::from_bytes(reason_bytes));
             offset += REASON_LEN;
 
             // location
             let file_bytes = &bytes[offset..offset + FILE_LEN];
-            let file = LiteStr::from_bytes(file_bytes).ok()?;
+            let file = LiteStr::from_bytes(file_bytes);
 
             offset += FILE_LEN;
 

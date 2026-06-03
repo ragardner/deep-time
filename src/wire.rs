@@ -496,9 +496,8 @@ impl TimeParts {
 
         // iana_name (49 bytes) — already nice
         let iana_bytes = &bytes[offset..offset + 49];
-        if let Some(name) = LiteStr::<49>::from_bytes(iana_bytes).ok()
-            && !name.len() == 0
-        {
+        let name = LiteStr::<49>::from_bytes(iana_bytes);
+        if !name.len() == 0 {
             dc.iana_name = Some(name);
         }
         offset += 49;

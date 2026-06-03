@@ -212,7 +212,7 @@ mod perf_tests {
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = x.to_str("%Y-%m-%dT%H:%M:%S");
+                let _ = x.to_str_lite("%Y-%m-%dT%H:%M:%S");
             }
             let elapsed = start.elapsed();
 

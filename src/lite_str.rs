@@ -1,17 +1,15 @@
 use core::fmt::{self};
 use core::str;
 
-/// Fixed-capacity, stack-only UTF-8 string stored in a single `[u8; N]` array.
+/// Fixed-capacity, stack-only buffer holding a UTF-8 string in a `[u8; N]` array.
 ///
 /// - The string is stored as raw bytes with C-style nul termination.
-/// - Its logical length is determined at runtime by the position of the first nul byte (`b'\0'`).
-/// - All bytes after the string content are guaranteed to be zero.
-/// - The type guarantees that the prefix up to the first nul is always valid UTF-8
-///   (when constructed through the safe API).
-/// - This type is **intentionally** kept very lightweight. When you use different sizes
-///   (such as `LiteStr<16>`, `LiteStr<32>`, `LiteStr<64>`), Rust creates a full
-///   separate copy of the type **and all of its methods** for each size. This is
-///   why it is important to keep the implementation of `LiteStr` as minimal as possible.
+/// - Logical length is the position of the first `b'\0'` (or `N` if there is none).
+/// - This type performs **no validation on construction**.
+///   Validity is only checked when calling `as_str()`, `Debug`, or during serialization.
+/// - `new()` truncates at a UTF-8 boundary if the input is too long.
+/// - `from_bytes()` only checks that the input fits in `N`.
+/// - This type is intentionally kept minimal because each `LiteStr<N>` is monomorphized separately.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct LiteStr<const N: usize> {
     bytes: [u8; N],
@@ -27,7 +25,7 @@ impl<const N: usize> Default for LiteStr<N> {
 impl<const N: usize> LiteStr<N> {
     pub const SIZE: usize = N;
 
-    /// Recommended ergonomic constructor – truncates at a UTF-8 boundary if necessary.
+    /// Creates a `LiteStr` from a `&str`, truncating at a UTF-8 boundary if necessary.
     #[inline(never)]
     pub fn new(s: &str) -> Self {
         let mut bytes = [0u8; N];
@@ -35,37 +33,24 @@ impl<const N: usize> LiteStr<N> {
         Self { bytes }
     }
 
-    /// Returns the stored string as `&str`.
+    /// Returns the content as `&str`, validating UTF-8.
     #[inline(always)]
     pub fn as_str(&self) -> Result<&str, LiteStrErr> {
         str::from_utf8(&self.bytes[..find_first_nul(&self.bytes)])
             .map_err(|_| LiteStrErr::CorruptedData)
     }
 
-    /// Creates a [`LiteStr<N>`] from a byte slice.
+    /// Creates a `LiteStr<N>` from a byte slice.
     ///
-    /// The input slice may have any length up to `N`. The bytes are copied into
-    /// the internal buffer, and any remaining space is zero-filled to satisfy
-    /// the type's nul-terminated invariant (all bytes after the first `b'\0'`
-    /// must be zero).
-    ///
-    /// # Errors
-    ///
-    /// * [`LiteStrErr::WrongLen`] if `bytes.len() > N`.
-    /// * [`LiteStrErr::InvalidUtf8`] if the content up to the first nul byte is not valid UTF-8.
-    /// * [`LiteStrErr::CorruptedData`] if the buffer violates the internal representation invariant
-    ///   (non-zero bytes appear after the first nul terminator).
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, LiteStrErr> {
-        let len = bytes.len();
-        if len > N {
-            return Err(LiteStrErr::WrongLen);
-        }
-
+    /// - Copies up to `N` bytes from the input into the buffer and zero-fills the rest.
+    /// - If `bytes.len() > N`, the input is **silently truncated** to the first `N` bytes.
+    /// - **No UTF-8 validation is performed.**
+    #[inline(always)]
+    pub fn from_bytes(bytes: &[u8]) -> Self {
         let mut arr = [0u8; N];
-        arr[..len].copy_from_slice(bytes);
-
-        validate_filled_buffer(&arr)?;
-        Ok(Self { bytes: arr })
+        let len = bytes.len().min(N);
+        arr[..len].copy_from_slice(&bytes[..len]);
+        Self { bytes: arr }
     }
 
     #[inline(always)]
@@ -73,13 +58,13 @@ impl<const N: usize> LiteStr<N> {
         self.bytes
     }
 
-    /// Returns the stored string as `&[u8]`.
+    /// Returns the content as `&[u8]` (up to the first nul).
     #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..find_first_nul(&self.bytes)]
     }
 
-    /// Returns the current len of the utf-8.
+    /// Returns the length of the content (position of first nul or `N`).
     #[allow(clippy::len_without_is_empty)]
     #[inline(always)]
     pub fn len(&self) -> usize {
@@ -139,21 +124,6 @@ fn find_first_nul(bytes: &[u8]) -> usize {
 }
 
 #[inline(never)]
-fn validate_filled_buffer(bytes: &[u8]) -> Result<(), LiteStrErr> {
-    let len = find_first_nul(bytes);
-
-    if str::from_utf8(&bytes[..len]).is_err() {
-        return Err(LiteStrErr::InvalidUtf8);
-    }
-
-    if len < bytes.len() && bytes[len..].iter().any(|&b| b != 0) {
-        return Err(LiteStrErr::CorruptedData);
-    }
-
-    Ok(())
-}
-
-#[inline(never)]
 fn copy_valid_utf8_prefix(dst: &mut [u8], src: &[u8], max_len: usize) -> usize {
     let len = src.len().min(max_len);
     match str::from_utf8(&src[..len]) {
@@ -172,22 +142,17 @@ fn copy_valid_utf8_prefix(dst: &mut [u8], src: &[u8], max_len: usize) -> usize {
 /// Errors returned by [`LiteStr`] operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LiteStrErr {
-    /// Input was not valid UTF-8.
+    /// Input was too long for this `LiteStr<N>`.
     WrongLen,
-    /// Input was not valid UTF-8.
-    InvalidUtf8,
-    /// Internal data is corrupted or violates the type invariant.
+    /// The content is not valid UTF-8 (only returned by `as_str`).
     CorruptedData,
 }
 
 impl fmt::Display for LiteStrErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LiteStrErr::WrongLen => f.write_str("input len does not match SIZE"),
-            LiteStrErr::InvalidUtf8 => f.write_str("input is not valid UTF-8"),
-            LiteStrErr::CorruptedData => {
-                f.write_str("internal data is corrupted or violates the representation invariant")
-            }
+            LiteStrErr::WrongLen => f.write_str("input length exceeds SIZE"),
+            LiteStrErr::CorruptedData => f.write_str("content is not valid UTF-8"),
         }
     }
 }

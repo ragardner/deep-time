@@ -32,7 +32,7 @@ pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
 impl YmdHms {
     #[cfg(feature = "alloc")]
     #[inline]
-    pub(crate) fn to_str(
+    pub fn to_str(
         &self,
         fmt: &str,
         offset: Option<i32>,
@@ -44,7 +44,7 @@ impl YmdHms {
     }
 
     #[inline]
-    pub(crate) fn to_str_lite(
+    pub fn to_str_lite(
         &self,
         fmt: &str,
         offset: Option<i32>,
@@ -52,7 +52,7 @@ impl YmdHms {
         abbrev: Option<LiteStr<49>>,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
         let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev)?;
-        LiteStr::from_bytes(&buf[..pos]).map_err(|e| an_err!(DtErrKind::InvalidBytes, "{}", e))
+        Ok(LiteStr::from_bytes(&buf[..pos]))
     }
 
     pub(crate) fn format_to_buffer(
