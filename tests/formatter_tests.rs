@@ -149,6 +149,42 @@ mod format_tests {
     }
 
     #[test]
+    fn test_weekday_and_week_number_directives() {
+        // 2023-12-31 was a Sunday
+        let sun = Dt::from_ymd(2023, 12, 31, 12, 0, 0, 0, Scale::UTC);
+        assert_eq!(sun.to_str_lite("%A").unwrap().as_str().unwrap(), "Sunday");
+        assert_eq!(sun.to_str_lite("%a").unwrap().as_str().unwrap(), "Sun");
+        assert_eq!(sun.to_str_lite("%w").unwrap().as_str().unwrap(), "0");
+        assert_eq!(sun.to_str_lite("%u").unwrap().as_str().unwrap(), "7");
+
+        // 2024-01-01 was a Monday (ISO week 1 of 2024)
+        let mon = Dt::from_ymd(2024, 1, 1, 12, 0, 0, 0, Scale::UTC);
+        assert_eq!(mon.to_str_lite("%A").unwrap().as_str().unwrap(), "Monday");
+        assert_eq!(mon.to_str_lite("%w").unwrap().as_str().unwrap(), "1");
+        assert_eq!(mon.to_str_lite("%u").unwrap().as_str().unwrap(), "1");
+        assert_eq!(mon.to_str_lite("%V").unwrap().as_str().unwrap(), "01");
+        assert_eq!(mon.to_str_lite("%G").unwrap().as_str().unwrap(), "2024");
+        assert_eq!(mon.to_str_lite("%g").unwrap().as_str().unwrap(), "24"); // ← added
+
+        // 2000-01-01 was a Saturday
+        let sat = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+        assert_eq!(sat.to_str_lite("%w").unwrap().as_str().unwrap(), "6");
+        assert_eq!(sat.to_str_lite("%U").unwrap().as_str().unwrap(), "00");
+        assert_eq!(sat.to_str_lite("%W").unwrap().as_str().unwrap(), "00");
+
+        // 2015-12-28 → ISO week 53 of 2015
+        let w53 = Dt::from_ymd(2015, 12, 28, 12, 0, 0, 0, Scale::UTC);
+        assert_eq!(w53.to_str_lite("%V").unwrap().as_str().unwrap(), "53");
+        assert_eq!(w53.to_str_lite("%G").unwrap().as_str().unwrap(), "2015");
+
+        // 2024-12-30 → ISO week 1 of 2025
+        let dec30 = Dt::from_ymd(2024, 12, 30, 12, 0, 0, 0, Scale::UTC);
+        assert_eq!(dec30.to_str_lite("%V").unwrap().as_str().unwrap(), "01");
+        assert_eq!(dec30.to_str_lite("%G").unwrap().as_str().unwrap(), "2025");
+        assert_eq!(dec30.to_str_lite("%g").unwrap().as_str().unwrap(), "25"); // ← added
+    }
+
+    #[test]
     fn test_unix_timestamp_and_day_of_year() {
         let t = Dt::from_ymd(1970, 1, 1, 0, 0, 0, 0, Scale::UTC);
 

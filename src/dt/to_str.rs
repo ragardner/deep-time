@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, LiteStr, STRFTIME_SIZE, YmdHmsRich, tz::offset_for_utc};
+use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHms, an_err, tz::offset_for_utc};
 
 #[cfg(feature = "alloc")]
 use crate::ATTOS_PER_SEC;
@@ -128,7 +128,8 @@ impl Dt {
     /// - [`Dt::to_str_with_tz`](../struct.Dt.html#method.to_str_with_tz)
     #[inline(always)]
     pub fn to_str_with_offset(&self, fmt: &str, secs: i32) -> Result<alloc::string::String, DtErr> {
-        self.ymdhms_rich_with_offset(secs).to_str(fmt)
+        self.ymd_with_offset(secs)
+            .to_str(fmt, Some(secs), None, None)
     }
 
     /// Formats this [`Dt`] into a string, time adjusted to the given IANA timezone. Requires
@@ -173,7 +174,8 @@ impl Dt {
     /// - [`Dt::to_str_with_offset`](../struct.Dt.html#method.to_str_with_offset)
     #[inline(always)]
     pub fn to_str_with_tz(&self, fmt: &str, tz_name: &str) -> Result<alloc::string::String, DtErr> {
-        self.ymdhms_rich_with_tz(tz_name).to_str(fmt)
+        let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name)?;
+        ymd.to_str(fmt, Some(offset), Some(LiteStr::new(tz_name)), Some(abbrev))
     }
 
     /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp with a
@@ -311,7 +313,7 @@ impl Dt {
     /// - [`Dt::to_str_lite_with_tz`](../struct.Dt.html#method.to_str_lite_with_tz)
     #[inline(always)]
     pub fn to_str_lite(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        self.to_ymd_rich().to_str_lite(fmt)
+        self.to_ymd().to_str_lite(fmt, None, None, None)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, applying a fixed UTC offset.
@@ -353,7 +355,8 @@ impl Dt {
         fmt: &str,
         secs: i32,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        self.ymdhms_rich_with_offset(secs).to_str_lite(fmt)
+        self.ymd_with_offset(secs)
+            .to_str_lite(fmt, Some(secs), None, None)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, time adjusted to the given
@@ -400,7 +403,8 @@ impl Dt {
         fmt: &str,
         tz_name: &str,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        self.ymdhms_rich_with_tz(tz_name).to_str_lite(fmt)
+        let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name)?;
+        ymd.to_str_lite(fmt, Some(offset), Some(LiteStr::new(tz_name)), Some(abbrev))
     }
 
     /// Returns `(is_negative, hours, minutes)`.
@@ -412,32 +416,26 @@ impl Dt {
         (seconds < 0, hours, minutes)
     }
 
-    /// Helper for creating an offset adjusted YmdHmsRich.
-    pub(crate) fn ymdhms_rich_with_offset(&self, secs: i32) -> YmdHmsRich {
+    pub(crate) fn ymd_with_offset(&self, secs: i32) -> YmdHms {
         let local_tp = if secs != 0 {
             self.add_sec(secs as i128)
         } else {
             *self
         };
-        let mut ymdhms = local_tp.to_ymd_rich();
-        ymdhms.set_offset(Some(secs));
-        ymdhms
+        local_tp.to_ymd()
     }
 
-    /// Helper for creating a timezone-adjusted YmdHmsRich.
-    pub(crate) fn ymdhms_rich_with_tz(&self, tz_name: &str) -> YmdHmsRich {
+    pub(crate) fn ymd_with_tz(&self, tz_name: &str) -> Result<(YmdHms, i32, LiteStr<49>), DtErr> {
         // Look up offset + abbrev at that exact UTC instant
         let unix_sec = self.to_unix().to_sec64();
         let (offset_secs, abbrev) = match offset_for_utc(tz_name, unix_sec) {
             Some(info) => (info.offset, info.abbrev),
-            None => (0, "UTC"),
+            None => return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "{}", tz_name)),
         };
         let local_tp = self.add_sec(offset_secs as i128);
 
-        let mut ymdhms = local_tp.to_ymd_rich();
-        ymdhms.set_offset(Some(offset_secs));
-        ymdhms.set_tz(Some(tz_name));
-        ymdhms.set_tz_abbrev(Some(abbrev));
-        ymdhms
+        let ymdhms = local_tp.to_ymd();
+        let ab = LiteStr::new(abbrev);
+        Ok((ymdhms, offset_secs, ab))
     }
 }

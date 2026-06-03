@@ -7,9 +7,7 @@ extern crate alloc;
 mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
-    use deep_time::{
-        Drift, Dt, Meridiem, Offset, Scale, TimeParts, TimeRange, Weekday, YmdHmsRich,
-    };
+    use deep_time::{Drift, Dt, Meridiem, Offset, Scale, TimeParts, TimeRange, Weekday, YmdHms};
 
     /// Helper function to test round-trip serialization/deserialization.
 
@@ -62,18 +60,6 @@ mod tests {
             &range,
             |r| r.to_wire_bytes().to_vec(),
             TimeRange::from_wire_bytes,
-        );
-    }
-
-    #[test]
-    fn test_date_time_roundtrip() {
-        let dt = Dt::from_ymd(2024, 12, 25, 12, 0, 0, 123456789012345678, Scale::UTC);
-        let gp = dt.to_ymd_rich();
-
-        assert_roundtrip(
-            &gp,
-            |g| g.to_wire_bytes().to_vec(),
-            YmdHmsRich::from_wire_bytes,
         );
     }
 

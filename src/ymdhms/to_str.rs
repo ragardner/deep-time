@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, Scale, YmdHmsRich, an_err};
+use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, Scale, YmdHms, an_err};
 
 pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
     b"Sunday",
@@ -29,23 +29,38 @@ pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
     b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec",
 ];
 
-impl YmdHmsRich {
+impl YmdHms {
     #[cfg(feature = "alloc")]
     #[inline]
-    pub(crate) fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
-        let (buf, pos) = self.format_to_buffer(fmt.as_bytes())?;
+    pub(crate) fn to_str(
+        &self,
+        fmt: &str,
+        offset: Option<i32>,
+        tz: Option<LiteStr<49>>,
+        abbrev: Option<LiteStr<49>>,
+    ) -> Result<alloc::string::String, DtErr> {
+        let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..pos]).into_owned())
     }
 
     #[inline]
-    pub(crate) fn to_str_lite(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let (buf, pos) = self.format_to_buffer(fmt.as_bytes())?;
+    pub(crate) fn to_str_lite(
+        &self,
+        fmt: &str,
+        offset: Option<i32>,
+        tz: Option<LiteStr<49>>,
+        abbrev: Option<LiteStr<49>>,
+    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+        let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev)?;
         LiteStr::from_bytes(&buf[..pos]).map_err(|e| an_err!(DtErrKind::InvalidBytes, "{}", e))
     }
 
     pub(crate) fn format_to_buffer(
         &self,
         fmt: &[u8],
+        offset: Option<i32>,
+        tz: Option<LiteStr<49>>,
+        abbrev: Option<LiteStr<49>>,
     ) -> Result<([u8; STRFTIME_SIZE], usize), DtErr> {
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
@@ -230,19 +245,19 @@ impl YmdHmsRich {
                 }
                 b'Y' => self.write_full_year(&mut buf, &mut pos, flag, width, colons, true),
                 b'y' => self.write_two_digit_year(&mut buf, &mut pos, flag, width, colons, true),
-                b'z' => self.write_timezone_offset(&mut buf, &mut pos, flag, width, colons),
+                b'z' => self.write_timezone_offset(offset, &mut buf, &mut pos, flag, width, colons),
                 b'F' => self.write_iso_date(&mut buf, &mut pos),
                 b'D' => self.write_us_date_shortcut(&mut buf, &mut pos),
                 b'T' => self.write_time_with_seconds_shortcut(&mut buf, &mut pos),
                 b'R' => self.write_time_without_seconds_shortcut(&mut buf, &mut pos),
-                b'Z' => self.write_timezone_abbrev(&mut buf, &mut pos),
+                b'Z' => self.write_timezone_abbrev(abbrev, &mut buf, &mut pos),
 
                 b'Q' => {
-                    if let Some(iana) = self.tz() {
+                    if let Some(iana) = tz {
                         Self::write_bytes(&mut buf, &mut pos, iana.as_bytes());
-                    } else if let Some(abbrev) = self.tz_abbrev() {
-                        Self::write_bytes(&mut buf, &mut pos, abbrev.as_bytes());
-                    } else if self.offset_sec().unwrap_or_default() == 0 {
+                    } else if let Some(ab) = abbrev {
+                        Self::write_bytes(&mut buf, &mut pos, ab.as_bytes());
+                    } else if offset.unwrap_or_default() == 0 {
                         Self::write_bytes(&mut buf, &mut pos, b"UTC");
                     } else if i >= fmt.len() {
                         while pos > 0 && matches!(buf[pos - 1], b' ' | b'\t' | b'\n' | b'\r') {
@@ -482,13 +497,13 @@ impl YmdHmsRich {
 
     #[inline]
     pub(crate) fn write_weekday_full(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        let name = WEEKDAYS_FULL[self.wkday as usize];
+        let name = WEEKDAYS_FULL[self.wkday().wkday_sun_0_based() as usize];
         Self::write_bytes(buf, pos, name);
     }
 
     #[inline]
     pub(crate) fn write_weekday_abbrev(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        let name = WEEKDAYS_ABBR[self.wkday as usize];
+        let name = WEEKDAYS_ABBR[self.wkday().wkday_sun_0_based() as usize];
         Self::write_bytes(buf, pos, name);
     }
 
@@ -554,7 +569,7 @@ impl YmdHmsRich {
         width: Option<u8>,
         _colons: u8,
     ) {
-        Self::write_i64_padded(buf, pos, self.iso_yr, flag, width, b'0');
+        Self::write_i64_padded(buf, pos, self.iso_yr(), flag, width, b'0');
     }
 
     #[inline]
@@ -566,7 +581,7 @@ impl YmdHmsRich {
         width: Option<u8>,
         _colons: u8,
     ) {
-        let yy = (self.iso_yr % 100).saturating_abs() as u32;
+        let yy = (self.iso_yr() % 100).saturating_abs() as u32;
         Self::write_u32_padded(buf, pos, yy, flag, width.or(Some(2)), b'0');
     }
 
@@ -635,7 +650,7 @@ impl YmdHmsRich {
         Self::write_u32_padded(
             buf,
             pos,
-            self.day_of_yr as u32,
+            self.day_of_yr() as u32,
             flag,
             width.or(Some(3)),
             b'0',
@@ -744,7 +759,7 @@ impl YmdHmsRich {
         Self::write_u32_padded(
             buf,
             pos,
-            self.wkday_sun() as u32,
+            self.wkday().wkday_sun_0_based() as u32,
             flag,
             width.or(Some(1)),
             b'0',
@@ -763,7 +778,7 @@ impl YmdHmsRich {
         Self::write_u32_padded(
             buf,
             pos,
-            self.wkday_mon() as u32,
+            self.wkday().wkday_mon_1_based() as u32,
             flag,
             width.or(Some(1)),
             b'0',
@@ -779,7 +794,14 @@ impl YmdHmsRich {
         width: Option<u8>,
         _colons: u8,
     ) {
-        Self::write_u32_padded(buf, pos, self.iso_wk as u32, flag, width.or(Some(2)), b'0');
+        Self::write_u32_padded(
+            buf,
+            pos,
+            self.iso_wk() as u32,
+            flag,
+            width.or(Some(2)),
+            b'0',
+        );
     }
 
     #[inline]
@@ -794,7 +816,7 @@ impl YmdHmsRich {
         Self::write_u32_padded(
             buf,
             pos,
-            self.wk_of_yr_sun as u32,
+            self.wk_of_yr_sun() as u32,
             flag,
             width.or(Some(2)),
             b'0',
@@ -813,7 +835,7 @@ impl YmdHmsRich {
         Self::write_u32_padded(
             buf,
             pos,
-            self.wk_of_yr_mon as u32,
+            self.wk_of_yr_mon() as u32,
             flag,
             width.or(Some(2)),
             b'0',
@@ -861,13 +883,14 @@ impl YmdHmsRich {
 
     pub(crate) fn write_timezone_offset(
         &self,
+        offset: Option<i32>,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         _flag: u8,
         _width: Option<u8>,
         colons: u8,
     ) {
-        let offset_sec = self.offset_sec().unwrap_or(0);
+        let offset_sec = offset.unwrap_or(0);
         let (negative, hours, minutes) = Dt::sec_as_hhmm(offset_sec);
         let sign = if negative { b'-' } else { b'+' };
 
@@ -951,8 +974,13 @@ impl YmdHmsRich {
     }
 
     #[inline]
-    pub(crate) fn write_timezone_abbrev(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        if let Some(abbrev) = self.tz_abbrev() {
+    pub(crate) fn write_timezone_abbrev(
+        &self,
+        abbrev: Option<LiteStr<49>>,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+    ) {
+        if let Some(abbrev) = abbrev {
             Self::write_bytes(buf, pos, abbrev.as_bytes());
         } else {
             Self::write_bytes(buf, pos, b"UTC");

@@ -68,7 +68,6 @@ use core::fmt;
 ///
 /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
 /// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
-/// - [`Dt::to_ymd_rich`](../struct.Dt.html#method.to_ymd_rich)
 ///
 /// ### From and to str and bytes
 ///

@@ -593,7 +593,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = &self.inp[3..];
         self.tm.wkday = Some(
-            Weekday::from_sunday_zero_offset(index)
+            Weekday::from_sunday_0_based(index)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidName, "abbrev. weekday"))?,
         );
         self.advance_fmt();
@@ -617,7 +617,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = remaining;
         self.tm.wkday = Some(
-            Weekday::from_sunday_zero_offset(index)
+            Weekday::from_sunday_0_based(index)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidName, "weekday"))?,
         );
         self.advance_fmt();
@@ -639,7 +639,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 ));
             }
         };
-        let wd = Weekday::from_monday_one_offset(w)
+        let wd = Weekday::from_monday_1_based(w)
             .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "monday based weekday number"))?;
         self.tm.wkday = Some(wd);
         self.inp = remaining;
@@ -662,7 +662,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 ));
             }
         };
-        let wd = Weekday::from_sunday_zero_offset(w)
+        let wd = Weekday::from_sunday_0_based(w)
             .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "sunday based weekday number"))?;
         self.tm.wkday = Some(wd);
         self.inp = remaining;

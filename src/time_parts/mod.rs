@@ -116,8 +116,7 @@ pub enum Weekday {
 
 impl Weekday {
     /// Converts a Sunday-based weekday number (0 = Sunday … 6 = Saturday) to `Weekday`.
-    #[inline]
-    pub const fn from_sunday_zero_offset(n: u8) -> Option<Self> {
+    pub const fn from_sunday_0_based(n: u8) -> Option<Self> {
         match n {
             0 => Some(Weekday::Sunday),
             1 => Some(Weekday::Monday),
@@ -131,8 +130,7 @@ impl Weekday {
     }
 
     /// Converts a Monday-based weekday number (1 = Monday … 7 = Sunday) to `Weekday`.
-    #[inline]
-    pub const fn from_monday_one_offset(n: u8) -> Option<Self> {
+    pub const fn from_monday_1_based(n: u8) -> Option<Self> {
         match n {
             1 => Some(Weekday::Monday),
             2 => Some(Weekday::Tuesday),
@@ -146,8 +144,7 @@ impl Weekday {
     }
 
     /// Sunday-based weekday number (0 = Sunday … 6 = Saturday).
-    #[inline]
-    pub const fn wk_sun(self) -> u8 {
+    pub const fn wkday_sun_0_based(self) -> u8 {
         match self {
             Weekday::Sunday => 0,
             Weekday::Monday => 1,
@@ -159,9 +156,34 @@ impl Weekday {
         }
     }
 
+    /// Sunday-based weekday number (1 = Sunday … 7 = Saturday).
+    pub const fn wkday_sun_1_based(self) -> u8 {
+        match self {
+            Weekday::Sunday => 1,
+            Weekday::Monday => 2,
+            Weekday::Tuesday => 3,
+            Weekday::Wednesday => 4,
+            Weekday::Thursday => 5,
+            Weekday::Friday => 6,
+            Weekday::Saturday => 7,
+        }
+    }
+
+    /// Monday-based weekday number (0 = Monday … 6 = Sunday).
+    pub const fn wkday_mon_0_based(self) -> u8 {
+        match self {
+            Weekday::Monday => 0,
+            Weekday::Tuesday => 1,
+            Weekday::Wednesday => 2,
+            Weekday::Thursday => 3,
+            Weekday::Friday => 4,
+            Weekday::Saturday => 5,
+            Weekday::Sunday => 6,
+        }
+    }
+
     /// Monday-based weekday number (1 = Monday … 7 = Sunday).
-    #[inline]
-    pub const fn wk_mon(self) -> u8 {
+    pub const fn wkday_mon_1_based(self) -> u8 {
         match self {
             Weekday::Monday => 1,
             Weekday::Tuesday => 2,

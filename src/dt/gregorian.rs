@@ -1,6 +1,4 @@
-use crate::{
-    ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, YmdHmsRich, leap_seconds::leap_sec,
-};
+use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, leap_seconds::leap_sec};
 
 impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
@@ -27,82 +25,6 @@ impl Dt {
         let yr = y + if m <= 2 { 1 } else { 0 };
 
         (yr, m as u8, d as u8)
-    }
-
-    /// Returns the full proleptic Gregorian date and wall-clock time for this instant,
-    /// including all precomputed calendar metadata (ISO week date, day-of-year, multiple
-    /// week-numbering systems, etc.).
-    ///
-    /// This is the "heavy" version of [`to_ymd`](../struct.Dt.html#method.to_ymd).
-    ///
-    /// It performs the same scale conversion but additionally computes and stores every common
-    /// calendar-derived field. This means downstream formatting code does not have to
-    /// re-calculate these numbers for the same object.
-    ///
-    /// The returned [`YmdHmsRich`] has convenient and fast formatter methods for turning
-    /// the object into a datetime - an array of [`u8`] or [`String`](alloc::string::String)
-    /// (requires `"alloc"` feature).
-    ///
-    /// ## See also
-    ///
-    /// * [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) — the lightweight
-    ///   version.
-    /// * [`YmdHmsRich`] — the rich struct type and its accessor methods.
-    /// * [`YmdHmsRich::to_str`](../struct.YmdHmsRich.html#method.to_str) — basically like
-    ///   strftime.
-    ///
-    /// ## What you get in `YmdHmsRich`
-    ///
-    /// In addition to the fields returned by [`to_ymd`](Self::to_ymd),
-    /// the returned struct also contains:
-    ///
-    /// - `iso_yr`, `iso_wk`, `iso_wkday` — ISO 8601 week date (Monday-based week)
-    /// - `day_of_yr` — ordinal day of the year (1-based)
-    /// - `wkday` — weekday number (0 = Sunday … 6 = Saturday)
-    /// - `wk_of_yr_sun` — Sunday-based week number (`%U` in strftime, range `0..=53`)
-    /// - `wk_of_yr_mon` — Monday-based week number (`%W` in strftime, range `0..=53`)
-    /// - `scale` — the time scale used for the conversion (`new`)
-    ///
-    /// All other fields (`unix_attosec`, `yr`…`attos`, `offset_sec`, `tz`, `tz_abbrev`)
-    /// are populated exactly as in the lightweight [`YmdHms`] version.
-    ///
-    /// ## Performance note
-    ///
-    /// This function performs several extra calendar calculations (ISO week date,
-    /// day-of-year, both week-numbering systems). If you only need the basic YMDHMS
-    /// components, prefer [`to_ymd`](Self::to_ymd) for speed.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::{Dt, Scale};
-    ///
-    /// let dt = Dt::from_ymd(2024, 6, 15, 12, 30, 45, 0, Scale::UTC);
-    /// let rich = dt.to_ymd_rich();
-    ///
-    /// assert_eq!(rich.yr(), 2024);
-    /// assert_eq!(rich.iso_wk(), 24);           // ISO week 24
-    /// assert_eq!(rich.day_of_yr(), 167);       // June 15 is day 167
-    /// assert_eq!(rich.wkday_sun(), 6);         // Saturday
-    /// ```
-    pub fn to_ymd_rich(&self) -> YmdHmsRich {
-        let ymdhms = self.to_ymd();
-        let (iso_yr, iso_wk, iso_wkday) =
-            self.to_iso_wk_date(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
-        let day_of_yr = self.day_of_yr(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)));
-        let jd = Self::ymd_to_jd(ymdhms.yr, ymdhms.mo, ymdhms.day);
-        let wkday = Self::jd_to_wkday(jd);
-        let wk_of_yr_sun = self.wk_sun(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
-        let wk_of_yr_mon = self.wk_mon(Some((ymdhms.yr, ymdhms.mo, ymdhms.day)), Some(day_of_yr));
-        ymdhms.to_ymd_rich(
-            iso_yr,
-            iso_wk,
-            iso_wkday,
-            day_of_yr,
-            wkday,
-            wk_of_yr_sun,
-            wk_of_yr_mon,
-        )
     }
 
     /// Returns the proleptic Gregorian date and wall-clock time for this instant.
@@ -347,7 +269,7 @@ impl Dt {
         let monday_requested =
             monday_wk1.saturating_add(((iso_wk as i64).saturating_sub(1)).saturating_mul(7));
 
-        monday_requested.saturating_add((wkday.wk_mon() - 1) as i64)
+        monday_requested.saturating_add((wkday.wkday_mon_0_based()) as i64)
     }
 
     /// Computes the Julian Day Number from a Sunday-based week-of-year (`%U`).
@@ -361,7 +283,7 @@ impl Dt {
         let sunday_of_wk =
             first_sunday_jd.saturating_add(((wk as i64).saturating_sub(1)).saturating_mul(7));
 
-        sunday_of_wk.saturating_add(wkday.wk_sun() as i64)
+        sunday_of_wk.saturating_add(wkday.wkday_sun_0_based() as i64)
     }
 
     /// Computes the Julian Day Number from a Monday-based week-of-year (`%W`).
@@ -375,7 +297,7 @@ impl Dt {
         let monday_of_wk =
             first_monday_jd.saturating_add(((wk as i64).saturating_sub(1)).saturating_mul(7));
 
-        monday_of_wk.saturating_add((wkday.wk_mon() - 1) as i64)
+        monday_of_wk.saturating_add((wkday.wkday_mon_0_based()) as i64)
     }
 
     /// Returns `true` if the given year is a Gregorian leap year under proleptic rules.
@@ -412,13 +334,17 @@ impl Dt {
     /// January 1 is day `1`; December 31 is day `365` or `366` (in leap years).
     /// Uses the proleptic Gregorian calendar.
     pub fn day_of_yr(&self, ymd: Option<(i64, u8, u8)>) -> u16 {
-        let (yr, month, day) = if let Some(ymd) = ymd {
+        let (yr, mo, day) = if let Some(ymd) = ymd {
             ymd
         } else {
             let g = self.to_ymd();
             (g.yr, g.mo, g.day)
         };
-        let jd = Self::ymd_to_jd(yr, month, day);
+        Self::_day_of_yr(yr, mo, day)
+    }
+
+    pub(crate) fn _day_of_yr(yr: i64, mo: u8, day: u8) -> u16 {
+        let jd = Self::ymd_to_jd(yr, mo, day);
         let jd_jan1 = Self::ymd_to_jd(yr, 1, 1);
 
         let doy = jd.saturating_sub(jd_jan1).saturating_add(1);
@@ -446,6 +372,10 @@ impl Dt {
         } else {
             self.day_of_yr(ymd)
         };
+        Self::_wk_sun(yr, doy)
+    }
+
+    pub(crate) fn _wk_sun(yr: i64, doy: u16) -> u8 {
         let jan1_jd = Self::ymd_to_jd(yr, 1, 1);
         let wd_jan1 = Self::jd_to_wkday(jan1_jd);
         let days_to_first_sunday = (7u8 - wd_jan1) % 7u8;
@@ -478,6 +408,10 @@ impl Dt {
         } else {
             self.day_of_yr(ymd)
         };
+        Self::_wk_mon(yr, doy)
+    }
+
+    pub(crate) fn _wk_mon(yr: i64, doy: u16) -> u8 {
         let jan1_jd = Self::ymd_to_jd(yr, 1, 1);
         let wd_jan1 = Self::jd_to_wkday(jan1_jd);
         let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
@@ -505,13 +439,17 @@ impl Dt {
     /// it is used directly; otherwise [`to_gregorian_ymd`](Self::to_gregorian_ymd)
     /// is called internally.
     pub fn to_iso_wk_date(&self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
-        let (yr, month, day) = if let Some(ymd) = ymd {
+        let (yr, mo, day) = if let Some(ymd) = ymd {
             ymd
         } else {
             let g = self.to_ymd();
             (g.yr, g.mo, g.day)
         };
-        let jd = Self::ymd_to_jd(yr, month, day);
+        Self::_to_iso_wk_date(yr, mo, day)
+    }
+
+    pub(crate) fn _to_iso_wk_date(yr: i64, mo: u8, day: u8) -> (i64, u8, Weekday) {
+        let jd = Self::ymd_to_jd(yr, mo, day);
         let wd = Self::jd_to_wkday(jd);
         let wd_iso = if wd == 0 { 7 } else { wd };
 
@@ -548,7 +486,7 @@ impl Dt {
         } else {
             wk
         };
-        let wkday_enum = match Weekday::from_monday_one_offset(wd_iso) {
+        let wkday_enum = match Weekday::from_monday_1_based(wd_iso) {
             Some(w) => w,
             None => Weekday::Monday,
         };

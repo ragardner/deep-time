@@ -208,7 +208,7 @@ impl Dt {
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
-        let gt = self.target(Scale::UTC).to_ymd_rich();
+        let ymd = self.target(Scale::UTC).to_ymd();
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];
         let mut pos = 0usize;
@@ -230,7 +230,7 @@ impl Dt {
         };
 
         // ── Year (4 BCD digits) ───────────────────────────────────────────────────────
-        let year = gt.yr as u32;
+        let year = ymd.yr as u32;
         let y_hi = year / 100;
         let y_lo = year % 100;
         buf[pos] = bcd(y_hi);
@@ -240,20 +240,20 @@ impl Dt {
         // ── Date field (Month+Day or Day-of-Year) ─────────────────────────────────────
         if !use_doy {
             // Month/Day variant
-            buf[pos] = bcd(gt.mo as u32);
-            buf[pos + 1] = bcd(gt.day as u32);
+            buf[pos] = bcd(ymd.mo as u32);
+            buf[pos + 1] = bcd(ymd.day as u32);
         } else {
             // Day-of-Year variant (high nibble of first byte is always 0)
-            let doy = gt.day_of_yr as u32;
+            let doy = ymd.day_of_yr() as u32;
             buf[pos] = bcd(doy / 100); // high byte = 00–03 (but only 0-3 used)
             buf[pos + 1] = bcd(doy % 100);
         }
         pos += 2;
 
         // ── Hour / Minute / Second (BCD) ──────────────────────────────────────────────
-        buf[pos] = bcd(gt.hr as u32);
-        buf[pos + 1] = bcd(gt.min as u32);
-        buf[pos + 2] = bcd(gt.sec as u32); // leap second 60 is allowed by spec
+        buf[pos] = bcd(ymd.hr as u32);
+        buf[pos + 1] = bcd(ymd.min as u32);
+        buf[pos + 2] = bcd(ymd.sec as u32); // leap second 60 is allowed by spec
         pos += 3;
 
         // ── Subsecond BCD (0–12 decimal digits, 2 per byte, rounded) ──────────────────
@@ -263,7 +263,7 @@ impl Dt {
 
             // Round attos to nearest representable value at this precision
             let frac_scaled =
-                (gt.attos as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000;
+                (ymd.attos as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000;
 
             let mut remaining = frac_scaled;
             for i in (0..n_subsec).rev() {

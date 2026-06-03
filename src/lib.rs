@@ -154,4 +154,4 @@ pub use scale::Scale;
 pub use strptime::StrPTimeFmt;
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
 pub use time_range::{Every, TimeRange};
-pub use ymdhms::{YmdHms, YmdHmsRich};
+pub use ymdhms::YmdHms;
