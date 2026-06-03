@@ -101,7 +101,12 @@ impl TimeParts {
         };
 
         let minute = self.min.unwrap_or(0) as i64;
-        let second = self.sec.unwrap_or(0) as i64;
+        let mut second = self.sec.unwrap_or(0) as i64;
+        let sec_is_60 = second == 60;
+        if sec_is_60 {
+            second = second.saturating_sub(1)
+        }
+
         let days_since_j2000 = jd.saturating_sub(JD_2000_2_451_545);
         let seconds_from_noon_utc = (hour as i64 - 12) * 3600 + minute * 60 + second;
         let mut total_sec: i64 = days_since_j2000
@@ -152,21 +157,17 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Final construction
         // ──────────────────────────────────────────────────────────────
-        if second == 60 {
+        if sec_is_60 {
             if self.scale.uses_leap_seconds() {
-                let t = Dt::from_sec_and_attos(
-                    total_sec.saturating_sub(1),
-                    self.attos.unwrap_or(0),
-                    self.scale,
-                );
-                let is_leap_sec = match leap_sec(total_sec, true) {
+                let t = Dt::from_sec_and_attos(total_sec, self.attos.unwrap_or(0), self.scale);
+                let is_leap_sec = match leap_sec(total_sec.saturating_add(1), true) {
                     Some(info) => info.is_leap_sec,
                     None => false,
                 };
                 if is_leap_sec { Ok(t.add_sec(1)) } else { Ok(t) }
             } else {
                 Ok(Dt::from_sec_and_attos(
-                    total_sec.saturating_sub(1),
+                    total_sec,
                     self.attos.unwrap_or(0),
                     self.scale,
                 ))
