@@ -56,7 +56,7 @@ mod tests {
             .to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
             .unwrap();
         let b = x
-            .to_str_bin_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+            .to_str_lite_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
             .unwrap();
 
         assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");

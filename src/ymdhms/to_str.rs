@@ -30,49 +30,32 @@ pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
 ];
 
 impl YmdHmsRich {
-    /// Equivalent of strftime.
-    ///
-    /// Requires `"alloc"` feature.
     #[cfg(feature = "alloc")]
-    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let mut pos = 0usize;
-        self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
+    #[inline]
+    pub(crate) fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
+        let (buf, pos) = self.format_to_buffer(fmt.as_bytes())?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..pos]).into_owned())
     }
 
-    /// No-allocation formatting.
-    ///
-    /// ```rust
-    /// use deep_time::{Dt, Scale};
-    ///
-    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-    /// let y = x.to_ymd_rich();
-    /// let b = y.to_str_bin("%F").unwrap();
-    /// let s = b.as_str().unwrap();
-    ///
-    /// println!("{}", s);
-    /// ```
-    pub fn to_str_bin(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let mut pos = 0usize;
-        self.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))
+    #[inline]
+    pub(crate) fn to_str_lite(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+        let (buf, pos) = self.format_to_buffer(fmt.as_bytes())?;
+        LiteStr::from_bytes(&buf[..pos]).map_err(|e| an_err!(DtErrKind::InvalidBytes, "{}", e))
     }
 
     pub(crate) fn format_to_buffer(
         &self,
         fmt: &[u8],
-        buf: &mut [u8; STRFTIME_SIZE],
-        pos: &mut usize,
-    ) -> Result<(), DtErr> {
+    ) -> Result<([u8; STRFTIME_SIZE], usize), DtErr> {
+        let mut buf = [0u8; STRFTIME_SIZE];
+        let mut pos = 0usize;
         let mut i = 0usize;
 
         while i < fmt.len() {
             let byte = fmt[i];
 
             if byte != b'%' {
-                Self::write_bytes(buf, pos, &[byte]);
+                Self::write_bytes(&mut buf, &mut pos, &[byte]);
                 i += 1;
                 continue;
             }
@@ -85,14 +68,13 @@ impl YmdHmsRich {
 
             // %% → literal percent
             if fmt[i] == b'%' {
-                Self::write_bytes(buf, pos, b"%");
+                Self::write_bytes(&mut buf, &mut pos, b"%");
                 i += 1;
                 continue;
             }
 
             // ── Parse optional flags (- 0 _ ~) ───────────────────────
-            // ~ means "trim trailing zeros" (only affects %f / %N fractional seconds)
-            let mut flag = b'0'; // temporary default; many directives override it via pad param
+            let mut flag = b'0';
             let mut trim_trailing = false;
             while i < fmt.len() {
                 match fmt[i] {
@@ -152,7 +134,7 @@ impl YmdHmsRich {
                     return Err(an_err!(DtErrKind::BadFractional, "expected f or N after ."));
                 }
 
-                // optional ~ for trim trailing zeros, after width e.g. %.3~f or %.~f
+                // optional ~ after width
                 if fmt[i] == b'~' {
                     trim_trailing = true;
                     i += 1;
@@ -166,24 +148,20 @@ impl YmdHmsRich {
                 i += 1;
 
                 if matches!(next, b'f' | b'N') {
-                    // Only print the dot for %f when width > 0.
-                    // When trim_trailing (~) is used and the fractional part is zero
-                    // after trimming, we suppress the dot entirely. This gives clean
-                    // RFC 3339 / ISO 8601 output (no ".000..." for integer seconds).
                     let width_val = frac_width.unwrap_or(18);
                     let add_dot = (next == b'f') && (width_val > 0);
 
                     let dot_pos = if add_dot {
-                        let p = *pos;
-                        Self::write_bytes(buf, pos, b".");
+                        let p = pos;
+                        Self::write_bytes(&mut buf, &mut pos, b".");
                         Some(p)
                     } else {
                         None
                     };
 
                     let wrote_frac = self.write_fractional_seconds(
-                        buf,
-                        pos,
+                        &mut buf,
+                        &mut pos,
                         flag,
                         frac_width,
                         colons,
@@ -191,9 +169,9 @@ impl YmdHmsRich {
                     );
 
                     if add_dot && !wrote_frac {
-                        // Nothing significant was written → remove the dot
                         if let Some(p) = dot_pos {
-                            *pos = p;
+                            buf[p] = 0;
+                            pos = p;
                         }
                     }
                     continue;
@@ -204,77 +182,87 @@ impl YmdHmsRich {
 
             // ── Normal directives ──
             match directive {
-                b'A' => self.write_weekday_full(buf, pos),
-                b'a' => self.write_weekday_abbrev(buf, pos),
-                b'B' => self.write_month_name_full(buf, pos),
-                b'b' | b'h' => self.write_month_name_abbrev(buf, pos),
-                b'C' => self.write_century(buf, pos, flag, width, colons),
-                b'd' | b'e' => self.write_day_of_month(buf, pos, flag, width, colons, true),
-                b'f' | b'N' => {
-                    let _ =
-                        self.write_fractional_seconds(buf, pos, flag, width, colons, trim_trailing);
+                b'A' => self.write_weekday_full(&mut buf, &mut pos),
+                b'a' => self.write_weekday_abbrev(&mut buf, &mut pos),
+                b'B' => self.write_month_name_full(&mut buf, &mut pos),
+                b'b' | b'h' => self.write_month_name_abbrev(&mut buf, &mut pos),
+                b'C' => self.write_century(&mut buf, &mut pos, flag, width, colons),
+                b'd' | b'e' => {
+                    self.write_day_of_month(&mut buf, &mut pos, flag, width, colons, true)
                 }
-                b'G' => self.write_iso_week_year(buf, pos, flag, width, colons),
-                b'g' => self.write_two_digit_iso_week_year(buf, pos, flag, width, colons),
-                b'H' | b'k' => self.write_hour24(buf, pos, flag, width, colons, true),
-                b'I' | b'l' => self.write_hour12(buf, pos, flag, width, colons),
-                b'j' => self.write_day_of_year(buf, pos, flag, width, colons),
-                b'M' => self.write_minute(buf, pos, flag, width, colons, true),
-                b'm' => self.write_month_number(buf, pos, flag, width, colons, true),
-                b'q' => self.write_quarter(buf, pos, flag, width, colons),
-                b'n' => self.write_whitespace(buf, pos, b'n'),
-                b't' => self.write_whitespace(buf, pos, b't'),
-                b'P' => self.write_ampm(buf, pos, false),
-                b'p' => self.write_ampm(buf, pos, true),
-                b'r' => self.write_12hour_time_with_ampm(buf, pos),
-                b'S' => self.write_second(buf, pos, flag, width, colons, true),
-                b's' => self.write_unix_timestamp(buf, pos, flag, width, colons),
-                b'U' => self.write_week_number_sunday_based(buf, pos, flag, width, colons),
-                b'u' => self.write_weekday_number_monday_based(buf, pos, flag, width, colons),
-                b'V' => self.write_week_iso(buf, pos, flag, width, colons),
-                b'W' => self.write_week_number_monday_based(buf, pos, flag, width, colons),
-                b'w' => self.write_weekday_number_sunday_based(buf, pos, flag, width, colons),
-                b'Y' => self.write_full_year(buf, pos, flag, width, colons, true),
-                b'y' => self.write_two_digit_year(buf, pos, flag, width, colons, true),
-                b'z' => self.write_timezone_offset(buf, pos, flag, width, colons),
-                b'F' => self.write_iso_date(buf, pos),
-                b'D' => self.write_us_date_shortcut(buf, pos),
-                b'T' => self.write_time_with_seconds_shortcut(buf, pos),
-                b'R' => self.write_time_without_seconds_shortcut(buf, pos),
-                b'Z' => self.write_timezone_abbrev(buf, pos),
+                b'f' | b'N' => {
+                    let _ = self.write_fractional_seconds(
+                        &mut buf,
+                        &mut pos,
+                        flag,
+                        width,
+                        colons,
+                        trim_trailing,
+                    );
+                }
+                b'G' => self.write_iso_week_year(&mut buf, &mut pos, flag, width, colons),
+                b'g' => self.write_two_digit_iso_week_year(&mut buf, &mut pos, flag, width, colons),
+                b'H' | b'k' => self.write_hour24(&mut buf, &mut pos, flag, width, colons, true),
+                b'I' | b'l' => self.write_hour12(&mut buf, &mut pos, flag, width, colons),
+                b'j' => self.write_day_of_year(&mut buf, &mut pos, flag, width, colons),
+                b'M' => self.write_minute(&mut buf, &mut pos, flag, width, colons, true),
+                b'm' => self.write_month_number(&mut buf, &mut pos, flag, width, colons, true),
+                b'q' => self.write_quarter(&mut buf, &mut pos, flag, width, colons),
+                b'n' => self.write_whitespace(&mut buf, &mut pos, b'n'),
+                b't' => self.write_whitespace(&mut buf, &mut pos, b't'),
+                b'P' => self.write_ampm(&mut buf, &mut pos, false),
+                b'p' => self.write_ampm(&mut buf, &mut pos, true),
+                b'r' => self.write_12hour_time_with_ampm(&mut buf, &mut pos),
+                b'S' => self.write_second(&mut buf, &mut pos, flag, width, colons, true),
+                b's' => self.write_unix_timestamp(&mut buf, &mut pos, flag, width, colons),
+                b'U' => {
+                    self.write_week_number_sunday_based(&mut buf, &mut pos, flag, width, colons)
+                }
+                b'u' => {
+                    self.write_weekday_number_monday_based(&mut buf, &mut pos, flag, width, colons)
+                }
+                b'V' => self.write_week_iso(&mut buf, &mut pos, flag, width, colons),
+                b'W' => {
+                    self.write_week_number_monday_based(&mut buf, &mut pos, flag, width, colons)
+                }
+                b'w' => {
+                    self.write_weekday_number_sunday_based(&mut buf, &mut pos, flag, width, colons)
+                }
+                b'Y' => self.write_full_year(&mut buf, &mut pos, flag, width, colons, true),
+                b'y' => self.write_two_digit_year(&mut buf, &mut pos, flag, width, colons, true),
+                b'z' => self.write_timezone_offset(&mut buf, &mut pos, flag, width, colons),
+                b'F' => self.write_iso_date(&mut buf, &mut pos),
+                b'D' => self.write_us_date_shortcut(&mut buf, &mut pos),
+                b'T' => self.write_time_with_seconds_shortcut(&mut buf, &mut pos),
+                b'R' => self.write_time_without_seconds_shortcut(&mut buf, &mut pos),
+                b'Z' => self.write_timezone_abbrev(&mut buf, &mut pos),
 
                 b'Q' => {
-                    /*
-                    we skip writing UTC fallback when:
-                    1. there's no iana
-                    2. %Q directive present
-                    3. offset isn't 0
-                    */
                     if let Some(iana) = self.tz() {
-                        Self::write_bytes(buf, pos, iana.as_bytes());
+                        Self::write_bytes(&mut buf, &mut pos, iana.as_bytes());
                     } else if let Some(abbrev) = self.tz_abbrev() {
-                        Self::write_bytes(buf, pos, abbrev.as_bytes());
+                        Self::write_bytes(&mut buf, &mut pos, abbrev.as_bytes());
                     } else if self.offset_sec().unwrap_or_default() == 0 {
-                        Self::write_bytes(buf, pos, "UTC".as_bytes());
+                        Self::write_bytes(&mut buf, &mut pos, b"UTC");
                     } else if i >= fmt.len() {
-                        while *pos > 0 && matches!(buf[*pos - 1], b' ' | b'\t' | b'\n' | b'\r') {
-                            *pos -= 1;
+                        while pos > 0 && matches!(buf[pos - 1], b' ' | b'\t' | b'\n' | b'\r') {
+                            pos -= 1;
                         }
                     }
                 }
                 b'L' => {
                     if self.scale != Scale::UTC {
-                        Self::write_bytes(buf, pos, self.scale.abbrev().as_bytes())
+                        Self::write_bytes(&mut buf, &mut pos, self.scale.abbrev().as_bytes());
                     }
                 }
-                b'*' => self.write_unbounded_year(buf, pos, flag, width, colons),
+                b'*' => self.write_unbounded_year(&mut buf, &mut pos, flag, width, colons),
 
-                b'c' | b'X' | b'x' => self.write_unsupported(buf, pos),
+                b'c' | b'X' | b'x' => self.write_unsupported(&mut buf, &mut pos),
                 _ => return Err(an_err!(DtErrKind::UnknownDirective)),
             }
         }
 
-        Ok(())
+        Ok((buf, pos))
     }
 
     fn write_bytes(buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, bytes: &[u8]) {
@@ -879,9 +867,7 @@ impl YmdHmsRich {
         _width: Option<u8>,
         colons: u8,
     ) {
-        let Some(offset_sec) = self.offset_sec() else {
-            return;
-        };
+        let offset_sec = self.offset_sec().unwrap_or(0);
         let (negative, hours, minutes) = Dt::sec_as_hhmm(offset_sec);
         let sign = if negative { b'-' } else { b'+' };
 

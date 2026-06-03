@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHmsRich, an_err, tz::offset_for_utc};
+use crate::{Dt, DtErr, LiteStr, STRFTIME_SIZE, YmdHmsRich, tz::offset_for_utc};
 
 #[cfg(feature = "alloc")]
 use crate::ATTOS_PER_SEC;
@@ -88,7 +88,7 @@ impl Dt {
     ///
     /// - [`Dt::to_str_with_offset`](../struct.Dt.html#method.to_str_with_offset)
     /// - [`Dt::to_str_with_tz`](../struct.Dt.html#method.to_str_with_tz)
-    #[inline]
+    #[inline(always)]
     pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
         self.to_str_with_offset(fmt, 0)
     }
@@ -126,11 +126,9 @@ impl Dt {
     ///
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_with_tz`](../struct.Dt.html#method.to_str_with_tz)
-    #[inline]
+    #[inline(always)]
     pub fn to_str_with_offset(&self, fmt: &str, secs: i32) -> Result<alloc::string::String, DtErr> {
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self._to_u8_with_offset(fmt, &mut buf, secs)?;
-        Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
+        self.ymdhms_rich_with_offset(secs).to_str(fmt)
     }
 
     /// Formats this [`Dt`] into a string, time adjusted to the given IANA timezone. Requires
@@ -173,11 +171,9 @@ impl Dt {
     ///
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_with_offset`](../struct.Dt.html#method.to_str_with_offset)
-    #[inline]
+    #[inline(always)]
     pub fn to_str_with_tz(&self, fmt: &str, tz_name: &str) -> Result<alloc::string::String, DtErr> {
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let n = self._to_u8_with_tz(fmt, &mut buf, tz_name)?;
-        Ok(alloc::string::String::from_utf8_lossy(&buf[0..n]).into_owned())
+        self.ymdhms_rich_with_tz(tz_name).to_str(fmt)
     }
 
     /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp with a
@@ -188,7 +184,7 @@ impl Dt {
     /// - Default = 9 digits (nanoseconds) but **automatically trims trailing zeros**.
     /// - If fractional part is zero → no decimal point at all (e.g. `...45Z`).
     /// - Example: `"2024-03-14T15:30:45.123Z"`
-    #[inline]
+    #[inline(always)]
     pub fn to_str_rfc3339(&self) -> Result<String, DtErr> {
         self.to_str_rfc3339_nf(9)
     }
@@ -217,7 +213,7 @@ impl Dt {
     /// - Uses colon-separated offset (`%:z`) instead of forcing `Z`.
     /// - Still trims trailing zeros in the fractional part.
     /// - Example: `"2025-04-16T14:30:45.123+00:00"`
-    #[inline]
+    #[inline(always)]
     pub fn to_str_iso8601(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0)
     }
@@ -228,7 +224,7 @@ impl Dt {
     ///   time scale before producing the result.
     /// - Useful for filenames, URLs, database keys, etc.
     /// - Example: `"20250416T143045.123456789Z"`
-    #[inline]
+    #[inline(always)]
     pub fn to_str_iso8601_basic(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%Y%m%dT%H%M%S%.~fZ", 0)
     }
@@ -239,7 +235,7 @@ impl Dt {
     ///   time scale before producing the result.
     /// - This is the format used in `Date`, `Expires`, `Last-Modified` headers.
     /// - Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
-    #[inline]
+    #[inline(always)]
     pub fn to_str_http(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%a, %d %b %Y %H:%M:%S GMT", 0)
     }
@@ -249,7 +245,7 @@ impl Dt {
     /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
     ///   time scale before producing the result.
     /// - Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
-    #[inline]
+    #[inline(always)]
     pub fn to_str_rfc2822(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%a, %d %b %Y %H:%M:%S %z", 0)
     }
@@ -259,7 +255,7 @@ impl Dt {
     /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
     ///   time scale before producing the result.
     /// - Example: `"2025-W16-3"` (year-week-day)
-    #[inline]
+    #[inline(always)]
     pub fn to_str_iso_week_date(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%G-W%V-%u", 0)
     }
@@ -269,7 +265,7 @@ impl Dt {
     /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
     ///   time scale before producing the result.
     /// - Example: `"2025-04-16"`
-    #[inline]
+    #[inline(always)]
     pub fn to_str_iso_date(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%Y-%m-%d", 0)
     }
@@ -279,7 +275,7 @@ impl Dt {
     /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
     ///   time scale before producing the result.
     /// - Example: `"14:30:45.123456789"`
-    #[inline]
+    #[inline(always)]
     pub fn to_str_iso_time(&self) -> Result<String, DtErr> {
         self.to_str_with_offset("%H:%M:%S%.~f", 0)
     }
@@ -297,7 +293,7 @@ impl Dt {
     /// use deep_time::{Dt, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-    /// let b = x.to_str_bin("%F").unwrap();
+    /// let b = x.to_str_lite("%F").unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -311,15 +307,11 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_bin_with_offset`](../struct.Dt.html#method.to_str_bin_with_offset)
-    /// - [`Dt::to_str_bin_with_tz`](../struct.Dt.html#method.to_str_bin_with_tz)
-    pub fn to_str_bin(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let mut ymdhms = self.to_ymd_rich();
-        ymdhms.set_offset(Some(0)).set_tz_abbrev(None);
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let mut pos = 0usize;
-        ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))
+    /// - [`Dt::to_str_lite_with_offset`](../struct.Dt.html#method.to_str_lite_with_offset)
+    /// - [`Dt::to_str_lite_with_tz`](../struct.Dt.html#method.to_str_lite_with_tz)
+    #[inline(always)]
+    pub fn to_str_lite(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+        self.to_ymd_rich().to_str_lite(fmt)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, applying a fixed UTC offset.
@@ -339,7 +331,7 @@ impl Dt {
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
     /// // offset of minus one hour
-    /// let b = x.to_str_bin_with_offset("%F", -3600).unwrap();
+    /// let b = x.to_str_lite_with_offset("%F", -3600).unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -353,18 +345,15 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_bin`](../struct.Dt.html#method.to_str_bin)
-    /// - [`Dt::to_str_bin_with_tz`](../struct.Dt.html#method.to_str_bin_with_tz)
-    pub fn to_str_bin_with_offset(
+    /// - [`Dt::to_str_lite`](../struct.Dt.html#method.to_str_lite)
+    /// - [`Dt::to_str_lite_with_tz`](../struct.Dt.html#method.to_str_lite_with_tz)
+    #[inline(always)]
+    pub fn to_str_lite_with_offset(
         &self,
         fmt: &str,
         secs: i32,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_offset(secs);
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let mut pos = 0usize;
-        ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))
+        self.ymdhms_rich_with_offset(secs).to_str_lite(fmt)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, time adjusted to the given
@@ -389,7 +378,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
-    /// let b = x.to_str_bin_with_tz("%F", "America/New_York").unwrap();
+    /// let b = x.to_str_lite_with_tz("%F", "America/New_York").unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -403,66 +392,15 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_bin`](../struct.Dt.html#method.to_str_bin)
-    /// - [`Dt::to_str_bin_with_offset`](../struct.Dt.html#method.to_str_bin_with_offset)
-    pub fn to_str_bin_with_tz(
+    /// - [`Dt::to_str_lite`](../struct.Dt.html#method.to_str_lite)
+    /// - [`Dt::to_str_lite_with_offset`](../struct.Dt.html#method.to_str_lite_with_offset)
+    #[inline(always)]
+    pub fn to_str_lite_with_tz(
         &self,
         fmt: &str,
         tz_name: &str,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_tz(tz_name);
-        let mut buf = [0u8; STRFTIME_SIZE];
-        let mut pos = 0usize;
-        ymdhms.format_to_buffer(fmt.as_bytes(), &mut buf, &mut pos)?;
-        LiteStr::from_bytes(&buf).map_err(|_| an_err!(DtErrKind::InvalidBytes))
-    }
-
-    /// Low-level no-alloc formatter that writes into a caller-provided slice,
-    /// using a fixed UTC offset.
-    ///
-    /// Same logic as
-    /// [`Dt::to_str_bin_with_offset`](../struct.Dt.html#method.to_str_bin_with_offset)
-    /// but writes directly into `dest` (truncated to `dest.len()`) and returns the
-    /// number of bytes written.
-    pub fn _to_u8_with_offset(
-        &self,
-        fmt: &str,
-        dest: &mut [u8],
-        secs: i32,
-    ) -> Result<usize, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_offset(secs);
-        let mut internal_buf = [0u8; STRFTIME_SIZE];
-        let mut pos = 0usize;
-        ymdhms.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
-        let written = pos.min(dest.len());
-        if written > 0 {
-            dest[0..written].copy_from_slice(&internal_buf[0..written]);
-        }
-        Ok(written)
-    }
-
-    /// Low-level no-alloc formatter that writes into a caller-provided slice,
-    /// using a full IANA timezone.
-    ///
-    /// Same logic as
-    /// [`Dt::to_str_bin_with_tz`](../struct.Dt.html#method.to_str_bin_with_tz)
-    /// but writes directly into `dest` (truncated to `dest.len()`) and returns the
-    /// number of bytes written.
-    pub fn _to_u8_with_tz(
-        &self,
-        fmt: &str,
-        dest: &mut [u8],
-        tz_name: &str,
-    ) -> Result<usize, DtErr> {
-        let ymdhms = self.ymdhms_rich_with_tz(tz_name);
-        let mut internal_buf = [0u8; STRFTIME_SIZE];
-        let mut pos = 0usize;
-        ymdhms.format_to_buffer(fmt.as_bytes(), &mut internal_buf, &mut pos)?;
-        let written = pos.min(dest.len());
-        if written > 0 {
-            dest[0..written].copy_from_slice(&internal_buf[0..written]);
-        }
-        Ok(written)
+        self.ymdhms_rich_with_tz(tz_name).to_str_lite(fmt)
     }
 
     /// Returns `(is_negative, hours, minutes)`.

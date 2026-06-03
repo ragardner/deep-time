@@ -42,12 +42,28 @@ impl<const N: usize> LiteStr<N> {
             .map_err(|_| LiteStrErr::CorruptedData)
     }
 
+    /// Creates a [`LiteStr<N>`] from a byte slice.
+    ///
+    /// The input slice may have any length up to `N`. The bytes are copied into
+    /// the internal buffer, and any remaining space is zero-filled to satisfy
+    /// the type's nul-terminated invariant (all bytes after the first `b'\0'`
+    /// must be zero).
+    ///
+    /// # Errors
+    ///
+    /// * [`LiteStrErr::WrongLen`] if `bytes.len() > N`.
+    /// * [`LiteStrErr::InvalidUtf8`] if the content up to the first nul byte is not valid UTF-8.
+    /// * [`LiteStrErr::CorruptedData`] if the buffer violates the internal representation invariant
+    ///   (non-zero bytes appear after the first nul terminator).
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, LiteStrErr> {
-        if bytes.len() != N {
+        let len = bytes.len();
+        if len > N {
             return Err(LiteStrErr::WrongLen);
         }
+
         let mut arr = [0u8; N];
-        arr.copy_from_slice(bytes);
+        arr[..len].copy_from_slice(bytes);
+
         validate_filled_buffer(&arr)?;
         Ok(Self { bytes: arr })
     }
