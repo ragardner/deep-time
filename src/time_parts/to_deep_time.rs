@@ -116,7 +116,6 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Apply timezone correction (IANA or Fixed offset)
         // ──────────────────────────────────────────────────────────────
-
         if let Some(name) = &self.iana_name {
             let name_str = name.as_str().map_err(|e| {
                 an_err!(
@@ -157,7 +156,13 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Final construction
         // ──────────────────────────────────────────────────────────────
-        if sec_is_60 {
+        if !sec_is_60 {
+            Ok(Dt::from_sec_and_attos(
+                total_sec,
+                self.attos.unwrap_or(0),
+                self.scale,
+            ))
+        } else {
             if self.scale.uses_leap_seconds() {
                 let t = Dt::from_sec_and_attos(total_sec, self.attos.unwrap_or(0), self.scale);
                 let is_leap_sec = match leap_sec(total_sec.saturating_add(1), true) {
@@ -172,12 +177,6 @@ impl TimeParts {
                     self.scale,
                 ))
             }
-        } else {
-            Ok(Dt::from_sec_and_attos(
-                total_sec,
-                self.attos.unwrap_or(0),
-                self.scale,
-            ))
         }
     }
 }
