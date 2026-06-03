@@ -142,16 +142,13 @@ fn copy_valid_utf8_prefix(dst: &mut [u8], src: &[u8], max_len: usize) -> usize {
 /// Errors returned by [`LiteStr`] operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LiteStrErr {
-    /// Input was too long for this `LiteStr<N>`.
-    WrongLen,
-    /// The content is not valid UTF-8 (only returned by `as_str`).
+    /// The content is not valid UTF-8.
     CorruptedData,
 }
 
 impl fmt::Display for LiteStrErr {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            LiteStrErr::WrongLen => f.write_str("input length exceeds SIZE"),
             LiteStrErr::CorruptedData => f.write_str("content is not valid UTF-8"),
         }
     }
