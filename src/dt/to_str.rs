@@ -488,17 +488,12 @@ impl Dt {
 
     /// Helper for creating a timezone-adjusted YmdHmsRich.
     pub(crate) fn ymdhms_rich_with_tz(&self, tz_name: &str) -> YmdHmsRich {
-        // 1. Get the true UTC Unix timestamp
-        let utc_unix = self.to_unix();
-
-        // 2. Look up offset + abbrev at that exact UTC instant
-        let unix_sec = Dt::attos_to_sec_i64(utc_unix.to_attos());
+        // Look up offset + abbrev at that exact UTC instant
+        let unix_sec = self.to_unix().to_sec64();
         let (offset_secs, abbrev) = match offset_for_utc(tz_name, unix_sec) {
             Some(info) => (info.offset, info.abbrev),
-            None => (0, "UTC"), // fallback for unknown timezone
+            None => (0, "UTC"),
         };
-
-        // 3. Build local time = UTC + offset
         let local_tp = self.add_sec(offset_secs as i128);
 
         let mut ymdhms = local_tp.to_ymd_rich();
