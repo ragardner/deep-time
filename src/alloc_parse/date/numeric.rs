@@ -1,7 +1,30 @@
 use crate::{
-    Dt, MAX_YEAR, MIN_YEAR, Mode, NS_PER_DAY, PLAUSIBLE_YYYYMM_YEAR_RANGE, Scale, parse_jd,
-    parse_mjd, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
+    Dt, JD_RANGE, MAX_YEAR, MIN_YEAR, MJD_RANGE, Mode, NS_PER_DAY, PLAUSIBLE_YYYYMM_YEAR_RANGE,
+    Real, Scale, parse_yyddd, parse_yymmdd, parse_yyyyjjj, parse_yyyymm,
 };
+
+/// Modified Julian Date (MJD) interpreted as UTC
+pub(crate) fn parse_mjd(s: &str) -> Option<Dt> {
+    let mjd: Real = s.parse().ok()?;
+    let days = mjd as i64;
+    if !MJD_RANGE.contains(&days) {
+        return None;
+    }
+    Some(Dt::from_mjd_f(mjd, Scale::UTC))
+}
+
+/// Julian Day (JD) interpreted as UTC
+pub(crate) fn parse_jd(s: &str, astronomical_noon: bool) -> Option<Dt> {
+    let mut jd: Real = s.parse().ok()?;
+    let days = jd as i64;
+    if !JD_RANGE.contains(&days) {
+        return None;
+    }
+    if astronomical_noon {
+        jd += f!(0.5);
+    }
+    Some(Dt::from_jd_f(jd, Scale::UTC))
+}
 
 #[inline]
 pub(crate) fn parse_i32_year(input: &str) -> Option<Dt> {
