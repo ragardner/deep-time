@@ -34,7 +34,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// // negative 1.3 seconds
@@ -84,7 +84,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// // negative 1.3 seconds
@@ -152,7 +152,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// // negative 1.3 seconds

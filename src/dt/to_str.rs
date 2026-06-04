@@ -6,6 +6,12 @@ use {crate::ATTOS_PER_SEC, alloc::string::String};
 
 #[cfg(feature = "alloc")]
 impl Dt {
+    /// # Time Scale Handling
+    ///
+    /// All formatting methods in this `impl` block (except [`to_iso_duration`])
+    /// convert from the [`Dt`]'s current time `scale` to its `target` scale
+    /// before producing output.
+
     /// Converts this `Dt` to an ISO 8601 duration string
     /// (e.g. `"PT1H23M45.6789S"`, `"-PT0.5S"`, `"PT0.000000000000000001S"`, or `"PT0S"`).
     ///
@@ -65,8 +71,8 @@ impl Dt {
 
     /// Formats this [`Dt`] into a String. Requires the `"alloc"` feature.
     ///
-    /// Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    /// time scale before producing the result.
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     ///
     /// ## Examples
     ///
@@ -100,9 +106,9 @@ impl Dt {
     /// - A copy of the [`Dt`] is adjusted by the given `secs` offset **before**
     ///   formatting, and the offset is stored so that `%z` / `%:z` format directives
     ///   will reflect it.
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - No IANA timezone name or abbreviation is set.
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     ///
     /// ## Examples
     ///
@@ -142,16 +148,17 @@ impl Dt {
     ///   IANA timezone. This is so that the formatter will have:
     ///     - Accurate wall time for the timezone.
     ///     - Correct numeric offset (for `%z` / `%:z`).
-    ///     - Timezone abbreviation (for `%Z`). These **do not** round-trip.
+    ///     - Timezone abbreviation (for `%Z`). These **do not** round-trip (the parser
+    ///       does not parse them).
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
     ///   time scale before producing the result.
     ///
     /// ## Examples
     ///
     /// You can offset an output that wasn't originally from a zoned input:
     ///
-    /// ```
+    /// ```rust
     /// # #[cfg(all(feature = "tz", feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
@@ -164,7 +171,7 @@ impl Dt {
     ///
     /// You can also return to a zoned output from a zoned input:
     ///
-    /// ```
+    /// ```rust
     /// # #[cfg(all(feature = "tz", feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
@@ -199,10 +206,10 @@ impl Dt {
 
     /// **RFC 9557** / Temporal format with IANA timezone name in brackets.
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - Automatically trims trailing zeros in the fractional part.
     /// - Example: `"2020-06-15T14:30:00-04:00[America/New_York]"`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_rfc9557(&self, tz_name: &str) -> Result<String, DtErr> {
         self.to_str_in_tz("%Y-%m-%dT%H:%M:%S%.~f%:z[%Q]", tz_name, Lang::En)
@@ -211,11 +218,11 @@ impl Dt {
     /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp with a
     /// `Z` suffix.
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - Default = 9 digits (nanoseconds) but **automatically trims trailing zeros**.
     /// - If fractional part is zero → no decimal point at all (e.g. `...45Z`).
     /// - Example: `"2024-03-14T15:30:45.123Z"`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_rfc3339(&self) -> Result<String, DtErr> {
         self.to_str_rfc3339_nf(9)
@@ -225,8 +232,8 @@ impl Dt {
     /// with a configurable maximum number of fractional digits (0–18). Trailing zeros are
     /// always trimmed.
     ///
-    /// Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    /// time scale before producing the result.
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     pub fn to_str_rfc3339_nf(&self, max_precision: usize) -> Result<String, DtErr> {
         let prec = max_precision.min(18);
         // Uses the formatter with the `~` "trim trailing zeros" flag.
@@ -240,11 +247,11 @@ impl Dt {
 
     /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style).
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - Uses colon-separated offset (`%:z`) instead of forcing `Z`.
     /// - Still trims trailing zeros in the fractional part.
     /// - Example: `"2025-04-16T14:30:45.123+00:00"`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_iso8601(&self) -> Result<String, DtErr> {
         self.to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
@@ -252,10 +259,9 @@ impl Dt {
 
     /// **Compact ISO 8601 basic format** (no separators).
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
-    /// - Useful for filenames, URLs, database keys, etc.
     /// - Example: `"20250416T143045.123456789Z"`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_iso8601_basic(&self) -> Result<String, DtErr> {
         self.to_str_in_offset("%Y%m%dT%H%M%S%.~fZ", 0, Lang::En)
@@ -263,9 +269,9 @@ impl Dt {
 
     /// **ISO 8601 week date**.
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - Example: `"2025-W16-3"` (year-week-day)
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_iso_week_date(&self) -> Result<String, DtErr> {
         self.to_str_in_offset("%G-W%V-%u", 0, Lang::En)
@@ -273,9 +279,9 @@ impl Dt {
 
     /// Just the **ISO date** part (no time).
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - Example: `"2025-04-16"`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_iso_date(&self) -> Result<String, DtErr> {
         self.to_str_in_offset("%Y-%m-%d", 0, Lang::En)
@@ -283,9 +289,9 @@ impl Dt {
 
     /// Just the **time** part with fractional seconds (trimmed).
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - Example: `"14:30:45.123456789"`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_iso_time(&self) -> Result<String, DtErr> {
         self.to_str_in_offset("%H:%M:%S%.~f", 0, Lang::En)
@@ -293,10 +299,9 @@ impl Dt {
 
     /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
-    /// - This is the format used in `Date`, `Expires`, `Last-Modified` headers.
     /// - Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_http(&self, lang: Lang) -> Result<String, DtErr> {
         self.to_str_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
@@ -304,9 +309,9 @@ impl Dt {
 
     /// **RFC 2822** date format (used in email `Date` headers).
     ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     #[inline(always)]
     pub fn to_str_rfc2822(&self, lang: Lang) -> Result<String, DtErr> {
         self.to_str_in_offset("%a, %d %b %Y %H:%M:%S %z", 0, lang)
@@ -316,8 +321,8 @@ impl Dt {
 impl Dt {
     /// Formats this [`Dt`] into a fixed-size binary string.
     ///
-    /// Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    /// time scale before producing the result.
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     ///
     /// ## Examples
     ///
@@ -351,9 +356,9 @@ impl Dt {
     /// - A copy of the [`Dt`] is adjusted by the given `secs` offset **before**
     ///   formatting, and the offset is stored so that `%z` / `%:z` format directives
     ///   will reflect it.
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
     /// - No IANA timezone name or abbreviation is set.
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
+    ///   time scale before producing the result.
     ///
     /// ## Examples
     ///
@@ -401,7 +406,7 @@ impl Dt {
     ///     - Correct numeric offset (for `%z` / `%:z`).
     ///     - Timezone abbreviation (for `%Z`). These **do not** round-trip.
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    /// - Converts from this [`Dt`]s current time `scale` to its `target`
     ///   time scale before producing the result.
     ///
     /// ## Examples

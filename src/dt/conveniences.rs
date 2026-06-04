@@ -18,7 +18,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// let dt = Dt::from_ymd(1970, 1, 1, 0, 0, 0, 0, Scale::UTC);
@@ -44,7 +44,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// // 2698012800
@@ -103,7 +103,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
@@ -130,7 +130,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);

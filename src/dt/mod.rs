@@ -118,7 +118,7 @@ use core::fmt;
 ///
 /// ### Parsing a date
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Scale};
 ///
 /// // uses impl FromStr but Dt::parse provides the same functionality
@@ -136,7 +136,7 @@ use core::fmt;
 ///
 /// ### Outputting a date to string / bytes
 ///
-/// ```
+/// ```rust
 /// # #[cfg(all(feature = "tz", feature = "parse"))]
 /// # {
 /// use deep_time::{Dt, Lang, Scale};
@@ -157,7 +157,7 @@ use core::fmt;
 ///
 /// ### Creating a unix timestamp in milliseconds
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Scale};
 ///
 /// // this fn converts from UTC and creates a TAI Dt
@@ -183,7 +183,7 @@ use core::fmt;
 ///
 /// #### Using the target field
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Lang, Scale};
 ///
 /// // Leap seconds were added to the secounds count
@@ -204,7 +204,7 @@ use core::fmt;
 ///
 /// #### Converting the internal attos to a new time scale
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Scale};
 ///
 /// // this fn converts from UTC and creates a TAI Dt
@@ -225,7 +225,7 @@ use core::fmt;
 ///
 /// ### Performing some basic calendar aware math
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Scale};
 ///
 /// let x = Dt::from_ymd(2000, 2, 29, 0, 0, 0, 0, Scale::UTC).to_ymd();
@@ -236,7 +236,7 @@ use core::fmt;
 ///
 /// ### Changing a dates format
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Lang, StrPTimeFmt};
 ///
 /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();

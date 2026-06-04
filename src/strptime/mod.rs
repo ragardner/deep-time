@@ -37,7 +37,7 @@ impl StrPTimeFmt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// # #[cfg(feature = "parse")]
     /// # {
     /// use deep_time::{Dt, Lang, StrPTimeFmt};
@@ -98,7 +98,7 @@ impl StrPTimeFmt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, StrPTimeFmt};
     ///
     /// let fmt = Dt::parse_fmt("%F %T").unwrap();
@@ -137,7 +137,7 @@ impl StrPTimeFmt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// # #[cfg(feature = "alloc")]
     /// # {
     /// use deep_time::{Dt, Lang, StrPTimeFmt};

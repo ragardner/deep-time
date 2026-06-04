@@ -10,7 +10,7 @@ mod to_str;
 ///
 /// **Creating a** [`YmdHms`].
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Scale};
 ///
 /// // clamped to 29
@@ -22,7 +22,7 @@ mod to_str;
 /// **Adding a year.** 2000 is a leap year and Feb. 29th is possible, but
 /// 2001 isn't a leap year so the day is clamped to the 28th.
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Scale};
 ///
 /// let x = Dt::from_ymd(2000, 2, 29, 0, 0, 0, 0, Scale::UTC).to_ymd();

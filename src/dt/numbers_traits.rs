@@ -17,7 +17,7 @@ use crate::{
 ///
 /// ## Examples
 ///
-/// ```
+/// ```rust
 /// use deep_time::AttosTraits;
 ///
 /// let attos: i128 = 5;
@@ -87,13 +87,12 @@ impl AttosTraits for i128 {
 ///
 /// ## Examples
 ///
-/// ```
+/// ```rust
 /// use deep_time::TimeTraits;
 ///
 /// let dt = 5.days();
 /// ```
 pub trait TimeTraits: Copy + Sized {
-    // ── Dt constructors ─────────────────────────────────────
     fn ns(self) -> Dt;
     fn us(self) -> Dt;
     fn ms(self) -> Dt;
@@ -104,7 +103,6 @@ pub trait TimeTraits: Copy + Sized {
     fn wk(self) -> Dt;
     fn yr(self) -> Dt; // 365.25 days (standard approximation)
 
-    // ── Dt constructors (anchored at "now" in the chosen scale) ──
     fn ago(self, scale: Scale) -> Dt;
     fn from_now(self, scale: Scale) -> Dt;
 }
@@ -157,7 +155,6 @@ macro_rules! impl_time_units_int {
 
 impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
 
-// f64 support (most useful for fractional units)
 impl TimeTraits for f64 {
     #[inline]
     fn ns(self) -> Dt {

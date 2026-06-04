@@ -21,7 +21,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// let start = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
@@ -116,7 +116,7 @@ impl Every {
 ///
 /// ## Construction
 ///
-/// ```
+/// ```rust
 /// use deep_time::{Dt, Scale, TimeRange};
 ///
 /// let start = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);

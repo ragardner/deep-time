@@ -39,7 +39,7 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// // uses impl FromStr but Dt::parse provides the same functionality

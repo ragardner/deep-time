@@ -140,7 +140,7 @@ impl EopData {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// # #[cfg(feature = "eop-tests")]
     /// # {
     /// use deep_time::eop::{EopData, EopFormat, Separator};
@@ -173,7 +173,7 @@ impl EopData {
     ///
     /// ## Examples
     ///
-    /// ```
+    /// ```rust
     /// # #[cfg(feature = "eop-tests")]
     /// # {
     /// use deep_time::eop::{EopData, EopFormat, Separator};

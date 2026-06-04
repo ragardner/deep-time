@@ -114,7 +114,7 @@ impl Dt {
 
     /// Converts the internal attos to be on the TAI time [`Scale`].
     ///
-    /// ```
+    /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// let tai = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
