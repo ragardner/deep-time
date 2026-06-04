@@ -1,15 +1,19 @@
 use core::fmt::{self};
 use core::str;
 
-/// Fixed-capacity, stack-only buffer holding a UTF-8 string in a `[u8; N]` array.
+/// A fixed-capacity, stack-allocated buffer that can hold a UTF-8 string.
 ///
-/// - The string is stored as raw bytes with C-style nul termination.
-/// - Logical length is the position of the first `b'\0'` (or `N` if there is none).
-/// - This type performs **no validation on construction**.
-///   Validity is only checked when calling `as_str()`, `Debug`, or during serialization.
-/// - `new()` truncates at a UTF-8 boundary if the input is too long.
-/// - `from_bytes()` only checks that the input fits in `N`.
-/// - This type is intentionally kept minimal because each `LiteStr<N>` is monomorphized separately.
+/// `LiteStr<N>` stores its content in a `[u8; N]` array using C-style nul
+/// termination. The logical length is determined by the position of the first
+/// `b'\0'` byte (or `N` if the buffer is completely filled without a nul).
+///
+/// This type performs **no validation during construction**. UTF-8 validity is
+/// only checked when the content is accessed via [`as_str`], [`Debug`], or
+/// serialization.
+///
+/// Both [`new`] and [`from_bytes`] silently truncate input that exceeds the
+/// capacity `N`. This type is intentionally minimal because each `LiteStr<N>`
+/// is monomorphized independently.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct LiteStr<const N: usize> {
     bytes: [u8; N],
@@ -25,7 +29,10 @@ impl<const N: usize> Default for LiteStr<N> {
 impl<const N: usize> LiteStr<N> {
     pub const SIZE: usize = N;
 
-    /// Creates a `LiteStr` from a `&str`, truncating at a UTF-8 boundary if necessary.
+    /// Creates a new `LiteStr` from a `&str`.
+    ///
+    /// If the input is longer than `N` bytes, it is truncated at the nearest
+    /// valid UTF-8 boundary.
     #[inline(never)]
     pub fn new(s: &str) -> Self {
         let mut bytes = [0u8; N];
@@ -33,18 +40,19 @@ impl<const N: usize> LiteStr<N> {
         Self { bytes }
     }
 
-    /// Returns the content as `&str`, validating UTF-8.
+    /// Returns the content as a `&str`, validating that it is well-formed UTF-8.
     #[inline(always)]
     pub fn as_str(&self) -> Result<&str, LiteStrErr> {
-        str::from_utf8(&self.bytes[..find_first_nul(&self.bytes)])
-            .map_err(|_| LiteStrErr::CorruptedData)
+        let end = find_first_nul(&self.bytes);
+        str::from_utf8(&self.bytes[..end]).map_err(|_| LiteStrErr::CorruptedData)
     }
 
     /// Creates a `LiteStr<N>` from a byte slice.
     ///
-    /// - Copies up to `N` bytes from the input into the buffer and zero-fills the rest.
-    /// - If `bytes.len() > N`, the input is **silently truncated** to the first `N` bytes.
-    /// - **No UTF-8 validation is performed.**
+    /// Copies up to `N` bytes from the input and zero-fills the remainder.
+    /// If `bytes.len() > N`, the input is silently truncated.
+    ///
+    /// No UTF-8 validation is performed.
     #[inline(always)]
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let mut arr = [0u8; N];
@@ -58,13 +66,13 @@ impl<const N: usize> LiteStr<N> {
         self.bytes
     }
 
-    /// Returns the content as `&[u8]` (up to the first nul).
+    /// Returns the content as a byte slice (up to the first nul byte).
     #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..find_first_nul(&self.bytes)]
     }
 
-    /// Returns the length of the content (position of first nul or `N`).
+    /// Returns the length of the content in bytes.
     #[allow(clippy::len_without_is_empty)]
     #[inline(always)]
     pub fn len(&self) -> usize {
@@ -139,7 +147,7 @@ fn copy_valid_utf8_prefix(dst: &mut [u8], src: &[u8], max_len: usize) -> usize {
     }
 }
 
-/// Errors returned by [`LiteStr`] operations.
+/// Errors that can occur when using a [`LiteStr`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LiteStrErr {
     /// The content is not valid UTF-8.
