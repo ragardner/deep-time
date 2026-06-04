@@ -64,17 +64,17 @@ parse = [
     "dep:hashbrown",
 ]
 
-es = ["parse"]
-de = ["parse"]
-fr = ["parse"]
+multi-lang = []
+
+es = ["multi-lang"]
+de = ["multi-lang"]
+fr = ["multi-lang"]
 euro = [
-    "parse",
     "es",
     "de",
     "fr",
 ]
 lang = [
-    "parse",
     "euro",
 ]
 

@@ -1,5 +1,7 @@
 pub mod parser;
 
+#[cfg(feature = "alloc")]
+use crate::Lang;
 use crate::error::{DtErr, DtErrKind};
 use crate::{Dt, TimeParts, an_err};
 use core::result::Result;
@@ -38,7 +40,7 @@ impl StrPTimeFmt {
     /// ```
     /// # #[cfg(feature = "parse")]
     /// # {
-    /// use deep_time::{Dt, StrPTimeFmt};
+    /// use deep_time::{Dt, Lang, StrPTimeFmt};
     ///
     /// let fmt = Dt::parse_fmt("%F %T").unwrap();
     ///
@@ -46,7 +48,7 @@ impl StrPTimeFmt {
     /// let dt = fmt.to_dt("2025-05-23 14:30:00", false, false, false).unwrap();
     ///
     /// // change a datetimes format
-    /// let s = fmt.to_str("2000-01-01 12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+    /// let s = fmt.to_str("2000-01-01 12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
     ///
     /// assert_eq!(s, "01 01 2000 12:00:00");
     /// # }
@@ -136,12 +138,15 @@ impl StrPTimeFmt {
     /// ## Examples
     ///
     /// ```
-    /// use deep_time::{Dt, StrPTimeFmt};
+    /// # #[cfg(feature = "alloc")]
+    /// # {
+    /// use deep_time::{Dt, Lang, StrPTimeFmt};
     ///
     /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
-    /// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+    /// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
     ///
     /// assert_eq!(s, "01 01 2000 12:00:00");
+    /// # }
     /// ```
     #[cfg(feature = "alloc")]
     pub fn to_str(
@@ -151,6 +156,7 @@ impl StrPTimeFmt {
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
+        lang: Lang,
     ) -> Result<alloc::string::String, DtErr> {
         let parts = TimeParts::from_str(
             self.as_str()?,
@@ -159,7 +165,7 @@ impl StrPTimeFmt {
             fmt_can_end_before_inp,
             allow_partial_date,
         )?;
-        parts.to_dt()?.to_str(output_fmt)
+        parts.to_dt()?.to_str(output_fmt, lang)
     }
 
     fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {

@@ -1,3 +1,4 @@
+use crate::Lang;
 use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHms, an_err, tz::offset_for_utc};
 
 #[cfg(feature = "alloc")]
@@ -70,10 +71,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-    /// let s = x.to_str("%F").unwrap();
+    /// let s = x.to_str("%F", Lang::En).unwrap();
     ///
     /// println!("{}", s);
     /// ```
@@ -89,8 +90,8 @@ impl Dt {
     /// - [`Dt::to_str_in_offset`](../struct.Dt.html#method.to_str_in_offset)
     /// - [`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz)
     #[inline(always)]
-    pub fn to_str(&self, fmt: &str) -> Result<String, DtErr> {
-        self.to_str_in_offset(fmt, 0)
+    pub fn to_str(&self, fmt: &str, lang: Lang) -> Result<String, DtErr> {
+        self.to_str_in_offset(fmt, 0, lang)
     }
 
     /// Formats this [`Dt`] into a String, applying a fixed offset. Requires the
@@ -106,12 +107,12 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
     /// // offset of minus one hour
-    /// let s = x.to_str_in_offset("%F", -3600).unwrap();
+    /// let s = x.to_str_in_offset("%F", -3600, Lang::En).unwrap();
     ///
     /// println!("{}", s);
     /// ```
@@ -127,9 +128,9 @@ impl Dt {
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz)
     #[inline(always)]
-    pub fn to_str_in_offset(&self, fmt: &str, secs: i32) -> Result<String, DtErr> {
+    pub fn to_str_in_offset(&self, fmt: &str, secs: i32, lang: Lang) -> Result<String, DtErr> {
         self.ymd_with_offset(secs)
-            .to_str(fmt, Some(secs), None, None)
+            .to_str(fmt, Some(secs), None, None, lang)
     }
 
     /// Formats this [`Dt`] into a string, time adjusted to the given IANA timezone. Requires
@@ -153,10 +154,10 @@ impl Dt {
     /// ```
     /// # #[cfg(all(feature = "tz", feature = "parse"))]
     /// # {
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
-    /// let s = x.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
+    /// let s = x.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En).unwrap();
     /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
     /// # }
     /// ```
@@ -166,10 +167,10 @@ impl Dt {
     /// ```
     /// # #[cfg(all(feature = "tz", feature = "parse"))]
     /// # {
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x: Dt = "Saturday, January 01, 2000 07:00:00 America/New_York".parse().unwrap();
-    /// let s = x.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
+    /// let s = x.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En).unwrap();
     /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
     /// # }
     /// ```
@@ -185,9 +186,15 @@ impl Dt {
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_in_offset`](../struct.Dt.html#method.to_str_in_offset)
     #[inline(always)]
-    pub fn to_str_in_tz(&self, fmt: &str, tz_name: &str) -> Result<String, DtErr> {
+    pub fn to_str_in_tz(&self, fmt: &str, tz_name: &str, lang: Lang) -> Result<String, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name)?;
-        ymd.to_str(fmt, Some(offset), Some(LiteStr::new(tz_name)), Some(abbrev))
+        ymd.to_str(
+            fmt,
+            Some(offset),
+            Some(LiteStr::new(tz_name)),
+            Some(abbrev),
+            lang,
+        )
     }
 
     /// **RFC 9557** / Temporal format with IANA timezone name in brackets.
@@ -198,7 +205,7 @@ impl Dt {
     /// - Example: `"2020-06-15T14:30:00-04:00[America/New_York]"`
     #[inline(always)]
     pub fn to_str_rfc9557(&self, tz_name: &str) -> Result<String, DtErr> {
-        self.to_str_in_tz("%Y-%m-%dT%H:%M:%S%.~f%:z[%Q]", tz_name)
+        self.to_str_in_tz("%Y-%m-%dT%H:%M:%S%.~f%:z[%Q]", tz_name, Lang::En)
     }
 
     /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp with a
@@ -228,7 +235,7 @@ impl Dt {
         //   - full-width years otherwise
         //   - suppressing the decimal point entirely when the trimmed fraction is zero
         let fmt = alloc::format!("%Y-%m-%dT%H:%M:%S%.{}~fZ", prec);
-        self.to_str_in_offset(&fmt, 0)
+        self.to_str_in_offset(&fmt, 0, Lang::En)
     }
 
     /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style).
@@ -240,7 +247,7 @@ impl Dt {
     /// - Example: `"2025-04-16T14:30:45.123+00:00"`
     #[inline(always)]
     pub fn to_str_iso8601(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0)
+        self.to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
     }
 
     /// **Compact ISO 8601 basic format** (no separators).
@@ -251,7 +258,7 @@ impl Dt {
     /// - Example: `"20250416T143045.123456789Z"`
     #[inline(always)]
     pub fn to_str_iso8601_basic(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%Y%m%dT%H%M%S%.~fZ", 0)
+        self.to_str_in_offset("%Y%m%dT%H%M%S%.~fZ", 0, Lang::En)
     }
 
     /// **ISO 8601 week date**.
@@ -261,7 +268,7 @@ impl Dt {
     /// - Example: `"2025-W16-3"` (year-week-day)
     #[inline(always)]
     pub fn to_str_iso_week_date(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%G-W%V-%u", 0)
+        self.to_str_in_offset("%G-W%V-%u", 0, Lang::En)
     }
 
     /// Just the **ISO date** part (no time).
@@ -271,7 +278,7 @@ impl Dt {
     /// - Example: `"2025-04-16"`
     #[inline(always)]
     pub fn to_str_iso_date(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%Y-%m-%d", 0)
+        self.to_str_in_offset("%Y-%m-%d", 0, Lang::En)
     }
 
     /// Just the **time** part with fractional seconds (trimmed).
@@ -281,7 +288,7 @@ impl Dt {
     /// - Example: `"14:30:45.123456789"`
     #[inline(always)]
     pub fn to_str_iso_time(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%H:%M:%S%.~f", 0)
+        self.to_str_in_offset("%H:%M:%S%.~f", 0, Lang::En)
     }
 
     /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
@@ -291,8 +298,8 @@ impl Dt {
     /// - This is the format used in `Date`, `Expires`, `Last-Modified` headers.
     /// - Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
     #[inline(always)]
-    pub fn to_str_http(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0)
+    pub fn to_str_http(&self, lang: Lang) -> Result<String, DtErr> {
+        self.to_str_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
     }
 
     /// **RFC 2822** date format (used in email `Date` headers).
@@ -301,8 +308,8 @@ impl Dt {
     ///   time scale before producing the result.
     /// - Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
     #[inline(always)]
-    pub fn to_str_rfc2822(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%a, %d %b %Y %H:%M:%S %z", 0)
+    pub fn to_str_rfc2822(&self, lang: Lang) -> Result<String, DtErr> {
+        self.to_str_in_offset("%a, %d %b %Y %H:%M:%S %z", 0, lang)
     }
 }
 
@@ -315,10 +322,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-    /// let b = x.to_str_lite("%F").unwrap();
+    /// let b = x.to_str_lite("%F", Lang::En).unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -335,8 +342,8 @@ impl Dt {
     /// - [`Dt::to_str_lite_in_offset`](../struct.Dt.html#method.to_str_lite_in_offset)
     /// - [`Dt::to_str_lite_in_tz`](../struct.Dt.html#method.to_str_lite_in_tz)
     #[inline(always)]
-    pub fn to_str_lite(&self, fmt: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        self.to_ymd().to_str_lite(fmt, None, None, None)
+    pub fn to_str_lite(&self, fmt: &str, lang: Lang) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+        self.to_ymd().to_str_lite(fmt, None, None, None, lang)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, applying a fixed UTC offset.
@@ -351,12 +358,12 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
     /// // offset of minus one hour
-    /// let b = x.to_str_lite_in_offset("%F", -3600).unwrap();
+    /// let b = x.to_str_lite_in_offset("%F", -3600, Lang::En).unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -377,9 +384,10 @@ impl Dt {
         &self,
         fmt: &str,
         secs: i32,
+        lang: Lang,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
         self.ymd_with_offset(secs)
-            .to_str_lite(fmt, Some(secs), None, None)
+            .to_str_lite(fmt, Some(secs), None, None, lang)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, time adjusted to the given
@@ -401,11 +409,11 @@ impl Dt {
     /// ```rust
     /// # #[cfg(feature = "tz")]
     /// # {
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
-    /// let b = x.to_str_lite_in_tz("%F", "America/New_York").unwrap();
+    /// let b = x.to_str_lite_in_tz("%F", "America/New_York", Lang::En).unwrap();
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
@@ -427,9 +435,16 @@ impl Dt {
         &self,
         fmt: &str,
         tz_name: &str,
+        lang: Lang,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name)?;
-        ymd.to_str_lite(fmt, Some(offset), Some(LiteStr::new(tz_name)), Some(abbrev))
+        ymd.to_str_lite(
+            fmt,
+            Some(offset),
+            Some(LiteStr::new(tz_name)),
+            Some(abbrev),
+            lang,
+        )
     }
 
     /// Returns `(is_negative, hours, minutes)`.

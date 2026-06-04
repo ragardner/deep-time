@@ -2,7 +2,7 @@
 
 #[cfg(feature = "perf-tests")]
 mod perf_tests {
-    use deep_time::{Dt, Scale, TimeParts};
+    use deep_time::{Dt, Lang, Scale, TimeParts};
     use std::time::Instant;
 
     #[test]
@@ -212,7 +212,7 @@ mod perf_tests {
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = x.to_str_lite("%Y-%m-%dT%H:%M:%S");
+                let _ = x.to_str_lite("%Y-%m-%dT%H:%M:%S", Lang::En);
             }
             let elapsed = start.elapsed();
 

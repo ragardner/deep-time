@@ -1,0 +1,46 @@
+#[cfg(feature = "parse")]
+pub mod en;
+
+#[cfg(feature = "parse")]
+pub(crate) use en::*;
+
+use crate::FormatNames;
+
+const EN_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
+];
+
+const EN_WEEKDAYS_ABBR: [&'static [u8]; 7] =
+    byte_arrays!["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+const EN_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+];
+
+const EN_MONTHS_ABBR: [&'static [u8]; 12] = byte_arrays![
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+];
+
+pub(crate) static EN_NAMES: FormatNames = FormatNames {
+    weekdays_full: &EN_WEEKDAYS_FULL,
+    weekdays_abbr: &EN_WEEKDAYS_ABBR,
+    months_full: &EN_MONTHS_FULL,
+    months_abbr: &EN_MONTHS_ABBR,
+};

@@ -1,33 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, Scale, YmdHms, an_err};
-
-pub(crate) const WEEKDAYS_FULL: [&[u8]; 7] = [
-    b"Sunday",
-    b"Monday",
-    b"Tuesday",
-    b"Wednesday",
-    b"Thursday",
-    b"Friday",
-    b"Saturday",
-];
-pub(crate) const WEEKDAYS_ABBR: [&[u8]; 7] =
-    [b"Sun", b"Mon", b"Tue", b"Wed", b"Thu", b"Fri", b"Sat"];
-pub(crate) const MONTHS_FULL: [&[u8]; 12] = [
-    b"January",
-    b"February",
-    b"March",
-    b"April",
-    b"May",
-    b"June",
-    b"July",
-    b"August",
-    b"September",
-    b"October",
-    b"November",
-    b"December",
-];
-pub(crate) const MONTHS_ABBR: [&[u8]; 12] = [
-    b"Jan", b"Feb", b"Mar", b"Apr", b"May", b"Jun", b"Jul", b"Aug", b"Sep", b"Oct", b"Nov", b"Dec",
-];
+use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRFTIME_SIZE, Scale, YmdHms, an_err};
 
 impl YmdHms {
     #[cfg(feature = "alloc")]
@@ -38,8 +9,9 @@ impl YmdHms {
         offset: Option<i32>,
         tz: Option<LiteStr<49>>,
         abbrev: Option<LiteStr<49>>,
+        lang: Lang,
     ) -> Result<alloc::string::String, DtErr> {
-        let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev)?;
+        let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev, lang)?;
         Ok(alloc::string::String::from_utf8_lossy(&buf[0..pos]).into_owned())
     }
 
@@ -50,8 +22,9 @@ impl YmdHms {
         offset: Option<i32>,
         tz: Option<LiteStr<49>>,
         abbrev: Option<LiteStr<49>>,
+        lang: Lang,
     ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
-        let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev)?;
+        let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev, lang)?;
         Ok(LiteStr::from_bytes(&buf[..pos]))
     }
 
@@ -61,7 +34,9 @@ impl YmdHms {
         offset: Option<i32>,
         tz: Option<LiteStr<49>>,
         abbrev: Option<LiteStr<49>>,
+        lang: Lang,
     ) -> Result<([u8; STRFTIME_SIZE], usize), DtErr> {
+        let names = lang.names();
         let mut buf = [0u8; STRFTIME_SIZE];
         let mut pos = 0usize;
         let mut i = 0usize;
@@ -197,10 +172,10 @@ impl YmdHms {
 
             // ── Normal directives ──
             match directive {
-                b'A' => self.write_weekday_full(&mut buf, &mut pos),
-                b'a' => self.write_weekday_abbrev(&mut buf, &mut pos),
-                b'B' => self.write_month_name_full(&mut buf, &mut pos),
-                b'b' | b'h' => self.write_month_name_abbrev(&mut buf, &mut pos),
+                b'A' => self.write_weekday_full(&mut buf, &mut pos, names.weekdays_full),
+                b'a' => self.write_weekday_abbrev(&mut buf, &mut pos, names.weekdays_abbr),
+                b'B' => self.write_month_name_full(&mut buf, &mut pos, names.months_full),
+                b'b' | b'h' => self.write_month_name_abbrev(&mut buf, &mut pos, names.months_abbr),
                 b'C' => self.write_century(&mut buf, &mut pos, flag, width, colons),
                 b'd' | b'e' => {
                     self.write_day_of_month(&mut buf, &mut pos, flag, width, colons, true)
@@ -496,26 +471,46 @@ impl YmdHms {
     // ──────────────────────────────────────────────────────────────
 
     #[inline]
-    pub(crate) fn write_weekday_full(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        let name = WEEKDAYS_FULL[self.wkday().wkday_sun_0_based() as usize];
+    pub(crate) fn write_weekday_full(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        wkdays_full: &[&[u8]; 7],
+    ) {
+        let name = wkdays_full[self.wkday().wkday_sun_0_based() as usize];
         Self::write_bytes(buf, pos, name);
     }
 
     #[inline]
-    pub(crate) fn write_weekday_abbrev(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        let name = WEEKDAYS_ABBR[self.wkday().wkday_sun_0_based() as usize];
+    pub(crate) fn write_weekday_abbrev(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        wkdays_abbrev: &[&[u8]; 7],
+    ) {
+        let name = wkdays_abbrev[self.wkday().wkday_sun_0_based() as usize];
         Self::write_bytes(buf, pos, name);
     }
 
     #[inline]
-    pub(crate) fn write_month_name_full(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        let name = MONTHS_FULL[self.mo as usize - 1];
+    pub(crate) fn write_month_name_full(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        mos_full: &[&[u8]; 12],
+    ) {
+        let name = mos_full[self.mo as usize - 1];
         Self::write_bytes(buf, pos, name);
     }
 
     #[inline]
-    pub(crate) fn write_month_name_abbrev(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        let name = MONTHS_ABBR[self.mo as usize - 1];
+    pub(crate) fn write_month_name_abbrev(
+        &self,
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        mos_abbrev: &[&[u8]; 12],
+    ) {
+        let name = mos_abbrev[self.mo as usize - 1];
         Self::write_bytes(buf, pos, name);
     }
 

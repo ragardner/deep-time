@@ -1,4 +1,5 @@
-use crate::{Cat, EN_WORDS, LangData, Token, Word, tz::TZ_ENTRIES, tz_lowered_keys};
+use crate::en::{EN_WORDS, tz_lowered_keys};
+use crate::{Cat, LangData, Token, Word, tz::TZ_ENTRIES};
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;
 use alloc::vec::Vec;

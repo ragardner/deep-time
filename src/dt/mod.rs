@@ -139,15 +139,15 @@ use core::fmt;
 /// ```
 /// # #[cfg(all(feature = "tz", feature = "parse"))]
 /// # {
-/// use deep_time::{Dt, Scale};
+/// use deep_time::{Dt, Lang, Scale};
 ///
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
 ///
 /// let s = x
-///  .to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En)
 ///  .unwrap();
 /// let b = x
-///  .to_str_lite_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_lite_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En)
 ///  .unwrap();
 ///
 /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
@@ -184,7 +184,7 @@ use core::fmt;
 /// #### Using the target field
 ///
 /// ```
-/// use deep_time::{Dt, Scale};
+/// use deep_time::{Dt, Lang, Scale};
 ///
 /// // Leap seconds were added to the secounds count
 /// // This Dt has attos that are now on the TAI timescale
@@ -192,7 +192,7 @@ use core::fmt;
 ///
 /// // The internal target is currently UTC so we don't need to do
 /// // anything to output back to UTC and round trip
-/// let bytes = dt.to_str_lite("%d %m %Y %H:%M:%S").unwrap();
+/// let bytes = dt.to_str_lite("%d %m %Y %H:%M:%S", Lang::En).unwrap();
 ///
 /// assert_eq!(bytes.as_str().unwrap(), "01 01 2025 00:00:00");
 ///
@@ -237,12 +237,12 @@ use core::fmt;
 /// ### Changing a dates format
 ///
 /// ```
-/// use deep_time::{Dt, StrPTimeFmt};
+/// use deep_time::{Dt, Lang, StrPTimeFmt};
 ///
 /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
 ///
 /// # #[cfg(feature = "alloc")]
-/// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false).unwrap();
+/// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
 ///
 /// # #[cfg(feature = "alloc")]
 /// assert_eq!(s, "01 01 2000 12:00:00", "expected: {}, got: {}", "01 01 2000 12:00:00", s);

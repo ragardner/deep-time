@@ -56,6 +56,13 @@ macro_rules! safe_rem_euc {
     }};
 }
 
+/// Turns a list of string literals into an array of `&'static [u8]`.
+macro_rules! byte_arrays {
+    ( $( $s:literal ),+ $(,)? ) => {
+        [ $( $s.as_bytes() ),+ ]
+    };
+}
+
 // _________________________________________
 // FEATURE MOD
 // _________________________________________
@@ -73,6 +80,7 @@ mod drift;
 mod dt;
 mod light_time;
 mod lite_str;
+mod locale;
 mod position;
 mod scale;
 mod strptime;
@@ -104,14 +112,16 @@ pub mod sidereal;
 // _________________________________________
 #[cfg(feature = "parse")]
 pub(crate) use alloc_parse::{
-    alloc_constants::*, date::*, date_classification::*, duration::*, lang_data::*, lang_map::*,
-    languages::en::*, parse_date::*, types::*,
+    alloc_constants::*, date::*, date_classification::*, duration::*, parse_date::*, types::*,
 };
+#[cfg(feature = "parse")]
+pub(crate) use locale::{lang_data::*, lang_map::*};
 
 // _________________________________________
 // CRATE USE
 // _________________________________________
 pub(crate) use constants::*;
+pub(crate) use locale::*;
 #[allow(unused_imports)]
 pub(crate) use math::{
     atan2::atan2,
@@ -128,7 +138,7 @@ pub(crate) use strptime::*;
 // FEATURE PUB USE
 // _________________________________________
 #[cfg(feature = "parse")]
-pub use alloc_parse::types::{Lang, Mode, Order, ParseCfg};
+pub use alloc_parse::types::{Mode, Order, ParseCfg};
 
 #[cfg(feature = "wire")]
 pub use an_err::{WireErr, WireLocation};
@@ -149,6 +159,7 @@ pub use dt::{Dt, lunar};
 pub use error::{DtErr, DtErrKind};
 pub use light_time::ObserverState;
 pub use lite_str::{LiteStr, LiteStrErr};
+pub use locale::Lang;
 pub use position::{Position, Velocity};
 pub use scale::Scale;
 pub use strptime::StrPTimeFmt;
