@@ -183,4 +183,18 @@ mod tests {
             assert_duration(input, expected);
         }
     }
+
+    #[test]
+    fn es_output_formatting() {
+        let dt: Dt = "2025-01-01".parse().unwrap();
+
+        let out = dt.to_str_lite("%a, %d %b %Y", Lang::Es).unwrap();
+        assert_eq!(out.as_str().unwrap(), "Mié, 01 ene 2025");
+
+        let out = dt.to_str_lite("%A, %d %B %Y", Lang::Es).unwrap();
+        assert_eq!(out.as_str().unwrap(), "Miércoles, 01 enero 2025");
+
+        let out = dt.to_str_lite("%A, %d %B %Y %H:%M:%S", Lang::Es).unwrap();
+        assert_eq!(out.as_str().unwrap(), "Miércoles, 01 enero 2025 00:00:00");
+    }
 }

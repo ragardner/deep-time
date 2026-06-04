@@ -20,22 +20,22 @@ const FR_WEEKDAYS_ABBR: [&'static [u8]; 7] =
     byte_arrays!["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 
 const FR_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
-    "Janvier",
-    "Février",
-    "Mars",
-    "Avril",
-    "Mai",
-    "Juin",
-    "Juillet",
-    "Août",
-    "Septembre",
-    "Octobre",
-    "Novembre",
-    "Décembre"
+    "janvier",
+    "février",
+    "mars",
+    "avril",
+    "mai",
+    "juin",
+    "juillet",
+    "août",
+    "septembre",
+    "octobre",
+    "novembre",
+    "décembre"
 ];
 
 const FR_MONTHS_ABBR: [&'static [u8]; 12] = byte_arrays![
-    "Janv", "Févr", "Mars", "Avr", "Mai", "Juin", "Juil", "Août", "Sept", "Oct", "Nov", "Déc"
+    "janv", "févr", "mars", "avr", "mai", "juin", "juil", "août", "sept", "oct", "nov", "déc"
 ];
 
 pub(crate) static FR_NAMES: FormatNames = FormatNames {

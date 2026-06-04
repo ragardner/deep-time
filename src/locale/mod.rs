@@ -1,13 +1,13 @@
 pub mod en;
-pub mod multi_lang;
+use en::*;
 
 #[cfg(feature = "parse")]
 pub mod lang_data;
 #[cfg(feature = "parse")]
 pub mod lang_map;
 
-use en::*;
-
+#[cfg(feature = "multi-lang")]
+pub mod multi_lang;
 #[cfg(feature = "multi-lang")]
 use multi_lang::*;
 
