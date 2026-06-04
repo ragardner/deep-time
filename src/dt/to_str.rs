@@ -1,7 +1,7 @@
 use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHms, an_err, tz::offset_for_utc};
 
 #[cfg(feature = "alloc")]
-use crate::ATTOS_PER_SEC;
+use {crate::ATTOS_PER_SEC, alloc::string::String};
 
 #[cfg(feature = "alloc")]
 impl Dt {
@@ -11,16 +11,16 @@ impl Dt {
     /// - This method is only available when the **`alloc`** feature is enabled.
     /// - It returns `alloc::string::String` (no_std + alloc compatible).
     /// - Performs no time scale conversions prior to output.
-    pub fn to_iso_duration(&self) -> alloc::string::String {
+    pub fn to_iso_duration(&self) -> String {
         if self.is_zero() {
-            return alloc::string::String::from("PT0S");
+            return String::from("PT0S");
         }
 
         let total = self.to_attos();
         let negative = total < 0;
         let mut attos = total.unsigned_abs();
 
-        let mut s = alloc::string::String::with_capacity(48);
+        let mut s = String::with_capacity(48);
         if negative {
             s.push('-');
         }
@@ -89,7 +89,7 @@ impl Dt {
     /// - [`Dt::to_str_in_offset`](../struct.Dt.html#method.to_str_in_offset)
     /// - [`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz)
     #[inline(always)]
-    pub fn to_str(&self, fmt: &str) -> Result<alloc::string::String, DtErr> {
+    pub fn to_str(&self, fmt: &str) -> Result<String, DtErr> {
         self.to_str_in_offset(fmt, 0)
     }
 
@@ -127,7 +127,7 @@ impl Dt {
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz)
     #[inline(always)]
-    pub fn to_str_in_offset(&self, fmt: &str, secs: i32) -> Result<alloc::string::String, DtErr> {
+    pub fn to_str_in_offset(&self, fmt: &str, secs: i32) -> Result<String, DtErr> {
         self.ymd_with_offset(secs)
             .to_str(fmt, Some(secs), None, None)
     }
@@ -145,9 +145,10 @@ impl Dt {
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
     /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
     ///   time scale before producing the result.
-    /// - No IANA timezone name or abbreviation is set.
     ///
     /// ## Examples
+    ///
+    /// You can offset an output that wasn't originally from a zoned input:
     ///
     /// ```
     /// # #[cfg(all(feature = "tz", feature = "parse"))]
@@ -155,9 +156,20 @@ impl Dt {
     /// use deep_time::{Dt, Scale};
     ///
     /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
-    ///
     /// let s = x.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
+    /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
+    /// # }
+    /// ```
     ///
+    /// You can also return to a zoned output from a zoned input:
+    ///
+    /// ```
+    /// # #[cfg(all(feature = "tz", feature = "parse"))]
+    /// # {
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x: Dt = "Saturday, January 01, 2000 07:00:00 America/New_York".parse().unwrap();
+    /// let s = x.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York").unwrap();
     /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
     /// # }
     /// ```
@@ -173,7 +185,7 @@ impl Dt {
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_in_offset`](../struct.Dt.html#method.to_str_in_offset)
     #[inline(always)]
-    pub fn to_str_in_tz(&self, fmt: &str, tz_name: &str) -> Result<alloc::string::String, DtErr> {
+    pub fn to_str_in_tz(&self, fmt: &str, tz_name: &str) -> Result<String, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name)?;
         ymd.to_str(fmt, Some(offset), Some(LiteStr::new(tz_name)), Some(abbrev))
     }
@@ -242,27 +254,6 @@ impl Dt {
         self.to_str_in_offset("%Y%m%dT%H%M%S%.~fZ", 0)
     }
 
-    /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
-    ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
-    /// - This is the format used in `Date`, `Expires`, `Last-Modified` headers.
-    /// - Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
-    #[inline(always)]
-    pub fn to_str_http(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0)
-    }
-
-    /// **RFC 2822** date format (used in email `Date` headers).
-    ///
-    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
-    ///   time scale before producing the result.
-    /// - Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
-    #[inline(always)]
-    pub fn to_str_rfc2822(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%a, %d %b %Y %H:%M:%S %z", 0)
-    }
-
     /// **ISO 8601 week date**.
     ///
     /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
@@ -291,6 +282,27 @@ impl Dt {
     #[inline(always)]
     pub fn to_str_iso_time(&self) -> Result<String, DtErr> {
         self.to_str_in_offset("%H:%M:%S%.~f", 0)
+    }
+
+    /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
+    ///
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
+    /// - This is the format used in `Date`, `Expires`, `Last-Modified` headers.
+    /// - Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
+    #[inline(always)]
+    pub fn to_str_http(&self) -> Result<String, DtErr> {
+        self.to_str_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0)
+    }
+
+    /// **RFC 2822** date format (used in email `Date` headers).
+    ///
+    /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
+    ///   time scale before producing the result.
+    /// - Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
+    #[inline(always)]
+    pub fn to_str_rfc2822(&self) -> Result<String, DtErr> {
+        self.to_str_in_offset("%a, %d %b %Y %H:%M:%S %z", 0)
     }
 }
 
@@ -332,9 +344,9 @@ impl Dt {
     /// - A copy of the [`Dt`] is adjusted by the given `secs` offset **before**
     ///   formatting, and the offset is stored so that `%z` / `%:z` format directives
     ///   will reflect it.
-    /// - No IANA timezone name or abbreviation is set.
     /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
     ///   time scale before producing the result.
+    /// - No IANA timezone name or abbreviation is set.
     ///
     /// ## Examples
     ///
@@ -381,13 +393,14 @@ impl Dt {
     ///     - Correct numeric offset (for `%z` / `%:z`).
     ///     - Timezone abbreviation (for `%Z`). These **do not** round-trip.
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
-    /// - No IANA timezone name or abbreviation is set.
     /// - Converts from the [`Dt`]s current time `scale` to the [`Dt`]s `target`
     ///   time scale before producing the result.
     ///
     /// ## Examples
     ///
     /// ```rust
+    /// # #[cfg(feature = "tz")]
+    /// # {
     /// use deep_time::{Dt, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
@@ -396,6 +409,7 @@ impl Dt {
     /// let s = b.as_str().unwrap();
     ///
     /// println!("{}", s);
+    /// # }
     /// ```
     ///
     /// ## Errors
