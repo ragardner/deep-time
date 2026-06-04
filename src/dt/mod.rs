@@ -2,7 +2,6 @@ mod arithmetic;
 mod constructors;
 mod conveniences;
 mod conversions;
-mod decimal_year;
 mod from_ccsds;
 mod from_str;
 mod gregorian;
