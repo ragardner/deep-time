@@ -6,12 +6,6 @@ use {crate::ATTOS_PER_SEC, alloc::string::String};
 
 #[cfg(feature = "alloc")]
 impl Dt {
-    /// # Time Scale Handling
-    ///
-    /// All formatting methods in this `impl` block (except [`to_iso_duration`])
-    /// convert from the [`Dt`]'s current time `scale` to its `target` scale
-    /// before producing output.
-
     /// Converts this `Dt` to an ISO 8601 duration string
     /// (e.g. `"PT1H23M45.6789S"`, `"-PT0.5S"`, `"PT0.000000000000000001S"`, or `"PT0S"`).
     ///
