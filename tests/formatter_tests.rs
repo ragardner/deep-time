@@ -420,4 +420,38 @@ mod format_tests {
         let s = t_full_attos.to_str_lite("%.18f", Lang::En).unwrap();
         assert_eq!(s.as_str().unwrap(), ".123456789012345678");
     }
+
+    #[cfg(feature = "tz")]
+    #[test]
+    fn test_format_label_only_no_time_shift() {
+        // Base time: 2025-04-16 14:30:45 UTC
+        let t = Dt::from_ymd(2025, 4, 16, 14, 30, 45, 0, Scale::UTC);
+
+        let s = t
+            .to_str_lite_with_offset_label("%Y-%m-%d %H:%M:%S %:z", -5 * 3600, Lang::En)
+            .unwrap();
+        assert_eq!(s.as_str().unwrap(), "2025-04-16 14:30:45 -05:00");
+
+        let s = t
+            .to_str_lite_with_tz_label("%Y-%m-%d %H:%M:%S %Z", "America/New_York", Lang::En)
+            .unwrap();
+        assert_eq!(s.as_str().unwrap(), "2025-04-16 14:30:45 EDT");
+    }
+
+    #[cfg(all(feature = "alloc", feature = "tz"))]
+    #[test]
+    fn test_format_label_only_no_time_shift_alloc() {
+        // Base time: 2025-04-16 14:30:45 UTC
+        let t = Dt::from_ymd(2025, 4, 16, 14, 30, 45, 0, Scale::UTC);
+
+        let s = t
+            .to_str_with_offset_label("%Y-%m-%d %H:%M:%S %:z", -5 * 3600, Lang::En)
+            .unwrap();
+        assert_eq!(s, "2025-04-16 14:30:45 -05:00");
+
+        let s = t
+            .to_str_with_tz_label("%Y-%m-%d %H:%M:%S %Z", "America/New_York", Lang::En)
+            .unwrap();
+        assert_eq!(s, "2025-04-16 14:30:45 EDT");
+    }
 }

@@ -3,7 +3,7 @@ use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRFTIME_SIZE, Scale, YmdHms, a
 impl YmdHms {
     #[cfg(feature = "alloc")]
     #[inline]
-    pub fn to_str(
+    pub(crate) fn to_str(
         &self,
         fmt: &str,
         offset: Option<i32>,
@@ -16,7 +16,7 @@ impl YmdHms {
     }
 
     #[inline]
-    pub fn to_str_lite(
+    pub(crate) fn to_str_lite(
         &self,
         fmt: &str,
         offset: Option<i32>,
