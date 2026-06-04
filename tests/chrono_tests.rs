@@ -251,7 +251,6 @@ mod tests {
         assert_eq!(dt.timestamp(), 1713173445); // ← corrected: 09:30:45 UTC
     }
 
-    #[cfg(feature = "chrono-tz")]
     #[test]
     fn test_to_chrono_datetime_civil_with_iana_america_new_york_edt() {
         // 2024-04-15 10:30:00 America/New_York  (EDT = UTC-4)
@@ -269,7 +268,6 @@ mod tests {
         assert_eq!(dt.timestamp(), 1713191400); // 14:30:00 UTC
     }
 
-    // #[cfg(not(feature = "chrono-tz"))]
     #[test]
     fn test_to_chrono_datetime_civil_with_iana_fallback_offset_at() {
         let parsed = TimeParts::from_str(
@@ -308,7 +306,6 @@ mod tests {
         assert_eq!(dt.timestamp(), 1713191400);
     }
 
-    #[cfg(feature = "chrono-tz")]
     #[test]
     fn test_to_chrono_timestamp_with_iana_name() {
         // Civil time in IANA zone → correct UTC unix timestamp
@@ -324,27 +321,6 @@ mod tests {
         assert_eq!(ts, 1713191400); // 14:30 UTC
     }
 
-    #[cfg(feature = "chrono-tz")]
-    #[test]
-    fn test_to_chrono_datetime_iana_ambiguous_time_fails() {
-        // 2024-11-03 01:30:00 America/New_York is ambiguous (fall-back)
-        // Should error (same as chrono-tz behaviour)
-        let parsed = TimeParts::from_str(
-            "%F %T %Q",
-            "2024-11-03 01:30:00 America/New_York",
-            false,
-            false,
-            false,
-        )
-        .unwrap();
-        let err = parsed.to_chrono_datetime().unwrap_err();
-        assert!(matches!(
-            err.kind().unwrap(),
-            deep_time::error::DtErrKind::InvalidTimezoneOffset
-        ));
-    }
-
-    #[cfg(not(feature = "chrono-tz"))]
     #[test]
     fn test_to_chrono_datetime_iana_spring_forward_gap() {
         // 2023-03-12 02:30:00 America/New_York is inside the DST spring-forward gap (non-existent)
@@ -365,7 +341,6 @@ mod tests {
         assert_eq!(dt.timestamp(), 1678606200); // 2023-03-12 07:30:00 UTC
     }
 
-    #[cfg(not(feature = "chrono-tz"))]
     #[test]
     fn test_to_chrono_datetime_iana_exact_spring_forward_boundary() {
         // Exact transition moment: 2023-03-12 02:00:00 America/New_York (start of gap)
@@ -385,7 +360,6 @@ mod tests {
         assert_eq!(dt.timestamp(), 1678604400);
     }
 
-    #[cfg(not(feature = "chrono-tz"))]
     #[test]
     fn test_to_chrono_datetime_iana_fall_back_overlap() {
         // 2023-11-05 01:00:00 America/New_York is ambiguous (fall-back overlap)
@@ -405,7 +379,6 @@ mod tests {
         assert_eq!(dt.timestamp(), 1699160400); // 2023-11-05 05:00:00 UTC
     }
 
-    #[cfg(not(feature = "chrono-tz"))]
     #[test]
     fn test_to_chrono_datetime_iana_exact_fall_back_boundary() {
         // Exact transition moment: 2023-11-05 01:00:00 America/New_York (overlap boundary)
@@ -425,7 +398,6 @@ mod tests {
         assert_eq!(dt.timestamp(), 1699160400); // 2023-11-05 05:00:00 UTC
     }
 
-    #[cfg(not(feature = "chrono-tz"))]
     #[test]
     fn test_to_chrono_datetime_iana_southern_hemisphere_gap() {
         // Southern hemisphere spring-forward gap (Australia/Sydney)

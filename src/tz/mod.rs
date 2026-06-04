@@ -2,10 +2,10 @@ pub mod tzdb;
 
 pub use tzdb::*;
 
-#[cfg(all(feature = "jiff-tz", not(feature = "tz-tests")))]
+#[cfg(feature = "jiff-tz")]
 mod jiff_tz;
 
-#[cfg(all(feature = "jiff-tz", not(feature = "tz-tests")))]
+#[cfg(feature = "jiff-tz")]
 use jiff_tz::*;
 
 /// Returns offset information for an IANA timezone at the given **local** Unix time.
@@ -15,11 +15,11 @@ use jiff_tz::*;
 /// original local time and re-query to obtain a valid instant.
 #[inline(always)]
 pub fn offset_for_local(name: &str, local_unix: i64) -> Option<OffsetInfo> {
-    #[cfg(all(feature = "jiff-tz", not(feature = "tz-tests")))]
+    #[cfg(feature = "jiff-tz")]
     {
         jiff_offset_info_at_local(name, local_unix)
     }
-    #[cfg(any(not(feature = "jiff-tz"), feature = "tz-tests"))]
+    #[cfg(not(feature = "jiff-tz"))]
     {
         offset_info_at_local(name, local_unix)
     }
@@ -31,11 +31,11 @@ pub fn offset_for_local(name: &str, local_unix: i64) -> Option<OffsetInfo> {
 /// Every UTC instant has exactly one well-defined offset.
 #[inline(always)]
 pub fn offset_for_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo> {
-    #[cfg(all(feature = "jiff-tz", not(feature = "tz-tests")))]
+    #[cfg(feature = "jiff-tz")]
     {
         jiff_offset_info_at_utc(name, utc_unix)
     }
-    #[cfg(any(not(feature = "jiff-tz"), feature = "tz-tests"))]
+    #[cfg(not(feature = "jiff-tz"))]
     {
         offset_info_at_utc(name, utc_unix)
     }

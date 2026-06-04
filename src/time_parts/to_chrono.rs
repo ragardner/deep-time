@@ -1,3 +1,4 @@
+use crate::tz::offset_for_local;
 use crate::{
     ATTOS_PER_NS, Dt, an_err,
     error::{DtErr, DtErrKind},
@@ -6,12 +7,6 @@ use crate::{
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
 };
-
-#[cfg(feature = "chrono-tz")]
-use chrono_tz::Tz;
-
-#[cfg(not(feature = "chrono-tz"))]
-use crate::tzdb::offset_info_at_local;
 
 impl TimeParts {
     /// Converts [`TimeParts`] → [`chrono::NaiveDateTime`] (civil time, no TZ).
@@ -140,10 +135,6 @@ impl TimeParts {
     /// Converts [`TimeParts`] → [`chrono::DateTime`].
     /// - If this [`TimeParts`] has a unix timestamp then it is used
     ///   instead of anything else, timezones are ignored in this route.
-    /// - If the `"chrono-tz"` feature is enabled then chronos tz features
-    ///   are used to parse the IANA name.
-    /// - If the `"chrono-tz"` feature is **not** enabled then the library's
-    ///   own tz handling will be used.
     pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, DtErr> {
         // ============================================================
         // UNIX TIMESTAMP PATH
@@ -183,34 +174,12 @@ impl TimeParts {
                 )
             })?;
             if !name_str.is_empty() {
-                #[cfg(feature = "chrono-tz")]
-                {
-                    let tz: Tz = name_str.parse().map_err(|e| {
-                        an_err!(
-                            DtErrKind::InvalidTimezoneOffset,
-                            "unknown IANA '{}': {}",
-                            name_str,
-                            e
-                        )
-                    })?;
-                    let local = tz.from_local_datetime(&naive);
-                    let zoned = local.single().ok_or_else(|| {
-                        an_err!(
-                            DtErrKind::InvalidTimezoneOffset,
-                            "local time is ambiguous or invalid in timezone '{}'",
-                            name_str
-                        )
-                    })?;
-                    return Ok(zoned.fixed_offset());
-                }
-
-                #[cfg(not(feature = "chrono-tz"))]
                 {
                     let provisional_unix =
                         DateTime::<chrono::Utc>::from_naive_utc_and_offset(naive, chrono::Utc)
                             .timestamp();
 
-                    match crate::tzdb::offset_info_at_local(name_str, provisional_unix) {
+                    match offset_for_local(name_str, provisional_unix) {
                         Some(info) => {
                             let mut local_naive = naive;
 
@@ -257,10 +226,6 @@ impl TimeParts {
     /// Converts [`TimeParts`] → [`i64`].
     /// - If this [`TimeParts`] has a unix timestamp then it is used
     ///   instead of anything else, timezones are ignored in this route.
-    /// - If the `"chrono-tz"` feature is enabled then chronos tz features
-    ///   are used to parse the IANA name.
-    /// - If the `"chrono-tz"` feature is **not** enabled then the library's
-    ///   own tz handling will be used.
     /// - Uses [`TimeParts::to_chrono_datetime`] internally.
     pub fn to_chrono_timestamp(&self) -> Result<i64, DtErr> {
         if let Some(secs) = self.unix_timestamp_seconds {
