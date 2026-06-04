@@ -1,33 +1,58 @@
-use crate::{C_SQUARED, Drift, Dt, DtErr, DtErrKind, Real, Scale, Spacetime, Velocity, an_err};
+use crate::{C_SQUARED, Drift, Dt, DtErr, DtErrKind, Real, Spacetime, Velocity, an_err};
 
 impl Dt {
-    /// Computes the relativistic clock drift (proper time minus coordinate time)
-    /// over an interval.
+    /// Computes the accumulated proper time along a trajectory given a sequence
+    /// of physical states.
     ///
-    /// This returns how much a physical clock has gained or lost time compared
-    /// with coordinate time between `start` and `end`.
+    /// This function accepts samples expressed in terms of directly observable
+    /// quantities — coordinate time, velocity, and gravitational potential —
+    /// and integrates the proper time (Δτ) along the path. It is a convenience
+    /// wrapper around the core [`proper_time_from_path`] routine.
     ///
-    /// - A positive result means the onboard clock ran fast.
-    /// - A negative result means the onboard clock ran slow.
+    /// The integration is performed using the trapezoidal rule applied to the
+    /// instantaneous proper-time rate between consecutive samples. This approach
+    /// is standard for high-precision clock modeling in astrodynamics and
+    /// relativistic timing applications.
+    ///
+    /// A single sample, or multiple samples at identical times, produces a result
+    /// of zero (no time has elapsed). An empty iterator also returns zero.
     ///
     /// ## Parameters
     ///
-    /// - `start`: Starting coordinate time of the interval.
-    /// - `end`: Ending coordinate time of the interval.
-    /// - `states`: Iterator of physical states. Coordinate times must be
-    ///   monotonically non-decreasing. **It is the caller’s responsibility**
-    ///   to ensure the provided states cover the time range from `start` to `end`.
-    ///   The function integrates proper time over whatever states are supplied
-    ///   and subtracts the requested coordinate interval (`end - start`).
-    ///   Exact matching of the first and last state times to `start` and `end`
-    ///   is **not** validated.
-    /// - `characteristic_length_scale`: See [`proper_time_from_states`].
+    /// - `samples`: Iterator yielding `(coordinate_time, velocity, gravitational_potential)`
+    ///   triples. The coordinate times must be monotonically non-decreasing.
+    ///   **It is the caller’s responsibility** to supply samples that cover the
+    ///   desired time interval. The function does not validate that the first or
+    ///   last sample exactly matches any particular start or end time.
+    /// - `characteristic_length_scale`: Controls whether the weak-field or
+    ///   strong-field formulation is used when constructing the local spacetime
+    ///   state.
+    ///
+    ///   Pass `0.0` (the normal choice) for all conventional weak-field work
+    ///   (Earth orbit, GNSS, solar-system navigation, most spacecraft). This
+    ///   produces exactly the classic relativistic clock rate used by JPL, ESA,
+    ///   and GNSS systems, with the Kretschmann scalar set to zero.
+    ///
+    ///   Supply a positive value (in meters) only when you need the library’s
+    ///   intrinsic Planck-scale saturation term. The value should represent the
+    ///   characteristic length scale over which the gravitational field varies
+    ///   significantly at the observer’s location. This is intended for strong-field
+    ///   regimes such as the vicinity of neutron stars or black-hole event horizons.
     ///
     /// ## Returns
     ///
-    /// `Ok(drift)` — the accumulated drift (Δτ − Δt) as a [`Dt`].
+    /// `Ok(total_proper_time)` — the total proper time (Δτ) that has accumulated
+    /// for an observer following the trajectory defined by the supplied samples,
+    /// returned as a [`Dt`].
     ///
-    /// `Err(DtErr)` — if the states are not monotonically increasing in time.
+    /// This value represents the actual time that would have elapsed on a physical
+    /// clock moving along the path, including all relativistic effects (velocity
+    /// and gravitational time dilation, plus the Planck-scale saturation term when
+    /// active). It is **not** a drift or difference relative to coordinate time.
+    /// If you need the difference between proper time and coordinate time
+    /// (Δτ − Δt), use [`proper_time_drift_from_states`] instead.
+    ///
+    /// `Err(DtErr)` — if the coordinate times are not monotonically non-decreasing.
     pub fn proper_time_from_states<I>(
         samples: I,
         characteristic_length_scale: Real,
@@ -49,29 +74,46 @@ impl Dt {
     }
 
     /// Computes the relativistic clock drift (proper time minus coordinate time)
-    /// over an interval.
+    /// over a specific interval.
     ///
     /// This returns how much a physical clock has gained or lost time compared
     /// with coordinate time between `start` and `end`.
     ///
-    /// - A positive result means the onboard clock ran fast.
-    /// - A negative result means the onboard clock ran slow.
+    /// - A positive result means the onboard clock ran **fast** (it accumulated
+    ///   more proper time than the coordinate interval).
+    /// - A negative result means the onboard clock ran **slow** (it accumulated
+    ///   less proper time than the coordinate interval).
+    ///
+    /// This is the higher-level function most callers should use when they need
+    /// the net drift over a well-defined time interval. It internally calls
+    /// [`proper_time_from_states`] to integrate proper time along the supplied
+    /// trajectory and then subtracts the requested coordinate time span.
     ///
     /// ## Parameters
     ///
-    /// - `start`: Starting coordinate time.
-    /// - `end`: Ending coordinate time.
-    /// - `states`: Iterator of physical states covering the interval.
-    ///   Coordinate times must be monotonically non-decreasing.
-    ///   It is the caller’s responsibility to ensure the states span
-    ///   the requested interval (exact first/last time matching is not checked).
-    /// - `characteristic_length_scale`: See [`proper_time_from_states`].
+    /// - `start`: Starting coordinate time of the interval.
+    /// - `end`: Ending coordinate time of the interval.
+    /// - `states`: Iterator of physical states in the form
+    ///   `(coordinate_time, velocity, gravitational_potential)`.
+    ///   Coordinate times must be monotonically **non-decreasing**.
+    ///   **It is the caller’s responsibility** to ensure the provided states
+    ///   cover the time range from `start` to `end`. The function integrates
+    ///   proper time over whatever samples are supplied and subtracts the
+    ///   requested coordinate interval (`end - start`). Exact matching of the
+    ///   first and last state times to `start` and `end` is **not** validated.
+    /// - `characteristic_length_scale`: Controls the weak-field vs strong-field
+    ///   formulation when constructing local spacetime states (see
+    ///   [`proper_time_from_states`] for full details). Pass `0.0` for all normal
+    ///   weak-field work (GNSS, Earth orbit, solar-system navigation). Supply a
+    ///   positive length (in meters) only when strong-field Planck-scale
+    ///   saturation effects are required.
     ///
     /// ## Returns
     ///
-    /// `Ok(drift)` — the accumulated drift (Δτ − Δt) as a [`Dt`].
+    /// `Ok(drift)` — the accumulated drift (`Δτ − Δt`) as a [`Dt`].
     ///
-    /// `Err(DtErr)` — if the states are not monotonically increasing in time.
+    /// `Err(DtErr)` — if the coordinate times in `states` are not monotonically
+    /// non-decreasing.
     pub fn proper_time_drift_from_states<I>(
         start: Dt,
         end: Dt,
@@ -98,7 +140,8 @@ impl Dt {
     /// sampled trajectories in astrodynamics and high-precision timing work.
     ///
     /// The function enforces that coordinate times are monotonically
-    /// non-decreasing. It performs a single pass with no heap allocation.
+    /// non-decreasing (equal times are allowed). It performs a single pass
+    /// with no heap allocation.
     ///
     /// ## Parameters
     ///
@@ -107,10 +150,12 @@ impl Dt {
     ///
     /// ## Returns
     ///
-    /// `Ok(total_proper_time)` — the accumulated proper time as a [`Dt`].
+    /// `Ok(total_proper_time)` — the accumulated proper time (Δτ) as a [`Dt`].
+    ///   Returns `ZERO` if the iterator is empty (no time elapsed).
     ///
-    /// `Err(DtErr)` — if the path is empty or contains any decrease in
-    /// coordinate time.
+    /// `Err(DtErr)` — if the path contains any decrease in coordinate time
+    ///   (i.e., a later sample has a strictly earlier coordinate time than a
+    ///   previous sample).
     pub fn proper_time_from_path<I>(path: I) -> Result<Self, DtErr>
     where
         I: IntoIterator<Item = (Self, Spacetime)>,
@@ -141,7 +186,7 @@ impl Dt {
                 let rate1 = Self::rate_from_local(&ls);
 
                 let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt_sec;
-                let dtau_segment = Dt::from_sec_f(sign * (dt_sec + integral), Scale::TAI);
+                let dtau_segment = Dt::span_f(sign * (dt_sec + integral));
 
                 accumulated = accumulated.add(dtau_segment);
             }
@@ -153,27 +198,41 @@ impl Dt {
         Ok(accumulated)
     }
 
-    /// Computes proper time advance over an interval when the rate is constant.
+    /// Computes proper time advance over an interval when the proper-time rate
+    /// is constant.
     ///
-    /// Use this for segments where conditions do not change, such as
-    /// a ground station, a circular orbit, or a deep-space cruise phase
-    /// with constant velocity and gravitational potential.
+    /// This method is intended for trajectory segments where the physical
+    /// conditions remain unchanged, such as:
     ///
-    /// This is mathematically equivalent to integrating a constant rate
-    /// but is more efficient and expresses intent clearly.
+    /// - a fixed ground station,
+    /// - a circular orbit, or
+    /// - a deep-space cruise phase with constant velocity and gravitational potential.
+    ///
+    /// It is mathematically equivalent to integrating a constant rate using
+    /// the trapezoidal rule in [`proper_time_from_path`], but is more efficient
+    /// and makes the caller's intent explicit.
+    ///
+    /// The method is called on the starting coordinate time (`self`). It
+    /// calculates the coordinate time interval to `end` and multiplies it by
+    /// the supplied constant rate `dtau_dt`.
     ///
     /// ## Parameters
     ///
-    /// - `end`: Ending coordinate time.
-    /// - `dtau_dt`: Constant proper-time rate (dimensionless, usually between 0 and 1).
+    /// - `end`: Ending coordinate time of the interval.
+    /// - `dtau_dt`: Constant proper-time rate (dimensionless). In relativistic
+    ///   contexts this value is typically slightly less than `1.0`. The caller
+    ///   is responsible for providing an appropriate rate (for example, from
+    ///   `Drift::proper_time_rate` or a precomputed constant).
     ///
     /// ## Returns
     ///
-    /// The accumulated proper time advance as a [`Dt`].
+    /// The accumulated proper time advance (Δτ) over the interval as a [`Dt`].
+    ///
+    /// If `end` occurs before `self`, the result will be negative.
     #[inline]
     pub const fn proper_time_between_constant_rate(self, end: Dt, dtau_dt: Real) -> Dt {
         let dt_sec = end.to_diff_raw(self).to_sec_f();
-        Dt::from_sec_f(dtau_dt * dt_sec, Scale::TAI)
+        Dt::span_f(dtau_dt * dt_sec)
     }
 
     /// Returns the instantaneous proper-time rate (dτ/dt) from a local
