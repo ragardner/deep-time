@@ -156,6 +156,7 @@ locale = [
 perf-tests = ["parse", "std"]
 eop-tests = ["eop", "std"]
 tz-tests = [
+    "tz",
     "jiff",
     "std",
     "jiff?/tz-system",

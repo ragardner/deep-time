@@ -104,19 +104,19 @@ mod format_tests {
         let s = t.to_str_lite("%z").unwrap();
         assert_eq!(s.as_str().unwrap(), "+0000");
 
-        let s = t.to_str_lite_with_offset("%:z", -5 * 3600).unwrap();
+        let s = t.to_str_lite_in_offset("%:z", -5 * 3600).unwrap();
         assert_eq!(s.as_str().unwrap(), "-05:00");
 
-        let s = t.to_str_lite_with_offset("%::z", -8 * 3600).unwrap();
+        let s = t.to_str_lite_in_offset("%::z", -8 * 3600).unwrap();
         assert_eq!(s.as_str().unwrap(), "-08:00:00");
 
-        let s = t.to_str_lite_with_offset("%z", 2 * 3600 + 30 * 60).unwrap();
+        let s = t.to_str_lite_in_offset("%z", 2 * 3600 + 30 * 60).unwrap();
         assert_eq!(s.as_str().unwrap(), "+0230");
 
         let s = t.to_str_lite("%Q").unwrap();
         assert_eq!(s.as_str().unwrap(), "UTC");
 
-        let s = t.to_str_lite_with_offset("%z", -5 * 3600).unwrap();
+        let s = t.to_str_lite_in_offset("%z", -5 * 3600).unwrap();
         assert_eq!(s.as_str().unwrap(), "-0500");
     }
 
@@ -254,13 +254,13 @@ mod format_tests {
         let la = -8 * 3600;
         let weird = 3600 + 23 * 60 + 45;
 
-        let s = t_frac.to_str_lite_with_offset("%::z", ny).unwrap();
+        let s = t_frac.to_str_lite_in_offset("%::z", ny).unwrap();
         assert_eq!(s.as_str().unwrap(), "-05:00:00");
 
-        let s = t_frac.to_str_lite_with_offset("%:z", la).unwrap();
+        let s = t_frac.to_str_lite_in_offset("%:z", la).unwrap();
         assert_eq!(s.as_str().unwrap(), "-08:00");
 
-        let s = t_frac.to_str_lite_with_offset("%::z", weird).unwrap();
+        let s = t_frac.to_str_lite_in_offset("%::z", weird).unwrap();
         assert_eq!(s.as_str().unwrap(), "+01:23:45");
 
         // Padding + explicit width + flags combined

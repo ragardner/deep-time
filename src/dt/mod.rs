@@ -78,12 +78,12 @@ use core::fmt;
 /// - [`Dt::parse`](../struct.Dt.html#method.parse)
 /// - [`Dt::from_str`](../struct.Dt.html#method.from_str)
 /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)*
-/// - [`Dt::to_str_with_offset`](../struct.Dt.html#method.to_str_with_offset)*
-/// - [`Dt::to_str_with_tz`](../struct.Dt.html#method.to_str_with_tz)*
+/// - [`Dt::to_str_in_offset`](../struct.Dt.html#method.to_str_in_offset)*
+/// - [`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz)*
 /// - [`Dt::to_str_iso8601`](../struct.Dt.html#method.to_str_iso8601)*
 /// - [`Dt::to_str_lite`](../struct.Dt.html#method.to_str_lite)
-/// - [`Dt::to_str_lite_with_offset`](../struct.Dt.html#method.to_str_lite_with_offset)
-/// - [`Dt::to_str_lite_with_tz`](../struct.Dt.html#method.to_str_lite_with_tz)
+/// - [`Dt::to_str_lite_in_offset`](../struct.Dt.html#method.to_str_lite_in_offset)
+/// - [`Dt::to_str_lite_in_tz`](../struct.Dt.html#method.to_str_lite_in_tz)
 ///
 /// ### From and to julian dates
 ///
@@ -144,10 +144,10 @@ use core::fmt;
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
 ///
 /// let s = x
-///  .to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
 ///  .unwrap();
 /// let b = x
-///  .to_str_lite_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+///  .to_str_lite_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
 ///  .unwrap();
 ///
 /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");

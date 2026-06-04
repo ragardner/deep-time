@@ -27,8 +27,8 @@ mod tests {
         // Format back using the IANA zone
         let fmt = "%Y-%m-%d %H:%M:%S %Q";
         let output = our_dt
-            .to_str_with_tz(fmt, "America/New_York")
-            .expect("to_str_with_tz should succeed");
+            .to_str_in_tz(fmt, "America/New_York")
+            .expect("to_str_in_tz should succeed");
 
         // === THE KEY REGRESSION ASSERT ===
         assert_eq!(
@@ -40,7 +40,7 @@ mod tests {
         let our_dt2: Dt =
             Dt::from_str_parse(&output, &None).expect("second parse should also succeed");
         let output2 = our_dt2
-            .to_str_with_tz(fmt, "America/New_York")
+            .to_str_in_tz(fmt, "America/New_York")
             .expect("second format should succeed");
 
         assert_eq!(output2, expected_snapped, "round-trip must be stable");
@@ -53,10 +53,10 @@ mod tests {
 
         let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
         let s = x
-            .to_str_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+            .to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
             .unwrap();
         let b = x
-            .to_str_lite_with_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
+            .to_str_lite_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York")
             .unwrap();
 
         assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
@@ -385,11 +385,11 @@ mod tests {
         for tp in [Dt::from_tai_sec(5), Dt::from_tai_sec(-5)] {
             let xp1 = tp
                 .target(Scale::UTC)
-                .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
+                .to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
                 .unwrap();
             let tp2 = Dt::from_str_parse(&xp1, &None).unwrap();
             let xp2 = tp2
-                .to_str_with_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
+                .to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600)
                 .unwrap();
             let tp3 = Dt::from_str_parse(&xp2, &None).unwrap();
             assert_eq!(tp, tp3);

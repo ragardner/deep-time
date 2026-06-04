@@ -346,28 +346,25 @@ mod tests {
             let jiff_zoned: Zoned = civil_dt
                 .in_tz(iana_name)
                 .unwrap_or_else(|e| panic!("Jiff in_tz('{}') failed: {}", iana_name, e));
+            // let jiff_str = jiff_zoned.timestamp().to_string();
+            let jiff_str = jiff_zoned.to_string();
 
-            // CHANGED: Convert to Timestamp so Jiff prints the *same* pure UTC RFC 3339
-            // string with Z that deep_time::to_rfc3339() produces.
-            let jiff_rfc = jiff_zoned.timestamp().to_string();
-
-            // ─── Your library ──────────────────────────────────────────────────────────
+            // ─── deep-time ──────────────────────────────────────────────────────────
             let our_input = format!("{} {}", civil_str, iana_name);
 
             let our_dt: Dt = our_input
                 .parse()
                 .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
-
-            let our_rfc = our_dt.to_str_rfc3339().unwrap();
+            let our_str = our_dt.to_str_rfc9557(&format!("{}", iana_name)).unwrap();
 
             // ─── Assert (no more manual prints) ────────────────────────────────────────
             assert_eq!(
-                our_rfc, jiff_rfc,
+                our_str, jiff_str,
                 "\n=== IANA Historical Test FAILED: {} ===\n\
              Input string   : {}\n\
              Jiff           : {}\n\
              deep_time      : {}\n",
-                description, our_input, jiff_rfc, our_rfc
+                description, our_input, jiff_str, our_str
             );
         }
     }
