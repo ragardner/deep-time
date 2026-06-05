@@ -5,26 +5,25 @@ use crate::{
 };
 
 impl Dt {
-    /// Converts this instant to the target scale and returns the signed difference
-    /// from the given epoch.
+    /// Converts this instant to its internally stored `target` scale and returns
+    /// the signed difference from the given epoch.
     ///
     /// This is a low-level `const fn` used internally by higher-level conversion
     /// methods such as [`to_ymd`](Dt::to_ymd).
     ///
     /// ## Arguments
     ///
-    /// * `to` — The time scale to convert `self` into before computing the difference.
-    /// * `epoch` — The reference epoch (e.g. [`Dt::UNIX_EPOCH`]) from which the
+    /// - `epoch` — The reference epoch (e.g. [`Dt::UNIX_EPOCH`]) from which the
     ///   difference is calculated.
+    /// - `convert_epoch` — Whether to also convert the provided `epoch` to this
+    ///   [`Dt`]'s `target` time scale.
     ///
     /// ## Returns
     ///
     /// A [`Dt`] representing the signed difference (seconds + attoseconds) between
     /// this instant (after conversion to `to`) and the provided `epoch`.
     ///
-    /// The returned value is a signed offset relative to `epoch` in the `to` scale.
-    /// While it is most commonly used as a pure duration, it can also be interpreted
-    /// as a timestamp when `epoch` is something like
+    /// It can be interpreted as a timestamp when `epoch` is something like
     /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) (e.g. for
     /// generating Unix timestamps via `.to_ms()` or `.to_sec()`).
     ///
