@@ -27,7 +27,7 @@ impl Dt {
         (yr, m as u8, d as u8)
     }
 
-    /// Returns the proleptic Gregorian date and wall-clock time for this instant.
+    /// Returns the calendar date and time for this instant.
     ///
     /// Converts to this [`Dt`]s `target` time scale using the internal current
     /// `scale` before producing a result.
@@ -36,7 +36,7 @@ impl Dt {
     ///
     /// A [`YmdHms`] containing:
     ///
-    /// - `yr`, `mo`, `day` — proleptic Gregorian calendar date
+    /// - `yr`, `mo`, `day` — calendar date
     /// - `hr` (0–23), `min` (0–59), `sec` (0–60)
     /// - `attos` — fractional second in attoseconds (`0 ≤ attos < 10¹⁸`)
     /// - `unix_attosec` — total attoseconds since the Unix epoch (`1970-01-01 00:00:00 UTC`)
@@ -109,7 +109,7 @@ impl Dt {
     ///
     /// - Expects **1 based** `mo` and `day`, and **0 based** `hr`, `min`, and `sec`.
     /// - Does not perform any time scale conversions.
-    /// - Expects clamped values.
+    /// - Expects pre-clamped values.
     pub const fn ymd_to_unix_sec(yr: i64, mo: u8, day: u8, hr: u8, min: u8, sec: u8) -> i64 {
         let jd = Self::ymd_to_jd(yr, mo, day);
         // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
