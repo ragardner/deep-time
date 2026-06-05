@@ -1,0 +1,12 @@
+[package]
+name = "tz-generator"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "Tool that generates a .rs file that provides functions for getting offset information for Iana Timezones"
+repository = "https://github.com/ragardner/deep-time"
+license = "Apache-2.0"
+workspace = "../.."
+
+[dependencies]
+parse-zoneinfo = "0.5"
