@@ -1,12 +1,35 @@
 //! TZDB code generator for deep-time
 //!
-//! Usage (from the deep-time root):
-//!   cargo run -p tz-generator -- <path-to-tzdata-folder>
+//! This is a development tool used to regenerate `tzdb.rs` from the
+//! official IANA Time Zone Database.
 //!
-//! Example:
-//!   cargo run -p tz-generator -- tzdata/tzdata2026c
+//! ## Setup
 //!
-//! It writes directly to src/tz/tzdb.rs
+//! 1. Download the latest tzdata release from:
+//!    https://www.iana.org/time-zones
+//! 2. Extract it into a `tzdata/` folder in the repository root.
+//!
+//!    Example structure:
+//!    ```text
+//!    deep-time/
+//!    ├── tzdata/
+//!    │   └── tzdata2026b/
+//!    │       ├── africa
+//!    │       ├── europe
+//!    │       └── ...
+//!    └── crates/
+//!        └── tz-generator/
+//!    ```
+//!
+//! ## Usage
+//!
+//! From the `deep-time` repository root, run:
+//!
+//! ```bash
+//! cargo run -p tz-generator -- tzdata/tzdata2026b
+//! ```
+//!
+//! The generator will write the updated data to `src/tz/tzdb.rs`.
 
 use parse_zoneinfo::{
     line::{Line, Year},
