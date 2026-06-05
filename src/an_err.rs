@@ -222,7 +222,7 @@ where
 
         kinds[0] = Some(kind);
         locs[0] = Some(Location::caller());
-        reasons[0] = if reason.len() == 0 {
+        reasons[0] = if reason.as_bytes().len() == 0 {
             None
         } else {
             Some(reason)
@@ -250,7 +250,7 @@ where
         locs[0] = Some(Location::caller());
         let mut reason = LiteStr::<REASON_LEN>::default();
         let _ = write!(&mut reason, "{}", args);
-        reasons[0] = if reason.len() == 0 {
+        reasons[0] = if reason.as_bytes().len() == 0 {
             None
         } else {
             Some(reason)
@@ -290,7 +290,7 @@ where
     pub fn context(&mut self, kind: K, new_reason: LiteStr<REASON_LEN>) {
         let idx = self.len as usize;
         if idx < DEPTH {
-            self.reasons[idx] = if new_reason.len() == 0 {
+            self.reasons[idx] = if new_reason.as_bytes().len() == 0 {
                 None
             } else {
                 Some(new_reason)
@@ -311,7 +311,7 @@ where
             let mut reason = LiteStr::<REASON_LEN>::default();
             let _ = write!(&mut reason, "{}", args);
 
-            self.reasons[idx] = if reason.len() == 0 {
+            self.reasons[idx] = if reason.as_bytes().len() == 0 {
                 None
             } else {
                 Some(reason)
@@ -541,13 +541,13 @@ where
                 // 2. Reason
                 let defaultx = LiteStr::default();
                 let reason = self.reasons[i].as_ref().unwrap_or(&defaultx);
-                buf[offset..offset + REASON_LEN].copy_from_slice(&reason.to_bytes());
+                buf[offset..offset + REASON_LEN].copy_from_slice(&reason.bytes);
                 offset += REASON_LEN;
 
                 // 3. Location
                 if let Some(loc) = self.locations[i] {
                     let file = LiteStr::<PATH_LEN>::new(loc.file());
-                    buf[offset..offset + PATH_LEN].copy_from_slice(&file.to_bytes());
+                    buf[offset..offset + PATH_LEN].copy_from_slice(&file.bytes);
                     offset += PATH_LEN;
 
                     buf[offset..offset + 4].copy_from_slice(&loc.line().to_le_bytes());

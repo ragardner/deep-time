@@ -14,9 +14,14 @@ use core::str;
 /// Both [`new`] and [`from_bytes`] silently truncate input that exceeds the
 /// capacity `N`. This type is intentionally minimal because each `LiteStr<N>`
 /// is monomorphized independently.
+///
+/// ## .len()
+///
+/// - **Byte length**: Use [`as_bytes()`][Self::as_bytes]`.len()`
+/// - **Unicode character count**: Use [`as_str()`][Self::as_str]`.unwrap().len()`
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct LiteStr<const N: usize> {
-    bytes: [u8; N],
+    pub bytes: [u8; N],
 }
 
 impl<const N: usize> Default for LiteStr<N> {
@@ -33,7 +38,7 @@ impl<const N: usize> LiteStr<N> {
     ///
     /// If the input is longer than `N` bytes, it is truncated at the nearest
     /// valid UTF-8 boundary.
-    #[inline(never)]
+    #[inline(always)]
     pub fn new(s: &str) -> Self {
         let mut bytes = [0u8; N];
         copy_valid_utf8_prefix(&mut bytes, s.as_bytes(), N);
@@ -41,6 +46,9 @@ impl<const N: usize> LiteStr<N> {
     }
 
     /// Returns the content as a `&str`, validating that it is well-formed UTF-8.
+    ///
+    /// Finds the first nul byte and uses that as the end of the str, or if
+    /// there isn't a nul byte then uses the whole len `N`.
     #[inline(always)]
     pub fn as_str(&self) -> Result<&str, LiteStrErr> {
         let end = find_first_nul(&self.bytes);
@@ -61,29 +69,17 @@ impl<const N: usize> LiteStr<N> {
         Self { bytes: arr }
     }
 
-    #[inline(always)]
-    pub fn to_bytes(&self) -> [u8; N] {
-        self.bytes
-    }
-
     /// Returns the content as a byte slice (up to the first nul byte).
     #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..find_first_nul(&self.bytes)]
-    }
-
-    /// Returns the length of the content in bytes.
-    #[allow(clippy::len_without_is_empty)]
-    #[inline(always)]
-    pub fn len(&self) -> usize {
-        find_first_nul(&self.bytes)
     }
 }
 
 impl<const N: usize> fmt::Write for LiteStr<N> {
     #[inline(never)]
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        let current = self.len();
+        let current = self.as_bytes().len();
         let remaining = N.saturating_sub(current);
         if remaining == 0 {
             return Ok(());

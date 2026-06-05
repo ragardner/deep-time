@@ -134,23 +134,29 @@ impl YmdHms {
     }
 
     #[inline]
-    pub fn add_attos(&self, attos: i128) -> Self {
-        self._add_attos(attos)
+    pub fn add_attos(&self, n: i128) -> Self {
+        self._add_attos(n)
     }
 
     #[inline]
-    pub fn add_sec(&self, sec: i64) -> Self {
-        self._add_attos(sec as i128 * ATTOS_PER_SEC_I128)
+    pub fn add_sec(&self, n: i64) -> Self {
+        self._add_attos((n as i128).saturating_mul(ATTOS_PER_SEC_I128))
     }
 
     #[inline]
-    pub fn add_min(&self, min: i64) -> Self {
-        self._add_attos(min as i128 * 60 * ATTOS_PER_SEC_I128)
+    pub fn add_min(&self, n: i64) -> Self {
+        let delta = (n as i128)
+            .saturating_mul(60)
+            .saturating_mul(ATTOS_PER_SEC_I128);
+        self._add_attos(delta)
     }
 
     #[inline]
-    pub fn add_hr(&self, hr: i64) -> Self {
-        self._add_attos(hr as i128 * 3600 * ATTOS_PER_SEC_I128)
+    pub fn add_hr(&self, n: i64) -> Self {
+        let delta = (n as i128)
+            .saturating_mul(3600)
+            .saturating_mul(ATTOS_PER_SEC_I128);
+        self._add_attos(delta)
     }
 
     #[inline]

@@ -1,9 +1,7 @@
 pub mod parser;
 
-#[cfg(feature = "alloc")]
-use crate::Lang;
 use crate::error::{DtErr, DtErrKind};
-use crate::{Dt, TimeParts, an_err};
+use crate::{Dt, Lang, LiteStr, STRFTIME_SIZE, TimeParts, an_err};
 use core::result::Result;
 use core::str;
 
@@ -125,7 +123,7 @@ impl StrPTimeFmt {
     /// output format.
     ///
     /// Effectively parses a [`str`] with the contained format, then outputs a
-    /// [`String`](`alloc::string::String`) to a new given format.
+    /// [`String`](`alloc::string::String`) with a new given format.
     ///
     /// Requires the `alloc` feature.
     ///
@@ -166,6 +164,47 @@ impl StrPTimeFmt {
             allow_partial_date,
         )?;
         parts.to_dt()?.to_str(output_fmt, lang)
+    }
+
+    /// Formats a [`Dt`] into a [`LiteStr`] using this pre-validated format and a given
+    /// output format.
+    ///
+    /// Effectively parses a [`str`] with the contained format, then outputs a
+    /// [`LiteStr`] with a new given format.
+    ///
+    /// ## Parameters
+    ///
+    /// - `s`: datetime input [`str`].
+    /// - `output_fmt`: The new format to output the datetime as.
+    /// - The remaining three flags are passed through to the internal `to_dt` call.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Lang, StrPTimeFmt};
+    ///
+    /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
+    /// let s = fmt.to_str_lite("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
+    ///
+    /// assert_eq!(s.as_str().unwrap(), "01 01 2000 12:00:00");
+    /// ```
+    pub fn to_str_lite(
+        &self,
+        s: &str,
+        output_fmt: &str,
+        inp_can_end_before_fmt: bool,
+        fmt_can_end_before_inp: bool,
+        allow_partial_date: bool,
+        lang: Lang,
+    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+        let parts = TimeParts::from_str(
+            self.as_str()?,
+            s,
+            inp_can_end_before_fmt,
+            fmt_can_end_before_inp,
+            allow_partial_date,
+        )?;
+        parts.to_dt()?.to_str_lite(output_fmt, lang)
     }
 
     fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {

@@ -3,9 +3,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 /// Used by [`ParseCfg`] in
-/// [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse).
-///
-/// Controls how ambiguous numeric dates (e.g. `01/02/03`).
+/// [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse). Controls
+/// how ambiguous dates (e.g. `01/02/03`) are parsed.
 ///
 /// The default `Smart` variant applies a practical heuristic that prefers
 /// year-first for compact formats and uses numeric plausibility checks
@@ -58,10 +57,13 @@ pub enum Order {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-/// Only relevant for purely numeric dates.
+/// Used by [`ParseCfg`] in
+/// [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse). Controls how purely
+/// numeric dates are parsed.
 pub enum Mode {
     /// **Default mode** — Smart heuristic:
-    /// - 5/7-digit pure-numeric inside `LEGACY_ORDINAL_YEAR_RANGE` → treated as business ordinal (YYYYDDD / YYDDD)
+    /// - 5/7-digit pure-numeric inside `LEGACY_ORDINAL_YEAR_RANGE` → treated as business
+    ///   ordinal (YYYYDDD / YYDDD)
     /// - Outside that range or invalid ordinal → treated as MJD or JD
     #[default]
     Auto,

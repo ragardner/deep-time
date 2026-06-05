@@ -7,7 +7,10 @@ impl Dt {
     ///
     /// ## Notes:
     ///
-    /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
+    /// - The [`Dt`] first converts itself and the unix epoch to the time scale of its
+    ///   `target` field before doing a raw difference with the epoch.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
+    ///   if it's not then the output will be incorrect.
     #[inline(always)]
     pub const fn to_unix(&self) -> Dt {
         self.to(self.target)
@@ -40,7 +43,10 @@ impl Dt {
     ///
     /// ## Notes:
     ///
-    /// - Assumes this [`Dt`] is from the 2000-01-01 noon epoch.
+    /// - The [`Dt`] first converts itself and the ntp epoch to the time scale of its
+    ///   `target` field before doing a raw difference with the epoch.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
+    ///   if it's not then the output will be incorrect.
     ///
     /// ## Examples
     ///
@@ -138,7 +144,6 @@ impl Dt {
     /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
     /// assert_eq!(x, z);
     /// ```
-    #[inline]
     pub const fn from_gps_wk_and_tow(wk: i64, tow: Dt) -> Dt {
         let total_attos = (wk as i128)
             .saturating_mul(ATTOS_PER_WEEK)
@@ -176,19 +181,19 @@ impl Dt {
     /// as a [`Dt`] on the TT scale.
     ///
     /// The CXC epoch is [`Dt::CXC_EPOCH`].
-    #[inline]
+    #[inline(always)]
     pub const fn to_cxcsec(&self) -> Dt {
         self.to_scale_and_diff(Self::CXC_EPOCH, true)
     }
 
     /// Inverse of [`Self::to_cxcsec`].
-    #[inline]
+    #[inline(always)]
     pub const fn from_cxcsec(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::CXC_EPOCH, true)
     }
 
     /// Floating-point counterpart of [`Self::from_cxcsec`].
-    #[inline]
+    #[inline(always)]
     pub const fn from_cxcsec_f(elapsed_sec: Real) -> Dt {
         Self::from_cxcsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))
     }
@@ -197,32 +202,31 @@ impl Dt {
     /// as a [`Dt`] on the TAI scale.
     ///
     /// The GALEX epoch is [`Self::GPS_EPOCH`].
-    #[inline]
+    #[inline(always)]
     pub const fn to_galexsec(&self) -> Dt {
         self.to_scale_and_diff(Self::GPS_EPOCH, true)
     }
 
     /// Inverse of [`Self::to_galexsec`].
-    #[inline]
+    #[inline(always)]
     pub const fn from_galexsec(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
     }
 
     /// Floating-point counterpart of [`Self::from_galexsec`].
-    #[inline]
+    #[inline(always)]
     pub const fn from_galexsec_f(elapsed_sec: Real) -> Dt {
         Self::from_galexsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))
     }
 
     /// Returns the **Julian epoch year**.
-    #[inline]
+    #[inline(always)]
     pub const fn to_jyear(&self) -> Real {
         let jd_tt = self.to_jd_f();
         f!(2000.0) + (jd_tt - JD_2000_2_451_545F) / f!(365.25)
     }
 
     /// Inverse of [`Self::to_jyear`].
-    #[inline]
     pub const fn from_jyear(jyear: Real, scale: Scale) -> Dt {
         if jyear.is_nan() {
             return Self::ZERO;
@@ -247,7 +251,6 @@ impl Dt {
     }
 
     /// Inverse of [`Self::to_byear`].
-    #[inline]
     pub const fn from_byear(byear: Real, scale: Scale) -> Dt {
         if byear.is_nan() {
             return Self::ZERO;
@@ -272,7 +275,6 @@ impl Dt {
     /// - Fully scale-aware (TAI, TT, UTC, TDB, custom clocks, …).
     /// - Exact integer arithmetic for the year boundaries, then a high-precision
     ///   `to_sec_f` division (lossy only at the final `Real` step, same as Astropy).
-    #[inline]
     pub fn to_decimalyear(&self) -> Real {
         let ymd = self.to_ymd();
         let year = ymd.yr;

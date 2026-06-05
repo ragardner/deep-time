@@ -375,7 +375,7 @@ impl TimeParts {
 
         // iana_name (49 bytes)
         if let Some(name) = &self.iana_name {
-            let name_bytes = name.to_bytes();
+            let name_bytes = name.bytes;
             buf[offset..offset + 49].copy_from_slice(&name_bytes);
         }
         offset += 49;
@@ -497,7 +497,7 @@ impl TimeParts {
         // iana_name (49 bytes) — already nice
         let iana_bytes = &bytes[offset..offset + 49];
         let name = LiteStr::<49>::from_bytes(iana_bytes);
-        if !name.len() == 0 {
+        if !name.as_bytes().len() == 0 {
             dc.iana_name = Some(name);
         }
         offset += 49;
