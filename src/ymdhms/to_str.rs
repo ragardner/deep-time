@@ -477,7 +477,7 @@ impl YmdHms {
         pos: &mut usize,
         wkdays_full: &[&[u8]; 7],
     ) {
-        let name = wkdays_full[self.wkday().wkday_sun_0_based() as usize];
+        let name = wkdays_full[self.wkday() as usize];
         Self::write_bytes(buf, pos, name);
     }
 
@@ -488,7 +488,7 @@ impl YmdHms {
         pos: &mut usize,
         wkdays_abbrev: &[&[u8]; 7],
     ) {
-        let name = wkdays_abbrev[self.wkday().wkday_sun_0_based() as usize];
+        let name = wkdays_abbrev[self.wkday() as usize];
         Self::write_bytes(buf, pos, name);
     }
 
@@ -738,7 +738,14 @@ impl YmdHms {
         _width: Option<u8>,
         _colons: u8,
     ) {
-        let (seconds, _) = self.unix_timestamp();
+        let seconds = Dt::ymd_to_unix_sec(
+            self.yr(),
+            self.mo(),
+            self.day(),
+            self.hr(),
+            self.min(),
+            self.sec(),
+        );
         Self::write_i64(buf, pos, seconds);
     }
 
@@ -751,14 +758,7 @@ impl YmdHms {
         width: Option<u8>,
         _colons: u8,
     ) {
-        Self::write_u32_padded(
-            buf,
-            pos,
-            self.wkday().wkday_sun_0_based() as u32,
-            flag,
-            width.or(Some(1)),
-            b'0',
-        );
+        Self::write_u32_padded(buf, pos, self.wkday() as u32, flag, width.or(Some(1)), b'0');
     }
 
     #[inline]
@@ -773,7 +773,7 @@ impl YmdHms {
         Self::write_u32_padded(
             buf,
             pos,
-            self.wkday().wkday_mon_1_based() as u32,
+            if self.wkday() == 0 { 7 } else { self.wkday() } as u32,
             flag,
             width.or(Some(1)),
             b'0',

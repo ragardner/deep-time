@@ -96,6 +96,9 @@ use core::fmt;
 /// ### Conversions, time scales etc.
 ///
 /// - [`Dt::target`](../struct.Dt.html#method.target)
+/// - [`Dt::to`](../struct.Dt.html#method.to)
+/// - [`Dt::convert`](../struct.Dt.html#method.convert)
+/// - [`Dt::to_tai`](../struct.Dt.html#method.to_tai)
 /// - [`Dt::from_sec`](../struct.Dt.html#method.from_sec)
 /// - [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64)
 /// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)

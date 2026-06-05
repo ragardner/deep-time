@@ -93,7 +93,6 @@ impl Dt {
         }
 
         YmdHms {
-            unix_attosec: from_unix_epoch.to_attos(),
             yr,
             mo,
             day,

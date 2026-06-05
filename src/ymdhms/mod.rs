@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC_I128, Dt, Scale, Weekday};
+use crate::{ATTOS_PER_SEC_I128, Dt, Scale};
 
 mod to_str;
 
@@ -41,7 +41,6 @@ pub struct YmdHms {
     pub(crate) min: u8,
     pub(crate) sec: u8,    // 0–60 (60 only during leap seconds)
     pub(crate) attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
-    pub(crate) unix_attosec: i128,
     pub(crate) scale: Scale,
 }
 
@@ -194,13 +193,6 @@ impl YmdHms {
         self.attos
     }
 
-    /// Attoseconds since 1970-01-01 midnight, on whatever time scale
-    /// the object was created on.
-    #[inline]
-    pub fn unix_attosec(&self) -> i128 {
-        self.unix_attosec
-    }
-
     /// The time scale that the object was created on.
     #[inline]
     pub fn scale(&self) -> Scale {
@@ -225,9 +217,9 @@ impl YmdHms {
     }
 
     #[inline]
-    pub fn wkday(&self) -> Weekday {
+    pub fn wkday(&self) -> u8 {
         let jd = Dt::ymd_to_jd(self.yr, self.mo, self.day);
-        Weekday::from_sunday_0_based(Dt::jd_to_wkday(jd)).unwrap_or_default()
+        Dt::jd_to_wkday(jd)
     }
 
     #[inline]
@@ -238,19 +230,5 @@ impl YmdHms {
     #[inline]
     pub fn wk_of_yr_mon(&self) -> u8 {
         Dt::_wk_mon(self.yr, self.day_of_yr())
-    }
-
-    /// Returns the Unix timestamp since 1970-01-01 00:00:00 as a tuple of
-    /// `(whole_seconds, attoseconds)`.
-    ///
-    /// - The timestamp will be on whatever [`Scale`] the [`DateTime`] was created on.
-    /// - `whole_seconds` can be negative (for dates before 1970).
-    /// - The fractional part (`attoseconds`) is always in the range `0..=999_999_999_999_999_999`.
-    pub const fn unix_timestamp(&self) -> (i64, u64) {
-        const ATTOS_PER_SEC_I128: i128 = 1_000_000_000_000_000_000;
-        let total = self.unix_attosec;
-        let secs = (total / ATTOS_PER_SEC_I128) as i64;
-        let frac = (total % ATTOS_PER_SEC_I128).unsigned_abs() as u64;
-        (secs, frac)
     }
 }
