@@ -363,7 +363,7 @@ fn main() {
 //! Source directory: {}\n\
 //! It provides both a minimal mode (UTC + identical zones only) and a full\n\
 //! mode (`tz` feature) which has full historical transitions.\n\
-//! Generator source: https://github.com/ragardner/tz-info-generator-rs\n\n",
+//! Generator source: https://github.com/ragardner/deep-time\n\n",
         dir_name
     ));
 
