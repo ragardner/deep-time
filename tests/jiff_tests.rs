@@ -334,6 +334,36 @@ mod tests {
                 "Europe/London",
                 "UK DST fall-back overlap (BST → GMT) - prefers earlier occurrence",
             ),
+            // 1. Far future UTC instant → local time (exercises offset_info_at_utc + Cycle)
+            (
+                "9999-06-15 12:00:00",
+                "America/New_York",
+                "Far future UTC path on repeating zone (NY)",
+            ),
+            // 2. Another repeating zone far in the future
+            (
+                "9998-07-01 00:00:00",
+                "Europe/London",
+                "Far future on Europe/London repeating cycle",
+            ),
+            // 3. A zone that becomes fixed (Repeating::None / Future::Fixed) far in future
+            (
+                "9999-01-01 00:00:00",
+                "Australia/Eucla",
+                "Far future on a zone that has no repeating rule",
+            ),
+            // 4. Exact transition moment in far future (tests precision of cycle math)
+            (
+                "9999-03-11 07:00:00",
+                "America/New_York",
+                "Far future spring-forward transition (UTC path)",
+            ),
+            // 5. Very far future on a simple repeating zone
+            (
+                "3000-12-31 23:59:59",
+                "America/Chicago",
+                "Year 3000 on repeating US zone",
+            ),
             // ("2006-04-02 02:30-05", "America/Indiana/Vevay", "github"), // errors on jiff temporal
         ];
 

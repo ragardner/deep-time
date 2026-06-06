@@ -1,4 +1,5 @@
-use super::{OffsetInfo, abbrev_from_str};
+use super::OffsetInfo;
+use crate::LiteStr; // adjust path to wherever your LiteStr lives
 use jiff::{
     Span, Timestamp,
     civil::{DateTime, date},
@@ -7,38 +8,35 @@ use jiff::{
 
 const EPOCH: DateTime = date(1970, 1, 1).at(0, 0, 0, 0);
 
-#[inline(always)]
-fn static_abbrev(jiff_abbrev: &str) -> &'static str {
-    abbrev_from_str(jiff_abbrev).unwrap_or("???")
-}
-
 pub fn jiff_offset_info_at_local(name: &str, local_unix: i64) -> Option<OffsetInfo> {
     let tz = TimeZone::get(name).ok()?;
 
     let civil = EPOCH.checked_add(Span::new().seconds(local_unix)).ok()?;
-
     let amb = tz.to_ambiguous_zoned(civil);
 
     match amb.offset() {
         AmbiguousOffset::Gap { before, after } => {
-            let gap_seconds = after.seconds() - before.seconds();
+            let gap_seconds = (after.seconds() as i64) - (before.seconds() as i64);
+            let zdt = amb.compatible().ok()?;
 
+            // let info = tz.to_offset_info(zdt.timestamp());
+
+            Some(OffsetInfo {
+                offset: zdt.offset().seconds(),
+                abbrev: LiteStr::new(""),
+                // abbrev: LiteStr::new(info.abbreviation()),
+                is_gap: true,
+                gap_size: gap_seconds,
+            })
+        }
+        _ => {
             let zdt = amb.compatible().ok()?;
             // let info = tz.to_offset_info(zdt.timestamp());
 
             Some(OffsetInfo {
                 offset: zdt.offset().seconds(),
-                abbrev: "???", // static_abbrev(info.abbreviation())
-                is_gap: true,
-                gap_size: gap_seconds as i64,
-            })
-        }
-        _ => {
-            // let info = tz.to_offset_info(zdt.timestamp());
-
-            Some(OffsetInfo {
-                offset: amb.compatible().ok()?.offset().seconds(),
-                abbrev: "???", // static_abbrev(info.abbreviation())
+                abbrev: LiteStr::new(""),
+                // abbrev: LiteStr::new(info.abbreviation()),
                 is_gap: false,
                 gap_size: 0,
             })
@@ -55,7 +53,7 @@ pub fn jiff_offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo> 
 
     Some(OffsetInfo {
         offset: zdt.offset().seconds(),
-        abbrev: static_abbrev(info.abbreviation()),
+        abbrev: LiteStr::new(info.abbreviation()),
         is_gap: false,
         gap_size: 0,
     })

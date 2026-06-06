@@ -599,13 +599,12 @@ impl Dt {
             Some(info) => (info.offset, info.abbrev),
             None => return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "{}", tz_name)),
         };
-        let ab = LiteStr::new(abbrev);
         let ymd = if offset_secs != 0 && apply_offset {
             self.add_sec(offset_secs as i128).to_ymd()
         } else {
             self.to_ymd()
         };
 
-        Ok((ymd, offset_secs, ab))
+        Ok((ymd, offset_secs, abbrev))
     }
 }
