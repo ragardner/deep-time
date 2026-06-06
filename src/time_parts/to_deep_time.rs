@@ -129,23 +129,41 @@ impl TimeParts {
             if !name_str.is_empty() {
                 let provisional_unix =
                     total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-                match offset_for_local(name_str, provisional_unix) {
-                    Some(info) => {
-                        if info.is_gap {
-                            // Non-existent time (spring-forward gap) — shift forward
-                            total_sec = total_sec.saturating_add(info.gap_size);
-                            total_sec = total_sec.saturating_sub(info.offset as i64);
-                        } else {
-                            total_sec = total_sec.saturating_sub(info.offset as i64);
-                        }
-                    }
-                    None => {
-                        return Err(an_err!(
+                #[cfg(feature = "jiff-tz")]
+                {
+                    use jiff::{Timestamp, tz::TimeZone};
+
+                    let tz = TimeZone::get(name_str).map_err(|e| {
+                        an_err!(
                             DtErrKind::InvalidTimezoneOffset,
-                            "invalid iana: {}",
-                            name_str
-                        ));
-                    }
+                            "invalid iana {:?}: {}",
+                            name,
+                            e
+                        )
+                    })?;
+
+                    let civil = Timestamp::from_second(provisional_unix)
+                        .map_err(|e| {
+                            an_err!(
+                                DtErrKind::InvalidNumber,
+                                "invalid unix {:?}: {}",
+                                provisional_unix,
+                                e
+                            )
+                        })?
+                        .to_zoned(TimeZone::UTC)
+                        .datetime();
+
+                    let zoned = tz.to_ambiguous_zoned(civil).earlier().map_err(|e| {
+                        an_err!(
+                            DtErrKind::OutOfRange,
+                            "jiff .earlier() failed: {:?}: {}",
+                            civil,
+                            e
+                        )
+                    })?;
+
+                    total_sec = total_sec.saturating_sub(zoned.offset().seconds() as i64);
                 }
             }
         } else if let Some(Offset::Fixed(offset)) = self.offset {
