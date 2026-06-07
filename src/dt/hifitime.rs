@@ -4,7 +4,7 @@ use hifitime::{Duration, Epoch};
 impl Dt {
     /// Converts this [`Dt`] to a [`hifitime::Epoch`] (TAI scale).
     ///
-    /// Round-trips with [`Dt::from_hifitime`].
+    /// Round-trips with [`Dt::from_hifitime_epoch`].
     pub fn to_hifitime_epoch(&self) -> Epoch {
         let nanos = self.to_ns();
 
