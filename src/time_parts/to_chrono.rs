@@ -167,7 +167,7 @@ impl TimeParts {
             let name_str = name.as_str().map_err(|e| {
                 an_err!(
                     DtErrKind::InvalidBytes,
-                    "invalid iana ascii: {:?}: {}",
+                    "invalid tz ascii: {:?}: {}",
                     name,
                     e
                 )
@@ -181,7 +181,7 @@ impl TimeParts {
                     let tz = TimeZone::get(name_str).map_err(|e| {
                         an_err!(
                             DtErrKind::InvalidTimezoneOffset,
-                            "invalid iana {:?}: {}",
+                            "invalid tz {:?}: {}",
                             name,
                             e
                         )

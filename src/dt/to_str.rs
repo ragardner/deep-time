@@ -613,7 +613,7 @@ impl Dt {
             let tz = TimeZone::get(tz_name).map_err(|e| {
                 an_err!(
                     DtErrKind::InvalidTimezoneOffset,
-                    "invalid iana timezone {:?}: {}",
+                    "invalid tz {:?}: {}",
                     tz_name,
                     e
                 )

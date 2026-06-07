@@ -122,7 +122,7 @@ impl TimeParts {
                 Err(e) => {
                     return Err(an_err!(
                         DtErrKind::InvalidBytes,
-                        "invalid iana ascii: {:?}: {}",
+                        "invalid tz ascii: {:?}: {}",
                         name,
                         e
                     ));

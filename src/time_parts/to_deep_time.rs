@@ -119,7 +119,7 @@ impl TimeParts {
             let name_str = name.as_str().map_err(|e| {
                 an_err!(
                     DtErrKind::InvalidBytes,
-                    "invalid iana ascii: {:?}: {}",
+                    "invalid tz ascii: {:?}: {}",
                     name,
                     e
                 )
@@ -133,7 +133,7 @@ impl TimeParts {
                     let tz = TimeZone::get(name_str).map_err(|e| {
                         an_err!(
                             DtErrKind::InvalidTimezoneOffset,
-                            "invalid iana {:?}: {}",
+                            "invalid tz {:?}: {}",
                             name,
                             e
                         )
@@ -151,14 +151,14 @@ impl TimeParts {
                                 e
                             )
                         })?
-                        .to_zoned(TimeZone::UTC)
+                        .to_zoned(jiff::tz::TimeZone::UTC)
                         .datetime();
 
-                    let zoned = tz.to_ambiguous_zoned(civil).compatible().map_err(|e| {
+                    let zoned = tz.to_zoned(civil).map_err(|e| {
                         an_err!(
                             DtErrKind::OutOfRange,
-                            "jiff .compatible(): {:?}: {}",
-                            civil,
+                            "jiff to_zoned failed for {}: {}",
+                            name_str,
                             e
                         )
                     })?;
