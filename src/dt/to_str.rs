@@ -599,6 +599,15 @@ impl Dt {
         let (offset_secs, abbrev): (i32, LiteStr<49>) = {
             use jiff::{Timestamp, tz::TimeZone};
 
+            let tz = TimeZone::get(tz_name).map_err(|e| {
+                an_err!(
+                    DtErrKind::InvalidTimezoneOffset,
+                    "invalid tz {:?}: {}",
+                    tz_name,
+                    e
+                )
+            })?;
+
             let unix_sec = self.to_unix().to_sec64();
 
             let ts = Timestamp::from_second(unix_sec).map_err(|e| {
@@ -606,15 +615,6 @@ impl Dt {
                     DtErrKind::InvalidNumber,
                     "invalid unix {:?} for jiff Timestamp: {}",
                     unix_sec,
-                    e
-                )
-            })?;
-
-            let tz = TimeZone::get(tz_name).map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidTimezoneOffset,
-                    "invalid tz {:?}: {}",
-                    tz_name,
                     e
                 )
             })?;
