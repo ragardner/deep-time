@@ -32,7 +32,6 @@ sys-locale   = { version = "0.3",   optional = true }
 
 default = []
 panic-handler = []
-tz = []
 wire = []
 
 alloc = [
@@ -45,7 +44,6 @@ sidereal = []
 sidereal-earth = ["sidereal"]
 eop = ["alloc"]
 
-# std must enable alloc
 std = [
     "alloc",
     "jiff?/std",
@@ -149,14 +147,6 @@ locale = [
 
 perf-tests = ["parse", "std"]
 eop-tests = ["eop", "std"]
-tz-tests = [
-    "tz",
-    "jiff",
-    "std",
-    "jiff?/tz-system",
-    "jiff?/tzdb-zoneinfo",
-    "jiff?/tzdb-bundle-platform",
-]
 
 [lints.clippy]
 non_canonical_partial_ord_impl = "allow"

@@ -139,7 +139,7 @@ use core::fmt;
 /// ### Outputting a date to string / bytes
 ///
 /// ```rust
-/// # #[cfg(all(feature = "tz", feature = "parse"))]
+/// # #[cfg(all(feature = "jiff-tz", feature = "parse"))]
 /// # {
 /// use deep_time::{Dt, Lang, Scale};
 ///

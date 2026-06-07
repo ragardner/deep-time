@@ -11,7 +11,7 @@ mod tests {
         let x = LiteStr::<49>::new("America/New_York");
     }
 
-    #[cfg(feature = "tz")]
+    #[cfg(feature = "jiff-tz")]
     #[test]
     fn roundtrip_gap_boundary_new_york() {
         let our_input = "2023-03-12 02:00:00 America/New_York";
@@ -50,7 +50,7 @@ mod tests {
         assert_eq!(output2, expected_snapped, "round-trip must be stable");
     }
 
-    #[cfg(feature = "tz")]
+    #[cfg(feature = "jiff-tz")]
     #[test]
     fn tz_output() {
         use deep_time::{Dt, Scale};

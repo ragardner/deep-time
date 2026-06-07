@@ -155,7 +155,7 @@ impl Dt {
     /// You can offset an output that wasn't originally from a zoned input:
     ///
     /// ```rust
-    /// # #[cfg(all(feature = "tz", feature = "parse"))]
+    /// # #[cfg(all(feature = "jiff-tz", feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
@@ -168,7 +168,7 @@ impl Dt {
     /// You can also return to a zoned output from a zoned input:
     ///
     /// ```rust
-    /// # #[cfg(all(feature = "tz", feature = "parse"))]
+    /// # #[cfg(all(feature = "jiff-tz", feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
@@ -470,7 +470,7 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// # #[cfg(feature = "tz")]
+    /// # #[cfg(feature = "jiff-tz")]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///

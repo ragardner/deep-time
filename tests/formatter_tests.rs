@@ -421,7 +421,7 @@ mod format_tests {
         assert_eq!(s.as_str().unwrap(), ".123456789012345678");
     }
 
-    #[cfg(feature = "tz")]
+    #[cfg(feature = "jiff-tz")]
     #[test]
     fn test_format_label_only_no_time_shift() {
         // Base time: 2025-04-16 14:30:45 UTC
@@ -438,7 +438,7 @@ mod format_tests {
         assert_eq!(s.as_str().unwrap(), "2025-04-16 14:30:45 EDT");
     }
 
-    #[cfg(all(feature = "alloc", feature = "tz"))]
+    #[cfg(all(feature = "alloc", feature = "jiff-tz"))]
     #[test]
     fn test_format_label_only_no_time_shift_alloc() {
         // Base time: 2025-04-16 14:30:45 UTC
