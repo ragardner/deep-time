@@ -1,5 +1,4 @@
 use crate::leap_seconds::leap_sec;
-use crate::tz::offset_for_local;
 use crate::{
     Dt, JD_2000_2_451_545, SEC_PER_DAYI64, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
     error::{DtErr, DtErrKind},
@@ -127,8 +126,6 @@ impl TimeParts {
             })?;
 
             if !name_str.is_empty() {
-                let provisional_unix =
-                    total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
                 #[cfg(feature = "jiff-tz")]
                 {
                     use jiff::{Timestamp, tz::TimeZone};
@@ -141,6 +138,9 @@ impl TimeParts {
                             e
                         )
                     })?;
+
+                    let provisional_unix =
+                        total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
 
                     let civil = Timestamp::from_second(provisional_unix)
                         .map_err(|e| {
@@ -164,6 +164,18 @@ impl TimeParts {
                     })?;
 
                     total_sec = total_sec.saturating_sub(zoned.offset().seconds() as i64);
+                }
+                #[cfg(not(feature = "jiff-tz"))]
+                {
+                    use crate::tz::UTC_ALIASES;
+
+                    if !UTC_ALIASES.contains(&name_str) {
+                        return Err(an_err!(
+                            DtErrKind::InvalidBytes,
+                            "non-utc tz: {} requires jiff-tz feature",
+                            name_str,
+                        ));
+                    }
                 }
             }
         } else if let Some(Offset::Fixed(offset)) = self.offset {

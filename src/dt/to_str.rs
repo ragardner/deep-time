@@ -1,5 +1,6 @@
 use crate::Lang;
-use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHms, an_err, tz::offset_for_utc};
+use crate::tz::UTC_ALIASES;
+use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHms, an_err};
 
 #[cfg(feature = "alloc")]
 use {crate::ATTOS_PER_SEC, alloc::string::String};
@@ -593,12 +594,51 @@ impl Dt {
         tz_name: &str,
         apply_offset: bool,
     ) -> Result<(YmdHms, i32, LiteStr<49>), DtErr> {
-        // Look up offset + abbrev at that exact UTC instant
-        let unix_sec = self.to_unix().to_sec64();
-        let (offset_secs, abbrev) = match offset_for_utc(tz_name, unix_sec) {
-            Some(info) => (info.offset, info.abbrev),
-            None => return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "{}", tz_name)),
+        #[cfg(feature = "jiff-tz")]
+        let (offset_secs, abbrev): (i32, LiteStr<49>) = {
+            use jiff::{Timestamp, tz::TimeZone};
+
+            let unix_sec = self.to_unix().to_sec64();
+
+            let ts = Timestamp::from_second(unix_sec).map_err(|e| {
+                an_err!(
+                    DtErrKind::InvalidNumber,
+                    "invalid unix {:?} for jiff Timestamp: {}",
+                    unix_sec,
+                    e
+                )
+            })?;
+
+            let tz = TimeZone::get(tz_name).map_err(|e| {
+                an_err!(
+                    DtErrKind::InvalidTimezoneOffset,
+                    "invalid iana timezone {:?}: {}",
+                    tz_name,
+                    e
+                )
+            })?;
+
+            let info = tz.to_offset_info(ts);
+            let offset_secs = info.offset().seconds();
+            let abbrev: LiteStr<49> = LiteStr::new(info.abbreviation());
+
+            (offset_secs, abbrev)
         };
+
+        #[cfg(not(feature = "jiff-tz"))]
+        let (offset_secs, abbrev): (i32, LiteStr<49>) = {
+            if !UTC_ALIASES.contains(&tz_name) {
+                return Err(an_err!(
+                    DtErrKind::InvalidBytes,
+                    "non-utc tz: {} requires jiff-tz feature",
+                    tz_name,
+                ));
+            }
+            // UTC → offset 0, canonical abbrev "UTC"
+            let abbrev: LiteStr<49> = LiteStr::new("UTC");
+            (0i32, abbrev)
+        };
+
         let ymd = if offset_secs != 0 && apply_offset {
             self.add_sec(offset_secs as i128).to_ymd()
         } else {
