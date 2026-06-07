@@ -154,16 +154,19 @@ impl TimeParts {
                         .to_zoned(TimeZone::UTC)
                         .datetime();
 
-                    let zoned = tz.to_ambiguous_zoned(civil).earlier().map_err(|e| {
+                    let zoned = tz.to_ambiguous_zoned(civil).compatible().map_err(|e| {
                         an_err!(
                             DtErrKind::OutOfRange,
-                            "jiff .earlier() failed: {:?}: {}",
+                            "jiff .compatible(): {:?}: {}",
                             civil,
                             e
                         )
                     })?;
 
-                    total_sec = total_sec.saturating_sub(zoned.offset().seconds() as i64);
+                    total_sec = zoned
+                        .timestamp()
+                        .as_second()
+                        .saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
                 }
                 #[cfg(not(feature = "jiff-tz"))]
                 {

@@ -1,9 +1,10 @@
-use crate::Lang;
-use crate::tz::UTC_ALIASES;
-use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHms, an_err};
+use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRFTIME_SIZE, YmdHms, an_err};
 
 #[cfg(feature = "alloc")]
 use {crate::ATTOS_PER_SEC, alloc::string::String};
+
+#[cfg(not(feature = "jiff-tz"))]
+use crate::tz::UTC_ALIASES;
 
 #[cfg(feature = "alloc")]
 impl Dt {

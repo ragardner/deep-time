@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(feature = "chrono")]
+#[cfg(all(feature = "chrono", feature = "jiff-tz"))]
 mod tests {
     use chrono::{
         DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
