@@ -42,16 +42,25 @@ use std::path::Path;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Transition {
-    pub timestamp: i64,
-    pub local_timestamp: i64, // local wall-clock time when this transition occurs
+    /// UTC Unix timestamp (seconds) at which this offset/abbreviation
+    /// begins to apply. For the initial sentinel this is `i64::MIN`.
+    pub utc_timestamp: i64,
+    /// Local wall-clock Unix timestamp of the transition instant,
+    /// computed using the *previous* offset. This is the anchor used
+    /// for local-time binary search, gap/fold detection, and
+    /// repeating-cycle positioning in local time.
+    pub local_timestamp: i64,
     pub offset: i32,
-    pub is_dst: bool,
     pub abbrev_idx: u16,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Repeating {
     None,
+    /// The transition pattern repeats every `period` (local) seconds
+    /// starting at index `start` in the `transitions` slice.
+    /// `len` is the number of entries in one repeating unit (usually 2
+    /// for annual DST on/off).
     Cycle {
         start: usize,
         len: usize,
@@ -62,7 +71,7 @@ pub enum Repeating {
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     if args.len() < 2 {
-        eprintln!("Usage: cargo run -- <path-to-tzdata2026a>");
+        eprintln!("Usage: cargo run -- <path-to-tzdata2026b>");
         std::process::exit(1);
     }
     let tzdata_dir = Path::new(&args[1]);
@@ -158,10 +167,9 @@ fn main() {
             let first = &set.first;
             let first_idx = *abbrev_to_idx.get(&first.name).unwrap();
             transitions.push(Transition {
-                timestamp: i64::MIN,
+                utc_timestamp: i64::MIN,
                 local_timestamp: i64::MIN,
                 offset: first.total_offset() as i32,
-                is_dst: first.dst_offset != 0,
                 abbrev_idx: first_idx,
             });
 
@@ -172,19 +180,27 @@ fn main() {
 
                 let idx = *abbrev_to_idx.get(&ft.name).unwrap();
                 transitions.push(Transition {
-                    timestamp: *ts,
+                    utc_timestamp: *ts,
                     local_timestamp: local_ts,
                     offset: ft.total_offset() as i32,
-                    is_dst: ft.dst_offset != 0,
                     abbrev_idx: idx,
                 });
 
                 prev_offset = ft.total_offset() as i64;
             }
 
+            // === Validate monotonicity (robustness) ===
+            for i in 1..transitions.len() {
+                if transitions[i].local_timestamp < transitions[i - 1].local_timestamp {
+                    eprintln!("Warning: non-monotonic local_timestamp for {}", name);
+                }
+                if transitions[i].utc_timestamp < transitions[i - 1].utc_timestamp {
+                    eprintln!("Warning: non-monotonic utc_timestamp for {}", name);
+                }
+            }
+
             // === detect repeating behavior intelligently ===
             let repeating = {
-                // 1. Metadata check: does this zone have a perpetual rule?
                 let has_perpetual_rule = if let Some(zoneset) = table.get_zoneset(name) {
                     if let Some(last_zone) = zoneset.last() {
                         if let Saving::Multiple(ref rules_name) = last_zone.saving {
@@ -207,7 +223,6 @@ fn main() {
 
                 let last_ts = transitions.last().map(|t| t.local_timestamp).unwrap_or(0);
                 const REPEATING_TAIL_CUTOFF: i64 = 2_208_988_800; // ~2040-01-01
-
                 const VALIDATION_WINDOW: usize = 8;
 
                 if !has_perpetual_rule
@@ -216,12 +231,8 @@ fn main() {
                 {
                     Repeating::None
                 } else {
-                    // Use the last 8 transitions purely for validation.
-                    // We require a stable pattern across three consecutive periods.
-                    // This is intentionally conservative.
                     let validation_start = transitions.len().saturating_sub(VALIDATION_WINDOW);
 
-                    // Compute three consecutive periods inside the validation window.
                     let p0 = transitions[validation_start + 2].local_timestamp
                         - transitions[validation_start].local_timestamp;
                     let p1 = transitions[validation_start + 4].local_timestamp
@@ -229,25 +240,23 @@ fn main() {
                     let p2 = transitions[validation_start + 6].local_timestamp
                         - transitions[validation_start + 4].local_timestamp;
 
-                    // Only accept if the pattern is stable and the period is reasonable.
                     if p0 > 0 && p0 == p1 && p1 == p2 && p0 >= 2_592_000 && p0 <= 34_560_000 {
-                        // We have a stable period. Now compute the actual repeating
-                        // unit length by looking at the offset sequence in the
-                        // validation window. We prefer the smallest k (starting from 2)
-                        // such that the offsets repeat every k steps.
-                        let window_offsets: Vec<i32> = (0..VALIDATION_WINDOW)
-                            .map(|i| transitions[validation_start + i].offset)
+                        // Check that both offset AND abbrev repeat (more robust)
+                        let window: Vec<(i32, u16)> = (0..VALIDATION_WINDOW)
+                            .map(|i| {
+                                let t = &transitions[validation_start + i];
+                                (t.offset, t.abbrev_idx)
+                            })
                             .collect();
 
-                        let mut cycle_len = VALIDATION_WINDOW; // safe fallback
+                        let mut cycle_len = VALIDATION_WINDOW;
 
                         for candidate in 2..=VALIDATION_WINDOW {
                             let mut repeats = true;
-
                             for pos in 0..candidate {
-                                let first = window_offsets[pos];
+                                let first = window[pos];
                                 for j in (pos + candidate..VALIDATION_WINDOW).step_by(candidate) {
-                                    if window_offsets[j] != first {
+                                    if window[j] != first {
                                         repeats = false;
                                         break;
                                     }
@@ -256,7 +265,6 @@ fn main() {
                                     break;
                                 }
                             }
-
                             if repeats {
                                 cycle_len = candidate;
                                 break;
@@ -269,19 +277,12 @@ fn main() {
                             period: p0,
                         }
                     } else {
-                        // Pattern is not cleanly repeating or period is unreasonable
-                        // → conservative fallback.
                         Repeating::None
                     }
                 }
             };
 
-            // Optimization for binary size + cleanliness:
-            // If we detected a stable repeating cycle, we keep historical transitions
-            // + ONE copy of the actual repeating unit (whose length we compute from
-            // the validated window). `len` now reflects the real cycle size rather
-            // than the validation window. This keeps DATA_N small while preserving
-            // full fidelity.
+            // Keep historical + exactly one copy of the repeating unit
             let transitions = if let Repeating::Cycle { start, len, .. } = repeating {
                 let keep_up_to = start + len;
                 if keep_up_to < transitions.len() {
@@ -296,7 +297,7 @@ fn main() {
         }
     }
 
-    // === Deduplication (only on transition data – Repeating info is zone-specific) ===
+    // === Deduplication (only on transition data) ===
     let mut unique: HashMap<Vec<Transition>, usize> = HashMap::new();
     let mut data_counter = 0usize;
     let mut data_names: Vec<String> = Vec::new();
@@ -309,7 +310,7 @@ fn main() {
         }
     }
 
-    // === Build entries with the new Repeating info ===
+    // === Build entries ===
     let mut entries: Vec<(String, String, Repeating)> = Vec::new();
 
     for (name, (trans, repeating)) in &name_to_data {
@@ -319,7 +320,7 @@ fn main() {
     }
     entries.sort_by_key(|(name, _, _)| name.clone());
 
-    // === Find UTC's DATA_N for the minimal (no "tz" feature) version ===
+    // === Find UTC's DATA_N for minimal mode ===
     let utc_data_name = entries
         .iter()
         .find(|(name, _, _)| name == "UTC")
@@ -331,7 +332,6 @@ fn main() {
                 .map(|(_, dn, _)| dn.clone())
         })
         .unwrap_or_else(|| {
-            // Fallback: use the first DATA_N (should never happen in practice)
             data_names
                 .first()
                 .cloned()
@@ -350,7 +350,7 @@ fn main() {
         utc_data_name
     );
 
-    // === Generate tzdb.rs with conditional TZ_ENTRIES ===
+    // === Generate tzdb.rs ===
     let mut output = String::new();
 
     output.push_str("#![allow(clippy::large_enum_variant)]\n");
@@ -369,7 +369,7 @@ fn main() {
 
     output.push_str(&format!("pub static VERSION: &str = \"{}\";\n\n", version));
 
-    // ABBREVS table (always included - very small)
+    // ABBREVS table
     output.push_str(&format!(
         "pub static ABBREVS: [&str; {}] = [\n",
         abbrevs.len()
@@ -382,18 +382,28 @@ fn main() {
     output.push_str(
         r#"#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Transition {
+    /// Local wall-clock Unix timestamp of the transition instant
+    /// (computed using the *previous* offset). This is the primary
+    /// key used for local-time binary search, gap/fold detection,
+    /// and repeating cycle positioning.
+    ///
+    /// The corresponding UTC instant can be derived when needed via
+    /// `transition_utc(transitions, idx)`.
     pub local_timestamp: i64,
     pub offset: i32,
     pub abbrev_idx: u16,
 }
 
 /// Repeating describes how (or if) the transition pattern continues
-/// indefinitely after the last explicit entry in the `transitions` slice.
+/// indefinitely after the last explicit entry (for zones with perpetual
+/// DST rules). The generator detects stable cycles and truncates the
+/// data so that only historical transitions + one copy of the cycle
+/// are stored. The runtime uses simple modulo arithmetic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Repeating {
     None,
-    /// The pattern repeats every `period` seconds starting at index `start`.
-    /// `len` is the number of entries in one repeating unit (usually 2).
+    /// Pattern repeats every `period` seconds (in local time) starting
+    /// at index `start`. `len` is the length of one repeating unit.
     Cycle {
         start: usize,
         len: usize,
@@ -404,12 +414,8 @@ pub enum Repeating {
 /// Returns the transition data for the given IANA timezone name.
 ///
 /// Returns `Some((name, transitions, repeating))` or `None` if unknown.
-/// `repeating` indicates whether (and how) the transition pattern repeats
-/// indefinitely for zones with perpetual DST rules.
-///
-/// For zones with `Repeating::Cycle`, the `transitions` slice contains
-/// only historical data + **one copy** of the repeating cycle (not many
-/// repetitions). The `Cycle` variant tells the runtime how to use it.
+/// For `Repeating::Cycle` the `transitions` slice contains historical
+/// data + **one copy** of the repeating unit.
 #[inline]
 pub fn get_tz_data(name: &str) -> Option<(&str, &'static [Transition], Repeating)> {
     let idx = TZ_ENTRIES.partition_point(|(n, _, _)| *n < name);
@@ -429,6 +435,8 @@ pub struct OffsetInfo {
     /// Whether the requested local time falls in a gap (spring-forward).
     pub is_gap: bool,
     /// Size of the gap in seconds (only meaningful when `is_gap == true`).
+    /// Add this to the original local time and re-query to obtain a valid instant
+    /// (this yields the *later* instant, matching jiff's compatible strategy for gaps).
     pub gap_size: i64,
 }
 
@@ -439,7 +447,6 @@ pub fn abbrev(idx: u16) -> &'static str {
 }
 
 /// Returns the static abbreviation if the given string exists in `ABBREVS`.
-/// Uses binary search (the table is kept sorted at code-generation time).
 #[inline]
 pub fn abbrev_from_str(abbrev: &str) -> Option<&'static str> {
     match ABBREVS.binary_search(&abbrev) {
@@ -458,21 +465,48 @@ fn last_transition(transitions: &[Transition]) -> Option<OffsetInfo> {
     })
 }
 
+/// Computes the UTC instant at which the transition at `idx` occurs.
+///
+/// For `idx == 0` this returns `i64::MIN`.
+/// For `idx >= 1` it is `local_timestamp[idx] - offset[idx-1]`.
+#[inline]
+fn transition_utc(transitions: &[Transition], idx: usize) -> i64 {
+    if idx == 0 {
+        i64::MIN
+    } else {
+        transitions[idx].local_timestamp - transitions[idx - 1].offset as i64
+    }
+}
+
+/// Binary search for the last transition whose UTC time is ≤ `utc_unix`.
+#[inline]
+fn find_transition_for_utc(transitions: &[Transition], utc_unix: i64) -> usize {
+    let mut lo = 0usize;
+    let mut hi = transitions.len();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if transition_utc(transitions, mid) <= utc_unix {
+            lo = mid + 1;
+        } else {
+            hi = mid;
+        }
+    }
+    if lo == 0 { 0 } else { lo - 1 }
+}
+
+/// Resolve a local time that falls after the last explicit transition
+/// when the zone has a repeating cycle. Uses local-time modulo + the
+/// same gap/fold window logic as the historical path.
 fn resolve_far_future_local(
     transitions: &[Transition],
     repeating: Repeating,
     local_unix: i64,
 ) -> Option<OffsetInfo> {
-    // We use the pre-validated `period` captured from Repeating::Cycle.
-    // The transitions slice only contains historical data + one copy of
-    // the repeating cycle (thanks to truncation at code generation time).
-    // This keeps binary size small while preserving full fidelity.
     let (start, len, period) = match repeating {
         Repeating::Cycle { start, len, period } => (start, len, period),
         Repeating::None => return last_transition(transitions),
     };
 
-    // Defensive bounds check (should never trigger for well-formed data)
     if start + len > transitions.len() || len < 2 {
         return last_transition(transitions);
     }
@@ -487,6 +521,7 @@ fn resolve_far_future_local(
         return last_transition(transitions);
     }
     let position_in_cycle = elapsed % period;
+
     let idx = cycle.partition_point(|t| {
         (t.local_timestamp - first.local_timestamp) <= position_in_cycle
     });
@@ -541,6 +576,8 @@ fn resolve_far_future_local(
                         gap_size: off_diff,
                     });
                 } else {
+                    // Fold: return the *earlier* instant (larger offset = prev)
+                    // This matches jiff's .earlier() behavior on ambiguous zoned times.
                     return Some(OffsetInfo {
                         offset: prev.offset,
                         abbrev: abbrev(prev.abbrev_idx),
@@ -563,9 +600,10 @@ fn resolve_far_future_local(
 
 /// Returns offset information for an IANA timezone at the given **local** Unix time.
 ///
-/// If the local time falls in a gap (spring-forward), `is_gap` is `true` and
-/// `gap_size` contains the number of skipped seconds. Add `gap_size` to the
-/// original local time and re-query to obtain a valid instant.
+/// If the local time falls in a gap, `is_gap` is true and `gap_size` tells you
+/// how many seconds to add to the original local time before re-querying
+/// (this yields the later instant, matching jiff compatible strategy).
+/// For ambiguous/fold times the earlier instant is returned (matching jiff `.earlier()`).
 pub(crate) fn offset_info_at_local(name: &str, local_unix: i64) -> Option<OffsetInfo> {
     let (_, transitions, repeating) = get_tz_data(name)?;
     let idx = transitions.partition_point(|t| t.local_timestamp <= local_unix);
@@ -618,6 +656,7 @@ pub(crate) fn offset_info_at_local(name: &str, local_unix: i64) -> Option<Offset
                         gap_size: off_diff,
                     });
                 } else {
+                    // Fold → earlier instant (matches jiff .earlier())
                     return Some(OffsetInfo {
                         offset: prev.offset,
                         abbrev: abbrev(prev.abbrev_idx),
@@ -637,48 +676,17 @@ pub(crate) fn offset_info_at_local(name: &str, local_unix: i64) -> Option<Offset
     })
 }
 
-/// Computes the UTC instant at which the transition at `idx` occurs.
-///
-/// For `idx == 0` this returns `i64::MIN`. For `idx >= 1` it is derived as
-/// `local_timestamp[idx] - offset[idx-1]`.
-#[inline]
-fn transition_utc(transitions: &[Transition], idx: usize) -> i64 {
-    if idx == 0 {
-        i64::MIN
-    } else {
-        transitions[idx].local_timestamp - transitions[idx - 1].offset as i64
-    }
-}
-
-/// Binary search for the last transition whose UTC time is ≤ `utc_unix`.
-#[inline]
-fn find_transition_for_utc(transitions: &[Transition], utc_unix: i64) -> usize {
-    let mut lo = 0usize;
-    let mut hi = transitions.len();
-    while lo < hi {
-        let mid = lo + (hi - lo) / 2;
-        if transition_utc(transitions, mid) <= utc_unix {
-            lo = mid + 1;
-        } else {
-            hi = mid;
-        }
-    }
-    if lo == 0 { 0 } else { lo - 1 }
-}
-
+/// Resolve a UTC time after the last explicit transition when repeating.
 fn resolve_far_future_utc(
     transitions: &[Transition],
     repeating: Repeating,
     utc_unix: i64,
 ) -> Option<OffsetInfo> {
-    // We use the pre-validated `period` captured from Repeating::Cycle.
-    // This avoids recalculation and stays consistent with generator-time validation.
     let (start, len, period) = match repeating {
         Repeating::Cycle { start, len, period } => (start, len, period),
         Repeating::None => return last_transition(transitions),
     };
 
-    // Defensive bounds check (should never trigger for well-formed data)
     if start + len > transitions.len() || len < 2 {
         return last_transition(transitions);
     }
@@ -718,8 +726,7 @@ fn resolve_far_future_utc(
 
 /// Returns offset information for an IANA timezone at the given **UTC** Unix time.
 ///
-/// `is_gap` is always `false` because gaps are a local-time concept only.
-/// Every UTC instant has exactly one well-defined offset.
+/// `is_gap` is always false (gaps are a local-time concept only).
 pub(crate) fn offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo> {
     let (_, transitions, repeating) = get_tz_data(name)?;
     if transitions.is_empty() {
@@ -730,8 +737,10 @@ pub(crate) fn offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo
 
     let last_idx = transitions.len() - 1;
     let last_t_utc = transition_utc(transitions, last_idx);
-    if utc_unix > last_t_utc && let Repeating::Cycle { .. } = repeating {
-        return resolve_far_future_utc(transitions, repeating, utc_unix);
+    if utc_unix > last_t_utc {
+        if let Repeating::Cycle { .. } = repeating {
+            return resolve_far_future_utc(transitions, repeating, utc_unix);
+        }
     }
 
     let t = &transitions[idx];
@@ -742,11 +751,10 @@ pub(crate) fn offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo
         gap_size: 0,
     })
 }
-
 "#,
     );
 
-    // === DATA_N arrays (only when `tz` feature is enabled) ===
+    // === DATA_N arrays (only when `tz` feature) ===
     for (trans, &id) in &unique {
         let name = &data_names[id];
         output.push_str("#[cfg(feature = \"tz\")]\n");
@@ -760,9 +768,7 @@ pub(crate) fn offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo
         output.push_str("];\n\n");
     }
 
-    // === DATA_0 for minimal mode (when `tz` feature is disabled) ===
-    // We reuse DATA_0 under the opposite cfg so that TZ_ENTRIES can reference
-    // a DATA_N name in both modes. The two definitions are mutually exclusive.
+    // === DATA_0 for minimal mode ===
     let utc_trans = if let Some((trans, _)) = name_to_data.get("UTC") {
         trans.clone()
     } else if let Some((trans, _)) = name_to_data.get("Etc/UTC") {
@@ -781,8 +787,7 @@ pub(crate) fn offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo
     }
     output.push_str("];\n\n");
 
-    // === TZ_ENTRIES (single name, conditionally compiled) ===
-    // Full version
+    // === TZ_ENTRIES (full) ===
     output.push_str("#[cfg(feature = \"tz\")]\n");
     output.push_str("pub static TZ_ENTRIES: &[(&str, &[Transition], Repeating)] = &[\n");
     for (name, data_name, repeating) in &entries {
@@ -800,7 +805,7 @@ pub(crate) fn offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo
     }
     output.push_str("];\n\n");
 
-    // Minimal version (reuses DATA_0 so everything stays DATA_N / TZ_ENTRIES)
+    // === TZ_ENTRIES (minimal) ===
     output.push_str("#[cfg(not(feature = \"tz\"))]\n");
     output.push_str("pub static TZ_ENTRIES: &[(&str, &[Transition], Repeating)] = &[\n");
     for (name, _data_name, repeating) in &minimal_entries {
@@ -829,7 +834,7 @@ pub(crate) fn offset_info_at_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo
     }
 
     println!(
-        "✅ Generated src/tzdb.rs (version {}) with {} zones ({} unique tables, {} abbreviations)",
+        "✅ Generated src/tz/tzdb.rs (version {}) with {} zones ({} unique tables, {} abbreviations)",
         version,
         entries.len(),
         unique.len(),
