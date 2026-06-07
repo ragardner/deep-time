@@ -100,8 +100,21 @@ jiff-tz = [
     "jiff",
     "std",
     "jiff?/tz-system",
+    "jiff?/tzdb-concatenated",
+    "jiff?/tz-fat",
+    "jiff?/perf-inline",
     "jiff?/tzdb-zoneinfo",
     "jiff?/tzdb-bundle-platform",
+]
+jiff-tz-bundle = [
+    "jiff",
+    "std",
+    "jiff?/tz-system",
+    "jiff?/tzdb-zoneinfo",
+    "jiff?/tzdb-concatenated",
+    "jiff?/tz-fat",
+    "jiff?/perf-inline",
+    "jiff?/tzdb-bundle-always",
 ]
 
 chrono = [

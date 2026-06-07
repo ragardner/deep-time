@@ -28,55 +28,56 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         let mut jd: Option<i64> = None;
 
-        if let Some(year) = self.yr {
-            if let (Some(m), Some(d)) = (self.mo, self.day) {
-                // Classic YMD – highest priority + full validation
-                if !Dt::is_valid_ymd(year, m, d) {
-                    return Err(an_err!(DtErrKind::InvalidInput, "ymd"));
-                }
-                jd = Some(Dt::ymd_to_jd(year, m, d));
-            } else if let Some(doy) = self.day_of_yr {
-                // Ordinal date (%j) – already validated
-                if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
-                    return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
-                }
-                jd = Some(Dt::ydoy_to_jd(year, doy));
+        // Most common case first: Classic YMD
+        if let (Some(year), Some(m), Some(d)) = (self.yr, self.mo, self.day) {
+            if !Dt::is_valid_ymd(year, m, d) {
+                return Err(an_err!(DtErrKind::InvalidInput, "ymd"));
             }
+            jd = Some(Dt::ymd_to_jd(year, m, d));
         }
-
-        if jd.is_none() {
-            if let (Some(iso_y), Some(iso_w)) = (self.iso_wk_yr, self.iso_wk) {
-                // ISO week date (%G/%V)
-                if iso_w == 0 || iso_w > 53 {
-                    return Err(an_err!(DtErrKind::OutOfRange, "iso week"));
-                }
-                if iso_w == 53 && !Dt::has_iso_wk_53(iso_y) {
-                    return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
-                }
-                let wd = self.wkday.unwrap_or(Weekday::Monday);
-                jd = Some(Dt::iso_wk_to_jd(iso_y, iso_w, wd));
-            } else if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
-                // Sunday-based week (%U)
-                if w > 53 {
-                    return Err(an_err!(DtErrKind::OutOfRange, "week number"));
-                }
-                let wd = self.wkday.unwrap_or(Weekday::Sunday);
-                jd = Some(Dt::wk_sun_to_jd(y, w, wd));
-            } else if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
-                // Monday-based week (%W)
-                if w > 53 {
-                    return Err(an_err!(DtErrKind::OutOfRange, "week number"));
-                }
-                let wd = self.wkday.unwrap_or(Weekday::Monday);
-                jd = Some(Dt::wk_mon_to_jd(y, w, wd));
+        // Ordinal date (%j)
+        else if let (Some(year), Some(doy)) = (self.yr, self.day_of_yr) {
+            if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
+                return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
             }
+            jd = Some(Dt::ydoy_to_jd(year, doy));
+        }
+        // ISO week date (%G/%V)
+        else if let (Some(iso_y), Some(iso_w)) = (self.iso_wk_yr, self.iso_wk) {
+            if iso_w == 0 || iso_w > 53 {
+                return Err(an_err!(DtErrKind::OutOfRange, "iso week"));
+            }
+            if iso_w == 53 && !Dt::has_iso_wk_53(iso_y) {
+                return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
+            }
+            let wd = self.wkday.unwrap_or(Weekday::Monday);
+            jd = Some(Dt::iso_wk_to_jd(iso_y, iso_w, wd));
+        }
+        // Sunday-based week (%U)
+        else if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
+            if w > 53 {
+                return Err(an_err!(DtErrKind::OutOfRange, "week number"));
+            }
+            let wd = self.wkday.unwrap_or(Weekday::Sunday);
+            jd = Some(Dt::wk_sun_to_jd(y, w, wd));
+        }
+        // Monday-based week (%W)
+        else if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
+            if w > 53 {
+                return Err(an_err!(DtErrKind::OutOfRange, "week number"));
+            }
+            let wd = self.wkday.unwrap_or(Weekday::Monday);
+            jd = Some(Dt::wk_mon_to_jd(y, w, wd));
         }
 
         let Some(jd) = jd else {
             if self.yr.is_none() && self.iso_wk_yr.is_none() {
                 return Err(an_err!(DtErrKind::Incomplete, "no year"));
             } else {
-                return Err(an_err!(DtErrKind::InvalidInput, "could not create julian"));
+                return Err(an_err!(
+                    DtErrKind::InvalidInput,
+                    "could not create julian date"
+                ));
             }
         };
 
