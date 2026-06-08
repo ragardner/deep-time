@@ -69,9 +69,9 @@ impl TimeParts {
     }
 
     fn build_naive_time(&self) -> Result<NaiveTime, DtErr> {
-        let mut hour = self.hr.unwrap_or(0) as u32;
-        let minute = self.min.unwrap_or(0) as u32;
-        let mut second = self.sec.unwrap_or(0) as u32;
+        let mut hour = self.hr as u32;
+        let minute = self.min as u32;
+        let mut second = self.sec as u32;
 
         if let Some(meridiem) = self.meridiem {
             match (hour, meridiem) {
@@ -88,7 +88,7 @@ impl TimeParts {
             0
         };
 
-        let is_leap = second == 60 || self.is_leap_sec;
+        let is_leap = second == 60;
         if !is_leap && raw_ns_u64 > 999_999_999 {
             return Err(an_err!(DtErrKind::OutOfRange, "leap ns: {}", raw_ns_u64));
         }

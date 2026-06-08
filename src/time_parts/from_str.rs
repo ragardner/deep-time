@@ -76,67 +76,43 @@ impl TimeParts {
     ///
     /// - [`DtErrKind::Incomplete`] if no valid date representation is present.
     /// - [`DtErrKind::OutOfRange`] for seconds outside `0..=60`.
-    pub fn finish(&mut self, allow_partial_date: bool) -> Result<&mut Self, DtErr> {
+    #[inline(always)]
+    pub(crate) fn finish(&mut self, allow_partial_date: bool) -> Result<(), DtErr> {
         if self.unix_timestamp_seconds.is_some() {
-            if self.hr.is_none() {
-                self.hr = Some(0);
-            }
-            if self.min.is_none() {
-                self.min = Some(0);
-            }
-            if self.sec.is_none() {
-                self.sec = Some(0);
-            }
             if self.attos.is_none() {
                 self.attos = Some(0);
             }
             if self.offset.is_none() {
                 self.offset = Some(Offset::Utc);
             }
-            return Ok(self);
-        }
-
-        // Sensible defaults for time components (most tests expect a full datetime)
-        if self.hr.is_none() {
-            self.hr = Some(0);
-        }
-        if self.min.is_none() {
-            self.min = Some(0);
-        }
-        if let Some(sec) = self.sec {
-            if sec == 60 {
-                self.is_leap_sec = true;
-            } else if sec > 60 {
-                return Err(an_err!(DtErrKind::OutOfRange, "seconds (0..=60): {}", sec));
-            }
+            return Ok(());
         } else {
-            self.sec = Some(0);
-        }
-        if self.attos.is_none() {
-            self.attos = Some(0);
-        }
-        if self.offset.is_none() {
-            self.offset = Some(Offset::Utc);
-        }
-
-        let has_calendar_date = if allow_partial_date {
-            if self.day.is_none() {
-                self.day = Some(1);
+            if self.attos.is_none() {
+                self.attos = Some(0);
             }
-            if self.mo.is_none() {
-                self.mo = Some(1);
+            if self.offset.is_none() {
+                self.offset = Some(Offset::Utc);
             }
-            self.yr.is_some()
-        } else {
-            self.yr.is_some() && self.mo.is_some() && self.day.is_some()
-        };
-        let has_ordinal_date = self.yr.is_some() && self.day_of_yr.is_some();
-        let has_iso_week_date = self.iso_wk_yr.is_some() && self.iso_wk.is_some();
 
-        if !has_calendar_date && !has_ordinal_date && !has_iso_week_date {
-            return Err(an_err!(DtErrKind::Incomplete));
+            let has_calendar_date = if allow_partial_date {
+                if self.day.is_none() {
+                    self.day = Some(1);
+                }
+                if self.mo.is_none() {
+                    self.mo = Some(1);
+                }
+                self.yr.is_some()
+            } else {
+                self.yr.is_some() && self.mo.is_some() && self.day.is_some()
+            };
+            let has_ordinal_date = self.yr.is_some() && self.day_of_yr.is_some();
+            let has_iso_week_date = self.iso_wk_yr.is_some() && self.iso_wk.is_some();
+
+            if !has_calendar_date && !has_ordinal_date && !has_iso_week_date {
+                return Err(an_err!(DtErrKind::Incomplete));
+            }
         }
 
-        Ok(self)
+        Ok(())
     }
 }

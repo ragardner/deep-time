@@ -16,9 +16,9 @@ mod tests {
         assert_eq!(parsed.yr, Some(2024));
         assert_eq!(parsed.mo, Some(4));
         assert_eq!(parsed.day, Some(15));
-        assert_eq!(parsed.hr, Some(14));
-        assert_eq!(parsed.min, Some(30));
-        assert_eq!(parsed.sec, Some(45));
+        assert_eq!(parsed.hr, 14);
+        assert_eq!(parsed.min, 30);
+        assert_eq!(parsed.sec, 45);
         assert_eq!(parsed.attos, Some(0));
         assert_eq!(parsed.offset, Some(Offset::Utc));
     }
@@ -65,8 +65,7 @@ mod tests {
             false,
         )
         .unwrap();
-        assert!(parsed.is_leap_sec);
-        assert_eq!(parsed.sec, Some(60));
+        assert_eq!(parsed.sec, 60);
     }
 
     #[test]
@@ -115,9 +114,9 @@ mod tests {
         assert_eq!(parsed_f.yr, Some(2024));
         assert_eq!(parsed_f.mo, Some(4));
         assert_eq!(parsed_f.day, Some(15));
-        assert_eq!(parsed_f.hr, Some(14));
-        assert_eq!(parsed_f.min, Some(30));
-        assert_eq!(parsed_f.sec, Some(45));
+        assert_eq!(parsed_f.hr, 14);
+        assert_eq!(parsed_f.min, 30);
+        assert_eq!(parsed_f.sec, 45);
 
         let parsed_d = TimeParts::from_str("%D", "04/15/24", false, false, false).unwrap();
         assert_eq!(parsed_d.yr, Some(2024));

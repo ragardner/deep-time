@@ -208,7 +208,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_full_year(
         &mut self,
         flag: Option<u8>,
@@ -240,7 +240,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_two_digit_year(
         &mut self,
         flag: Option<u8>,
@@ -313,7 +313,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_month_number(
         &mut self,
         flag: Option<u8>,
@@ -335,7 +335,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_day_of_month(
         &mut self,
         flag: Option<u8>,
@@ -357,7 +357,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_day_of_year(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (n, remaining) = match Self::parse_padded_number(self.inp, flag, width, 3, b'0', false)
         {
@@ -378,7 +378,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_hour24(
         &mut self,
         flag: Option<u8>,
@@ -392,7 +392,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if h > 23 {
             return Err(an_err!(DtErrKind::OutOfRange, "hour (0..=23): {}", h));
         }
-        self.tm.hr = Some(h);
+        self.tm.hr = h;
         self.inp = remaining;
         if advance {
             self.advance_fmt();
@@ -400,7 +400,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_hour12(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (h, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
@@ -409,13 +409,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if !(1..=12).contains(&h) {
             return Err(an_err!(DtErrKind::OutOfRange, "hour (1..=12): {}", h));
         }
-        self.tm.hr = Some(h);
+        self.tm.hr = h;
         self.inp = remaining;
         self.advance_fmt();
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_minute(
         &mut self,
         flag: Option<u8>,
@@ -429,7 +429,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if m > 59 {
             return Err(an_err!(DtErrKind::OutOfRange, "minute (0..=59): {}", m));
         }
-        self.tm.min = Some(m);
+        self.tm.min = m;
         self.inp = remaining;
         if advance {
             self.advance_fmt();
@@ -437,7 +437,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_second(
         &mut self,
         flag: Option<u8>,
@@ -451,8 +451,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if s > 60 {
             return Err(an_err!(DtErrKind::OutOfRange, "seconds (0..=60): {}", s));
         }
-        self.tm.sec = Some(s);
-        self.tm.is_leap_sec = s == 60;
+        self.tm.sec = s;
         self.inp = remaining;
         if advance {
             self.advance_fmt();
@@ -460,7 +459,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_fractional_seconds(&mut self, width: Option<u8>) -> Result<(), DtErr> {
         // Make %f, %N, %3N, %6N, etc. also accept an optional leading '.'
         // (symmetric with the %.f case handled in parse_optional_dot_fractional)
@@ -495,7 +494,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_unix_timestamp(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (n, remaining) = match Self::parse_padded_number(self.inp, flag, width, 19, b' ', false)
         {
@@ -508,7 +507,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_month_name_abbrev(&mut self) -> Result<(), DtErr> {
         if self.inp.len() < 3 {
             return Err(an_err!(DtErrKind::InvalidName, "abbrev. month name"));
@@ -542,7 +541,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_month_name_full(&mut self) -> Result<(), DtErr> {
         static CHOICES: &[&[u8]] = &[
             b"January",
@@ -568,7 +567,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_weekday_abbrev(&mut self) -> Result<(), DtErr> {
         if self.inp.len() < 3 {
             return Err(an_err!(DtErrKind::InvalidName, "abbrev. weekday"));
@@ -600,7 +599,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_weekday_full(&mut self) -> Result<(), DtErr> {
         static CHOICES: &[&[u8]] = &[
             b"Sunday",
@@ -624,7 +623,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_weekday_number_monday_based(
         &mut self,
         flag: Option<u8>,
@@ -647,7 +646,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_weekday_number_sunday_based(
         &mut self,
         flag: Option<u8>,
@@ -670,7 +669,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_ampm(&mut self) -> Result<(), DtErr> {
         if self.inp.len() < 2 {
             return Err(an_err!(DtErrKind::InvalidName, "am/pm"));
@@ -688,7 +687,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_week_number_sunday_based(
         &mut self,
         flag: Option<u8>,
@@ -709,7 +708,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_week_number_monday_based(
         &mut self,
         flag: Option<u8>,
@@ -730,7 +729,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_week_iso(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (w, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
@@ -745,7 +744,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_timezone_offset(&mut self, colons: u8) -> Result<(), DtErr> {
         let sign = match self.inp.first() {
             Some(b'+') => 1i32,
@@ -817,7 +816,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_offset_hours(&mut self) -> Result<i32, DtErr> {
         let mut n = 0i32;
         let mut digits = 0;
@@ -839,7 +838,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(n)
     }
 
-    #[inline]
     fn parse_offset_mm_ss(&mut self) -> Result<i32, DtErr> {
         if self.inp.len() < 2 {
             return Err(an_err!(
@@ -872,7 +870,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(n)
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_iana_or_offset(&mut self, colons: u8) -> Result<(), DtErr> {
         if !self.inp.is_empty() && matches!(self.current_input_byte(), b'+' | b'-') {
             return self.parse_timezone_offset(colons);
@@ -898,7 +896,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_scale(&mut self) -> Result<(), DtErr> {
         if self.inp.is_empty() || !self.inp[0].is_ascii_alphabetic() {
             return Err(an_err!(DtErrKind::InvalidItem, "invalid scale"));
@@ -920,7 +918,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_iso_date(&mut self) -> Result<(), DtErr> {
         self.parse_full_year(None, None, false)?;
         self.parse_literal_character_byte(b'-')?;
@@ -931,7 +929,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_us_date_shortcut(&mut self) -> Result<(), DtErr> {
         self.parse_month_number(None, None, false)?;
         self.parse_literal_character_byte(b'/')?;
@@ -942,7 +940,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_time_with_seconds_shortcut(&mut self) -> Result<(), DtErr> {
         self.parse_hour24(None, None, false)?;
         self.parse_literal_character_byte(b':')?;
@@ -953,7 +951,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_time_without_seconds_shortcut(&mut self) -> Result<(), DtErr> {
         self.parse_hour24(None, None, false)?;
         self.parse_literal_character_byte(b':')?;
@@ -962,7 +960,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_literal_character_byte(&mut self, expected: u8) -> Result<(), DtErr> {
         if self.inp.is_empty() || self.current_input_byte() != expected {
             return Err(an_err!(
@@ -1165,7 +1163,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Ok((acc as u8, &bytes[consumed..]))
     }
 
-    #[inline]
+    #[inline(always)]
     fn match_from_choice_list<'a>(inp: &'a [u8], choices: &[&[u8]]) -> Result<(u8, &'a [u8]), ()> {
         for (i, choice) in choices.iter().enumerate() {
             if inp.len() < choice.len() {
@@ -1179,7 +1177,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         Err(())
     }
 
-    #[inline]
+    #[inline(always)]
     fn parse_iana(inp: &[u8]) -> Result<(&str, &[u8]), ()> {
         let start = inp;
         let mut pos = 0;

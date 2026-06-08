@@ -69,9 +69,9 @@ mod tests {
         dc.yr = Some(2025);
         dc.mo = Some(6);
         dc.day = Some(15);
-        dc.hr = Some(14);
-        dc.min = Some(30);
-        dc.sec = Some(0);
+        dc.hr = 14;
+        dc.min = 30;
+        dc.sec = 0;
         dc.attos = Some(0);
         dc.scale = Scale::TAI;
         dc.offset = Some(Offset::Utc);

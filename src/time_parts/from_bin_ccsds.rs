@@ -175,8 +175,7 @@ impl TimeParts {
             return Err(an_err!(DtErrKind::OutOfRange, "minute"));
         }
 
-        let is_leap_second = second == 60;
-        if is_leap_second {
+        if second == 60 {
             second = 59;
         } else if second > 59 {
             return Err(an_err!(DtErrKind::OutOfRange, "second"));
@@ -208,11 +207,10 @@ impl TimeParts {
             mo: month,
             day,
             day_of_yr: day_of_year,
-            hr: Some(hour),
-            min: Some(minute),
-            sec: Some(second),
+            hr: hour,
+            min: minute,
+            sec: second,
             attos: Some(attos),
-            is_leap_sec: is_leap_second,
             scale: Scale::UTC,
             offset: Some(Offset::Utc),
             ..TimeParts::default()
@@ -329,9 +327,9 @@ impl TimeParts {
             yr: Some(year),
             mo: Some(month),
             day: Some(day),
-            hr: Some(hour),
-            min: Some(minute),
-            sec: Some(second),
+            hr: hour,
+            min: minute,
+            sec: second,
             attos: Some(frac_attos),
             scale: Scale::TAI,
             offset: Some(Offset::Utc),
@@ -476,11 +474,10 @@ impl TimeParts {
             yr: Some(year),
             mo: Some(month),
             day: Some(day),
-            hr: Some(hour),
-            min: Some(minute),
-            sec: Some(second),
+            hr: hour,
+            min: minute,
+            sec: second,
             attos: Some(frac_attos as u64),
-            is_leap_sec: is_leap_second,
             scale: Scale::UTC,
             offset: Some(Offset::Utc),
             ..TimeParts::default()

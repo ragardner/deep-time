@@ -171,9 +171,9 @@ fn test_ccsds_c_direct_frac() {
     assert_eq!(parsed.yr, Some(1958));
     assert_eq!(parsed.mo, Some(1));
     assert_eq!(parsed.day, Some(1));
-    assert_eq!(parsed.hr, Some(0));
-    assert_eq!(parsed.min, Some(0));
-    assert_eq!(parsed.sec, Some(1));
+    assert_eq!(parsed.hr, 0);
+    assert_eq!(parsed.min, 0);
+    assert_eq!(parsed.sec, 1);
     assert!(parsed.attos.unwrap() > 499_000_000_000_000_000);
     assert_eq!(parsed.scale, Scale::TAI);
 }
@@ -186,9 +186,9 @@ fn test_ccsds_c_2byte_pfield() {
     assert_eq!(parsed.yr, Some(1958));
     assert_eq!(parsed.mo, Some(1));
     assert_eq!(parsed.day, Some(1));
-    assert_eq!(parsed.hr, Some(0));
-    assert_eq!(parsed.min, Some(1));
-    assert_eq!(parsed.sec, Some(40));
+    assert_eq!(parsed.hr, 0);
+    assert_eq!(parsed.min, 1);
+    assert_eq!(parsed.sec, 40);
 }
 
 #[test]
@@ -199,9 +199,9 @@ fn test_ccsds_d_direct() {
     assert_eq!(parsed.yr, Some(1958));
     assert_eq!(parsed.mo, Some(1));
     assert_eq!(parsed.day, Some(1));
-    assert_eq!(parsed.hr, Some(0));
-    assert_eq!(parsed.min, Some(0));
-    assert_eq!(parsed.sec, Some(0));
+    assert_eq!(parsed.hr, 0);
+    assert_eq!(parsed.min, 0);
+    assert_eq!(parsed.sec, 0);
     assert_eq!(parsed.attos, Some(1_000_000_000_000_000));
     assert_eq!(parsed.scale, Scale::UTC);
 }
@@ -211,7 +211,7 @@ fn test_ccsds_d_direct_frac() {
     let d_bytes = &[0x41u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00];
     let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
 
-    assert_eq!(parsed.sec, Some(0));
+    assert_eq!(parsed.sec, 0);
     assert_eq!(parsed.attos, Some(1_500_000_000_000_000));
 }
 
@@ -235,9 +235,9 @@ fn test_ccsds_c_roundtrip() {
     assert_eq!(parsed.yr, Some(2025));
     assert_eq!(parsed.mo, Some(4));
     assert_eq!(parsed.day, Some(17));
-    assert_eq!(parsed.hr, Some(14));
-    assert_eq!(parsed.min, Some(30));
-    assert_eq!(parsed.sec, Some(45));
+    assert_eq!(parsed.hr, 14);
+    assert_eq!(parsed.min, 30);
+    assert_eq!(parsed.sec, 45);
     assert_eq!(parsed.scale, Scale::TAI);
 
     let diff = (parsed.attos.unwrap() as i64 - 123_456_789_000_000_000i64).abs();
@@ -268,9 +268,9 @@ fn test_ccsds_d_roundtrip() {
     assert_eq!(parsed.yr, Some(2025));
     assert_eq!(parsed.mo, Some(4));
     assert_eq!(parsed.day, Some(17));
-    assert_eq!(parsed.hr, Some(14));
-    assert_eq!(parsed.min, Some(30));
-    assert_eq!(parsed.sec, Some(45));
+    assert_eq!(parsed.hr, 14);
+    assert_eq!(parsed.min, 30);
+    assert_eq!(parsed.sec, 45);
     assert_eq!(parsed.scale, Scale::UTC);
 
     let diff = (parsed.attos.unwrap() as i64 - 400_000_000_000i64).abs();
@@ -334,9 +334,6 @@ fn roundtrip_ccs(tp: Dt, use_doy: bool, n_subsec: u8, expected_pfield: u8) {
     // Verify other fields
     assert_eq!(parsed_parts.scale, Scale::UTC);
     assert_eq!(parsed_parts.offset, Some(Offset::Utc));
-    if parsed_parts.is_leap_sec {
-        assert_eq!(parsed_parts.sec, Some(59));
-    }
 }
 
 #[test]
@@ -408,20 +405,19 @@ fn test_ccsds_calendar_variants() {
     assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
     assert_eq!(dt.day_of_yr, None);
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(30));
-    assert_eq!(dt.sec, Some(25));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 30);
+    assert_eq!(dt.sec, 25);
     assert!(dt.attos.is_some()); // fractional seconds parsed
-    assert!(!dt.is_leap_sec);
 
     // Calendar with seconds, no fraction
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30:25").unwrap();
     assert_eq!(dt.yr, Some(2024));
     assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(30));
-    assert_eq!(dt.sec, Some(25));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 30);
+    assert_eq!(dt.sec, 25);
     assert!(dt.attos.is_some()); // defaults to 0
 
     // Calendar with only minutes
@@ -429,18 +425,18 @@ fn test_ccsds_calendar_variants() {
     assert_eq!(dt.yr, Some(2024));
     assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(30));
-    assert_eq!(dt.sec, Some(0));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 30);
+    assert_eq!(dt.sec, 0);
 
     // Calendar with only hour
     let dt = TimeParts::from_str_ccsds("2024-04-18T14").unwrap();
     assert_eq!(dt.yr, Some(2024));
     assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(0));
-    assert_eq!(dt.sec, Some(0));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 0);
+    assert_eq!(dt.sec, 0);
 
     // Calendar date-only
     let dt = TimeParts::from_str_ccsds("2024-04-18").unwrap();
@@ -448,9 +444,9 @@ fn test_ccsds_calendar_variants() {
     assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
     assert_eq!(dt.day_of_yr, None);
-    assert_eq!(dt.hr, Some(0));
-    assert_eq!(dt.min, Some(0));
-    assert_eq!(dt.sec, Some(0));
+    assert_eq!(dt.hr, 0);
+    assert_eq!(dt.min, 0);
+    assert_eq!(dt.sec, 0);
 }
 
 #[test]
@@ -461,9 +457,9 @@ fn test_ccsds_doy_variants() {
     assert_eq!(dt.day_of_yr, Some(109));
     assert_eq!(dt.mo, None);
     assert_eq!(dt.day, None);
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(30));
-    assert_eq!(dt.sec, Some(25));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 30);
+    assert_eq!(dt.sec, 25);
     assert!(dt.attos.is_some());
 
     // DOY date-only
@@ -477,9 +473,9 @@ fn test_ccsds_doy_variants() {
     let dt = TimeParts::from_str_ccsds("2024-366T23:59:59").unwrap();
     assert_eq!(dt.yr, Some(2024));
     assert_eq!(dt.day_of_yr, Some(366));
-    assert_eq!(dt.hr, Some(23));
-    assert_eq!(dt.min, Some(59));
-    assert_eq!(dt.sec, Some(59));
+    assert_eq!(dt.hr, 23);
+    assert_eq!(dt.min, 59);
+    assert_eq!(dt.sec, 59);
 }
 
 #[test]
@@ -489,25 +485,25 @@ fn test_ccsds_separators_and_z() {
     assert_eq!(dt.yr, Some(2024));
     assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(30));
-    assert_eq!(dt.sec, Some(25));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 30);
+    assert_eq!(dt.sec, 25);
 
     // Lowercase t
     let dt = TimeParts::from_str_ccsds("2024-109t14:30").unwrap();
     assert_eq!(dt.yr, Some(2024));
     assert_eq!(dt.day_of_yr, Some(109));
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(30));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 30);
 
     // Trailing Z (case-insensitive) is stripped and still works
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30:25Z").unwrap();
     assert_eq!(dt.yr, Some(2024));
     assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(30));
-    assert_eq!(dt.sec, Some(25));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 30);
+    assert_eq!(dt.sec, 25);
 }
 
 #[test]
@@ -535,8 +531,7 @@ fn test_ccsds_leap_second() {
     assert_eq!(dt.yr, Some(2024));
     assert_eq!(dt.mo, Some(6));
     assert_eq!(dt.day, Some(30));
-    assert_eq!(dt.sec, Some(60));
-    assert!(dt.is_leap_sec);
+    assert_eq!(dt.sec, 60);
 }
 
 #[test]
@@ -562,9 +557,9 @@ fn test_from_str_junk() {
     assert_eq!(x.day_of_yr, Some(123));
     assert_eq!(x.mo, None);
     assert_eq!(x.day, None);
-    assert_eq!(x.hr, Some(12));
-    assert_eq!(x.min, Some(0));
-    assert_eq!(x.sec, Some(0));
+    assert_eq!(x.hr, 12);
+    assert_eq!(x.min, 0);
+    assert_eq!(x.sec, 0);
     assert!(x.attos.is_some()); // defaults to 0 attos
     assert_eq!(x.scale, Scale::UTC); // default scale when none given
 
@@ -572,27 +567,27 @@ fn test_from_str_junk() {
     let x = TimeParts::from_str_ccsds("sdfsdfs sdfsdf 2024-123T12:00:00 TDB").unwrap();
     assert_eq!(x.yr, Some(2024));
     assert_eq!(x.day_of_yr, Some(123));
-    assert_eq!(x.hr, Some(12));
-    assert_eq!(x.min, Some(0));
-    assert_eq!(x.sec, Some(0));
+    assert_eq!(x.hr, 12);
+    assert_eq!(x.min, 0);
+    assert_eq!(x.sec, 0);
     assert_eq!(x.scale, Scale::TDB);
 
     // parse scale at the end with trailing Z
     let x = TimeParts::from_str_ccsds("sdfsdfs sdfsdf 2024-123T12:00:00Z TDB").unwrap();
     assert_eq!(x.yr, Some(2024));
     assert_eq!(x.day_of_yr, Some(123));
-    assert_eq!(x.hr, Some(12));
-    assert_eq!(x.min, Some(0));
-    assert_eq!(x.sec, Some(0));
+    assert_eq!(x.hr, 12);
+    assert_eq!(x.min, 0);
+    assert_eq!(x.sec, 0);
     assert_eq!(x.scale, Scale::TDB);
 
     // parse early scale (right after DOY, no time)
     let x = TimeParts::from_str_ccsds("sdfsdfs sdfsdf 2024-123TDB fdsfsdfsdf").unwrap();
     assert_eq!(x.yr, Some(2024));
     assert_eq!(x.day_of_yr, Some(123));
-    assert_eq!(x.hr, Some(0)); // time is optional
-    assert_eq!(x.min, Some(0));
-    assert_eq!(x.sec, Some(0));
+    assert_eq!(x.hr, 0); // time is optional
+    assert_eq!(x.min, 0);
+    assert_eq!(x.sec, 0);
     assert_eq!(x.scale, Scale::TDB);
 }
 
@@ -613,28 +608,27 @@ fn test_ccsds_early_and_late_scale() {
     // === EARLY scale + time ===
     let dt = TimeParts::from_str_ccsds("2024-109T12:00:00LTC").unwrap();
     assert_eq!(dt.day_of_yr, Some(109));
-    assert_eq!(dt.hr, Some(12));
-    assert_eq!(dt.min, Some(0));
-    assert_eq!(dt.sec, Some(0));
+    assert_eq!(dt.hr, 12);
+    assert_eq!(dt.min, 0);
+    assert_eq!(dt.sec, 0);
     assert_eq!(dt.scale, Scale::LTC);
 
     let dt = TimeParts::from_str_ccsds("2024-04-18 14:30:25 UTC").unwrap();
     assert_eq!(dt.mo, Some(4));
     assert_eq!(dt.day, Some(18));
-    assert_eq!(dt.hr, Some(14));
-    assert_eq!(dt.min, Some(30));
-    assert_eq!(dt.sec, Some(25));
+    assert_eq!(dt.hr, 14);
+    assert_eq!(dt.min, 30);
+    assert_eq!(dt.sec, 25);
     assert_eq!(dt.scale, Scale::UTC);
 
     // === LATE scale (after time) ===
     let dt = TimeParts::from_str_ccsds("2024-001T12:00:00 TDB").unwrap();
     assert_eq!(dt.day_of_yr, Some(1));
-    assert_eq!(dt.hr, Some(12));
+    assert_eq!(dt.hr, 12);
     assert_eq!(dt.scale, Scale::TDB);
 
     let dt = TimeParts::from_str_ccsds("2024-06-30T23:59:60Z GPS").unwrap();
-    assert_eq!(dt.sec, Some(60));
-    assert!(dt.is_leap_sec);
+    assert_eq!(dt.sec, 60);
     assert_eq!(dt.scale, Scale::GPS);
 
     // === BOTH orders with fractional seconds ===
@@ -650,9 +644,9 @@ fn test_ccsds_early_and_late_scale() {
     let dt = TimeParts::from_str_ccsds("2024-001 TAI").unwrap();
     assert_eq!(dt.day_of_yr, Some(1));
     assert_eq!(dt.scale, Scale::TAI);
-    assert_eq!(dt.hr, Some(0)); // defaults
-    assert_eq!(dt.min, Some(0));
-    assert_eq!(dt.sec, Some(0));
+    assert_eq!(dt.hr, 0); // defaults
+    assert_eq!(dt.min, 0);
+    assert_eq!(dt.sec, 0);
 
     let dt = TimeParts::from_str_ccsds("2024-04-18UTC").unwrap();
     assert_eq!(dt.mo, Some(4));

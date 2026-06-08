@@ -84,24 +84,23 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         // Resolve 12-hour time + meridiem (AM/PM) to 24-hour hour
         // ──────────────────────────────────────────────────────────────
-        let hour = match (self.hr, self.meridiem) {
-            (Some(h), Some(m)) => {
-                if !(1..=12).contains(&h) {
-                    return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", h));
+        let hour = match self.meridiem {
+            None => self.hr,
+            Some(m) => {
+                if !(1..=12).contains(&self.hr) {
+                    return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", self.hr));
                 }
-                match (h, m) {
+                match (self.hr, m) {
                     (12, Meridiem::AM) => 0,
                     (12, Meridiem::PM) => 12,
                     (h, Meridiem::AM) => h,
                     (h, Meridiem::PM) => h + 12,
                 }
             }
-            (Some(h), None) => h,
-            (None, _) => 0,
         };
 
-        let minute = self.min.unwrap_or(0) as i64;
-        let mut second = self.sec.unwrap_or(0) as i64;
+        let minute = self.min as i64;
+        let mut second = self.sec as i64;
         let sec_is_60 = second == 60;
         if sec_is_60 {
             second = second.saturating_sub(1)

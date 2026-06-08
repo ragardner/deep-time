@@ -6,7 +6,10 @@ mod tests {
 
     #[cfg(feature = "jiff-tz")]
     #[test]
-    fn print_stuff() {}
+    fn print_stuff() {
+        let timeparts = TimeParts::new_utc();
+        eprintln!("{:?}", timeparts);
+    }
 
     #[cfg(feature = "jiff-tz")]
     #[test]

@@ -60,19 +60,13 @@ impl TimeParts {
         }
 
         // Time of day
-        if let Some(h) = self.hr {
-            bdt.set_hour(Some(h as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "hour: {}: {}", h, e))?;
-        }
-        if let Some(m) = self.min {
-            bdt.set_minute(Some(m as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "minute: {}: {}", m, e))?;
-        }
-        if let Some(s) = self.sec {
-            let non_ls_s = if s == 60 { 59 } else { s };
-            bdt.set_second(Some(non_ls_s as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
-        }
+        bdt.set_hour(Some(self.hr as i8))
+            .map_err(|e| an_err!(DtErrKind::InvalidItem, "hour: {}: {}", self.hr, e))?;
+        bdt.set_minute(Some(self.min as i8))
+            .map_err(|e| an_err!(DtErrKind::InvalidItem, "minute: {}: {}", self.min, e))?;
+        let non_ls_s = if self.sec == 60 { 59 } else { self.sec };
+        bdt.set_second(Some(non_ls_s as i8))
+            .map_err(|e| an_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
 
         // Subsecond precision (attoseconds → nanoseconds)
         if let Some(attos) = self.attos {
