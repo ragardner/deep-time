@@ -72,7 +72,7 @@ mod tests {
         dc.hr = 14;
         dc.min = 30;
         dc.sec = 0;
-        dc.attos = Some(0);
+        dc.attos = 0;
         dc.scale = Scale::TAI;
         dc.offset = Some(Offset::Utc);
 

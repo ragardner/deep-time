@@ -6,7 +6,7 @@ pub(crate) use en::*;
 
 use crate::FormatNames;
 
-const EN_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
+pub(crate) const EN_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
     "Sunday",
     "Monday",
     "Tuesday",
@@ -16,10 +16,10 @@ const EN_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
     "Saturday"
 ];
 
-const EN_WEEKDAYS_ABBR: [&'static [u8]; 7] =
+pub(crate) const EN_WEEKDAYS_ABBR: [&'static [u8]; 7] =
     byte_arrays!["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-const EN_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
+pub(crate) const EN_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
     "January",
     "February",
     "March",
@@ -34,7 +34,7 @@ const EN_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
     "December"
 ];
 
-const EN_MONTHS_ABBR: [&'static [u8]; 12] = byte_arrays![
+pub(crate) const EN_MONTHS_ABBR: [&'static [u8]; 12] = byte_arrays![
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 

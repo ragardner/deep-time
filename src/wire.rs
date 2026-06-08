@@ -360,7 +360,7 @@ impl TimeParts {
         offset += 1;
 
         // attos
-        let attos = self.attos.unwrap_or(u64::MAX);
+        let attos = self.attos;
         buf[offset..offset + 8].copy_from_slice(&attos.to_le_bytes());
         offset += 8;
 
@@ -464,9 +464,7 @@ impl TimeParts {
 
         // attos (8 bytes)
         let attos = u64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
-        if attos != u64::MAX {
-            dc.attos = Some(attos);
-        }
+        dc.attos = attos;
         offset += 8;
 
         // offset (5 bytes)

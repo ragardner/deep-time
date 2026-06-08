@@ -174,7 +174,7 @@ fn test_ccsds_c_direct_frac() {
     assert_eq!(parsed.hr, 0);
     assert_eq!(parsed.min, 0);
     assert_eq!(parsed.sec, 1);
-    assert!(parsed.attos.unwrap() > 499_000_000_000_000_000);
+    assert!(parsed.attos > 499_000_000_000_000_000);
     assert_eq!(parsed.scale, Scale::TAI);
 }
 
@@ -202,7 +202,7 @@ fn test_ccsds_d_direct() {
     assert_eq!(parsed.hr, 0);
     assert_eq!(parsed.min, 0);
     assert_eq!(parsed.sec, 0);
-    assert_eq!(parsed.attos, Some(1_000_000_000_000_000));
+    assert_eq!(parsed.attos, 1_000_000_000_000_000);
     assert_eq!(parsed.scale, Scale::UTC);
 }
 
@@ -212,7 +212,7 @@ fn test_ccsds_d_direct_frac() {
     let parsed = TimeParts::from_ccsds_d(d_bytes).unwrap();
 
     assert_eq!(parsed.sec, 0);
-    assert_eq!(parsed.attos, Some(1_500_000_000_000_000));
+    assert_eq!(parsed.attos, 1_500_000_000_000_000);
 }
 
 #[test]
@@ -240,7 +240,7 @@ fn test_ccsds_c_roundtrip() {
     assert_eq!(parsed.sec, 45);
     assert_eq!(parsed.scale, Scale::TAI);
 
-    let diff = (parsed.attos.unwrap() as i64 - 123_456_789_000_000_000i64).abs();
+    let diff = (parsed.attos as i64 - 123_456_789_000_000_000i64).abs();
     assert!(
         diff < 60_000_000_000,
         "Fractional error too large: {} attos",
@@ -273,7 +273,7 @@ fn test_ccsds_d_roundtrip() {
     assert_eq!(parsed.sec, 45);
     assert_eq!(parsed.scale, Scale::UTC);
 
-    let diff = (parsed.attos.unwrap() as i64 - 400_000_000_000i64).abs();
+    let diff = (parsed.attos as i64 - 400_000_000_000i64).abs();
     assert!(
         diff < 16_000_000_000,
         "Fractional error too large: {} attos",
@@ -408,7 +408,6 @@ fn test_ccsds_calendar_variants() {
     assert_eq!(dt.hr, 14);
     assert_eq!(dt.min, 30);
     assert_eq!(dt.sec, 25);
-    assert!(dt.attos.is_some()); // fractional seconds parsed
 
     // Calendar with seconds, no fraction
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30:25").unwrap();
@@ -418,7 +417,6 @@ fn test_ccsds_calendar_variants() {
     assert_eq!(dt.hr, 14);
     assert_eq!(dt.min, 30);
     assert_eq!(dt.sec, 25);
-    assert!(dt.attos.is_some()); // defaults to 0
 
     // Calendar with only minutes
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30").unwrap();
@@ -460,7 +458,6 @@ fn test_ccsds_doy_variants() {
     assert_eq!(dt.hr, 14);
     assert_eq!(dt.min, 30);
     assert_eq!(dt.sec, 25);
-    assert!(dt.attos.is_some());
 
     // DOY date-only
     let dt = TimeParts::from_str_ccsds("2024-001").unwrap();
@@ -510,19 +507,19 @@ fn test_ccsds_separators_and_z() {
 fn test_ccsds_fractional_seconds_various_lengths() {
     // 1 digit
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30:25.1").unwrap();
-    assert!(dt.attos.is_some());
+    assert_eq!(dt.attos, 100_000_000_000_000_000);
 
     // 3 digits
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30:25.123").unwrap();
-    assert!(dt.attos.is_some());
+    assert_eq!(dt.attos, 123_000_000_000_000_000);
 
     // 6 digits
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30:25.123456").unwrap();
-    assert!(dt.attos.is_some());
+    assert_eq!(dt.attos, 123_456_000_000_000_000);
 
     // 9 digits (full nanos)
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30:25.123456789").unwrap();
-    assert!(dt.attos.is_some());
+    assert_eq!(dt.attos, 123_456_789_000_000_000);
 }
 
 #[test]
@@ -560,7 +557,7 @@ fn test_from_str_junk() {
     assert_eq!(x.hr, 12);
     assert_eq!(x.min, 0);
     assert_eq!(x.sec, 0);
-    assert!(x.attos.is_some()); // defaults to 0 attos
+    assert_eq!(x.attos, 0); // defaults to 0 attos
     assert_eq!(x.scale, Scale::UTC); // default scale when none given
 
     // parse scale at the end (late scale)
@@ -634,11 +631,11 @@ fn test_ccsds_early_and_late_scale() {
     // === BOTH orders with fractional seconds ===
     let dt = TimeParts::from_str_ccsds("2024-04-18T14:30:25.123456789 TCL").unwrap();
     assert_eq!(dt.scale, Scale::TCL);
-    assert!(dt.attos.is_some());
+    assert_eq!(dt.attos, 123_456_789_000_000_000);
 
     let dt = TimeParts::from_str_ccsds("2024-109 14:30:25.5 TAI").unwrap();
     assert_eq!(dt.scale, Scale::TAI);
-    assert!(dt.attos.is_some());
+    assert_eq!(dt.attos, 500_000_000_000_000_000);
 
     // === Time completely optional, scale only ===
     let dt = TimeParts::from_str_ccsds("2024-001 TAI").unwrap();

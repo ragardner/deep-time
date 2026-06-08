@@ -95,7 +95,7 @@ impl Dt {
     /// ## Errors
     ///
     /// Returns [`DtErr`] for:
-    /// - Parse failures (`InvalidFormat`, `OutOfRange`, `UnknownDirective`, etc.)
+    /// - Parse failures (`InvalidFormat`, `OutOfRange`, `UnknownItem`, etc.)
     /// - Incomplete data when `allow_partial_date` is `false`
     /// - Trailing characters (when `fmt_can_end_before_inp` is `false`)
     ///

@@ -210,7 +210,7 @@ impl TimeParts {
             hr: hour,
             min: minute,
             sec: second,
-            attos: Some(attos),
+            attos: attos,
             scale: Scale::UTC,
             offset: Some(Offset::Utc),
             ..TimeParts::default()
@@ -330,7 +330,7 @@ impl TimeParts {
             hr: hour,
             min: minute,
             sec: second,
-            attos: Some(frac_attos),
+            attos: frac_attos,
             scale: Scale::TAI,
             offset: Some(Offset::Utc),
             ..TimeParts::default()
@@ -477,7 +477,7 @@ impl TimeParts {
             hr: hour,
             min: minute,
             sec: second,
-            attos: Some(frac_attos as u64),
+            attos: frac_attos as u64,
             scale: Scale::UTC,
             offset: Some(Offset::Utc),
             ..TimeParts::default()

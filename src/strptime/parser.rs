@@ -1,4 +1,5 @@
 use crate::error::{DtErr, DtErrKind};
+use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
 use crate::{Meridiem, Offset, Scale, TimeParts, Weekday, an_err};
 use core::result::Result;
 use core::str;
@@ -11,6 +12,7 @@ pub(crate) struct Parser<'f, 'i, 't> {
 }
 
 impl<'f, 'i, 't> Parser<'f, 'i, 't> {
+    #[inline(always)]
     pub(crate) fn new(
         fmt: &'f [u8],
         inp: &'i [u8],
@@ -26,12 +28,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn current_format_byte(&self) -> u8 {
+    fn current_fmt_byte(&self) -> u8 {
         self.fmt[0]
     }
 
     #[inline(always)]
-    fn current_input_byte(&self) -> u8 {
+    fn current_inp_byte(&self) -> u8 {
         self.inp[0]
     }
 
@@ -47,14 +49,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn advance_input(&mut self) {
+    fn advance_inp(&mut self) {
         self.inp = &self.inp[1..];
     }
 
     #[inline(always)]
     pub(crate) fn parse(&mut self) -> Result<(), DtErr> {
         while !self.fmt.is_empty() {
-            if self.current_format_byte() != b'%' {
+            if self.current_fmt_byte() != b'%' {
                 self.parse_literal_character()?;
                 continue;
             }
@@ -62,8 +64,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 return Err(an_err!(DtErrKind::UnexpectedEnd, "after %"));
             }
 
-            let (flag, width, colons, new_fmt) = Self::parse_format_extensions(self.fmt, 0);
-            self.fmt = new_fmt;
+            let (flag, width, colons) = self.parse_format_extensions();
 
             let directive = self.fmt.first().copied().unwrap_or(0);
 
@@ -79,12 +80,30 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
             match directive {
                 b'%' => self.parse_percent_sign()?,
-                b'Y' => self.parse_full_year(flag, width, true)?,
-                b'm' => self.parse_month_number(flag, width, true)?,
-                b'd' | b'e' => self.parse_day_of_month(flag, width, true)?,
-                b'H' | b'k' => self.parse_hour24(flag, width, true)?,
-                b'M' => self.parse_minute(flag, width, true)?,
-                b'S' => self.parse_second(flag, width, true)?,
+                b'Y' => {
+                    self.parse_full_year(flag, width)?;
+                    self.advance_fmt();
+                }
+                b'm' => {
+                    self.parse_month_number(flag, width)?;
+                    self.advance_fmt();
+                }
+                b'd' | b'e' => {
+                    self.parse_day_of_month(flag, width)?;
+                    self.advance_fmt();
+                }
+                b'H' | b'k' => {
+                    self.parse_hour24(flag, width)?;
+                    self.advance_fmt();
+                }
+                b'M' => {
+                    self.parse_minute(flag, width)?;
+                    self.advance_fmt();
+                }
+                b'S' => {
+                    self.parse_second(flag, width)?;
+                    self.advance_fmt();
+                }
                 b'Q' => self.parse_iana_or_offset(colons)?,
                 b'z' => self.parse_timezone_offset(colons)?,
                 b'A' => self.parse_weekday_full()?,
@@ -96,17 +115,19 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                     self.advance_fmt();
                 }
                 b'I' | b'l' => self.parse_hour12(flag, width)?,
-                b'y' => self.parse_two_digit_year(flag, width, true)?,
+                b'y' => {
+                    self.parse_two_digit_year(flag, width)?;
+                    self.advance_fmt();
+                }
                 b'.' => {
                     if !self.advance_fmt_checked() {
                         return Err(an_err!(DtErrKind::UnexpectedEnd, "after ."));
                     }
 
-                    let width = if !self.fmt.is_empty()
-                        && self.current_format_byte().is_ascii_digit()
+                    let width = if !self.fmt.is_empty() && self.current_fmt_byte().is_ascii_digit()
                     {
                         let start = self.fmt;
-                        while !self.fmt.is_empty() && self.current_format_byte().is_ascii_digit() {
+                        while !self.fmt.is_empty() && self.current_fmt_byte().is_ascii_digit() {
                             self.advance_fmt();
                         }
                         core::str::from_utf8(&start[..start.len() - self.fmt.len()])
@@ -146,13 +167,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'L' => self.parse_scale()?,
                 b'c' | b'r' | b'X' | b'x' | b'Z' => {
                     return Err(an_err!(
-                        DtErrKind::UnsupportedDirective,
+                        DtErrKind::UnsupportedItem,
                         "{}",
                         char::from(directive)
                     ));
                 }
                 _ => {
-                    return Err(an_err!(DtErrKind::UnknownDirective));
+                    return Err(an_err!(DtErrKind::UnknownItem, "{}", char::from(directive)));
                 }
             }
         }
@@ -161,15 +182,19 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_literal_character(&mut self) -> Result<(), DtErr> {
-        let c = self.current_format_byte();
+        let c = self.current_fmt_byte();
         if c.is_ascii_whitespace() {
-            while !self.inp.is_empty() && self.current_input_byte().is_ascii_whitespace() {
-                self.advance_input();
-            }
-        } else if self.inp.is_empty() || self.current_input_byte() != c {
-            return Err(an_err!(DtErrKind::MismatchedLiteral, "literal"));
+            self.inp = self.inp.trim_ascii_start();
         } else {
-            self.advance_input();
+            if self.inp.is_empty() || self.current_inp_byte() != c {
+                return Err(an_err!(
+                    DtErrKind::MismatchedLiteral,
+                    "{} got: {}",
+                    self.current_inp_byte(),
+                    c
+                ));
+            }
+            self.advance_inp();
         }
         self.advance_fmt();
         Ok(())
@@ -177,22 +202,20 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn skip_whitespace(&mut self) {
-        while !self.inp.is_empty() && self.current_input_byte().is_ascii_whitespace() {
-            self.advance_input();
-        }
+        self.inp = self.inp.trim_ascii_start();
         self.advance_fmt();
     }
 
     #[inline(always)]
     fn parse_percent_sign(&mut self) -> Result<(), DtErr> {
-        if self.inp.is_empty() || self.current_input_byte() != b'%' {
+        if self.inp.is_empty() || self.current_inp_byte() != b'%' {
             return Err(an_err!(
                 DtErrKind::MismatchedLiteral,
                 "% got: {}",
-                char::from(self.current_input_byte())
+                char::from(self.current_inp_byte())
             ));
         }
-        self.advance_input();
+        self.advance_inp();
         self.advance_fmt();
         Ok(())
     }
@@ -201,20 +224,15 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_optional_dot_fractional(&mut self, width: Option<u8>) -> Result<(), DtErr> {
         // dot is optional in the input for %.f
         // (also supports explicit literal dot before %.f, e.g. %S.%.f)
-        if !self.inp.is_empty() && self.current_input_byte() == b'.' {
-            self.advance_input();
+        if !self.inp.is_empty() && self.current_inp_byte() == b'.' {
+            self.advance_inp();
         }
         self.parse_fractional_seconds(width)?;
         Ok(())
     }
 
     #[inline(always)]
-    fn parse_full_year(
-        &mut self,
-        flag: Option<u8>,
-        width: Option<u8>,
-        advance: bool,
-    ) -> Result<(), DtErr> {
+    fn parse_full_year(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (y, remaining) = match Self::parse_padded_number(self.inp, flag, width, 4, b'0', false)
         {
             Ok(v) => v,
@@ -222,9 +240,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.tm.yr = Some(y);
         self.inp = remaining;
-        if advance {
-            self.advance_fmt();
-        }
         Ok(())
     }
 
@@ -241,12 +256,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_two_digit_year(
-        &mut self,
-        flag: Option<u8>,
-        width: Option<u8>,
-        advance: bool,
-    ) -> Result<(), DtErr> {
+    fn parse_two_digit_year(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (y, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "year")),
@@ -258,9 +268,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             1900i64 + (y as i64)
         };
         self.tm.yr = Some(year);
-        if advance {
-            self.advance_fmt();
-        }
         Ok(())
     }
 
@@ -314,12 +321,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_month_number(
-        &mut self,
-        flag: Option<u8>,
-        width: Option<u8>,
-        advance: bool,
-    ) -> Result<(), DtErr> {
+    fn parse_month_number(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (m, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "digit month")),
@@ -329,19 +331,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.mo = Some(m);
         self.inp = remaining;
-        if advance {
-            self.advance_fmt();
-        }
         Ok(())
     }
 
     #[inline(always)]
-    fn parse_day_of_month(
-        &mut self,
-        flag: Option<u8>,
-        width: Option<u8>,
-        advance: bool,
-    ) -> Result<(), DtErr> {
+    fn parse_day_of_month(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (d, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "day")),
@@ -351,9 +345,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.day = Some(d);
         self.inp = remaining;
-        if advance {
-            self.advance_fmt();
-        }
         Ok(())
     }
 
@@ -379,12 +370,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_hour24(
-        &mut self,
-        flag: Option<u8>,
-        width: Option<u8>,
-        advance: bool,
-    ) -> Result<(), DtErr> {
+    fn parse_hour24(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (h, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "hour")),
@@ -394,9 +380,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.hr = h;
         self.inp = remaining;
-        if advance {
-            self.advance_fmt();
-        }
         Ok(())
     }
 
@@ -416,12 +399,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_minute(
-        &mut self,
-        flag: Option<u8>,
-        width: Option<u8>,
-        advance: bool,
-    ) -> Result<(), DtErr> {
+    fn parse_minute(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (m, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "minute")),
@@ -431,19 +409,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.min = m;
         self.inp = remaining;
-        if advance {
-            self.advance_fmt();
-        }
         Ok(())
     }
 
     #[inline(always)]
-    fn parse_second(
-        &mut self,
-        flag: Option<u8>,
-        width: Option<u8>,
-        advance: bool,
-    ) -> Result<(), DtErr> {
+    fn parse_second(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
         let (s, remaining) = match Self::parse_u8_padded(self.inp, flag, width, 2, b'0') {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedValue, "seconds")),
@@ -453,9 +423,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         self.tm.sec = s;
         self.inp = remaining;
-        if advance {
-            self.advance_fmt();
-        }
         Ok(())
     }
 
@@ -463,22 +430,22 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_fractional_seconds(&mut self, width: Option<u8>) -> Result<(), DtErr> {
         // Make %f, %N, %3N, %6N, etc. also accept an optional leading '.'
         // (symmetric with the %.f case handled in parse_optional_dot_fractional)
-        if !self.inp.is_empty() && self.current_input_byte() == b'.' {
-            self.advance_input();
+        if !self.inp.is_empty() && self.current_inp_byte() == b'.' {
+            self.advance_inp();
         }
         let max_digits = width.map(|w| w as usize).unwrap_or(usize::MAX);
         const TARGET_DIGITS: usize = 18; // attoseconds
         let mut frac: u64 = 0;
         let mut digits_read = 0usize;
         while !self.inp.is_empty()
-            && self.current_input_byte().is_ascii_digit()
+            && self.current_inp_byte().is_ascii_digit()
             && digits_read < max_digits
         {
             if digits_read < TARGET_DIGITS {
-                let d = (self.current_input_byte() - b'0') as u64;
+                let d = (self.current_inp_byte() - b'0') as u64;
                 frac = frac * 10 + d;
             }
-            self.advance_input();
+            self.advance_inp();
             digits_read += 1;
         }
         if digits_read == 0 {
@@ -490,7 +457,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             let multiplier = 10u64.pow((TARGET_DIGITS - digits_read) as u32);
             frac * multiplier
         };
-        self.tm.attos = Some(attos);
+        self.tm.attos = attos;
         Ok(())
     }
 
@@ -543,21 +510,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_month_name_full(&mut self) -> Result<(), DtErr> {
-        static CHOICES: &[&[u8]] = &[
-            b"January",
-            b"February",
-            b"March",
-            b"April",
-            b"May",
-            b"June",
-            b"July",
-            b"August",
-            b"September",
-            b"October",
-            b"November",
-            b"December",
-        ];
-        let (index, remaining) = match Self::match_from_choice_list(self.inp, CHOICES) {
+        let (index, remaining) = match Self::match_from_choice_list(self.inp, &EN_MONTHS_FULL) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::InvalidName, "month name")),
         };
@@ -601,16 +554,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_weekday_full(&mut self) -> Result<(), DtErr> {
-        static CHOICES: &[&[u8]] = &[
-            b"Sunday",
-            b"Monday",
-            b"Tuesday",
-            b"Wednesday",
-            b"Thursday",
-            b"Friday",
-            b"Saturday",
-        ];
-        let (index, remaining) = match Self::match_from_choice_list(self.inp, CHOICES) {
+        let (index, remaining) = match Self::match_from_choice_list(self.inp, &EN_WEEKDAYS_FULL) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::InvalidName, "weekday")),
         };
@@ -756,7 +700,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 ));
             }
         };
-        self.advance_input();
+        self.advance_inp();
 
         let mut total_seconds = self.parse_offset_hours()? * 3600;
 
@@ -781,7 +725,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             1..=3 => {
                 let minutes_required = colons != 3;
                 if self.inp.first() == Some(&b':') {
-                    self.advance_input();
+                    self.advance_inp();
                     let minutes = match self.parse_offset_mm_ss() {
                         Ok(m) => m,
                         Err(_) => {
@@ -790,7 +734,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                     };
                     total_seconds += minutes * 60;
                     if self.inp.first() == Some(&b':') {
-                        self.advance_input();
+                        self.advance_inp();
                         let seconds = match self.parse_offset_mm_ss() {
                             Ok(s) => s,
                             Err(_) => {
@@ -820,9 +764,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_offset_hours(&mut self) -> Result<i32, DtErr> {
         let mut n = 0i32;
         let mut digits = 0;
-        while digits < 2 && !self.inp.is_empty() && self.current_input_byte().is_ascii_digit() {
-            n = n * 10 + (self.current_input_byte() - b'0') as i32;
-            self.advance_input();
+        while digits < 2 && !self.inp.is_empty() && self.current_inp_byte().is_ascii_digit() {
+            n = n * 10 + (self.current_inp_byte() - b'0') as i32;
+            self.advance_inp();
             digits += 1;
         }
         if digits == 0 {
@@ -872,7 +816,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_iana_or_offset(&mut self, colons: u8) -> Result<(), DtErr> {
-        if !self.inp.is_empty() && matches!(self.current_input_byte(), b'+' | b'-') {
+        if !self.inp.is_empty() && matches!(self.current_inp_byte(), b'+' | b'-') {
             return self.parse_timezone_offset(colons);
         }
         let (iana_str, remaining) = match Self::parse_iana(self.inp) {
@@ -920,110 +864,114 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_iso_date(&mut self) -> Result<(), DtErr> {
-        self.parse_full_year(None, None, false)?;
+        self.parse_full_year(None, None)?;
         self.parse_literal_character_byte(b'-')?;
-        self.parse_month_number(None, None, false)?;
+        self.parse_month_number(None, None)?;
         self.parse_literal_character_byte(b'-')?;
-        self.parse_day_of_month(None, None, false)?;
+        self.parse_day_of_month(None, None)?;
         self.advance_fmt(); // eat %F
         Ok(())
     }
 
     #[inline(always)]
     fn parse_us_date_shortcut(&mut self) -> Result<(), DtErr> {
-        self.parse_month_number(None, None, false)?;
+        self.parse_month_number(None, None)?;
         self.parse_literal_character_byte(b'/')?;
-        self.parse_day_of_month(None, None, false)?;
+        self.parse_day_of_month(None, None)?;
         self.parse_literal_character_byte(b'/')?;
-        self.parse_two_digit_year(None, None, false)?;
+        self.parse_two_digit_year(None, None)?;
         self.advance_fmt(); // eat %D
         Ok(())
     }
 
     #[inline(always)]
     fn parse_time_with_seconds_shortcut(&mut self) -> Result<(), DtErr> {
-        self.parse_hour24(None, None, false)?;
+        self.parse_hour24(None, None)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_minute(None, None, false)?;
+        self.parse_minute(None, None)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_second(None, None, false)?;
+        self.parse_second(None, None)?;
         self.advance_fmt(); // eat %T
         Ok(())
     }
 
     #[inline(always)]
     fn parse_time_without_seconds_shortcut(&mut self) -> Result<(), DtErr> {
-        self.parse_hour24(None, None, false)?;
+        self.parse_hour24(None, None)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_minute(None, None, false)?;
+        self.parse_minute(None, None)?;
         self.advance_fmt(); // eat %R
         Ok(())
     }
 
     #[inline(always)]
     fn parse_literal_character_byte(&mut self, expected: u8) -> Result<(), DtErr> {
-        if self.inp.is_empty() || self.current_input_byte() != expected {
+        if self.inp.is_empty() || self.current_inp_byte() != expected {
             return Err(an_err!(
                 DtErrKind::MismatchedLiteral,
                 "expected literal: {}",
                 expected,
             ));
         }
-        self.advance_input();
+        self.advance_inp();
         Ok(())
     }
 
     #[inline(always)]
-    pub(crate) fn parse_format_extensions(
-        fmt: &[u8],
-        mut pos: usize,
-    ) -> (Option<u8>, Option<u8>, u8, &[u8]) {
+    pub(crate) fn parse_format_extensions(&mut self) -> (Option<u8>, Option<u8>, u8) {
+        if self.fmt.is_empty() {
+            return (None, None, 0);
+        }
+
+        let first = self.fmt[0];
+
+        // Early exit for the common case (no flag, no width, no colons)
+        if !matches!(first, b'-' | b'_' | b'0' | b'^' | b'#' | b'0'..=b'9' | b':') {
+            return (None, None, 0);
+        }
+
         let mut flag = None;
         let mut width = None;
         let mut colons = 0u8;
 
         // Flag
-        if let Some(&b @ (b'-' | b'_' | b'0' | b'^' | b'#')) = fmt.get(pos) {
-            flag = Some(b);
-            pos += 1;
+        if matches!(first, b'-' | b'_' | b'0' | b'^' | b'#') {
+            flag = Some(first);
+            self.fmt = &self.fmt[1..];
+            if self.fmt.is_empty() {
+                return (flag, None, 0);
+            }
         }
 
         // Width
-        if pos < fmt.len() && fmt[pos].is_ascii_digit() {
-            let mut w = u16::from(fmt[pos] - b'0');
-            pos += 1;
+        if !self.fmt.is_empty() && self.fmt[0].is_ascii_digit() {
+            let mut w: u16 = u16::from(self.fmt[0] - b'0');
+            self.fmt = &self.fmt[1..];
+            let mut digits = 1u8;
 
-            if pos < fmt.len() && fmt[pos].is_ascii_digit() {
-                w = w * 10 + u16::from(fmt[pos] - b'0');
-                pos += 1;
+            while digits < 3 && !self.fmt.is_empty() && self.fmt[0].is_ascii_digit() {
+                w = w * 10 + u16::from(self.fmt[0] - b'0');
+                self.fmt = &self.fmt[1..];
+                digits += 1;
+            }
 
-                if pos < fmt.len() && fmt[pos].is_ascii_digit() {
-                    w = w * 10 + u16::from(fmt[pos] - b'0');
-                    pos += 1;
+            // Consume any extra digits beyond 3
+            while !self.fmt.is_empty() && self.fmt[0].is_ascii_digit() {
+                self.fmt = &self.fmt[1..];
+            }
 
-                    if pos < fmt.len() && fmt[pos].is_ascii_digit() {
-                        // 4+ digits → definitely > 255, just consume the rest
-                        while pos < fmt.len() && fmt[pos].is_ascii_digit() {
-                            pos += 1;
-                        }
-                    } else if w <= u8::MAX as u16 {
-                        width = Some(w as u8);
-                    }
-                } else if w <= u8::MAX as u16 {
-                    width = Some(w as u8);
-                }
-            } else if w <= u8::MAX as u16 {
+            if w <= u8::MAX as u16 {
                 width = Some(w as u8);
             }
         }
 
-        // Colons
-        while pos < fmt.len() && fmt[pos] == b':' {
+        // Colons (hard cap at 3)
+        while colons < 3 && !self.fmt.is_empty() && self.fmt[0] == b':' {
             colons += 1;
-            pos += 1;
+            self.fmt = &self.fmt[1..];
         }
 
-        (flag, width, colons, &fmt[pos..])
+        (flag, width, colons)
     }
 
     #[inline(always)]
@@ -1115,40 +1063,42 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             None => default_flag,
         };
 
-        let zero_pad_width = if matches!(effective_flag, b'_' | b' ' | b'-') {
-            0
+        let zero_pad = matches!(effective_flag, b'_' | b' ' | b'-');
+        let max_d = if zero_pad {
+            default_pad_width
         } else {
-            width.map_or(0, usize::from)
-        };
-        let max_digits = zero_pad_width.max(default_pad_width).min(3);
+            width.map_or(default_pad_width, usize::from)
+        }
+        .min(3);
 
         let len = bytes.len();
         let mut consumed = 0usize;
-
-        if consumed < max_digits && consumed < len && bytes[consumed] == b'0' {
-            consumed += 1;
-        }
-        if consumed < max_digits && consumed < len && bytes[consumed] == b'0' {
-            consumed += 1;
-        }
-
         let mut acc: u16 = 0;
 
-        if consumed < max_digits && consumed < len {
+        // Digit 1
+        if consumed < max_d && consumed < len {
             let b = bytes[consumed];
             if b.is_ascii_digit() {
                 acc = (b - b'0') as u16;
                 consumed += 1;
+            } else {
+                return Ok((acc as u8, &bytes[consumed..]));
             }
         }
-        if consumed < max_digits && consumed < len {
+
+        // Digit 2
+        if consumed < max_d && consumed < len {
             let b = bytes[consumed];
             if b.is_ascii_digit() {
                 acc = acc * 10 + (b - b'0') as u16;
                 consumed += 1;
+            } else {
+                return Ok((acc as u8, &bytes[consumed..]));
             }
         }
-        if consumed < max_digits && consumed < len {
+
+        // Digit 3
+        if consumed < max_d && consumed < len {
             let b = bytes[consumed];
             if b.is_ascii_digit() {
                 acc = acc * 10 + (b - b'0') as u16;

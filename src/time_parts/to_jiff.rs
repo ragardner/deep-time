@@ -69,8 +69,8 @@ impl TimeParts {
             .map_err(|e| an_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
 
         // Subsecond precision (attoseconds → nanoseconds)
-        if let Some(attos) = self.attos {
-            let ns_u64 = attos / ATTOS_PER_NS;
+        if self.attos != 0 {
+            let ns_u64 = self.attos / ATTOS_PER_NS;
             let ns: i32 = if ns_u64 >= 1_000_000_000 {
                 999_999_999
             } else {

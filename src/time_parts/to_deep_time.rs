@@ -16,11 +16,7 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
             let total_sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-            return Ok(Dt::from_sec_and_attos(
-                total_sec,
-                self.attos.unwrap_or(0),
-                self.scale,
-            ));
+            return Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -190,25 +186,17 @@ impl TimeParts {
         // Final construction
         // ──────────────────────────────────────────────────────────────
         if !sec_is_60 {
-            Ok(Dt::from_sec_and_attos(
-                total_sec,
-                self.attos.unwrap_or(0),
-                self.scale,
-            ))
+            Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale))
         } else {
             if self.scale.uses_leap_seconds() {
-                let t = Dt::from_sec_and_attos(total_sec, self.attos.unwrap_or(0), self.scale);
+                let t = Dt::from_sec_and_attos(total_sec, self.attos, self.scale);
                 let is_leap_sec = match leap_sec(total_sec.saturating_add(1), true) {
                     Some(info) => info.is_leap_sec,
                     None => false,
                 };
                 if is_leap_sec { Ok(t.add_sec(1)) } else { Ok(t) }
             } else {
-                Ok(Dt::from_sec_and_attos(
-                    total_sec,
-                    self.attos.unwrap_or(0),
-                    self.scale,
-                ))
+                Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale))
             }
         }
     }

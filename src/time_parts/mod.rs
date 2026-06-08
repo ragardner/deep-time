@@ -45,7 +45,7 @@ pub struct TimeParts {
     /// Second of the minute (0–60). Value 60 is used for leap seconds.
     pub sec: u8,
     /// Attoseconds (0 ≤ value < 10¹⁸).
-    pub attos: Option<u64>,
+    pub attos: u64,
     /// Timezone offset from UTC.
     pub offset: Option<Offset>,
     /// IANA timezone name (e.g. `"America/New_York"`), stored as ASCII.
@@ -71,7 +71,7 @@ pub struct TimeParts {
 }
 
 impl TimeParts {
-    #[inline]
+    #[inline(always)]
     pub fn new_utc() -> TimeParts {
         Self {
             scale: Scale::UTC,
@@ -80,10 +80,9 @@ impl TimeParts {
     }
 
     /// Sets the IANA timezone name.
-    #[inline]
-    pub fn set_iana_name(&mut self, name: Option<&str>) -> &mut Self {
+    #[inline(always)]
+    pub fn set_iana_name(&mut self, name: Option<&str>) {
         self.iana_name = name.map(LiteStr::new);
-        self
     }
 }
 

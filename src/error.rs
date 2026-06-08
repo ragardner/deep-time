@@ -10,8 +10,8 @@ use crate::AnErr;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DtErrKind {
     UnexpectedEnd,
-    UnknownDirective,
-    UnsupportedDirective,
+    UnknownItem,
+    UnsupportedItem,
     BadFractional,
     MismatchedLiteral,
     ExpectedValue,

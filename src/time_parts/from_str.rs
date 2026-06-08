@@ -78,22 +78,10 @@ impl TimeParts {
     /// - [`DtErrKind::OutOfRange`] for seconds outside `0..=60`.
     #[inline(always)]
     pub(crate) fn finish(&mut self, allow_partial_date: bool) -> Result<(), DtErr> {
-        if self.unix_timestamp_seconds.is_some() {
-            if self.attos.is_none() {
-                self.attos = Some(0);
-            }
-            if self.offset.is_none() {
-                self.offset = Some(Offset::Utc);
-            }
-            return Ok(());
-        } else {
-            if self.attos.is_none() {
-                self.attos = Some(0);
-            }
-            if self.offset.is_none() {
-                self.offset = Some(Offset::Utc);
-            }
-
+        if self.offset.is_none() {
+            self.offset = Some(Offset::Utc);
+        }
+        if self.unix_timestamp_seconds.is_none() {
             let has_calendar_date = if allow_partial_date {
                 if self.day.is_none() {
                     self.day = Some(1);

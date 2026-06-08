@@ -82,8 +82,8 @@ impl TimeParts {
             }
         }
 
-        let raw_ns_u64 = if let Some(attos) = self.attos {
-            attos / ATTOS_PER_NS
+        let raw_ns_u64 = if self.attos != 0 {
+            self.attos / ATTOS_PER_NS
         } else {
             0
         };
@@ -140,8 +140,8 @@ impl TimeParts {
         // Always UTC. Completely ignores offset + iana_name.
         // ============================================================
         if let Some(secs) = self.unix_timestamp_seconds {
-            let subsec_nano = if let Some(attos) = self.attos {
-                let ns_u64 = attos / ATTOS_PER_NS;
+            let subsec_nano = if self.attos != 0 {
+                let ns_u64 = self.attos / ATTOS_PER_NS;
                 if ns_u64 > 999_999_999 {
                     999_999_999
                 } else {
