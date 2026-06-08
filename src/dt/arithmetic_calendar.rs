@@ -37,7 +37,7 @@ impl Dt {
 #[cfg(feature = "jiff-tz")]
 impl Dt {
     /// Adds the given number of years in the specified IANA timezone,
-    /// respecting timezone rules (including DST) and proper calendar arithmetic.
+    /// respecting timezone rules (including DST) and calendar arithmetic.
     ///
     /// ## Important
     ///
@@ -77,7 +77,8 @@ impl Dt {
         Ok(self.to_ymd().add_mo_tz(n, tz)?.to_dt())
     }
 
-    /// Adds the given number of weeks in the specified IANA timezone.
+    /// Adds the given number of weeks in the specified IANA timezone,
+    /// respecting timezone rules (including DST).
     ///
     /// ## Important
     ///
@@ -97,7 +98,8 @@ impl Dt {
         Ok(self.to_ymd().add_wk_tz(n, tz)?.to_dt())
     }
 
-    /// Adds the given number of calendar days in the specified IANA timezone.
+    /// Adds the given number of calendar days in the specified IANA timezone,
+    /// respecting timezone rules (including DST).
     ///
     /// ## Important
     ///
@@ -159,7 +161,8 @@ impl Dt {
         Ok(self.to_ymd().add_min_tz(n, tz)?.to_dt())
     }
 
-    /// Adds the given number of seconds in the specified IANA timezone.
+    /// Adds the given number of seconds in the specified IANA timezone,
+    /// respecting timezone rules (including DST).
     ///
     /// ## Important
     ///
