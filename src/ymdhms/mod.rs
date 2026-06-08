@@ -1,10 +1,12 @@
 use crate::{ATTOS_PER_SEC_I128, Dt, Scale};
+#[cfg(feature = "jiff-tz")]
+use crate::{DtErr, DtErrKind, an_err};
 
 mod to_str;
 
 /// Combined Gregorian date + wall time with subsecond precision.
-///
-/// Has some basic calendar aware math, but not time zone aware.
+/// Has calendar aware and, when the `jiff-tz` feature is enabled,
+/// timezone aware math functions.
 ///
 /// ## Examples
 ///
@@ -47,14 +49,16 @@ pub struct YmdHms {
 impl YmdHms {
     /// Reconstructs a [`Dt`].
     #[inline]
-    pub fn to_dt(&self) -> Dt {
+    pub const fn to_dt(&self) -> Dt {
         Dt::from_ymd(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
     }
 
+    /// Internal helper that round-trips through [`Dt`] to obtain a normalized
+    /// `YmdHms` (handles clamping, leap seconds, etc.).
     #[inline(always)]
-    fn reconstruct(
+    const fn reconstruct(
         yr: i64,
         mo: u8,
         day: u8,
@@ -68,12 +72,13 @@ impl YmdHms {
     }
 
     /// Adds (or subtracts) whole years, preserving month and day-of-month.
-    /// Negative values subtract years. Uses standard last-day-of-month clamping.
-    pub fn add_yr(&self, years: i64) -> Self {
-        if years == 0 {
+    /// - Uses standard last-day-of-month clamping.
+    /// - Negative values subtract.
+    pub const fn add_yr(&self, n: i64) -> Self {
+        if n == 0 {
             return *self;
         }
-        let new_yr = self.yr.saturating_add(years);
+        let new_yr = self.yr.saturating_add(n);
         let max_day = Dt::days_in_month(new_yr, self.mo);
         let new_day = Dt::clamp_u8(self.day, 1, max_day);
         Self::reconstruct(
@@ -81,15 +86,15 @@ impl YmdHms {
         )
     }
 
-    /// Adds (or subtracts) whole months. Negative values subtract months.
-    /// Uses `i128` total-month arithmetic to avoid overflow at extreme years.
-    pub fn add_mo(&self, months: i64) -> Self {
-        if months == 0 {
+    /// Adds (or subtracts) calendar months. Negative values subtract.
+    pub const fn add_mo(&self, n: i64) -> Self {
+        if n == 0 {
             return *self;
         }
+
         let yr = self.yr as i128;
         let mo = self.mo as i128;
-        let delta = months as i128;
+        let delta = n as i128;
 
         let total_months = yr * 12 + (mo - 1) + delta;
 
@@ -104,27 +109,29 @@ impl YmdHms {
         )
     }
 
-    /// Adds (or subtracts) calendar days using Julian Day arithmetic.
-    /// Negative values subtract days.
-    pub fn add_days(&self, days: i64) -> Self {
-        if days == 0 {
+    /// Adds (or subtracts) calendar weeks. Negative values subtract.
+    #[inline]
+    pub const fn add_wk(&self, n: i64) -> Self {
+        self.add_days(n.saturating_mul(7))
+    }
+
+    /// Adds (or subtracts) calendar days. Negative values subtract.
+    pub const fn add_days(&self, n: i64) -> Self {
+        if n == 0 {
             return *self;
         }
         let jd = Dt::ymd_to_jd(self.yr, self.mo, self.day);
-        let new_jd = jd.saturating_add(days);
+        let new_jd = jd.saturating_add(n);
         let (new_yr, new_mo, new_day) = Dt::jd_to_ymd(new_jd);
         Self::reconstruct(
             new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
     }
 
-    #[inline]
-    pub fn add_wk(&self, weeks: i64) -> Self {
-        self.add_days(weeks.saturating_mul(7))
-    }
-
+    /// Internal implementation detail for all sub-day / physical-time additions.
+    /// Creates a temporary [`Dt`], performs the addition, then converts back to `YmdHms`.
     #[inline(never)]
-    fn _add_attos(&self, attos_delta: i128) -> Self {
+    const fn _add_attos(&self, attos_delta: i128) -> Self {
         let tai = Dt::from_ymd(
             self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
         );
@@ -132,103 +139,312 @@ impl YmdHms {
         new_tai.to_ymd()
     }
 
+    /// Adds (or subtracts) attoseconds. Negative values subtract.
     #[inline]
-    pub fn add_attos(&self, n: i128) -> Self {
+    pub const fn add_attos(&self, n: i128) -> Self {
         self._add_attos(n)
     }
 
+    /// Adds (or subtracts) whole seconds. Negative values subtract.
     #[inline]
-    pub fn add_sec(&self, n: i64) -> Self {
+    pub const fn add_sec(&self, n: i64) -> Self {
         self._add_attos((n as i128).saturating_mul(ATTOS_PER_SEC_I128))
     }
 
+    /// Adds (or subtracts) whole minutes. Negative values subtract.
     #[inline]
-    pub fn add_min(&self, n: i64) -> Self {
+    pub const fn add_min(&self, n: i64) -> Self {
         let delta = (n as i128)
             .saturating_mul(60)
             .saturating_mul(ATTOS_PER_SEC_I128);
         self._add_attos(delta)
     }
 
+    /// Adds (or subtracts) whole hours. Negative values subtract.
     #[inline]
-    pub fn add_hr(&self, n: i64) -> Self {
+    pub const fn add_hr(&self, n: i64) -> Self {
         let delta = (n as i128)
             .saturating_mul(3600)
             .saturating_mul(ATTOS_PER_SEC_I128);
         self._add_attos(delta)
     }
 
+    /// Returns the year component.
     #[inline]
-    pub fn yr(&self) -> i64 {
+    pub const fn yr(&self) -> i64 {
         self.yr
     }
 
+    /// Returns the month component (1–12).
     #[inline]
-    pub fn mo(&self) -> u8 {
+    pub const fn mo(&self) -> u8 {
         self.mo
     }
 
+    /// Returns the day-of-month component (1–31, depending on month/year).
     #[inline]
-    pub fn day(&self) -> u8 {
+    pub const fn day(&self) -> u8 {
         self.day
     }
 
+    /// Returns the hour component (0–23).
     #[inline]
-    pub fn hr(&self) -> u8 {
+    pub const fn hr(&self) -> u8 {
         self.hr
     }
 
+    /// Returns the minute component (0–59).
     #[inline]
-    pub fn min(&self) -> u8 {
+    pub const fn min(&self) -> u8 {
         self.min
     }
 
+    /// Returns the second component (0–60). The value 60 only occurs during
+    /// a positive leap second on `Scale::UTC` / `UtcSpice` / `UtcHist`.
     #[inline]
-    pub fn sec(&self) -> u8 {
+    pub const fn sec(&self) -> u8 {
         self.sec
     }
 
+    /// Returns the attosecond (sub-second) component (0 ≤ attos < 10¹⁸).
     #[inline]
-    pub fn attos(&self) -> u64 {
+    pub const fn attos(&self) -> u64 {
         self.attos
     }
 
     /// The time scale that the object was created on.
     #[inline]
-    pub fn scale(&self) -> Scale {
+    pub const fn scale(&self) -> Scale {
         self.scale
     }
 
+    /// Returns the **ISO week year** (can differ from the calendar year near
+    /// January 1 / December 31).
     #[inline]
-    pub fn iso_yr(&self) -> i64 {
+    pub const fn iso_yr(&self) -> i64 {
         let (iso_yr, _, _) = Dt::_to_iso_wk_date(self.yr, self.mo, self.day);
         iso_yr
     }
 
+    /// Returns the **ISO week number** (1–53). Weeks start on Monday; week 1
+    /// is the week containing the first Thursday of the year.
     #[inline]
-    pub fn iso_wk(&self) -> u8 {
+    pub const fn iso_wk(&self) -> u8 {
         let (_, iso_wk, _) = Dt::_to_iso_wk_date(self.yr, self.mo, self.day);
         iso_wk
     }
 
+    /// Returns the **day of the year** (ordinal date), 1-based (Jan 1 = 1,
+    /// Dec 31 = 365 or 366 in leap years).
     #[inline]
-    pub fn day_of_yr(&self) -> u16 {
+    pub const fn day_of_yr(&self) -> u16 {
         Dt::_day_of_yr(self.yr, self.mo, self.day)
     }
 
+    /// Returns the **weekday** number according to [`Dt::jd_to_wkday`]
+    /// (typically 0 = Sunday … 6 = Saturday; exact convention is defined
+    /// by the Julian Day helper).
     #[inline]
-    pub fn wkday(&self) -> u8 {
+    pub const fn wkday(&self) -> u8 {
         let jd = Dt::ymd_to_jd(self.yr, self.mo, self.day);
         Dt::jd_to_wkday(jd)
     }
 
+    /// Returns the **week of year** number when weeks are considered to start
+    /// on Sunday (US-style numbering).
     #[inline]
-    pub fn wk_of_yr_sun(&self) -> u8 {
+    pub const fn wk_of_yr_sun(&self) -> u8 {
         Dt::_wk_sun(self.yr, self.day_of_yr())
     }
 
+    /// Returns the **week of year** number when weeks are considered to start
+    /// on Monday.
     #[inline]
-    pub fn wk_of_yr_mon(&self) -> u8 {
+    pub const fn wk_of_yr_mon(&self) -> u8 {
         Dt::_wk_mon(self.yr, self.day_of_yr())
+    }
+}
+
+#[cfg(feature = "jiff-tz")]
+impl YmdHms {
+    /// Adds the given number of years in the specified IANA timezone,
+    /// respecting timezone rules (including DST) and proper calendar arithmetic.
+    ///
+    /// ## Errors
+    ///
+    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
+    ///   this range will return a [`DtErr`].
+    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
+    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
+    ///   [`DtErrKind::InvalidInput`] is returned.
+    pub fn add_yr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        let zoned = self
+            .to_jiff_zoned(tz)?
+            .checked_add(jiff::Span::new().years(n))
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+        Ok(self.from_jiff_zoned(zoned))
+    }
+
+    /// Adds the given number of months in the specified IANA timezone,
+    /// respecting timezone rules and calendar month-end clamping.
+    ///
+    /// ## Errors
+    ///
+    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
+    ///   this range will return a [`DtErr`].
+    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
+    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
+    ///   [`DtErrKind::InvalidInput`] is returned.
+    pub fn add_mo_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        let zoned = self
+            .to_jiff_zoned(tz)?
+            .checked_add(jiff::Span::new().months(n))
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+        Ok(self.from_jiff_zoned(zoned))
+    }
+
+    /// Adds the given number of weeks in the specified IANA timezone.
+    ///
+    /// ## Errors
+    ///
+    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
+    ///   this range will return a [`DtErr`].
+    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
+    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
+    ///   [`DtErrKind::InvalidInput`] is returned.
+    #[inline]
+    pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        self.add_days_tz(n.saturating_mul(7), tz)
+    }
+
+    /// Adds the given number of calendar days in the specified IANA timezone.
+    ///
+    /// ## Errors
+    ///
+    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
+    ///   this range will return a [`DtErr`].
+    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
+    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
+    ///   [`DtErrKind::InvalidInput`] is returned.
+    pub fn add_days_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        let zoned = self
+            .to_jiff_zoned(tz)?
+            .checked_add(jiff::Span::new().days(n))
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+        Ok(self.from_jiff_zoned(zoned))
+    }
+
+    /// Adds the given number of hours in the specified IANA timezone,
+    /// respecting timezone rules (including DST).
+    ///
+    /// ## Errors
+    ///
+    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
+    ///   this range will return a [`DtErr`].
+    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
+    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
+    ///   [`DtErrKind::InvalidInput`] is returned.
+    pub fn add_hr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        let new_zoned = self
+            .to_jiff_zoned(tz)?
+            .checked_add(jiff::Span::new().hours(n))
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+        Ok(self.from_jiff_zoned(new_zoned))
+    }
+
+    /// Adds the given number of minutes in the specified IANA timezone,
+    /// respecting timezone rules (including DST).
+    ///
+    /// ## Errors
+    ///
+    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
+    ///   this range will return a [`DtErr`].
+    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
+    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
+    ///   [`DtErrKind::InvalidInput`] is returned.
+    pub fn add_min_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        let zoned = self
+            .to_jiff_zoned(tz)?
+            .checked_add(jiff::Span::new().minutes(n))
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+        Ok(self.from_jiff_zoned(zoned))
+    }
+
+    /// Adds the given number of seconds in the specified IANA timezone.
+    ///
+    /// ## Errors
+    ///
+    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
+    ///   this range will return a [`DtErr`].
+    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
+    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
+    ///   [`DtErrKind::InvalidInput`] is returned.
+    pub fn add_sec_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        let zoned = self
+            .to_jiff_zoned(tz)?
+            .checked_add(jiff::Span::new().seconds(n))
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+        Ok(self.from_jiff_zoned(zoned))
+    }
+
+    // helpers
+
+    fn to_jiff_zoned(&self, tz: &str) -> Result<jiff::Zoned, DtErr> {
+        use jiff::civil;
+
+        if !(-9999..=9999).contains(&self.yr) {
+            return Err(an_err!(
+                DtErrKind::OutOfRange,
+                "yr {} is outside Jiff's supported range (-9999..=9999)",
+                self.yr
+            ));
+        }
+
+        let hr: i8 = self
+            .hr
+            .try_into()
+            .map_err(|_| an_err!(DtErrKind::OutOfRange, "hr out of range"))?;
+        let min: i8 = self
+            .min
+            .try_into()
+            .map_err(|_| an_err!(DtErrKind::OutOfRange, "min out of range"))?;
+
+        let sec_for_jiff: i8 = if self.sec == 60 {
+            59
+        } else {
+            self.sec
+                .try_into()
+                .map_err(|_| an_err!(DtErrKind::OutOfRange, "sec out of range"))?
+        };
+
+        let mo: i8 = self
+            .mo
+            .try_into()
+            .map_err(|_| an_err!(DtErrKind::OutOfRange, "mo out of range"))?;
+        let day: i8 = self
+            .day
+            .try_into()
+            .map_err(|_| an_err!(DtErrKind::OutOfRange, "day out of range"))?;
+
+        let civil_time = civil::date(self.yr as i16, mo, day).at(hr, min, sec_for_jiff, 0);
+
+        civil_time
+            .in_tz(tz)
+            .map_err(|e| an_err!(DtErrKind::InvalidTimezoneOffset, "{}", e))
+    }
+
+    fn from_jiff_zoned(&self, zoned: jiff::Zoned) -> Self {
+        let civil = zoned.datetime();
+
+        Self::reconstruct(
+            civil.year() as i64,
+            civil.month() as u8,
+            civil.day() as u8,
+            civil.hour() as u8,
+            civil.minute() as u8,
+            civil.second() as u8,
+            self.attos,
+            self.scale,
+        )
     }
 }

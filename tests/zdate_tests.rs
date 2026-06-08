@@ -4,12 +4,9 @@
 mod tests {
     use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale, TimeParts};
 
+    #[cfg(feature = "jiff-tz")]
     #[test]
-    fn print_stuff() {
-        use deep_time::LiteStr;
-
-        let x = LiteStr::<49>::new("America/New_York");
-    }
+    fn print_stuff() {}
 
     #[cfg(feature = "jiff-tz")]
     #[test]
