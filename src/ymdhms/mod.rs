@@ -276,12 +276,12 @@ impl YmdHms {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     pub fn add_yr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().years(n))
-            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+            .map_err(|e| an_err!(DtErrKind::OutOfRange, "{}", e))?;
         Ok(self.from_jiff_zoned(zoned))
     }
 
@@ -294,12 +294,12 @@ impl YmdHms {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     pub fn add_mo_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().months(n))
-            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+            .map_err(|e| an_err!(DtErrKind::OutOfRange, "{}", e))?;
         Ok(self.from_jiff_zoned(zoned))
     }
 
@@ -311,7 +311,7 @@ impl YmdHms {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     #[inline]
     pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         self.add_days_tz(n.saturating_mul(7), tz)
@@ -325,12 +325,12 @@ impl YmdHms {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     pub fn add_days_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().days(n))
-            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+            .map_err(|e| an_err!(DtErrKind::OutOfRange, "{}", e))?;
         Ok(self.from_jiff_zoned(zoned))
     }
 
@@ -343,12 +343,12 @@ impl YmdHms {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     pub fn add_hr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let new_zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().hours(n))
-            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+            .map_err(|e| an_err!(DtErrKind::OutOfRange, "{}", e))?;
         Ok(self.from_jiff_zoned(new_zoned))
     }
 
@@ -361,12 +361,12 @@ impl YmdHms {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     pub fn add_min_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().minutes(n))
-            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+            .map_err(|e| an_err!(DtErrKind::OutOfRange, "{}", e))?;
         Ok(self.from_jiff_zoned(zoned))
     }
 
@@ -378,12 +378,12 @@ impl YmdHms {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     pub fn add_sec_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().seconds(n))
-            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
+            .map_err(|e| an_err!(DtErrKind::OutOfRange, "{}", e))?;
         Ok(self.from_jiff_zoned(zoned))
     }
 
@@ -403,28 +403,28 @@ impl YmdHms {
         let hr: i8 = self
             .hr
             .try_into()
-            .map_err(|_| an_err!(DtErrKind::OutOfRange, "hr out of range"))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "hr: {} u8 -> i8", self.hr))?;
         let min: i8 = self
             .min
             .try_into()
-            .map_err(|_| an_err!(DtErrKind::OutOfRange, "min out of range"))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "min: {} u8 -> i8", self.min))?;
 
         let sec_for_jiff: i8 = if self.sec == 60 {
             59
         } else {
             self.sec
                 .try_into()
-                .map_err(|_| an_err!(DtErrKind::OutOfRange, "sec out of range"))?
+                .map_err(|_| an_err!(DtErrKind::InvalidNumber, "sec: {} u8 -> i8", self.sec))?
         };
 
         let mo: i8 = self
             .mo
             .try_into()
-            .map_err(|_| an_err!(DtErrKind::OutOfRange, "mo out of range"))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "mo: {} u8 -> i8", self.mo))?;
         let day: i8 = self
             .day
             .try_into()
-            .map_err(|_| an_err!(DtErrKind::OutOfRange, "day out of range"))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "day: {} u8 -> i8", self.day))?;
 
         let civil_time = civil::date(self.yr as i16, mo, day).at(hr, min, sec_for_jiff, 0);
 

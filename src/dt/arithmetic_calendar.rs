@@ -12,7 +12,7 @@ impl Dt {
         self.to_ymd().add_yr(n).to_dt()
     }
 
-    /// Adds (or subtracts) calendar weeks.
+    /// Adds (or subtracts) calendar months.
     /// Negative values subtract.
     #[inline(always)]
     pub const fn add_mo(&self, n: i64) -> Self {
@@ -50,7 +50,7 @@ impl Dt {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     #[inline(always)]
     pub fn add_yr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_yr_tz(n, tz)?.to_dt())
@@ -71,7 +71,7 @@ impl Dt {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     #[inline(always)]
     pub fn add_mo_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_mo_tz(n, tz)?.to_dt())
@@ -91,7 +91,7 @@ impl Dt {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     #[inline(always)]
     pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_wk_tz(n, tz)?.to_dt())
@@ -111,7 +111,7 @@ impl Dt {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     #[inline(always)]
     pub fn add_days_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_days_tz(n, tz)?.to_dt())
@@ -132,7 +132,7 @@ impl Dt {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     #[inline(always)]
     pub fn add_hr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_hr_tz(n, tz)?.to_dt())
@@ -153,7 +153,7 @@ impl Dt {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     #[inline(always)]
     pub fn add_min_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_min_tz(n, tz)?.to_dt())
@@ -173,7 +173,7 @@ impl Dt {
     ///   this range will return a [`DtErr`].
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErrKind::InvalidInput`] is returned.
+    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
     #[inline(always)]
     pub fn add_sec_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_sec_tz(n, tz)?.to_dt())
