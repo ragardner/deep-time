@@ -227,7 +227,7 @@ impl YmdHms {
                 }
                 b'*' => self.write_unbounded_year(&mut buf, &mut pos, flag, width),
                 b'c' | b'X' | b'x' => {}
-                _ => return Err(an_err!(DtErrKind::UnknownItem)),
+                _ => return Err(an_err!(DtErrKind::UnknownItem, "{}", directive)),
             }
         }
 
