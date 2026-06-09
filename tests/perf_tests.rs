@@ -71,13 +71,14 @@ mod perf_tests {
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = TimeParts::from_str(
-                    "2024-03-14T00:00:00",
+                let x = TimeParts::from_str(
                     "%Y-%m-%dT%H:%M:%S",
+                    "2024-03-14T00:00:00",
                     true,
                     true,
                     false,
-                );
+                )
+                .unwrap();
             }
             let elapsed = start.elapsed();
 
@@ -222,6 +223,70 @@ mod perf_tests {
             println!("\n=== DATE FMT PERF ===");
             println!("Avg time     : {:.2} ns/fmt", ns_per_fmt);
             println!("Throughput   : {:.0} k fmts/sec", 1_000_000.0 / ns_per_fmt);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // 6. TAI -> TDB PERF
+        // ═══════════════════════════════════════════════════════════════════════
+        {
+            const ITERATIONS: usize = 1_000_000;
+
+            let start = Instant::now();
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            for _ in 0..ITERATIONS {
+                let _ = x.to(Scale::TDB);
+            }
+            let elapsed = start.elapsed();
+
+            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
+
+            println!("\n=== TAI -> TDB PERF ===");
+            println!("Avg time     : {:.2} ns/it", ns_per_it);
+            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
+
+            let start = Instant::now();
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).to(Scale::TDB);
+            for _ in 0..ITERATIONS {
+                let _ = x.to(Scale::TAI);
+            }
+            let elapsed = start.elapsed();
+            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
+
+            println!("\n=== TDB -> TAI PERF ===");
+            println!("Avg time     : {:.2} ns/it", ns_per_it);
+            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // 7. TAI -> TT PERF
+        // ═══════════════════════════════════════════════════════════════════════
+        {
+            const ITERATIONS: usize = 1_000_000;
+
+            let start = Instant::now();
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            for _ in 0..ITERATIONS {
+                let _ = x.to(Scale::TT);
+            }
+            let elapsed = start.elapsed();
+
+            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
+
+            println!("\n=== TAI -> TT PERF ===");
+            println!("Avg time     : {:.2} ns/it", ns_per_it);
+            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
+
+            let start = Instant::now();
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).to(Scale::TT);
+            for _ in 0..ITERATIONS {
+                let _ = x.to(Scale::TAI);
+            }
+            let elapsed = start.elapsed();
+            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
+
+            println!("\n=== TT -> TAI PERF ===");
+            println!("Avg time     : {:.2} ns/it", ns_per_it);
+            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -425,6 +490,26 @@ mod perf_tests {
             let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
 
             println!("\n=== UTC -> TAI PERF ===");
+            println!("Avg time     : {:.2} ns/it", ns_per_it);
+            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // 12. GPS OUTPUT PERF
+        // ═══════════════════════════════════════════════════════════════════════
+        {
+            const ITERATIONS: usize = 1_000_000;
+
+            let start = Instant::now();
+            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            for _ in 0..ITERATIONS {
+                let _ = x.to_gps();
+            }
+            let elapsed = start.elapsed();
+
+            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
+
+            println!("\n=== GPS OUTPUT PERF ===");
             println!("Avg time     : {:.2} ns/it", ns_per_it);
             println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
         }
