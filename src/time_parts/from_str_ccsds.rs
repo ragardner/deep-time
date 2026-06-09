@@ -3,11 +3,8 @@ use crate::{DtErr, DtErrKind, Scale, TimeParts, an_err};
 impl TimeParts {
     /// Generalized CCSDS ASCII Time Code parser (A or B variant).
     /// - Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
-    /// - Example formats:
-    ///     - 2000-01-01T12:00:00
-    ///     - 2000-001T12:00:00
     /// - All time components after the date portion are optional.
-    /// - Optional time scale on the end also supported.
+    /// - Optional time scale on the end is also supported.
     pub fn from_str_ccsds(input: &str) -> Result<Self, DtErr> {
         let bytes = input.as_bytes();
         let len_ = bytes.len();
@@ -35,74 +32,87 @@ impl TimeParts {
         let input = &input[start..];
         let bytes = input.as_bytes();
         let len_ = bytes.len();
-        let mut fmt_buf: [u8; 128] = [0; 128];
-        let mut fmt_len: usize = 0;
         let mut pos: usize = 0;
+        let mut tp = TimeParts::new_utc();
 
-        // Year: optional sign (+/-), then ≥1 digits.
+        // Year (manual accumulation, optional sign)
+        let mut year: i64 = 0;
+        let negative_year = pos < len_ && bytes[pos] == b'-';
+
         if pos < len_ && matches!(bytes[pos], b'+' | b'-') {
             pos += 1;
         }
-        let year_start = pos;
+
+        let mut has_year_digit = false;
         while pos < len_ && bytes[pos].is_ascii_digit() {
+            has_year_digit = true;
+            year = year * 10 + (bytes[pos] - b'0') as i64;
             pos += 1;
         }
-        let year_len = pos - year_start;
-        if year_len == 0 {
+        if !has_year_digit {
             return Err(an_err!(
                 DtErrKind::ExpectedValue,
                 "year (digits after optional sign)"
             ));
         }
-        fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%*");
-        fmt_len += 2;
+        if negative_year {
+            year = -year;
+        }
+        tp.yr = Some(year);
 
-        // Required separator after year
+        // Optional separator after year (consume only if present)
         if pos < len_ && !bytes[pos].is_ascii_digit() {
-            fmt_buf[fmt_len] = bytes[pos];
-            fmt_len += 1;
             pos += 1;
         }
 
-        // DOY vs calendar date
-        let is_doy = pos + 3 == len_ || pos + 3 < len_ && !bytes[pos + 3].is_ascii_digit();
+        // DOY vs calendar detection
+        let is_doy = pos + 3 == len_ || (pos + 3 < len_ && !bytes[pos + 3].is_ascii_digit());
 
         if is_doy {
-            fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%j");
-            fmt_len += 2;
-            pos += 3;
+            // 3-digit day of year
+            if pos + 3 > len_ || !bytes[pos..pos + 3].iter().all(|&b| b.is_ascii_digit()) {
+                return Err(an_err!(DtErrKind::ExpectedValue, "3-digit day of year"));
+            }
+            let mut doy: u16 = 0;
+            for _ in 0..3 {
+                doy = doy * 10 + (bytes[pos] - b'0') as u16;
+                pos += 1;
+            }
+            tp.day_of_yr = Some(doy);
         } else {
-            // %m
+            // 2-digit month
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
                 return Err(an_err!(DtErrKind::ExpectedValue, "2-digit month"));
             }
-            fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%m");
-            fmt_len += 2;
-            pos += 2;
+            let mut mo: u8 = 0;
+            for _ in 0..2 {
+                mo = mo * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            }
+            tp.mo = Some(mo);
 
+            // Optional separator after month
             if pos < len_ && !bytes[pos].is_ascii_digit() {
-                fmt_buf[fmt_len] = bytes[pos];
-                fmt_len += 1;
                 pos += 1;
             }
 
-            // %d
+            // 2-digit day
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
                 return Err(an_err!(DtErrKind::ExpectedValue, "2-digit day"));
             }
-            fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%d");
-            fmt_len += 2;
-            pos += 2;
+            let mut day: u8 = 0;
+            for _ in 0..2 {
+                day = day * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            }
+            tp.day = Some(day);
         }
 
-        // Date-time separator
+        // Optional date-time separator (only consume if followed by a digit)
         if pos < len_ {
             let c = bytes[pos];
             if !c.is_ascii_digit() {
-                // perhaps time scale and end, check if char after is digit
                 if pos + 1 < len_ && bytes[pos + 1].is_ascii_digit() {
-                    fmt_buf[fmt_len] = c;
-                    fmt_len += 1;
                     pos += 1;
                 }
             } else {
@@ -113,75 +123,88 @@ impl TimeParts {
             }
         }
 
-        // Optional time: %H [: %M [: %S [.%.f]]]
+        // Optional time components
         if pos < len_ && bytes[pos].is_ascii_digit() {
-            if pos + 2 <= len_ {
-                if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                    return Err(an_err!(DtErrKind::ExpectedValue, "2-digit hour"));
-                }
-                fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%H");
-                fmt_len += 2;
-                pos += 2;
+            // Hour (2 digits)
+            if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
+                return Err(an_err!(DtErrKind::ExpectedValue, "2-digit hour"));
             }
+            let mut hr: u8 = 0;
+            for _ in 0..2 {
+                hr = hr * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            }
+            tp.hr = hr;
 
             if pos < len_ && !bytes[pos].is_ascii_digit() {
-                fmt_buf[fmt_len] = bytes[pos];
-                fmt_len += 1;
                 pos += 1;
             }
 
+            // Minute (2 digits, if present)
             if pos + 2 <= len_ {
                 if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
                     return Err(an_err!(DtErrKind::ExpectedValue, "2-digit minute"));
                 }
-                fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%M");
-                fmt_len += 2;
-                pos += 2;
+                let mut min: u8 = 0;
+                for _ in 0..2 {
+                    min = min * 10 + (bytes[pos] - b'0');
+                    pos += 1;
+                }
+                tp.min = min;
             }
 
             if pos < len_ && !bytes[pos].is_ascii_digit() {
-                fmt_buf[fmt_len] = bytes[pos];
-                fmt_len += 1;
                 pos += 1;
             }
 
+            // Second (2 digits, if present)
             if pos + 2 <= len_ {
                 if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
                     return Err(an_err!(DtErrKind::ExpectedValue, "2-digit second"));
                 }
-                fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%S");
-                fmt_len += 2;
-                pos += 2;
+                let mut sec: u8 = 0;
+                for _ in 0..2 {
+                    sec = sec * 10 + (bytes[pos] - b'0');
+                    pos += 1;
+                }
+                tp.sec = sec;
             }
 
-            // fractional seconds
+            // Fractional seconds (with or without leading dot)
             if pos < len_ {
-                if bytes[pos] == b'.' {
-                    fmt_buf[fmt_len..fmt_len + 3].copy_from_slice(b"%.f");
-                    fmt_len += 3;
+                let has_dot = bytes[pos] == b'.';
+                if has_dot {
                     pos += 1;
-                } else if bytes[pos].is_ascii_digit() {
-                    fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%f");
-                    fmt_len += 2;
                 }
-                while pos < len_ && bytes[pos].is_ascii_digit() {
-                    pos += 1;
+
+                if pos < len_ && bytes[pos].is_ascii_digit() {
+                    let mut attos: u64 = 0;
+                    let mut digits_seen: usize = 0;
+
+                    while pos < len_ && bytes[pos].is_ascii_digit() {
+                        if digits_seen < 18 {
+                            attos = attos * 10 + (bytes[pos] - b'0') as u64;
+                            digits_seen += 1;
+                        }
+                        // Ignore any digits beyond the first 18
+                        pos += 1;
+                    }
+
+                    if digits_seen > 0 {
+                        tp.attos = attos * 10u64.pow(18u32.saturating_sub(digits_seen as u32));
+                    }
                 }
             }
 
-            // skip optional Z
-            if pos + 1 < len_ && matches!(bytes[pos], b'Z' | b'z') {
-                fmt_buf[fmt_len] = bytes[pos];
-                fmt_len += 1;
+            // Optional trailing Z/z
+            if pos < len_ && matches!(bytes[pos], b'Z' | b'z') {
                 pos += 1;
             }
         }
 
+        // Optional trailing scale (e.g. TAI, UTC)
         if pos < len_ {
-            // skip optional whitespace separator
             if pos < len_ && !bytes[pos].is_ascii_alphabetic() {
-                fmt_buf[fmt_len] = bytes[pos];
-                fmt_len += 1;
                 pos += 1;
             }
             if pos < len_ {
@@ -195,21 +218,13 @@ impl TimeParts {
                     }
                     i
                 };
-                if Scale::from_abbrev(&input[pos..end]).is_some() {
-                    fmt_buf[fmt_len..fmt_len + 2].copy_from_slice(b"%L");
-                    fmt_len += 2;
-                    pos += end - pos;
+                if let Some(sc) = Scale::from_abbrev(&input[pos..end]) {
+                    tp.scale = sc;
+                    // pos += end - pos;
                 }
             }
         }
 
-        let format = match core::str::from_utf8(&fmt_buf[0..fmt_len]) {
-            Ok(f) => f,
-            Err(_) => {
-                return Err(an_err!(DtErrKind::InvalidBytes, "from utf8"));
-            }
-        };
-
-        TimeParts::from_str(format, &input[..pos], true, true, false)
+        Ok(tp)
     }
 }

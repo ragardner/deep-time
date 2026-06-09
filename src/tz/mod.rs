@@ -1,42 +1,45 @@
-pub mod tzdb;
+use crate::LiteStr;
 
-pub use tzdb::*;
+pub static UTC_ALIASES: &[&str] = &[
+    "Etc/UCT",
+    "Etc/UTC",
+    "Etc/Universal",
+    "Etc/Zulu",
+    "UCT",
+    "UTC",
+    "Universal",
+    "Zulu",
+];
 
-#[cfg(feature = "jiff-tz")]
-mod jiff_tz;
-
-#[cfg(feature = "jiff-tz")]
-use jiff_tz::*;
-
-/// Returns offset information for an IANA timezone at the given **local** Unix time.
-///
-/// If the local time falls in a gap (spring-forward), `is_gap` is `true` and
-/// `gap_size` contains the number of skipped seconds. Add `gap_size` to the
-/// original local time and re-query to obtain a valid instant.
-#[inline(always)]
-pub fn offset_for_local(name: &str, local_unix: i64) -> Option<OffsetInfo> {
-    #[cfg(feature = "jiff-tz")]
+// Main function: always available, returns LiteStr<49>
+pub fn tz_names() -> impl Iterator<Item = LiteStr<49>> {
+    #[cfg(feature = "alloc")]
     {
-        jiff_offset_info_at_local(name, local_unix)
+        tz_names_alloc()
     }
-    #[cfg(not(feature = "jiff-tz"))]
+    #[cfg(not(feature = "alloc"))]
     {
-        offset_info_at_local(name, local_unix)
+        tz_names_no_alloc()
     }
 }
 
-/// Returns offset information for an IANA timezone at the given **UTC** Unix time.
-///
-/// `is_gap` is always `false` because gaps are a local-time concept only.
-/// Every UTC instant has exactly one well-defined offset.
-#[inline(always)]
-pub fn offset_for_utc(name: &str, utc_unix: i64) -> Option<OffsetInfo> {
+// alloc version (uses Jiff when available)
+#[cfg(feature = "alloc")]
+fn tz_names_alloc() -> impl Iterator<Item = LiteStr<49>> {
     #[cfg(feature = "jiff-tz")]
     {
-        jiff_offset_info_at_utc(name, utc_unix)
+        jiff::tz::db()
+            .available()
+            .map(|s| LiteStr::new(&s.to_string()))
     }
     #[cfg(not(feature = "jiff-tz"))]
     {
-        offset_info_at_utc(name, utc_unix)
+        UTC_ALIASES.iter().copied().map(LiteStr::new)
     }
+}
+
+// no-alloc version (only UTC aliases)
+#[cfg(not(feature = "alloc"))]
+fn tz_names_no_alloc() -> impl Iterator<Item = LiteStr<49>> {
+    UTC_ALIASES.iter().copied().map(LiteStr::new)
 }

@@ -1,4 +1,4 @@
-use crate::{Cat, LangData, Token, Word, tz::TZ_ENTRIES};
+use crate::{Cat, LangData, Token, Word};
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -6,12 +6,15 @@ use hashbrown::{HashMap, HashSet};
 use once_cell::race::OnceBox;
 
 pub(crate) static TZ_LOWERED_KEYS: OnceBox<&'static [&'static str]> = OnceBox::new();
+
 pub(crate) fn tz_lowered_keys() -> &'static [&'static str] {
     TZ_LOWERED_KEYS.get_or_init(|| {
-        let keys: Vec<&'static str> = TZ_ENTRIES
-            .iter()
-            .map(|&(name, _, _)| Box::leak(name.to_lowercase().into_boxed_str()) as &'static str)
-            .collect();
+        let mut keys = Vec::new();
+
+        for name in crate::tz::tz_names() {
+            let lowered = name.as_str().to_lowercase();
+            keys.push(Box::leak(lowered.into_boxed_str()) as &'static str);
+        }
 
         let leaked: &'static [&'static str] = Box::leak(keys.into_boxed_slice());
         Box::new(leaked)
@@ -250,18 +253,25 @@ pub(crate) fn en_duration_ac() -> &'static AhoCorasick {
 }
 
 pub(crate) static EN: OnceBox<HashMap<&'static str, (&'static str, Token)>> = OnceBox::new();
+
 pub(crate) fn en() -> &'static HashMap<&'static str, (&'static str, Token)> {
     EN.get_or_init(|| {
         let mut m = HashMap::new();
 
+        // Regular English words
         for word in EN_WORDS {
             m.insert(word.low, (word.norm, word.t));
         }
 
-        for (&lowered_key, &(original_name, _, _)) in
-            tz_lowered_keys().iter().zip(TZ_ENTRIES.iter())
-        {
-            m.insert(lowered_key, (original_name, Token::Iana));
+        for name in crate::tz::tz_names() {
+            let s = name.as_str();
+            let lowered = s.to_lowercase();
+            let lowered_static = Box::leak(lowered.into_boxed_str()) as &'static str;
+
+            let original_static =
+                Box::leak(alloc::string::String::from(s).into_boxed_str()) as &'static str;
+
+            m.insert(lowered_static, (original_static, Token::Iana));
         }
 
         Box::new(m)

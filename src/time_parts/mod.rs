@@ -39,19 +39,17 @@ pub struct TimeParts {
     /// Day of the month (1–31).
     pub day: Option<u8>,
     /// Hour of the day (0–23).
-    pub hr: Option<u8>,
+    pub hr: u8,
     /// Minute of the hour (0–59).
-    pub min: Option<u8>,
+    pub min: u8,
     /// Second of the minute (0–60). Value 60 is used for leap seconds.
-    pub sec: Option<u8>,
+    pub sec: u8,
     /// Attoseconds (0 ≤ value < 10¹⁸).
-    pub attos: Option<u64>,
+    pub attos: u64,
     /// Timezone offset from UTC.
     pub offset: Option<Offset>,
     /// IANA timezone name (e.g. `"America/New_York"`), stored as ASCII.
     pub iana_name: Option<LiteStr<49>>,
-    /// Whether this instant represents a leap second.
-    pub is_leap_sec: bool,
     /// The time scale this value belongs to (TAI, UTC, etc.).
     pub scale: Scale,
     /// Day of the week.
@@ -73,7 +71,7 @@ pub struct TimeParts {
 }
 
 impl TimeParts {
-    #[inline]
+    #[inline(always)]
     pub fn new_utc() -> TimeParts {
         Self {
             scale: Scale::UTC,
@@ -82,10 +80,9 @@ impl TimeParts {
     }
 
     /// Sets the IANA timezone name.
-    #[inline]
-    pub fn set_iana_name(&mut self, name: Option<&str>) -> &mut Self {
+    #[inline(always)]
+    pub fn set_iana_name(&mut self, name: Option<&str>) {
         self.iana_name = name.map(LiteStr::new);
-        self
     }
 }
 

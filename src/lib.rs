@@ -158,7 +158,7 @@ pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use dt::{Dt, lunar};
 pub use error::{DtErr, DtErrKind};
 pub use light_time::ObserverState;
-pub use lite_str::{LiteStr, LiteStrErr};
+pub use lite_str::LiteStr;
 pub use locale::Lang;
 pub use position::{Position, Velocity};
 pub use scale::Scale;

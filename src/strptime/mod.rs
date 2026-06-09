@@ -186,7 +186,7 @@ impl StrPTimeFmt {
     /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
     /// let s = fmt.to_str_lite("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
     ///
-    /// assert_eq!(s.as_str().unwrap(), "01 01 2000 12:00:00");
+    /// assert_eq!(s.as_str(), "01 01 2000 12:00:00");
     /// ```
     pub fn to_str_lite(
         &self,
@@ -221,9 +221,26 @@ impl StrPTimeFmt {
             }
             fmt = &fmt[1..]; // eat %
 
-            // reuse existing helper for flags/width/colons
-            let (_, _, _, new_fmt) = Parser::parse_format_extensions(fmt, 0);
-            fmt = new_fmt;
+            // Skip format extensions (flag / width / colons)
+            // Flag (at most one)
+            if !fmt.is_empty() {
+                match fmt[0] {
+                    b'-' | b'_' | b'0' | b'^' | b'#' => {
+                        fmt = &fmt[1..];
+                    }
+                    _ => {}
+                }
+            }
+
+            // Width: consume all consecutive digits (parser consumes any number of digits)
+            while !fmt.is_empty() && fmt[0].is_ascii_digit() {
+                fmt = &fmt[1..];
+            }
+
+            // Colons: consume all consecutive colons
+            while !fmt.is_empty() && fmt[0] == b':' {
+                fmt = &fmt[1..];
+            }
 
             if fmt.is_empty() {
                 return Err(an_err!(DtErrKind::UnexpectedEnd, "expected directive"));
@@ -245,10 +262,10 @@ impl StrPTimeFmt {
             }
 
             b'.' => {
-                // special case for %.f / %.3N etc.
+                // special case for %.f / %.3N / %-.3f etc.
                 fmt = &fmt[1..]; // eat the .
 
-                // optional width digits
+                // optional width/precision digits (e.g. 3 in %.3N)
                 while !fmt.is_empty() && fmt[0].is_ascii_digit() {
                     fmt = &fmt[1..];
                 }
@@ -263,14 +280,14 @@ impl StrPTimeFmt {
             // explicitly unsupported (same as Parser)
             b'c' | b'r' | b'X' | b'x' | b'Z' => {
                 return Err(an_err!(
-                    DtErrKind::UnsupportedDirective,
+                    DtErrKind::UnsupportedItem,
                     "{}",
                     char::from(directive)
                 ));
             }
 
             _ => {
-                return Err(an_err!(DtErrKind::UnknownDirective));
+                return Err(an_err!(DtErrKind::UnknownItem));
             }
         }
         }

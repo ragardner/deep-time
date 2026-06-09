@@ -1,6 +1,6 @@
 [package]
 name = "deep-time"
-version = "0.1.0-beta.7"
+version = "0.1.0-beta.8"
 authors = ["ragardner <github@ragardner.simplelogin.com>"]
 edition = "2024"
 description = "High-precision, no-std, no-alloc date-time library, leap-seconds, time scales, relativistic time, and a powerful date & duration parser"
@@ -11,21 +11,18 @@ categories = ["date-and-time", "science"]
 readme = "README.md"
 rust-version = "1.90"
 
-[workspace]
-members = ["crates/tz-generator"] # dev tool, generates bundled timezone file
-
 [dependencies]
 hashbrown    = { version = "0.17",  optional = true }
-aho-corasick = { version = "1.1.4", optional = true }
-once_cell    = { version = "1.21",  optional = true, default-features = false, features = ["alloc"] }
-jiff         = { version = "0.2.28", optional = true, default-features = false }
+aho-corasick = { version = "1.1", optional = true }
+once_cell    = { version = "=1.21",  optional = true, default-features = false, features = ["alloc"] }
+jiff         = { version = "0.2", optional = true, default-features = false }
 chrono       = { version = "0.4",   optional = true, default-features = false }
 hifitime     = { version = "4.3",   optional = true, default-features = false }
 serde        = { version = "1.0",   optional = true, default-features = false, features = ["derive", "rc"] }
 tsify        = { version = "=0.5.6", optional = true }
 wasm-bindgen = { version = "0.2",   optional = true, features = ["serde-serialize"] }
 js-sys       = { version = "0.3",   optional = true }
-sys-locale   = { version = "0.3",   optional = true }
+sys-locale   = { version = "=0.3", optional = true }
 
 [features]
 
@@ -35,25 +32,23 @@ sys-locale   = { version = "0.3",   optional = true }
 
 default = []
 panic-handler = []
-tz = []
 wire = []
-
-alloc = [
-    "jiff?/alloc",
-    "chrono?/alloc",
-]
 
 mars = []
 sidereal = []
 sidereal-earth = ["sidereal"]
 eop = ["alloc"]
 
-# std must enable alloc
 std = [
     "alloc",
     "jiff?/std",
     "chrono?/std",
     "hifitime?/std",
+]
+
+alloc = [
+    "jiff?/alloc",
+    "chrono?/alloc",
 ]
 
 # ──────────────────────────────────────────────────────────────
@@ -98,15 +93,28 @@ serde = [
 
 jiff = [
     "dep:jiff",
-    "jiff?/alloc",
+    "alloc",
 ]
 
 jiff-tz = [
     "jiff",
     "std",
     "jiff?/tz-system",
+    "jiff?/tzdb-concatenated",
+    "jiff?/tz-fat",
+    "jiff?/perf-inline",
     "jiff?/tzdb-zoneinfo",
     "jiff?/tzdb-bundle-platform",
+]
+jiff-tz-bundle = [
+    "jiff",
+    "std",
+    "jiff?/tz-system",
+    "jiff?/tzdb-concatenated",
+    "jiff?/tz-fat",
+    "jiff?/perf-inline",
+    "jiff?/tzdb-zoneinfo",
+    "jiff?/tzdb-bundle-always",
 ]
 
 chrono = [
@@ -152,14 +160,6 @@ locale = [
 
 perf-tests = ["parse", "std"]
 eop-tests = ["eop", "std"]
-tz-tests = [
-    "tz",
-    "jiff",
-    "std",
-    "jiff?/tz-system",
-    "jiff?/tzdb-zoneinfo",
-    "jiff?/tzdb-bundle-platform",
-]
 
 [lints.clippy]
 non_canonical_partial_ord_impl = "allow"

@@ -4,7 +4,7 @@ use jiff::{SignedDuration, Span, Timestamp};
 impl Dt {
     /// Converts this [`Dt`] to a [`jiff::Timestamp`].
     pub fn to_jiff_timestamp(&self) -> Timestamp {
-        let nanos = self.to_unix().to_ns();
+        let nanos = self.target(Scale::UTC).to_unix().to_ns();
 
         match Timestamp::from_nanosecond(nanos) {
             Ok(ts) => ts,
@@ -16,6 +16,18 @@ impl Dt {
                 }
             }
         }
+    }
+
+    /// Creates a `Dt` from a `jiff::Timestamp`.
+    ///
+    /// This is the inverse of [`Dt::to_jiff_timestamp`].
+    #[inline]
+    pub fn from_jiff_timestamp(ts: Timestamp) -> Dt {
+        Dt::from_diff_and_scale(
+            Dt::from_ns(ts.as_nanosecond(), Scale::UTC),
+            Self::UNIX_EPOCH,
+            false,
+        )
     }
 
     /// Converts this `Dt` to a [`jiff::Span`] (seconds + nanoseconds only).
@@ -48,18 +60,6 @@ impl Dt {
     #[inline]
     pub fn to_jiff_signed_duration(&self) -> SignedDuration {
         SignedDuration::from_nanos_i128(self.to_ns())
-    }
-
-    /// Creates a `Dt` from a `jiff::Timestamp`.
-    ///
-    /// This is the inverse of [`Dt::to_jiff_timestamp`].
-    #[inline]
-    pub fn from_jiff_timestamp(ts: Timestamp) -> Dt {
-        Dt::from_diff_and_scale(
-            Dt::from_ns(ts.as_nanosecond(), Scale::UTC),
-            Self::UNIX_EPOCH,
-            false,
-        )
     }
 
     /// Creates a [`Dt`] from a `jiff::SignedDuration` (nanosecond precision).

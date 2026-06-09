@@ -324,14 +324,10 @@ impl TimeParts {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
-    /// Total size of the wire representation (120 bytes).
-    pub const WIRE_SIZE: usize = 120;
+    /// Total size of the wire representation (119 bytes).
+    pub const WIRE_SIZE: usize = 119;
 
-    /// Serializes `TimeParts` into a fixed 120-byte buffer.
-    ///
-    /// Layout:
-    /// - Byte 0: Version (`WIRE_VERSION`)
-    /// - Bytes 1..120: Data (119 bytes)
+    /// Serializes `TimeParts` into a fixed 119-byte buffer.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -352,19 +348,19 @@ impl TimeParts {
         offset += 1;
 
         // hour
-        buf[offset] = self.hr.unwrap_or(u8::MAX);
+        buf[offset] = self.hr;
         offset += 1;
 
         // minute
-        buf[offset] = self.min.unwrap_or(u8::MAX);
+        buf[offset] = self.min;
         offset += 1;
 
         // second
-        buf[offset] = self.sec.unwrap_or(u8::MAX);
+        buf[offset] = self.sec;
         offset += 1;
 
         // attos
-        let attos = self.attos.unwrap_or(u64::MAX);
+        let attos = self.attos;
         buf[offset..offset + 8].copy_from_slice(&attos.to_le_bytes());
         offset += 8;
 
@@ -379,10 +375,6 @@ impl TimeParts {
             buf[offset..offset + 49].copy_from_slice(&name_bytes);
         }
         offset += 49;
-
-        // is_leap_second
-        buf[offset] = if self.is_leap_sec { 1 } else { 0 };
-        offset += 1;
 
         // scale
         buf[offset] = self.scale as u8;
@@ -425,9 +417,7 @@ impl TimeParts {
         buf
     }
 
-    /// Deserializes `TimeParts` from exactly 120 bytes.
-    ///
-    /// Returns `None` if the version byte is unknown or the data is invalid.
+    /// Deserializes `TimeParts` from exactly 119 bytes.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -461,50 +451,35 @@ impl TimeParts {
         offset += 1;
 
         // hour (1 byte)
-        let h = bytes[offset];
-        if h != u8::MAX {
-            dc.hr = Some(h);
-        }
+        dc.hr = bytes[offset];
         offset += 1;
 
         // minute (1 byte)
-        let min = bytes[offset];
-        if min != u8::MAX {
-            dc.min = Some(min);
-        }
+        dc.min = bytes[offset];
         offset += 1;
 
         // second (1 byte)
-        let sec = bytes[offset];
-        if sec != u8::MAX {
-            dc.sec = Some(sec);
-        }
+        dc.sec = bytes[offset];
         offset += 1;
 
         // attos (8 bytes)
         let attos = u64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
-        if attos != u64::MAX {
-            dc.attos = Some(attos);
-        }
+        dc.attos = attos;
         offset += 8;
 
-        // offset (5 bytes) — already nice
-        if let Some(offset) = Offset::from_wire_bytes(&bytes[offset..offset + 5]) {
-            dc.offset = Some(offset);
+        // offset (5 bytes)
+        if let Some(off) = Offset::from_wire_bytes(&bytes[offset..offset + 5]) {
+            dc.offset = Some(off);
         }
         offset += 5;
 
-        // iana_name (49 bytes) — already nice
+        // iana_name (49 bytes)
         let iana_bytes = &bytes[offset..offset + 49];
         let name = LiteStr::<49>::from_bytes(iana_bytes);
-        if !name.as_bytes().len() == 0 {
+        if !name.as_bytes().is_empty() {
             dc.iana_name = Some(name);
         }
         offset += 49;
-
-        // is_leap_second (1 byte)
-        dc.is_leap_sec = bytes[offset] != 0;
-        offset += 1;
 
         // scale (1 byte)
         dc.scale = Scale::from_u8(bytes[offset]);
@@ -561,7 +536,6 @@ impl TimeParts {
         {
             dc.meridiem = Some(m);
         }
-
         offset += 1;
 
         // unix_timestamp_seconds (8 bytes)

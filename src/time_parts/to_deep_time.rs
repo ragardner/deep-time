@@ -1,5 +1,4 @@
 use crate::leap_seconds::leap_sec;
-use crate::tz::offset_for_local;
 use crate::{
     Dt, JD_2000_2_451_545, SEC_PER_DAYI64, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
     error::{DtErr, DtErrKind},
@@ -17,11 +16,7 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         if let Some(unix_secs) = self.unix_timestamp_seconds {
             let total_sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-            return Ok(Dt::from_sec_and_attos(
-                total_sec,
-                self.attos.unwrap_or(0),
-                self.scale,
-            ));
+            return Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale));
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -29,79 +24,79 @@ impl TimeParts {
         // ──────────────────────────────────────────────────────────────
         let mut jd: Option<i64> = None;
 
-        if let Some(year) = self.yr {
-            if let (Some(m), Some(d)) = (self.mo, self.day) {
-                // Classic YMD – highest priority + full validation
-                if !Dt::is_valid_ymd(year, m, d) {
-                    return Err(an_err!(DtErrKind::InvalidInput, "ymd"));
-                }
-                jd = Some(Dt::ymd_to_jd(year, m, d));
-            } else if let Some(doy) = self.day_of_yr {
-                // Ordinal date (%j) – already validated
-                if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
-                    return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
-                }
-                jd = Some(Dt::ydoy_to_jd(year, doy));
+        // Most common case first: Classic YMD
+        if let (Some(year), Some(m), Some(d)) = (self.yr, self.mo, self.day) {
+            if !Dt::is_valid_ymd(year, m, d) {
+                return Err(an_err!(DtErrKind::InvalidInput, "ymd"));
             }
+            jd = Some(Dt::ymd_to_jd(year, m, d));
         }
-
-        if jd.is_none() {
-            if let (Some(iso_y), Some(iso_w)) = (self.iso_wk_yr, self.iso_wk) {
-                // ISO week date (%G/%V)
-                if iso_w == 0 || iso_w > 53 {
-                    return Err(an_err!(DtErrKind::OutOfRange, "iso week"));
-                }
-                if iso_w == 53 && !Dt::has_iso_wk_53(iso_y) {
-                    return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
-                }
-                let wd = self.wkday.unwrap_or(Weekday::Monday);
-                jd = Some(Dt::iso_wk_to_jd(iso_y, iso_w, wd));
-            } else if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
-                // Sunday-based week (%U)
-                if w > 53 {
-                    return Err(an_err!(DtErrKind::OutOfRange, "week number"));
-                }
-                let wd = self.wkday.unwrap_or(Weekday::Sunday);
-                jd = Some(Dt::wk_sun_to_jd(y, w, wd));
-            } else if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
-                // Monday-based week (%W)
-                if w > 53 {
-                    return Err(an_err!(DtErrKind::OutOfRange, "week number"));
-                }
-                let wd = self.wkday.unwrap_or(Weekday::Monday);
-                jd = Some(Dt::wk_mon_to_jd(y, w, wd));
+        // Ordinal date (%j)
+        else if let (Some(year), Some(doy)) = (self.yr, self.day_of_yr) {
+            if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
+                return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
             }
+            jd = Some(Dt::ydoy_to_jd(year, doy));
+        }
+        // ISO week date (%G/%V)
+        else if let (Some(iso_y), Some(iso_w)) = (self.iso_wk_yr, self.iso_wk) {
+            if iso_w == 0 || iso_w > 53 {
+                return Err(an_err!(DtErrKind::OutOfRange, "iso week"));
+            }
+            if iso_w == 53 && !Dt::has_iso_wk_53(iso_y) {
+                return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
+            }
+            let wd = self.wkday.unwrap_or(Weekday::Monday);
+            jd = Some(Dt::iso_wk_to_jd(iso_y, iso_w, wd));
+        }
+        // Sunday-based week (%U)
+        else if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
+            if w > 53 {
+                return Err(an_err!(DtErrKind::OutOfRange, "week number"));
+            }
+            let wd = self.wkday.unwrap_or(Weekday::Sunday);
+            jd = Some(Dt::wk_sun_to_jd(y, w, wd));
+        }
+        // Monday-based week (%W)
+        else if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
+            if w > 53 {
+                return Err(an_err!(DtErrKind::OutOfRange, "week number"));
+            }
+            let wd = self.wkday.unwrap_or(Weekday::Monday);
+            jd = Some(Dt::wk_mon_to_jd(y, w, wd));
         }
 
         let Some(jd) = jd else {
             if self.yr.is_none() && self.iso_wk_yr.is_none() {
                 return Err(an_err!(DtErrKind::Incomplete, "no year"));
             } else {
-                return Err(an_err!(DtErrKind::InvalidInput, "could not create julian"));
+                return Err(an_err!(
+                    DtErrKind::InvalidInput,
+                    "could not create julian date"
+                ));
             }
         };
 
         // ──────────────────────────────────────────────────────────────
         // Resolve 12-hour time + meridiem (AM/PM) to 24-hour hour
         // ──────────────────────────────────────────────────────────────
-        let hour = match (self.hr, self.meridiem) {
-            (Some(h), Some(m)) => {
-                if !(1..=12).contains(&h) {
-                    return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", h));
+        let hour = match self.meridiem {
+            None => self.hr,
+            Some(m) => {
+                if !(1..=12).contains(&self.hr) {
+                    return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", self.hr));
                 }
-                match (h, m) {
+                match (self.hr, m) {
                     (12, Meridiem::AM) => 0,
                     (12, Meridiem::PM) => 12,
                     (h, Meridiem::AM) => h,
                     (h, Meridiem::PM) => h + 12,
                 }
             }
-            (Some(h), None) => h,
-            (None, _) => 0,
         };
 
-        let minute = self.min.unwrap_or(0) as i64;
-        let mut second = self.sec.unwrap_or(0) as i64;
+        let minute = self.min as i64;
+        let mut second = self.sec as i64;
         let sec_is_60 = second == 60;
         if sec_is_60 {
             second = second.saturating_sub(1)
@@ -117,33 +112,60 @@ impl TimeParts {
         // Apply timezone correction (IANA or Fixed offset)
         // ──────────────────────────────────────────────────────────────
         if let Some(name) = &self.iana_name {
-            let name_str = name.as_str().map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidBytes,
-                    "invalid iana ascii: {:?}: {}",
-                    name,
-                    e
-                )
-            })?;
+            let name_str = name.as_str();
 
             if !name_str.is_empty() {
-                let provisional_unix =
-                    total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-                match offset_for_local(name_str, provisional_unix) {
-                    Some(info) => {
-                        if info.is_gap {
-                            // Non-existent time (spring-forward gap) — shift forward
-                            total_sec = total_sec.saturating_add(info.gap_size);
-                            total_sec = total_sec.saturating_sub(info.offset as i64);
-                        } else {
-                            total_sec = total_sec.saturating_sub(info.offset as i64);
-                        }
-                    }
-                    None => {
-                        return Err(an_err!(
+                #[cfg(feature = "jiff-tz")]
+                {
+                    use jiff::{Timestamp, tz::TimeZone};
+
+                    let tz = TimeZone::get(name_str).map_err(|e| {
+                        an_err!(
                             DtErrKind::InvalidTimezoneOffset,
-                            "invalid iana: {}",
-                            name_str
+                            "invalid tz {:?}: {}",
+                            name,
+                            e
+                        )
+                    })?;
+
+                    let provisional_unix =
+                        total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
+
+                    let civil = Timestamp::from_second(provisional_unix)
+                        .map_err(|e| {
+                            an_err!(
+                                DtErrKind::InvalidNumber,
+                                "invalid unix {:?}: {}",
+                                provisional_unix,
+                                e
+                            )
+                        })?
+                        .to_zoned(jiff::tz::TimeZone::UTC)
+                        .datetime();
+
+                    let zoned = tz.to_zoned(civil).map_err(|e| {
+                        an_err!(
+                            DtErrKind::OutOfRange,
+                            "jiff to_zoned failed for {}: {}",
+                            name_str,
+                            e
+                        )
+                    })?;
+
+                    total_sec = zoned
+                        .timestamp()
+                        .as_second()
+                        .saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
+                }
+                #[cfg(not(feature = "jiff-tz"))]
+                {
+                    use crate::tz::UTC_ALIASES;
+
+                    if !UTC_ALIASES.contains(&name_str) {
+                        return Err(an_err!(
+                            DtErrKind::InvalidBytes,
+                            "non-utc tz: {} requires jiff-tz feature",
+                            name_str,
                         ));
                     }
                 }
@@ -157,25 +179,17 @@ impl TimeParts {
         // Final construction
         // ──────────────────────────────────────────────────────────────
         if !sec_is_60 {
-            Ok(Dt::from_sec_and_attos(
-                total_sec,
-                self.attos.unwrap_or(0),
-                self.scale,
-            ))
+            Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale))
         } else {
             if self.scale.uses_leap_seconds() {
-                let t = Dt::from_sec_and_attos(total_sec, self.attos.unwrap_or(0), self.scale);
+                let t = Dt::from_sec_and_attos(total_sec, self.attos, self.scale);
                 let is_leap_sec = match leap_sec(total_sec.saturating_add(1), true) {
                     Some(info) => info.is_leap_sec,
                     None => false,
                 };
                 if is_leap_sec { Ok(t.add_sec(1)) } else { Ok(t) }
             } else {
-                Ok(Dt::from_sec_and_attos(
-                    total_sec,
-                    self.attos.unwrap_or(0),
-                    self.scale,
-                ))
+                Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale))
             }
         }
     }

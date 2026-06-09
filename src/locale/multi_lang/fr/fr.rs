@@ -1,5 +1,5 @@
 use crate::en::{EN_WORDS, tz_lowered_keys};
-use crate::{Cat, LangData, Token, Word, tz::TZ_ENTRIES};
+use crate::{Cat, LangData, Token, Word};
 use aho_corasick::{AhoCorasick, MatchKind};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
@@ -223,6 +223,7 @@ pub(crate) fn fr_duration_ac() -> &'static AhoCorasick {
 }
 
 pub(crate) static FR: OnceBox<HashMap<&'static str, (&'static str, Token)>> = OnceBox::new();
+
 pub(crate) fn fr() -> &'static HashMap<&'static str, (&'static str, Token)> {
     FR.get_or_init(|| {
         let mut m = HashMap::new();
@@ -235,10 +236,16 @@ pub(crate) fn fr() -> &'static HashMap<&'static str, (&'static str, Token)> {
             m.insert(word.low, (word.norm, word.t));
         }
 
-        for (&lowered_key, &(original_name, _, _)) in
-            tz_lowered_keys().iter().zip(TZ_ENTRIES.iter())
-        {
-            m.insert(lowered_key, (original_name, Token::Iana));
+        for name in crate::tz::tz_names() {
+            let s = name.as_str();
+
+            let lowered = s.to_lowercase();
+            let lowered_static = Box::leak(lowered.into_boxed_str()) as &'static str;
+
+            let original_static =
+                Box::leak(alloc::string::String::from(s).into_boxed_str()) as &'static str;
+
+            m.insert(lowered_static, (original_static, Token::Iana));
         }
 
         Box::new(m)

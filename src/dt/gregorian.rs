@@ -72,7 +72,7 @@ impl Dt {
     /// assert_eq!(ymd.sec(), 45);
     /// assert!(ymd.attos() == 0);
     /// ```
-    pub fn to_ymd(&self) -> YmdHms {
+    pub const fn to_ymd(&self) -> YmdHms {
         let tai = self.to_tai();
         let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, false);
 
@@ -332,7 +332,7 @@ impl Dt {
     ///
     /// January 1 is day `1`; December 31 is day `365` or `366` (in leap years).
     /// Uses the proleptic Gregorian calendar.
-    pub fn day_of_yr(&self, ymd: Option<(i64, u8, u8)>) -> u16 {
+    pub const fn day_of_yr(&self, ymd: Option<(i64, u8, u8)>) -> u16 {
         let (yr, mo, day) = if let Some(ymd) = ymd {
             ymd
         } else {
@@ -342,7 +342,7 @@ impl Dt {
         Self::_day_of_yr(yr, mo, day)
     }
 
-    pub(crate) fn _day_of_yr(yr: i64, mo: u8, day: u8) -> u16 {
+    pub(crate) const fn _day_of_yr(yr: i64, mo: u8, day: u8) -> u16 {
         let jd = Self::ymd_to_jd(yr, mo, day);
         let jd_jan1 = Self::ymd_to_jd(yr, 1, 1);
 
@@ -359,7 +359,7 @@ impl Dt {
     /// The optional `ymd` and `doy` arguments are performance optimisations
     /// (same pattern used throughout the file for `day_of_year`, `to_iso_wk_date`, etc.).
     /// Pass whichever you already have; the function will use the fastest path.
-    pub fn wk_sun(&self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
+    pub const fn wk_sun(&self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
         let (yr, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
@@ -374,7 +374,7 @@ impl Dt {
         Self::_wk_sun(yr, doy)
     }
 
-    pub(crate) fn _wk_sun(yr: i64, doy: u16) -> u8 {
+    pub(crate) const fn _wk_sun(yr: i64, doy: u16) -> u8 {
         let jan1_jd = Self::ymd_to_jd(yr, 1, 1);
         let wd_jan1 = Self::jd_to_wkday(jan1_jd);
         let days_to_first_sunday = (7u8 - wd_jan1) % 7u8;
@@ -395,7 +395,7 @@ impl Dt {
     ///
     /// The optional `ymd` and `doy` arguments are performance optimisations
     /// (same pattern as `wk_sun`, `day_of_yr`, `to_iso_wk_date`, etc.).
-    pub fn wk_mon(&self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
+    pub const fn wk_mon(&self, ymd: Option<(i64, u8, u8)>, doy: Option<u16>) -> u8 {
         let (yr, _, _) = if let Some(ymd) = ymd {
             ymd
         } else {
@@ -410,7 +410,7 @@ impl Dt {
         Self::_wk_mon(yr, doy)
     }
 
-    pub(crate) fn _wk_mon(yr: i64, doy: u16) -> u8 {
+    pub(crate) const fn _wk_mon(yr: i64, doy: u16) -> u8 {
         let jan1_jd = Self::ymd_to_jd(yr, 1, 1);
         let wd_jan1 = Self::jd_to_wkday(jan1_jd);
         let days_to_first_monday = (1i64 - wd_jan1 as i64).rem_euclid(7);
@@ -437,7 +437,7 @@ impl Dt {
     /// The optional `ymd` argument is a performance optimization. If provided,
     /// it is used directly; otherwise [`to_gregorian_ymd`](Self::to_gregorian_ymd)
     /// is called internally.
-    pub fn to_iso_wk_date(&self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
+    pub const fn to_iso_wk_date(&self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
         let (yr, mo, day) = if let Some(ymd) = ymd {
             ymd
         } else {
@@ -447,7 +447,7 @@ impl Dt {
         Self::_to_iso_wk_date(yr, mo, day)
     }
 
-    pub(crate) fn _to_iso_wk_date(yr: i64, mo: u8, day: u8) -> (i64, u8, Weekday) {
+    pub(crate) const fn _to_iso_wk_date(yr: i64, mo: u8, day: u8) -> (i64, u8, Weekday) {
         let jd = Self::ymd_to_jd(yr, mo, day);
         let wd = Self::jd_to_wkday(jd);
         let wd_iso = if wd == 0 { 7 } else { wd };

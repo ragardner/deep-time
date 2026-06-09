@@ -424,11 +424,7 @@ where
             write!(f, "  {:>2}. {:?}", num, kind)?;
 
             if let Some(reason) = reason_opt {
-                if let Ok(s) = reason.as_str() {
-                    write!(f, ": {}", s)?;
-                } else {
-                    write!(f, ": <invalid ascii>")?;
-                }
+                write!(f, ": {}", reason.as_str())?;
             }
 
             writeln!(f, " @ {}:{}:{}", loc.file(), loc.line(), loc.column())?;
@@ -724,17 +720,14 @@ mod tests {
         assert_eq!(e.depth(), 1);
 
         let items: Vec<_> = e.trace().collect();
-        assert_eq!(items[0].2.unwrap().as_str().unwrap(), "bad token");
+        assert_eq!(items[0].2.unwrap().as_str(), "bad token");
 
         let e2: E3 = AnErr::with_fmt(
             TestKind::Io,
             format_args!("file not found: {}", "config.toml"),
         );
         let items2: Vec<_> = e2.trace().collect();
-        assert_eq!(
-            items2[0].2.unwrap().as_str().unwrap(),
-            "file not found: config.toml"
-        );
+        assert_eq!(items2[0].2.unwrap().as_str(), "file not found: config.toml");
     }
 
     #[test]
@@ -744,7 +737,7 @@ mod tests {
 
         let e2: E3 = an_err!(TestKind::Parse, "unexpected {}", "EOF");
         assert_eq!(
-            e2.trace().next().unwrap().2.unwrap().as_str().unwrap(),
+            e2.trace().next().unwrap().2.unwrap().as_str(),
             "unexpected EOF"
         );
 
@@ -756,11 +749,11 @@ mod tests {
         let mut t = outer.trace();
         let (k1, _, r1) = t.next().unwrap();
         assert_eq!(k1, TestKind::Io);
-        assert_eq!(r1.unwrap().as_str().unwrap(), "while reading file");
+        assert_eq!(r1.unwrap().as_str(), "while reading file");
 
         let (k2, _, r2) = t.next().unwrap();
         assert_eq!(k2, TestKind::Parse);
-        assert_eq!(r2.unwrap().as_str().unwrap(), "bad data");
+        assert_eq!(r2.unwrap().as_str(), "bad data");
     }
 
     #[test]
@@ -777,9 +770,9 @@ mod tests {
         assert_eq!(trace[1].0, TestKind::Context1);
         assert_eq!(trace[2].0, TestKind::Root);
 
-        assert_eq!(trace[0].2.unwrap().as_str().unwrap(), "level 2");
-        assert_eq!(trace[1].2.unwrap().as_str().unwrap(), "level 1");
-        assert_eq!(trace[2].2.unwrap().as_str().unwrap(), "initial");
+        assert_eq!(trace[0].2.unwrap().as_str(), "level 2");
+        assert_eq!(trace[1].2.unwrap().as_str(), "level 1");
+        assert_eq!(trace[2].2.unwrap().as_str(), "initial");
     }
 
     #[test]
@@ -873,11 +866,11 @@ mod tests {
         assert_eq!(wire_err.kinds[1], Some(TestKind::Io as u16));
 
         assert_eq!(
-            wire_err.reasons[0].as_ref().unwrap().as_str().unwrap(),
+            wire_err.reasons[0].as_ref().unwrap().as_str(),
             "unexpected char"
         );
         assert_eq!(
-            wire_err.reasons[1].as_ref().unwrap().as_str().unwrap(),
+            wire_err.reasons[1].as_ref().unwrap().as_str(),
             "while processing file"
         );
     }

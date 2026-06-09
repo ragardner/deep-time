@@ -1,8 +1,7 @@
 //! Quadratic polynomial for relativistic corrections, clock drift, and custom timescale steering.
 //!
 //! Used to model the accumulated difference between Proper time (τ)
-//! and a coordinate time such as TT (or any other `Scale`). The polynomial is evaluated
-//! with full 36-digit exact arithmetic via `DtBig` — no floating-point loss even over centuries.
+//! and a coordinate time such as TT (or any other `Scale`).
 
 /*
 **Canonical Formulation: Unified Timelike/Null Probe Lagrangian with Intrinsic Planck-Scale Saturation**

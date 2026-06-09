@@ -4,14 +4,11 @@
 mod tests {
     use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale, TimeParts};
 
+    #[cfg(feature = "jiff-tz")]
     #[test]
-    fn print_stuff() {
-        use deep_time::LiteStr;
+    fn print_stuff() {}
 
-        let x = LiteStr::<49>::new("America/New_York");
-    }
-
-    #[cfg(feature = "tz")]
+    #[cfg(feature = "jiff-tz")]
     #[test]
     fn roundtrip_gap_boundary_new_york() {
         let our_input = "2023-03-12 02:00:00 America/New_York";
@@ -50,7 +47,7 @@ mod tests {
         assert_eq!(output2, expected_snapped, "round-trip must be stable");
     }
 
-    #[cfg(feature = "tz")]
+    #[cfg(feature = "jiff-tz")]
     #[test]
     fn tz_output() {
         use deep_time::{Dt, Scale};
@@ -65,7 +62,7 @@ mod tests {
 
         assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
         assert_eq!(
-            b.as_str().unwrap(),
+            b.as_str(),
             "Saturday, January 01, 2000 07:00:00 America/New_York"
         );
     }

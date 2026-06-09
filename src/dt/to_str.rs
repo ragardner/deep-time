@@ -1,8 +1,10 @@
-use crate::Lang;
-use crate::{Dt, DtErr, DtErrKind, LiteStr, STRFTIME_SIZE, YmdHms, an_err, tz::offset_for_utc};
+use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRFTIME_SIZE, YmdHms, an_err};
 
 #[cfg(feature = "alloc")]
 use {crate::ATTOS_PER_SEC, alloc::string::String};
+
+#[cfg(not(feature = "jiff-tz"))]
+use crate::tz::UTC_ALIASES;
 
 #[cfg(feature = "alloc")]
 impl Dt {
@@ -153,7 +155,7 @@ impl Dt {
     /// You can offset an output that wasn't originally from a zoned input:
     ///
     /// ```rust
-    /// # #[cfg(all(feature = "tz", feature = "parse"))]
+    /// # #[cfg(all(feature = "jiff-tz", feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
@@ -166,7 +168,7 @@ impl Dt {
     /// You can also return to a zoned output from a zoned input:
     ///
     /// ```rust
-    /// # #[cfg(all(feature = "tz", feature = "parse"))]
+    /// # #[cfg(all(feature = "jiff-tz", feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
@@ -387,7 +389,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     /// let b = x.to_str_lite("%F", Lang::En).unwrap();
-    /// let s = b.as_str().unwrap();
+    /// let s = b.as_str();
     ///
     /// println!("{}", s);
     /// ```
@@ -425,7 +427,7 @@ impl Dt {
     ///
     /// // offset of minus one hour
     /// let b = x.to_str_lite_in_offset("%F", -3600, Lang::En).unwrap();
-    /// let s = b.as_str().unwrap();
+    /// let s = b.as_str();
     ///
     /// println!("{}", s);
     /// ```
@@ -468,14 +470,14 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// # #[cfg(feature = "tz")]
+    /// # #[cfg(feature = "jiff-tz")]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
     /// let b = x.to_str_lite_in_tz("%F", "America/New_York", Lang::En).unwrap();
-    /// let s = b.as_str().unwrap();
+    /// let s = b.as_str();
     ///
     /// println!("{}", s);
     /// # }
@@ -593,19 +595,57 @@ impl Dt {
         tz_name: &str,
         apply_offset: bool,
     ) -> Result<(YmdHms, i32, LiteStr<49>), DtErr> {
-        // Look up offset + abbrev at that exact UTC instant
-        let unix_sec = self.to_unix().to_sec64();
-        let (offset_secs, abbrev) = match offset_for_utc(tz_name, unix_sec) {
-            Some(info) => (info.offset, info.abbrev),
-            None => return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "{}", tz_name)),
+        #[cfg(feature = "jiff-tz")]
+        let (offset_secs, abbrev): (i32, LiteStr<49>) = {
+            use jiff::{Timestamp, tz::TimeZone};
+
+            let tz = TimeZone::get(tz_name).map_err(|e| {
+                an_err!(
+                    DtErrKind::InvalidTimezoneOffset,
+                    "invalid tz {:?}: {}",
+                    tz_name,
+                    e
+                )
+            })?;
+
+            let unix_sec = self.to_unix().to_sec64();
+
+            let ts = Timestamp::from_second(unix_sec).map_err(|e| {
+                an_err!(
+                    DtErrKind::InvalidNumber,
+                    "invalid unix {:?} for jiff Timestamp: {}",
+                    unix_sec,
+                    e
+                )
+            })?;
+
+            let info = tz.to_offset_info(ts);
+            let offset_secs = info.offset().seconds();
+            let abbrev: LiteStr<49> = LiteStr::new(info.abbreviation());
+
+            (offset_secs, abbrev)
         };
-        let ab = LiteStr::new(abbrev);
+
+        #[cfg(not(feature = "jiff-tz"))]
+        let (offset_secs, abbrev): (i32, LiteStr<49>) = {
+            if !UTC_ALIASES.contains(&tz_name) {
+                return Err(an_err!(
+                    DtErrKind::InvalidBytes,
+                    "non-utc tz: {} requires jiff-tz feature",
+                    tz_name,
+                ));
+            }
+            // UTC → offset 0, canonical abbrev "UTC"
+            let abbrev: LiteStr<49> = LiteStr::new("UTC");
+            (0i32, abbrev)
+        };
+
         let ymd = if offset_secs != 0 && apply_offset {
             self.add_sec(offset_secs as i128).to_ymd()
         } else {
             self.to_ymd()
         };
 
-        Ok((ymd, offset_secs, ab))
+        Ok((ymd, offset_secs, abbrev))
     }
 }

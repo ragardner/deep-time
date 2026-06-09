@@ -60,23 +60,17 @@ impl TimeParts {
         }
 
         // Time of day
-        if let Some(h) = self.hr {
-            bdt.set_hour(Some(h as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "hour: {}: {}", h, e))?;
-        }
-        if let Some(m) = self.min {
-            bdt.set_minute(Some(m as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "minute: {}: {}", m, e))?;
-        }
-        if let Some(s) = self.sec {
-            let non_ls_s = if s == 60 { 59 } else { s };
-            bdt.set_second(Some(non_ls_s as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
-        }
+        bdt.set_hour(Some(self.hr as i8))
+            .map_err(|e| an_err!(DtErrKind::InvalidItem, "hour: {}: {}", self.hr, e))?;
+        bdt.set_minute(Some(self.min as i8))
+            .map_err(|e| an_err!(DtErrKind::InvalidItem, "minute: {}: {}", self.min, e))?;
+        let non_ls_s = if self.sec == 60 { 59 } else { self.sec };
+        bdt.set_second(Some(non_ls_s as i8))
+            .map_err(|e| an_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
 
         // Subsecond precision (attoseconds → nanoseconds)
-        if let Some(attos) = self.attos {
-            let ns_u64 = attos / ATTOS_PER_NS;
+        if self.attos != 0 {
+            let ns_u64 = self.attos / ATTOS_PER_NS;
             let ns: i32 = if ns_u64 >= 1_000_000_000 {
                 999_999_999
             } else {
@@ -116,17 +110,9 @@ impl TimeParts {
 
         // Prefer IANA name if present; otherwise fall back to the custom TimeZone enum.
         if let Some(name) = &self.iana_name {
-            match name.as_str() {
-                Ok(s) if !s.is_empty() => bdt.set_iana_time_zone(Some(String::from(s))),
-                Ok(_) => {} // empty name — do nothing
-                Err(e) => {
-                    return Err(an_err!(
-                        DtErrKind::InvalidBytes,
-                        "invalid iana ascii: {:?}: {}",
-                        name,
-                        e
-                    ));
-                }
+            let name_str = name.as_str();
+            if !name_str.is_empty() {
+                bdt.set_iana_time_zone(Some(String::from(name_str)));
             }
         } else if let Some(Offset::Fixed(secs)) = self.offset {
             if let Ok(jiff_offset) = JiffOffset::from_seconds(secs) {
