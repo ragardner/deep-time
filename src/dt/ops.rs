@@ -1,6 +1,14 @@
 use crate::{Dt, Real};
 use core::cmp::Ordering;
+use core::convert::From;
 use core::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
+
+impl From<Dt> for f64 {
+    #[inline]
+    fn from(dt: Dt) -> f64 {
+        dt.to_f64()
+    }
+}
 
 impl Add<Dt> for Dt {
     type Output = Self;

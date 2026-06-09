@@ -11,7 +11,7 @@ impl Dt {
     /// 3. Legacy bare number, supports decimals → fractional milliseconds
     ///
     /// Returns a [`Dt`].
-    pub fn from_duration_str(s: &str, lang: Lang) -> Result<Dt, DtErr> {
+    pub fn from_str_duration(s: &str, lang: Lang) -> Result<Dt, DtErr> {
         if s.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }

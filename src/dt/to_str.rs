@@ -8,12 +8,11 @@ use crate::tz::UTC_ALIASES;
 
 #[cfg(feature = "alloc")]
 impl Dt {
-    /// Converts this `Dt` to an ISO 8601 duration string
-    /// (e.g. `"PT1H23M45.6789S"`, `"-PT0.5S"`, `"PT0.000000000000000001S"`, or `"PT0S"`).
+    /// Converts this `Dt` to an ISO 8601 duration string.
     ///
-    /// - This method is only available when the **`alloc`** feature is enabled.
-    /// - It returns `alloc::string::String` (no_std + alloc compatible).
-    /// - Performs no time scale conversions prior to output.
+    /// - Example: **"PT1H23M45.6789S"**.
+    /// - Requires the "alloc" feature.
+    /// - Does **not** do any time scale conversions prior to output.
     pub fn to_iso_duration(&self) -> String {
         if self.is_zero() {
             return String::from("PT0S");
@@ -202,8 +201,8 @@ impl Dt {
 
     /// **RFC 9557** / Temporal format with IANA timezone name in brackets.
     ///
+    /// - Example: **`"2020-06-15T14:30:00-04:00[America/New_York]"`**.
     /// - Automatically trims trailing zeros in the fractional part.
-    /// - Example: `"2020-06-15T14:30:00-04:00[America/New_York]"`
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
@@ -214,13 +213,13 @@ impl Dt {
     /// Returns this instant as an **RFC 3339** / ISO 8601 timestamp with a
     /// `Z` suffix.
     ///
+    /// - Example: **`"2024-03-14T15:30:45.123Z"`**
     /// - Default = 9 digits (nanoseconds) but **automatically trims trailing zeros**.
     /// - If fractional part is zero → no decimal point at all (e.g. `...45Z`).
-    /// - Example: `"2024-03-14T15:30:45.123Z"`
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_rfc3339(&self) -> Result<String, DtErr> {
+    pub fn to_str_rfc3339(&self) -> String {
         self.to_str_rfc3339_nf(9)
     }
 
@@ -228,9 +227,10 @@ impl Dt {
     /// with a configurable maximum number of fractional digits (0–18). Trailing zeros are
     /// always trimmed.
     ///
+    /// - Example: **`"2024-03-14T15:30:45.123Z"`**
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
-    pub fn to_str_rfc3339_nf(&self, max_precision: usize) -> Result<String, DtErr> {
+    pub fn to_str_rfc3339_nf(&self, max_precision: usize) -> String {
         let prec = max_precision.min(18);
         // Uses the formatter with the `~` "trim trailing zeros" flag.
         // The formatter already handles:
@@ -238,79 +238,83 @@ impl Dt {
         //   - full-width years otherwise
         //   - suppressing the decimal point entirely when the trimmed fraction is zero
         let fmt = alloc::format!("%Y-%m-%dT%H:%M:%S%.{}~fZ", prec);
-        self.to_str_in_offset(&fmt, 0, Lang::En)
+        self.to_str_in_offset(&fmt, 0, Lang::En).unwrap()
     }
 
     /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style).
     ///
+    /// - Example: **`"2025-04-16T14:30:45.123+00:00"`**.
     /// - Uses colon-separated offset (`%:z`) instead of forcing `Z`.
     /// - Still trims trailing zeros in the fractional part.
-    /// - Example: `"2025-04-16T14:30:45.123+00:00"`
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_iso8601(&self) -> Result<String, DtErr> {
+    pub fn to_str_iso8601(&self) -> String {
         self.to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
+            .unwrap()
     }
 
     /// **Compact ISO 8601 basic format** (no separators).
     ///
-    /// - Example: `"20250416T143045.123456789Z"`
+    /// - Example: **`"20250416T143045.123456789Z"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_iso8601_basic(&self) -> Result<String, DtErr> {
+    pub fn to_str_iso8601_basic(&self) -> String {
         self.to_str_in_offset("%Y%m%dT%H%M%S%.~fZ", 0, Lang::En)
+            .unwrap()
     }
 
     /// **ISO 8601 week date**.
     ///
-    /// - Example: `"2025-W16-3"` (year-week-day)
+    /// - Example: **`"2025-W16-3"`**. (year-week-day)
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_iso_week_date(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%G-W%V-%u", 0, Lang::En)
+    pub fn to_str_iso_week_date(&self) -> String {
+        self.to_str_in_offset("%G-W%V-%u", 0, Lang::En).unwrap()
     }
 
     /// Just the **ISO date** part (no time).
     ///
-    /// - Example: `"2025-04-16"`
+    /// - Example: **`"2025-04-16"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_iso_date(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%Y-%m-%d", 0, Lang::En)
+    pub fn to_str_iso_date(&self) -> String {
+        self.to_str_in_offset("%Y-%m-%d", 0, Lang::En).unwrap()
     }
 
     /// Just the **time** part with fractional seconds (trimmed).
     ///
-    /// - Example: `"14:30:45.123456789"`
+    /// - Example: **`"14:30:45.123456789"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_iso_time(&self) -> Result<String, DtErr> {
-        self.to_str_in_offset("%H:%M:%S%.~f", 0, Lang::En)
+    pub fn to_str_iso_time(&self) -> String {
+        self.to_str_in_offset("%H:%M:%S%.~f", 0, Lang::En).unwrap()
     }
 
     /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
     ///
-    /// - Example: `"Wed, 16 Apr 2025 14:30:45 GMT"`
+    /// - Example: **`"Wed, 16 Apr 2025 14:30:45 GMT"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_http(&self, lang: Lang) -> Result<String, DtErr> {
+    pub fn to_str_http(&self, lang: Lang) -> String {
         self.to_str_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
+            .unwrap()
     }
 
     /// **RFC 2822** date format (used in email `Date` headers).
     ///
-    /// - Example: `"Wed, 16 Apr 2025 14:30:45 +0000"`
+    /// - Example: **`"Wed, 16 Apr 2025 14:30:45 +0000"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_rfc2822(&self, lang: Lang) -> Result<String, DtErr> {
+    pub fn to_str_rfc2822(&self, lang: Lang) -> String {
         self.to_str_in_offset("%a, %d %b %Y %H:%M:%S %z", 0, lang)
+            .unwrap()
     }
 
     /// Formats this [`Dt`] into a `String`, attaching an offset **as a label only**.

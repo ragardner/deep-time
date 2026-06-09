@@ -114,7 +114,17 @@ impl Dt {
         Self::i128_to_i64(self.attos.div_euclid(ATTOS_PER_SEC_I128))
     }
 
-    /// Converts this `Dt` to a floating-point number of seconds since the reference
+    /// Converts this [`Dt`] to an f64 number of seconds since the reference
+    /// epoch of its associated scale.
+    ///
+    /// - The conversion is lossy, as [`f64`] provides approximately 15.95 decimal
+    ///   digits of precision.
+    #[inline(always)]
+    pub const fn to_f64(&self) -> f64 {
+        self.to_sec_f()
+    }
+
+    /// Converts this [`Dt`] to a floating-point number of seconds since the reference
     /// epoch of its associated scale.
     ///
     /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal
@@ -180,6 +190,24 @@ impl Dt {
     #[inline(always)]
     pub const fn round_to_sec(&self) -> Dt {
         self.round(Dt::span(ATTOS_PER_SEC_I128))
+    }
+
+    /// Returns the total time in minutes.
+    #[inline(always)]
+    pub const fn to_mins(&self) -> i128 {
+        self.attos / (60 * ATTOS_PER_SEC_I128)
+    }
+
+    /// Returns the total time in hours.
+    #[inline(always)]
+    pub const fn to_hrs(&self) -> i128 {
+        self.attos / (3600 * ATTOS_PER_SEC_I128)
+    }
+
+    /// Returns the total time in days.
+    #[inline(always)]
+    pub const fn to_days(&self) -> i128 {
+        self.attos / (86400 * ATTOS_PER_SEC_I128)
     }
 
     /// Computes the signed duration between this [`Dt`] and another [`Dt`].
