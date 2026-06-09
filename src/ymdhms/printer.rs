@@ -252,7 +252,7 @@ impl YmdHms {
         *pos += len;
     }
 
-    fn write_u32_padded(
+    fn write_u32(
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         mut value: u32,
@@ -274,7 +274,7 @@ impl YmdHms {
         };
         let pad_left = flag != b'-';
 
-        let mut digits = [0u8; 20];
+        let mut digits = [0u8; 10];
         let mut i = 0usize;
 
         if value == 0 {
@@ -311,45 +311,7 @@ impl YmdHms {
         }
     }
 
-    fn write_i64(buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, value: i64) {
-        if value == 0 {
-            Self::write_bytes(buf, pos, b"0");
-            return;
-        }
-
-        let negative = value < 0;
-        let mut v = if negative {
-            value.wrapping_neg()
-        } else {
-            value
-        };
-
-        let mut digits = [0u8; 20];
-        let mut i = 0usize;
-        while v > 0 {
-            digits[i] = b'0' + (v % 10) as u8;
-            v /= 10;
-            i += 1;
-        }
-
-        if negative {
-            if *pos >= STRFTIME_SIZE {
-                return;
-            }
-            buf[*pos] = b'-';
-            *pos += 1;
-        }
-
-        if *pos + i > STRFTIME_SIZE {
-            return;
-        }
-        for j in (0..i).rev() {
-            buf[*pos] = digits[j];
-            *pos += 1;
-        }
-    }
-
-    fn write_i64_padded(
+    fn write_i64(
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         value: i64,
@@ -456,8 +418,8 @@ impl YmdHms {
     // Individual write_ functions – one per parser directive
     // ──────────────────────────────────────────────────────────────
 
-    #[inline]
-    pub(crate) fn write_weekday_full(
+    #[inline(always)]
+    fn write_weekday_full(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -467,8 +429,8 @@ impl YmdHms {
         Self::write_bytes(buf, pos, name);
     }
 
-    #[inline]
-    pub(crate) fn write_weekday_abbrev(
+    #[inline(always)]
+    fn write_weekday_abbrev(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -478,8 +440,8 @@ impl YmdHms {
         Self::write_bytes(buf, pos, name);
     }
 
-    #[inline]
-    pub(crate) fn write_month_name_full(
+    #[inline(always)]
+    fn write_month_name_full(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -489,8 +451,8 @@ impl YmdHms {
         Self::write_bytes(buf, pos, name);
     }
 
-    #[inline]
-    pub(crate) fn write_month_name_abbrev(
+    #[inline(always)]
+    fn write_month_name_abbrev(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -500,15 +462,15 @@ impl YmdHms {
         Self::write_bytes(buf, pos, name);
     }
 
-    #[inline]
-    pub(crate) fn write_century(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    #[inline(always)]
+    fn write_century(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
         // Floor division → -123 becomes -2 (exactly matches parse_century)
         let century = self.yr.div_euclid(100);
-        Self::write_i64(buf, pos, century);
+        Self::write_i64(buf, pos, century, b'-', Some(0), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_day_of_month(
+    #[inline(always)]
+    fn write_day_of_month(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -517,11 +479,11 @@ impl YmdHms {
         pad: bool,
     ) {
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, self.day as u32, flag, width, default_pad);
+        Self::write_u32(buf, pos, self.day as u32, flag, width, default_pad);
     }
 
-    #[inline]
-    pub(crate) fn write_fractional_seconds(
+    #[inline(always)]
+    fn write_fractional_seconds(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -531,19 +493,19 @@ impl YmdHms {
         Self::write_fractional(buf, pos, self.attos, width, trim)
     }
 
-    #[inline]
-    pub(crate) fn write_iso_week_year(
+    #[inline(always)]
+    fn write_iso_week_year(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_i64_padded(buf, pos, self.iso_yr(), flag, width, b'0');
+        Self::write_i64(buf, pos, self.iso_yr(), flag, width, b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_two_digit_iso_week_year(
+    #[inline(always)]
+    fn write_two_digit_iso_week_year(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -551,11 +513,11 @@ impl YmdHms {
         width: Option<u8>,
     ) {
         let yy = (self.iso_yr() % 100).saturating_abs() as u32;
-        Self::write_u32_padded(buf, pos, yy, flag, width.or(Some(2)), b'0');
+        Self::write_u32(buf, pos, yy, flag, width.or(Some(2)), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_hour24(
+    #[inline(always)]
+    fn write_hour24(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -564,11 +526,11 @@ impl YmdHms {
         pad: bool,
     ) {
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, self.hr as u32, flag, width, default_pad);
+        Self::write_u32(buf, pos, self.hr as u32, flag, width, default_pad);
     }
 
-    #[inline]
-    pub(crate) fn write_hour12(
+    #[inline(always)]
+    fn write_hour12(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -583,15 +545,11 @@ impl YmdHms {
         } else {
             hour24
         };
-        Self::write_u32_padded(buf, pos, hour12 as u32, flag, width.or(Some(2)), b'0');
+        Self::write_u32(buf, pos, hour12 as u32, flag, width.or(Some(2)), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_12hour_time_with_ampm(
-        &self,
-        buf: &mut [u8; STRFTIME_SIZE],
-        pos: &mut usize,
-    ) {
+    #[inline(always)]
+    fn write_12hour_time_with_ampm(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
         // Hour (12-hour, zero-padded)
         self.write_hour12(buf, pos, b'0', Some(2));
         Self::write_bytes(buf, pos, b":");
@@ -605,15 +563,15 @@ impl YmdHms {
         self.write_ampm(buf, pos, true);
     }
 
-    #[inline]
-    pub(crate) fn write_day_of_year(
+    #[inline(always)]
+    fn write_day_of_year(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_u32_padded(
+        Self::write_u32(
             buf,
             pos,
             self.day_of_yr() as u32,
@@ -623,8 +581,8 @@ impl YmdHms {
         );
     }
 
-    #[inline]
-    pub(crate) fn write_minute(
+    #[inline(always)]
+    fn write_minute(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -633,11 +591,11 @@ impl YmdHms {
         pad: bool,
     ) {
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, self.min as u32, flag, width, default_pad);
+        Self::write_u32(buf, pos, self.min as u32, flag, width, default_pad);
     }
 
-    #[inline]
-    pub(crate) fn write_month_number(
+    #[inline(always)]
+    fn write_month_number(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -646,11 +604,11 @@ impl YmdHms {
         pad: bool,
     ) {
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, self.mo as u32, flag, width, default_pad);
+        Self::write_u32(buf, pos, self.mo as u32, flag, width, default_pad);
     }
 
-    #[inline]
-    pub(crate) fn write_quarter(
+    #[inline(always)]
+    fn write_quarter(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -661,17 +619,17 @@ impl YmdHms {
         let quarter = ((self.mo - 1) / 3 + 1) as u32;
 
         // Default width is 1 (no leading zero unless requested)
-        Self::write_u32_padded(buf, pos, quarter, flag, width.or(Some(1)), b'0');
+        Self::write_u32(buf, pos, quarter, flag, width.or(Some(1)), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_whitespace(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, ch: u8) {
+    #[inline(always)]
+    fn write_whitespace(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, ch: u8) {
         let bytes = if ch == b'n' { b"\n" } else { b"\t" };
         Self::write_bytes(buf, pos, bytes);
     }
 
-    #[inline]
-    pub(crate) fn write_ampm(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, upper: bool) {
+    #[inline(always)]
+    fn write_ampm(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, upper: bool) {
         let hour = self.hr;
         let bytes = if hour < 12 {
             if upper { b"AM" } else { b"am" }
@@ -683,8 +641,8 @@ impl YmdHms {
         Self::write_bytes(buf, pos, bytes);
     }
 
-    #[inline]
-    pub(crate) fn write_second(
+    #[inline(always)]
+    fn write_second(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -693,11 +651,11 @@ impl YmdHms {
         pad: bool,
     ) {
         let default_pad = if pad { b'0' } else { b' ' };
-        Self::write_u32_padded(buf, pos, self.sec as u32, flag, width, default_pad);
+        Self::write_u32(buf, pos, self.sec as u32, flag, width, default_pad);
     }
 
-    #[inline]
-    pub(crate) fn write_unix_timestamp(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    #[inline(always)]
+    fn write_unix_timestamp(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
         let seconds = Dt::ymd_to_unix_sec(
             self.yr(),
             self.mo(),
@@ -706,29 +664,29 @@ impl YmdHms {
             self.min(),
             self.sec(),
         );
-        Self::write_i64(buf, pos, seconds);
+        Self::write_i64(buf, pos, seconds, b'-', Some(0), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_weekday_number_sunday_based(
+    #[inline(always)]
+    fn write_weekday_number_sunday_based(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_u32_padded(buf, pos, self.wkday() as u32, flag, width.or(Some(1)), b'0');
+        Self::write_u32(buf, pos, self.wkday() as u32, flag, width.or(Some(1)), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_weekday_number_monday_based(
+    #[inline(always)]
+    fn write_weekday_number_monday_based(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_u32_padded(
+        Self::write_u32(
             buf,
             pos,
             if self.wkday() == 0 { 7 } else { self.wkday() } as u32,
@@ -738,15 +696,15 @@ impl YmdHms {
         );
     }
 
-    #[inline]
-    pub(crate) fn write_week_iso(
+    #[inline(always)]
+    fn write_week_iso(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_u32_padded(
+        Self::write_u32(
             buf,
             pos,
             self.iso_wk() as u32,
@@ -756,15 +714,15 @@ impl YmdHms {
         );
     }
 
-    #[inline]
-    pub(crate) fn write_week_number_sunday_based(
+    #[inline(always)]
+    fn write_week_number_sunday_based(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_u32_padded(
+        Self::write_u32(
             buf,
             pos,
             self.wk_of_yr_sun() as u32,
@@ -774,15 +732,15 @@ impl YmdHms {
         );
     }
 
-    #[inline]
-    pub(crate) fn write_week_number_monday_based(
+    #[inline(always)]
+    fn write_week_number_monday_based(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_u32_padded(
+        Self::write_u32(
             buf,
             pos,
             self.wk_of_yr_mon() as u32,
@@ -792,19 +750,19 @@ impl YmdHms {
         );
     }
 
-    #[inline]
-    pub(crate) fn write_full_year(
+    #[inline(always)]
+    fn write_full_year(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_i64_padded(buf, pos, self.yr, flag, width, b'0');
+        Self::write_i64(buf, pos, self.yr, flag, width, b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_two_digit_year(
+    #[inline(always)]
+    fn write_two_digit_year(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -812,21 +770,21 @@ impl YmdHms {
         width: Option<u8>,
     ) {
         let yy = (self.yr % 100).saturating_abs() as u32;
-        Self::write_u32_padded(buf, pos, yy, flag, width.or(Some(2)), b'0');
+        Self::write_u32(buf, pos, yy, flag, width.or(Some(2)), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_unbounded_year(
+    #[inline(always)]
+    fn write_unbounded_year(
         &self,
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
     ) {
-        Self::write_i64_padded(buf, pos, self.yr, flag, width, b'0');
+        Self::write_i64(buf, pos, self.yr, flag, width, b'0');
     }
 
-    pub(crate) fn write_timezone_offset(
+    fn write_timezone_offset(
         &self,
         offset: Option<i32>,
         buf: &mut [u8; STRFTIME_SIZE],
@@ -916,8 +874,8 @@ impl YmdHms {
         }
     }
 
-    #[inline]
-    pub(crate) fn write_timezone_abbrev(
+    #[inline(always)]
+    fn write_timezone_abbrev(
         &self,
         abbrev: Option<LiteStr<49>>,
         buf: &mut [u8; STRFTIME_SIZE],
@@ -930,22 +888,22 @@ impl YmdHms {
         }
     }
 
-    #[inline]
-    pub(crate) fn write_iso_date(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        Self::write_i64_padded(buf, pos, self.yr, b'0', Some(4), b'0');
+    #[inline(always)]
+    fn write_iso_date(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        Self::write_i64(buf, pos, self.yr, b'0', Some(4), b'0');
         Self::write_bytes(buf, pos, b"-");
-        Self::write_u32_padded(buf, pos, self.mo as u32, b'0', Some(2), b'0');
+        Self::write_u32(buf, pos, self.mo as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b"-");
-        Self::write_u32_padded(buf, pos, self.day as u32, b'0', Some(2), b'0');
+        Self::write_u32(buf, pos, self.day as u32, b'0', Some(2), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_us_date_shortcut(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
-        Self::write_u32_padded(buf, pos, self.mo as u32, b'0', Some(2), b'0');
+    #[inline(always)]
+    fn write_us_date_shortcut(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        Self::write_u32(buf, pos, self.mo as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b"/");
-        Self::write_u32_padded(buf, pos, self.day as u32, b'0', Some(2), b'0');
+        Self::write_u32(buf, pos, self.day as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b"/");
-        Self::write_u32_padded(
+        Self::write_u32(
             buf,
             pos,
             (self.yr % 100).saturating_abs() as u32,
@@ -955,27 +913,19 @@ impl YmdHms {
         );
     }
 
-    #[inline]
-    pub(crate) fn write_time_with_seconds_shortcut(
-        &self,
-        buf: &mut [u8; STRFTIME_SIZE],
-        pos: &mut usize,
-    ) {
-        Self::write_u32_padded(buf, pos, self.hr as u32, b'0', Some(2), b'0');
+    #[inline(always)]
+    fn write_time_with_seconds_shortcut(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        Self::write_u32(buf, pos, self.hr as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
-        Self::write_u32_padded(buf, pos, self.min as u32, b'0', Some(2), b'0');
+        Self::write_u32(buf, pos, self.min as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
-        Self::write_u32_padded(buf, pos, self.sec as u32, b'0', Some(2), b'0');
+        Self::write_u32(buf, pos, self.sec as u32, b'0', Some(2), b'0');
     }
 
-    #[inline]
-    pub(crate) fn write_time_without_seconds_shortcut(
-        &self,
-        buf: &mut [u8; STRFTIME_SIZE],
-        pos: &mut usize,
-    ) {
-        Self::write_u32_padded(buf, pos, self.hr as u32, b'0', Some(2), b'0');
+    #[inline(always)]
+    fn write_time_without_seconds_shortcut(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+        Self::write_u32(buf, pos, self.hr as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
-        Self::write_u32_padded(buf, pos, self.min as u32, b'0', Some(2), b'0');
+        Self::write_u32(buf, pos, self.min as u32, b'0', Some(2), b'0');
     }
 }

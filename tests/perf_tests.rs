@@ -8,6 +8,179 @@ mod perf_tests {
     #[test]
     fn combined_perf_tests() {
         // ═══════════════════════════════════════════════════════════════════════
+        // GPS CONVERSION PERF — deep_time vs hifitime 4.x
+        // ═══════════════════════════════════════════════════════════════════════
+        {
+            use hifitime::{Epoch, TimeScale};
+            use std::hint::black_box;
+
+            const ITERATIONS: usize = 10_000_000;
+
+            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
+
+            println!("\n=== GPS CONVERSION PERF — deep_time vs hifitime 4.x ===");
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(deep_tai).to_gps();
+            }
+            let deep_gps = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::GPST));
+            }
+            let hifi_gps = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(deep_tai).to_gps_wk_and_tow();
+            }
+            let deep_tow = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(hifi_tai).to_gpst_seconds();
+            }
+            let hifi_tow_equiv = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            println!("Method                    | deep_time      | hifitime       | deep/hifi");
+            println!("--------------------------|----------------|----------------|----------");
+            println!(
+                "to_gps() / to_GPST        | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
+                deep_gps,
+                hifi_gps,
+                deep_gps / hifi_gps
+            );
+            println!(
+                "to_gps_wk_and_tow()       | {:7.2} ns/it   | {:7.2} ns/it * | {:.2}x",
+                deep_tow,
+                hifi_tow_equiv,
+                deep_tow / hifi_tow_equiv
+            );
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // TAI ↔ UTC PERF — deep_time vs hifitime 4.x
+        // ═══════════════════════════════════════════════════════════════════════
+        {
+            use hifitime::{Epoch, TimeScale};
+            use std::hint::black_box;
+
+            const ITERATIONS: usize = 10_000_000;
+
+            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 0, 0, 0, 0);
+
+            println!("\n=== TAI ↔ UTC PERF — deep_time vs hifitime 4.x ===");
+
+            // TAI → UTC
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(deep_tai).to(black_box(Scale::UTC));
+            }
+            let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::UTC));
+            }
+            let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            // UTC → TAI
+            let deep_utc = deep_tai.to(Scale::UTC);
+            let hifi_utc = hifi_tai.to_time_scale(TimeScale::UTC);
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(deep_utc).to(black_box(Scale::TAI));
+            }
+            let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(hifi_utc).to_time_scale(black_box(TimeScale::TAI));
+            }
+            let hifi_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            println!("Direction     | deep_time      | hifitime       | deep/hifi");
+            println!("--------------|----------------|----------------|----------");
+            println!(
+                "TAI → UTC     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
+                deep_fwd,
+                hifi_fwd,
+                deep_fwd / hifi_fwd
+            );
+            println!(
+                "UTC → TAI     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
+                deep_bwd,
+                hifi_bwd,
+                deep_bwd / hifi_bwd
+            );
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // TAI ↔ TDB PERF — deep_time vs hifitime 4.x
+        // ═══════════════════════════════════════════════════════════════════════
+        {
+            use hifitime::{Epoch, TimeScale};
+            use std::hint::black_box;
+
+            const ITERATIONS: usize = 1_000_000;
+
+            // Same reference instant: J2000.0 (2000-01-01 12:00:00 TAI)
+            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
+
+            println!("\n=== TAI ↔ TDB PERF — deep_time vs hifitime 4.x ===");
+
+            // ── TAI → TDB ─────────────────────────────────────────────────────
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(deep_tai).to(black_box(Scale::TDB));
+            }
+            let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::TDB));
+            }
+            let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            // ── TDB → TAI ─────────────────────────────────────────────────────
+            let deep_tdb = deep_tai.to(Scale::TDB);
+            let hifi_tdb = hifi_tai.to_time_scale(TimeScale::TDB);
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(deep_tdb).to(black_box(Scale::TAI));
+            }
+            let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            let start = Instant::now();
+            for _ in 0..ITERATIONS {
+                let _ = black_box(hifi_tdb).to_time_scale(black_box(TimeScale::TAI));
+            }
+            let hifi_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            // ── Results table ─────────────────────────────────────────────────
+            println!("Direction     | deep_time      | hifitime       | deep/hifi");
+            println!("--------------|----------------|----------------|----------");
+            println!(
+                "TAI → TDB     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
+                deep_fwd,
+                hifi_fwd,
+                deep_fwd / hifi_fwd
+            );
+            println!(
+                "TDB → TAI     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
+                deep_bwd,
+                hifi_bwd,
+                deep_bwd / hifi_bwd
+            );
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
         // DATE AUTO PARSER PERF
         // ═══════════════════════════════════════════════════════════════════════
         {
@@ -321,179 +494,6 @@ mod perf_tests {
                     (ratio - 1.0) * 100.0
                 );
             }
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // TAI ↔ UTC PERF — deep_time vs hifitime 4.x
-        // ═══════════════════════════════════════════════════════════════════════
-        {
-            use hifitime::{Epoch, TimeScale};
-            use std::hint::black_box;
-
-            const ITERATIONS: usize = 10_000_000;
-
-            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-            let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 0, 0, 0, 0);
-
-            println!("\n=== TAI ↔ UTC PERF — deep_time vs hifitime 4.x ===");
-
-            // TAI → UTC
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).to(black_box(Scale::UTC));
-            }
-            let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::UTC));
-            }
-            let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // UTC → TAI
-            let deep_utc = deep_tai.to(Scale::UTC);
-            let hifi_utc = hifi_tai.to_time_scale(TimeScale::UTC);
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(deep_utc).to(black_box(Scale::TAI));
-            }
-            let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(hifi_utc).to_time_scale(black_box(TimeScale::TAI));
-            }
-            let hifi_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("Direction     | deep_time      | hifitime       | deep/hifi");
-            println!("--------------|----------------|----------------|----------");
-            println!(
-                "TAI → UTC     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_fwd,
-                hifi_fwd,
-                deep_fwd / hifi_fwd
-            );
-            println!(
-                "UTC → TAI     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_bwd,
-                hifi_bwd,
-                deep_bwd / hifi_bwd
-            );
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // TAI ↔ TDB PERF — deep_time vs hifitime 4.x
-        // ═══════════════════════════════════════════════════════════════════════
-        {
-            use hifitime::{Epoch, TimeScale};
-            use std::hint::black_box;
-
-            const ITERATIONS: usize = 1_000_000;
-
-            // Same reference instant: J2000.0 (2000-01-01 12:00:00 TAI)
-            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-            let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
-
-            println!("\n=== TAI ↔ TDB PERF — deep_time vs hifitime 4.x ===");
-
-            // ── TAI → TDB ─────────────────────────────────────────────────────
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).to(black_box(Scale::TDB));
-            }
-            let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::TDB));
-            }
-            let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // ── TDB → TAI ─────────────────────────────────────────────────────
-            let deep_tdb = deep_tai.to(Scale::TDB);
-            let hifi_tdb = hifi_tai.to_time_scale(TimeScale::TDB);
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tdb).to(black_box(Scale::TAI));
-            }
-            let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(hifi_tdb).to_time_scale(black_box(TimeScale::TAI));
-            }
-            let hifi_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // ── Results table ─────────────────────────────────────────────────
-            println!("Direction     | deep_time      | hifitime       | deep/hifi");
-            println!("--------------|----------------|----------------|----------");
-            println!(
-                "TAI → TDB     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_fwd,
-                hifi_fwd,
-                deep_fwd / hifi_fwd
-            );
-            println!(
-                "TDB → TAI     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_bwd,
-                hifi_bwd,
-                deep_bwd / hifi_bwd
-            );
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // GPS CONVERSION PERF — deep_time vs hifitime 4.x
-        // ═══════════════════════════════════════════════════════════════════════
-        {
-            use hifitime::{Epoch, TimeScale};
-            use std::hint::black_box;
-
-            const ITERATIONS: usize = 10_000_000;
-
-            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-            let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
-
-            println!("\n=== GPS CONVERSION PERF — deep_time vs hifitime 4.x ===");
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).to_gps();
-            }
-            let deep_gps = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::GPST));
-            }
-            let hifi_gps = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(deep_tai).to_gps_wk_and_tow();
-            }
-            let deep_tow = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-            let start = Instant::now();
-            for _ in 0..ITERATIONS {
-                let _ = black_box(hifi_tai).to_gpst_seconds();
-            }
-            let hifi_tow_equiv = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("Method                    | deep_time      | hifitime       | deep/hifi");
-            println!("--------------------------|----------------|----------------|----------");
-            println!(
-                "to_gps() / to_GPST        | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_gps,
-                hifi_gps,
-                deep_gps / hifi_gps
-            );
-            println!(
-                "to_gps_wk_and_tow()       | {:7.2} ns/it   | {:7.2} ns/it * | {:.2}x",
-                deep_tow,
-                hifi_tow_equiv,
-                deep_tow / hifi_tow_equiv
-            );
         }
     }
 }
