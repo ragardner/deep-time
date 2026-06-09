@@ -389,7 +389,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     /// let b = x.to_str_lite("%F", Lang::En).unwrap();
-    /// let s = b.as_str().unwrap();
+    /// let s = b.as_str();
     ///
     /// println!("{}", s);
     /// ```
@@ -427,7 +427,7 @@ impl Dt {
     ///
     /// // offset of minus one hour
     /// let b = x.to_str_lite_in_offset("%F", -3600, Lang::En).unwrap();
-    /// let s = b.as_str().unwrap();
+    /// let s = b.as_str();
     ///
     /// println!("{}", s);
     /// ```
@@ -477,7 +477,7 @@ impl Dt {
     /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
     ///
     /// let b = x.to_str_lite_in_tz("%F", "America/New_York", Lang::En).unwrap();
-    /// let s = b.as_str().unwrap();
+    /// let s = b.as_str();
     ///
     /// println!("{}", s);
     /// # }

@@ -62,7 +62,7 @@ mod tests {
 
         assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
         assert_eq!(
-            b.as_str().unwrap(),
+            b.as_str(),
             "Saturday, January 01, 2000 07:00:00 America/New_York"
         );
     }

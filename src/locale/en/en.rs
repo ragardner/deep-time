@@ -12,7 +12,7 @@ pub(crate) fn tz_lowered_keys() -> &'static [&'static str] {
         let mut keys = Vec::new();
 
         for name in crate::tz::tz_names() {
-            let lowered = name.as_str().unwrap().to_lowercase();
+            let lowered = name.as_str().to_lowercase();
             keys.push(Box::leak(lowered.into_boxed_str()) as &'static str);
         }
 
@@ -264,7 +264,7 @@ pub(crate) fn en() -> &'static HashMap<&'static str, (&'static str, Token)> {
         }
 
         for name in crate::tz::tz_names() {
-            let s = name.as_str().unwrap();
+            let s = name.as_str();
             let lowered = s.to_lowercase();
             let lowered_static = Box::leak(lowered.into_boxed_str()) as &'static str;
 

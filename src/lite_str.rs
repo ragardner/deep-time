@@ -1,4 +1,4 @@
-use core::fmt::{self};
+use core::fmt;
 use core::str;
 
 /// A fixed-capacity, stack-allocated buffer that can hold a UTF-8 string.
@@ -18,7 +18,7 @@ use core::str;
 /// ## .len()
 ///
 /// - **Byte length**: Use [`as_bytes()`][Self::as_bytes]`.len()`
-/// - **Unicode character count**: Use [`as_str()`][Self::as_str]`.unwrap().len()`
+/// - **Unicode character count**: Use `as_str().chars().count()`
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct LiteStr<const N: usize> {
     pub bytes: [u8; N],
@@ -45,10 +45,15 @@ impl<const N: usize> LiteStr<N> {
         Self { bytes }
     }
 
-    /// Returns the content as a `&str`, validating that it is well-formed UTF-8.
+    /// Returns the longest valid UTF-8 prefix of the content as a `&str`.
     ///
-    /// Finds the first nul byte and uses that as the end of the str, or if
-    /// there isn't a nul byte then uses the whole len `N`.
+    /// - If the data is valid UTF-8, returns it directly.
+    /// - If the data starts with invalid bytes, returns a single replacement
+    ///   character (`�`).
+    /// - Otherwise returns only the valid prefix up to the first invalid
+    ///   sequence (everything after the first error is discarded).
+    ///
+    /// This method is infallible and never allocates.
     #[inline(always)]
     pub fn as_str(&self) -> &str {
         let end = find_first_nul(&self.bytes);
@@ -103,12 +108,16 @@ impl<const N: usize> fmt::Write for LiteStr<N> {
     }
 }
 
+impl<const N: usize> fmt::Display for LiteStr<N> {
+    #[inline(always)]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
 impl<const N: usize> fmt::Debug for LiteStr<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.as_str() {
-            Ok(s) => write!(f, "{:?}", s),
-            Err(_) => f.write_str("LiteStr(<invalid utf-8>)"),
-        }
+        write!(f, "{:?}", self.as_str())
     }
 }
 
@@ -118,9 +127,7 @@ impl<const N: usize> serde::Serialize for LiteStr<N> {
     where
         S: serde::Serializer,
     {
-        self.as_str()
-            .map_err(serde::ser::Error::custom)?
-            .serialize(serializer)
+        self.as_str().serialize(serializer)
     }
 }
 

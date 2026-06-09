@@ -180,12 +180,12 @@ mod tests {
         let dt: Dt = "2025-01-01".parse().unwrap();
 
         let out = dt.to_str_lite("%a, %d %b %Y", Lang::De).unwrap();
-        assert_eq!(out.as_str().unwrap(), "Mi, 01 Jan 2025");
+        assert_eq!(out.as_str(), "Mi, 01 Jan 2025");
 
         let out = dt.to_str_lite("%A, %d %B %Y", Lang::De).unwrap();
-        assert_eq!(out.as_str().unwrap(), "Mittwoch, 01 Januar 2025");
+        assert_eq!(out.as_str(), "Mittwoch, 01 Januar 2025");
 
         let out = dt.to_str_lite("%A, %d. %B %Y %H:%M:%S", Lang::De).unwrap();
-        assert_eq!(out.as_str().unwrap(), "Mittwoch, 01. Januar 2025 00:00:00");
+        assert_eq!(out.as_str(), "Mittwoch, 01. Januar 2025 00:00:00");
     }
 }

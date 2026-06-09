@@ -110,17 +110,9 @@ impl TimeParts {
 
         // Prefer IANA name if present; otherwise fall back to the custom TimeZone enum.
         if let Some(name) = &self.iana_name {
-            match name.as_str() {
-                Ok(s) if !s.is_empty() => bdt.set_iana_time_zone(Some(String::from(s))),
-                Ok(_) => {} // empty name — do nothing
-                Err(e) => {
-                    return Err(an_err!(
-                        DtErrKind::InvalidBytes,
-                        "invalid tz ascii: {:?}: {}",
-                        name,
-                        e
-                    ));
-                }
+            let name_str = name.as_str();
+            if !name_str.is_empty() {
+                bdt.set_iana_time_zone(Some(String::from(name_str)));
             }
         } else if let Some(Offset::Fixed(secs)) = self.offset {
             if let Ok(jiff_offset) = JiffOffset::from_seconds(secs) {

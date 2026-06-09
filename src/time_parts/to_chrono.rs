@@ -164,14 +164,7 @@ impl TimeParts {
         let naive = self.to_chrono_naive_datetime()?;
 
         if let Some(name) = &self.iana_name {
-            let name_str = name.as_str().map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidBytes,
-                    "invalid tz ascii: {:?}: {}",
-                    name,
-                    e
-                )
-            })?;
+            let name_str = name.as_str();
 
             if !name_str.is_empty() {
                 #[cfg(feature = "jiff-tz")]

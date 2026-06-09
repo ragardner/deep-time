@@ -186,7 +186,7 @@ impl StrPTimeFmt {
     /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
     /// let s = fmt.to_str_lite("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
     ///
-    /// assert_eq!(s.as_str().unwrap(), "01 01 2000 12:00:00");
+    /// assert_eq!(s.as_str(), "01 01 2000 12:00:00");
     /// ```
     pub fn to_str_lite(
         &self,

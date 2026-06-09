@@ -239,7 +239,7 @@ pub(crate) fn de() -> &'static HashMap<&'static str, (&'static str, Token)> {
         }
 
         for name in crate::tz::tz_names() {
-            let s = name.as_str().unwrap();
+            let s = name.as_str();
 
             let lowered = s.to_lowercase();
             let lowered_static = Box::leak(lowered.into_boxed_str()) as &'static str;

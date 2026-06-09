@@ -154,7 +154,7 @@ use core::fmt;
 ///  .unwrap();
 ///
 /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
-/// assert_eq!(b.as_str().unwrap(), "Saturday, January 01, 2000 07:00:00 America/New_York");
+/// assert_eq!(b.as_str(), "Saturday, January 01, 2000 07:00:00 America/New_York");
 /// # }
 /// ```
 ///
@@ -197,7 +197,7 @@ use core::fmt;
 /// // anything to output back to UTC and round trip
 /// let bytes = dt.to_str_lite("%d %m %Y %H:%M:%S", Lang::En).unwrap();
 ///
-/// assert_eq!(bytes.as_str().unwrap(), "01 01 2025 00:00:00");
+/// assert_eq!(bytes.as_str(), "01 01 2025 00:00:00");
 ///
 /// // Perhaps we want to make a GPS timestamp out of our Dt
 /// // If we want it to be on the GPS time scale we have to set the

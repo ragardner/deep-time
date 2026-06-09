@@ -183,12 +183,12 @@ mod tests {
         let dt: Dt = "2025-01-01".parse().unwrap();
 
         let out = dt.to_str_lite("%a, %d %b %Y", Lang::Fr).unwrap();
-        assert_eq!(out.as_str().unwrap(), "Mer, 01 janv 2025");
+        assert_eq!(out.as_str(), "Mer, 01 janv 2025");
 
         let out = dt.to_str_lite("%A, %d %B %Y", Lang::Fr).unwrap();
-        assert_eq!(out.as_str().unwrap(), "Mercredi, 01 janvier 2025");
+        assert_eq!(out.as_str(), "Mercredi, 01 janvier 2025");
 
         let out = dt.to_str_lite("%A, %d %B %Y %H:%M:%S", Lang::Fr).unwrap();
-        assert_eq!(out.as_str().unwrap(), "Mercredi, 01 janvier 2025 00:00:00");
+        assert_eq!(out.as_str(), "Mercredi, 01 janvier 2025 00:00:00");
     }
 }

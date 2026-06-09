@@ -80,7 +80,7 @@ mod tests {
         .unwrap();
         assert!(parsed.iana_name.is_some());
         let name = parsed.iana_name.unwrap();
-        let name_str = name.as_str().expect("IANA name should be valid ASCII");
+        let name_str = name.as_str();
         assert_eq!(name_str, "America/New_York");
         assert_eq!(parsed.offset, Some(Offset::None));
     }
