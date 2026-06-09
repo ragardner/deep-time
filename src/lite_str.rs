@@ -50,9 +50,22 @@ impl<const N: usize> LiteStr<N> {
     /// Finds the first nul byte and uses that as the end of the str, or if
     /// there isn't a nul byte then uses the whole len `N`.
     #[inline(always)]
-    pub fn as_str(&self) -> Result<&str, LiteStrErr> {
+    pub fn as_str(&self) -> &str {
         let end = find_first_nul(&self.bytes);
-        str::from_utf8(&self.bytes[..end]).map_err(|_| LiteStrErr::CorruptedData)
+        let slice = &self.bytes[..end];
+
+        match str::from_utf8(slice) {
+            Ok(s) => s,
+            Err(e) => {
+                let valid = e.valid_up_to();
+                if valid == 0 {
+                    "\u{FFFD}" // first bytes are garbage → just show �
+                } else {
+                    // SAFETY: valid_up_to is always a valid UTF-8 boundary
+                    unsafe { str::from_utf8_unchecked(&slice[..valid]) }
+                }
+            }
+        }
     }
 
     /// Creates a `LiteStr<N>` from a byte slice.
@@ -142,20 +155,3 @@ fn copy_valid_utf8_prefix(dst: &mut [u8], src: &[u8], max_len: usize) -> usize {
         }
     }
 }
-
-/// Errors that can occur when using a [`LiteStr`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum LiteStrErr {
-    /// The content is not valid UTF-8.
-    CorruptedData,
-}
-
-impl fmt::Display for LiteStrErr {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            LiteStrErr::CorruptedData => f.write_str("content is not valid UTF-8"),
-        }
-    }
-}
-
-impl core::error::Error for LiteStrErr {}
