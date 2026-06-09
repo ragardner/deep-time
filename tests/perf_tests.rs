@@ -281,7 +281,7 @@ mod perf_tests {
 
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let x = dt.to_str(FORMAT, Lang::En).unwrap();
+                let x = dt.to_str(FORMAT, Lang::En);
             }
             let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
