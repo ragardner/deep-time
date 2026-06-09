@@ -64,7 +64,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // TIMEPARTS FROM STR PERF — TimeParts vs Jiff BrokenDownTime strtime
+        // strptime — TimeParts vs Jiff BrokenDownTime strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
@@ -88,7 +88,7 @@ mod perf_tests {
             let timeparts_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== TIMEPARTS FROM STR PERF — TimeParts vs Jiff BrokenDownTime ===");
+            println!("\n=== strptime — TimeParts vs Jiff BrokenDownTime ===");
             println!(
                 "TimeParts : {:7.2} ns/parse  |  {:7.0} k parses/sec",
                 timeparts_ns,
@@ -115,7 +115,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // ZONED FROM STR PERF — deep_time vs jiff
+        // Zoned strptime — TimeParts vs Jiff BrokenDownTime strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 5_000_000;
@@ -140,7 +140,7 @@ mod perf_tests {
             let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== ZONED FROM STR PERF — deep_time vs jiff ===");
+            println!("\n=== Zoned strptime — TimeParts vs Jiff BrokenDownTime ===");
             println!(
                 "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
                 deep_time_ns,
@@ -167,7 +167,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // FROM STR PERF — deep_time vs jiff
+        // Datetime strptime — Dt::from_str vs Jiff to_datetime strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 5_000_000; // lowered because IANA zone resolution is heavier
@@ -193,7 +193,7 @@ mod perf_tests {
             let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== FROM STR PERF — deep_time vs jiff ===");
+            println!("\n=== DateTime strptime — Dt::from_str vs Jiff strtime -> to_datetime ===");
             println!(
                 "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
                 deep_time_ns,
@@ -220,7 +220,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // ISO/CCSDS FROM STR PERF — deep_time::from_str_ccsds vs Jiff
+        // Datetime parse — TimeParts::from_ccsds vs Jiff parse::DateTime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
@@ -243,7 +243,7 @@ mod perf_tests {
             let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== ISO/CCSDS FROM STR PERF — deep_time::from_str_ccsds vs Jiff ===");
+            println!("\n=== DateTime parse — TimeParts::from_ccsds vs Jiff parse::DateTime ===");
             println!(
                 "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
                 deep_time_ns,
@@ -270,7 +270,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // TO STR PERF
+        // strftime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 7_000_000;
@@ -293,7 +293,7 @@ mod perf_tests {
             let total_fmts = ITERATIONS;
             let ns_per_fmt = elapsed.as_nanos() as f64 / total_fmts as f64;
 
-            println!("\n=== DATE FMT PERF ===");
+            println!("\n=== STRFTIME PERF ===");
             println!("Avg time     : {:.2} ns/fmt", ns_per_fmt);
             println!("Throughput   : {:.0} k fmts/sec", 1_000_000.0 / ns_per_fmt);
         }
