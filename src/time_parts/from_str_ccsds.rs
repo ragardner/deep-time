@@ -1,4 +1,4 @@
-use crate::{DtErr, DtErrKind, TimeParts, an_err};
+use crate::{DtErr, DtErrKind, Scale, TimeParts, an_err};
 
 impl TimeParts {
     /// Generalized CCSDS ASCII Time Code parser (A or B variant).
@@ -218,7 +218,7 @@ impl TimeParts {
                     }
                     i
                 };
-                if let Some(sc) = crate::Scale::from_abbrev(&input[pos..end]) {
+                if let Some(sc) = Scale::from_abbrev(&input[pos..end]) {
                     tp.scale = sc;
                     // pos += end - pos;
                 }
