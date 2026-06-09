@@ -270,32 +270,57 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // strftime
+        // strftime — Dt::to_str vs Jiff civil::DateTime::strftime
         // ═══════════════════════════════════════════════════════════════════════
         {
-            const ITERATIONS: usize = 7_000_000;
+            const ITERATIONS: usize = 10_000_000;
+            const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
-            let x = Dt::from_str(
-                "2024-03-14T00:00:00",
-                "%Y-%m-%dT%H:%M:%S",
-                true,
-                true,
-                false,
-            )
-            .unwrap();
+            // ── deep_time ───────────────────────
+            let dt = Dt::from_str("2024-03-14T00:00:00", FORMAT, true, true, false).unwrap();
 
-            let start = Instant::now();
+            let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = x.to_str_lite("%Y-%m-%dT%H:%M:%S", Lang::En);
+                let x = dt.to_str(FORMAT, Lang::En).unwrap();
             }
-            let elapsed = start.elapsed();
+            let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
-            let total_fmts = ITERATIONS;
-            let ns_per_fmt = elapsed.as_nanos() as f64 / total_fmts as f64;
+            // ── Jiff ───────────────────────
+            use jiff::civil::DateTime;
 
-            println!("\n=== STRFTIME PERF ===");
-            println!("Avg time     : {:.2} ns/fmt", ns_per_fmt);
-            println!("Throughput   : {:.0} k fmts/sec", 1_000_000.0 / ns_per_fmt);
+            let jiff_dt: DateTime = "2024-03-14T00:00:00".parse().unwrap();
+
+            let start = std::time::Instant::now();
+            for _ in 0..ITERATIONS {
+                let x = jiff_dt.strftime(FORMAT).to_string();
+            }
+            let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            // ── Results ───────────────────────────────────────────────────────────────
+            println!("\n=== strftime — Dt::to_str_lite vs Jiff DateTime::strftime ===");
+            println!(
+                "deep_time : {:7.2} ns/fmt    |  {:7.0} k fmts/sec",
+                deep_time_ns,
+                1_000_000.0 / deep_time_ns
+            );
+            println!(
+                "jiff      : {:7.2} ns/fmt    |  {:7.0} k fmts/sec",
+                jiff_ns,
+                1_000_000.0 / jiff_ns
+            );
+
+            let ratio = deep_time_ns / jiff_ns;
+            if ratio < 1.0 {
+                println!(
+                    "→ deep_time is {:.1}% **faster** than jiff on strftime formatting",
+                    (1.0 - ratio) * 100.0
+                );
+            } else {
+                println!(
+                    "→ deep_time is {:.1}% slower than jiff on strftime formatting",
+                    (ratio - 1.0) * 100.0
+                );
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════════
