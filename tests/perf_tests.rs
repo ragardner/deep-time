@@ -64,33 +64,54 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 2. TIMEPARTS FROM STR PERF
+        // 2. TIMEPARTS FROM STR PERF — TimeParts vs Jiff BrokenDownTime strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
+            const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
+            const INPUT: &str = "2024-03-14T00:00:00";
 
-            let start = Instant::now();
+            // ── Jiff low-level BrokenDownTime strtime ───────────────────────
+            use jiff::fmt::strtime::BrokenDownTime;
+
+            let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let x = TimeParts::from_str(
-                    "%Y-%m-%dT%H:%M:%S",
-                    "2024-03-14T00:00:00",
-                    true,
-                    true,
-                    false,
-                )
-                .unwrap();
+                let x = BrokenDownTime::parse(FORMAT, INPUT).unwrap();
             }
-            let elapsed = start.elapsed();
+            let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
-            let total_parses = ITERATIONS;
-            let ns_per_parse = elapsed.as_nanos() as f64 / total_parses as f64;
+            // ── TimeParts ───────────────────────
+            let start = std::time::Instant::now();
+            for _ in 0..ITERATIONS {
+                let x = TimeParts::from_str(FORMAT, INPUT, true, true, false).unwrap();
+            }
+            let timeparts_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
-            println!("\n=== TIMEPARTS FROM STR PERF ===");
-            println!("Avg time     : {:.2} ns/parse", ns_per_parse);
+            // ── Results ───────────────────────────────────────────────────────────────
+            println!("\n=== TIMEPARTS FROM STR PERF — TimeParts vs Jiff BrokenDownTime ===");
             println!(
-                "Throughput   : {:.0} k parses/sec",
-                1_000_000.0 / ns_per_parse
+                "TimeParts : {:7.2} ns/parse  |  {:7.0} k parses/sec",
+                timeparts_ns,
+                1_000_000.0 / timeparts_ns
             );
+            println!(
+                "Jiff      : {:7.2} ns/parse  |  {:7.0} k parses/sec",
+                jiff_ns,
+                1_000_000.0 / jiff_ns
+            );
+
+            let ratio = timeparts_ns / jiff_ns;
+            if ratio < 1.0 {
+                println!(
+                    "→ TimeParts is {:.1}% **faster** than Jiff strtime on this format",
+                    (1.0 - ratio) * 100.0
+                );
+            } else {
+                println!(
+                    "→ TimeParts is {:.1}% slower than Jiff strtime on this format",
+                    (ratio - 1.0) * 100.0
+                );
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -101,19 +122,20 @@ mod perf_tests {
             const INPUT: &str = "2024-03-14T00:00:00[America/New_York]";
             const FORMAT_WITH_Q: &str = "%Y-%m-%dT%H:%M:%S[%Q]";
 
-            // ── Jiff native zoned parsing (idiomatic IANA path) ───────────────────────
-            use jiff::Zoned;
+            // ── Jiff zoned parsing via low-level strtime ───────────────────────
+            use jiff::fmt::strtime::BrokenDownTime;
 
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = INPUT.parse::<Zoned>().unwrap();
+                let tm = BrokenDownTime::parse(FORMAT_WITH_Q, INPUT).unwrap();
+                let x = tm.to_zoned().unwrap();
             }
             let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── deep_time with %Q directive ─────────────────
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = Dt::from_str(INPUT, FORMAT_WITH_Q, true, true, false).unwrap();
+                let x = Dt::from_str(INPUT, FORMAT_WITH_Q, true, true, false).unwrap();
             }
             let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -152,12 +174,13 @@ mod perf_tests {
             const INPUT: &str = "2024-03-14T00:00:00";
             const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
-            // ── Jiff  parsing ───────────────────────
-            use jiff::civil::DateTime;
+            // ── Jiff parsing via low-level strtime ───────────────────────
+            use jiff::fmt::strtime::BrokenDownTime;
 
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = INPUT.parse::<DateTime>().unwrap();
+                let tm = BrokenDownTime::parse(FORMAT, INPUT).unwrap();
+                let x = tm.to_datetime().unwrap();
             }
             let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -165,7 +188,7 @@ mod perf_tests {
 
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let _ = Dt::from_str(INPUT, FORMAT, true, true, false).unwrap();
+                let x = Dt::from_str(INPUT, FORMAT, true, true, false).unwrap();
             }
             let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -191,6 +214,56 @@ mod perf_tests {
             } else {
                 println!(
                     "→ deep_time is {:.1}% slower than jiff on datetime parsing",
+                    (ratio - 1.0) * 100.0
+                );
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // 4.5. ISO/CCSDS FROM STR PERF — deep_time::from_str_ccsds vs Jiff
+        // ═══════════════════════════════════════════════════════════════════════
+        {
+            const ITERATIONS: usize = 10_000_000;
+            const INPUT: &str = "2024-03-14T00:00:00";
+
+            // ── Jiff high-level DateTime parse ───────────────────────
+            use jiff::civil::DateTime;
+
+            let start = std::time::Instant::now();
+            for _ in 0..ITERATIONS {
+                let x = INPUT.parse::<DateTime>().unwrap();
+            }
+            let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            // ── deep_time CCSDS/ISO dedicated parser ───────────────────────
+            let start = std::time::Instant::now();
+            for _ in 0..ITERATIONS {
+                let x = TimeParts::from_str_ccsds(INPUT).unwrap();
+            }
+            let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+            // ── Results ───────────────────────────────────────────────────────────────
+            println!("\n=== ISO/CCSDS FROM STR PERF — deep_time::from_str_ccsds vs Jiff ===");
+            println!(
+                "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
+                deep_time_ns,
+                1_000_000.0 / deep_time_ns
+            );
+            println!(
+                "jiff      : {:7.2} ns/parse  |  {:7.0} k parses/sec",
+                jiff_ns,
+                1_000_000.0 / jiff_ns
+            );
+
+            let ratio = deep_time_ns / jiff_ns;
+            if ratio < 1.0 {
+                println!(
+                    "→ deep_time (from_str_ccsds) is {:.1}% **faster** than Jiff on ISO datetime parsing",
+                    (1.0 - ratio) * 100.0
+                );
+            } else {
+                println!(
+                    "→ deep_time (from_str_ccsds) is {:.1}% slower than Jiff on ISO datetime parsing",
                     (ratio - 1.0) * 100.0
                 );
             }
