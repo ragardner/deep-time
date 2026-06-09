@@ -34,11 +34,6 @@ default = []
 panic-handler = []
 wire = []
 
-alloc = [
-    "jiff?/alloc",
-    "chrono?/alloc",
-]
-
 mars = []
 sidereal = []
 sidereal-earth = ["sidereal"]
@@ -49,6 +44,11 @@ std = [
     "jiff?/std",
     "chrono?/std",
     "hifitime?/std",
+]
+
+alloc = [
+    "jiff?/alloc",
+    "chrono?/alloc",
 ]
 
 # ──────────────────────────────────────────────────────────────
@@ -92,9 +92,8 @@ serde = [
 # ──────────────────────────────────────────────────────────────
 
 jiff = [
-    "alloc",
     "dep:jiff",
-    "jiff?/alloc",
+    "alloc",
 ]
 
 jiff-tz = [
@@ -111,10 +110,10 @@ jiff-tz-bundle = [
     "jiff",
     "std",
     "jiff?/tz-system",
-    "jiff?/tzdb-zoneinfo",
     "jiff?/tzdb-concatenated",
     "jiff?/tz-fat",
     "jiff?/perf-inline",
+    "jiff?/tzdb-zoneinfo",
     "jiff?/tzdb-bundle-always",
 ]
 
