@@ -8,7 +8,7 @@ mod perf_tests {
     #[test]
     fn combined_perf_tests() {
         // ═══════════════════════════════════════════════════════════════════════
-        // 1. DATE AUTO PARSER PERF
+        // DATE AUTO PARSER PERF
         // ═══════════════════════════════════════════════════════════════════════
         {
             let cases: Vec<&str> = vec![
@@ -64,7 +64,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 2. TIMEPARTS FROM STR PERF — TimeParts vs Jiff BrokenDownTime strtime
+        // TIMEPARTS FROM STR PERF — TimeParts vs Jiff BrokenDownTime strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
@@ -115,7 +115,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 3. ZONED FROM STR PERF — deep_time vs jiff
+        // ZONED FROM STR PERF — deep_time vs jiff
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 5_000_000;
@@ -167,7 +167,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 4. FROM STR PERF — deep_time vs jiff
+        // FROM STR PERF — deep_time vs jiff
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 5_000_000; // lowered because IANA zone resolution is heavier
@@ -220,11 +220,11 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 4.5. ISO/CCSDS FROM STR PERF — deep_time::from_str_ccsds vs Jiff
+        // ISO/CCSDS FROM STR PERF — deep_time::from_str_ccsds vs Jiff
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
-            const INPUT: &str = "2024-03-14T00:00:00";
+            const INPUT: &str = "2024-03-14T00:00:00.123456789";
 
             // ── Jiff high-level DateTime parse ───────────────────────
             use jiff::civil::DateTime;
@@ -270,7 +270,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 5. TO STR PERF
+        // TO STR PERF
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 7_000_000;
@@ -299,71 +299,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 6. TAI -> TDB PERF
-        // ═══════════════════════════════════════════════════════════════════════
-        {
-            const ITERATIONS: usize = 1_000_000;
-
-            let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-            for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TDB);
-            }
-            let elapsed = start.elapsed();
-
-            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("\n=== TAI -> TDB PERF ===");
-            println!("Avg time     : {:.2} ns/it", ns_per_it);
-            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
-
-            let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).to(Scale::TDB);
-            for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TAI);
-            }
-            let elapsed = start.elapsed();
-            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("\n=== TDB -> TAI PERF ===");
-            println!("Avg time     : {:.2} ns/it", ns_per_it);
-            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // 7. TAI -> TT PERF
-        // ═══════════════════════════════════════════════════════════════════════
-        {
-            const ITERATIONS: usize = 1_000_000;
-
-            let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-            for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TT);
-            }
-            let elapsed = start.elapsed();
-
-            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("\n=== TAI -> TT PERF ===");
-            println!("Avg time     : {:.2} ns/it", ns_per_it);
-            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
-
-            let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).to(Scale::TT);
-            for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TAI);
-            }
-            let elapsed = start.elapsed();
-            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("\n=== TT -> TAI PERF ===");
-            println!("Avg time     : {:.2} ns/it", ns_per_it);
-            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // 8. TAI ↔ UTC PERF — deep_time vs hifitime 4.x
+        // TAI ↔ UTC PERF — deep_time vs hifitime 4.x
         // ═══════════════════════════════════════════════════════════════════════
         {
             use hifitime::{Epoch, TimeScale};
@@ -422,7 +358,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 9. TAI ↔ TDB PERF — deep_time vs hifitime 4.x
+        // TAI ↔ TDB PERF — deep_time vs hifitime 4.x
         // ═══════════════════════════════════════════════════════════════════════
         {
             use hifitime::{Epoch, TimeScale};
@@ -483,7 +419,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // 10. GPS CONVERSION PERF — deep_time vs hifitime 4.x
+        // GPS CONVERSION PERF — deep_time vs hifitime 4.x
         // ═══════════════════════════════════════════════════════════════════════
         {
             use hifitime::{Epoch, TimeScale};
@@ -533,58 +469,6 @@ mod perf_tests {
                 hifi_tow_equiv,
                 deep_tow / hifi_tow_equiv
             );
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // 11. TAI -> UTC PERF
-        // ═══════════════════════════════════════════════════════════════════════
-        {
-            const ITERATIONS: usize = 1_000_000;
-
-            let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-            for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::UTC);
-            }
-            let elapsed = start.elapsed();
-
-            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("\n=== TAI -> UTC PERF ===");
-            println!("Avg time     : {:.2} ns/it", ns_per_it);
-            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
-
-            let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).to(Scale::UTC);
-            for _ in 0..ITERATIONS {
-                let _ = x.to(Scale::TAI);
-            }
-            let elapsed = start.elapsed();
-            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("\n=== UTC -> TAI PERF ===");
-            println!("Avg time     : {:.2} ns/it", ns_per_it);
-            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
-        }
-
-        // ═══════════════════════════════════════════════════════════════════════
-        // 12. GPS OUTPUT PERF
-        // ═══════════════════════════════════════════════════════════════════════
-        {
-            const ITERATIONS: usize = 1_000_000;
-
-            let start = Instant::now();
-            let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-            for _ in 0..ITERATIONS {
-                let _ = x.to_gps();
-            }
-            let elapsed = start.elapsed();
-
-            let ns_per_it = elapsed.as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("\n=== GPS OUTPUT PERF ===");
-            println!("Avg time     : {:.2} ns/it", ns_per_it);
-            println!("Throughput   : {:.0} k its/sec", 1_000_000.0 / ns_per_it);
         }
     }
 }
