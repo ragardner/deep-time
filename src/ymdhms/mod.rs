@@ -2,7 +2,7 @@ use crate::{ATTOS_PER_SEC_I128, Dt, Scale};
 #[cfg(feature = "jiff-tz")]
 use crate::{DtErr, DtErrKind, an_err};
 
-mod to_str;
+mod printer;
 
 /// Combined Gregorian date + wall time with subsecond precision.
 /// Has calendar aware and, when the `jiff-tz` feature is enabled,
