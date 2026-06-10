@@ -39,8 +39,9 @@ impl Dt {
     /// Adds the given number of years in the specified IANA timezone,
     /// respecting timezone rules (including DST) and calendar arithmetic.
     ///
-    /// ## Important
+    /// ## Notes
     ///
+    /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
     ///
@@ -59,8 +60,9 @@ impl Dt {
     /// Adds the given number of months in the specified IANA timezone,
     /// respecting timezone rules and calendar month-end clamping.
     ///
-    /// ## Important
+    /// ## Notes
     ///
+    /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
     /// - Will error if the year is outside of `-9999..=9999`.
@@ -80,8 +82,9 @@ impl Dt {
     /// Adds the given number of weeks in the specified IANA timezone,
     /// respecting timezone rules (including DST).
     ///
-    /// ## Important
+    /// ## Notes
     ///
+    /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
     /// - Will error if the year is outside of `-9999..=9999`.
@@ -101,8 +104,9 @@ impl Dt {
     /// Adds the given number of calendar days in the specified IANA timezone,
     /// respecting timezone rules (including DST).
     ///
-    /// ## Important
+    /// ## Notes
     ///
+    /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
     /// - Will error if the year is outside of `-9999..=9999`.
@@ -122,8 +126,9 @@ impl Dt {
     /// Adds the given number of hours in the specified IANA timezone,
     /// respecting timezone rules (including DST).
     ///
-    /// ## Important
+    /// ## Notes
     ///
+    /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
     /// - Will error if the year is outside of `-9999..=9999`.
@@ -143,8 +148,9 @@ impl Dt {
     /// Adds the given number of minutes in the specified IANA timezone,
     /// respecting timezone rules (including DST).
     ///
-    /// ## Important
+    /// ## Notes
     ///
+    /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
     /// - Will error if the year is outside of `-9999..=9999`.
@@ -164,8 +170,9 @@ impl Dt {
     /// Adds the given number of seconds in the specified IANA timezone,
     /// respecting timezone rules (including DST).
     ///
-    /// ## Important
+    /// ## Notes
     ///
+    /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
     /// - Will error if the year is outside of `-9999..=9999`.

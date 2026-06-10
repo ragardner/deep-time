@@ -1,5 +1,3 @@
-#[cfg(any(feature = "js", feature = "std"))]
-use crate::DtErr;
 use crate::{
     ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC_I128, ATTOS_PER_US, Dt,
     Real, SEC_PER_DAYI64, SEC_PER_DAYI128, SEC_PER_WEEK, Scale,
@@ -144,7 +142,7 @@ impl Dt {
 
     /// Creates a new [`Dt`] from a total number of seconds (signed i128) without
     /// performing any time scale conversions.
-    #[inline]
+    #[inline(always)]
     pub const fn from_tai_sec(sec: i128) -> Dt {
         Self::from_attos(sec.saturating_mul(ATTOS_PER_SEC_I128), Scale::TAI)
     }
@@ -156,7 +154,7 @@ impl Dt {
     /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
-    #[inline]
+    #[inline(always)]
     pub const fn from_sec(sec: i128, scale: Scale) -> Dt {
         Self::from_attos(sec.saturating_mul(ATTOS_PER_SEC_I128), scale)
     }
@@ -168,7 +166,7 @@ impl Dt {
     /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
-    #[inline]
+    #[inline(always)]
     pub const fn from_ms(ms: i128, scale: Scale) -> Dt {
         let attos = ms.saturating_mul(ATTOS_PER_MS as i128);
         Self::from_attos(attos, scale)
@@ -181,7 +179,7 @@ impl Dt {
     /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
-    #[inline]
+    #[inline(always)]
     pub const fn from_us(us: i128, scale: Scale) -> Dt {
         let attos = us.saturating_mul(ATTOS_PER_US as i128);
         Self::from_attos(attos, scale)
@@ -194,7 +192,7 @@ impl Dt {
     /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
-    #[inline]
+    #[inline(always)]
     pub const fn from_ns(ns: i128, scale: Scale) -> Dt {
         let attos = ns.saturating_mul(ATTOS_PER_NS as i128);
         Self::from_attos(attos, scale)
@@ -207,7 +205,7 @@ impl Dt {
     /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
-    #[inline]
+    #[inline(always)]
     pub const fn from_ps(ps: i128, scale: Scale) -> Dt {
         let attos = ps.saturating_mul(ATTOS_PER_PS as i128);
         Self::from_attos(attos, scale)
@@ -220,7 +218,7 @@ impl Dt {
     /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
-    #[inline]
+    #[inline(always)]
     pub const fn from_fs(fs: i128, scale: Scale) -> Dt {
         let attos = fs.saturating_mul(ATTOS_PER_FS as i128);
         Self::from_attos(attos, scale)
@@ -231,7 +229,7 @@ impl Dt {
     ///
     /// Convenience wrapper around
     /// [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
-    #[inline]
+    #[inline(always)]
     pub const fn from_min(m: i64, scale: Scale) -> Dt {
         Self::from_sec((m as i128) * 60, scale)
     }
@@ -241,7 +239,7 @@ impl Dt {
     ///
     /// Convenience wrapper around
     /// [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
-    #[inline]
+    #[inline(always)]
     pub const fn from_hr(h: i64, scale: Scale) -> Dt {
         Self::from_sec((h as i128) * 3600, scale)
     }
@@ -308,9 +306,9 @@ impl Dt {
     /// the given `scale`.
     ///
     /// - Convenience wrapper around
-    /// [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
+    ///   [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
     /// - Uses `86400` seconds per day in the calculation.
-    #[inline]
+    #[inline(always)]
     pub const fn from_days(d: i64, scale: Scale) -> Dt {
         Self::from_sec((d as i128).saturating_mul(SEC_PER_DAYI128), scale)
     }
@@ -321,7 +319,7 @@ impl Dt {
     /// - Convenience wrapper around
     ///   [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
     /// - Uses `604800` seconds per week in the calculation.
-    #[inline]
+    #[inline(always)]
     pub const fn from_wk(wk: i64, scale: Scale) -> Dt {
         Dt::from_sec((wk as i128).saturating_mul(SEC_PER_WEEK as i128), scale)
     }
@@ -332,37 +330,37 @@ impl Dt {
     /// - Convenience wrapper around
     ///   [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
     /// - Uses `31_557_600` in the calculation.
-    #[inline]
+    #[inline(always)]
     pub const fn from_yr(yr: i64, scale: Scale) -> Dt {
         Dt::from_sec((yr as i128).saturating_mul(31_557_600), scale)
     }
 
     /// Returns a [`Dt`] that is this duration ago from the given scale.
-    #[inline]
+    #[inline(always)]
     pub const fn ago(self, scale: Scale) -> Dt {
         Dt::from_attos(0, scale).sub(self)
     }
 
     /// Returns a [`Dt`] that is this duration from now in the given scale.
-    #[inline]
+    #[inline(always)]
     pub const fn from_now(self, scale: Scale) -> Dt {
         Dt::from_attos(0, scale).add(self)
     }
 
     /// Returns the negation of this [`Dt`].
-    #[inline]
+    #[inline(always)]
     pub const fn neg(self) -> Dt {
         Dt::new(-self.attos, self.scale, self.target)
     }
 
     /// Returns the positive of this [`Dt`].
-    #[inline]
+    #[inline(always)]
     pub const fn abs(self) -> Dt {
         Dt::new(self.attos.saturating_abs(), self.scale, self.target)
     }
 
     /// Creates a [`Dt`] from a floating-point number of seconds.
-    #[inline]
+    #[inline(always)]
     pub const fn from_sec_f(sec_f: Real, scale: Scale) -> Dt {
         Self::from_sec_f_on(sec_f, scale)
     }
@@ -456,41 +454,37 @@ impl Dt {
     /// This method is only available when the `std` feature is enabled and the target
     /// is not WASM with the `js` feature.
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
-    #[inline]
-    pub fn now() -> Result<Self, DtErr> {
+    pub fn now() -> Dt {
         let now = std::time::SystemTime::now();
-        let (secs, nanos) = match now.duration_since(std::time::UNIX_EPOCH) {
+
+        let (secs, nanos): (i64, i64) = match now.duration_since(std::time::UNIX_EPOCH) {
             Ok(dur) => (dur.as_secs() as i64, dur.subsec_nanos() as i64),
-            Err(_) => {
-                // System time is before Unix epoch — support negative time
-                use crate::{DtErrKind, an_err};
-                let dur = std::time::SystemTime::UNIX_EPOCH
-                    .duration_since(now)
-                    .map_err(|e| an_err!(DtErrKind::IOErr, "{}", e))?;
+            Err(e) => {
+                let dur = e.duration();
                 (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
             }
         };
-        Ok(Dt::from_diff_and_scale(
+
+        Dt::from_diff_and_scale(
             Dt::new(Dt::sec_to_attos(secs as i128), Scale::TAI, Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )
-        .add(Dt::from_ns(nanos as i128, Scale::TAI)))
+        .add(Dt::from_ns(nanos as i128, Scale::TAI))
     }
 
     /// Returns the current system time as TAI from 2000-01-01 12:00:00.
     /// (browser WASM version using JavaScript’s `Date.now()`).
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
-    #[inline]
-    pub fn now() -> Result<Self, DtErr> {
+    pub fn now() -> Dt {
         let ms: f64 = js_sys::Date::now();
         let secs = (ms / 1000.0).floor() as i128;
         let nanos = ((ms % 1000.0) * 1_000_000.0) as i128;
-        Ok(Dt::from_diff_and_scale(
+        Dt::from_diff_and_scale(
             Dt::new(Dt::sec_to_attos(secs), Scale::TAI, Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )
-        .add(Dt::from_ns(nanos as i128, Scale::TAI)))
+        .add(Dt::from_ns(nanos as i128, Scale::TAI))
     }
 }

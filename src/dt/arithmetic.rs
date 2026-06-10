@@ -64,11 +64,55 @@ impl Dt {
         self.attos.div_euclid(ATTOS_PER_SEC_I128)
     }
 
+    /// Returns this [`Dt`] rounded to the nearest whole second, then
+    /// converted to an [`i128`] number of seconds.
+    ///
+    /// - Exactly halfway cases (e.g. 0.5 s, -0.5 s) round as follows:
+    ///   0.5 becomes 1 and -0.5 becomes -1.
+    /// - Matches the behavior of [`Dt::round`].
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    ///
+    /// // 1.3 seconds → rounds to 1
+    /// assert_eq!(Dt::span(1_300_000_000_000_000_000).to_sec_rounded(), 1);
+    ///
+    /// // -1.3 seconds → rounds to -1
+    /// assert_eq!(Dt::span(-1_300_000_000_000_000_000).to_sec_rounded(), -1);
+    ///
+    /// // 1.6 seconds → rounds to 2
+    /// assert_eq!(Dt::span(1_600_000_000_000_000_000).to_sec_rounded(), 2);
+    ///
+    /// // Halfway cases
+    /// assert_eq!(Dt::span(500_000_000_000_000_000).to_sec_rounded(), 1);
+    /// assert_eq!(Dt::span(-500_000_000_000_000_000).to_sec_rounded(), -1);
+    /// ```
     #[inline(always)]
     pub const fn to_sec_rounded(&self) -> i128 {
         self.round_to_sec().to_sec()
     }
 
+    /// Returns this [`Dt`] rounded to the nearest whole second, then
+    /// converted to an [`i64`] number of seconds.
+    ///
+    /// - Exactly halfway cases round as follows: 0.5 becomes 1 and -0.5 becomes -1,
+    ///   same as [`to_sec_rounded`](Self::to_sec_rounded).
+    /// - If the rounded value is outside the representable `i64` range,
+    ///   it saturates to [`i64::MAX`] or [`i64::MIN`].
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    ///
+    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// assert_eq!(dt.to_sec64_rounded(), 1);
+    ///
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// assert_eq!(dt.to_sec64_rounded(), -1);
+    /// ```
     #[inline(always)]
     pub const fn to_sec64_rounded(&self) -> i64 {
         Self::i128_to_i64(self.round_to_sec().to_sec())

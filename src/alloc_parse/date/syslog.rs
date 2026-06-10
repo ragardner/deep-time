@@ -18,7 +18,7 @@ pub(crate) fn parse_syslog_no_year(input: &str, lang: Lang, ref_time: &Option<Dt
     } else {
         #[cfg(feature = "std")]
         {
-            Dt::now().ok()?
+            Dt::now()
         }
         #[cfg(not(feature = "std"))]
         {

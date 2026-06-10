@@ -6,7 +6,11 @@ mod tests {
 
     #[cfg(feature = "jiff-tz")]
     #[test]
-    fn print_stuff() {}
+    fn print_stuff() {
+        let x = Dt::now();
+        let y = x.to_ymd();
+        eprintln!("{:?}", y);
+    }
 
     #[cfg(feature = "jiff-tz")]
     #[test]
