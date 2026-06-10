@@ -11,10 +11,42 @@ impl Dt {
     ///   `target` field before doing a raw difference with the epoch.
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
     ///   if it's not then the output will be incorrect.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+    /// let unix = dt.to_unix();
+    ///
+    /// assert_eq!(
+    ///     unix.to_sec(),
+    ///     946728000,
+    ///     "unix sec for 2000-01-01 12:00:00 UTC is wrong, got: {}, expected: 946728000",
+    ///     unix.to_sec()
+    /// );
+    ///
+    /// let dt2 = Dt::from_unix(unix);
+    ///
+    /// assert_eq!(
+    ///     dt.to_attos(), dt2.to_attos(),
+    ///     "round trip to Dt got wrong attos, old: {}, new: {}",
+    ///     dt.to_attos(), dt2.to_attos()
+    /// );
+    ///
+    /// let ymd = dt2.to_ymd();
+    /// assert_eq!(ymd.yr(), 2000_i64);
+    /// assert_eq!(ymd.mo(), 1);
+    /// assert_eq!(ymd.day(), 1);
+    /// assert_eq!(ymd.hr(), 12);
+    /// assert_eq!(ymd.min(), 0);
+    /// assert_eq!(ymd.sec(), 0);
+    /// assert_eq!(ymd.attos(), 0);
+    /// ```
     #[inline(always)]
     pub const fn to_unix(&self) -> Dt {
-        self.to(self.target)
-            .to_diff_raw(Dt::UNIX_EPOCH.to(self.target))
+        self.to_scale_and_diff(Self::UNIX_EPOCH, true)
     }
 
     /// Creates a TAI [`Dt`] from a unix (1970 epoch) timestamp.
@@ -82,14 +114,13 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn to_ntp(&self) -> Dt {
-        self.to(self.target)
-            .to_diff_raw(Dt::NTP_EPOCH.to(self.target))
+        self.to_scale_and_diff(Self::NTP_EPOCH, true)
     }
 
     /// Creates a TAI [`Dt`] from an ntp (1900 epoch) timestamp.
     #[inline(always)]
     pub const fn from_ntp(ntp: Dt) -> Dt {
-        Self::from_diff_and_scale(ntp, Dt::NTP_EPOCH, true)
+        Self::from_diff_and_scale(ntp, Self::NTP_EPOCH, true)
     }
 
     /// Returns the GPS week number and the exact Time of Week (TOW) for this instant
@@ -178,9 +209,26 @@ impl Dt {
     }
 
     /// Returns the elapsed time since the Chandra X-ray Center (CXC) epoch
-    /// as a [`Dt`] on the TT scale.
+    /// as a [`Dt`] on the **TT** scale.
     ///
-    /// The CXC epoch is [`Dt::CXC_EPOCH`].
+    /// The CXC epoch is [`Dt::CXC_EPOCH`] = 1998-01-01 00:00:00 TT
+    /// (standard reference epoch for Chandra MET — Mission Elapsed Time).
+    ///
+    /// This is the inverse of [`Self::from_cxcsec`].
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let cxc = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+    ///     .target(Scale::TT)
+    ///     .to_cxcsec()
+    ///     .to_sec_f();
+    ///
+    /// // cxcsec 694224032.184 (matches Astropy)
+    /// assert_eq!(cxc, 694224032.184);
+    /// ```
     #[inline(always)]
     pub const fn to_cxcsec(&self) -> Dt {
         self.to_scale_and_diff(Self::CXC_EPOCH, true)
@@ -198,10 +246,28 @@ impl Dt {
         Self::from_cxcsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))
     }
 
-    /// Returns the elapsed time since the GPS/Galileo Experiment (GALEX) epoch
-    /// as a [`Dt`] on the TAI scale.
+    /// Returns the elapsed time since the GALEX epoch as a [`Dt`] expressed
+    /// in this object's current `target` scale.
     ///
-    /// The GALEX epoch is [`Self::GPS_EPOCH`].
+    /// The GALEX epoch is [`Self::GPS_EPOCH`] (same epoch used by GPS time).
+    /// This method can match Astropy’s `Time.galexsec` format. To match
+    /// Astropy output, set `.target(Scale::UTC)` (or the appropriate scale)
+    /// before calling.
+    ///
+    /// This is the inverse of [`Self::from_galexsec`].
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let galexsec = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+    ///     .target(Scale::UTC)
+    ///     .to_galexsec()
+    ///     .to_sec_f();
+    ///
+    /// assert_eq!(galexsec, 1261871963.0);
+    /// ```
     #[inline(always)]
     pub const fn to_galexsec(&self) -> Dt {
         self.to_scale_and_diff(Self::GPS_EPOCH, true)
@@ -219,7 +285,24 @@ impl Dt {
         Self::from_galexsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))
     }
 
-    /// Returns the **Julian epoch year**.
+    /// Returns the **Julian epoch year** (JYEAR) for this instant.
+    ///
+    /// Julian years are defined as exactly 365.25 days of 86400 SI seconds.
+    /// This is the system used for J2000.0 and many astronomical calculations.
+    ///
+    /// This is **not** the same as [`Self::to_decimalyear`], which uses the
+    /// actual length of the specific Gregorian year.
+    ///
+    /// This is the inverse of [`Self::from_jyear`].
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// assert_eq!(x.to_jyear(), 2019.9986310746065);
+    /// ```
     #[inline(always)]
     pub const fn to_jyear(&self) -> Real {
         let jd_tt = self.to_jd_f();
@@ -243,7 +326,21 @@ impl Dt {
         Self::from_jd_f(jd, scale)
     }
 
-    /// Returns the **Besselian epoch year**.
+    /// Returns the **Besselian epoch year** (BYEAR) for this instant.
+    ///
+    /// Besselian years are an older astronomical convention based on a
+    /// tropical year length of approximately 365.242198781 days.
+    ///
+    /// This is the inverse of [`Self::from_byear`].
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// assert!((x.to_byear() - 2020.000335739628).abs() < 1e-12);
+    /// ```
     #[inline]
     pub const fn to_byear(&self) -> Real {
         let jd_tt = self.to_jd_f();
@@ -272,9 +369,23 @@ impl Dt {
     /// This is the direct equivalent of Astropy’s `Time.decimalyear`:
     /// - Uses the *actual* length of the specific Gregorian year (365 or 366 days,
     ///   plus any leap seconds on UTC/UtcSpice/etc.).
-    /// - Fully scale-aware (TAI, TT, UTC, TDB, custom clocks, …).
+    /// - Scale-aware (TAI, TT, UTC, TDB, etc.), converts to this [`Dt`]'s target time
+    ///   scale before producing an output.
     /// - Exact integer arithmetic for the year boundaries, then a high-precision
     ///   `to_sec_f` division (lossy only at the final `Real` step, same as Astropy).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// assert_eq!(x.to_decimalyear(), 2020.0);
+    ///
+    /// // Also works for negative years
+    /// let y = Dt::from_ymd(-2000, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// assert_eq!(y.to_decimalyear(), -2000.0);
+    /// ```
     pub fn to_decimalyear(&self) -> Real {
         let ymd = self.to_ymd();
         let year = ymd.yr;

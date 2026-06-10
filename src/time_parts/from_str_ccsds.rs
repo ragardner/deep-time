@@ -24,7 +24,7 @@ impl TimeParts {
 
         if start == len_ {
             return Err(an_err!(
-                DtErrKind::ExpectedValue,
+                DtErrKind::ExpectedYear,
                 "year start (digit or +/- and digit)"
             ));
         }
@@ -51,7 +51,7 @@ impl TimeParts {
         }
         if !has_year_digit {
             return Err(an_err!(
-                DtErrKind::ExpectedValue,
+                DtErrKind::ExpectedYear,
                 "year (digits after optional sign)"
             ));
         }
@@ -71,7 +71,7 @@ impl TimeParts {
         if is_doy {
             // 3-digit day of year
             if pos + 3 > len_ || !bytes[pos..pos + 3].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(an_err!(DtErrKind::ExpectedValue, "3-digit day of year"));
+                return Err(an_err!(DtErrKind::ExpectedDayOfYear, "3-digit day of year"));
             }
             let mut doy: u16 = 0;
             for _ in 0..3 {
@@ -82,7 +82,7 @@ impl TimeParts {
         } else {
             // 2-digit month
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(an_err!(DtErrKind::ExpectedValue, "2-digit month"));
+                return Err(an_err!(DtErrKind::ExpectedMonth, "2-digit month"));
             }
             let mut mo: u8 = 0;
             for _ in 0..2 {
@@ -98,7 +98,7 @@ impl TimeParts {
 
             // 2-digit day
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(an_err!(DtErrKind::ExpectedValue, "2-digit day"));
+                return Err(an_err!(DtErrKind::ExpectedDay, "2-digit day"));
             }
             let mut day: u8 = 0;
             for _ in 0..2 {
@@ -127,7 +127,7 @@ impl TimeParts {
         if pos < len_ && bytes[pos].is_ascii_digit() {
             // Hour (2 digits)
             if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(an_err!(DtErrKind::ExpectedValue, "2-digit hour"));
+                return Err(an_err!(DtErrKind::ExpectedHour, "2-digit hour"));
             }
             let mut hr: u8 = 0;
             for _ in 0..2 {
@@ -143,7 +143,7 @@ impl TimeParts {
             // Minute (2 digits, if present)
             if pos + 2 <= len_ {
                 if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                    return Err(an_err!(DtErrKind::ExpectedValue, "2-digit minute"));
+                    return Err(an_err!(DtErrKind::ExpectedMinute, "2-digit minute"));
                 }
                 let mut min: u8 = 0;
                 for _ in 0..2 {
@@ -160,7 +160,7 @@ impl TimeParts {
             // Second (2 digits, if present)
             if pos + 2 <= len_ {
                 if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                    return Err(an_err!(DtErrKind::ExpectedValue, "2-digit second"));
+                    return Err(an_err!(DtErrKind::ExpectedSecond, "2-digit second"));
                 }
                 let mut sec: u8 = 0;
                 for _ in 0..2 {

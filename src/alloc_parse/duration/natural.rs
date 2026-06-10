@@ -62,6 +62,7 @@ fn extract_number(part: &str, part_chars: &mut Vec<char>, d: char) -> Option<Par
                 // 1,000,000 last one is not a decimal point
                 if dec_seps.iter().all(|&(_, c)| c == d) {
                     None
+                // e.g. 1,000.55
                 } else {
                     Some(dec_seps.last()?.0)
                 }

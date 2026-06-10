@@ -1,6 +1,12 @@
 use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, leap_seconds::leap_sec};
 
 impl Dt {
+    pub(crate) const DAYS_IN_GREGORIAN_MONTHS: [u8; 12] =
+        [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+    pub(crate) const DAYS_IN_GREGORIAN_MONTHS_LEAP_YR: [u8; 12] =
+        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
     /// to a proleptic Gregorian date (year, month, day).
     pub const fn unix_sec_to_ymd(unix_sec: i64) -> (i64, u8, u8) {
@@ -305,7 +311,6 @@ impl Dt {
         (yr & 3 == 0) && ((yr & 15 == 0) || (yr % 25 != 0))
     }
 
-    const DAYS: [u8; 12] = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
     /// Returns `true` if the supplied values form a valid proleptic Gregorian calendar date.
     #[inline]
     pub const fn is_valid_ymd(yr: i64, mo: u8, day: u8) -> bool {
@@ -313,7 +318,7 @@ impl Dt {
             return false;
         }
         // 0 = Jan, 1 = Feb, ..., 11 = Dec
-        let days = Self::DAYS[(mo - 1) as usize];
+        let days = Self::DAYS_IN_GREGORIAN_MONTHS[(mo - 1) as usize];
         if mo == 2 && Self::is_leap_yr(yr) {
             day <= days + 1 // 28 → 29
         } else {

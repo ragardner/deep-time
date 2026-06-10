@@ -4,11 +4,10 @@ impl TimeParts {
     /// Low-level parser equivalent to `strptime` with a provided format string.
     ///
     /// This is the core entry point for format-string based parsing in the library.
-    /// It supports a large range of `%` directives (the same as jiff pretty much).
+    /// It supports a large range of `%` directives (similar to `jiff` / `chrono`).
     ///
-    /// The parser populates a [`TimeParts`] struct with all fields that can be
-    /// extracted from the input. After parsing, [`Self::finish`] is called
-    /// automatically to apply defaults and validation.
+    /// The parser populates a [`TimeParts`] struct. After successful parsing,
+    /// [`Self::finish`] is called automatically to apply defaults and validation.
     ///
     /// ## Parameters
     ///
@@ -23,10 +22,59 @@ impl TimeParts {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] for:
-    /// - Parse failures (`InvalidFormat`, `OutOfRange`, etc.)
-    /// - Incomplete data when `allow_partial_date` is `false`
-    /// - Trailing characters (when `fmt_can_end_before_inp` is `false`)
+    /// Returns [`DtErr`] containing one of the following [`DtErrKind`] variants:
+    ///
+    /// ### Format string errors
+    ///
+    /// - [`DtErrKind::TruncatedDirective`] — The format string ended immediately
+    ///   after a `%` or after a `.` in a fractional directive (e.g. `%.`).
+    /// - [`DtErrKind::UnknownItem`] — Unknown `%` directive character.
+    /// - [`DtErrKind::UnsupportedItem`] — Known but unsupported directive
+    ///   (e.g. `%c`, `%r`, `%x`, `%X`, `%Z`).
+    /// - [`DtErrKind::BadFractional`] — Malformed fractional directive
+    ///   (e.g. `%.x` where `x` is not `f` or `N`).
+    ///
+    /// ### Input parsing errors
+    ///
+    /// - [`DtErrKind::UnexpectedInputEnd`] — Input ended before a required value
+    ///   could be parsed.
+    /// - `Expected*` variants:
+    ///   - [`DtErrKind::ExpectedYear`]
+    ///   - [`DtErrKind::ExpectedMonth`]
+    ///   - [`DtErrKind::ExpectedDay`]
+    ///   - [`DtErrKind::ExpectedDayOfYear`]
+    ///   - [`DtErrKind::ExpectedHour`]
+    ///   - [`DtErrKind::ExpectedMinute`]
+    ///   - [`DtErrKind::ExpectedSecond`]
+    ///   - [`DtErrKind::ExpectedFractionalSeconds`]
+    ///   - [`DtErrKind::ExpectedTimestamp`]
+    ///   - [`DtErrKind::ExpectedWeekNumber`]
+    ///   - [`DtErrKind::ExpectedWeekdayNumber`]
+    /// - [`DtErrKind::MismatchedLiteral`] — A literal character from the format
+    ///   string did not match the input.
+    /// - [`DtErrKind::OutOfRange`] — A numeric value was parsed but is outside
+    ///   the valid range for that component (e.g. month 13, hour 25, day 32).
+    /// - [`DtErrKind::InvalidName`] — Unrecognized month name, weekday name,
+    ///   or `am`/`pm` value.
+    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid or malformed timezone
+    ///   offset / IANA name.
+    /// - [`DtErrKind::MustStartWith`] — Timezone offset did not start with
+    ///   `+` or `-`.
+    ///
+    /// ### Post-processing / validation errors
+    ///
+    /// - [`DtErrKind::Incomplete`] — Required date components (month/day) were
+    ///   missing and `allow_partial_date` was `false`.
+    /// - [`DtErrKind::TrailingCharacters`] — The input contained trailing
+    ///   characters after parsing and `fmt_can_end_before_inp` was `false`.
+    ///
+    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may
+    /// appear in the future. You can match on the variants you care about and
+    /// use a wildcard arm for the rest.
+    ///
+    /// The concrete error kind is available via [`DtErr::kind()`] (or by
+    /// iterating [`DtErr::trace()`] if the error was chained with context
+    /// higher up the call stack).
     pub fn from_str(
         fmt: &str,
         input: &str,

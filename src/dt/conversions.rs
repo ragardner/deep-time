@@ -229,6 +229,7 @@ impl Dt {
     /// -> TAI -> TDB. It uses the [`Dt`]s `scale` field to determine what scale
     /// to convert from to TAI, and then the `new` arg dictates the new time scale.
     ///
+    /// - Assumes that this [`Dt`] is measuring time since **2000-01-01 12:00:00**.
     /// - It is not necessary to do this if you just want to use such functions
     ///   as [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) as these internally
     ///   convert to the scale of the object's `target` field before output.

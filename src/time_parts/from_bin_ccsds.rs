@@ -17,15 +17,15 @@ impl TimeParts {
         }
 
         let month_days = if Dt::is_leap_yr(year) {
-            [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+            &Dt::DAYS_IN_GREGORIAN_MONTHS_LEAP_YR
         } else {
-            [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+            &Dt::DAYS_IN_GREGORIAN_MONTHS
         };
 
         let mut month = 0usize;
         let mut d = remaining as u32;
         while month < 12 {
-            let days_in_month = month_days[month];
+            let days_in_month = month_days[month] as u32;
             if d < days_in_month {
                 break;
             }
