@@ -317,9 +317,7 @@ impl TimeParts {
             let mut hours: i64 = 0;
             let mut h_digits = 0usize;
             while pos < len_ && bytes[pos].is_ascii_digit() && h_digits < 2 {
-                hours = hours
-                    .saturating_mul(10)
-                    .saturating_add((bytes[pos] - b'0') as i64);
+                hours = hours * 10 + (bytes[pos] - b'0') as i64;
                 pos += 1;
                 h_digits += 1;
             }
@@ -334,18 +332,12 @@ impl TimeParts {
                 let mut minutes: i64 = 0;
                 let mut m_digits = 0usize;
                 while pos < len_ && bytes[pos].is_ascii_digit() && m_digits < 2 {
-                    minutes = minutes
-                        .saturating_mul(10)
-                        .saturating_add((bytes[pos] - b'0') as i64);
+                    minutes = minutes * 10 + (bytes[pos] - b'0') as i64;
                     pos += 1;
                     m_digits += 1;
                 }
 
-                let total_sec_i64 = sign.saturating_mul(
-                    hours
-                        .saturating_mul(3600)
-                        .saturating_add(minutes.saturating_mul(60)),
-                );
+                let total_sec_i64 = sign * (hours * 3600 + minutes * 60);
                 let total_seconds: i32 =
                     total_sec_i64.clamp(i32::MIN as i64, i32::MAX as i64) as i32;
                 tp.offset = Some(Offset::Fixed(total_seconds));
