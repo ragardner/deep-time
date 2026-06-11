@@ -150,6 +150,8 @@ impl Dt {
     /// - If a time is included then some kind of date-time separator e.g. `T` is
     ///   required.
     /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
+    /// - Treats years digits literally as shown, for example `99-01-01` would be
+    ///   the year 99 AD not 1999.
     /// - Supported **optional** components:
     ///     - Time components after a date e.g. `T12:00:00`.
     ///     - Offset after time components or directly after the date e.g. `+0200` or
@@ -157,9 +159,13 @@ impl Dt {
     ///     - Timezone name, **requires square brackets** and requires `jiff-tz` feature,
     ///       after time or offset e.g. `T12:00:00 [America/New_York]`.
     ///     - Library time scale right on the end of the input, e.g. `TAI`.
+    /// - This function is considerably faster than all other string parsing methods if
+    ///   your date-time string is in the supported formats.
     #[inline(always)]
     pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
-        TimeParts::from_str_iso(input)?.to_dt()
+        let mut tp = TimeParts::from_str_iso(input)?;
+        tp.finish(true)?;
+        tp.to_dt()
     }
 
     /// Parses an ISO 8601 duration string into a [`Dt`] representing a pure time interval.

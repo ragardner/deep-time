@@ -7,6 +7,8 @@ impl TimeParts {
     /// - If a time is included then some kind of date-time separator e.g. `T` is
     ///   required.
     /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
+    /// - Treats years digits literally as shown, for example `99-01-01` would be
+    ///   the year 99 AD not 1999.
     /// - Supported **optional** components:
     ///     - Time components after a date e.g. `T12:00:00`.
     ///     - Offset after time components or directly after the date e.g. `+0200` or
@@ -14,6 +16,8 @@ impl TimeParts {
     ///     - Timezone name, **requires square brackets** and requires `jiff-tz` feature,
     ///       after time or offset e.g. `T12:00:00 [America/New_York]`.
     ///     - Library time scale right on the end of the input, e.g. `TAI`.
+    /// - This function is considerably faster than all other string parsing methods if
+    ///   your date-time string is in the supported formats.
     pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
         let bytes = input.as_bytes();
         let len_ = bytes.len();
@@ -46,31 +50,32 @@ impl TimeParts {
 
         // Year (manual accumulation, optional sign)
         let mut year: i64 = 0;
-        let negative_year = pos < len_ && bytes[pos] == b'-';
-
-        if pos < len_ && matches!(bytes[pos], b'+' | b'-') {
+        let negative_year = if pos < len_ && matches!(bytes[pos], b'+' | b'-') {
             pos += 1;
-        }
+            bytes[pos] == b'-'
+        } else {
+            false
+        };
 
-        let mut has_year_digit = false;
-        while pos < len_ && bytes[pos].is_ascii_digit() {
-            has_year_digit = true;
-            year = year * 10 + (bytes[pos] - b'0') as i64;
-            pos += 1;
-        }
-        if !has_year_digit {
+        if bytes[pos].is_ascii_digit() {
+            while pos < len_ && bytes[pos].is_ascii_digit() {
+                year = year * 10 + (bytes[pos] - b'0') as i64;
+                pos += 1;
+            }
+        } else {
             return Err(an_err!(
                 DtErrKind::ExpectedYear,
                 "year (digits after optional sign)"
             ));
         }
+
         if negative_year {
             year = -year;
         }
         tp.yr = Some(year);
 
-        // Optional separator after year (consume only if present)
-        if pos < len_ && !bytes[pos].is_ascii_digit() {
+        // required separator after year
+        if pos < len_ {
             pos += 1;
         }
 
@@ -79,25 +84,50 @@ impl TimeParts {
 
         if is_doy {
             // 3-digit day of year
-            if pos + 3 > len_ || !bytes[pos..pos + 3].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(an_err!(DtErrKind::ExpectedDayOfYear, "3-digit day of year"));
-            }
             let mut doy: u16 = 0;
-            for _ in 0..3 {
+            // digit 1
+            if bytes[pos].is_ascii_digit() {
                 doy = doy * 10 + (bytes[pos] - b'0') as u16;
                 pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedDayOfYear, "0/3 digits"));
             }
+
+            // digit 2
+            if bytes[pos].is_ascii_digit() {
+                doy = doy * 10 + (bytes[pos] - b'0') as u16;
+                pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedDayOfYear, "1/3 digits"));
+            }
+
+            // digit 3
+            if bytes[pos].is_ascii_digit() {
+                doy = doy * 10 + (bytes[pos] - b'0') as u16;
+                pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedDayOfYear, "2/3 digits"));
+            }
+
             tp.day_of_yr = Some(doy);
         } else {
             // 2-digit month
-            if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(an_err!(DtErrKind::ExpectedMonth, "2-digit month"));
-            }
             let mut mo: u8 = 0;
-            for _ in 0..2 {
+            // digit 1
+            if bytes[pos].is_ascii_digit() {
                 mo = mo * 10 + (bytes[pos] - b'0');
                 pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedMonth, "0/2 digits"));
             }
+            // digit 2
+            if bytes[pos].is_ascii_digit() {
+                mo = mo * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedMonth, "1/2 digits"));
+            }
+
             tp.mo = Some(mo);
 
             // Optional separator after month
@@ -106,18 +136,26 @@ impl TimeParts {
             }
 
             // 2-digit day
-            if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(an_err!(DtErrKind::ExpectedDay, "2-digit day"));
-            }
             let mut day: u8 = 0;
-            for _ in 0..2 {
+            // digit 1
+            if bytes[pos].is_ascii_digit() {
                 day = day * 10 + (bytes[pos] - b'0');
                 pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedDay, "0/2 digits"));
             }
+            // digit 2
+            if bytes[pos].is_ascii_digit() {
+                day = day * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedDay, "1/2 digits"));
+            }
+
             tp.day = Some(day);
         }
 
-        // date-time separator
+        // required date-time separator
         while pos < len_ && bytes[pos].is_ascii_whitespace() {
             pos += 1;
         }
@@ -141,76 +179,124 @@ impl TimeParts {
         // Optional time components
         if pos < len_ && bytes[pos].is_ascii_digit() {
             // Hour (2 digits)
-            if pos + 2 > len_ || !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                return Err(an_err!(DtErrKind::ExpectedHour, "2-digit hour"));
-            }
             let mut hr: u8 = 0;
-            for _ in 0..2 {
+            // digit 1
+            if bytes[pos].is_ascii_digit() {
                 hr = hr * 10 + (bytes[pos] - b'0');
                 pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedHour, "0/2 digits"));
             }
+            // digit 2
+            if bytes[pos].is_ascii_digit() {
+                hr = hr * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedHour, "1/2 digits"));
+            }
+
             tp.hr = hr;
 
-            if pos < len_ && !bytes[pos].is_ascii_digit() {
+            'time: {
+                // only continue if it's not a + or - and not an alpha
+                if pos >= len_
+                    || bytes[pos].is_ascii_digit()
+                    || matches!(bytes[pos], b'+' | b'-')
+                    || bytes[pos].is_ascii_alphabetic()
+                {
+                    break 'time;
+                }
                 pos += 1;
-            }
 
-            // Minute (2 digits, if present)
-            if pos + 2 <= len_ {
-                if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                    return Err(an_err!(DtErrKind::ExpectedMinute, "2-digit minute"));
+                // Minute (2 digits)
+                if pos + 2 > len_ {
+                    break 'time;
                 }
                 let mut min: u8 = 0;
-                for _ in 0..2 {
+                // digit 1
+                if bytes[pos].is_ascii_digit() {
                     min = min * 10 + (bytes[pos] - b'0');
                     pos += 1;
+                } else {
+                    return Err(an_err!(DtErrKind::ExpectedMinute, "0/2 digits"));
                 }
+                // digit 2
+                if bytes[pos].is_ascii_digit() {
+                    min = min * 10 + (bytes[pos] - b'0');
+                    pos += 1;
+                } else {
+                    return Err(an_err!(DtErrKind::ExpectedMinute, "0/2 digits"));
+                }
+
                 tp.min = min;
-            }
 
-            if pos < len_ && !bytes[pos].is_ascii_digit() {
+                // only continue if it's not a + or - and not an alpha
+                if pos >= len_
+                    || bytes[pos].is_ascii_digit()
+                    || matches!(bytes[pos], b'+' | b'-')
+                    || bytes[pos].is_ascii_alphabetic()
+                {
+                    break 'time;
+                }
                 pos += 1;
-            }
 
-            // Second (2 digits, if present)
-            if pos + 2 <= len_ {
-                if !bytes[pos..pos + 2].iter().all(|&b| b.is_ascii_digit()) {
-                    return Err(an_err!(DtErrKind::ExpectedSecond, "2-digit second"));
+                // Second (2 digits, if present)
+                if pos + 2 > len_ {
+                    break 'time;
                 }
                 let mut sec: u8 = 0;
-                for _ in 0..2 {
+                // digit 1
+                if bytes[pos].is_ascii_digit() {
                     sec = sec * 10 + (bytes[pos] - b'0');
                     pos += 1;
+                } else {
+                    return Err(an_err!(DtErrKind::ExpectedSecond, "0/2 digits"));
                 }
-                tp.sec = sec;
-            }
-
-            // Fractional seconds (with or without leading dot)
-            if pos < len_ {
-                let has_dot = bytes[pos] == b'.';
-                if has_dot {
+                // digit 2
+                if bytes[pos].is_ascii_digit() {
+                    sec = sec * 10 + (bytes[pos] - b'0');
                     pos += 1;
+                } else {
+                    return Err(an_err!(DtErrKind::ExpectedSecond, "1/2 digits"));
                 }
 
-                if pos < len_ && bytes[pos].is_ascii_digit() {
-                    let mut attos: u64 = 0;
-                    let mut digits_seen: usize = 0;
+                tp.sec = sec;
 
-                    while pos < len_ && bytes[pos].is_ascii_digit() {
-                        if digits_seen < 18 {
-                            attos = attos * 10 + (bytes[pos] - b'0') as u64;
-                            digits_seen += 1;
-                        }
-                        // Ignore any digits beyond the first 18
+                // only continue if it's not a + or - and not an alpha
+                if pos >= len_
+                    || bytes[pos].is_ascii_digit()
+                    || matches!(bytes[pos], b'+' | b'-')
+                    || bytes[pos].is_ascii_alphabetic()
+                {
+                    break 'time;
+                }
+                pos += 1;
+
+                // Fractional seconds (with or without leading dot)
+                if pos < len_ {
+                    if bytes[pos] == b'.' {
                         pos += 1;
                     }
 
-                    if digits_seen > 0 {
-                        tp.attos = attos * 10u64.pow(18u32.saturating_sub(digits_seen as u32));
+                    if pos < len_ && bytes[pos].is_ascii_digit() {
+                        let mut attos: u64 = 0;
+                        let mut digits_seen: usize = 0;
+
+                        while pos < len_ && bytes[pos].is_ascii_digit() {
+                            if digits_seen < 18 {
+                                attos = attos * 10 + (bytes[pos] - b'0') as u64;
+                                digits_seen += 1;
+                            }
+                            // Ignore any digits beyond the first 18
+                            pos += 1;
+                        }
+
+                        if digits_seen > 0 {
+                            tp.attos = attos * 10u64.pow(18u32.saturating_sub(digits_seen as u32));
+                        }
                     }
                 }
             }
-
             // Optional trailing Z/z
             if pos < len_ && matches!(bytes[pos], b'Z' | b'z') {
                 pos += 1;
