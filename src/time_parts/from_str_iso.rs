@@ -1,11 +1,20 @@
-use crate::{DtErr, DtErrKind, Scale, TimeParts, an_err};
+use crate::{DtErr, DtErrKind, Offset, Scale, TimeParts, an_err};
 
 impl TimeParts {
-    /// Generalized CCSDS ASCII Time Code parser (A or B variant).
-    /// - Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
-    /// - All time components after the date portion are optional.
-    /// - Optional time scale on the end is also supported.
-    pub fn from_str_ccsds(input: &str) -> Result<Self, DtErr> {
+    /// Generalized ISO / CCSDS ASCII Time Code parser (A or B variant).
+    /// - Parses e.g. **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
+    /// - Only supports ASCII characters.
+    /// - If a time is included then some kind of date-time separator e.g. `T` is
+    ///   required.
+    /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
+    /// - Supported **optional** components:
+    ///     - Time components after a date e.g. `T12:00:00`.
+    ///     - Offset after time components or directly after the date e.g. `+0200` or
+    ///       `2023-01-01+05:00`.
+    ///     - Timezone name, **requires square brackets** and requires `jiff-tz` feature,
+    ///       after time or offset e.g. `T12:00:00 [America/New_York]`.
+    ///     - Library time scale right on the end of the input, e.g. `TAI`.
+    pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
         let bytes = input.as_bytes();
         let len_ = bytes.len();
 
@@ -65,7 +74,7 @@ impl TimeParts {
             pos += 1;
         }
 
-        // DOY vs calendar detection
+        // DOY vs calendar detection, uses required datetime separator to detect
         let is_doy = pos + 3 == len_ || (pos + 3 < len_ && !bytes[pos + 3].is_ascii_digit());
 
         if is_doy {
@@ -108,18 +117,24 @@ impl TimeParts {
             tp.day = Some(day);
         }
 
-        // Optional date-time separator (only consume if followed by a digit)
+        // date-time separator
+        while pos < len_ && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
         if pos < len_ {
             let c = bytes[pos];
+            // push past a T
             if !c.is_ascii_digit() {
-                if pos + 1 < len_ && bytes[pos + 1].is_ascii_digit() {
-                    pos += 1;
+                if pos + 1 < len_ && !matches!(c, b'+' | b'-') {
+                    if bytes[pos + 1].is_ascii_digit() {
+                        pos += 1;
+                    } else if bytes[pos + 1].is_ascii_whitespace() {
+                        pos += 1;
+                        while pos < len_ && bytes[pos].is_ascii_whitespace() {
+                            pos += 1;
+                        }
+                    }
                 }
-            } else {
-                return Err(an_err!(
-                    DtErrKind::InvalidSyntax,
-                    "expected time separator e.g. T"
-                ));
             }
         }
 
@@ -202,9 +217,95 @@ impl TimeParts {
             }
         }
 
+        // Skip any whitespace
+        while pos < len_ && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+
+        // Optional offset
+        if pos < len_ && matches!(bytes[pos], b'+' | b'-') {
+            let sign: i64 = if bytes[pos] == b'+' { 1 } else { -1 };
+            pos += 1;
+
+            // Parse hours (up to 2 digits). "+05:30"/"+0530"
+            let mut hours: i64 = 0;
+            let mut h_digits = 0usize;
+            while pos < len_ && bytes[pos].is_ascii_digit() && h_digits < 2 {
+                hours = hours
+                    .saturating_mul(10)
+                    .saturating_add((bytes[pos] - b'0') as i64);
+                pos += 1;
+                h_digits += 1;
+            }
+
+            if h_digits > 0 {
+                // Optional ':' separator before minutes
+                if pos < len_ && bytes[pos] == b':' {
+                    pos += 1;
+                }
+
+                // Parse minutes (up to 2 digits; optional)
+                let mut minutes: i64 = 0;
+                let mut m_digits = 0usize;
+                while pos < len_ && bytes[pos].is_ascii_digit() && m_digits < 2 {
+                    minutes = minutes
+                        .saturating_mul(10)
+                        .saturating_add((bytes[pos] - b'0') as i64);
+                    pos += 1;
+                    m_digits += 1;
+                }
+
+                let total_sec_i64 = sign.saturating_mul(
+                    hours
+                        .saturating_mul(3600)
+                        .saturating_add(minutes.saturating_mul(60)),
+                );
+                let total_seconds: i32 =
+                    total_sec_i64.clamp(i32::MIN as i64, i32::MAX as i64) as i32;
+                tp.offset = Some(Offset::Fixed(total_seconds));
+            }
+        }
+
+        // Skip any whitespace before IANA name or scale
+        while pos < len_ && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+
+        // Optional IANA timezone name in square brackets, e.g. [America/New_York]
+        // Must be explicitly wrapped in [] so we don't mistake a scale for a zone.
+        if pos < len_ && bytes[pos] == b'[' {
+            pos += 1; // skip '['
+
+            let name_start = pos;
+
+            while pos < len_ && bytes[pos] != b']' {
+                pos += 1;
+            }
+
+            if pos >= len_ {
+                return Err(an_err!(
+                    DtErrKind::InvalidTimezoneOffset,
+                    "unclosed IANA tz name (missing ']')"
+                ));
+            }
+
+            // pos is now at ']'
+            let iana_bytes = &bytes[name_start..pos];
+
+            let iana = core::str::from_utf8(iana_bytes).map_err(|_| {
+                an_err!(
+                    DtErrKind::InvalidBytes,
+                    "IANA tz name contains invalid UTF-8"
+                )
+            })?;
+
+            tp.set_iana_name(Some(iana));
+            pos += 1; // consume ']'
+        }
+
         // Optional trailing scale (e.g. TAI, UTC)
         if pos < len_ {
-            if pos < len_ && !bytes[pos].is_ascii_alphabetic() {
+            while pos < len_ && !bytes[pos].is_ascii_alphabetic() {
                 pos += 1;
             }
             if pos < len_ {

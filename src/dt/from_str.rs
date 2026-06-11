@@ -20,7 +20,7 @@ impl FromStr for Dt {
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, DtErr> {
-        Self::from_str_ccsds(s)
+        Self::from_str_iso(s)
     }
 }
 
@@ -58,8 +58,8 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse)
-    /// - [`Dt::from_str_ccsds`](../struct.Dt.html#method.from_str_ccsds)
-    #[inline]
+    /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
+    #[inline(always)]
     pub fn parse(s: &str) -> Result<Self, DtErr> {
         #[cfg(feature = "parse")]
         {
@@ -67,7 +67,7 @@ impl Dt {
         }
         #[cfg(not(feature = "parse"))]
         {
-            Self::from_str_ccsds(s)
+            Self::from_str_iso(s)
         }
     }
 
@@ -139,9 +139,27 @@ impl Dt {
     /// - Longer than 256 bytes
     /// - Not valid ASCII
     /// - Contains unknown, unsupported, or malformed directives
-    #[inline]
+    #[inline(always)]
     pub fn parse_fmt(strptime_fmt: &str) -> Result<StrPTimeFmt, DtErr> {
         StrPTimeFmt::new(strptime_fmt)
+    }
+
+    /// Generalized ISO / CCSDS ASCII Time Code parser (A or B variant).
+    /// - Parses e.g. **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
+    /// - Only supports ASCII characters.
+    /// - If a time is included then some kind of date-time separator e.g. `T` is
+    ///   required.
+    /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
+    /// - Supported **optional** components:
+    ///     - Time components after a date e.g. `T12:00:00`.
+    ///     - Offset after time components or directly after the date e.g. `+0200` or
+    ///       `2023-01-01+05:00`.
+    ///     - Timezone name, **requires square brackets** and requires `jiff-tz` feature,
+    ///       after time or offset e.g. `T12:00:00 [America/New_York]`.
+    ///     - Library time scale right on the end of the input, e.g. `TAI`.
+    #[inline(always)]
+    pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
+        TimeParts::from_str_iso(input)?.to_dt()
     }
 
     /// Parses an ISO 8601 duration string into a [`Dt`] representing a pure time interval.

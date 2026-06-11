@@ -58,6 +58,33 @@ mod perf_tests {
                 hifi_tow_equiv,
                 deep_tow / hifi_tow_equiv
             );
+
+            // ── Summary lines (deep_time vs hifitime) ─────────────────────────────
+            let ratio_gps = deep_gps / hifi_gps;
+            if ratio_gps < 1.0 {
+                println!(
+                    "→ deep_time is {:.1}% **faster** than hifitime on to_gps() / to_GPST",
+                    (1.0 - ratio_gps) * 100.0
+                );
+            } else {
+                println!(
+                    "→ deep_time is {:.1}% slower than hifitime on to_gps() / to_GPST",
+                    (ratio_gps - 1.0) * 100.0
+                );
+            }
+
+            let ratio_tow = deep_tow / hifi_tow_equiv;
+            if ratio_tow < 1.0 {
+                println!(
+                    "→ deep_time is {:.1}% **faster** than hifitime on to_gps_wk_and_tow()",
+                    (1.0 - ratio_tow) * 100.0
+                );
+            } else {
+                println!(
+                    "→ deep_time is {:.1}% slower than hifitime on to_gps_wk_and_tow()",
+                    (ratio_tow - 1.0) * 100.0
+                );
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -117,6 +144,33 @@ mod perf_tests {
                 hifi_bwd,
                 deep_bwd / hifi_bwd
             );
+
+            // ── Summary lines (deep_time vs hifitime) ─────────────────────────────
+            let ratio_fwd = deep_fwd / hifi_fwd;
+            if ratio_fwd < 1.0 {
+                println!(
+                    "→ deep_time is {:.1}% **faster** than hifitime on TAI → UTC",
+                    (1.0 - ratio_fwd) * 100.0
+                );
+            } else {
+                println!(
+                    "→ deep_time is {:.1}% slower than hifitime on TAI → UTC",
+                    (ratio_fwd - 1.0) * 100.0
+                );
+            }
+
+            let ratio_bwd = deep_bwd / hifi_bwd;
+            if ratio_bwd < 1.0 {
+                println!(
+                    "→ deep_time is {:.1}% **faster** than hifitime on UTC → TAI",
+                    (1.0 - ratio_bwd) * 100.0
+                );
+            } else {
+                println!(
+                    "→ deep_time is {:.1}% slower than hifitime on UTC → TAI",
+                    (ratio_bwd - 1.0) * 100.0
+                );
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -178,6 +232,33 @@ mod perf_tests {
                 hifi_bwd,
                 deep_bwd / hifi_bwd
             );
+
+            // ── Summary lines (deep_time vs hifitime) ─────────────────────────────
+            let ratio_fwd = deep_fwd / hifi_fwd;
+            if ratio_fwd < 1.0 {
+                println!(
+                    "→ deep_time is {:.1}% **faster** than hifitime on TAI → TDB",
+                    (1.0 - ratio_fwd) * 100.0
+                );
+            } else {
+                println!(
+                    "→ deep_time is {:.1}% slower than hifitime on TAI → TDB",
+                    (ratio_fwd - 1.0) * 100.0
+                );
+            }
+
+            let ratio_bwd = deep_bwd / hifi_bwd;
+            if ratio_bwd < 1.0 {
+                println!(
+                    "→ deep_time is {:.1}% **faster** than hifitime on TDB → TAI",
+                    (1.0 - ratio_bwd) * 100.0
+                );
+            } else {
+                println!(
+                    "→ deep_time is {:.1}% slower than hifitime on TDB → TAI",
+                    (ratio_bwd - 1.0) * 100.0
+                );
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -393,7 +474,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // Datetime parse — TimeParts::from_ccsds vs Jiff parse::DateTime
+        // Datetime parse — TimeParts::from_str_iso vs Jiff parse::DateTime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
@@ -411,12 +492,12 @@ mod perf_tests {
             // ── deep_time CCSDS/ISO dedicated parser ───────────────────────
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let x = TimeParts::from_str_ccsds(INPUT).unwrap();
+                let x = TimeParts::from_str_iso(INPUT).unwrap();
             }
             let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== DateTime parse — TimeParts::from_ccsds vs Jiff parse::DateTime ===");
+            println!("\n=== DateTime parse — TimeParts::from_str_iso vs Jiff parse::DateTime ===");
             println!(
                 "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
                 deep_time_ns,
@@ -431,12 +512,12 @@ mod perf_tests {
             let ratio = deep_time_ns / jiff_ns;
             if ratio < 1.0 {
                 println!(
-                    "→ deep_time (from_str_ccsds) is {:.1}% **faster** than Jiff on ISO datetime parsing",
+                    "→ deep_time (from_str_iso) is {:.1}% **faster** than Jiff on ISO datetime parsing",
                     (1.0 - ratio) * 100.0
                 );
             } else {
                 println!(
-                    "→ deep_time (from_str_ccsds) is {:.1}% slower than Jiff on ISO datetime parsing",
+                    "→ deep_time (from_str_iso) is {:.1}% slower than Jiff on ISO datetime parsing",
                     (ratio - 1.0) * 100.0
                 );
             }

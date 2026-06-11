@@ -1,6 +1,6 @@
 mod from_bin_ccsds;
 mod from_str;
-mod from_str_ccsds;
+mod from_str_iso;
 mod to_bin_ccsds;
 mod to_deep_time;
 

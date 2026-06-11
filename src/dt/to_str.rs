@@ -298,6 +298,8 @@ impl Dt {
     /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**.
     ///
     /// - Example: **`"Wed, 16 Apr 2025 14:30:45 GMT"`**.
+    /// - Always outputs in GMT (equivalent to UTC+00:00). Does not apply
+    ///   regional DST rules.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
@@ -577,6 +579,44 @@ impl Dt {
         )
     }
 
+    /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style)
+    /// as a fixed size no-alloc binary string.
+    ///
+    /// - Example: **`"2025-04-16T14:30:45.123+00:00"`**.
+    /// - Uses colon-separated offset (`%:z`) instead of forcing `Z`.
+    /// - Trims trailing zeros in the fractional part.
+    /// - Converts from this [`Dt`]'s current time `scale` to its `target`
+    ///   time scale before producing the result.
+    #[inline(always)]
+    pub fn to_str_lite_iso8601(&self) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+        self.to_str_lite_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
+    }
+
+    /// **RFC 9557** / Temporal format with IANA timezone name in brackets
+    /// as a fixed size no-alloc binary string.
+    ///
+    /// - Example: **`"2020-06-15T14:30:00-04:00[America/New_York]"`**.
+    /// - Automatically trims trailing zeros in the fractional part.
+    /// - Converts from this [`Dt`]'s current time `scale` to its `target`
+    ///   time scale before producing the result.
+    #[inline(always)]
+    pub fn to_str_lite_rfc9557(&self, tz_name: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+        self.to_str_lite_in_tz("%Y-%m-%dT%H:%M:%S%.~f%:z[%Q]", tz_name, Lang::En)
+    }
+
+    /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**
+    /// as a fixed size no-alloc binary string.
+    ///
+    /// - Example: **`"Wed, 16 Apr 2025 14:30:45 GMT"`**.
+    /// - Always outputs in GMT (equivalent to UTC+00:00). Does not apply
+    ///   regional DST rules.
+    /// - Converts from this [`Dt`]'s current time `scale` to its `target`
+    ///   time scale before producing the result.
+    #[inline(always)]
+    pub fn to_str_lite_http(&self, lang: Lang) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+        self.to_str_lite_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
+    }
+
     /// Returns `(is_negative, hours, minutes)`.
     #[inline]
     pub(crate) const fn sec_as_hhmm(seconds: i32) -> (bool, u8, u8) {
@@ -586,6 +626,7 @@ impl Dt {
         (seconds < 0, hours, minutes)
     }
 
+    #[inline(always)]
     pub(crate) fn ymd_with_offset(&self, secs: i32) -> YmdHms {
         if secs != 0 {
             self.add_sec(secs as i128).to_ymd()

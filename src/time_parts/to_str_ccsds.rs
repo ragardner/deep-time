@@ -8,7 +8,7 @@ impl TimeParts {
     ///
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
-    /// - Round-trips with `Dt::from_str_ccsds` / `TimeParts::from_str_ccsds`.
+    /// - Round-trips with `Dt::from_str_iso` / `TimeParts::from_str_iso`.
     #[inline]
     pub fn to_str_ccsds(&self) -> Result<String, DtErr> {
         self.to_dt()?.to_str_ccsds()

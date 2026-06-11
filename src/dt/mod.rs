@@ -74,7 +74,7 @@ use core::fmt;
 /// Some of these require the alloc feature, they're marked with *
 ///
 /// - [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse)*
-/// - [`Dt::from_str_ccsds`](../struct.Dt.html#method.from_str_ccsds)
+/// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
 /// - [`Dt::parse`](../struct.Dt.html#method.parse)
 /// - [`Dt::from_str`](../struct.Dt.html#method.from_str)
 /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)*

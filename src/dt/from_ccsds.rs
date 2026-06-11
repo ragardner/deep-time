@@ -1,14 +1,6 @@
 use crate::{Dt, DtErr, TimeParts};
 
 impl Dt {
-    /// Generalized CCSDS ASCII Time Code parser (A or B variant).
-    /// Handles both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
-    /// All time components after the date portion are optional.
-    #[inline]
-    pub fn from_str_ccsds(input: &str) -> Result<Self, DtErr> {
-        TimeParts::from_str_ccsds(input)?.to_dt()
-    }
-
     /// Parses a **CCSDS CCS (Calendar Segmented Time Code)** binary time code
     /// directly into [`TimeParts`].
     ///
