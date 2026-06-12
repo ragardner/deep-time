@@ -169,6 +169,8 @@ mod tests {
             // Combined units (still works with new logic)
             ("1 hour 30 minutes", 5400000),
             ("2.5e2 seconds", 250000),
+            ("2 wks, 3 days, and 2 mins", 1_468_920_000),
+            ("1:07:54:30", 114_870_000),
         ];
 
         for (input, expected) in cases {

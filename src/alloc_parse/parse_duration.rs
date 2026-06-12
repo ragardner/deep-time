@@ -4,11 +4,12 @@ use crate::{
 use alloc::string::String;
 
 impl Dt {
-    /// Parses duration strings with three clean priority tiers:
+    /// Parses duration strings, tries formats in the following order:
     ///
-    /// 1. Strict ISO 8601
-    /// 2. Common natural-language formats
-    /// 3. Legacy bare number, supports decimals → fractional milliseconds
+    /// 1. Strict ISO 8601 e.g. **`P1DT2H30M`**
+    /// 2. Common natural-language formats e.g. **`2 wks, 3 days, and 2 mins`**
+    /// 3. Media duration format e.g. **`1:07:54:30`**
+    /// 4. Numerical milliseconds, decimals counted as fractional milliseconds
     ///
     /// Returns a [`Dt`].
     pub fn from_str_duration(s: &str, lang: Lang) -> Result<Dt, DtErr> {
@@ -27,6 +28,10 @@ impl Dt {
         }
 
         if let Ok(dur) = natural_duration_to_span(s, lang, true) {
+            return Ok(dur);
+        }
+
+        if let Ok(dur) = Dt::from_str_media_duration(s) {
             return Ok(dur);
         }
 
