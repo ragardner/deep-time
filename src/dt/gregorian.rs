@@ -45,14 +45,14 @@ impl Dt {
     /// - `yr`, `mo`, `day` — calendar date
     /// - `hr` (0–23), `min` (0–59), `sec` (0–60)
     /// - `attos` — fractional second in attoseconds (`0 ≤ attos < 10¹⁸`)
-    /// - `unix_attosec` — total attoseconds since the Unix epoch (`1970-01-01 00:00:00 UTC`)
-    ///   when this instant is expressed in the `new` scale
+    /// - `scale` — time scale that the object is in
     ///
     /// ## Leap-second handling
     ///
-    /// If `new` is one of the scales that use leap seconds (`UTC`, `UtcSpice`, or `UtcHist`)
-    /// **and** the instant falls exactly on a leap second, the returned `sec` will be `60`.
-    /// In every other case `sec` is in the range `0..=59`.
+    /// If the [`Dt`]'s `target` time scale is one of the scales that use leap seconds
+    /// (`UTC`, `UtcSpice`, or `UtcHist`) **and** the instant falls exactly on a leap
+    /// second, (requires the objects current time scale **not** be UTC) the returned
+    /// `sec` will be `60`. In every other case `sec` is in the range `0..=59`.
     ///
     /// The implementation converts internally to TAI before checking leap-second status.
     ///
