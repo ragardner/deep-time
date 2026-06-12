@@ -547,44 +547,6 @@ impl Dt {
         Ok(())
     }
 
-    /// Accepts: `P1Y`, `-P2W`, `PT1.5H`, `P1DT2H30M`, `+P3D`, `p1y`, `P1,5S`, `PT0S`, etc.
-    /// Rejects: anything with whitespace, lone "P"/"-P"/"PT", "P123", "Please wait 5m",
-    ///          "1.5h", "P1Yabc", "P1Y!", or **any string longer than 128 bytes**.
-    pub(crate) fn looks_like_iso(s: &str) -> bool {
-        let len = s.len();
-        if matches!(len, 0 | 1) {
-            return false;
-        }
-        let b = s.as_bytes();
-        let mut i = 0usize;
-        // Optional leading sign
-        if matches!(b[0], b'+' | b'-') {
-            i += 1;
-        }
-        // Must start with P/p after optional sign
-        if !matches!(b[i], b'P' | b'p') {
-            return false;
-        }
-        i += 1;
-        let mut has_digit = false;
-        let mut has_designator = false;
-        while i < len {
-            match b[i] {
-                b'0'..=b'9' => has_digit = true,
-                b'.' | b',' => {} // decimal separators allowed by ISO 8601
-                b'Y' | b'y' | b'M' | b'm' | b'W' | b'w' | b'D' | b'd' | b'T' | b't' | b'H'
-                | b'h' | b'S' | b's' => {
-                    has_designator = true;
-                }
-                _ => return false, // any other character = not ISO
-            }
-
-            i += 1;
-        }
-        // Must contain at least one digit *and* one designator after the initial P
-        has_digit && has_designator
-    }
-
     /// Parses a media-style duration string.
     ///
     /// Accepts formats like:
