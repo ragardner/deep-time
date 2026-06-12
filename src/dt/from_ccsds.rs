@@ -148,9 +148,12 @@ impl Dt {
     /// Convenience wrapper around [`TimeParts::from_ccsds_bin`].
     ///
     /// Dispatches as follows:
-    /// - Code ID `001` → [`from_ccsds_cuc`](Self::from_ccsds_cuc) (CUC – Unsegmented)
-    /// - Code ID `100` → [`from_ccsds_cds`](Self::from_ccsds_cds) (CDS – Day Segmented)
-    /// - Code ID `101` → [`from_ccsds_ccs`](Self::from_ccsds_ccs) (CCS – Calendar Segmented)
+    /// - Code ID `001` → [`from_ccsds_cuc`](Self::from_ccsds_cuc)
+    ///   [`Dt::from_ccsds_cuc`](../struct.Dt.html#method.from_ccsds_cuc) (CUC – Unsegmented)
+    /// - Code ID `100` →
+    ///   [`Dt::from_ccsds_cds`](../struct.Dt.html#method.from_ccsds_cds) (CDS – Day Segmented)
+    /// - Code ID `101` →
+    ///   [`Dt::from_ccsds_ccs`](../struct.Dt.html#method.from_ccsds_ccs) (CCS – Calendar Segmented)
     ///
     /// For stricter control or when the format is known in advance, prefer calling
     /// the specific `from_ccsds_*` function directly.

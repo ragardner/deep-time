@@ -26,7 +26,7 @@ mod format_tests {
         assert_eq!(g.sec(), 60);
         assert_eq!(g.attos(), 123_456_789_000_000_000);
 
-        // Formatting must output "60" correctly
+        // Formatting must output "60"
         let s = leap.to_str_lite("%Y-%m-%d %H:%M:%S.%f", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2016-12-31 23:59:60.123456789000000000");
 

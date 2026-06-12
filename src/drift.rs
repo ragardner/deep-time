@@ -210,7 +210,7 @@ impl Spacetime {
     ///
     /// **For existing weak-field users** (Earth orbit, GNSS, solar-system navigation):
     /// Supply your existing `phi` value and set `characteristic_length_scale = 0.0`.
-    /// The function safely returns 0.0 (the correct value in double precision).
+    /// The function safely returns 0.0 (the value in double precision).
     ///
     /// **For strong-field / future users** (black-hole flybys, neutron stars, direct
     /// gravimeters, or full metric evaluation):

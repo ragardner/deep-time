@@ -378,7 +378,7 @@ impl Dt {
 
     /// High-precision conversion from [`Real`] seconds to total attoseconds (i128).
     /// Uses IEEE 754 bit extraction + exact integer multiplication by 5^18.
-    /// Returns the correctly rounded integer (round-to-nearest, ties away from zero).
+    /// Returns the rounded integer (round-to-nearest, ties away from zero).
     pub const fn sec_f_to_total_attos(sec_f: Real) -> i128 {
         if sec_f == 0.0 {
             return 0;

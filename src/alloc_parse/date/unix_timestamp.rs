@@ -9,7 +9,7 @@ use crate::{
 /// - Any pure-numeric number with a decimal point (not caught as MJD/JD)
 ///
 /// Unit detection is chosen for maximum real-world compatibility and uses
-/// `div_euclid`/`rem_euclid` everywhere for correct negative-timestamp handling.
+/// `div_euclid`/`rem_euclid` everywhere for negative-timestamp handling.
 pub(crate) fn parse_pure_numeric_unix_timestamp(
     trimmed: &str,
     integer_digits: usize,

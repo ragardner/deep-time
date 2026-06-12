@@ -129,7 +129,7 @@ mod time_range_tests {
     // === ExactSizeIterator correctness ===
 
     #[test]
-    fn len_reports_remaining_correctly() {
+    fn len_reports_remaining() {
         let start = ymd(2000, 1, 1);
         let end = ymd(2000, 1, 2);
         let step = hr(6);

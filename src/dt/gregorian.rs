@@ -54,8 +54,7 @@ impl Dt {
     /// **and** the instant falls exactly on a leap second, the returned `sec` will be `60`.
     /// In every other case `sec` is in the range `0..=59`.
     ///
-    /// The implementation converts internally to TAI before checking leap-second status,
-    /// ensuring correct detection regardless of the input scale.
+    /// The implementation converts internally to TAI before checking leap-second status.
     ///
     /// ## See also
     ///

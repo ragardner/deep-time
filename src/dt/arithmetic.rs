@@ -464,7 +464,7 @@ impl Dt {
     /// matching the behavior of the old `f64::round()`.
     ///
     /// - If `unit` is zero, returns `self` unchanged (preserves full precision).
-    /// - Uses Euclidean division internally for correct behavior on negative values.
+    /// - Uses Euclidean division internally for negative values.
     /// - The result is always a multiple of `unit`.
     pub const fn round(&self, unit: Dt) -> Dt {
         if unit.is_zero() {
@@ -758,7 +758,7 @@ impl Dt {
     /// These rules avoid `NaN` entirely while remaining predictable and useful
     /// in simulations, rate calculations, and control code.
     ///
-    /// Negative durations are handled correctly (e.g. `(-5 s) / (2 s) == -2.5`).
+    /// Negative durations are supported (e.g. `(-5 s) / (2 s) == -2.5`).
     ///
     /// This method is `const fn` and can be used in const contexts.
     #[inline]

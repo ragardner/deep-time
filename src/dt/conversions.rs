@@ -188,7 +188,7 @@ impl Dt {
     /// - This function should really only be used if the [`Dt`] is on the TAI
     ///   time scale, or if you really know what you're doing.
     /// - For the normal time scale conversion function see
-    ///   [`Dt::to`](../struct.Dt.html#method.to) which correctly first converts
+    ///   [`Dt::to`](../struct.Dt.html#method.to) which first converts
     ///   to TAI before converting to the target scale.
     pub const fn convert(&self, new: Scale) -> Dt {
         match new {

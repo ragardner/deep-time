@@ -44,7 +44,7 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_ccsds_cuc`]
+    /// - [`Dt::from_ccsds_cuc`](../struct.Dt.html#method.from_ccsds_cuc)
     pub fn to_ccsds_cuc(
         &self,
         n_coarse: u8,
@@ -176,7 +176,7 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_ccsds_cds`](Self::from_ccsds_cds)
+    /// - [`Dt::from_ccsds_cds`](../struct.Dt.html#method.from_ccsds_cds)
     pub fn to_ccsds_cds(
         &self,
         n_day: u8,
@@ -300,7 +300,7 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_ccsds_ccs`](Self::from_ccsds_ccs)
+    /// - [`Dt::from_ccsds_ccs`](../struct.Dt.html#method.from_ccsds_ccs)
     pub fn to_ccsds_ccs(
         &self,
         use_doy: bool,
@@ -388,8 +388,8 @@ impl Dt {
     /// Convenience method that automatically selects the most appropriate
     /// CCSDS binary time code based on this [`Dt`]'s `target` time [`Scale`].
     ///
-    /// - If the `target` [`Scale`] **uses leap seconds** then **ccsds_d is chosen**.
-    /// - Otherwise ccsds_c is chosen.
+    /// - If the `target` [`Scale`] **uses leap seconds** then **ccsds_cds is chosen**.
+    /// - Otherwise ccsds_cuc is chosen.
     #[inline(always)]
     pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         if self.target.uses_leap_seconds() {

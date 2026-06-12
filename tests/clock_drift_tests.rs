@@ -173,7 +173,7 @@ mod tests {
 
     #[test]
     fn spacetime_to_unified_proper_time_rate() {
-        // from_spacetime must correctly compute δ = α²(1 − β²) and delegate to the unified path
+        // from_spacetime must compute δ = α²(1 − β²) and delegate to the unified path
         let spacetime = Spacetime::new(0.9, 0.6, 0.0); // realistic values
         let drift = Drift::from_spacetime(&spacetime);
 

@@ -238,7 +238,7 @@ mod light_time_tests {
 
     /// Edge case: identical states (zero separation) must produce zero correction.
     ///
-    /// This verifies that the implementation correctly handles the degenerate
+    /// This verifies that the implementation handles the degenerate
     /// case of zero geometric distance between transmitter and receiver.
     /// In this situation both the Shapiro delay and the clock-rate correction
     /// are expected to be exactly zero.

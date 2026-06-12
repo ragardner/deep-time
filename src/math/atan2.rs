@@ -12,7 +12,7 @@ const PI_LO: Real = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 /// Computes the four-quadrant arctangent of `y / x` (`atan2(y, x)`).
 ///
 /// Returns the angle in radians between the positive x-axis and the point
-/// `(x, y)`, in the range `[-π, π]`. This function correctly handles all
+/// `(x, y)`, in the range `[-π, π]`. This function handles all
 /// special cases (including signed zeros, infinities, and NaNs) as required
 /// by IEEE 754-2008.
 ///
@@ -49,7 +49,7 @@ const PI_LO: Real = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 /// - Explicit verification of the `PI_LO` correction path
 /// - Fast-path for `x == 1.0`
 ///
-/// All tests pass with bit-exact or correctly-rounded results matching the
+/// All tests pass with bit-exact or rounded results matching the
 /// original `libm` implementation.
 pub const fn atan2(y: Real, x: Real) -> Real {
     if x.is_nan() || y.is_nan() {

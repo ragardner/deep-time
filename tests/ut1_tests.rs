@@ -18,7 +18,7 @@ mod tests {
         let mjd = 56879.0;
         let dut1_expected = -0.3170554;
 
-        // Verify the parser + provider correctly read that row
+        // Verify the parser + provider read that row
         let dut1 = provider
             .eop_offset(mjd)
             .expect("MJD 56879.00 should be in range")
@@ -66,7 +66,7 @@ mod tests {
             .expect("failed to load real EOP file for MJD 60961.00 test");
 
         // 251013 60961.00 I 0.208777 ... I 0.0933562 ...
-        // Our Finals2000A parser correctly extracts DUT1 = 0.0933562
+        // Our Finals2000A parser extracts DUT1 = 0.0933562
         let mjd = 60961.0;
         let dut1_expected = 0.0933562f64;
 

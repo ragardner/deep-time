@@ -253,7 +253,7 @@ mod tests {
             // 4. Very early date (before most explicit transitions) — should still work via first transition / LMT
             ("1700-01-01 12:00:00", "Europe/London", "Pre-1800 LMT era"),
             // 5. A date far in the future on a zone that has Repeating::None
-            //    (tests that we correctly keep the last known offset forever)
+            //    (tests that we keep the last known offset forever)
             (
                 "9999-06-15 12:00:00",
                 "Australia/Eucla",
