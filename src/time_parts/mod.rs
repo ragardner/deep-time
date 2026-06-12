@@ -199,8 +199,7 @@ impl Weekday {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Offset {
     #[default]
-    Utc,
     None,
-    /// Fixed offset from UTC in seconds
+    /// Fixed offset in seconds
     Fixed(i32),
 }

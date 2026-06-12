@@ -18,7 +18,7 @@ impl Dt {
         }
     }
 
-    /// Creates a `Dt` from a `jiff::Timestamp`.
+    /// Creates a [`Dt`] from a [`jiff::Timestamp`].
     ///
     /// This is the inverse of [`Dt::to_jiff_timestamp`].
     #[inline]
@@ -30,7 +30,7 @@ impl Dt {
         )
     }
 
-    /// Converts this `Dt` to a [`jiff::Span`] (seconds + nanoseconds only).
+    /// Converts this [`Dt`] to a [`jiff::Span`] (seconds + nanoseconds only).
     pub fn to_jiff_span(&self) -> Span {
         let total_nanos = self.to_ns();
         let seconds = Dt::i128_to_i64(total_nanos.div_euclid(1_000_000_000));

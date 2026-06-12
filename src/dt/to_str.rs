@@ -146,6 +146,12 @@ impl Dt {
     ///     - Timezone abbreviation (for `%Z`). These **do not** round-trip (the parser
     ///       does not parse them).
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
+    /// - Converts to the provided timezone, if your [`Dt`] is already in
+    ///   the timezone then use the label function instead:
+    ///   [`Dt::to_str_with_tz_label`](../struct.Dt.html#method.to_str_with_tz_label).
+    ///   This is unlikely to be case because when a date with a timezone is parsed
+    ///   the returned [`Dt`] is not in local time. But, label only functions are
+    ///   provided just in case anyway.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     ///
@@ -202,6 +208,12 @@ impl Dt {
     /// **RFC 9557** / Temporal format with IANA timezone name in brackets.
     ///
     /// - Example: **`"2020-06-15T14:30:00-04:00[America/New_York]"`**.
+    /// - Converts to the provided timezone, if your [`Dt`] is already in
+    ///   the timezone then use the label function instead:
+    ///   [`Dt::to_str_with_tz_label`](../struct.Dt.html#method.to_str_with_tz_label).
+    ///   This is unlikely to be case because when a date with a timezone is parsed
+    ///   the returned [`Dt`] is not in local time. But, label only functions are
+    ///   provided just in case anyway.
     /// - Automatically trims trailing zeros in the fractional part.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
@@ -470,6 +482,12 @@ impl Dt {
     ///     - Correct numeric offset (for `%z` / `%:z`).
     ///     - Timezone abbreviation (for `%Z`). These **do not** round-trip.
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
+    /// - Converts to the provided timezone, if your [`Dt`] is already in
+    ///   the timezone then use the label function instead:
+    ///   [`Dt::to_str_lite_with_tz_label`](../struct.Dt.html#method.to_str_lite_with_tz_label).
+    ///   This is unlikely to be case because when a date with a timezone is parsed
+    ///   the returned [`Dt`] is not in local time. But, label only functions are
+    ///   provided just in case anyway.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     ///
@@ -499,6 +517,7 @@ impl Dt {
     ///
     /// - [`Dt::to_str_lite`](../struct.Dt.html#method.to_str_lite)
     /// - [`Dt::to_str_lite_in_offset`](../struct.Dt.html#method.to_str_lite_in_offset)
+    /// - [`Dt::to_str_lite_with_tz_label`](../struct.Dt.html#method.to_str_lite_with_tz_label)
     #[inline(always)]
     pub fn to_str_lite_in_tz(
         &self,
@@ -693,4 +712,103 @@ impl Dt {
 
         Ok((ymd, offset_secs, abbrev))
     }
+}
+
+impl Dt {
+    /// Formats the duration using the common media/video player style
+    /// (e.g. `"0:45"`, `"9:41"`, `"1:23:45"`, `"1:07:54:30"`).
+    #[cfg(feature = "alloc")]
+    #[inline(always)]
+    pub fn to_str_media_duration(&self) -> String {
+        self.to_str_lite_media_duration().to_string()
+    }
+
+    /// Same as [`to_media_duration`](Self::to_media_duration) but returns a
+    /// stack-allocated [`LiteStr`].
+    #[inline(always)]
+    pub fn to_str_lite_media_duration(&self) -> LiteStr<STRFTIME_SIZE> {
+        let (buf, len) = self.format_media_duration();
+        LiteStr::from_bytes(&buf[..len])
+    }
+
+    /// Returns a stack buffer + the number of valid bytes written.
+    fn format_media_duration(&self) -> ([u8; 64], usize) {
+        let mut buf = [0u8; 64];
+        let mut pos = 0;
+
+        if self.is_zero() {
+            buf[0] = b'0';
+            buf[1] = b':';
+            buf[2] = b'0';
+            buf[3] = b'0';
+            return (buf, 4);
+        }
+
+        let negative = self.attos < 0;
+        let total = self.to_sec_rounded().unsigned_abs() as u128;
+
+        if negative {
+            buf[pos] = b'-';
+            pos += 1;
+        }
+
+        let days = total / 86400;
+        let rem = total % 86400;
+        let hours = rem / 3600;
+        let rem = rem % 3600;
+        let mins = rem / 60;
+        let secs = rem % 60;
+
+        if days > 0 {
+            pos += write_u128(&mut buf[pos..], days);
+            buf[pos] = b':';
+            pos += 1;
+            pos += write_u128_padded(&mut buf[pos..], hours);
+            buf[pos] = b':';
+            pos += 1;
+            pos += write_u128_padded(&mut buf[pos..], mins);
+            buf[pos] = b':';
+            pos += 1;
+            pos += write_u128_padded(&mut buf[pos..], secs);
+        } else if hours > 0 {
+            pos += write_u128(&mut buf[pos..], hours);
+            buf[pos] = b':';
+            pos += 1;
+            pos += write_u128_padded(&mut buf[pos..], mins);
+            buf[pos] = b':';
+            pos += 1;
+            pos += write_u128_padded(&mut buf[pos..], secs);
+        } else {
+            pos += write_u128(&mut buf[pos..], mins);
+            buf[pos] = b':';
+            pos += 1;
+            pos += write_u128_padded(&mut buf[pos..], secs);
+        }
+
+        (buf, pos)
+    }
+}
+
+/// Write number with no leading zeros. Returns bytes written.
+fn write_u128(buf: &mut [u8], mut n: u128) -> usize {
+    if n == 0 {
+        buf[0] = b'0';
+        return 1;
+    }
+    let mut i = buf.len();
+    while n > 0 {
+        i -= 1;
+        buf[i] = b'0' + (n % 10) as u8;
+        n /= 10;
+    }
+    let len = buf.len() - i;
+    buf.copy_within(i.., 0);
+    len
+}
+
+/// Write number padded to exactly 2 digits (assumes n < 100).
+fn write_u128_padded(buf: &mut [u8], n: u128) -> usize {
+    buf[0] = b'0' + ((n / 10) % 10) as u8;
+    buf[1] = b'0' + (n % 10) as u8;
+    2
 }

@@ -7,9 +7,17 @@ mod tests {
     #[cfg(feature = "jiff-tz")]
     #[test]
     fn print_stuff() {
-        let x = Dt::now();
-        let y = x.to_ymd();
-        eprintln!("{:?}", y);
+        let x = Dt::from_ymd(1958, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let y = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI).to(Scale::UTC);
+        let offset = (y - x).to_sec();
+        eprintln!("{}", offset);
+        let b = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI).to(Scale::UTC);
+
+        let should_be_1958 = b.add_sec(-offset).to_ymd();
+        assert_eq!(should_be_1958.yr(), 1958);
+        assert_eq!(should_be_1958.mo(), 1);
+        assert_eq!(should_be_1958.day(), 1);
+        assert_eq!(should_be_1958.hr(), 0);
     }
 
     #[cfg(feature = "jiff-tz")]

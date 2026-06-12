@@ -67,6 +67,17 @@ impl Dt {
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const BDT_EPOCH: Self = Self::new(189345633000000000000000000i128, Scale::TAI, Scale::BDT);
 
+    /// CCSDS epoch (used in CCSDS time codes such as CUC).
+    /// - 1958-01-01 00:00:00 TAI.
+    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - -1_325_419_200_000_000_000_000_000_000 attoseconds
+    /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
+    pub const CCSDS_EPOCH: Self = Self::new(
+        -1_325_419_200_000_000_000_000_000_000i128,
+        Scale::TAI,
+        Scale::TAI,
+    );
+
     /// Maximum representable duration.
     pub const MAX: Self = Self::new(i128::MAX, Scale::TAI, Scale::TAI);
 

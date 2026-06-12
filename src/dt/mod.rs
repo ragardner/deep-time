@@ -45,16 +45,20 @@ use core::fmt;
 /// - pub scale: [`Scale`] - the current time scale of the object.
 /// - pub target: [`Scale`] - a target time scale used by many output functions such as
 ///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) and
-///   [`Dt::to_unix`](../struct.Dt.html#method.to_unix).
+///   [`Dt::to_unix`](../struct.Dt.html#method.to_unix). The functions convert to the
+///   `target` time scale before producing an output.
 ///
 /// **Notes:**
 ///
 /// - In theory it supports a range of roughly ±5.39 trillion years but many of the to and
 ///   from functions cap at i64 seconds, which can mean a range of ±292 billion years in practice.
+///   Additionally, when parsing dates with a timezone the Rust library `jiff` is used which has
+///   a limit of `-9999 - 9999` years.
 /// - Implements `Copy` and `Clone`. Optional derives for `serde` and `tsify` are available
 ///   behind the corresponding features.
-/// - A wide range of math is available for this type, but it's not calendar aware, for basic
-///   calendar aware math use the [`YmdHms`] type.
+/// - A wide range of math is available for this type, including basic calendar aware math and,
+///   with the `jiff-tz` feature enabled, timezone and DST aware math. **Behavior greatly
+///   differs between functions.**
 ///
 /// ## Reference epoch and scales
 ///

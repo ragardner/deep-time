@@ -2,7 +2,7 @@
 
 #[cfg(feature = "parse")]
 mod tests {
-    use deep_time::{Dt, Lang};
+    use deep_time::{Dt, Lang, constants::ATTOS_PER_SEC_I128};
 
     fn assert_duration(input: &str, expected_millis: i64) {
         let trimmed = input.trim();
@@ -174,5 +174,68 @@ mod tests {
         for (input, expected) in cases {
             assert_duration(input, expected);
         }
+    }
+
+    #[test]
+    fn test_from_str_media_duration_expected_values() {
+        assert_eq!(Dt::from_str_media_duration("0:45").unwrap().to_sec(), 45);
+        assert_eq!(Dt::from_str_media_duration("9:41").unwrap().to_sec(), 581);
+        assert_eq!(
+            Dt::from_str_media_duration("1:23:45").unwrap().to_sec(),
+            5025
+        );
+        assert_eq!(
+            Dt::from_str_media_duration("1:07:54:30").unwrap().to_sec(),
+            114870
+        );
+        assert_eq!(Dt::from_str_media_duration("0:00").unwrap().to_sec(), 0);
+
+        assert_eq!(Dt::from_str_media_duration("-0:45").unwrap().to_sec(), -45);
+        assert_eq!(
+            Dt::from_str_media_duration("-1:23:45").unwrap().to_sec(),
+            -5025
+        );
+    }
+
+    #[test]
+    fn test_to_str_lite_media_duration_expected_values() {
+        assert_eq!(
+            Dt::span(45 * ATTOS_PER_SEC_I128)
+                .to_str_lite_media_duration()
+                .as_str(),
+            "0:45"
+        );
+        assert_eq!(
+            Dt::span(581 * ATTOS_PER_SEC_I128)
+                .to_str_lite_media_duration()
+                .as_str(),
+            "9:41"
+        );
+        assert_eq!(
+            Dt::span(5025 * ATTOS_PER_SEC_I128)
+                .to_str_lite_media_duration()
+                .as_str(),
+            "1:23:45"
+        );
+        assert_eq!(
+            Dt::span(114870 * ATTOS_PER_SEC_I128)
+                .to_str_lite_media_duration()
+                .as_str(),
+            "1:07:54:30"
+        );
+
+        assert_eq!(
+            Dt::span(-45 * ATTOS_PER_SEC_I128)
+                .to_str_lite_media_duration()
+                .as_str(),
+            "-0:45"
+        );
+        assert_eq!(
+            Dt::span(-5025 * ATTOS_PER_SEC_I128)
+                .to_str_lite_media_duration()
+                .as_str(),
+            "-1:23:45"
+        );
+        assert_eq!(Dt::span(0).to_str_lite_media_duration().as_str(), "0:00");
     }
 }

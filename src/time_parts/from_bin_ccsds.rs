@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, Offset, Scale, TimeParts, an_err};
+use crate::{Dt, DtErr, DtErrKind, Scale, TimeParts, an_err};
 
 impl TimeParts {
     /// Converts days since 1958-01-01 (midnight UTC/TAI) into Gregorian date.
@@ -212,7 +212,6 @@ impl TimeParts {
             sec: second,
             attos: attos,
             scale: Scale::UTC,
-            offset: Some(Offset::Utc),
             ..TimeParts::default()
         };
 
@@ -220,35 +219,52 @@ impl TimeParts {
         Ok(pd)
     }
 
-    /// Parses a CCSDS Unsegmented Time Code (CUC) into [`TimeParts`].
+    /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
+    /// into a [`TimeParts`].
     ///
     /// Implements **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support
-    /// for the extended 2-byte P-field defined in Issue 4.
+    /// for the extended 2-byte P-field.
     ///
-    /// ## P-field
+    /// ## Supported formats (Level 1 only)
     ///
-    /// - Supports both 1-byte and 2-byte P-fields.
+    /// - 1-byte or 2-byte P-field (further extension beyond 2 bytes is rejected).
     /// - Code ID must be `001` (1958-01-01 TAI epoch).
     /// - Coarse time: 1–7 octets total.
     /// - Fractional time: 0–10 octets total.
-    /// - P-fields longer than 2 bytes are rejected.
+    ///
+    /// ## P-field decoding
+    ///
+    /// - **First octet (P1)**:
+    ///   - Bit 7:     Extension flag (1 = second P-field octet follows)
+    ///   - Bits 6-4:  Code ID (must be `001`)
+    ///   - Bits 3-2:  Coarse time octets minus 1 (0–3 → 1–4 octets)
+    ///   - Bits 1-0:  Fractional time octets (0–3)
+    ///
+    /// - **Second octet (P2, when extension flag is set)**:
+    ///   - Bit 7:     Further-extension flag (must be 0; 3+-byte P-fields are rejected)
+    ///   - Bits 6-5:  Additional coarse octets (0–3)
+    ///   - Bits 4-2:  Additional fractional octets (0–7)
+    ///   - Bits 1-0:  Reserved (ignored)
     ///
     /// ## T-field
     ///
-    /// - Coarse time is interpreted as seconds since the 1958 TAI epoch.
-    /// - Fractional time is converted to attoseconds using exact integer scaling
-    ///   (`value / 2^(8·n_frac)`).
+    /// - Coarse time is interpreted as seconds since **1958-01-01 00:00:00 TAI**.
+    /// - Fractional time is converted to attoseconds using exact integer arithmetic
+    ///   (`value × 10¹⁸ / 2^(8·n_frac)`).
     ///
-    /// ## Epoch
+    /// ## Returns
     ///
-    /// 1958-01-01 00:00:00 TAI.
+    /// A [`TimeParts`] with `scale = TAI` and the decoded civil date/time.
     ///
     /// ## Errors
     ///
-    /// Returns an error for empty input, insufficient length, invalid Code ID,
-    /// unsupported further P-field extensions, or malformed T-field data.
-    ///
-    /// The resulting [`TimeParts`] has `scale = TAI`.
+    /// - [`DtErrKind::Incomplete`] if `input` is empty.
+    /// - [`DtErrKind::InvalidItem`] if the Code ID is not `001`.
+    /// - [`DtErrKind::InvalidInput`] if the input is too short to contain the declared
+    ///   extended P-field, or if the "further extension" flag (bit 7 of the second
+    ///   P-field octet) is set.
+    /// - [`DtErrKind::InvalidSyntax`] if the declared coarse + fractional field lengths
+    ///   make the T-field longer than the remaining input bytes.
     pub fn from_ccsds_c(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
@@ -332,47 +348,64 @@ impl TimeParts {
             sec: second,
             attos: frac_attos,
             scale: Scale::TAI,
-            offset: Some(Offset::Utc),
             ..TimeParts::default()
         };
         pd.finish(false)?;
         Ok(pd)
     }
 
-    /// Parses a CCSDS Day Segmented Time Code (CDS) into [`TimeParts`].
+    /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
+    /// into a [`TimeParts`].
     ///
     /// Implements **CCSDS 301.0-B-4 §3.3 (Level 1)**.
     ///
-    /// ## P-field
+    /// ## Supported formats (Level 1 only)
     ///
-    /// - Supports optional 2-byte P-field.
-    /// - Code ID must be `100`.
-    /// - Epoch bit must be `0` (1958-01-01 UTC epoch only).
+    /// - 1-byte or 2-byte P-field.
+    /// - Code ID must be `100` and the Epoch bit must be `0` (1958-01-01 UTC epoch).
     /// - Day count: 2 or 3 bytes.
-    /// - Sub-millisecond resolution: none, 2 bytes (µs), or 4 bytes (2⁻³² of a ms).
+    /// - Milliseconds since midnight: always 4 bytes.
+    /// - Sub-millisecond field (bits 1-0 of P-field):
+    ///   - `00`: no fractional field
+    ///   - `01`: 2 bytes (microseconds within the millisecond, 0–65535)
+    ///   - `10`: 4 bytes (fractional part of the millisecond as 2⁻³²)
+    ///   - `11`: rejected (unsupported)
+    ///
+    /// ## P-field bit layout (first octet)
+    ///
+    /// - Bit 7:     Extension flag (1 = second P-field octet follows)
+    /// - Bits 6-4:  Code ID (must be `100`)
+    /// - Bit 3:     Epoch (must be `0` for Level 1 / 1958 epoch)
+    /// - Bit 2:     Day count size (`0` = 2 bytes, `1` = 3 bytes)
+    /// - Bits 1-0:  Sub-millisecond code (see above)
     ///
     /// ## T-field
     ///
-    /// - Day count is days since 1958-01-01 UTC.
-    /// - Milliseconds since midnight are always 4 bytes.
-    /// - Sub-millisecond field (if present) is converted to attoseconds.
+    /// - Day count is days since **1958-01-01 00:00:00 UTC**.
+    /// - Milliseconds since midnight are always present (4 bytes).
+    /// - Sub-millisecond data (if present) is converted to attoseconds with
+    ///   exact integer scaling.
     ///
-    /// ## Leap Second Handling
+    /// ## Leap-second handling
     ///
-    /// This implementation correctly supports leap seconds. When `millis_of_day`
-    /// represents 23:59:60 (i.e. ≥ 86,400,000 ms), `second` is set to 60 and
-    /// `is_leap_second` is set to `true` in the returned [`TimeParts`].
+    /// Correctly supports leap seconds. When the millisecond-of-day value
+    /// represents 23:59:60 (i.e. `millis_of_day >= 86_400_000`), `sec` is set
+    /// to `60` and `is_leap_second` is effectively indicated via the `sec` field
+    /// in the returned [`TimeParts`].
     ///
-    /// ## Epoch
+    /// ## Returns
     ///
-    /// 1958-01-01 00:00:00 UTC.
+    /// A [`TimeParts`] with `scale = UTC` and the decoded civil date/time.
     ///
     /// ## Errors
     ///
-    /// Returns an error for empty input, wrong Code ID, non-Level-1 epoch,
-    /// unsupported sub-millisecond code, insufficient length, or invalid data.
-    ///
-    /// The resulting [`TimeParts`] has `scale = UTC`.
+    /// - [`DtErrKind::Incomplete`] if `input` is empty.
+    /// - [`DtErrKind::InvalidInput`] if the P-field indicates an extended second
+    ///   octet but the input is too short to contain it.
+    /// - [`DtErrKind::InvalidItem`] if the Code ID is not `100`, the Epoch bit is
+    ///   set (non-Level-1 epoch), or the sub-millisecond code is `0b11`.
+    /// - [`DtErrKind::InvalidSyntax`] if the declared field lengths make the
+    ///   T-field longer than the remaining input bytes.
     pub fn from_ccsds_d(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
@@ -479,28 +512,31 @@ impl TimeParts {
             sec: second,
             attos: frac_attos as u64,
             scale: Scale::UTC,
-            offset: Some(Offset::Utc),
             ..TimeParts::default()
         };
         pd.finish(false)?;
         Ok(pd)
     }
 
-    /// Auto-detects and parses a CCSDS binary time code (CUC, CDS, or CCS).
+    /// Auto-detects and parses a CCSDS binary time code (CUC, CDS, or CCS)
+    /// based on the Code ID in the first P-field byte.
     ///
-    /// Examines the Code ID in the first P-field byte and dispatches to the
-    /// appropriate parser:
-    /// - `001` → [`TimeParts::from_ccsds_c`](../struct.TimeParts.html#method.from_ccsds_c) (CUC)
-    /// - `100` → [`TimeParts::from_ccsds_d`](../struct.TimeParts.html#method.from_ccsds_d) (CDS)
-    /// - `101` → [`TimeParts::from_ccsds_ccs`](../struct.TimeParts.html#method.from_ccsds_ccs)
-    ///   (CCS)
+    /// Examines the Code ID and dispatches to the appropriate parser:
+    /// - `001` → [`from_ccsds_c`](Self::from_ccsds_c) (CUC – Unsegmented Time Code)
+    /// - `100` → [`from_ccsds_d`](Self::from_ccsds_d) (CDS – Day Segmented Time Code)
+    /// - `101` → [`from_ccsds_ccs`](Self::from_ccsds_ccs) (CCS – Calendar Segmented Time Code)
     ///
     /// This is a convenience wrapper. For stricter control or when the format
     /// is known in advance, prefer calling the specific `from_ccsds_*` function directly.
     ///
     /// ## Errors
-    /// Returns an error if the input is empty or the Code ID is not one of the
-    /// three recognized Level 1 values.
+    ///
+    /// - [`DtErrKind::Incomplete`] if `input` is empty.
+    /// - [`DtErrKind::InvalidItem`] if the Code ID is not one of the three
+    ///   recognized Level 1 values (`001`, `100`, or `101`).
+    ///
+    /// The resulting [`TimeParts`] has `scale` set according to the detected format
+    /// (TAI for CUC, UTC for CDS, and format-dependent for CCS).
     pub fn from_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));

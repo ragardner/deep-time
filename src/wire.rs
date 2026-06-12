@@ -280,10 +280,9 @@ impl Offset {
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         match self {
-            Offset::Utc => buf[0] = 0,
-            Offset::None => buf[0] = 1,
+            Offset::None => buf[0] = 0,
             Offset::Fixed(offset) => {
-                buf[0] = 2;
+                buf[0] = 1;
                 buf[1..5].copy_from_slice(&offset.to_le_bytes());
             }
         }
@@ -295,9 +294,8 @@ impl Offset {
             return None;
         }
         match bytes[0] {
-            0 => Some(Offset::Utc),
-            1 => Some(Offset::None),
-            2 => {
+            0 => Some(Offset::None),
+            1 => {
                 let offset = i32::from_le_bytes([bytes[1], bytes[2], bytes[3], bytes[4]]);
                 Some(Offset::Fixed(offset))
             }

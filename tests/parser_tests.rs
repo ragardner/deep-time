@@ -20,7 +20,7 @@ mod tests {
         assert_eq!(parsed.min, 30);
         assert_eq!(parsed.sec, 45);
         assert_eq!(parsed.attos, 0);
-        assert_eq!(parsed.offset, Some(Offset::Utc));
+        assert_eq!(parsed.offset, None);
     }
 
     #[test]

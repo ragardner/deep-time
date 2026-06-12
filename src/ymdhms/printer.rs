@@ -252,133 +252,6 @@ impl YmdHms {
         *pos += len;
     }
 
-    fn write_u32(
-        buf: &mut [u8; STRFTIME_SIZE],
-        pos: &mut usize,
-        mut value: u32,
-        flag: u8,
-        width: Option<u8>,
-        default_pad: u8,
-    ) {
-        let w = width.unwrap_or(2) as usize;
-
-        // ── strftime semantics ─────────────────────────────────────
-        // -  = no padding (minimal width)
-        // 0  = zero-pad on the left
-        // _  = space-pad on the left
-        // (no flag) = use the caller's default_pad (usually '0')
-        let pad_char = match flag {
-            b'0' => b'0',
-            b'_' => b' ',
-            _ => default_pad,
-        };
-        let pad_left = flag != b'-';
-
-        let mut digits = [0u8; 10];
-        let mut i = 0usize;
-
-        if value == 0 {
-            digits[0] = b'0';
-            i = 1;
-        } else {
-            while value > 0 {
-                digits[i] = b'0' + (value % 10) as u8;
-                value /= 10;
-                i += 1;
-            }
-        }
-        let num_digits = i;
-        let pad_len = if pad_left && num_digits < w {
-            w - num_digits
-        } else {
-            0
-        };
-
-        if *pos + num_digits + pad_len > STRFTIME_SIZE {
-            return;
-        }
-
-        if pad_left {
-            for _ in 0..pad_len {
-                buf[*pos] = pad_char;
-                *pos += 1;
-            }
-        }
-
-        for j in (0..num_digits).rev() {
-            buf[*pos] = digits[j];
-            *pos += 1;
-        }
-    }
-
-    fn write_i64(
-        buf: &mut [u8; STRFTIME_SIZE],
-        pos: &mut usize,
-        value: i64,
-        flag: u8,
-        width: Option<u8>,
-        default_pad: u8,
-    ) {
-        let w = width.unwrap_or(4) as usize; // %Y and %G default to 4 digits
-
-        let negative = value < 0;
-        let abs_val = if negative {
-            value.wrapping_neg()
-        } else {
-            value
-        };
-
-        let mut digits = [0u8; 20];
-        let mut i = 0usize;
-
-        let mut v = abs_val;
-        if v == 0 {
-            digits[0] = b'0';
-            i = 1;
-        } else {
-            while v > 0 {
-                digits[i] = b'0' + (v % 10) as u8;
-                v /= 10;
-                i += 1;
-            }
-        }
-
-        let num_digits = i;
-        let pad_char = match flag {
-            b'-' => b' ',
-            b'0' => b'0',
-            b'_' => b' ',
-            _ => default_pad,
-        };
-        let pad_left = flag != b'-';
-        let pad_len = if pad_left && num_digits < w {
-            w - num_digits
-        } else {
-            0
-        };
-
-        if *pos + (if negative { 1 } else { 0 }) + num_digits + pad_len > STRFTIME_SIZE {
-            return;
-        }
-
-        if negative {
-            buf[*pos] = b'-';
-            *pos += 1;
-        }
-
-        if pad_left {
-            for _ in 0..pad_len {
-                buf[*pos] = pad_char;
-                *pos += 1;
-            }
-        }
-
-        for j in (0..num_digits).rev() {
-            buf[*pos] = digits[j];
-            *pos += 1;
-        }
-    }
-
     fn write_fractional(
         buf: &mut [u8; STRFTIME_SIZE],
         pos: &mut usize,
@@ -927,5 +800,132 @@ impl YmdHms {
         Self::write_u32(buf, pos, self.hr as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
         Self::write_u32(buf, pos, self.min as u32, b'0', Some(2), b'0');
+    }
+
+    pub(crate) fn write_u32(
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        mut value: u32,
+        flag: u8,
+        width: Option<u8>,
+        default_pad: u8,
+    ) {
+        let w = width.unwrap_or(2) as usize;
+
+        // ── strftime semantics ─────────────────────────────────────
+        // -  = no padding (minimal width)
+        // 0  = zero-pad on the left
+        // _  = space-pad on the left
+        // (no flag) = use the caller's default_pad (usually '0')
+        let pad_char = match flag {
+            b'0' => b'0',
+            b'_' => b' ',
+            _ => default_pad,
+        };
+        let pad_left = flag != b'-';
+
+        let mut digits = [0u8; 10];
+        let mut i = 0usize;
+
+        if value == 0 {
+            digits[0] = b'0';
+            i = 1;
+        } else {
+            while value > 0 {
+                digits[i] = b'0' + (value % 10) as u8;
+                value /= 10;
+                i += 1;
+            }
+        }
+        let num_digits = i;
+        let pad_len = if pad_left && num_digits < w {
+            w - num_digits
+        } else {
+            0
+        };
+
+        if *pos + num_digits + pad_len > STRFTIME_SIZE {
+            return;
+        }
+
+        if pad_left {
+            for _ in 0..pad_len {
+                buf[*pos] = pad_char;
+                *pos += 1;
+            }
+        }
+
+        for j in (0..num_digits).rev() {
+            buf[*pos] = digits[j];
+            *pos += 1;
+        }
+    }
+
+    pub(crate) fn write_i64(
+        buf: &mut [u8; STRFTIME_SIZE],
+        pos: &mut usize,
+        value: i64,
+        flag: u8,
+        width: Option<u8>,
+        default_pad: u8,
+    ) {
+        let w = width.unwrap_or(4) as usize; // %Y and %G default to 4 digits
+
+        let negative = value < 0;
+        let abs_val = if negative {
+            value.wrapping_neg()
+        } else {
+            value
+        };
+
+        let mut digits = [0u8; 20];
+        let mut i = 0usize;
+
+        let mut v = abs_val;
+        if v == 0 {
+            digits[0] = b'0';
+            i = 1;
+        } else {
+            while v > 0 {
+                digits[i] = b'0' + (v % 10) as u8;
+                v /= 10;
+                i += 1;
+            }
+        }
+
+        let num_digits = i;
+        let pad_char = match flag {
+            b'-' => b' ',
+            b'0' => b'0',
+            b'_' => b' ',
+            _ => default_pad,
+        };
+        let pad_left = flag != b'-';
+        let pad_len = if pad_left && num_digits < w {
+            w - num_digits
+        } else {
+            0
+        };
+
+        if *pos + (if negative { 1 } else { 0 }) + num_digits + pad_len > STRFTIME_SIZE {
+            return;
+        }
+
+        if negative {
+            buf[*pos] = b'-';
+            *pos += 1;
+        }
+
+        if pad_left {
+            for _ in 0..pad_len {
+                buf[*pos] = pad_char;
+                *pos += 1;
+            }
+        }
+
+        for j in (0..num_digits).rev() {
+            buf[*pos] = digits[j];
+            *pos += 1;
+        }
     }
 }

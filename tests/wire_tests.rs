@@ -74,7 +74,7 @@ mod tests {
         dc.sec = 0;
         dc.attos = 0;
         dc.scale = Scale::TAI;
-        dc.offset = Some(Offset::Utc);
+        dc.offset = Some(Offset::Fixed(3600));
 
         assert_roundtrip(
             &dc,
@@ -107,7 +107,7 @@ mod tests {
         }
 
         // Offset
-        let offsets = [Offset::Utc, Offset::None, Offset::Fixed(3600)];
+        let offsets = [Offset::None, Offset::Fixed(3600)];
         for offset in offsets {
             assert_roundtrip(
                 &offset,

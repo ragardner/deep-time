@@ -126,7 +126,7 @@ impl TimeParts {
         match self.offset {
             Some(Offset::Fixed(secs)) => FixedOffset::east_opt(secs)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: {}", secs)),
-            Some(Offset::Utc) | Some(Offset::None) | None => FixedOffset::east_opt(0)
+            Some(Offset::None) | None => FixedOffset::east_opt(0)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: 0")),
         }
     }

@@ -1,6 +1,6 @@
 use crate::{
-    ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, MAX_DATE_STRING_LEN, Mode, Order,
-    OrderFirst, ParseCfg, an_err, classify_date, default_date_parse_options,
+    ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, Lang, MAX_DATE_STRING_LEN, Mode,
+    Order, OrderFirst, ParseCfg, an_err, classify_date, default_date_parse_options,
     generate_ambiguous_day_first_candidates, generate_ambiguous_month_first_candidates,
     generate_ambiguous_year_first_candidates, generate_unambiguous_candidates,
     is_week_date_missing_weekday, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
@@ -16,6 +16,8 @@ impl Dt {
     /// - Requires the `"alloc"` feature.
     /// - The returned [`Dt`] is internally on the TAI time scale. The `attos` field is an [`i128`] attosecond
     ///   count since TAI 2000-01-01 noon. See [`Scale`] for more information.
+    /// - The returned [`Dt`] is **not** in local time, if a timezone is parsed then it's used to find the offset
+    ///   to return non-local instant.
     ///
     /// ## Parameters
     ///
@@ -23,17 +25,21 @@ impl Dt {
     ///   long inputs return an error.
     /// - `opts`: Optional [`ParseCfg`]. Pass `None` to use the defaults.
     ///
-    /// ## Configuration Options (via [`ParseCfg`])
+    /// ## Configuration Options
     ///
-    /// | Field          | Default     | Effect |
-    /// |----------------|-------------|--------|
-    /// | `lang`         | `En`        | Language, scroll down to see currently supported languages |
-    /// | `order`        | `Smart`     | How to resolve ambiguous numeric dates like `01/02/03` |
-    /// | `mode`         | `Auto`      | Special handling for purely numeric inputs |
-    /// | `parse`        | `None`      | If provided, these exact `strftime`-style formats are tried **first** (and exclusively if `mode` is `Explicit`) |
-    /// | `relative`     | `true`      | Enable phrases like "tomorrow", "next Friday", "in 3 days" |
-    /// | `ref_time`     | `None`      | Reference time for relative dates and syslog-style "no-year" dates (uses system time if `std` feature is enabled) |
-    /// | `to_lower`     | `true`      | Automatically lowercase the input, set to `false` only if it's already lowercase |
+    /// These are the fields of the configuration options struct [`ParseCfg`], their types and defaults.
+    ///
+    /// See [`ParseCfg`] for more information.
+    ///
+    /// | Field          | Type and Default     | Effect |
+    /// |----------------|----------------------------------|--------|
+    /// | `lang`         | [`Lang::En`]                     | Language, scroll down to see currently supported languages                                        |
+    /// | `order`        | [`Order::Smart`]                 | How to resolve ambiguous numeric dates like `01/02/03`                                            |
+    /// | `mode`         | [`Mode::Auto`]                   | Special handling for purely numeric inputs                                                        |
+    /// | `parse`        | [`Option<Vec<String>>`] - `None` | An explicit list of formats to try, if the [`Mode`] is Explicit then only these formats are tried |
+    /// | `relative`     | [`bool`] - `true`                | Enable phrases like "tomorrow", "in 3 days", limited support for relative dates                   |
+    /// | `ref_time`     | [`Option<Dt>`] - `None`          | Reference time for relative dates and syslog-style "no-year" dates                                |
+    /// | `to_lower`     | [`bool`] - `true`                | Automatically lowercase the input, **only** set to false if it's already lowercase                |
     ///
     /// ## Purely Numeric Inputs
     ///
@@ -58,7 +64,7 @@ impl Dt {
     /// | 16–18  | `1735689600123456`       | any             | Unix microseconds                       | — |
     /// | 19+    | `1735689600123456789`    | any             | Unix nanoseconds                        | Full precision |
     ///
-    /// **Tip**: Use `Mode::UnixTimestamp` when you know the input is always a Unix timestamp.
+    /// Use `Mode::UnixTimestamp` when you know the input is always a Unix timestamp.
     ///
     /// ## Ambiguous Numeric Dates
     ///
@@ -72,18 +78,27 @@ impl Dt {
     /// - **`Order::Year`**, **`Order::Day`**, or **`Order::Month`** force a
     ///   specific interpretation and bypass the heuristic entirely.
     ///
-    /// This combination of `Smart` + `Auto` mode gives the best real-world parsing
-    /// success rate for mixed data sources.
+    /// ## Supported Formats
     ///
-    /// ## Other Supported Formats
+    /// The main part of the parser basically works by using aho-corasick with day names, month names, and other things to
+    /// tokenize an input and then automatically generate candidate formats to try on it. Due to this it's difficult to
+    /// say the number of supported formats, but it's probably in the thousands.
+    ///
+    /// Separators generally don't matter, they could be spaces, slashes, whatever.
+    ///
+    /// Generally speaking the date part must come first, and stuff like time components, offsets and iana timezone names
+    /// must come afterwards.
     ///
     /// - **ISO 8601** and variants: `2024-03-15`, `2024-03-15T14:30:00Z`, `2024-03-15T14:30:00+01:00[Europe/Paris]`
     /// - **Named dates** (in supported languages): `15 March 2024`, `15 mars 2024`, `15. März 2024`, `15 de marzo de 2024`
     /// - **Week dates**: `2024-W15`, `2024-W15-3`, `2024W153` (missing weekday defaults to Monday)
     /// - **Syslog-style** (no year): `Mar  5 10:23:45` (year inferred from `ref_time`)
-    /// - **Relative expressions**: `tomorrow`, `next Friday at 09:00`, `in 3 days`, `2 weeks ago`
+    /// - **Relative expressions**: `tomorrow`, `in 3 days`, `2 weeks ago`
     /// - **12-hour time**: `2:30 PM`, `14:30:45.123`
-    /// - **Offsets and timezones**: `+0100`, `-05:30`, `Z`, IANA names in brackets
+    /// - **Offsets and timezones**: `+0100`, `-05:30`, `Z`, IANA timezone names (with the `jiff-tz feature enabled`)
+    /// - **Library time scales**: `TAI`, `TT`, etc. are detected and parsed, must come after the date part of the input.
+    ///
+    /// Note that relative date support is quite limited and phrases such as `"next friday at 9am"` will not parse.
     ///
     /// ## Examples
     ///
@@ -123,20 +138,35 @@ impl Dt {
     /// ## Notes
     ///
     /// - The `Smart` + `Auto` combination gives the best real-world success rate for mixed data.
-    /// - All successfully parsed [`Dt`] values are stored with attosecond precision on the internal TAI timescale.
-    /// - For maximum reproducibility in production code, prefer `ParseCfg` with `parse: Some(...)` and `mode: Explicit`.
-    /// - Timezone handling (IANA names and fixed offsets) is fully supported.
-    ///
-    /// See also: [`ParseCfg`], [`Order`], [`Mode`], [`Lang`], [`Dt`],
-    /// [`Dt::str_to_attos`], [`Dt::str_to_ms`], [`Dt::str_to_unix_ms`].
+    /// - All successfully parsed [`Dt`] values are stored with attosecond precision on the internal
+    ///   TAI timescale.
+    /// - Timezone handling (IANA names and fixed offsets) is fully supported when the `jiff-tz` feature
+    ///   is enabled.
     ///
     /// ## Supported Languages:
     ///
+    /// Language support here basically means supporting abbreviated and full day and month names.
+    /// Non-Ascii types of numeric characters are also supported such as full width digits.
+    ///
+    /// Some day/month names in non-English languages are not supported due to clashes, any such missing
+    /// support is noted below.
+    ///
     /// - En
     /// - De
+    ///     - Won't parse "t" as short form for day.
     /// - Es
+    ///     - Won't parse "mar" as tuesday, will instead parse as march.
     /// - Fr
+    ///     - Won't parse "mar" as tuesday, will instead parse as march.
     ///
+    /// ## See also
+    ///
+    /// - [`ParseCfg`]
+    /// - [`Order`]
+    /// - [`Mode`]
+    /// - [`Lang`]
+    /// - [`Dt`]
+    /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
     pub fn from_str_parse(s: &str, opts: &Option<ParseCfg>) -> Result<Dt, DtErr> {
         let opts: &ParseCfg = opts
             .as_ref()
@@ -148,7 +178,7 @@ impl Dt {
             return Err(an_err!(DtErrKind::InvalidInput, "too long: {}", s));
         }
 
-        let lang = opts.lang;
+        let lang: Lang = opts.lang;
         let ref_time = &opts.ref_time;
 
         let lowered: Cow<str> = if opts.to_lower {

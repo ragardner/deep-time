@@ -4,12 +4,11 @@ use alloc::string::String;
 impl Dt {
     /// Returns this instant as a **CCSDS ASCII Time Code** (calendar variant A).
     ///
-    /// Example: `"2025-04-17T14:30:45.123456789Z"`
-    ///
+    /// - Example: **`"2025-04-17T14:30:45.123456789Z"`**
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
-    /// - **Perfect round-trip** with `Dt::from_str_iso` / `TimeParts::from_str_iso`.
-    #[inline]
+    /// - Round-trip with [`Dt::from_str_iso`] / [`TimeParts::from_str_iso`].
+    #[inline(always)]
     pub fn to_str_ccsds(&self) -> Result<String, DtErr> {
         self.to_str_ccsds_nf(18)
     }
@@ -23,8 +22,8 @@ impl Dt {
 
     /// Returns this instant as a **CCSDS ASCII Time Code B** (day-of-year variant).
     ///
-    /// Example: `"2025-107T14:30:45.123456789Z"`
-    #[inline]
+    /// Example: **`"2025-107T14:30:45.123456789Z"`**
+    #[inline(always)]
     pub fn to_ccsds_doy_str(&self) -> Result<String, DtErr> {
         self.to_ccsds_doy_str_nf(18)
     }

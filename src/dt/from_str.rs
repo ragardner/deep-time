@@ -1,6 +1,6 @@
 use crate::{
-    Dt, DtErr, DtErrKind, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK, SEC_PER_YEAR, StrPTimeFmt,
-    TimeParts, an_err,
+    ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK,
+    SEC_PER_YEAR, StrPTimeFmt, TimeParts, an_err,
 };
 use core::str::FromStr;
 
@@ -71,20 +71,20 @@ impl Dt {
         }
     }
 
-    /// High-level parser equivalent to C `strptime` (and Python `strptime`).
+    /// Parser equivalent to `strptime` with a provided format string.
     ///
-    /// Parses the input string `s` according to the supplied format string `fmt`
-    /// and returns a [`Dt`] directly. This is a convenience wrapper around
-    /// [`TimeParts::from_str`](../struct.TimeParts.html#method.from_str)
-    /// followed by [`TimeParts::to_dt`](../struct.TimeParts.html#method.to_dt).
+    /// The returned [`Dt`] will be on the `TAI` time scale, converted from whatever
+    /// optional time scale (`%L`) was provided in the input. If no time scale was
+    /// provided then it's converted from `UTC` -> `TAI`.
     ///
-    /// It supports the same set of `%` directives as the low-level parser, pretty
-    /// much the same as jiff.
+    /// The result is that the [`Dt`]'s `scale` field will be `TAI` and its `target`
+    /// field will be whatever time scale it was converted from (`UTC` if no time
+    /// scale was in the input).
     ///
     /// ## Parameters
     ///
-    /// - `s`: The date/time string to parse.
-    /// - `fmt`: The format string containing `%` directives (must be valid ASCII).
+    /// - `fmt`: The format string containing `%` directives.
+    /// - `input`: The string to parse.
     /// - `inp_can_end_before_fmt`: If `true`, the input may end before the format
     ///   string is fully consumed (extra format specifiers are ignored).
     /// - `fmt_can_end_before_inp`: If `true`, the format may end before the input
@@ -92,15 +92,159 @@ impl Dt {
     /// - `allow_partial_date`: If `true`, a missing month/day will be defaulted
     ///   to `1` instead of returning an [`Incomplete`] error.
     ///
+    /// ## Supported Directives
+    ///
+    /// The format string supports literal characters and the following `%` directives.
+    /// Literal non-whitespace characters must match the input exactly.
+    /// Whitespace in the format matches (and consumes) any leading ASCII whitespace in the input.
+    ///
+    /// Many directives accept **format extensions** right after `%`:
+    /// - **Flags**: `-` (no pad), `_` (space pad), `0` (zero pad), `^`/`#` (treated as default)
+    /// - **Width**: 1–3 digits (affects numeric field width / padding expectations)
+    /// - **Colons** (only for `%z`): `:`, `::`, `:::` to control offset format
+    ///
+    /// ### Year / Century / Unbounded
+    /// - `%Y` — Four-digit year (e.g. `2024`). Supports sign, flags, and width.
+    /// - `%y` — Two-digit year (`00`–`99`; `00`–`68` → 2000+, `69`–`99` → 1900s).
+    /// - `%C` — Century (`00`–`99`).
+    /// - `%G` — Four-digit ISO week-based year.
+    /// - `%g` — Two-digit ISO week-based year (same century rule as `%y`).
+    /// - `%*` — **Unbounded year** (arbitrary length, supports negative years). *Library extension.*
+    ///
+    /// ### Month
+    /// - `%m` — Month number `01`–`12`.
+    /// - `%B` — Full English month name (e.g. `January`).
+    /// - `%b`, `%h` — Abbreviated English month name (3 letters, e.g. `Jan`).
+    ///
+    /// ### Day
+    /// - `%d`, `%e` — Day of month `01`–`31` (`%e` allows space padding).
+    /// - `%j` — Day of year `001`–`366`.
+    ///
+    /// ### Time of day
+    /// - `%H`, `%k` — Hour `00`–`23` (24-hour clock; `%k` allows space padding).
+    /// - `%I`, `%l` — Hour `01`–`12` (12-hour clock).
+    /// - `%M` — Minute `00`–`59`.
+    /// - `%S` — Second `00`–`60` (leap second allowed).
+    /// - `%f`, `%N` — Fractional seconds (up to 18 digits = attoseconds).
+    ///   Width controls precision (`%3f` = ms, `%6N` = µs, `%9f` = ns, etc.).
+    ///   Both accept an optional leading `.` in the input.
+    /// - `%.f`, `%.N`, `%.3f`, `%.6N`, ... — Same fractional parsing, but the
+    ///   dot before the fraction is **optional** in the input (consumes literal `.` if present).
+    /// - `%P`, `%p` — `AM`/`PM` indicator (case-insensitive).
+    ///
+    /// ### Weekday / Week number
+    /// - `%A` — Full English weekday name (e.g. `Monday`).
+    /// - `%a` — Abbreviated English weekday name (3 letters, e.g. `Mon`).
+    /// - `%u` — Weekday number Monday=`1` … Sunday=`7`.
+    /// - `%w` — Weekday number Sunday=`0` … Saturday=`6`.
+    /// - `%U` — Week number (Sunday-first week), `00`–`53`.
+    /// - `%W` — Week number (Monday-first week), `00`–`53`.
+    /// - `%V` — ISO 8601 week number `01`–`53`.
+    ///
+    /// ### Timezone, Offset & Scale
+    /// - `%z` — Timezone offset. Colon count selects format:
+    ///   - `%z`   → `±HH[MM[SS]]` (minutes/seconds optional)
+    ///   - `%:z`  → `±HH:MM` (minutes required)
+    ///   - `%::z` → `±HH:MM:SS` (seconds optional)
+    ///   - `%:::z` → `±HH:MM:SS` (more flexible)
+    /// - `%Q` — IANA timezone name (e.g. `America/New_York`) **or** numeric offset
+    ///   (if input starts with `+`/`-`). *Library extension.*
+    /// - `%L` — Time scale abbreviation (e.g. `TAI`, `UTC`, `GPS`). See [`Scale`].
+    ///   *Library extension.*
+    ///
+    /// ### Shortcuts (compound directives)
+    /// - `%F` — Equivalent to `%Y-%m-%d` (ISO date).
+    /// - `%D` — Equivalent to `%m/%d/%y` (US date).
+    /// - `%T` — Equivalent to `%H:%M:%S`.
+    /// - `%R` — Equivalent to `%H:%M`.
+    ///
+    /// ### Other
+    /// - `%%` — Literal `%` character.
+    /// - `%s` — Unix timestamp (seconds since epoch; up to 19 digits, can be negative).
+    /// - `%n`, `%t` — Any whitespace (consumes it from input).
+    ///
+    /// ### Unsupported / Unknown
+    /// - `%c`, `%r`, `%x`, `%X`, `%Z` → [`DtErrKind::UnsupportedItem`]
+    /// - Any other unknown directive character → [`DtErrKind::UnknownItem`]
+    ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] for:
-    /// - Parse failures (`InvalidFormat`, `OutOfRange`, `UnknownItem`, etc.)
-    /// - Incomplete data when `allow_partial_date` is `false`
-    /// - Trailing characters (when `fmt_can_end_before_inp` is `false`)
+    /// Returns a [`DtErr`] if either the strptime-style parser or the subsequent
+    /// conversion from [`TimeParts`] to [`Dt`] fails.
     ///
-    /// See [`TimeParts::from_str`] for the complete list of supported directives
-    /// and detailed parsing semantics.
+    /// ### Format string errors
+    ///
+    /// - [`DtErrKind::TruncatedDirective`] — The format string ended immediately
+    ///   after a `%` or after a `.` in a fractional directive (e.g. `%.`).
+    /// - [`DtErrKind::UnknownItem`] — Unknown `%` directive character.
+    /// - [`DtErrKind::UnsupportedItem`] — Known but unsupported directive
+    ///   (e.g. `%c`, `%r`, `%x`, `%X`, `%Z`).
+    /// - [`DtErrKind::BadFractional`] — Malformed fractional directive
+    ///   (e.g. `%.x` where `x` is not `f` or `N`).
+    ///
+    /// ### Input parsing errors
+    ///
+    /// - [`DtErrKind::UnexpectedInputEnd`] — Input ended before a required value
+    ///   could be parsed.
+    /// - `Expected*` variants:
+    ///   - [`DtErrKind::ExpectedYear`]
+    ///   - [`DtErrKind::ExpectedMonth`]
+    ///   - [`DtErrKind::ExpectedDay`]
+    ///   - [`DtErrKind::ExpectedDayOfYear`]
+    ///   - [`DtErrKind::ExpectedHour`]
+    ///   - [`DtErrKind::ExpectedMinute`]
+    ///   - [`DtErrKind::ExpectedSecond`]
+    ///   - [`DtErrKind::ExpectedFractionalSeconds`]
+    ///   - [`DtErrKind::ExpectedTimestamp`]
+    ///   - [`DtErrKind::ExpectedWeekNumber`]
+    ///   - [`DtErrKind::ExpectedWeekdayNumber`]
+    /// - [`DtErrKind::MismatchedLiteral`] — A literal character from the format
+    ///   string did not match the input.
+    /// - [`DtErrKind::OutOfRange`] — A numeric value was parsed but is outside
+    ///   the valid range for that component (e.g. month 13, hour 25, day 32).
+    /// - [`DtErrKind::InvalidName`] — Unrecognized month name, weekday name,
+    ///   or `am`/`pm` value.
+    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid or malformed timezone
+    ///   offset / IANA name.
+    /// - [`DtErrKind::MustStartWith`] — Timezone offset did not start with
+    ///   `+` or `-`.
+    ///
+    /// ### Post-processing / validation errors
+    ///
+    /// - [`DtErrKind::Incomplete`] — Required date components (month/day) were
+    ///   missing and `allow_partial_date` was `false`.
+    /// - [`DtErrKind::TrailingCharacters`] — The input contained trailing
+    ///   characters after parsing and `fmt_can_end_before_inp` was `false`.
+    ///
+    /// ### Conversion to [`Dt`] errors
+    ///
+    /// These errors can occur *after* successful parsing, inside
+    /// [`TimeParts::to_dt`], when constructing the final [`Dt`]:
+    ///
+    /// - [`DtErrKind::InvalidInput`] — Invalid YMD date, or unable to construct
+    ///   a Julian date from the parsed components (e.g. conflicting or
+    ///   insufficient fields).
+    /// - [`DtErrKind::OutOfRange`] — Day-of-year out of range for the year,
+    ///   ISO week 53 does not exist in the target year, week number > 53,
+    ///   or hour outside `1..=12` when an AM/PM indicator was also parsed.
+    /// - [`DtErrKind::InvalidItem`] — ISO week 53 was requested for a year that
+    ///   does not contain 53 ISO weeks.
+    /// - [`DtErrKind::Incomplete`] — No year (neither `%Y`/`%y` nor `%G`/`%g`)
+    ///   was present in the input at all.
+    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid IANA timezone name
+    ///   (only possible when the `jiff-tz` feature is enabled).
+    /// - [`DtErrKind::InvalidNumber`] — Internal timestamp conversion error
+    ///   (rare; only occurs with the `jiff-tz` feature).
+    /// - [`DtErrKind::InvalidBytes`] — A non-UTC IANA timezone name was used
+    ///   but the `jiff-tz` feature is not enabled.
+    ///
+    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may
+    /// appear in the future. You can match on the variants you care about and
+    /// use a wildcard arm for the rest.
+    ///
+    /// The concrete error kind is available via [`DtErr::kind()`] (or by
+    /// iterating [`DtErr::trace()`] if the error was chained with context
+    /// higher up the call stack).
     #[inline(always)]
     pub fn from_str(
         s: &str,
@@ -406,7 +550,7 @@ impl Dt {
     /// Accepts: `P1Y`, `-P2W`, `PT1.5H`, `P1DT2H30M`, `+P3D`, `p1y`, `P1,5S`, `PT0S`, etc.
     /// Rejects: anything with whitespace, lone "P"/"-P"/"PT", "P123", "Please wait 5m",
     ///          "1.5h", "P1Yabc", "P1Y!", or **any string longer than 128 bytes**.
-    pub fn looks_like_iso(s: &str) -> bool {
+    pub(crate) fn looks_like_iso(s: &str) -> bool {
         let len = s.len();
         if matches!(len, 0 | 1) {
             return false;
@@ -439,5 +583,122 @@ impl Dt {
         }
         // Must contain at least one digit *and* one designator after the initial P
         has_digit && has_designator
+    }
+
+    /// Parses a media-style duration string.
+    ///
+    /// Accepts formats like:
+    /// - `"0:45"`, `"9:41"`
+    /// - `"1:23:45"`
+    /// - `"1:07:54:30"`
+    /// - `"-1:23:45"`
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_str_media_duration`]
+    /// - [`Dt::to_str_lite_media_duration`]
+    pub fn from_str_media_duration(input: &str) -> Result<Dt, DtErr> {
+        let bytes = input.as_bytes();
+        let len = bytes.len();
+        let mut pos: usize = 0;
+
+        // Skip leading whitespace
+        while pos < len && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+
+        if pos == len {
+            return Err(an_err!(
+                DtErrKind::InvalidBytes,
+                "empty media duration string"
+            ));
+        }
+
+        // Optional single leading minus
+        let negative = if bytes[pos] == b'-' {
+            pos += 1;
+            if pos == len {
+                return Err(an_err!(DtErrKind::InvalidBytes, "invalid media duration"));
+            }
+            true
+        } else {
+            false
+        };
+
+        // Parse up to 4 numeric components separated by ':'
+        let mut components: [i128; 4] = [0; 4];
+        let mut count: usize = 0;
+
+        loop {
+            if count >= 4 {
+                break;
+            }
+
+            // Parse one number
+            if pos >= len || !bytes[pos].is_ascii_digit() {
+                return Err(an_err!(
+                    DtErrKind::InvalidNumber,
+                    "expected digit in media duration component"
+                ));
+            }
+
+            let mut value: i128 = 0;
+            while pos < len && bytes[pos].is_ascii_digit() {
+                value = value
+                    .saturating_mul(10)
+                    .saturating_add((bytes[pos] - b'0') as i128);
+                pos += 1;
+            }
+
+            components[count] = value;
+            count += 1;
+
+            // Check for more components
+            if pos >= len || bytes[pos] != b':' {
+                break;
+            }
+
+            pos += 1; // consume ':'
+
+            // Reject trailing ':' with no number after it
+            if pos >= len || !bytes[pos].is_ascii_digit() {
+                return Err(an_err!(
+                    DtErrKind::InvalidBytes,
+                    "expected number after ':' in media duration"
+                ));
+            }
+        }
+
+        if count < 2 || count > 4 {
+            return Err(an_err!(
+                DtErrKind::InvalidBytes,
+                "media duration must contain 2 to 4 colon-separated components"
+            ));
+        }
+
+        // Skip trailing whitespace
+        while pos < len && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+
+        if pos != len {
+            return Err(an_err!(
+                DtErrKind::InvalidBytes,
+                "trailing characters in media duration string"
+            ));
+        }
+
+        // Convert to total seconds
+        let total_secs: i128 = match count {
+            2 => components[0] * 60 + components[1], // M:SS
+            3 => components[0] * 3600 + components[1] * 60 + components[2], // H:MM:SS
+            4 => components[0] * 86400 + components[1] * 3600 + components[2] * 60 + components[3], // D:H:MM:SS
+            _ => unreachable!(),
+        };
+
+        let total_secs = if negative { -total_secs } else { total_secs };
+        let attos = total_secs.saturating_mul(ATTOS_PER_SEC_I128);
+
+        Ok(Dt::span(attos))
     }
 }

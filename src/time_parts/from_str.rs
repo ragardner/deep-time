@@ -1,10 +1,7 @@
-use crate::{DtErr, DtErrKind, Offset, Parser, TimeParts, an_err};
+use crate::{DtErr, DtErrKind, Parser, TimeParts, an_err};
 
 impl TimeParts {
-    /// Low-level parser equivalent to `strptime` with a provided format string.
-    ///
-    /// This is the core entry point for format-string based parsing in the library.
-    /// It supports a large range of `%` directives (similar to `jiff` / `chrono`).
+    /// Parser equivalent to `strptime` with a provided format string.
     ///
     /// The parser populates a [`TimeParts`] struct. After successful parsing,
     /// [`Self::finish`] is called automatically to apply defaults and validation.
@@ -19,6 +16,81 @@ impl TimeParts {
     ///   is fully consumed (trailing characters in the input are allowed).
     /// - `allow_partial_date`: If `true`, a missing month/day will be defaulted
     ///   to `1` instead of returning an [`Incomplete`] error.
+    ///
+    /// ## Supported Directives
+    ///
+    /// The format string supports literal characters and the following `%` directives.
+    /// Literal non-whitespace characters must match the input exactly.
+    /// Whitespace in the format matches (and consumes) any leading ASCII whitespace in the input.
+    ///
+    /// Many directives accept **format extensions** right after `%`:
+    /// - **Flags**: `-` (no pad), `_` (space pad), `0` (zero pad), `^`/`#` (treated as default)
+    /// - **Width**: 1–3 digits (affects numeric field width / padding expectations)
+    /// - **Colons** (only for `%z`): `:`, `::`, `:::` to control offset format
+    ///
+    /// ### Year / Century / Unbounded
+    /// - `%Y` — Four-digit year (e.g. `2024`). Supports sign, flags, and width.
+    /// - `%y` — Two-digit year (`00`–`99`; `00`–`68` → 2000+, `69`–`99` → 1900s).
+    /// - `%C` — Century (`00`–`99`).
+    /// - `%G` — Four-digit ISO week-based year.
+    /// - `%g` — Two-digit ISO week-based year (same century rule as `%y`).
+    /// - `%*` — **Unbounded year** (arbitrary length, supports negative years). *Library extension.*
+    ///
+    /// ### Month
+    /// - `%m` — Month number `01`–`12`.
+    /// - `%B` — Full English month name (e.g. `January`).
+    /// - `%b`, `%h` — Abbreviated English month name (3 letters, e.g. `Jan`).
+    ///
+    /// ### Day
+    /// - `%d`, `%e` — Day of month `01`–`31` (`%e` allows space padding).
+    /// - `%j` — Day of year `001`–`366`.
+    ///
+    /// ### Time of day
+    /// - `%H`, `%k` — Hour `00`–`23` (24-hour clock; `%k` allows space padding).
+    /// - `%I`, `%l` — Hour `01`–`12` (12-hour clock).
+    /// - `%M` — Minute `00`–`59`.
+    /// - `%S` — Second `00`–`60` (leap second allowed).
+    /// - `%f`, `%N` — Fractional seconds (up to 18 digits = attoseconds).
+    ///   Width controls precision (`%3f` = ms, `%6N` = µs, `%9f` = ns, etc.).
+    ///   Both accept an optional leading `.` in the input.
+    /// - `%.f`, `%.N`, `%.3f`, `%.6N`, ... — Same fractional parsing, but the
+    ///   dot before the fraction is **optional** in the input (consumes literal `.` if present).
+    /// - `%P`, `%p` — `AM`/`PM` indicator (case-insensitive).
+    ///
+    /// ### Weekday / Week number
+    /// - `%A` — Full English weekday name (e.g. `Monday`).
+    /// - `%a` — Abbreviated English weekday name (3 letters, e.g. `Mon`).
+    /// - `%u` — Weekday number Monday=`1` … Sunday=`7`.
+    /// - `%w` — Weekday number Sunday=`0` … Saturday=`6`.
+    /// - `%U` — Week number (Sunday-first week), `00`–`53`.
+    /// - `%W` — Week number (Monday-first week), `00`–`53`.
+    /// - `%V` — ISO 8601 week number `01`–`53`.
+    ///
+    /// ### Timezone, Offset & Scale
+    /// - `%z` — Timezone offset. Colon count selects format:
+    ///   - `%z`   → `±HH[MM[SS]]` (minutes/seconds optional)
+    ///   - `%:z`  → `±HH:MM` (minutes required)
+    ///   - `%::z` → `±HH:MM:SS` (seconds optional)
+    ///   - `%:::z` → `±HH:MM:SS` (more flexible)
+    /// - `%Q` — IANA timezone name (e.g. `America/New_York`) **or** numeric offset
+    ///   (if input starts with `+`/`-`). *Library extension.*
+    /// - `%L` — Time scale abbreviation (e.g. `TAI`, `UTC`, `GPS`). See [`Scale`].
+    ///   *Library extension.*
+    ///
+    /// ### Shortcuts (compound directives)
+    /// - `%F` — Equivalent to `%Y-%m-%d` (ISO date).
+    /// - `%D` — Equivalent to `%m/%d/%y` (US date).
+    /// - `%T` — Equivalent to `%H:%M:%S`.
+    /// - `%R` — Equivalent to `%H:%M`.
+    ///
+    /// ### Other
+    /// - `%%` — Literal `%` character.
+    /// - `%s` — Unix timestamp (seconds since epoch; up to 19 digits, can be negative).
+    /// - `%n`, `%t` — Any whitespace (consumes it from input).
+    ///
+    /// ### Unsupported / Unknown
+    /// - `%c`, `%r`, `%x`, `%X`, `%Z` → [`DtErrKind::UnsupportedItem`]
+    /// - Any other unknown directive character → [`DtErrKind::UnknownItem`]
     ///
     /// ## Errors
     ///
@@ -109,11 +181,7 @@ impl TimeParts {
     ///
     /// ## Behavior
     ///
-    /// - If a Unix timestamp is present, it takes precedence and the time
-    ///   components are defaulted to `00:00:00.000000000` with a UTC offset.
-    /// - Otherwise:
-    ///   - Hour/minute/second/attoseconds/offset are defaulted to `0` / `Utc`.
-    ///   - Leap seconds (`second == 60`) are detected and flagged.
+    /// - If a Unix timestamp is present then no action is taken.
     /// - Date completeness is checked in this priority order:
     ///   1. Calendar date (`year`, `month`, `day`)
     ///   2. Ordinal date (`year`, `day_of_year`)
@@ -123,12 +191,8 @@ impl TimeParts {
     /// ## Errors
     ///
     /// - [`DtErrKind::Incomplete`] if no valid date representation is present.
-    /// - [`DtErrKind::OutOfRange`] for seconds outside `0..=60`.
     #[inline(always)]
-    pub(crate) fn finish(&mut self, allow_partial_date: bool) -> Result<(), DtErr> {
-        if self.offset.is_none() {
-            self.offset = Some(Offset::Utc);
-        }
+    pub fn finish(&mut self, allow_partial_date: bool) -> Result<(), DtErr> {
         if self.unix_timestamp_seconds.is_none() {
             let has_calendar_date = if allow_partial_date {
                 if self.day.is_none() {
