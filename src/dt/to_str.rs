@@ -1,7 +1,7 @@
 use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRFTIME_SIZE, YmdHms, an_err};
 
 #[cfg(feature = "alloc")]
-use {crate::ATTOS_PER_SEC, alloc::string::String};
+use {crate::ATTOS_PER_SEC_U128, alloc::string::String};
 
 #[cfg(not(feature = "jiff-tz"))]
 use crate::tz::UTC_ALIASES;
@@ -28,16 +28,15 @@ impl Dt {
         }
         s.push_str("PT");
 
-        const A_PER_S: u128 = ATTOS_PER_SEC as u128;
-        const A_PER_M: u128 = A_PER_S * 60;
+        const A_PER_M: u128 = ATTOS_PER_SEC_U128 * 60;
         const A_PER_H: u128 = A_PER_M * 60;
 
         let hours = attos / A_PER_H;
         attos %= A_PER_H;
         let minutes = attos / A_PER_M;
         attos %= A_PER_M;
-        let seconds = attos / A_PER_S;
-        let frac_attos = attos % A_PER_S;
+        let seconds = attos / ATTOS_PER_SEC_U128;
+        let frac_attos = attos % ATTOS_PER_SEC_U128;
 
         if hours > 0 {
             s.push_str(&alloc::format!("{}", hours));
