@@ -265,7 +265,7 @@ impl TimeParts {
     ///   P-field octet) is set.
     /// - [`DtErrKind::InvalidSyntax`] if the declared coarse + fractional field lengths
     ///   make the T-field longer than the remaining input bytes.
-    pub fn from_ccsds_c(input: &[u8]) -> Result<TimeParts, DtErr> {
+    pub fn from_ccsds_cuc(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -326,7 +326,9 @@ impl TimeParts {
             0
         } else {
             let denom = 1u128 << (8 * n_frac as u32);
-            ((frac_raw * 1_000_000_000_000_000_000u128) / denom) as u64
+            let numerator = frac_raw * 1_000_000_000_000_000_000u128;
+            // Add proper rounding (symmetric to the encoder)
+            ((numerator + (denom / 2)) / denom) as u64
         };
 
         // Convert to civil time using custom Gregorian conversion
@@ -406,7 +408,7 @@ impl TimeParts {
     ///   set (non-Level-1 epoch), or the sub-millisecond code is `0b11`.
     /// - [`DtErrKind::InvalidSyntax`] if the declared field lengths make the
     ///   T-field longer than the remaining input bytes.
-    pub fn from_ccsds_d(input: &[u8]) -> Result<TimeParts, DtErr> {
+    pub fn from_ccsds_cds(input: &[u8]) -> Result<TimeParts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -486,7 +488,7 @@ impl TimeParts {
         } else if sub_ms_code == 0b01 {
             (frac_raw as u128 * 1_000_000_000_000_000) / 65_536
         } else {
-            (frac_raw as u128 * 1_000_000_000_000_000_000) / (1u128 << 32)
+            (frac_raw as u128 * 1_000_000_000_000_000) / (1u128 << 32)
         };
 
         let frac_attos = remaining_ms * 1_000_000_000_000_000 + sub_ms_attos;
@@ -522,8 +524,8 @@ impl TimeParts {
     /// based on the Code ID in the first P-field byte.
     ///
     /// Examines the Code ID and dispatches to the appropriate parser:
-    /// - `001` → [`from_ccsds_c`](Self::from_ccsds_c) (CUC – Unsegmented Time Code)
-    /// - `100` → [`from_ccsds_d`](Self::from_ccsds_d) (CDS – Day Segmented Time Code)
+    /// - `001` → [`from_ccsds_cuc`](Self::from_ccsds_cuc) (CUC – Unsegmented Time Code)
+    /// - `100` → [`from_ccsds_cds`](Self::from_ccsds_cds) (CDS – Day Segmented Time Code)
     /// - `101` → [`from_ccsds_ccs`](Self::from_ccsds_ccs) (CCS – Calendar Segmented Time Code)
     ///
     /// This is a convenience wrapper. For stricter control or when the format
@@ -543,8 +545,8 @@ impl TimeParts {
         }
         let code_id = (input[0] >> 4) & 0b0111;
         match code_id {
-            0b001 => Self::from_ccsds_c(input),
-            0b100 => Self::from_ccsds_d(input),
+            0b001 => Self::from_ccsds_cuc(input),
+            0b100 => Self::from_ccsds_cds(input),
             0b101 => Self::from_ccsds_ccs(input),
             _ => Err(an_err!(DtErrKind::InvalidItem, "unknown code id")),
         }

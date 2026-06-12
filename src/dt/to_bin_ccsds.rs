@@ -6,19 +6,27 @@ impl Dt {
 
     /// Formats this [`Dt`] as a **CCSDS C (CUC – Unsegmented Time Code)** binary packet.
     ///
-    /// Fully configurable for round-tripping with [`from_ccsds_c`](Self::from_ccsds_c).
+    /// Fully configurable for round-tripping with [`Dt::from_ccsds_cuc`].
     /// Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support for the
     /// extended 2-byte P-field.
     ///
-    /// The time is always encoded on the **TAI** timescale (Code ID `001`).
-    /// The `target` field of this [`Dt`] is ignored.
+    /// - The time is always encoded on the **TAI** timescale (Code ID `001`).
+    /// - The `target` field of this [`Dt`] is ignored.
     ///
     /// ## Parameters
     ///
-    /// - `n_coarse`: Number of coarse-time octets. Must be in `1..=7`.
-    /// - `n_frac`: Number of fractional-time octets. Must be in `0..=10`.
-    /// - `extension`: If `true`, forces the second P-field octet even when not
-    ///   strictly required by the field sizes.
+    /// - `n_coarse`: Number of bytes used for the coarse (integer) seconds since the
+    ///   1958 epoch. Must be in `1..=7`. The chosen value must be large enough to
+    ///   represent the full time; otherwise the high-order bytes are silently
+    ///   truncated. For example, a date in the year 2025 requires at least 4 bytes
+    ///   (`n_coarse >= 4`), while 3 bytes is only sufficient for dates up to roughly
+    ///   mid-1968.
+    /// - `n_frac`: Number of bytes used for the fractional seconds. Must be in `0..=10`.
+    ///   Higher values provide greater sub-second precision, but values of `8` or
+    ///   above may produce reduced accuracy when round-tripping due to internal
+    ///   128-bit integer limits.
+    /// - `extension`: If `true`, forces inclusion of the second P-field octet even
+    ///   when it is not strictly required by the field sizes.
     ///
     /// ## Epoch
     ///
@@ -36,8 +44,8 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_ccsds_c`](Self::from_ccsds_c)
-    pub fn to_ccsds_c(
+    /// - [`Dt::from_ccsds_cuc`]
+    pub fn to_cuc(
         &self,
         n_coarse: u8,
         n_frac: u8,
@@ -63,13 +71,15 @@ impl Dt {
             ));
         }
 
-        // Convert positive attosecond remainder to the requested fractional
-        // binary representation. The +0.5 term implements round-to-nearest.
         let frac_scaled = if n_frac == 0 {
             0u128
         } else {
             let scale = 1u128 << (8 * n_frac as u32);
-            ((rem_attos as u128) * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000
+            let half = scale / 2;
+            ((rem_attos as u128)
+                .saturating_mul(scale)
+                .saturating_add(half))
+                / 1_000_000_000_000_000_000
         };
 
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
@@ -133,7 +143,7 @@ impl Dt {
 
     /// Formats this [`Dt`] as a **CCSDS D (CDS – Day Segmented Time Code)** binary packet.
     ///
-    /// Fully configurable for round-tripping with [`from_ccsds_d`](Self::from_ccsds_d).
+    /// Fully configurable for round-tripping with [`from_ccsds_cds`](Self::from_ccsds_cds).
     /// Conforms to **CCSDS 301.0-B-4 §3.3 (Level 1)**.
     ///
     /// The time is always encoded on the **UTC** timescale (day count + milliseconds
@@ -166,8 +176,8 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_ccsds_d`](Self::from_ccsds_d)
-    pub fn to_ccsds_d(
+    /// - [`Dt::from_ccsds_cds`](Self::from_ccsds_cds)
+    pub fn to_cds(
         &self,
         n_day: u8,
         sub_ms_code: u8,
@@ -380,12 +390,12 @@ impl Dt {
     ///
     /// - If the `target` [`Scale`] **uses leap seconds** then **ccsds_d is chosen**.
     /// - Otherwise ccsds_c is chosen.
-    #[inline]
+    #[inline(always)]
     pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         if self.target.uses_leap_seconds() {
-            self.to_ccsds_d(2, 1, false)
+            self.to_cds(2, 1, false)
         } else {
-            self.to_ccsds_c(4, 4, false)
+            self.to_cuc(4, 4, false)
         }
     }
 }

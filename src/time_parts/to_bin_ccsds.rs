@@ -3,7 +3,7 @@ use crate::{Dt, DtErr, TimeParts};
 impl TimeParts {
     /// Formats this [`TimeParts`] as a **CCSDS C (CUC)** binary time code.
     ///
-    /// - Fully configurable for round-tripping with [`from_ccsds_c`].
+    /// - Fully configurable for round-tripping with [`from_ccsds_cuc`].
     /// - Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support
     ///   for the extended P-field (second octet) when `n_coarse > 4` or `n_frac > 3`.
     ///
@@ -13,28 +13,28 @@ impl TimeParts {
     /// - `n_frac`:   0–10 (number of fractional octets)
     /// - `extension`: advisory flag (ignored when larger sizes force the second octet)
     #[inline]
-    pub fn to_ccsds_c(
+    pub fn to_cuc(
         &self,
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
     ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_dt()?.to_ccsds_c(n_coarse, n_frac, extension)
+        self.to_dt()?.to_cuc(n_coarse, n_frac, extension)
     }
 
     /// Formats this [`TimeParts`] as a **CCSDS D (CDS)** binary time code.
     ///
-    /// - Fully configurable for round-tripping with [`from_ccsds_d`].
+    /// - Fully configurable for round-tripping with [`TimeParts::from_ccsds_cds`].
     /// - Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since
     ///   1958-01-01 UTC.
     #[inline]
-    pub fn to_ccsds_d(
+    pub fn to_cds(
         &self,
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
     ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_dt()?.to_ccsds_d(n_day, sub_ms_code, extension)
+        self.to_dt()?.to_cds(n_day, sub_ms_code, extension)
     }
 
     /// Formats this [`TimeParts`] as a **CCSDS CCS (Calendar Segmented Time Code)**.

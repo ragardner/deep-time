@@ -24,8 +24,8 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_ccsds_c`](../struct.Dt.html#method.from_ccsds_c)
-    /// - [`Dt::from_ccsds_d`](../struct.Dt.html#method.from_ccsds_d)
+    /// - [`Dt::from_ccsds_cuc`](../struct.Dt.html#method.from_ccsds_cuc)
+    /// - [`Dt::from_ccsds_cds`](../struct.Dt.html#method.from_ccsds_cds)
     #[inline(always)]
     pub fn from_ccsds_ccs(input: &[u8]) -> Result<Dt, DtErr> {
         TimeParts::from_ccsds_ccs(input)?.to_dt()
@@ -80,8 +80,8 @@ impl Dt {
     ///
     /// Errors from [`TimeParts::finish`] and [`TimeParts::to_dt`] may also propagate.
     #[inline(always)]
-    pub fn from_ccsds_c(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_c(input)?.to_dt()
+    pub fn from_ccsds_cuc(input: &[u8]) -> Result<Dt, DtErr> {
+        TimeParts::from_ccsds_cuc(input)?.to_dt()
     }
 
     /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
@@ -138,8 +138,8 @@ impl Dt {
     ///
     /// Errors from [`TimeParts::finish`] and [`TimeParts::to_dt`] may also propagate.
     #[inline(always)]
-    pub fn from_ccsds_d(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_d(input)?.to_dt()
+    pub fn from_ccsds_cds(input: &[u8]) -> Result<Dt, DtErr> {
+        TimeParts::from_ccsds_cds(input)?.to_dt()
     }
 
     /// Auto-detects and parses a CCSDS binary time code (CUC, CDS, or CCS)
@@ -148,8 +148,8 @@ impl Dt {
     /// Convenience wrapper around [`TimeParts::from_ccsds_bin`].
     ///
     /// Dispatches as follows:
-    /// - Code ID `001` → [`from_ccsds_c`](Self::from_ccsds_c) (CUC – Unsegmented)
-    /// - Code ID `100` → [`from_ccsds_d`](Self::from_ccsds_d) (CDS – Day Segmented)
+    /// - Code ID `001` → [`from_ccsds_cuc`](Self::from_ccsds_cuc) (CUC – Unsegmented)
+    /// - Code ID `100` → [`from_ccsds_cds`](Self::from_ccsds_cds) (CDS – Day Segmented)
     /// - Code ID `101` → [`from_ccsds_ccs`](Self::from_ccsds_ccs) (CCS – Calendar Segmented)
     ///
     /// For stricter control or when the format is known in advance, prefer calling
