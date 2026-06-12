@@ -13,13 +13,13 @@ impl TimeParts {
     /// - `n_frac`:   0–10 (number of fractional octets)
     /// - `extension`: advisory flag (ignored when larger sizes force the second octet)
     #[inline]
-    pub fn to_cuc(
+    pub fn to_ccsds_cuc(
         &self,
         n_coarse: u8,
         n_frac: u8,
         extension: bool,
     ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_dt()?.to_cuc(n_coarse, n_frac, extension)
+        self.to_dt()?.to_ccsds_cuc(n_coarse, n_frac, extension)
     }
 
     /// Formats this [`TimeParts`] as a **CCSDS D (CDS)** binary time code.
@@ -28,13 +28,13 @@ impl TimeParts {
     /// - Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since
     ///   1958-01-01 UTC.
     #[inline]
-    pub fn to_cds(
+    pub fn to_ccsds_cds(
         &self,
         n_day: u8,
         sub_ms_code: u8,
         extension: bool,
     ) -> Result<([u8; Dt::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
-        self.to_dt()?.to_cds(n_day, sub_ms_code, extension)
+        self.to_dt()?.to_ccsds_cds(n_day, sub_ms_code, extension)
     }
 
     /// Formats this [`TimeParts`] as a **CCSDS CCS (Calendar Segmented Time Code)**.

@@ -45,7 +45,7 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_ccsds_cuc`]
-    pub fn to_cuc(
+    pub fn to_ccsds_cuc(
         &self,
         n_coarse: u8,
         n_frac: u8,
@@ -177,7 +177,7 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_ccsds_cds`](Self::from_ccsds_cds)
-    pub fn to_cds(
+    pub fn to_ccsds_cds(
         &self,
         n_day: u8,
         sub_ms_code: u8,
@@ -393,9 +393,9 @@ impl Dt {
     #[inline(always)]
     pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         if self.target.uses_leap_seconds() {
-            self.to_cds(2, 1, false)
+            self.to_ccsds_cds(2, 1, false)
         } else {
-            self.to_cuc(4, 4, false)
+            self.to_ccsds_cuc(4, 4, false)
         }
     }
 }
