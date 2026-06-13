@@ -11,7 +11,7 @@ impl Dt {
     /// Converts this `Dt` to an ISO 8601 duration string.
     ///
     /// - Example: **"PT1H23M45.6789S"**.
-    /// - Requires the "alloc" feature.
+    /// - Requires the `alloc` feature.
     /// - Does **not** do any time scale conversions prior to output.
     pub fn to_iso_duration(&self) -> String {
         if self.is_zero() {
@@ -63,7 +63,7 @@ impl Dt {
         s
     }
 
-    /// Formats this [`Dt`] into a String. Requires the `"alloc"` feature.
+    /// Formats this [`Dt`] into a String. Requires the `alloc` feature.
     ///
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
@@ -133,8 +133,9 @@ impl Dt {
             .to_str(fmt, Some(secs), None, None, lang)
     }
 
-    /// Formats this [`Dt`] into a string, time adjusted to the given IANA timezone. Requires
-    /// the `"alloc"` feature.
+    /// Formats this [`Dt`] into a string, time adjusted to the given IANA timezone.
+    ///
+
     ///
     /// Use this method when you want full IANA-aware formatting (`%Q`, `%Z`, `%z`, etc.).
     ///
@@ -153,6 +154,7 @@ impl Dt {
     ///   provided just in case anyway.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    /// - Requires the `jiff-tz` feature for timezone names other than UTC aliases.
     ///
     /// ## Examples
     ///
@@ -364,6 +366,7 @@ impl Dt {
     /// - The timezone abbreviation is automatically looked up from tzdata.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    /// - Requires the `jiff-tz` feature for timezone names other than UTC aliases.
     ///
     /// ## Errors
     ///
@@ -489,6 +492,7 @@ impl Dt {
     ///   provided just in case anyway.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    /// - Requires the `jiff-tz` feature for timezone names other than UTC aliases.
     ///
     /// ## Examples
     ///
@@ -569,6 +573,7 @@ impl Dt {
     /// - The timezone abbreviation is automatically looked up from tzdata.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    /// - Requires the `jiff-tz` feature for timezone names other than UTC aliases.
     ///
     /// ## Errors
     ///

@@ -1,143 +1,130 @@
 use core::fmt;
 
-/// Time scales supported for conversions.
+/// Time scales supported by the library.
 ///
-/// This `#[non_exhaustive]` enum defines the complete set of time scales used by
-/// the library for representing instants [`Dt`] and performing conversions
-/// between them.
+/// This `#[non_exhaustive]` enum defines all time scales that [`Dt`] can represent.
+/// Each [`Dt`] instance stores its internal time value on the scale indicated by
+/// its `scale` field.
 ///
-/// It covers atomic, dynamical, coordinate, civil/coordinated, GNSS, and emerging
-/// lunar scales, plus a `Custom` variant for mission-specific or experimental use.
+/// ## UTC and Leap Seconds
 ///
-/// ## Overview
+/// The library supports three UTC variants:
 ///
-/// Time scales fall into several broad categories:
+/// - **`UTC`** — Modern UTC using the library’s built-in IERS leap second table.
+///   Basic functions for run-time loading of leap seconds tables also available.
 ///
-/// - **Atomic / proper time scales**: TAI (basis), TT, TDB/ET — continuous and
-///   suitable for internal representation and dynamical modeling.
-/// - **Coordinate time scales** (relativistic): TCG, TCB, **TCL** — defined in
-///   specific reference frames (GCRS, BCRS, LCRS). Ideal for ephemeris
-///   integration and high-accuracy modeling; not directly realized by clocks.
-/// - **Coordinated / civil scales**: UTC (atomic time with leap seconds inserted
-///   to keep it close to UT1), **UT1** (observed Earth rotation angle — does **not**
-///   use leap seconds), and the lunar operational scale **LTC** (uses defined
-///   secular rate offsets for traceability and cislunar operations).
-/// - **GNSS / navigation scales**: GPS, GST, BDT, QZSS — tied to specific
-///   satellite constellations.
-/// - **Custom**: Fallback for custom scales.
+/// - **`UtcSpice`** — SPICE-compatible model. Uses a fixed +9 s offset before
+///   1972-01-01 and modern leap seconds afterward.
 ///
-/// The library's epoch when performing conversions between all scales is
-/// 2000-01-01 noon.
+/// - **`UtcHist`** — Full historical SOFA model with piecewise linear frequency
+///   offsets ("rubber seconds") from 1961–1972. This variant does **not support
+///   round-tripping**.
 ///
-/// ## Lunar Time Scales (LTC and TCL)
+/// ## Scale Categories
 ///
-/// The library provides high-accuracy implementations of both lunar time scales
-/// based on the **LTE440** model (Lu et al. 2025, A&A 704, A76):
+/// | Category                    | Scales                          | Purpose |
+/// |-----------------------------|---------------------------------|---------|
+/// | **Atomic / Proper**         | `TAI`, `TT`, `TDB` (alias `ET`) | Continuous atomic time. `TAI` is the primary internal scale. |
+/// | **Relativistic Coordinate** | `TCG`, `TCB`, `TCL`             | Time scales defined in specific relativistic reference frames (GCRS, BCRS, LCRS). |
+/// | **Civil / Coordinated**     | `UTC`, `UtcSpice`, `UtcHist`    | Real-world civil time, with support for leap seconds and historical behavior. |
+/// | **GNSS / Navigation**       | `GPS`, `GST`, `BDT`, `QZSS`     | Time scales used by satellite navigation constellations. |
+/// | **Lunar**                   | `LTC`, `TCL`                    | Lunar time scales based on the LTE440 model (Lu et al. 2025). |
+/// | **Special**                 | `Custom`                        | User-defined or experimental scales. |
 ///
-/// - [`LTC`] (Coordinated Lunar Time): Applies the secular rate offset
-///   (`L_M ≈ +56.02 µs/day`) **plus** the 13 dominant periodic terms from LTE440.
-///   Conversions use fixed-point iteration for numerical stability.
-///   Achieves sub-nanosecond accuracy (< 0.15 ns before 2050) when the periodic
-///   terms are included.
-/// - [`TCL`] (Lunar Coordinate Time): IAU-defined relativistic coordinate time
-///   in the LCRS. The implementation includes the secular rate vs TDB, the same
-///   LTE440 periodic terms, and a constant bias calibrated so that the model
-///   reproduces the official LTE440 reference value at J2000.0 TDB.
-///   Inverse conversion also uses fixed-point iteration.
+/// The reference epoch used for conversions between scales is **2000-01-01 12:00:00 TAI**.
 ///
-/// See the documentation on the individual variants for rates, historical
-/// models, and conversion notes.
+/// ## Lunar Time Scales
 ///
-/// ## Features
+/// Both `LTC` and `TCL` implement the **LTE440** model (Lu et al. 2025):
 ///
-/// - `serde` — full serialization/deserialization support.
-/// - `js` — TypeScript definitions via `tsify`.
+/// - **`LTC`** (Coordinated Lunar Time): Operational lunar time for cislunar operations.
+///   Applies a secular rate of **+56.02 µs per Earth day** relative to TT, plus the
+///   13 dominant periodic terms from the model.
 ///
-/// ## Non-exhaustive
-///
-/// The enum is marked `#[non_exhaustive]` so new scales can be added in
-/// future minor versions without breaking changes.
+/// - **`TCL`** (Lunar Coordinate Time): IAU-defined relativistic coordinate time
+///   in the Lunar Celestial Reference System (LCRS). Includes the secular rate
+///   versus TDB, the same periodic terms, and a constant bias calibrated to match
+///   the published LTE440 reference value at J2000.0 TDB.
 #[non_exhaustive]
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "js", derive(tsify::Tsify))]
 pub enum Scale {
-    /// TAI is the representation of an Epoch internally.
+    /// International Atomic Time (TAI).
     #[default]
     TAI,
 
-    /// Terrestrial Time (TT) (previously called Terrestrial Dynamical Time (TDT)).
+    /// Terrestrial Time (TT).
+    ///
+    /// A smooth, continuous atomic time scale used in astronomy and dynamics.
     TT,
 
-    /// Ephemeris Time as defined by NASA/NAIF SPICE (identical to TDB).
+    /// Ephemeris Time (alias for TDB).
     ET,
 
-    /// Barycentric Dynamical Time (TDB) — SPICE ephemeris time (ET is an alias for this).
+    /// Barycentric Dynamical Time (TDB).
+    ///
+    /// Used for planetary and spacecraft calculations.
     TDB,
 
-    /// Universal Coordinated Time using modern IERS leap second rules.
+    /// Coordinated Universal Time (UTC) using modern leap second rules.
     UTC,
 
-    /// Universal Coordinated Time using the SPICE historical model
-    /// (fixed +9 s offset against TAI for all dates before 1972-01-01).
-    /// Includes modern leap seconds for dates after 1972.
+    /// Coordinated Universal Time using the SPICE historical model
+    /// (fixed +9 s offset before 1972).
     UtcSpice,
 
-    /// Universal Coordinated Time using the full SOFA historical model
-    /// (varying fractional "rubber second" offsets from 1960–1972).
-    /// Includes modern leap seconds for dates after 1972.
+    /// Coordinated Universal Time using the full historical SOFA model
+    /// (with "rubber seconds" between 1960–1972).
     ///
-    /// Round tripping is not possible with this time scale, only convert
-    /// once.
+    /// Round-tripping is not supported.
     UtcHist,
 
-    /// GPS Time scale whose reference epoch is UTC midnight between 05 January and
-    /// 06 January 1980.
+    /// GPS Time.
+    ///
+    /// The time scale used by the U.S. GPS satellite navigation system.
     GPS,
 
-    /// Galileo Time scale.
+    /// Galileo Time.
+    ///
+    /// The time scale used by Europe’s Galileo satellite navigation system.
     GST,
 
-    /// BeiDou Time scale.
+    /// BeiDou Time.
+    ///
+    /// The time scale used by China’s BeiDou satellite navigation system.
     BDT,
 
-    /// QZSS Time scale has the same properties as GPS but with dedicated clocks.
+    /// QZSS Time.
+    ///
+    /// The time scale used by Japan’s QZSS satellite system (similar to GPS).
     QZSS,
 
-    /// **Geocentric Coordinate Time (TCG)** – relativistic coordinate time in the
-    /// Geocentric Celestial Reference System (GCRS).
+    /// Geocentric Coordinate Time (TCG).
+    ///
+    /// A relativistic time scale centered on Earth, used for high-precision
+    /// work near Earth (e.g. satellite orbits).
     TCG,
 
-    /// **Barycentric Coordinate Time (TCB)** – relativistic coordinate time in the
-    /// Barycentric Celestial Reference System (BCRS).
+    /// Barycentric Coordinate Time (TCB).
+    ///
+    /// A relativistic time scale for the entire solar system.
     TCB,
 
-    /// **Coordinated Lunar Time (LTC)** – NASA’s operational lunar time scale
-    /// for Artemis and cislunar operations (based on the NIST/Ashby & Patla
-    /// relativistic framework).
+    /// Coordinated Lunar Time (LTC).
     ///
-    /// Implements the full **LTE440** model (Lu et al. 2025):
-    /// - Secular rate: **+56.02 µs per Earth day** (`L_M = 6.48378 × 10^{-10}`)
-    ///   relative to terrestrial time.
-    /// - Plus the 13 dominant periodic terms (> 1 µs amplitude) from the LTE440
-    ///   ephemeris.
+    /// Operational lunar time scale intended for cislunar operations.
+    /// Based on the LTE440 model.
     LTC,
 
-    /// **Lunar Coordinate Time (TCL)** – IAU-defined (2024 Resolution II)
-    /// relativistic coordinate time in the Lunar Celestial Reference System (LCRS).
+    /// Lunar Coordinate Time (TCL).
     ///
-    /// Directly analogous to **TCG**. This is the theoretical coordinate time
-    /// at the Moon’s center of mass.
-    ///
-    /// The implementation follows the **LTE440** model (Lu et al. 2025):
-    /// - Secular rate vs TDB (`L_D^M`).
-    /// - The same 13-term LTE440 periodic series used for LTC.
-    /// - A constant bias (`TCL_TDB_BIAS_SPAN`) calibrated so the model
-    ///   reproduces the published LTE440 reference value at J2000.0 TDB.
+    /// Theoretical relativistic coordinate time at the Moon’s center of mass.
+    /// Based on the LTE440 model.
     TCL,
 
-    /// Custom / user-defined type.
+    /// Custom / user-defined scale.
     Custom,
 }
 
