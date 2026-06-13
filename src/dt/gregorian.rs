@@ -4,8 +4,8 @@ impl Dt {
     pub(crate) const DAYS_IN_GREGORIAN_MONTHS: [u8; 12] =
         [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-    pub(crate) const DAYS_IN_GREGORIAN_MONTHS_LEAP_YR: [u8; 12] =
-        [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    // pub(crate) const DAYS_IN_GREGORIAN_MONTHS_LEAP_YR: [u8; 12] =
+    //     [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
     /// to a proleptic Gregorian date (year, month, day).
@@ -56,17 +56,13 @@ impl Dt {
     ///
     /// The implementation converts internally to TAI before checking leap-second status.
     ///
-    /// ## See also
-    ///
-    /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
-    ///
     /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
     /// // `from_ymd` always returns a TAI instant
-    /// let dt = Dt::from_ymd(2024, 6, 15, 12, 30, 45, 0, Scale::UTC);
+    /// let dt = Dt::from_ymd(2024, 6, 15, Scale::UTC, 12, 30, 45, 0);
     /// let ymd = dt.to_ymd();
     ///
     /// assert_eq!(ymd.yr(), 2024);
@@ -77,6 +73,10 @@ impl Dt {
     /// assert_eq!(ymd.sec(), 45);
     /// assert!(ymd.attos() == 0);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
     pub const fn to_ymd(&self) -> YmdHms {
         let tai = self.to_tai();
         let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, false);
@@ -199,10 +199,11 @@ impl Dt {
     /// Creates a **TAI** [`Dt`] from a proleptic gregorian date which is assumed to be on
     /// the provided time scale.
     ///
-    /// - Equivalent to [`Dt::from`](../struct.Dt.html#method.from) for the provided date.
-    ///   Except that conversion is performed prior to adding an extra second if the given
-    ///   `sec` is `60`.
-    /// - Returned [`Dt`] will be on the **TAI** time scale.
+    /// - Equivalent to converting to `TAI` for the provided date. This means for example that
+    ///   when using `Scale::UTC` leap seconds are potentially added to the returned [`Dt`].
+    /// - The returned [`Dt`] will have its `scale` field set to `TAI` and its `target` field
+    ///   set to the provided time scale argument from this fn. This makes functions such as
+    ///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) more ergonomic.
     ///
     /// All input components are clamped to their valid ranges:
     /// - `mo`   → 1..=12 **1 based**
@@ -211,15 +212,40 @@ impl Dt {
     /// - `min`  → 0..=59 **0 based**
     /// - `sec`  → 0..=60 **0 based** (permits leap seconds)
     /// - `attos` → 10¹⁸ **0 based** (clamped to under 1 second)
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "jiff-tz")]
+    /// # {
+    /// use deep_time::{Dt, Lang, Scale};
+    ///
+    /// // library zero is 2000-01-01 noon TAI
+    /// let tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+    /// assert_eq!(tai, Dt::ZERO);
+    ///
+    /// // utc noon
+    /// let utc = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+    /// // output with timezone requires jiff-tz feature
+    /// // because from_ymd used Scale::UTC, the output is converted
+    /// // back to UTC before being offset by the timezone
+    /// let s = utc.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En).unwrap();
+    /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
+    /// # }
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
     pub const fn from_ymd(
         yr: i64,
         mo: u8,
         day: u8,
+        scale: Scale,
         hr: u8,
         min: u8,
         sec: u8,
         attos: u64,
-        scale: Scale,
     ) -> Dt {
         let (mo, day, hr, min, sec) = Dt::clamp_mdhms(yr, mo, day, hr, min, sec);
         let attos = Dt::clamp_u64(attos, 0, ATTOS_PER_SEC - 1);
@@ -535,5 +561,22 @@ impl Dt {
         let s = Self::clamp_u8(sec, 0, 60);
 
         (mo, day, h, m, s)
+    }
+
+    /// Number of days since 1958-01-01 (proleptic Gregorian) → `(year, month, day)`.
+    /// This is the inverse of [`Dt::gregorian_to_days_since_1958`].
+    #[inline]
+    pub const fn days_since_1958_to_gregorian(days_since_epoch: i64) -> (i64, u8, u8) {
+        let jd_1958 = Dt::ymd_to_jd(1958, 1, 1);
+        let jd = jd_1958.saturating_add(days_since_epoch);
+        Dt::jd_to_ymd(jd)
+    }
+
+    /// Inverse of [`Dt::days_since_1958_to_gregorian`].
+    #[inline]
+    pub const fn gregorian_to_days_since_1958(year: i64, month: u8, day: u8) -> i64 {
+        let jd = Dt::ymd_to_jd(year, month, day);
+        let jd_1958 = Dt::ymd_to_jd(1958, 1, 1);
+        jd.saturating_sub(jd_1958)
     }
 }

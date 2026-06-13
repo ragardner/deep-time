@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRFTIME_SIZE, YmdHms, an_err};
+use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRTIME_SIZE, YmdHms, an_err};
 
 #[cfg(feature = "alloc")]
 use {crate::ATTOS_PER_SEC_U128, alloc::string::String};
@@ -73,7 +73,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Lang, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     /// let s = x.to_str("%F", Lang::En).unwrap();
     ///
     /// println!("{}", s);
@@ -83,7 +83,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRFTIME_SIZE`]).
+    /// with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -109,7 +109,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Lang, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     ///
     /// // offset of minus one hour
     /// let s = x.to_str_in_offset("%F", -3600, Lang::En).unwrap();
@@ -121,7 +121,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRFTIME_SIZE`]).
+    /// with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -188,7 +188,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRFTIME_SIZE`]).
+    /// with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -343,7 +343,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRFTIME_SIZE`]).
+    /// with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -372,7 +372,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers,
     /// if the timezone name is invalid, or if the internal formatting buffer
-    /// overflows (extremely unlikely with [`STRFTIME_SIZE`]).
+    /// overflows (extremely unlikely with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -407,7 +407,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Lang, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     /// let b = x.to_str_lite("%F", Lang::En).unwrap();
     /// let s = b.as_str();
     ///
@@ -418,14 +418,14 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRFTIME_SIZE`]).
+    /// with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
     /// - [`Dt::to_str_lite_in_offset`](../struct.Dt.html#method.to_str_lite_in_offset)
     /// - [`Dt::to_str_lite_in_tz`](../struct.Dt.html#method.to_str_lite_in_tz)
     #[inline(always)]
-    pub fn to_str_lite(&self, fmt: &str, lang: Lang) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    pub fn to_str_lite(&self, fmt: &str, lang: Lang) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         self.to_ymd().to_str_lite(fmt, None, None, None, lang)
     }
 
@@ -443,7 +443,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Lang, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     ///
     /// // offset of minus one hour
     /// let b = x.to_str_lite_in_offset("%F", -3600, Lang::En).unwrap();
@@ -456,7 +456,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRFTIME_SIZE`]).
+    /// with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -468,7 +468,7 @@ impl Dt {
         fmt: &str,
         secs: i32,
         lang: Lang,
-    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         self.ymd_with_offset(secs)
             .to_str_lite(fmt, Some(secs), None, None, lang)
     }
@@ -501,7 +501,7 @@ impl Dt {
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     ///
     /// let b = x.to_str_lite_in_tz("%F", "America/New_York", Lang::En).unwrap();
     /// let s = b.as_str();
@@ -514,7 +514,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRFTIME_SIZE`]).
+    /// with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -527,7 +527,7 @@ impl Dt {
         fmt: &str,
         tz_name: &str,
         lang: Lang,
-    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, true)?;
         ymd.to_str_lite(
             fmt,
@@ -549,7 +549,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers
     /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRFTIME_SIZE`]).
+    /// with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -561,7 +561,7 @@ impl Dt {
         fmt: &str,
         offset: i32,
         lang: Lang,
-    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         self.to_ymd()
             .to_str_lite(fmt, Some(offset), None, None, lang)
     }
@@ -579,7 +579,7 @@ impl Dt {
     ///
     /// Returns [`DtErr`] if the format string contains invalid specifiers,
     /// if the timezone name is invalid, or if the internal formatting buffer
-    /// overflows (extremely unlikely with [`STRFTIME_SIZE`]).
+    /// overflows (extremely unlikely with [`STRTIME_SIZE`]).
     ///
     /// ## See also
     ///
@@ -591,7 +591,7 @@ impl Dt {
         fmt: &str,
         tz_name: &str,
         lang: Lang,
-    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, false)?;
         ymd.to_str_lite(
             fmt,
@@ -611,7 +611,7 @@ impl Dt {
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_lite_iso8601(&self) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    pub fn to_str_lite_iso8601(&self) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         self.to_str_lite_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
     }
 
@@ -623,7 +623,7 @@ impl Dt {
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_lite_rfc9557(&self, tz_name: &str) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    pub fn to_str_lite_rfc9557(&self, tz_name: &str) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         self.to_str_lite_in_tz("%Y-%m-%dT%H:%M:%S%.~f%:z[%Q]", tz_name, Lang::En)
     }
 
@@ -636,7 +636,7 @@ impl Dt {
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_lite_http(&self, lang: Lang) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    pub fn to_str_lite_http(&self, lang: Lang) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         self.to_str_lite_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
     }
 
@@ -730,7 +730,7 @@ impl Dt {
     /// Same as [`to_media_duration`](Self::to_media_duration) but returns a
     /// stack-allocated [`LiteStr`].
     #[inline(always)]
-    pub fn to_str_lite_media_duration(&self) -> LiteStr<STRFTIME_SIZE> {
+    pub fn to_str_lite_media_duration(&self) -> LiteStr<STRTIME_SIZE> {
         let (buf, len) = self.format_media_duration();
         LiteStr::from_bytes(&buf[..len])
     }

@@ -16,7 +16,7 @@ mod perf_tests {
 
             const ITERATIONS: usize = 10_000_000;
 
-            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
 
             println!("\n=== GPS CONVERSION PERF — deep_time vs hifitime 4.x ===");
@@ -96,7 +96,7 @@ mod perf_tests {
 
             const ITERATIONS: usize = 10_000_000;
 
-            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 0, 0, 0, 0);
 
             println!("\n=== TAI ↔ UTC PERF — deep_time vs hifitime 4.x ===");
@@ -183,7 +183,7 @@ mod perf_tests {
             const ITERATIONS: usize = 1_000_000;
 
             // Same reference instant: J2000.0 (2000-01-01 12:00:00 TAI)
-            let deep_tai = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+            let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
 
             println!("\n=== TAI ↔ TDB PERF — deep_time vs hifitime 4.x ===");

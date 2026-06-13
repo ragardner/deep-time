@@ -60,7 +60,7 @@ mod tests {
         let epoch_tt = epoch_tai.to_time_scale(TimeScale::TT);
         let hifi_tt_sec = epoch_tt.duration.to_seconds();
 
-        let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let my_2038_tai = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
 
         let my_tt_sec =
             my_2038_tai.to(Scale::TT).to_sec_f() + (HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
@@ -86,7 +86,7 @@ mod tests {
         let epoch_tdb = epoch_tai.to_time_scale(TimeScale::TDB);
         let hifi_tdb_sec = epoch_tdb.duration.to_seconds();
 
-        let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let my_2038_tai = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
 
         let my_tdb_sec = my_2038_tai.to(Scale::TDB).to_sec_f();
 
@@ -111,7 +111,7 @@ mod tests {
         let epoch_utc = epoch_tai.to_time_scale(TimeScale::UTC);
         let hifi_utc_sec = epoch_utc.duration.to_seconds();
 
-        let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let my_2038_tai = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
 
         let my_utc_sec =
             my_2038_tai.to(Scale::UTC).to_sec_f() + (HIFITIME_TAI_EPOCH_TO_OUR_J2000 as f64);
@@ -137,7 +137,7 @@ mod tests {
         let epoch_gps = epoch_tai.to_time_scale(TimeScale::GPST);
         let hifi_gps_sec = epoch_gps.duration.to_seconds();
 
-        let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let my_2038_tai = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
 
         let my_gps_sec = my_2038_tai.to(Scale::GPS).to_sec_f() + 630_763_200.0;
 
@@ -162,7 +162,7 @@ mod tests {
         let epoch_bdt = epoch_tai.to_time_scale(TimeScale::BDT);
         let hifi_bdt_sec = epoch_bdt.duration.to_seconds();
 
-        let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let my_2038_tai = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
 
         let my_bdt_sec = my_2038_tai.to(Scale::BDT).to_sec_f() - 189_345_600.0;
 
@@ -238,7 +238,7 @@ mod tests {
         for &(year, month, day, hour, min, sec, expected_offset) in cases {
             let utc = Epoch::from_gregorian(year, month, day, hour, min, sec, 0, TimeScale::UTC);
 
-            let my_utc = Dt::from_ymd(year as i64, month, day, 0, 0, 0, 0, Scale::UTC);
+            let my_utc = Dt::from_ymd(year as i64, month, day, Scale::UTC, 0, 0, 0, 0);
             let my_offset = leap_seconds::leap_sec(my_utc.to_sec64(), true)
                 .unwrap()
                 .offset as i32;

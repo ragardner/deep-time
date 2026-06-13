@@ -1,6 +1,6 @@
 use crate::{
-    ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, Lang, MAX_DATE_STRING_LEN, Mode,
-    Order, OrderFirst, ParseCfg, an_err, classify_date, default_date_parse_options,
+    ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, Lang, Mode, Order, OrderFirst,
+    ParseCfg, STRTIME_SIZE, an_err, classify_date, default_date_parse_options,
     generate_ambiguous_day_first_candidates, generate_ambiguous_month_first_candidates,
     generate_ambiguous_year_first_candidates, generate_unambiguous_candidates,
     is_week_date_missing_weekday, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
@@ -174,7 +174,7 @@ impl Dt {
 
         if s.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
-        } else if s.len() > MAX_DATE_STRING_LEN {
+        } else if s.len() > STRTIME_SIZE {
             return Err(an_err!(DtErrKind::InvalidInput, "too long: {}", s));
         }
 

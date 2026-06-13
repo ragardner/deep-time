@@ -103,11 +103,11 @@ fn test_sofa_historical_offsets() {
         1960,
         12,
         31,
+        Scale::UtcHist,
         23,
         59,
         59,
         999_999_999_999_999_999,
-        Scale::UtcHist,
     );
     let tp2 = tp.to(Scale::UtcHist).to(Scale::TAI);
     assert_eq!(
@@ -121,14 +121,14 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1972-01-01 (first day of modern leap-second system)
-    let tp = Dt::from_ymd(1972, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    let tp = Dt::from_ymd(1972, 1, 1, Scale::UTC, 0, 0, 0, 0);
     assert!(
         historical_utc_offset(&tp).is_none(),
         "1972-01-01 should return None"
     );
 
     // 1961-01-01
-    let tp = Dt::from_ymd(1961, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    let tp = Dt::from_ymd(1961, 1, 1, Scale::TAI, 0, 0, 0, 0);
     let offset = historical_utc_offset(&tp).unwrap();
     assert!(
         (offset - 1.422818000000).abs() < 1e-12,
@@ -137,7 +137,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1966-05-01
-    let tp = Dt::from_ymd(1966, 5, 1, 0, 0, 0, 0, Scale::TAI);
+    let tp = Dt::from_ymd(1966, 5, 1, Scale::TAI, 0, 0, 0, 0);
     let offset = historical_utc_offset(&tp).unwrap();
     assert!(
         (offset - 4.624210000000).abs() < 1e-12,
@@ -146,7 +146,7 @@ fn test_sofa_historical_offsets() {
     );
 
     // 1971-12-31
-    let tp = Dt::from_ymd(1971, 12, 31, 0, 0, 0, 0, Scale::TAI);
+    let tp = Dt::from_ymd(1971, 12, 31, Scale::TAI, 0, 0, 0, 0);
     let offset = historical_utc_offset(&tp).unwrap();
     assert!(
         (offset - 9.889650000000).abs() < 1e-12,
@@ -165,27 +165,27 @@ fn test_utc_unix() {
     2015-06-30 23:59:60 → 1435708799.000012 s
     */
     // 1970-01-01 00:00:00 → 0.000000 s
-    let tp = Dt::from_ymd(1970, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    let tp = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
     assert_eq!(tp.to_unix().to_sec64(), 0);
 
     // 1971-01-01 00:00:00 → 31536000.000000 s
-    let tp = Dt::from_ymd(1971, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    let tp = Dt::from_ymd(1971, 1, 1, Scale::UTC, 0, 0, 0, 0);
     assert_eq!(tp.to_unix().to_sec64(), 31536000);
 
     // 1972-01-01 00:00:00 → 63072000.000000 s
-    let tp = Dt::from_ymd(1972, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    let tp = Dt::from_ymd(1972, 1, 1, Scale::UTC, 0, 0, 0, 0);
     assert_eq!(tp.to_unix().to_sec64(), 63072000);
 
     // 2000-01-01 12:00:00 → 946728000.000000 s
-    let tp = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+    let tp = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
     assert_eq!(tp.to_unix().to_sec64(), 946728000);
 
     // 2012-08-08 15:30:00 → 1344439800.000000 s
-    let tp = Dt::from_ymd(2012, 8, 8, 15, 30, 0, 0, Scale::UTC);
+    let tp = Dt::from_ymd(2012, 8, 8, Scale::UTC, 15, 30, 0, 0);
     assert_eq!(tp.to_unix().to_sec64(), 1344439800);
 
     // 2015-07-01 00:00:00 → 1435708800.000000 s
-    let tp = Dt::from_ymd(2015, 7, 1, 0, 0, 0, 0, Scale::UTC);
+    let tp = Dt::from_ymd(2015, 7, 1, Scale::UTC, 0, 0, 0, 0);
     assert_eq!(tp.to_unix().to_sec64(), 1435708800);
 }
 
@@ -194,70 +194,70 @@ fn test_from_ymd() {
     use deep_time::{Dt, Scale};
 
     // 1961-01-01 00:00:00 (UTC) -> -1230724798.57718205451965332031
-    let t = Dt::from_ymd(1961, 1, 1, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1961, 1, 1, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), -1230724798.57718205451965332031);
 
     // 1963-12-31 23:59:59 (UTC) -> -1136116798.23420596122741699219
-    let t = Dt::from_ymd(1963, 12, 31, 23, 59, 59, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1963, 12, 31, Scale::UtcHist, 23, 59, 59, 0);
     assert_eq!(t.to_sec_f(), -1136116798.23420596122741699219);
 
     // 1966-01-01 00:00:00 (UTC) -> -1072958395.68683004379272460938
-    let t = Dt::from_ymd(1966, 1, 1, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1966, 1, 1, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), -1072958395.68683004379272460938);
 
     // 1970-01-01 00:00:00 (UTC) -> -946727991.99991798400878906250
-    let t = Dt::from_ymd(1970, 1, 1, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1970, 1, 1, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), -946727991.99991798400878906250);
 
     // 1971-12-31 23:59:59 (UTC) -> -883655991.10775816440582275391
-    let t = Dt::from_ymd(1971, 12, 31, 23, 59, 59, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1971, 12, 31, Scale::UtcHist, 23, 59, 59, 0);
     assert!((t.to_sec_f() - -883655991.10775816440582275391).abs() < 1e-6);
 
     // 1971-12-31 23:59:60 (UTC)
-    let t = Dt::from_ymd(1971, 12, 31, 23, 59, 60, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1971, 12, 31, Scale::UtcHist, 23, 59, 60, 0);
     assert_eq!(t.to_sec_f(), -883655990.10775804519653320312);
 
     // 1972-01-01 00:00:00 (UTC)
-    let t = Dt::from_ymd(1972, 1, 1, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1972, 1, 1, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), -883655990.00000000000000000000);
 
     // 1972-12-31 23:59:59 (UTC)
-    let t = Dt::from_ymd(1972, 12, 31, 23, 59, 59, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1972, 12, 31, Scale::UtcHist, 23, 59, 59, 0);
     assert_eq!(t.to_sec_f(), -852033590.00000000000000000000);
 
     // 1972-12-31 23:59:60 (UTC)
-    let t = Dt::from_ymd(1972, 12, 31, 23, 59, 60, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1972, 12, 31, Scale::UtcHist, 23, 59, 60, 0);
     assert_eq!(t.to_sec_f(), -852033589.00000000000000000000);
 
     // 1973-01-01 00:00:00 (UTC)
-    let t = Dt::from_ymd(1973, 1, 1, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1973, 1, 1, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), -852033588.00000000000000000000);
 
     // 2000-01-01 12:00:00 (UTC) — use exact 32 as requested
-    let t = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(2000, 1, 1, Scale::UtcHist, 12, 0, 0, 0);
     assert_eq!(t.to_sec_f(), 32.0);
 
     // 2015-06-30 23:59:59 (UTC)
-    let t = Dt::from_ymd(2015, 6, 30, 23, 59, 59, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(2015, 6, 30, Scale::UtcHist, 23, 59, 59, 0);
     assert_eq!(t.to_sec_f(), 488980834.00000000000000000000);
 
     // 2015-06-30 23:59:60 (UTC)
-    let t = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(2015, 6, 30, Scale::UtcHist, 23, 59, 60, 0);
     assert_eq!(t.to_sec_f(), 488980835.00000000000000000000);
 
     // 2015-07-01 00:00:00 (UTC)
-    let t = Dt::from_ymd(2015, 7, 1, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(2015, 7, 1, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), 488980836.00000000000000000000);
 
     // 2025-04-16 00:00:00 (UTC)
-    let t = Dt::from_ymd(2025, 4, 16, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(2025, 4, 16, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), 798033637.00000000000000000000);
 
     // 2100-01-01 00:00:00 (UTC)
-    let t = Dt::from_ymd(2100, 1, 1, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(2100, 1, 1, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), 3155716837.00000000000000000000);
 
     // 1900-01-01 00:00:00 (UTC)
-    let t = Dt::from_ymd(1900, 1, 1, 0, 0, 0, 0, Scale::UtcHist);
+    let t = Dt::from_ymd(1900, 1, 1, Scale::UtcHist, 0, 0, 0, 0);
     assert_eq!(t.to_sec_f(), -3155716800.00000000000000000000);
 }

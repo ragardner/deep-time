@@ -43,11 +43,11 @@ impl Dt {
             yr,
             mo,
             day,
+            Scale::UTC,
             hr,
             min,
             sec,
             clamp_i128_to_u64(attos),
-            Scale::UTC,
         )
     }
 

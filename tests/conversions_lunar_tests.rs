@@ -251,7 +251,7 @@ mod ltc_tests {
         // The numeric value on the TCL time scale (seconds since TCL reference epoch 1977)
         let tcl_sec = epoch_tcl.duration.to_seconds();
 
-        let my_2038_tai = Dt::from_ymd(2038, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let my_2038_tai = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
         let my_tcl = my_2038_tai
             .target(Scale::TCL)
             .to_scale_and_diff(Dt::TAI_1977_EPOCH, true);

@@ -24,8 +24,8 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let start = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-    /// let end = Dt::from_ymd(2000, 1, 2, 0, 0, 0, 0, Scale::UTC);
+    /// let start = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
+    /// let end = Dt::from_ymd(2000, 1, 2, Scale::UTC, 0, 0, 0, 0);
     /// let step = Dt::from_hr(1, Scale::TAI);
     ///
     /// for timestamp in start.every(step).to_including(end) {
@@ -119,8 +119,8 @@ impl Every {
 /// ```rust
 /// use deep_time::{Dt, Scale, TimeRange};
 ///
-/// let start = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
-/// let end = Dt::from_ymd(2000, 1, 2, 0, 0, 0, 0, Scale::UTC);
+/// let start = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
+/// let end = Dt::from_ymd(2000, 1, 2, Scale::UTC, 0, 0, 0, 0);
 /// let step = Dt::from_hr(1, Scale::TAI);
 ///
 /// for timestamp in start.every(step).to_including(end) {

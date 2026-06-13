@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRFTIME_SIZE, Scale, YmdHms, an_err};
+use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRTIME_SIZE, Scale, YmdHms, an_err};
 
 impl YmdHms {
     #[cfg(feature = "alloc")]
@@ -23,7 +23,7 @@ impl YmdHms {
         tz: Option<LiteStr<49>>,
         abbrev: Option<LiteStr<49>>,
         lang: Lang,
-    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev, lang)?;
         Ok(LiteStr::from_bytes(&buf[..pos]))
     }
@@ -35,9 +35,9 @@ impl YmdHms {
         tz: Option<LiteStr<49>>,
         abbrev: Option<LiteStr<49>>,
         lang: Lang,
-    ) -> Result<([u8; STRFTIME_SIZE], usize), DtErr> {
+    ) -> Result<([u8; STRTIME_SIZE], usize), DtErr> {
         let names = lang.names();
-        let mut buf = [0u8; STRFTIME_SIZE];
+        let mut buf = [0u8; STRTIME_SIZE];
         let mut pos = 0usize;
         let mut i = 0usize;
 
@@ -235,17 +235,17 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_byte(buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, byte: u8) {
-        if *pos < STRFTIME_SIZE {
+    fn write_byte(buf: &mut [u8; STRTIME_SIZE], pos: &mut usize, byte: u8) {
+        if *pos < STRTIME_SIZE {
             buf[*pos] = byte;
             *pos += 1;
         }
     }
 
     #[inline(always)]
-    fn write_bytes(buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, bytes: &[u8]) {
+    fn write_bytes(buf: &mut [u8; STRTIME_SIZE], pos: &mut usize, bytes: &[u8]) {
         let len = bytes.len();
-        if *pos + len > STRFTIME_SIZE {
+        if *pos + len > STRTIME_SIZE {
             return;
         }
         buf[*pos..*pos + len].copy_from_slice(bytes);
@@ -253,7 +253,7 @@ impl YmdHms {
     }
 
     fn write_fractional(
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         subsec: u64,
         width: Option<u8>,
@@ -294,7 +294,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_weekday_full(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         wkdays_full: &[&[u8]; 7],
     ) {
@@ -305,7 +305,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_weekday_abbrev(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         wkdays_abbrev: &[&[u8]; 7],
     ) {
@@ -316,7 +316,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_month_name_full(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         mos_full: &[&[u8]; 12],
     ) {
@@ -327,7 +327,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_month_name_abbrev(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         mos_abbrev: &[&[u8]; 12],
     ) {
@@ -336,7 +336,7 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_century(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    fn write_century(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
         // Floor division → -123 becomes -2 (exactly matches parse_century)
         let century = self.yr.div_euclid(100);
         Self::write_i64(buf, pos, century, b'-', Some(0), b'0');
@@ -345,7 +345,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_day_of_month(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -358,7 +358,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_fractional_seconds(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         width: Option<u8>,
         trim: bool,
@@ -369,7 +369,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_iso_week_year(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -380,7 +380,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_two_digit_iso_week_year(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -392,7 +392,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_hour24(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -405,7 +405,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_hour12(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -422,7 +422,7 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_12hour_time_with_ampm(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    fn write_12hour_time_with_ampm(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
         // Hour (12-hour, zero-padded)
         self.write_hour12(buf, pos, b'0', Some(2));
         Self::write_bytes(buf, pos, b":");
@@ -439,7 +439,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_day_of_year(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -457,7 +457,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_minute(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -470,7 +470,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_month_number(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -483,7 +483,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_quarter(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -496,13 +496,13 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_whitespace(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, ch: u8) {
+    fn write_whitespace(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize, ch: u8) {
         let bytes = if ch == b'n' { b"\n" } else { b"\t" };
         Self::write_bytes(buf, pos, bytes);
     }
 
     #[inline(always)]
-    fn write_ampm(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize, upper: bool) {
+    fn write_ampm(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize, upper: bool) {
         let hour = self.hr;
         let bytes = if hour < 12 {
             if upper { b"AM" } else { b"am" }
@@ -517,7 +517,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_second(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -528,7 +528,7 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_unix_timestamp(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    fn write_unix_timestamp(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
         let seconds = Dt::ymd_to_unix_sec(
             self.yr(),
             self.mo(),
@@ -543,7 +543,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_weekday_number_sunday_based(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -554,7 +554,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_weekday_number_monday_based(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -572,7 +572,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_week_iso(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -590,7 +590,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_week_number_sunday_based(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -608,7 +608,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_week_number_monday_based(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -626,7 +626,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_full_year(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -637,7 +637,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_two_digit_year(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -649,7 +649,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_unbounded_year(
         &self,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         flag: u8,
         width: Option<u8>,
@@ -660,7 +660,7 @@ impl YmdHms {
     fn write_timezone_offset(
         &self,
         offset: Option<i32>,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         colons: u8,
     ) {
@@ -751,7 +751,7 @@ impl YmdHms {
     fn write_timezone_abbrev(
         &self,
         abbrev: Option<LiteStr<49>>,
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
     ) {
         if let Some(abbrev) = abbrev {
@@ -762,7 +762,7 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_iso_date(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    fn write_iso_date(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
         Self::write_i64(buf, pos, self.yr, b'0', Some(4), b'0');
         Self::write_bytes(buf, pos, b"-");
         Self::write_u32(buf, pos, self.mo as u32, b'0', Some(2), b'0');
@@ -771,7 +771,7 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_us_date_shortcut(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    fn write_us_date_shortcut(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
         Self::write_u32(buf, pos, self.mo as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b"/");
         Self::write_u32(buf, pos, self.day as u32, b'0', Some(2), b'0');
@@ -787,7 +787,7 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_time_with_seconds_shortcut(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    fn write_time_with_seconds_shortcut(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
         Self::write_u32(buf, pos, self.hr as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
         Self::write_u32(buf, pos, self.min as u32, b'0', Some(2), b'0');
@@ -796,14 +796,14 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_time_without_seconds_shortcut(&self, buf: &mut [u8; STRFTIME_SIZE], pos: &mut usize) {
+    fn write_time_without_seconds_shortcut(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
         Self::write_u32(buf, pos, self.hr as u32, b'0', Some(2), b'0');
         Self::write_bytes(buf, pos, b":");
         Self::write_u32(buf, pos, self.min as u32, b'0', Some(2), b'0');
     }
 
     pub(crate) fn write_u32(
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         mut value: u32,
         flag: u8,
@@ -844,7 +844,7 @@ impl YmdHms {
             0
         };
 
-        if *pos + num_digits + pad_len > STRFTIME_SIZE {
+        if *pos + num_digits + pad_len > STRTIME_SIZE {
             return;
         }
 
@@ -862,7 +862,7 @@ impl YmdHms {
     }
 
     pub(crate) fn write_i64(
-        buf: &mut [u8; STRFTIME_SIZE],
+        buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
         value: i64,
         flag: u8,
@@ -907,7 +907,7 @@ impl YmdHms {
             0
         };
 
-        if *pos + (if negative { 1 } else { 0 }) + num_digits + pad_len > STRFTIME_SIZE {
+        if *pos + (if negative { 1 } else { 0 }) + num_digits + pad_len > STRTIME_SIZE {
             return;
         }
 

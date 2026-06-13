@@ -168,7 +168,7 @@ use core::fmt;
 /// use deep_time::{Dt, Scale};
 ///
 /// // this fn converts from UTC and creates a TAI Dt
-/// let dt = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+/// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
 ///
 /// // dt is internally TAI but has a UTC tag
 /// let unix_ms = dt.to_unix().to_ms();
@@ -195,7 +195,7 @@ use core::fmt;
 ///
 /// // Leap seconds were added to the secounds count
 /// // This Dt has attos that are now on the TAI timescale
-/// let dt = Dt::from_ymd(2025, 1, 1, 0, 0, 0, 0, Scale::UTC);
+/// let dt = Dt::from_ymd(2025, 1, 1, Scale::UTC, 0, 0, 0, 0);
 ///
 /// // The internal target is currently UTC so we don't need to do
 /// // anything to output back to UTC and round trip
@@ -215,7 +215,7 @@ use core::fmt;
 /// use deep_time::{Dt, Scale};
 ///
 /// // this fn converts from UTC and creates a TAI Dt
-/// let dt = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+/// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
 ///
 /// // to tdb
 /// let tdb = dt.to(Scale::TDB);
@@ -235,7 +235,7 @@ use core::fmt;
 /// ```rust
 /// use deep_time::{Dt, Scale};
 ///
-/// let x = Dt::from_ymd(2000, 2, 29, 0, 0, 0, 0, Scale::UTC).to_ymd();
+/// let x = Dt::from_ymd(2000, 2, 29, Scale::UTC, 0, 0, 0, 0).to_ymd();
 /// let x = x.add_yr(1);
 ///
 /// assert_eq!(x.day(), 28);

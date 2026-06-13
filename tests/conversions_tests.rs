@@ -304,7 +304,7 @@ fn is_leap_year_and_valid_date() {
 #[test]
 fn ntp_timestamp() {
     // 2698012800
-    let dt = Dt::from_ymd(1985, 7, 1, 0, 0, 0, 0, Scale::TAI);
+    let dt = Dt::from_ymd(1985, 7, 1, Scale::TAI, 0, 0, 0, 0);
     let ntp = dt.to_ntp();
     assert_eq!(
         ntp.to_sec(),

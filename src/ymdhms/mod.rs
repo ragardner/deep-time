@@ -16,7 +16,7 @@ mod printer;
 /// use deep_time::{Dt, Scale};
 ///
 /// // clamped to 29
-/// let x = Dt::from_ymd(2000, 2, 30, 0, 0, 0, 0, Scale::UTC).to_ymd();
+/// let x = Dt::from_ymd(2000, 2, 30, Scale::UTC, 0, 0, 0, 0).to_ymd();
 ///
 /// assert_eq!(x.day(), 29);
 /// ```
@@ -27,7 +27,7 @@ mod printer;
 /// ```rust
 /// use deep_time::{Dt, Scale};
 ///
-/// let x = Dt::from_ymd(2000, 2, 29, 0, 0, 0, 0, Scale::UTC).to_ymd();
+/// let x = Dt::from_ymd(2000, 2, 29, Scale::UTC, 0, 0, 0, 0).to_ymd();
 /// let x = x.add_yr(1);
 ///
 /// assert_eq!(x.day(), 28);
@@ -51,7 +51,7 @@ impl YmdHms {
     #[inline]
     pub const fn to_dt(&self) -> Dt {
         Dt::from_ymd(
-            self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
+            self.yr, self.mo, self.day, self.scale, self.hr, self.min, self.sec, self.attos,
         )
     }
 
@@ -68,7 +68,7 @@ impl YmdHms {
         attos: u64,
         scale: Scale,
     ) -> Self {
-        Dt::from_ymd(yr, mo, day, hr, min, sec, attos, scale).to_ymd()
+        Dt::from_ymd(yr, mo, day, scale, hr, min, sec, attos).to_ymd()
     }
 
     /// Adds (or subtracts) whole years, preserving month and day-of-month.
@@ -133,7 +133,7 @@ impl YmdHms {
     #[inline(never)]
     const fn _add_attos(&self, attos_delta: i128) -> Self {
         let tai = Dt::from_ymd(
-            self.yr, self.mo, self.day, self.hr, self.min, self.sec, self.attos, self.scale,
+            self.yr, self.mo, self.day, self.scale, self.hr, self.min, self.sec, self.attos,
         );
         let new_tai = tai.add(Dt::span(attos_delta));
         new_tai.to_ymd()

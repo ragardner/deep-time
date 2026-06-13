@@ -9,11 +9,11 @@ mod format_tests {
             2016,
             12,
             31,
+            Scale::UTC,
             23,
             59,
             60,
             123_456_789_000_000_000,
-            Scale::UTC,
         );
 
         // Civil time must show sec=60
@@ -43,7 +43,7 @@ mod format_tests {
 
     #[test]
     fn test_basic_formatting() {
-        let t = Dt::from_ymd(2025, 4, 16, 14, 30, 45, 123_456_789_000_000_000, Scale::TAI);
+        let t = Dt::from_ymd(2025, 4, 16, Scale::TAI, 14, 30, 45, 123_456_789_000_000_000);
 
         let s = t.to_str_lite("%Y-%m-%d %H:%M:%S.%f", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2025-04-16 14:30:45.123456789000000000");
@@ -60,7 +60,7 @@ mod format_tests {
 
     #[test]
     fn test_fractional_seconds_fix() {
-        let t = Dt::from_ymd(2025, 4, 16, 0, 0, 0, 123_456_789_000_000_000, Scale::UTC);
+        let t = Dt::from_ymd(2025, 4, 16, Scale::UTC, 0, 0, 0, 123_456_789_000_000_000);
 
         let s = t.to_str_lite("%f", Lang::En).unwrap();
         assert_eq!(s.as_str(), "123456789000000000");
@@ -78,24 +78,24 @@ mod format_tests {
     #[test]
     fn test_iso_week_fix() {
         // 2000-01-01 was Saturday → belongs to 1999 week 52
-        let t2000 = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+        let t2000 = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
         let s = t2000.to_str_lite("%G-W%V-%u", Lang::En).unwrap();
         assert_eq!(s.as_str(), "1999-W52-6");
 
         // 2000-01-03 is Monday of week 1 of 2000
-        let t2000_monday = Dt::from_ymd(2000, 1, 3, 12, 0, 0, 0, Scale::UTC);
+        let t2000_monday = Dt::from_ymd(2000, 1, 3, Scale::UTC, 12, 0, 0, 0);
         let s = t2000_monday.to_str_lite("%G-W%V-%u", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2000-W01-1");
 
         // Year with 53 weeks
-        let t_week53 = Dt::from_ymd(2015, 12, 28, 12, 0, 0, 0, Scale::UTC);
+        let t_week53 = Dt::from_ymd(2015, 12, 28, Scale::UTC, 12, 0, 0, 0);
         let s = t_week53.to_str_lite("%G-W%V", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2015-W53");
     }
 
     #[test]
     fn test_timezone_offset() {
-        let t = Dt::from_ymd(2025, 4, 16, 14, 30, 45, 0, Scale::UTC);
+        let t = Dt::from_ymd(2025, 4, 16, Scale::UTC, 14, 30, 45, 0);
 
         let s = t.to_str_lite("%z", Lang::En).unwrap();
         assert_eq!(s.as_str(), "+0000");
@@ -122,7 +122,7 @@ mod format_tests {
 
     #[test]
     fn test_padding_and_flags() {
-        let t = Dt::from_ymd(2025, 4, 5, 3, 9, 7, 0, Scale::TAI);
+        let t = Dt::from_ymd(2025, 4, 5, Scale::TAI, 3, 9, 7, 0);
 
         let s = t.to_str_lite("%d %H %M %S", Lang::En).unwrap();
         assert_eq!(s.as_str(), "05 03 09 07");
@@ -139,7 +139,7 @@ mod format_tests {
 
     #[test]
     fn test_weekday_and_month_names() {
-        let t = Dt::from_ymd(2025, 4, 16, 0, 0, 0, 0, Scale::UTC); // Wednesday
+        let t = Dt::from_ymd(2025, 4, 16, Scale::UTC, 0, 0, 0, 0); // Wednesday
 
         let s = t.to_str_lite("%A, %B %d, %Y", Lang::En).unwrap();
         assert_eq!(s.as_str(), "Wednesday, April 16, 2025");
@@ -151,14 +151,14 @@ mod format_tests {
     #[test]
     fn test_weekday_and_week_number_directives() {
         // 2023-12-31 was a Sunday
-        let sun = Dt::from_ymd(2023, 12, 31, 12, 0, 0, 0, Scale::UTC);
+        let sun = Dt::from_ymd(2023, 12, 31, Scale::UTC, 12, 0, 0, 0);
         assert_eq!(sun.to_str_lite("%A", Lang::En).unwrap().as_str(), "Sunday");
         assert_eq!(sun.to_str_lite("%a", Lang::En).unwrap().as_str(), "Sun");
         assert_eq!(sun.to_str_lite("%w", Lang::En).unwrap().as_str(), "0");
         assert_eq!(sun.to_str_lite("%u", Lang::En).unwrap().as_str(), "7");
 
         // 2024-01-01 was a Monday (ISO week 1 of 2024)
-        let mon = Dt::from_ymd(2024, 1, 1, 12, 0, 0, 0, Scale::UTC);
+        let mon = Dt::from_ymd(2024, 1, 1, Scale::UTC, 12, 0, 0, 0);
         assert_eq!(mon.to_str_lite("%A", Lang::En).unwrap().as_str(), "Monday");
         assert_eq!(mon.to_str_lite("%w", Lang::En).unwrap().as_str(), "1");
         assert_eq!(mon.to_str_lite("%u", Lang::En).unwrap().as_str(), "1");
@@ -167,18 +167,18 @@ mod format_tests {
         assert_eq!(mon.to_str_lite("%g", Lang::En).unwrap().as_str(), "24"); // ← added
 
         // 2000-01-01 was a Saturday
-        let sat = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+        let sat = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
         assert_eq!(sat.to_str_lite("%w", Lang::En).unwrap().as_str(), "6");
         assert_eq!(sat.to_str_lite("%U", Lang::En).unwrap().as_str(), "00");
         assert_eq!(sat.to_str_lite("%W", Lang::En).unwrap().as_str(), "00");
 
         // 2015-12-28 → ISO week 53 of 2015
-        let w53 = Dt::from_ymd(2015, 12, 28, 12, 0, 0, 0, Scale::UTC);
+        let w53 = Dt::from_ymd(2015, 12, 28, Scale::UTC, 12, 0, 0, 0);
         assert_eq!(w53.to_str_lite("%V", Lang::En).unwrap().as_str(), "53");
         assert_eq!(w53.to_str_lite("%G", Lang::En).unwrap().as_str(), "2015");
 
         // 2024-12-30 → ISO week 1 of 2025
-        let dec30 = Dt::from_ymd(2024, 12, 30, 12, 0, 0, 0, Scale::UTC);
+        let dec30 = Dt::from_ymd(2024, 12, 30, Scale::UTC, 12, 0, 0, 0);
         assert_eq!(dec30.to_str_lite("%V", Lang::En).unwrap().as_str(), "01");
         assert_eq!(dec30.to_str_lite("%G", Lang::En).unwrap().as_str(), "2025");
         assert_eq!(dec30.to_str_lite("%g", Lang::En).unwrap().as_str(), "25"); // ← added
@@ -186,7 +186,7 @@ mod format_tests {
 
     #[test]
     fn test_unix_timestamp_and_day_of_year() {
-        let t = Dt::from_ymd(1970, 1, 1, 0, 0, 0, 0, Scale::UTC);
+        let t = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
 
         let s = t.to_str_lite("%s", Lang::En).unwrap();
         assert_eq!(s.as_str(), "0");
@@ -198,48 +198,48 @@ mod format_tests {
     #[test]
     fn test_edge_cases_roundtrip_and_extreme_values() {
         // Negative & zero years
-        let t_neg = Dt::from_ymd(-123, 6, 15, 9, 30, 45, 0, Scale::TAI);
+        let t_neg = Dt::from_ymd(-123, 6, 15, Scale::TAI, 9, 30, 45, 0);
         let s = t_neg.to_str_lite("%Y-%m-%d", Lang::En).unwrap();
         assert_eq!(s.as_str(), "-0123-06-15");
 
         let s = t_neg.to_str_lite("%C", Lang::En).unwrap();
         assert_eq!(s.as_str(), "-2");
 
-        let t_zero = Dt::from_ymd(0, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let t_zero = Dt::from_ymd(0, 1, 1, Scale::TAI, 0, 0, 0, 0);
         let s = t_zero.to_str_lite("%Y", Lang::En).unwrap();
         assert_eq!(s.as_str(), "0000");
 
         // ISO week year-boundary cases
-        let t_2024_dec30 = Dt::from_ymd(2024, 12, 30, 12, 0, 0, 0, Scale::TAI);
+        let t_2024_dec30 = Dt::from_ymd(2024, 12, 30, Scale::TAI, 12, 0, 0, 0);
         let s = t_2024_dec30.to_str_lite("%G-W%V-%u", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2025-W01-1");
 
-        let t_2024_dec31 = Dt::from_ymd(2024, 12, 31, 12, 0, 0, 0, Scale::TAI);
+        let t_2024_dec31 = Dt::from_ymd(2024, 12, 31, Scale::TAI, 12, 0, 0, 0);
         let s = t_2024_dec31.to_str_lite("%G-W%V-%u", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2025-W01-2");
 
-        let t_2025_jan1 = Dt::from_ymd(2025, 1, 1, 12, 0, 0, 0, Scale::TAI);
+        let t_2025_jan1 = Dt::from_ymd(2025, 1, 1, Scale::TAI, 12, 0, 0, 0);
         let s = t_2025_jan1.to_str_lite("%G-W%V-%u", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2025-W01-3");
 
-        let t_2015_dec28 = Dt::from_ymd(2015, 12, 28, 12, 0, 0, 0, Scale::TAI);
+        let t_2015_dec28 = Dt::from_ymd(2015, 12, 28, Scale::TAI, 12, 0, 0, 0);
         let s = t_2015_dec28.to_str_lite("%G-W%V", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2015-W53");
 
         // Week numbers %U / %W edge cases
-        let t2000 = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
+        let t2000 = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
         let s = t2000.to_str_lite("%U", Lang::En).unwrap();
         assert_eq!(s.as_str(), "00");
 
         let s = t2000.to_str_lite("%W", Lang::En).unwrap();
         assert_eq!(s.as_str(), "00");
 
-        let t_sun = Dt::from_ymd(2023, 12, 31, 12, 0, 0, 0, Scale::TAI);
+        let t_sun = Dt::from_ymd(2023, 12, 31, Scale::TAI, 12, 0, 0, 0);
         let s = t_sun.to_str_lite("%U", Lang::En).unwrap();
         assert_eq!(s.as_str(), "53");
 
         // Fractional seconds extremes
-        let t_frac = Dt::from_ymd(2025, 4, 16, 0, 0, 0, 0, Scale::TAI);
+        let t_frac = Dt::from_ymd(2025, 4, 16, Scale::TAI, 0, 0, 0, 0);
         let s = t_frac.to_str_lite("%.0f", Lang::En).unwrap();
         assert_eq!(s.as_str(), "");
 
@@ -266,7 +266,7 @@ mod format_tests {
         assert_eq!(s.as_str(), "+01:23:45");
 
         // Padding + explicit width + flags combined
-        let t_small = Dt::from_ymd(2025, 4, 5, 3, 9, 7, 0, Scale::TAI);
+        let t_small = Dt::from_ymd(2025, 4, 5, Scale::TAI, 3, 9, 7, 0);
 
         let s = t_small.to_str_lite("%03d", Lang::En).unwrap();
         assert_eq!(s.as_str(), "005");
@@ -278,12 +278,12 @@ mod format_tests {
         assert_eq!(s.as_str(), "  9");
 
         // Negative Unix timestamp
-        let t_neg_unix = Dt::from_ymd(1969, 12, 31, 23, 59, 59, 0, Scale::TAI);
+        let t_neg_unix = Dt::from_ymd(1969, 12, 31, Scale::TAI, 23, 59, 59, 0);
         let s = t_neg_unix.to_str_lite("%s", Lang::En).unwrap();
         assert_eq!(s.as_str(), "-1");
 
         // Large positive
-        let t_large = Dt::from_ymd(2038, 1, 19, 3, 14, 7, 0, Scale::TAI);
+        let t_large = Dt::from_ymd(2038, 1, 19, Scale::TAI, 3, 14, 7, 0);
         let s = t_large.to_str_lite("%s", Lang::En).unwrap();
         assert_eq!(s.as_str(), "2147483647");
     }
@@ -291,7 +291,7 @@ mod format_tests {
     #[test]
     fn test_fractional_trim_flag() {
         // Value with trailing zeros in fractional part
-        let t = Dt::from_ymd(2025, 4, 16, 0, 0, 0, 123_456_789_000_000_000, Scale::TAI);
+        let t = Dt::from_ymd(2025, 4, 16, Scale::TAI, 0, 0, 0, 123_456_789_000_000_000);
 
         let s = t.to_str_lite("%.~f", Lang::En).unwrap();
         assert_eq!(s.as_str(), ".123456789");
@@ -303,7 +303,7 @@ mod format_tests {
         assert_eq!(s.as_str(), ".123456789");
 
         // Value that becomes all zeros after trimming
-        let t_zero = Dt::from_ymd(2025, 4, 16, 0, 0, 0, 0, Scale::TAI);
+        let t_zero = Dt::from_ymd(2025, 4, 16, Scale::TAI, 0, 0, 0, 0);
         let s = t_zero.to_str_lite("%.~f", Lang::En).unwrap();
         assert_eq!(s.as_str(), "");
 
@@ -311,7 +311,7 @@ mod format_tests {
         assert_eq!(s.as_str(), "");
 
         // Without ~ it should NOT trim
-        let t_trailing = Dt::from_ymd(2025, 4, 16, 0, 0, 0, 123_000_000_000_000_000, Scale::TAI);
+        let t_trailing = Dt::from_ymd(2025, 4, 16, Scale::TAI, 0, 0, 0, 123_000_000_000_000_000);
         let s = t_trailing.to_str_lite("%.9f", Lang::En).unwrap();
         assert_eq!(s.as_str(), ".123000000");
 
@@ -322,34 +322,34 @@ mod format_tests {
         assert_eq!(s.as_str(), "");
 
         // Negative years + fractional trim
-        let t_neg = Dt::from_ymd(-123, 6, 15, 9, 30, 45, 123_456_789_000_000_000, Scale::TAI);
+        let t_neg = Dt::from_ymd(-123, 6, 15, Scale::TAI, 9, 30, 45, 123_456_789_000_000_000);
         let s = t_neg
             .to_str_lite("%Y-%m-%dT%H:%M:%S%.~fZ", Lang::En)
             .unwrap();
         assert_eq!(s.as_str(), "-0123-06-15T09:30:45.123456789Z");
 
-        let t_neg_zero = Dt::from_ymd(-1, 1, 1, 0, 0, 0, 0, Scale::TAI);
+        let t_neg_zero = Dt::from_ymd(-1, 1, 1, Scale::TAI, 0, 0, 0, 0);
         let s = t_neg_zero.to_str_lite("%Y-%.~f", Lang::En).unwrap();
         assert_eq!(s.as_str(), "-0001-");
 
-        let t_year0 = Dt::from_ymd(0, 1, 1, 0, 0, 0, 500_000_000_000_000_000, Scale::TAI);
+        let t_year0 = Dt::from_ymd(0, 1, 1, Scale::TAI, 0, 0, 0, 500_000_000_000_000_000);
         let s = t_year0.to_str_lite("%Y%.~f", Lang::En).unwrap();
         assert_eq!(s.as_str(), "0000.5");
 
         // Long years + fractional
-        let t_long_year = Dt::from_ymd(123456, 7, 4, 12, 0, 0, 987654321987654321, Scale::TAI);
+        let t_long_year = Dt::from_ymd(123456, 7, 4, Scale::TAI, 12, 0, 0, 987654321987654321);
         let s = t_long_year
             .to_str_lite("%Y-%m-%dT%H:%M:%S%.~fZ", Lang::En)
             .unwrap();
         assert_eq!(s.as_str(), "123456-07-04T12:00:00.987654321987654321Z");
 
         let t_long_neg_year =
-            Dt::from_ymd(-100000, 12, 31, 23, 59, 59, 111111111111111111, Scale::TAI);
+            Dt::from_ymd(-100000, 12, 31, Scale::TAI, 23, 59, 59, 111111111111111111);
         let s = t_long_neg_year.to_str_lite("%Y-%.~f", Lang::En).unwrap();
         assert_eq!(s.as_str(), "-100000-.111111111111111111");
 
         // 18-digit attos with NO trailing zeros
-        let t_full_attos = Dt::from_ymd(2025, 4, 16, 0, 0, 0, 123456789012345678, Scale::TAI);
+        let t_full_attos = Dt::from_ymd(2025, 4, 16, Scale::TAI, 0, 0, 0, 123456789012345678);
 
         let s = t_full_attos.to_str_lite("%.18~f", Lang::En).unwrap();
         assert_eq!(s.as_str(), ".123456789012345678");
@@ -362,7 +362,7 @@ mod format_tests {
     #[test]
     fn test_format_label_only_no_time_shift() {
         // Base time: 2025-04-16 14:30:45 UTC
-        let t = Dt::from_ymd(2025, 4, 16, 14, 30, 45, 0, Scale::UTC);
+        let t = Dt::from_ymd(2025, 4, 16, Scale::UTC, 14, 30, 45, 0);
 
         let s = t
             .to_str_lite_with_offset_label("%Y-%m-%d %H:%M:%S %:z", -5 * 3600, Lang::En)
@@ -379,7 +379,7 @@ mod format_tests {
     #[test]
     fn test_format_label_only_no_time_shift_alloc() {
         // Base time: 2025-04-16 14:30:45 UTC
-        let t = Dt::from_ymd(2025, 4, 16, 14, 30, 45, 0, Scale::UTC);
+        let t = Dt::from_ymd(2025, 4, 16, Scale::UTC, 14, 30, 45, 0);
 
         let s = t
             .to_str_with_offset_label("%Y-%m-%d %H:%M:%S %:z", -5 * 3600, Lang::En)

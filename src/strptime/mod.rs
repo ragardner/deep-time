@@ -1,7 +1,7 @@
 pub mod parser;
 
 use crate::error::{DtErr, DtErrKind};
-use crate::{Dt, Lang, LiteStr, STRFTIME_SIZE, TimeParts, an_err};
+use crate::{Dt, Lang, LiteStr, STRTIME_SIZE, TimeParts, an_err};
 use core::result::Result;
 use core::str;
 
@@ -196,7 +196,7 @@ impl StrPTimeFmt {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
         lang: Lang,
-    ) -> Result<LiteStr<STRFTIME_SIZE>, DtErr> {
+    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         let parts = TimeParts::from_str(
             self.as_str()?,
             s,

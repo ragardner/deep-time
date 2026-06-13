@@ -50,7 +50,6 @@ pub(crate) fn locale_prefers_day_first() -> bool {
 
 pub(crate) const DIGIT_CHARS: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
-pub(crate) const MAX_DATE_STRING_LEN: usize = 255;
 pub(crate) const MIN_YEAR: i32 = -9999;
 pub(crate) const MAX_YEAR: i32 = 9999;
 

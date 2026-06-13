@@ -38,7 +38,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let dt = Dt::from_ymd(2024, 6, 15, 12, 0, 0, 0, Scale::UTC);
+    /// let dt = Dt::from_ymd(2024, 6, 15, Scale::UTC, 12, 0, 0, 0);
     /// let diff = dt.to_scale_and_diff(Dt::UNIX_EPOCH, true);
     ///
     /// // diff can be used as a Unix timestamp offset
@@ -116,7 +116,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let tai = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+    /// let tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
     /// let tt = tai.to(Scale::TT);
     ///
     /// assert_eq!(tt.scale, Scale::TT);
@@ -261,7 +261,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let tai = Dt::from_ymd(2024, 6, 15, 12, 0, 0, 0, Scale::UTC);
+    /// let tai = Dt::from_ymd(2024, 6, 15, Scale::UTC, 12, 0, 0, 0);
     /// let tt = tai.to(Scale::TT);
     /// let tdb = tt.to(Scale::TDB);
     /// let roundtrip = tdb.to(Scale::TAI);

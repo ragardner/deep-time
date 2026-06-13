@@ -1,61 +1,6 @@
 use crate::{Dt, DtErr, DtErrKind, Scale, TimeParts, an_err};
 
 impl TimeParts {
-    /// Converts days since 1958-01-01 (midnight UTC/TAI) into Gregorian date.
-    /// Pure integer arithmetic matching the CCSDS 301.0-B-4 Level 1 epoch.
-    pub fn days_since_1958_to_gregorian(days_since_epoch: i64) -> (i64, u8, u8) {
-        let mut year = 1958i64;
-        let mut remaining = days_since_epoch;
-
-        while remaining >= 0 {
-            let days_in_year = if Dt::is_leap_yr(year) { 366 } else { 365 };
-            if remaining < days_in_year {
-                break;
-            }
-            remaining -= days_in_year;
-            year += 1;
-        }
-
-        let month_days = if Dt::is_leap_yr(year) {
-            &Dt::DAYS_IN_GREGORIAN_MONTHS_LEAP_YR
-        } else {
-            &Dt::DAYS_IN_GREGORIAN_MONTHS
-        };
-
-        let mut month = 0usize;
-        let mut d = remaining as u32;
-        while month < 12 {
-            let days_in_month = month_days[month] as u32;
-            if d < days_in_month {
-                break;
-            }
-            d -= days_in_month;
-            month += 1;
-        }
-
-        let day = d as u8 + 1;
-        (year, month as u8 + 1, day)
-    }
-
-    /// Exact inverse of `days_since_1958_to_gregorian`.
-    pub fn gregorian_to_days_since_1958(year: i64, month: u8, day: u8) -> i64 {
-        let mut days = 0i64;
-        let mut y = 1958i64;
-        while y < year {
-            days += if Dt::is_leap_yr(y) { 366 } else { 365 };
-            y += 1;
-        }
-        let month_days = if Dt::is_leap_yr(year) {
-            [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-        } else {
-            [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
-        };
-        for mday in month_days.iter().take(month as usize - 1) {
-            days += *mday as i64;
-        }
-        days + (day as i64 - 1)
-    }
-
     /// Parses a CCSDS Calendar Segmented Time Code (CCS) into [`TimeParts`].
     ///
     /// Implements **CCSDS 301.0-B-4 §3.4 (Level 1 only)**.
@@ -335,7 +280,7 @@ impl TimeParts {
         let days_since_epoch = (coarse_sec / 86400) as i64;
         let sec_of_day = (coarse_sec % 86400) as i64;
 
-        let (year, month, day) = TimeParts::days_since_1958_to_gregorian(days_since_epoch);
+        let (year, month, day) = Dt::days_since_1958_to_gregorian(days_since_epoch);
 
         let hour = (sec_of_day / 3600) as u8;
         let minute = ((sec_of_day % 3600) / 60) as u8;
@@ -495,7 +440,7 @@ impl TimeParts {
 
         // Convert day count to Gregorian
         let days_since_epoch = day_count as i64;
-        let (year, month, day) = TimeParts::days_since_1958_to_gregorian(days_since_epoch);
+        let (year, month, day) = Dt::days_since_1958_to_gregorian(days_since_epoch);
 
         let hour = (sec_of_day / 3600) as u8;
         let minute = ((sec_of_day % 3600) / 60) as u8;

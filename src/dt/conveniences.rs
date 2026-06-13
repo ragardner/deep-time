@@ -17,7 +17,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let dt = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::UTC);
+    /// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
     /// let unix = dt.to_unix();
     ///
     /// assert_eq!(
@@ -56,7 +56,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let dt = Dt::from_ymd(1970, 1, 1, 0, 0, 0, 0, Scale::UTC);
+    /// let dt = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
     ///
     /// let unix = dt.to_unix().to_sec();
     ///
@@ -86,7 +86,7 @@ impl Dt {
     /// use deep_time::{Dt, Scale};
     ///
     /// // 2698012800
-    /// let dt = Dt::from_ymd(1985, 7, 1, 0, 0, 0, 0, Scale::TAI);
+    /// let dt = Dt::from_ymd(1985, 7, 1, Scale::TAI, 0, 0, 0, 0);
     /// let ntp = dt.to_ntp();
     ///
     /// assert_eq!(
@@ -143,7 +143,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
     /// let g = x.to_gps_wk_and_tow();
     /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
     /// assert_eq!(x, z);
@@ -170,7 +170,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2000, 1, 1, 12, 0, 0, 0, Scale::TAI);
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
     /// let g = x.to_gps_wk_and_tow();
     /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
     /// assert_eq!(x, z);
@@ -221,7 +221,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let cxc = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+    /// let cxc = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0)
     ///     .target(Scale::TT)
     ///     .to_cxcsec()
     ///     .to_sec_f();
@@ -261,7 +261,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let galexsec = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI)
+    /// let galexsec = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0)
     ///     .target(Scale::UTC)
     ///     .to_galexsec()
     ///     .to_sec_f();
@@ -300,7 +300,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
     /// assert_eq!(x.to_jyear(), 2019.9986310746065);
     /// ```
     #[inline(always)]
@@ -338,7 +338,7 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
     /// assert!((x.to_byear() - 2020.000335739628).abs() < 1e-12);
     /// ```
     #[inline]
@@ -379,19 +379,19 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2020, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
     /// assert_eq!(x.to_decimalyear(), 2020.0);
     ///
     /// // Also works for negative years
-    /// let y = Dt::from_ymd(-2000, 1, 1, 0, 0, 0, 0, Scale::TAI);
+    /// let y = Dt::from_ymd(-2000, 1, 1, Scale::TAI, 0, 0, 0, 0);
     /// assert_eq!(y.to_decimalyear(), -2000.0);
     /// ```
     pub fn to_decimalyear(&self) -> Real {
         let ymd = self.to_ymd();
         let year = ymd.yr;
 
-        let start = Self::from_ymd(year, 1, 1, 0, 0, 0, 0, self.target);
-        let next_start = Self::from_ymd(year + 1, 1, 1, 0, 0, 0, 0, self.target);
+        let start = Self::from_ymd(year, 1, 1, self.target, 0, 0, 0, 0);
+        let next_start = Self::from_ymd(year + 1, 1, 1, self.target, 0, 0, 0, 0);
 
         let elapsed = self.to_diff_raw(start).to_sec_f();
         let year_length = next_start.to_diff_raw(start).to_sec_f();

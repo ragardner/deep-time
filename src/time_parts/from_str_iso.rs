@@ -1,4 +1,4 @@
-use crate::{DtErr, DtErrKind, Offset, Scale, TimeParts, an_err};
+use crate::{DtErr, DtErrKind, Offset, STRTIME_SIZE, Scale, TimeParts, an_err};
 
 impl TimeParts {
     /// Generalized ISO / CCSDS ASCII Time Code parser (A or B variant).
@@ -21,6 +21,9 @@ impl TimeParts {
     pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
         let bytes = input.as_bytes();
         let len_ = bytes.len();
+        if len_ > STRTIME_SIZE {
+            return Err(an_err!(DtErrKind::InvalidInput, "too long: {}", input));
+        }
 
         let mut start = 0usize;
         while start < len_ {

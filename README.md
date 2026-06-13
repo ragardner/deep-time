@@ -12,8 +12,8 @@ A non-exhaustive list of functionality:
 
 - No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_ymd).
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
-- Powerful and fast (600ns per parse) auto-parsers for [datetimes](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats and multiple languages, requires the `parse` feature
-- Fast (18ns per parse) [ISO](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_iso) parser
+- Powerful and fast auto-parsers for [datetimes](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats and multiple languages, requires the `parse` feature
+- Fast [ISO](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_iso) parser
 - [Time scales](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/enum.Scale.html) e.g. UTC with full leap second support, including historical, TT, TAI, TDB, LTC, GPS, etc.
 - [Strptime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str)
 - [Strftime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
@@ -26,7 +26,7 @@ A non-exhaustive list of functionality:
 - Const fn [libm math](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/math/index.html) functions
 - Safe, saturating arithmetic throughout
 - [Lunar](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/mars/index.html) modules
-- [Sidereal time](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/sidereal/struct.Sidereal.html)
+- [Sidereal time](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/sidereal/struct.Sidereal.html) with a rust implementation of ERFA Equation of the Origins / Equinoxes
 - [UT1 and EOP](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/eop/index.html)
 - [Light-time (Shapiro delay, etc.)](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.ObserverState.html)
 - [Proper time along trajectories](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.proper_time_from_states)

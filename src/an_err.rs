@@ -81,8 +81,8 @@ where
 ///
 /// ## Construction
 ///
-/// ```rust,ignore
-/// use an_error::{AnErr, an_err};
+/// ```rust
+/// use deep_time::{AnErr, an_err};
 ///
 /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 /// pub enum MyKind {
@@ -134,17 +134,31 @@ where
 ///
 /// ### Direct access
 ///
-/// ```rust,ignore
-/// let top_kind     = err.kind();           // most recent
+/// ```rust
+/// use deep_time::{AnErr, an_err};
+///
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// pub enum MyKind {
+///     Parse,
+///     Io,
+/// }
+///
+/// pub type MyError = AnErr<MyKind, 3, 29>;
+///
+/// let inner: MyError = an_err!(MyKind::Parse, "bad data");
+/// let err: MyError = an_err!(MyKind::Io, "while reading file" => inner);
+///
+/// let top_kind     = err.kind(); // most recent
 /// let top_loc      = err.location();
 /// let top_reason   = err.reason();
 ///
-/// let root_kind    = err.root_kind();      // original error
+/// let root_kind    = err.root_kind(); // original error
 /// let root_loc     = err.root_location();
 /// let root_reason  = err.root_reason();
 ///
 /// if let Some((kind, loc, reason)) = err.get(1) {
 ///     // second level (index 0 = top, index 1 = next, ...)
+///     let _ = (kind, loc, reason);
 /// }
 /// ```
 ///
@@ -152,7 +166,22 @@ where
 ///
 /// The most common way to walk the full stack is with [`trace`](Self::trace):
 ///
-/// ```rust,ignore
+/// ```rust
+/// # #[cfg(feature = "std")]
+/// # {
+/// use deep_time::{AnErr, an_err};
+///
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// pub enum MyKind {
+///     Parse,
+///     Io,
+/// }
+///
+/// pub type MyError = AnErr<MyKind, 3, 29>;
+///
+/// let inner: MyError = an_err!(MyKind::Parse, "bad data");
+/// let err: MyError = an_err!(MyKind::Io, "while reading file" => inner);
+///
 /// for (kind, location, reason) in err.trace() {
 ///     println!("{:?} @ {}:{}", kind, location.file(), location.line());
 ///
@@ -160,6 +189,7 @@ where
 ///         println!("    reason: {}", r);
 ///     }
 /// }
+/// # }
 /// ```
 ///
 /// - Iteration order is **most recent → oldest** (same order as `Display`).
@@ -500,14 +530,21 @@ where
     /// Returns the number of bytes actually written (always the same for a given `PATH_LEN`).
     ///
     /// Recommended usage:
-    /// ```rust,ignore
-    /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-    /// #[repr(u8)]   // or #[repr(u16)] for >256 variants
-    /// pub enum MyKind { ... }
+    /// ```rust
+    /// use deep_time::{AnErr, an_err};
     ///
+    /// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    /// #[repr(u8)]
+    /// pub enum MyKind {
+    ///     Parse,
+    ///     Io,
+    /// }
+    ///
+    /// let my_error: AnErr<MyKind, 3, 29> = an_err!(MyKind::Io, "example error");
     /// let mut buf = [0u8; AnErr::<MyKind, 3, 29>::wire_size::<80>()];
-    /// let written = my_error.to_wire_bytes::<80>(|k| k as u16, &mut buf);
-    /// let packet = &buf[..written];
+    /// let written = my_error.to_wire_bytes::<80>(|k| k as u16, &mut buf).unwrap();
+    /// let _packet = &buf[..written];
+    /// assert_eq!(written, AnErr::<MyKind, 3, 29>::wire_size::<80>());
     /// ```
     pub fn to_wire_bytes<const PATH_LEN: usize>(
         &self,

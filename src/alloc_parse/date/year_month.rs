@@ -69,11 +69,11 @@ pub(crate) fn parse_yyyy_mm(bytes: &[u8]) -> Option<Dt> {
         year as i64,
         month as u8,
         1,
-        0,
-        0,
-        0,
-        0,
         Scale::UTC,
+        0,
+        0,
+        0,
+        0,
     ))
 }
 

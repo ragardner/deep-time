@@ -72,7 +72,7 @@ mod ccsds_tests {
 
     #[test]
     fn ccs_y2k_month_day() {
-        let dt = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+        let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
         let (buf, len) = dt.to_ccsds_ccs(false, 0).unwrap();
         assert_eq!(len, 8);
         let expected = [0x50, 0x20, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00];
@@ -81,7 +81,7 @@ mod ccsds_tests {
 
     #[test]
     fn ccs_doy() {
-        let dt = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+        let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
         let (buf, len) = dt.to_ccsds_ccs(true, 0).unwrap();
         assert_eq!(len, 8);
         assert_eq!(buf[0], 0x58);
@@ -92,7 +92,7 @@ mod ccsds_tests {
     #[test]
     fn ccs_subsecond() {
         let dt =
-            Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC).add_attos(123_456_789_012_345_678);
+            Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0).add_attos(123_456_789_012_345_678);
         let (buf, len) = dt.to_ccsds_ccs(false, 2).unwrap();
         assert_eq!(len, 10);
         assert_eq!(buf[0], 0x52);
@@ -138,7 +138,7 @@ mod ccsds_tests {
         let (buf, _) = tai.to_ccsds_bin().unwrap();
         assert_eq!(buf[0] & 0b0111_0000, 0b0001_0000);
 
-        let utc = Dt::from_ymd(2000, 1, 1, 0, 0, 0, 0, Scale::UTC);
+        let utc = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
         let (buf, _) = utc.to_ccsds_bin().unwrap();
         assert_eq!(buf[0] & 0b0111_0000, 0b0100_0000);
     }
@@ -199,7 +199,7 @@ mod ccsds_tests {
 
     #[test]
     fn test_ccsds_c_roundtrip() {
-        let dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000, Scale::TAI);
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::TAI, 14, 30, 45, 123_456_789_000_000_000);
 
         let (buf, len) = dt.to_ccsds_cuc(4, 3, false).unwrap();
         let parsed = TimeParts::from_ccsds_cuc(&buf[0..len]).unwrap();
@@ -222,7 +222,7 @@ mod ccsds_tests {
 
     #[test]
     fn test_ccsds_d_roundtrip() {
-        let dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 400_000_000_000, Scale::UTC);
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 400_000_000_000);
 
         let (buf, len) = dt.to_ccsds_cds(2, 1, false).unwrap();
         let parsed = TimeParts::from_ccsds_cds(&buf[0..len]).unwrap();
@@ -301,7 +301,7 @@ mod ccsds_tests {
     #[test]
     fn test_ccsds_ccs_month_day_variant() {
         // 2025-04-17 14:30:45.123456789 UTC (Month/Day)
-        let tp = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000, Scale::UTC);
+        let tp = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 123_456_789_000_000_000);
 
         roundtrip_ccs(tp, false, 4, 0b0101_0100); // P-field: 01010100 (Code 101, MD, 4 subsec)
     }
@@ -309,7 +309,7 @@ mod ccsds_tests {
     #[test]
     fn test_ccsds_ccs_day_of_year_variant() {
         // 2025-107 (April 17 is DOY 107 in 2025) 14:30:45.123456789 UTC
-        let tp = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 123_456_789_000_000_000, Scale::UTC);
+        let tp = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 123_456_789_000_000_000);
 
         roundtrip_ccs(tp, true, 3, 0b0101_1011); // P-field: 01011011 (Code 101, DOY, 3 subsec)
     }
@@ -317,14 +317,14 @@ mod ccsds_tests {
     #[test]
     fn test_ccsds_ccs_leap_second() {
         // 2025-06-30 23:59:60.000000000 UTC (leap second)
-        let tp = Dt::from_ymd(2025, 6, 30, 23, 59, 60, 0, Scale::UTC);
+        let tp = Dt::from_ymd(2025, 6, 30, Scale::UTC, 23, 59, 60, 0);
 
         roundtrip_ccs(tp, false, 0, 0b0101_0000); // P-field with 0 subsec
     }
 
     #[test]
     fn test_ccsds_ccs_various_precisions() {
-        let base = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 123_456_789_012_345_678, Scale::UTC);
+        let base = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 123_456_789_012_345_678);
 
         for n in 0..=6 {
             roundtrip_ccs(base, false, n, 0b0101_0000 | n); // P-field varies only in low 3 bits
@@ -334,15 +334,15 @@ mod ccsds_tests {
     #[test]
     fn test_ccsds_ccs_edge_cases() {
         // Epoch day
-        let epoch = Dt::from_ymd(1958, 1, 1, 0, 0, 0, 0, Scale::UTC);
+        let epoch = Dt::from_ymd(1958, 1, 1, Scale::UTC, 0, 0, 0, 0);
         roundtrip_ccs(epoch, false, 0, 0b0101_0000);
 
         // Year 9999, DOY 366 (leap year)
-        let y9999 = Dt::from_ymd(9999, 12, 31, 23, 59, 59, 0, Scale::UTC);
+        let y9999 = Dt::from_ymd(9999, 12, 31, Scale::UTC, 23, 59, 59, 0);
         roundtrip_ccs(y9999, true, 2, 0b0101_1010);
 
         // Subsecond rounding test (exactly halfway case)
-        let half = Dt::from_ymd(2025, 4, 17, 0, 0, 0, 500_000_000_000_000_000, Scale::UTC);
+        let half = Dt::from_ymd(2025, 4, 17, Scale::UTC, 0, 0, 0, 500_000_000_000_000_000);
         let (buf, _) = half.to_ccsds_ccs(false, 1).unwrap();
         // Should round to 50 (i.e. 0.5 s)
         assert_eq!(buf[8], 0x50); // last BCD byte should be 0x50 for "50"
@@ -402,7 +402,7 @@ mod ccsds_tests {
         ];
 
         for (desc, y, m, d, h, min, s, attos, expected) in cases {
-            let dt = Dt::from_ymd(y, m, d, h, min, s, attos, Scale::UTC);
+            let dt = Dt::from_ymd(y, m, d, Scale::UTC, h, min, s, attos);
 
             let (buf, len) = dt.to_ccsds_cds(2, 0, false).unwrap(); // 2-byte day, no sub-ms
 
@@ -415,7 +415,7 @@ mod ccsds_tests {
     #[test]
     fn test_ccsds_c_extended_pfield_roundtrip() {
         // Use values that force the 2-byte extended P-field
-        let dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 123_456_789_012_345_678, Scale::TAI);
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::TAI, 14, 30, 45, 123_456_789_012_345_678);
 
         // n_coarse=5 and n_frac=4 both require the extended P-field
         let (buf, len) = dt.to_ccsds_cuc(5, 4, false).unwrap();
@@ -443,7 +443,7 @@ mod ccsds_tests {
     #[test]
     fn test_ccsds_c_max_parameters() {
         // Use a clean fractional value (0.5s) that is more likely to survive n_frac=10
-        let dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 500_000_000_000_000_000, Scale::TAI);
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::TAI, 14, 30, 45, 500_000_000_000_000_000);
 
         let (buf, len) = dt.to_ccsds_cuc(7, 8, false).unwrap();
         assert_eq!(len, 7 + 8 + 2);
@@ -473,7 +473,7 @@ mod ccsds_tests {
     #[test]
     fn test_ccsds_d_sub_ms_code_2() {
         // Test the 2⁻³² sub-millisecond path
-        let dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 123_456_789_012_345_678, Scale::UTC);
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 123_456_789_012_345_678);
 
         let (buf, len) = dt.to_ccsds_cds(2, 2, false).unwrap();
         assert_eq!(len, 11); // P-field (1) + 2 days + 4 ms + 4 sub-ms
@@ -504,7 +504,7 @@ mod ccsds_tests {
     #[test]
     fn test_ccsds_pre_1958_rejection() {
         // CUC
-        let before = Dt::from_ymd(1957, 12, 31, 23, 59, 59, 0, Scale::TAI);
+        let before = Dt::from_ymd(1957, 12, 31, Scale::TAI, 23, 59, 59, 0);
         assert!(
             matches!(
                 before.to_ccsds_cuc(4, 0, false),
@@ -514,7 +514,7 @@ mod ccsds_tests {
         );
 
         // CDS
-        let before_utc = Dt::from_ymd(1957, 12, 31, 23, 59, 59, 0, Scale::UTC);
+        let before_utc = Dt::from_ymd(1957, 12, 31, Scale::UTC, 23, 59, 59, 0);
         assert!(
             matches!(
                 before_utc.to_ccsds_cds(2, 0, false),
@@ -526,7 +526,7 @@ mod ccsds_tests {
 
     #[test]
     fn test_ccsds_c_extended_pfield_variations() {
-        let base_dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 123_456_789_012_345_678, Scale::TAI);
+        let base_dt = Dt::from_ymd(2025, 4, 17, Scale::TAI, 14, 30, 45, 123_456_789_012_345_678);
 
         // Case 1: Extension triggered by n_coarse > 4
         let (buf1, len1) = base_dt.to_ccsds_cuc(5, 2, false).unwrap();
@@ -550,7 +550,7 @@ mod ccsds_tests {
 
     #[test]
     fn test_ccsds_d_combined_features() {
-        let dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 123_456_789_012_345_678, Scale::UTC);
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 123_456_789_012_345_678);
 
         // n_day=3 + sub_ms_code=2 + extension=true
         let (buf, len) = dt.to_ccsds_cds(3, 2, true).unwrap();
@@ -578,21 +578,21 @@ mod ccsds_tests {
     #[test]
     fn test_from_ccsds_bin_auto_detector() {
         // CUC (Code ID 001)
-        let cuc_dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 0, Scale::TAI);
+        let cuc_dt = Dt::from_ymd(2025, 4, 17, Scale::TAI, 14, 30, 45, 0);
         let (cuc_buf, cuc_len) = cuc_dt.to_ccsds_cuc(4, 0, false).unwrap();
         let cuc_parsed = TimeParts::from_ccsds_bin(&cuc_buf[0..cuc_len]).unwrap();
         assert_eq!(cuc_parsed.scale, Scale::TAI);
         assert_eq!(cuc_parsed.yr, Some(2025));
 
         // CDS (Code ID 100)
-        let cds_dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 0, Scale::UTC);
+        let cds_dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 0);
         let (cds_buf, cds_len) = cds_dt.to_ccsds_cds(2, 0, false).unwrap();
         let cds_parsed = TimeParts::from_ccsds_bin(&cds_buf[0..cds_len]).unwrap();
         assert_eq!(cds_parsed.scale, Scale::UTC);
         assert_eq!(cds_parsed.yr, Some(2025));
 
         // CCS (Code ID 101)
-        let ccs_dt = Dt::from_ymd(2025, 4, 17, 14, 30, 45, 0, Scale::UTC);
+        let ccs_dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 0);
         let (ccs_buf, ccs_len) = ccs_dt.to_ccsds_ccs(false, 0).unwrap();
         let ccs_parsed = TimeParts::from_ccsds_bin(&ccs_buf[0..ccs_len]).unwrap();
         assert_eq!(ccs_parsed.scale, Scale::UTC);

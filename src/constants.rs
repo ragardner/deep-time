@@ -3,7 +3,7 @@
 
 use crate::{Dt, Real, Scale};
 
-pub const STRFTIME_SIZE: usize = 512;
+pub const STRTIME_SIZE: usize = 512;
 
 pub(crate) const SEC_PER_YEAR: i128 = 31_557_600; // 365.25 days × 86_400
 pub(crate) const SEC_PER_MONTH: i128 = 2_629_800; // 30.4375 days × 86_400

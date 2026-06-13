@@ -32,7 +32,7 @@ pub(crate) fn parse_i32_year(input: &str) -> Option<Dt> {
     if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
         return None;
     }
-    Some(Dt::from_ymd(year as i64, 1, 1, 0, 0, 0, 0, Scale::UTC))
+    Some(Dt::from_ymd(year as i64, 1, 1, Scale::UTC, 0, 0, 0, 0))
 }
 
 #[inline]
@@ -42,7 +42,7 @@ pub(crate) fn parse_two_digit_year(input: &str) -> Option<Dt> {
     if !(MIN_YEAR..=MAX_YEAR).contains(&year) {
         return None;
     }
-    Some(Dt::from_ymd(year as i64, 1, 1, 0, 0, 0, 0, Scale::UTC))
+    Some(Dt::from_ymd(year as i64, 1, 1, Scale::UTC, 0, 0, 0, 0))
 }
 
 /// Fractional day string → nanoseconds (exact integer math, max 9 digits)

@@ -67,12 +67,27 @@ impl Dt {
     ///
     /// ## Examples
     ///
-    /// ```ignore
-    /// let t = Dt::from_sec(1234.5);
+    /// ```
+    /// use deep_time::{Dt, Position, Spacetime, Velocity};
+    ///
+    /// let bodies = [
+    ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20),     // Sun
+    ///     (Position::from_au(1.0, 0.0, 0.0), 3.9860044e14),     // Earth
+    ///     (Position::from_au(1.00257, 0.0, 0.0), 4.9048695e12), // Moon
+    /// ];
+    ///
+    /// let position = Position::from_au(1.001, 0.001, 0.0); // e.g. spacecraft, asteroid, etc.
+    ///
+    /// let grav_potential = Spacetime::grav_potential_from_point_masses(
+    ///     position,
+    ///     bodies.iter().copied(),
+    /// );
+    ///
+    /// let t = Dt::span_f(1234.5);
     ///
     /// let state = t.to_observer_state(
-    ///     position,
-    ///     velocity,
+    ///     Position::ZERO,
+    ///     Velocity::ZERO,
     ///     grav_potential,
     ///     0.0, // normal solar-system use
     /// );
@@ -226,10 +241,43 @@ impl ObserverState {
     ///
     /// For round-trip (two-way) measurements, square the one-way ratio:
     ///
-    /// ```rust,ignore
+    /// ```rust
+    /// use deep_time::{Dt, ObserverState, Position, Spacetime, Velocity};
+    ///
+    /// let bodies = [
+    ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20), // Sun
+    ///     (Position::from_au(1.0, 0.0, 0.0), 3.9860044e14), // Earth
+    /// ];
+    ///
+    /// let tx_pos = Position::from_au(1.0, 0.0, 0.0);
+    /// let rx_pos = Position::from_au(1.00257, 0.0, 0.0);
+    ///
+    /// let grav_potential_tx = Spacetime::grav_potential_from_point_masses(tx_pos, bodies.iter().copied());
+    /// let grav_potential_rx = Spacetime::grav_potential_from_point_masses(rx_pos, bodies.iter().copied());
+    ///
+    /// let transmitter = ObserverState::new(
+    ///     Dt::span_f(0.0),
+    ///     tx_pos,
+    ///     Velocity::ZERO,
+    ///     grav_potential_tx,
+    /// );
+    ///
+    /// let receiver = ObserverState::new(
+    ///     Dt::span_f(0.0),
+    ///     rx_pos,
+    ///     Velocity::from_speed(800.0),
+    ///     grav_potential_rx,
+    /// );
+    ///
     /// let one_way_ratio = transmitter.relativistic_clock_rate_ratio(receiver);
     /// let two_way_ratio = one_way_ratio * one_way_ratio;
     /// ```
+    ///
+    /// **Note:** Squaring the one-way ratio is a common first-order approximation.
+    /// For higher precision (especially during flybys or when uplink and downlink
+    /// geometries differ significantly), consider using
+    /// [`round_trip_light_time_correction`](Self::round_trip_light_time_correction)
+    /// instead.
     ///
     /// This pattern is commonly used when correcting two-way Doppler (range-rate)
     /// data for relativistic clock effects.
@@ -250,10 +298,38 @@ impl ObserverState {
     ///
     /// ## Examples
     ///
-    /// ```rust,ignore
+    /// ```rust
+    /// use deep_time::{Dt, ObserverState, Position, Spacetime, Velocity, constants::C};
+    ///
+    /// let bodies = [
+    ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20), // Sun
+    ///     (Position::from_au(1.0, 0.0, 0.0), 3.9860044e14), // Earth
+    /// ];
+    ///
+    /// let tx_pos = Position::from_au(1.0, 0.0, 0.0);
+    /// let rx_pos = Position::from_au(1.002, 0.0, 0.0);
+    ///
+    /// let grav_potential_tx = Spacetime::grav_potential_from_point_masses(tx_pos, bodies.iter().copied());
+    /// let grav_potential_rx = Spacetime::grav_potential_from_point_masses(rx_pos, bodies.iter().copied());
+    ///
+    /// let transmitter = ObserverState::new(
+    ///     Dt::span_f(0.0),
+    ///     tx_pos,
+    ///     Velocity::ZERO,
+    ///     grav_potential_tx,
+    /// );
+    ///
+    /// // Receiver receding at ~1.2 km/s (example spacecraft)
+    /// let receiver = ObserverState::new(
+    ///     Dt::span_f(0.0),
+    ///     rx_pos,
+    ///     Velocity::from_speed(1200.0),
+    ///     grav_potential_rx,
+    /// );
+    ///
     /// let ratio = transmitter.relativistic_clock_rate_ratio(receiver);
     ///
-    /// let v_radial = ...; // m/s, positive if receding
+    /// let v_radial = 1200.0; // m/s, positive if receding
     /// let classical_doppler = 1.0 - v_radial / C;
     ///
     /// let approx_frequency_shift = ratio * classical_doppler;

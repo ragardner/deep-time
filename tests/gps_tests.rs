@@ -4,7 +4,7 @@ use deep_time::{Dt, Scale};
 
 #[test]
 fn to_gps_roundtrips() {
-    let x = Dt::from_ymd(2015, 5, 20, 0, 0, 0, 0, Scale::UTC);
+    let x = Dt::from_ymd(2015, 5, 20, Scale::UTC, 0, 0, 0, 0);
 
     let roundtrip = Dt::from_gps(x.to_gps());
     assert_eq!(

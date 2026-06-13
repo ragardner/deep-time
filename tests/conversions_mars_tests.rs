@@ -112,7 +112,7 @@ mod mars_tests {
 
         const TOLERANCE: f64 = 0.01;
 
-        let date = Dt::from_ymd(2000, 1, 6, 0, 0, 0, 0, Scale::UTC);
+        let date = Dt::from_ymd(2000, 1, 6, Scale::UTC, 0, 0, 0, 0);
         let ls = date.to_mars_ls();
         assert!(
             (ls - 277.18758).abs() < TOLERANCE,
@@ -120,7 +120,7 @@ mod mars_tests {
             ls
         );
 
-        let date = Dt::from_ymd(2004, 1, 3, 13, 46, 41, 0, Scale::UTC);
+        let date = Dt::from_ymd(2004, 1, 3, Scale::UTC, 13, 46, 41, 0);
         let ls = date.to_mars_ls();
         assert!(
             (ls - 327.32416).abs() < TOLERANCE,
@@ -146,7 +146,7 @@ mod mars_tests {
         // These values are taken verbatim from the published NASA algorithm page
         // (Table of worked examples, rows C-2/C-3 and C-4).
 
-        let date = Dt::from_ymd(2000, 1, 6, 0, 0, 0, 0, Scale::UTC);
+        let date = Dt::from_ymd(2000, 1, 6, Scale::UTC, 0, 0, 0, 0);
         let east_lon_deg = f!(0.0); // prime meridian
 
         let lmst = date.to_mars_lmst(east_lon_deg);
@@ -191,7 +191,7 @@ mod mars_tests {
         //   Smith et al. (2006) "One Martian year of atmospheric observations
         //   using MER Mini-TES", J. Geophys. Res. Planets, 111(E12S13).
         //   https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2006JE002770
-        let spirit = Dt::from_ymd(2004, 1, 4, 0, 0, 0, 0, Scale::UTC);
+        let spirit = Dt::from_ymd(2004, 1, 4, Scale::UTC, 0, 0, 0, 0);
         assert_eq!(
             spirit.to_mars_year(),
             26,
@@ -202,7 +202,7 @@ mod mars_tests {
         // Landed in Mars Year 36 (widely used in mission papers and
         // confirmed by the epoch + tropical year calculation; e.g.
         // "Mars Year 36" references in post-landing MEDA/Mars 2020 literature).
-        let perseverance = Dt::from_ymd(2021, 2, 18, 0, 0, 0, 0, Scale::UTC);
+        let perseverance = Dt::from_ymd(2021, 2, 18, Scale::UTC, 0, 0, 0, 0);
         assert_eq!(
             perseverance.to_mars_year(),
             36,

@@ -281,7 +281,7 @@ impl Dt {
     /// use deep_time::{Dt, Scale};
     ///
     /// // A leap second from the middle of the table (36 leap seconds accumulated)
-    /// let original = Dt::from_ymd(2015, 6, 30, 23, 59, 60, 123_456_789_000_000_000, Scale::UTC);
+    /// let original = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 123_456_789_000_000_000);
     ///
     /// // Round-trip through canonical attoseconds
     /// let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
