@@ -159,18 +159,7 @@ deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
 
 Important: **This crate has no default features.**
 
-Most users will want to enable at least `parse` (for the powerful auto-parsers) and `jiff-tz` (for timezone support and DST-aware calendar math).
-
-#### Recommended Feature Sets
-
-| Use Case                              | Recommended Features                     |
-|---------------------------------------|------------------------------------------|
-| Basic usage + time scale conversions  | (none)                                   |
-| Powerful auto-parsing                 | `parse`                                  |
-| Timezones & tz calendar math + DST    | `parse`, `jiff-tz`                       |
-| Full features (recommended for most)  | `parse`, `jiff-tz`, `serde`              |
-| Embedded / `no_std` + `no_alloc`      | (minimal features) + `panic-handler`     |
-| WebAssembly                           | `js`, `tsify`                            |
+Most users will want to enable at least `parse` (for the auto-parsers) and `jiff-tz` (for timezone support and DST-aware calendar math).
 
 ### Feature Flags
 
