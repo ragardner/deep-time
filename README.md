@@ -187,10 +187,9 @@ Most users will want to enable at least `parse` (for the powerful auto-parsers) 
 | `tsify`              | TypeScript definitions via `tsify` (for WASM)                             | `js`        |
 | `std`                | Enables `std` functionality (including `Dt::now()`)                       | —           |
 | `alloc`              | Enables allocation (required for parsing and some conversions)            | —           |
-| `multi-lang`         | Enables multi-language `strftime` support                                 | —           |
 | `es` / `de` / `fr`   | Individual language support for parsing and formatting                    | `parse` (for parsing) |
-| `euro`               | Enables Spanish, German, and French                                       | `multi-lang` |
-| `lang`               | Enables all European languages                                            | `euro`      |
+| `euro`               | Enables all European languages                                            |             |
+| `lang`               | Enables all languages                                                     | `euro`      |
 | `panic-handler`      | Provides a simple `#[panic_handler]` for `no_std` environments            | `no_std`    |
 | `wire`               | Enables wire format (serialization) support                               | —           |
 | `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                  | —           |
