@@ -103,24 +103,28 @@ impl Dt {
         tt.add(Dt::span(secular_attos)).add(periodic)
     }
 
-    /// Converts LTC → TT using fixed-point iteration to account for the
-    /// time-dependent periodic correction.
+    /// Converts from the Lunar Time Coordinate (LTC) to Terrestrial Time (TT).
     ///
-    /// This mirrors the strategy used in `tdb_to_tai` for consistency
-    /// and sub-attosecond numerical stability. The LTE440 periodic terms
-    /// (Lu et al. 2025) are evaluated at the current TT guess on each iteration.
-    ///
-    /// Convergence: the periodic amplitude is only ~±1.65 ms, so 6 iterations
-    /// are more than enough (error drops below 10^{-18} s after ~3–4 steps).
+    /// The conversion includes both a constant rate offset and periodic
+    /// corrections from lunar motion. Because the periodic terms depend on
+    /// the TT instant, a short fixed-point iteration is used. The secular
+    /// rate is inverted with the same one-step method used by the TCG and
+    /// TCB conversions.
     pub(crate) const fn ltc_to_tt(ltc: Self) -> Dt {
         let mut tt = ltc; // initial guess (already within ~2 ms)
         let mut i = 0u32;
         while i < 6 {
-            let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
-            let secular_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN + LM_NUM);
             let periodic = Self::ltc_periodic_correction(tt);
 
-            tt = ltc.sub(Dt::span(secular_attos)).sub(periodic);
+            // effective target after removing periodic evaluated at current guess
+            let eff = ltc.sub(periodic);
+
+            // exact one-step secular inverse on the effective value
+            // (identical to the formula used in tcg_to_tt)
+            let elapsed_eff = Self::to_attos_since_tcg_tcb_epoch(eff);
+            let sec_inv_attos = Self::mul_rate(elapsed_eff, LM_NUM, LM_DEN + LM_NUM);
+
+            tt = eff.sub(Dt::span(sec_inv_attos));
             i += 1;
         }
         tt
@@ -202,20 +206,26 @@ impl Dt {
             .add(Self::TCL_TDB_BIAS_SPAN)
     }
 
-    /// Dedicated inverse for TCL → TT.
-    /// Returns a Dt on the TT scale (consistent with ltc_to_tt, tcg_to_tt, etc.).
+    /// Converts TCL to TAI.
+    ///
+    /// The conversion goes via TDB and includes the secular rate from
+    /// LTE440 plus the periodic lunar corrections. Because the periodic
+    /// terms depend on the TDB instant, a short fixed-point iteration is
+    /// used. The secular rate is inverted with the exact one-step method.
     pub(crate) const fn tcl_to_tai(tcl: Self) -> Dt {
         let mut tdb = tcl;
         let mut i = 0u32;
         while i < 6 {
-            let elapsed = Self::to_attos_since_j2000_tdb_epoch(tdb);
-            let secular_attos = Self::mul_rate(elapsed, TL_NUM, TL_DEN + TL_NUM);
             let periodic = Self::ltc_periodic_correction(tdb);
 
-            tdb = tcl
-                .sub(Dt::span(secular_attos))
-                .sub(periodic)
-                .sub(Self::TCL_TDB_BIAS_SPAN);
+            // effective target after removing periodic + constant bias
+            let eff = tcl.sub(periodic).sub(Self::TCL_TDB_BIAS_SPAN);
+
+            // exact one-step secular inverse on the effective value
+            let elapsed_eff = Self::to_attos_since_j2000_tdb_epoch(eff);
+            let sec_inv_attos = Self::mul_rate(elapsed_eff, TL_NUM, TL_DEN + TL_NUM);
+
+            tdb = eff.sub(Dt::span(sec_inv_attos));
             i += 1;
         }
         Self::tdb_to_tai(tdb)

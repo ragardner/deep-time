@@ -173,3 +173,7 @@ panic                          = "deny"
 
 [package.metadata.docs.rs]
 all-features = true
+
+[[example]]
+name = "readme"
+required-features = ["parse", "jiff-tz", "euro"]

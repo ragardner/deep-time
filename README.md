@@ -1,6 +1,6 @@
 # deep-time
 
-A fully featured and high performance attosecond precision **Rust** date and time library that aims to blend astronomical and civil timekeeping.
+A fully featured and high performance **Rust date and time library** with attosecond precision that aims to blend **astronomical** and **civil** timekeeping.
 
 [![docs.rs](https://img.shields.io/docsrs/deep-time)](https://docs.rs/deep-time)
 [![Crates.io](https://img.shields.io/crates/v/deep-time)](https://crates.io/crates/deep-time)
@@ -10,9 +10,9 @@ A fully featured and high performance attosecond precision **Rust** date and tim
 
 A non-exhaustive list of functionality:
 
+- Auto-parsers for [datetimes](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats and multiple languages, requires the `parse` feature
 - No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_ymd).
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
-- Powerful and fast auto-parsers for [datetimes](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats and multiple languages, requires the `parse` feature
 - Fast [ISO](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_iso) parser
 - [Time scales](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/enum.Scale.html) e.g. UTC with full leap second support, including historical, TT, TAI, TDB, LTC, GPS, etc.
 - [Strptime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str)
@@ -32,3 +32,219 @@ A non-exhaustive list of functionality:
 - [Proper time along trajectories](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.proper_time_from_states)
 - Relativity: [Drift](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Spacetime.html), [Position](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Position.html), and [Velocity](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Velocity.html)
 - CCSDS [CUC](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_cuc), [CDS](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_cds), and [CCS](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_ccs)
+
+### Examples
+
+```rust
+use deep_time::{Dt, DtErr, Lang, LiteStr, Scale, YmdHms};
+
+fn main() -> Result<(), DtErr> {
+    // ============================================
+    // Parsing
+    // ============================================
+
+    // Smart auto-parsing (multi-language + timezone)
+    let dt = Dt::from_str_parse("15 mars 2024 à 14:30 [Europe/Paris]", &None)?;
+    let s = dt.to_str_rfc9557("Europe/Paris")?;
+    assert_eq!("2024-03-15T14:30:00+01:00[Europe/Paris]", s);
+
+    // or with .parse
+    let dt: Dt = "1 jan 2000 07:00 [America/New_York] TAI".parse()?; // noon utc
+    assert_eq!(Dt::ZERO, dt); // library zero
+
+    // Fast ISO parsing with time scale and no alloc output
+    let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;
+
+    // no alloc fixed len string type, holds utf-8
+    let lite_str: LiteStr<512> = dt.to_str_lite_iso8601()?;
+    assert_eq!("2000-01-01T12:00:00+00:00", lite_str.as_str());
+
+    // ============================================
+    // Formatting (multi-language, no allocation)
+    // ============================================
+
+    let s = dt.to_str_in_tz("%A, %d %B %Y %I:%M%P", "America/New_York", Lang::En)?;
+    assert_eq!("Saturday, 01 January 2000 07:00am", s);
+
+    let s = dt.to_str_in_tz("%A, %-d de %B de %Y %H:%M", "America/New_York", Lang::Es)?;
+    assert_eq!("Sábado, 1 de enero de 2000 07:00", s);
+
+    // ============================================
+    // Duration parsing
+    // ============================================
+
+    let span: Dt = Dt::from_str_duration("3 days 12 hours", Lang::En)?;
+    let dur = span.to_str_lite_media_duration();
+    assert_eq!("3:12:00:00", dur.to_string());
+
+    // ============================================
+    // Time scale conversions + round-tripping
+    // ============================================
+
+    let dt = Dt::from_ymd(2000, 1, 1, Scale::TAI, 0, 0, 0, 123456789);
+    let tt = dt.to(Scale::TT);
+    let tdb = tt.to(Scale::TDB);
+    let ltc = tdb.to(Scale::LTC);
+    let utc = ltc.to(Scale::UTC);
+    let tcl = utc.to(Scale::TCL);
+    let tcg = tcl.to(Scale::TCG);
+    let tai = tcg.to_tai();
+
+    // round trips work for pretty much everything except UTCHist
+    assert_eq!(dt, tai);
+    let ymd: YmdHms = tai.to_ymd();
+    assert_eq!(ymd.attos(), 123456789);
+
+    // ============================================
+    // Other conversions
+    // ============================================
+
+    // unix
+    let dt = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
+    let unix = dt.to_unix().to_sec_f();
+    assert_eq!(unix, 0.0);
+
+    // or to milliseconds
+    let unix: i128 = dt.add_ms(1000).to_unix().to_ms();
+    assert_eq!(unix, 1000);
+
+    // to and from jd
+    let jd = Dt::ZERO.to_jd_f();
+    assert_eq!(2451545.0, jd);
+    let dt = Dt::from_jd_f(jd, Scale::TAI);
+    assert_eq!(0, dt.attos);
+
+    // ============================================
+    // Calendar math
+    // ============================================
+
+    // calendar math and negative year
+    let dt = Dt::from_ymd(-2000, 1, 31, Scale::TAI, 12, 0, 0, 0);
+    let ymd = dt.add_mo(1).to_ymd();
+    assert_eq!(ymd.day(), 29);
+
+    // Timezone-aware calendar math (respects DST transitions, requires jiff-tz feature)
+    let dt = Dt::from_str_iso("2025-03-30T00:30:00Z")?; // Just before London DST start
+
+    // Normal (naive) addition — ignores DST rules
+    let normal = dt.add_hr(1);
+
+    // Timezone-aware addition — correctly handles the transition
+    let aware = dt.add_hr_tz(1, "Europe/London")?;
+
+    println!("Normal: {}", normal.to_str_rfc9557("Europe/London")?);
+    println!("Aware:  {}", aware.to_str_rfc9557("Europe/London")?);
+
+    // ============================================
+    // Leap seconds
+    // ============================================
+
+    // genuine leap second input round trips
+    let dt: Dt = "2015-06-30T23:59:60".parse()?;
+    let s = dt.to_str_iso8601();
+    assert_eq!("2015-06-30T23:59:60+00:00", s);
+
+    Ok(())
+}
+```
+
+### Installation
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
+```
+
+Important: **This crate has no default features.**
+
+Most users will want to enable at least `parse` (for the powerful auto-parsers) and `jiff-tz` (for timezone support and DST-aware calendar math).
+
+#### Recommended Feature Sets
+
+| Use Case                              | Recommended Features                     |
+|---------------------------------------|------------------------------------------|
+| Basic usage + time scale conversions  | (none)                                   |
+| Powerful auto-parsing                 | `parse`                                  |
+| Timezones & tz calendar math + DST    | `parse`, `jiff-tz`                       |
+| Full features (recommended for most)  | `parse`, `jiff-tz`, `serde`              |
+| Embedded / `no_std` + `no_alloc`      | (minimal features) + `panic-handler`     |
+| WebAssembly                           | `js`, `tsify`                            |
+
+### Feature Flags
+
+| Feature              | Description                                                                 | Requires     |
+|----------------------|-----------------------------------------------------------------------------|--------------|
+| `parse`              | Enables the powerful multi-language auto-parsers (`from_str_parse`, `from_str_duration`, etc.) | `alloc`     |
+| `jiff-tz`            | Enables timezone-aware calendar math (`add_days_tz`, `add_hr_tz`, etc.) and `to_str_in_tz` | `std`       |
+| `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                  | `std`       |
+| `jiff`               | Enables basic Jiff interop                                                | `alloc`     |
+| `chrono`             | Enables Chrono interop                                                    | `alloc`     |
+| `hifitime`           | Enables Hifitime interop                                                  | —           |
+| `serde`              | Enables `Serialize` / `Deserialize` for `Dt` and other types              | —           |
+| `js`                 | WebAssembly support (includes `serde` and JS bindings)                    | `std`       |
+| `tsify`              | TypeScript definitions via `tsify` (for WASM)                             | `js`        |
+| `std`                | Enables `std` functionality (including `Dt::now()`)                       | —           |
+| `alloc`              | Enables allocation (required for parsing and some conversions)            | —           |
+| `multi-lang`         | Enables multi-language `strftime` support                                 | —           |
+| `es` / `de` / `fr`   | Individual language support for parsing and formatting                    | `parse` (for parsing) |
+| `euro`               | Enables Spanish, German, and French                                       | `multi-lang` |
+| `lang`               | Enables all European languages                                            | `euro`      |
+| `panic-handler`      | Provides a simple `#[panic_handler]` for `no_std` environments            | `no_std`    |
+| `wire`               | Enables wire format (serialization) support                               | —           |
+| `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                  | —           |
+| `sidereal`           | Enables sidereal time support                                             | —           |
+| `eop`                | Enables Earth Orientation Parameters (UT1, etc.)                          | `alloc`     |
+| `locale`             | Enables system locale detection                                           | `std`       |
+
+#### Optional No-Alloc Panic Handler
+
+`deep-time` supports `no_std` + `no_alloc` environments. When targeting bare-metal or embedded systems, you can enable a minimal panic handler:
+
+```toml
+[dependencies]
+deep-time = { version = "0.1", features = ["panic-handler"] }
+```
+
+This provides a simple `#[panic_handler]` that uses `core::hint::spin_loop()` (more power-efficient than a plain `loop {}`).
+
+You only need this if you are building a binary crate in a `no_std` environment without your own panic handler.
+
+#### Notes
+
+- The fast ISO 8601 parser (`from_str_iso`) works **without** the `parse` feature.
+- Multi-language **parsing** requires the `parse` feature, but multi-language **formatting** works without it.
+- The `.parse()` implementation on `Dt` automatically chooses between the full parser and the ISO parser depending on enabled features.
+
+### Performance
+
+Benchmarks were measured on an AMD Ryzen 7 7800X3D.
+
+#### Parsing and Formatting
+
+| Operation                              | Time          | vs Jiff 0.2.28           |
+|----------------------------------------|---------------|--------------------------|
+| ISO datetime parsing                   | 17.7 ns       | 32.8% faster             |
+| `strptime` (non-zoned)                 | 34.1 ns       | 17.1% faster             |
+| DateTime parsing                       | 55.9 ns       | 25.9% slower             |
+| Zoned IANA parsing                     | 180.9 ns      | 14.1% slower             |
+| `strftime`                             | 97.9 ns       | 58.0% slower             |
+| Auto parser (`from_str_parse`)         | 619 ns        | —                        |
+
+#### Time Scale Conversions
+
+| Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |
+|------------------|---------------|---------------|---------------------------|
+| TAI → UTC        | 9.7 ns        | 45.4 ns       | 4.7× faster               |
+| UTC → TAI        | 12.7 ns       | 46.5 ns       | 3.7× faster               |
+| TAI → TDB        | 141 ns        | 91 ns         | 1.55× slower              |
+| TDB → TAI        | 599 ns        | 26.9 ns       | 22.3× slower              |
+| GPS conversion   | 20.5 ns       | 7.1 ns        | 2.9× slower               |
+| GPS week + TOW   | 27.6 ns       | 6.8 ns        | 4.1× slower               |
+
+The tests were run with:
+
+```sh
+cargo test --release --features "parse hifitime std jiff-tz perf-tests" -- --nocapture perf_tests
+```
