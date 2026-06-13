@@ -369,7 +369,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // Zoned strptime — TimeParts vs Jiff BrokenDownTime strtime
+        // Zoned strptime — Dt vs Jiff Zoned using strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 5_000_000;
@@ -394,7 +394,7 @@ mod perf_tests {
             let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== Zoned strptime — TimeParts vs Jiff BrokenDownTime ===");
+            println!("\n=== Zoned strptime — Dt vs Jiff Zoned using strtime ===");
             println!(
                 "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
                 deep_time_ns,
