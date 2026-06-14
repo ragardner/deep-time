@@ -6,10 +6,6 @@ mod tests {
 
     #[cfg(feature = "jiff-tz")]
     #[test]
-    fn print_stuff() {}
-
-    #[cfg(feature = "jiff-tz")]
-    #[test]
     fn roundtrip_gap_boundary_new_york() {
         let our_input = "2023-03-12 02:00:00 America/New_York";
         let expected_snapped = "2023-03-12 03:00:00 America/New_York";
