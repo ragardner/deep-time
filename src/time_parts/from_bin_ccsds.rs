@@ -155,7 +155,7 @@ impl TimeParts {
             hr: hour,
             min: minute,
             sec: second,
-            attos: attos,
+            attos,
             scale: Scale::UTC,
             ..TimeParts::default()
         };

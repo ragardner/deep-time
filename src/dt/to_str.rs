@@ -6,6 +6,7 @@ use {crate::ATTOS_PER_SEC_U128, alloc::string::String};
 #[cfg(not(feature = "jiff-tz"))]
 use crate::tz::UTC_ALIASES;
 
+#[allow(clippy::unwrap_used)]
 #[cfg(feature = "alloc")]
 impl Dt {
     /// Converts this `Dt` to an ISO 8601 duration string.
@@ -134,8 +135,6 @@ impl Dt {
     }
 
     /// Formats this [`Dt`] into a string, time adjusted to the given IANA timezone.
-    ///
-
     ///
     /// Use this method when you want full IANA-aware formatting (`%Q`, `%Z`, `%z`, etc.).
     ///
@@ -749,7 +748,7 @@ impl Dt {
         }
 
         let negative = self.attos < 0;
-        let total = self.to_sec_rounded().unsigned_abs() as u128;
+        let total = self.to_sec_rounded().unsigned_abs();
 
         if negative {
             buf[pos] = b'-';

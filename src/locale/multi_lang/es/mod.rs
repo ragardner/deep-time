@@ -1,12 +1,9 @@
 #[cfg(feature = "parse")]
-pub mod es;
-
-#[cfg(feature = "parse")]
-pub(crate) use es::*;
+pub mod es_alloc;
 
 use crate::FormatNames;
 
-const ES_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
+const ES_WEEKDAYS_FULL: [&[u8]; 7] = byte_arrays![
     "Domingo",   // Sunday
     "Lunes",     // Monday
     "Martes",    // Tuesday
@@ -16,10 +13,9 @@ const ES_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
     "Sábado"     // Saturday
 ];
 
-const ES_WEEKDAYS_ABBR: [&'static [u8]; 7] =
-    byte_arrays!["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const ES_WEEKDAYS_ABBR: [&[u8]; 7] = byte_arrays!["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
-const ES_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
+const ES_MONTHS_FULL: [&[u8]; 12] = byte_arrays![
     "enero",
     "febrero",
     "marzo",
@@ -34,7 +30,7 @@ const ES_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
     "diciembre"
 ];
 
-const ES_MONTHS_ABBR: [&'static [u8]; 12] = byte_arrays![
+const ES_MONTHS_ABBR: [&[u8]; 12] = byte_arrays![
     "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"
 ];
 

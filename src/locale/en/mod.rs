@@ -1,12 +1,12 @@
 #[cfg(feature = "parse")]
-pub mod en;
+pub mod en_alloc;
 
 #[cfg(feature = "parse")]
-pub(crate) use en::*;
+pub(crate) use en_alloc::*;
 
 use crate::FormatNames;
 
-pub(crate) const EN_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
+pub(crate) const EN_WEEKDAYS_FULL: [&[u8]; 7] = byte_arrays![
     "Sunday",
     "Monday",
     "Tuesday",
@@ -16,10 +16,10 @@ pub(crate) const EN_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
     "Saturday"
 ];
 
-pub(crate) const EN_WEEKDAYS_ABBR: [&'static [u8]; 7] =
+pub(crate) const EN_WEEKDAYS_ABBR: [&[u8]; 7] =
     byte_arrays!["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-pub(crate) const EN_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
+pub(crate) const EN_MONTHS_FULL: [&[u8]; 12] = byte_arrays![
     "January",
     "February",
     "March",
@@ -34,7 +34,7 @@ pub(crate) const EN_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
     "December"
 ];
 
-pub(crate) const EN_MONTHS_ABBR: [&'static [u8]; 12] = byte_arrays![
+pub(crate) const EN_MONTHS_ABBR: [&[u8]; 12] = byte_arrays![
     "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 ];
 

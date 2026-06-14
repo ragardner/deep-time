@@ -1,12 +1,9 @@
 #[cfg(feature = "parse")]
-pub mod de;
-
-#[cfg(feature = "parse")]
-pub(crate) use de::*;
+pub mod de_alloc;
 
 use crate::FormatNames;
 
-const DE_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
+const DE_WEEKDAYS_FULL: [&[u8]; 7] = byte_arrays![
     "Sonntag",
     "Montag",
     "Dienstag",
@@ -16,9 +13,9 @@ const DE_WEEKDAYS_FULL: [&'static [u8]; 7] = byte_arrays![
     "Samstag"
 ];
 
-const DE_WEEKDAYS_ABBR: [&'static [u8]; 7] = byte_arrays!["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
+const DE_WEEKDAYS_ABBR: [&[u8]; 7] = byte_arrays!["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"];
 
-const DE_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
+const DE_MONTHS_FULL: [&[u8]; 12] = byte_arrays![
     "Januar",
     "Februar",
     "März",
@@ -33,7 +30,7 @@ const DE_MONTHS_FULL: [&'static [u8]; 12] = byte_arrays![
     "Dezember"
 ];
 
-const DE_MONTHS_ABBR: [&'static [u8]; 12] = byte_arrays![
+const DE_MONTHS_ABBR: [&[u8]; 12] = byte_arrays![
     "Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"
 ];
 

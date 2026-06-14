@@ -137,7 +137,7 @@ impl Dt {
                 Some(dt) => dt.with(Scale::TAI),
                 // leap seconds table returned None so it must be pre 1972
                 None => match self.scale {
-                    Scale::UtcHist => match historical_utc_offset(&self) {
+                    Scale::UtcHist => match historical_utc_offset(self) {
                         Some(offset) => self.add(Dt::span_f(offset)).with(Scale::TAI),
                         None => self.with(Scale::TAI),
                     },
@@ -198,7 +198,7 @@ impl Dt {
                 Some(dt) => dt.with(new),
                 // leap seconds table returned None so it must be pre 1972
                 None => match self.scale {
-                    Scale::UtcHist => match historical_utc_offset(&self) {
+                    Scale::UtcHist => match historical_utc_offset(self) {
                         Some(offset) => self.sub(Dt::span_f(offset)).with(new),
                         None => self.with(new),
                     },

@@ -631,7 +631,7 @@ impl Dt {
             }
         }
 
-        if count < 2 || count > 4 {
+        if !(2..=4).contains(&count) {
             return Err(an_err!(
                 DtErrKind::InvalidBytes,
                 "media duration must contain 2 to 4 colon-separated components"

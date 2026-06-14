@@ -252,7 +252,7 @@ where
 
         kinds[0] = Some(kind);
         locs[0] = Some(Location::caller());
-        reasons[0] = if reason.as_bytes().len() == 0 {
+        reasons[0] = if reason.as_bytes().is_empty() {
             None
         } else {
             Some(reason)
@@ -280,7 +280,7 @@ where
         locs[0] = Some(Location::caller());
         let mut reason = LiteStr::<REASON_LEN>::default();
         let _ = write!(&mut reason, "{}", args);
-        reasons[0] = if reason.as_bytes().len() == 0 {
+        reasons[0] = if reason.as_bytes().is_empty() {
             None
         } else {
             Some(reason)
@@ -320,7 +320,7 @@ where
     pub fn context(&mut self, kind: K, new_reason: LiteStr<REASON_LEN>) {
         let idx = self.len as usize;
         if idx < DEPTH {
-            self.reasons[idx] = if new_reason.as_bytes().len() == 0 {
+            self.reasons[idx] = if new_reason.as_bytes().is_empty() {
                 None
             } else {
                 Some(new_reason)
@@ -341,7 +341,7 @@ where
             let mut reason = LiteStr::<REASON_LEN>::default();
             let _ = write!(&mut reason, "{}", args);
 
-            self.reasons[idx] = if reason.as_bytes().len() == 0 {
+            self.reasons[idx] = if reason.as_bytes().is_empty() {
                 None
             } else {
                 Some(reason)

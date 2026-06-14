@@ -16,17 +16,17 @@ pub(crate) fn lang_map() -> &'static HashMap<Lang, &'static LangData> {
 
         #[cfg(feature = "de")]
         {
-            m.insert(Lang::De, de::de_lang_data());
+            m.insert(Lang::De, de_alloc::de_lang_data());
         }
 
         #[cfg(feature = "es")]
         {
-            m.insert(Lang::Es, es::es_lang_data());
+            m.insert(Lang::Es, es_alloc::es_lang_data());
         }
 
         #[cfg(feature = "fr")]
         {
-            m.insert(Lang::Fr, fr::fr_lang_data());
+            m.insert(Lang::Fr, fr_alloc::fr_lang_data());
         }
 
         Box::new(m)

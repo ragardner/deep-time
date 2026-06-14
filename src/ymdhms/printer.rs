@@ -156,11 +156,12 @@ impl YmdHms {
                         trim_trailing,
                     );
 
-                    if add_dot && !wrote_frac {
-                        if let Some(p) = dot_pos {
-                            buf[p] = 0;
-                            pos = p;
-                        }
+                    if add_dot
+                        && !wrote_frac
+                        && let Some(p) = dot_pos
+                    {
+                        buf[p] = 0;
+                        pos = p;
                     }
                     continue;
                 } else {

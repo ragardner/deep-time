@@ -165,15 +165,13 @@ impl TimeParts {
         if pos < len_ {
             let c = bytes[pos];
             // push past a T
-            if !c.is_ascii_digit() {
-                if pos + 1 < len_ && !matches!(c, b'+' | b'-') {
-                    if bytes[pos + 1].is_ascii_digit() {
+            if !c.is_ascii_digit() && pos + 1 < len_ && !matches!(c, b'+' | b'-') {
+                if bytes[pos + 1].is_ascii_digit() {
+                    pos += 1;
+                } else if bytes[pos + 1].is_ascii_whitespace() {
+                    pos += 1;
+                    while pos < len_ && bytes[pos].is_ascii_whitespace() {
                         pos += 1;
-                    } else if bytes[pos + 1].is_ascii_whitespace() {
-                        pos += 1;
-                        while pos < len_ && bytes[pos].is_ascii_whitespace() {
-                            pos += 1;
-                        }
                     }
                 }
             }
