@@ -1,6 +1,4 @@
-use crate::{
-    Dt, DtErr, DtErrKind, Lang, Scale, an_err, natural_duration_to_iso, natural_duration_to_span,
-};
+use crate::{Dt, DtErr, DtErrKind, Lang, Scale, an_err, natural_duration_to_iso};
 use alloc::string::String;
 
 impl Dt {
@@ -27,7 +25,8 @@ impl Dt {
             });
         }
 
-        if let Ok(dur) = natural_duration_to_span(s, lang, true) {
+        let lower = s.to_lowercase();
+        if let Ok(dur) = Dt::from_natural_duration(&lower, lang, true) {
             return Ok(dur);
         }
 
@@ -49,7 +48,8 @@ impl Dt {
 
     /// Converts a natural language duration into an ISO duration.
     pub fn natural_to_iso(s: &str, lang: Lang) -> Result<String, DtErr> {
-        match natural_duration_to_iso(s, lang, true) {
+        let lower = s.to_lowercase();
+        match natural_duration_to_iso(&lower, lang, true) {
             Ok(iso) => Ok(iso),
             Err(e) => Err(an_err!(
                 DtErrKind::InvalidInput,

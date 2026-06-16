@@ -50,12 +50,16 @@ pub const DE_WORDS: &[Word] = &[
     // RELATIVES
     Word::new("und", "and", Token::Plus, Cat::UnamRel),
     Word::new("plus", "plus", Token::Plus, Cat::UnamRel),
-    Word::new("in", "in", Token::Future, Cat::UnamRel),
+    // Word::new("in", "in", Token::Future, Cat::UnamRel),
+    Word::new("dieser", "this", Token::Present, Cat::UnamRel),
+    Word::new("diese", "this", Token::Present, Cat::UnamRel),
+    Word::new("dieses", "this", Token::Present, Cat::UnamRel),
+    Word::new("diesen", "this", Token::Present, Cat::UnamRel),
+    Word::new("diesem", "this", Token::Present, Cat::UnamRel),
     Word::new("nächster", "next", Token::Future, Cat::UnamRel),
     Word::new("nächste", "next", Token::Future, Cat::UnamRel),
     Word::new("nächstes", "next", Token::Future, Cat::UnamRel),
     Word::new("nach", "after", Token::Future, Cat::UnamRel),
-    Word::new("vor", "ago", Token::Past, Cat::UnamRel),
     Word::new("letzter", "last", Token::Past, Cat::UnamRel),
     Word::new("letzte", "last", Token::Past, Cat::UnamRel),
     Word::new("letztes", "last", Token::Past, Cat::UnamRel),
@@ -65,6 +69,15 @@ pub const DE_WORDS: &[Word] = &[
     Word::new("heute", "today", Token::Today, Cat::UnamRel),
     Word::new("morgen", "tomorrow", Token::Tomorrow, Cat::UnamRel),
     Word::new("gestern", "yesterday", Token::Yesterday, Cat::UnamRel),
+    Word::new("vor", "ago", Token::Ago, Cat::Ago),
+    // am/pm
+    Word::new("morgens", "AM", Token::Am, Cat::AmPm),
+    Word::new("vormittags", "AM", Token::Am, Cat::AmPm),
+    Word::new("am morgen", "AM", Token::Am, Cat::AmPm),
+    Word::new("nachmittags", "PM", Token::Pm, Cat::AmPm),
+    Word::new("am nachmittag", "PM", Token::Pm, Cat::AmPm),
+    Word::new("abends", "PM", Token::Pm, Cat::AmPm),
+    Word::new("am abend", "PM", Token::Pm, Cat::AmPm),
     // Sub-second
     Word::new("nanosekunden", "ns", Token::Nanosecond, Cat::UnamRel),
     Word::new("nanosekunde", "ns", Token::Nanosecond, Cat::UnamRel),
@@ -173,14 +186,25 @@ pub(crate) fn de_date_ac() -> &'static AhoCorasick {
             .filter(|w| {
                 matches!(
                     w.c,
-                    Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day | Cat::AmPm | Cat::TScl
+                    Cat::UnamRel
+                        | Cat::Ago
+                        | Cat::AmRel
+                        | Cat::Month
+                        | Cat::Day
+                        | Cat::AmPm
+                        | Cat::TScl
                 )
             })
             .map(|w| w.low)
             .chain(
                 DE_WORDS
                     .iter()
-                    .filter(|w| matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day))
+                    .filter(|w| {
+                        matches!(
+                            w.c,
+                            Cat::UnamRel | Cat::Ago | Cat::AmRel | Cat::Month | Cat::Day
+                        )
+                    })
                     .map(|w| w.low),
             )
             .chain(tz_lowered_keys().iter().copied())
@@ -202,13 +226,21 @@ pub(crate) fn de_duration_ac() -> &'static AhoCorasick {
         let mut seen = HashSet::new();
         let terms: Vec<&'static str> = EN_WORDS
             .iter()
-            .filter(|w| matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::AmDur | Cat::UnamDur))
+            .filter(|w| {
+                matches!(
+                    w.c,
+                    Cat::UnamRel | Cat::Ago | Cat::AmRel | Cat::AmDur | Cat::UnamDur
+                )
+            })
             .map(|w| w.low)
             .chain(
                 DE_WORDS
                     .iter()
                     .filter(|w| {
-                        matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::AmDur | Cat::UnamDur)
+                        matches!(
+                            w.c,
+                            Cat::UnamRel | Cat::Ago | Cat::AmRel | Cat::AmDur | Cat::UnamDur
+                        )
                     })
                     .map(|w| w.low),
             )

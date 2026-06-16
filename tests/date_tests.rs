@@ -984,6 +984,11 @@ mod tests {
                     ..Default::default()
                 }),
             ),
+            (
+                "on the 5th of april 2024 at 00:00am",
+                "2024-04-05T00:00:00Z",
+                None,
+            ),
         ];
 
         for (input, expected, opts) in cases {
@@ -995,7 +1000,7 @@ mod tests {
         }
     }
 
-    fn generate_relative_date_test_cases() -> Vec<String> {
+    fn generate_relative_duration_test_cases() -> Vec<String> {
         let mut cases: Vec<String> = Vec::new();
 
         let core_phrases = ["now", "today", "tomorrow", "yesterday"];
@@ -1047,8 +1052,8 @@ mod tests {
     }
 
     #[test]
-    fn relative_date_parser_comprehensive() {
-        let cases = generate_relative_date_test_cases();
+    fn relative_duration_parser_comprehensive() {
+        let cases = generate_relative_duration_test_cases();
         let opts = Some(ParseCfg {
             ref_time: Some(Dt::from_tai_sec(5_000_000)),
             ..Default::default()

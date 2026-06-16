@@ -50,12 +50,15 @@ pub const FR_WORDS: &[Word] = &[
     // RELATIVES
     Word::new("et", "and", Token::Plus, Cat::UnamRel),
     Word::new("plus", "plus", Token::Plus, Cat::UnamRel),
-    Word::new("dans", "in", Token::Future, Cat::UnamRel),
-    Word::new("en", "in", Token::Future, Cat::UnamRel),
+    // Word::new("dans", "in", Token::Future, Cat::UnamRel),
+    // Word::new("en", "in", Token::Future, Cat::UnamRel),
+    Word::new("ce", "this", Token::Present, Cat::UnamRel),
+    Word::new("cet", "this", Token::Present, Cat::UnamRel),
+    Word::new("cette", "this", Token::Present, Cat::UnamRel),
+    Word::new("ces", "this", Token::Present, Cat::UnamRel),
     Word::new("prochain", "next", Token::Future, Cat::UnamRel),
     Word::new("prochaine", "next", Token::Future, Cat::UnamRel),
     Word::new("après", "after", Token::Future, Cat::UnamRel),
-    Word::new("il y a", "ago", Token::Past, Cat::UnamRel),
     Word::new("passé", "last", Token::Past, Cat::UnamRel),
     Word::new("dernier", "last", Token::Past, Cat::UnamRel),
     Word::new("dernière", "last", Token::Past, Cat::UnamRel),
@@ -65,6 +68,17 @@ pub const FR_WORDS: &[Word] = &[
     Word::new("aujourd'hui", "today", Token::Today, Cat::UnamRel),
     Word::new("demain", "tomorrow", Token::Tomorrow, Cat::UnamRel),
     Word::new("hier", "yesterday", Token::Yesterday, Cat::UnamRel),
+    Word::new("il y a", "ago", Token::Ago, Cat::Ago),
+    // am/pm
+    Word::new("matin", "AM", Token::Am, Cat::AmPm),
+    Word::new("le matin", "AM", Token::Am, Cat::AmPm),
+    Word::new("du matin", "AM", Token::Am, Cat::AmPm),
+    Word::new("dans la matinée", "AM", Token::Am, Cat::AmPm),
+    Word::new("après-midi", "PM", Token::Pm, Cat::AmPm),
+    Word::new("l'après-midi", "PM", Token::Pm, Cat::AmPm),
+    Word::new("soir", "PM", Token::Pm, Cat::AmPm),
+    Word::new("le soir", "PM", Token::Pm, Cat::AmPm),
+    Word::new("dans la soirée", "PM", Token::Pm, Cat::AmPm),
     // Sub-second
     Word::new("nanosecondes", "ns", Token::Nanosecond, Cat::UnamRel),
     Word::new("nanoseconde", "ns", Token::Nanosecond, Cat::UnamRel),
@@ -171,14 +185,25 @@ pub(crate) fn fr_date_ac() -> &'static AhoCorasick {
             .filter(|w| {
                 matches!(
                     w.c,
-                    Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day | Cat::AmPm | Cat::TScl
+                    Cat::UnamRel
+                        | Cat::AmRel
+                        | Cat::Ago
+                        | Cat::Month
+                        | Cat::Day
+                        | Cat::AmPm
+                        | Cat::TScl
                 )
             })
             .map(|w| w.low)
             .chain(
                 FR_WORDS
                     .iter()
-                    .filter(|w| matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day))
+                    .filter(|w| {
+                        matches!(
+                            w.c,
+                            Cat::UnamRel | Cat::AmRel | Cat::Ago | Cat::Month | Cat::Day
+                        )
+                    })
                     .map(|w| w.low),
             )
             .chain(tz_lowered_keys().iter().copied())
@@ -200,13 +225,21 @@ pub(crate) fn fr_duration_ac() -> &'static AhoCorasick {
         let mut seen = HashSet::new();
         let terms: Vec<&'static str> = EN_WORDS
             .iter()
-            .filter(|w| matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::AmDur | Cat::UnamDur))
+            .filter(|w| {
+                matches!(
+                    w.c,
+                    Cat::UnamRel | Cat::Ago | Cat::AmRel | Cat::AmDur | Cat::UnamDur
+                )
+            })
             .map(|w| w.low)
             .chain(
                 FR_WORDS
                     .iter()
                     .filter(|w| {
-                        matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::AmDur | Cat::UnamDur)
+                        matches!(
+                            w.c,
+                            Cat::UnamRel | Cat::Ago | Cat::AmRel | Cat::AmDur | Cat::UnamDur
+                        )
                     })
                     .map(|w| w.low),
             )

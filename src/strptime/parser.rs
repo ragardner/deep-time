@@ -645,6 +645,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         } else {
             return Err(an_err!(DtErrKind::InvalidName, "%P or %p am/pm"));
         });
+        if self.tm.hr == 0 {
+            self.tm.hr = 12;
+        }
         self.inp = &self.inp[2..];
         self.advance_fmt();
         Ok(())

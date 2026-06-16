@@ -47,14 +47,21 @@ pub const ES_WORDS: &[Word] = &[
     Word::new("viernes", "Friday", Token::DayLong, Cat::Day),
     Word::new("sábado", "Saturday", Token::DayLong, Cat::Day),
     Word::new("domingo", "Sunday", Token::DayLong, Cat::Day),
+    // am/pm
+    Word::new("por la mañana", "AM", Token::Am, Cat::AmPm),
+    Word::new("de la mañana", "AM", Token::Am, Cat::AmPm),
+    Word::new("tarde", "PM", Token::Pm, Cat::AmPm),
     // RELATIVES
-    Word::new("y", "and", Token::Plus, Cat::UnamRel),
-    Word::new("en", "in", Token::Future, Cat::UnamRel),
-    Word::new("dentro de", "in", Token::Future, Cat::UnamRel),
+    Word::new("y", "and", Token::Plus, Cat::UnamRel), // clashes with y duration unit
+    // Word::new("en", "in", Token::Future, Cat::UnamRel),
+    // Word::new("dentro de", "in", Token::Future, Cat::UnamRel),
+    Word::new("este", "this", Token::Present, Cat::UnamRel),
+    Word::new("esta", "this", Token::Present, Cat::UnamRel),
+    Word::new("viene", "next", Token::Future, Cat::UnamRel),
     Word::new("próximo", "next", Token::Future, Cat::UnamRel),
     Word::new("próxima", "next", Token::Future, Cat::UnamRel),
     Word::new("después", "after", Token::Future, Cat::UnamRel),
-    Word::new("hace", "ago", Token::Past, Cat::UnamRel),
+    Word::new("pasada", "last", Token::Past, Cat::UnamRel),
     Word::new("pasado", "last", Token::Past, Cat::UnamRel),
     Word::new("último", "last", Token::Past, Cat::UnamRel),
     Word::new("última", "last", Token::Past, Cat::UnamRel),
@@ -63,6 +70,7 @@ pub const ES_WORDS: &[Word] = &[
     Word::new("hoy", "today", Token::Today, Cat::UnamRel),
     Word::new("mañana", "tomorrow", Token::Tomorrow, Cat::UnamRel),
     Word::new("ayer", "yesterday", Token::Yesterday, Cat::UnamRel),
+    Word::new("hace", "ago", Token::Ago, Cat::Ago),
     // Sub-second
     Word::new("nanosegundos", "ns", Token::Nanosecond, Cat::UnamRel),
     Word::new("nanosegundo", "ns", Token::Nanosecond, Cat::UnamRel),
@@ -177,7 +185,12 @@ pub(crate) fn es_date_ac() -> &'static AhoCorasick {
             .chain(
                 ES_WORDS
                     .iter()
-                    .filter(|w| matches!(w.c, Cat::UnamRel | Cat::Month | Cat::Day))
+                    .filter(|w| {
+                        matches!(
+                            w.c,
+                            Cat::UnamRel | Cat::AmPm | Cat::Ago | Cat::Month | Cat::Day
+                        )
+                    })
                     .map(|w| w.low),
             )
             .chain(tz_lowered_keys().iter().copied())
@@ -204,7 +217,7 @@ pub(crate) fn es_duration_ac() -> &'static AhoCorasick {
             .chain(
                 ES_WORDS
                     .iter()
-                    .filter(|w| matches!(w.c, Cat::UnamRel | Cat::AmDur | Cat::UnamDur))
+                    .filter(|w| matches!(w.c, Cat::UnamRel | Cat::Ago | Cat::AmDur | Cat::UnamDur))
                     .map(|w| w.low),
             )
             .filter(|&s| seen.insert(s))
@@ -231,7 +244,7 @@ pub(crate) fn es() -> &'static HashMap<&'static str, (&'static str, Token)> {
 
         for word in EN_WORDS
             .iter()
-            .filter(|w| !matches!(w.c, Cat::AmRel | Cat::AmDur))
+            .filter(|w| !matches!(w.c, Cat::AmRel | Cat::AmDur | Cat::Ago))
         {
             m.insert(word.low, (word.norm, word.t));
         }

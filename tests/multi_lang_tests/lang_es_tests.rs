@@ -2,9 +2,9 @@
 
 // spanish won't parse "mar" as tuesday (collision with marzo)
 
-#[cfg(feature = "es")]
+#[cfg(all(feature = "es", feature = "parse"))]
 mod tests {
-    use deep_time::{Dt, Lang, ParseCfg, Scale};
+    use deep_time::{Dt, Lang, ParseCfg, Scale, YmdHms};
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let dt = Dt::from_str_parse(input.trim(), &opts)
@@ -196,5 +196,97 @@ mod tests {
 
         let out = dt.to_str_lite("%A, %d %B %Y %H:%M:%S", Lang::Es).unwrap();
         assert_eq!(out.as_str(), "Miércoles, 01 enero 2025 00:00:00");
+    }
+
+    fn assert_rel(input: &str, output: Dt, exp: Dt) {
+        assert_eq!(output.to_ymd(), exp.to_ymd(), "input was: {}", input)
+    }
+
+    #[test]
+    fn relative_parsing() {
+        // Reference time: Tuesday 16 June 2026, 12:00 UTC
+        let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
+
+        let es_cfg = Some(ParseCfg {
+            lang: Lang::Es,
+            relative: true,
+            to_lower: true,
+            ref_time: Some(ref_time),
+            ..Default::default()
+        });
+
+        let phrases = [
+            (
+                "este miércoles",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 17, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "este viernes a las 15:00",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 19, Scale::UTC, 15, 0, 0, 0),
+            ),
+            (
+                "este lunes a las 11:30",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 15, Scale::UTC, 11, 30, 0, 0),
+            ),
+            (
+                "el próximo miércoles",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 17, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "el próximo miércoles a las 9:00",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 17, Scale::UTC, 9, 0, 0, 0),
+            ),
+            (
+                "próximo viernes a las 14:00",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 19, Scale::UTC, 14, 0, 0, 0),
+            ),
+            (
+                "la semana pasada el viernes a las 14:00",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 12, Scale::UTC, 14, 0, 0, 0),
+            ),
+            (
+                "miércoles pasado",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 10, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "hace 5 horas",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 16, Scale::UTC, 7, 0, 0, 0),
+            ),
+            (
+                "en 3 días",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 19, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "mañana a las 9:45",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 17, Scale::UTC, 9, 45, 0, 0),
+            ),
+            (
+                "hoy a las 10",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 16, Scale::UTC, 10, 0, 0, 0),
+            ),
+        ];
+
+        for (phrase, cfg, expected) in phrases {
+            match Dt::from_str_parse(phrase, cfg) {
+                Ok(dt) => {
+                    assert_rel(phrase, dt, expected);
+                }
+                Err(e) => {
+                    panic!("Failed to parse '{}': {}", phrase, e);
+                }
+            }
+        }
     }
 }

@@ -67,19 +67,23 @@ pub const EN_WORDS: &[Word] = &[
     // am/pm
     Word::new("am", "AM", Token::Am, Cat::AmPm),
     Word::new("pm", "PM", Token::Pm, Cat::AmPm),
+    Word::new("morning", "AM", Token::Am, Cat::AmPm),
+    Word::new("afternoon", "PM", Token::Pm, Cat::AmPm),
+    Word::new("evening", "PM", Token::Pm, Cat::AmPm),
     // Connectors
     Word::new("and", "and", Token::Plus, Cat::UnamRel),
     Word::new("plus", "plus", Token::Plus, Cat::UnamRel),
     // Temporal
-    Word::new("in", "in", Token::Future, Cat::UnamRel),
+    // Word::new("in", "in", Token::Future, Cat::UnamRel),
+    Word::new("this", "this", Token::Present, Cat::UnamRel),
     Word::new("next", "next", Token::Future, Cat::UnamRel),
     Word::new("after", "after", Token::Future, Cat::UnamRel),
-    Word::new("ago", "ago", Token::Past, Cat::AmRel),
     Word::new("last", "last", Token::Past, Cat::UnamRel),
     Word::new("now", "now", Token::Now, Cat::UnamRel),
     Word::new("today", "today", Token::Today, Cat::UnamRel),
     Word::new("tomorrow", "tomorrow", Token::Tomorrow, Cat::UnamRel),
     Word::new("yesterday", "yesterday", Token::Yesterday, Cat::UnamRel),
+    Word::new("ago", "ago", Token::Ago, Cat::Ago),
     // Seconds
     Word::new("seconds", "s", Token::Second, Cat::UnamRel),
     Word::new("second", "s", Token::Second, Cat::UnamRel),
@@ -215,7 +219,13 @@ pub(crate) fn en_date_ac() -> &'static AhoCorasick {
             .filter(|w| {
                 matches!(
                     w.c,
-                    Cat::UnamRel | Cat::AmRel | Cat::Month | Cat::Day | Cat::AmPm | Cat::TScl
+                    Cat::UnamRel
+                        | Cat::Ago
+                        | Cat::AmRel
+                        | Cat::Month
+                        | Cat::Day
+                        | Cat::AmPm
+                        | Cat::TScl
                 )
             })
             .map(|w| w.low)
@@ -238,7 +248,12 @@ pub(crate) fn en_duration_ac() -> &'static AhoCorasick {
         let mut seen = HashSet::new();
         let terms: Vec<&'static str> = EN_WORDS
             .iter()
-            .filter(|w| matches!(w.c, Cat::UnamRel | Cat::AmRel | Cat::AmDur | Cat::UnamDur))
+            .filter(|w| {
+                matches!(
+                    w.c,
+                    Cat::UnamRel | Cat::AmRel | Cat::Ago | Cat::AmDur | Cat::UnamDur
+                )
+            })
             .map(|w| w.low)
             .filter(|&s| seen.insert(s))
             .collect();

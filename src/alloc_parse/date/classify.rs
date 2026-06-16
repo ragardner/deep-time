@@ -1,7 +1,6 @@
 use crate::{
     ClassifiedDate, ConnectorType, DateClassification, Dt, DtErr, DtErrKind, EndsWithExt, IndexIn,
-    Lang, LangData, SplitKeepWithPos, Token, an_err, lang_map, natural_duration_to_span,
-    to_ascii_digit,
+    Lang, LangData, SplitKeepWithPos, Token, an_err, lang_map, to_ascii_digit,
 };
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -58,7 +57,7 @@ pub(crate) fn classify_date(
 
     for (part, _) in splitter {
         if let Some((norm_part, token)) = term_map.get(part) {
-            if token.is_relative() && !currently.after_date() {
+            if (token.is_relative() || token.is_duration()) && !currently.after_date() {
                 let now: Dt = if let Some(tp) = ref_time {
                     *tp
                 } else {
@@ -74,8 +73,10 @@ pub(crate) fn classify_date(
                         ));
                     }
                 };
-                now.add(natural_duration_to_span(s, lang, false)?);
-                return Ok(ClassifiedDate::Parsed(now));
+
+                let dt = Dt::from_natural_relative_or_duration(s, now, lang, false)?;
+
+                return Ok(ClassifiedDate::Parsed(dt));
             }
 
             match token {
@@ -297,7 +298,8 @@ pub(crate) fn classify_date(
                                     currently = IndexIn::PostDate;
                                 }
                             }
-                            if currently == IndexIn::Date {
+                            if currently == IndexIn::Date && !date_tokens.ends_with(&[Token::Space])
+                            {
                                 date_tokens.push(Token::Space);
                             }
                         }
@@ -506,6 +508,11 @@ pub(crate) fn classify_date(
     // final remaining (end of string)
     if digit_run_len > 0 && matches!(currently, IndexIn::Date | IndexIn::PostDate) {
         date_tokens.push(Token::Digits(digit_run_len));
+    }
+
+    // trim trailing space if connector is space
+    if date_tokens.ends_with(&[Token::Space]) && connector == ConnectorType::Space {
+        date_tokens.pop();
     }
 
     if in_time_digit_run && time_digit_run_len > 0 && currently.after_date() {

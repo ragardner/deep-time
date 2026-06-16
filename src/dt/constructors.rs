@@ -151,6 +151,18 @@ impl Dt {
         Dt::new(attos, current, current).to_tai()
     }
 
+    /// Returns a [`Dt`] on the TAI time scale, after having been converted to TAI from
+    /// the given `scale`.
+    ///
+    /// - Requires a total attoseconds value.
+    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
+    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
+    ///   the given `scale` arg.
+    #[inline(always)]
+    pub const fn from_attos_with_target(attos: i128, current: Scale, target: Scale) -> Dt {
+        Dt::new(attos, current, target).to_tai()
+    }
+
     /// Creates a new [`Dt`] from a total number of seconds (signed i128) without
     /// performing any time scale conversions.
     #[inline(always)]

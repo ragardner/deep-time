@@ -1,10 +1,9 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(feature = "lang")]
+#[cfg(all(feature = "parse", feature = "jiff-tz"))]
 mod tests {
-    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale, TimeParts};
+    use deep_time::{Dt, Lang, ParseCfg, Scale, YmdHms};
 
-    #[cfg(feature = "jiff-tz")]
     #[test]
     fn print_stuff() {}
 }

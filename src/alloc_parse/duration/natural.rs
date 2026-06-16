@@ -1,18 +1,27 @@
 use crate::{
     AS_PER_DAY, AS_PER_HOUR, AS_PER_MINUTE, AS_PER_MONTH, AS_PER_WEEK, AS_PER_YEAR,
     ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_US_I128, Dt, DtErr,
-    DtErrKind, Lang, LangData, SplitKeepWithPos, Token, an_err, lang_map, to_ascii_digit,
+    DtErrKind, Lang, LangData, Scale, SplitKeepWithPos, Token, an_err, lang_map, to_ascii_digit,
 };
 use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum Sign {
     None,
     Positive,
     Negative,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+enum Direction {
+    #[default]
+    None,
+    Present,
+    Future,
+    Past,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -228,284 +237,955 @@ fn add_to_total(
     *total_attos = total_attos.saturating_add(contribution.saturating_mul(effective_multiplier));
 }
 
-pub(crate) fn natural_duration_to_span(
-    input: &str,
-    lang: Lang,
-    use_dur_finder: bool,
-) -> Result<Dt, DtErr> {
-    let Some(LangData {
-        map: term_map,
-        duration_ac,
-        date_ac,
-        decimal_char: d,
-    }) = lang_map().get(&lang)
-    else {
-        return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
-    };
-    let finder = if use_dur_finder { duration_ac } else { date_ac };
+/// Parses time like "9:45", "14:30", "945", "1245" into (hour, minute)
+fn parse_hms(s: &str) -> Option<(u8, u8, u8, u64)> {
+    let mut values: Vec<u32> = Vec::new();
+    let mut current: u32 = 0;
+    let mut has_digit = false;
+    let mut frac_str = String::new();
+    let mut in_fraction = false;
 
-    let lower = input.to_lowercase();
-    let overall_negative = if let Some(rest) = lower.strip_prefix('-') {
-        rest.trim_start()
-            .chars()
-            .next()
-            .is_some_and(|c| c.is_numeric() || c == '.' || c.is_whitespace())
-    } else {
-        false
-    };
-
-    let mut overall_multiplier: i128 = if overall_negative { -1 } else { 1 };
-    let mut part_chars: Vec<char> = Vec::with_capacity(50);
-    let mut has_duration = false;
-    let mut pending_num: Option<ParsedNumber> = None;
-    let mut pending_unit_attos: Option<i128> = None;
-    let mut total_attos: i128 = 0;
-
-    let splitter = SplitKeepWithPos::new(finder, lower.as_str());
-
-    for (part, _) in splitter {
-        if let Some((_, token)) = term_map.get(part) {
-            match token {
-                Token::Future => overall_multiplier = 1,
-                Token::Past => overall_multiplier = -1,
-                Token::Now | Token::Today => {
-                    if !has_duration {
-                        return Ok(Dt::ZERO);
-                    }
-                }
-                Token::Tomorrow => {
-                    if !has_duration {
-                        return Ok(Dt::span(AS_PER_DAY));
-                    }
-                }
-                Token::Yesterday => {
-                    if !has_duration {
-                        return Ok(Dt::span(-AS_PER_DAY));
-                    }
-                }
-                Token::Year => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, AS_PER_YEAR, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(AS_PER_YEAR);
-                    }
-                }
-                Token::Month => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, AS_PER_MONTH, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(AS_PER_MONTH);
-                    }
-                }
-                Token::Week => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, AS_PER_WEEK, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(AS_PER_WEEK);
-                    }
-                }
-                Token::Day => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, AS_PER_DAY, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(AS_PER_DAY);
-                    }
-                }
-                Token::Hour => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, AS_PER_HOUR, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(AS_PER_HOUR);
-                    }
-                }
-                Token::Minute => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, AS_PER_MINUTE, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(AS_PER_MINUTE);
-                    }
-                }
-                Token::Second => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(
-                            &mut total_attos,
-                            num,
-                            ATTOS_PER_SEC_I128,
-                            overall_multiplier,
-                        );
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(ATTOS_PER_SEC_I128);
-                    }
-                }
-                Token::Millisecond => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, ATTOS_PER_MS_I128, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(ATTOS_PER_MS_I128);
-                    }
-                }
-                Token::Microsecond => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, ATTOS_PER_US_I128, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(ATTOS_PER_US_I128);
-                    }
-                }
-                Token::Nanosecond => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, ATTOS_PER_NS_I128, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(ATTOS_PER_NS_I128);
-                    }
-                }
-                Token::Millennium => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(
-                            &mut total_attos,
-                            num,
-                            1000 * AS_PER_YEAR,
-                            overall_multiplier,
-                        );
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(1000 * AS_PER_YEAR);
-                    }
-                }
-                Token::Century => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, 100 * AS_PER_YEAR, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(100 * AS_PER_YEAR);
-                    }
-                }
-                Token::Decade => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, 10 * AS_PER_YEAR, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(10 * AS_PER_YEAR);
-                    }
-                }
-                Token::Quarter => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, 3 * AS_PER_MONTH, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(3 * AS_PER_MONTH);
-                    }
-                }
-                Token::Fortnight => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(&mut total_attos, num, 14 * AS_PER_DAY, overall_multiplier);
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(14 * AS_PER_DAY);
-                    }
-                }
-                // SI large units
-                Token::Kilosecond => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(
-                            &mut total_attos,
-                            num,
-                            1_000 * ATTOS_PER_SEC_I128,
-                            overall_multiplier,
-                        );
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(1_000 * ATTOS_PER_SEC_I128);
-                    }
-                }
-                Token::Megasecond => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(
-                            &mut total_attos,
-                            num,
-                            1_000_000 * ATTOS_PER_SEC_I128,
-                            overall_multiplier,
-                        );
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(1_000_000 * ATTOS_PER_SEC_I128);
-                    }
-                }
-                Token::Gigasecond => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(
-                            &mut total_attos,
-                            num,
-                            1_000_000_000 * ATTOS_PER_SEC_I128,
-                            overall_multiplier,
-                        );
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(1_000_000_000 * ATTOS_PER_SEC_I128);
-                    }
-                }
-                Token::Terasecond => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(
-                            &mut total_attos,
-                            num,
-                            1_000_000_000_000 * ATTOS_PER_SEC_I128,
-                            overall_multiplier,
-                        );
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(1_000_000_000_000 * ATTOS_PER_SEC_I128);
-                    }
-                }
-                Token::Petasecond => {
-                    if let Some(num) = pending_num.take() {
-                        add_to_total(
-                            &mut total_attos,
-                            num,
-                            1_000_000_000_000_000 * ATTOS_PER_SEC_I128,
-                            overall_multiplier,
-                        );
-                        has_duration = true;
-                    } else if pending_unit_attos.is_none() {
-                        pending_unit_attos = Some(1_000_000_000_000_000 * ATTOS_PER_SEC_I128);
-                    }
-                }
-
-                _ => {}
-            }
-        } else if let Some(num) = extract_number(part, &mut part_chars, *d) {
-            if let Some(unit_attos) = pending_unit_attos.take() {
-                // unit came first → apply it to this number
-                add_to_total(&mut total_attos, num, unit_attos, overall_multiplier);
-                has_duration = true;
+    for ch in s.chars() {
+        if let Some(digit_val) = to_ascii_digit(ch).and_then(|c| c.to_digit(10)) {
+            has_digit = true;
+            if in_fraction {
+                frac_str.push(ch);
             } else {
-                // normal number-first case
-                pending_num = Some(num);
+                current = current * 10 + digit_val;
             }
+        } else if ch == ':' {
+            if in_fraction {
+                return None;
+            }
+            values.push(current);
+            current = 0;
+        } else if ch == '.' {
+            if in_fraction {
+                return None;
+            }
+            values.push(current);
+            current = 0;
+            in_fraction = true;
         }
     }
 
-    if !has_duration {
-        return Err(an_err!(DtErrKind::InvalidInput, "{}", input));
+    if has_digit && !in_fraction {
+        values.push(current);
     }
 
-    Ok(Dt::span(total_attos))
+    if values.is_empty() {
+        return None;
+    }
+
+    let hour: u8;
+    let minute: u8;
+    let mut second: u8 = 0;
+
+    match values.len() {
+        1 => {
+            let n = values[0];
+
+            if n <= 23 {
+                // Bare hour (casual): "9", "14", "23"
+                hour = n as u8;
+                minute = 0;
+            } else {
+                // Compact military time: "945", "1245", "2359", "0045", etc.
+                hour = (n / 100) as u8;
+                minute = (n % 100) as u8;
+            }
+        }
+        2 => {
+            hour = values[0] as u8;
+            minute = values[1] as u8;
+        }
+        3 => {
+            hour = values[0] as u8;
+            minute = values[1] as u8;
+            second = values[2] as u8;
+        }
+        _ => return None,
+    }
+
+    // Final validation (allow second = 60 for leap seconds)
+    if hour > 23 || minute > 59 || second > 60 {
+        return None;
+    }
+
+    // Fractional seconds → attoseconds
+    let attos: u64 = if !frac_str.is_empty() {
+        let frac: u64 = frac_str.parse().unwrap_or(0);
+        let digits = frac_str.len() as u32;
+        const MAX_DIGITS: u32 = 18;
+
+        if digits > MAX_DIGITS {
+            let truncated: u64 = frac_str[..MAX_DIGITS as usize].parse().unwrap_or(0);
+            truncated
+        } else {
+            frac * 10u64.pow(MAX_DIGITS - digits)
+        }
+    } else {
+        0
+    };
+
+    Some((hour, minute, second, attos))
 }
 
+impl Dt {
+    /// expects input to be lowercase
+    pub(crate) fn from_natural_relative_or_duration(
+        s: &str,
+        ref_date: Dt,
+        lang: Lang,
+        use_dur_finder: bool,
+    ) -> Result<Dt, DtErr> {
+        let Some(LangData {
+            map: term_map,
+            duration_ac,
+            date_ac,
+            decimal_char: _,
+        }) = lang_map().get(&lang)
+        else {
+            return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+        };
+        let finder = if use_dur_finder { duration_ac } else { date_ac };
+        let splitter = SplitKeepWithPos::new(finder, s);
+        let mut is_relative = false;
+
+        for (part, _) in splitter {
+            if let Some((_, token)) = term_map.get(part) {
+                if token.is_relative() {
+                    is_relative = true;
+                    break;
+                }
+            }
+        }
+
+        if is_relative {
+            Dt::from_natural_relative_date(s, ref_date, lang, use_dur_finder)
+        } else {
+            let result = Dt::from_natural_duration(s, lang, use_dur_finder)?;
+            Ok(ref_date.add(result))
+        }
+    }
+
+    /// Expects s to be lowercase
+    pub(crate) fn from_natural_relative_date(
+        s: &str,
+        ref_date: Dt,
+        lang: Lang,
+        use_dur_finder: bool,
+    ) -> Result<Dt, DtErr> {
+        let Some(LangData {
+            map: term_map,
+            duration_ac,
+            date_ac,
+            decimal_char: d,
+        }) = lang_map().get(&lang)
+        else {
+            return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+        };
+        let finder = if use_dur_finder { duration_ac } else { date_ac };
+        let names = Lang::En.names();
+
+        let overall_negative = if let Some(rest) = s.strip_prefix('-') {
+            rest.trim_start()
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_numeric() || c == '.' || c.is_whitespace())
+        } else {
+            false
+        };
+
+        let mut overall_multiplier: i128 = if overall_negative { -1 } else { 1 };
+        let mut part_chars: Vec<char> = Vec::with_capacity(50);
+        let mut pending_num: Option<ParsedNumber> = None;
+        let mut pending_unit_attos: Option<i128> = None;
+        let mut total_attos: i128 = 0;
+
+        let mut target_weekday: Option<u8> = None;
+        let mut target_month: Option<u8> = None;
+        let mut month_offset: i32 = 0;
+        let mut year_offset: i32 = 0;
+        let mut week_offset: i32 = 0;
+        let mut day_offset: i32 = 0;
+
+        let mut target_hour: Option<u8> = None;
+        let mut target_minute: Option<u8> = None;
+        let mut target_second: Option<u8> = None;
+        let mut target_attos: u64 = 0;
+        let mut is_pm = false;
+        let mut scale: Scale = Scale::UTC;
+        let mut direction = Direction::default();
+
+        let mut splitter = SplitKeepWithPos::new(finder, s);
+
+        while let Some((part, _)) = splitter.next() {
+            if let Some((norm, token)) = term_map.get(part) {
+                match token {
+                    Token::Future => {
+                        overall_multiplier = 1;
+                        direction = Direction::Future;
+                    }
+                    Token::Past => {
+                        overall_multiplier = -1;
+                        direction = Direction::Past;
+                    }
+                    Token::Present => direction = Direction::Present,
+                    Token::Tomorrow => day_offset = 1,
+                    Token::Yesterday => day_offset = -1,
+                    Token::Ago => {
+                        total_attos = -total_attos;
+                        overall_multiplier = -1;
+                        direction = Direction::Past;
+                    }
+
+                    Token::DayShort => {
+                        if let Some(pos) = names
+                            .weekdays_abbr
+                            .iter()
+                            .position(|&day| day.eq_ignore_ascii_case(norm.as_bytes()))
+                        {
+                            target_weekday = Some(pos as u8);
+                        }
+                    }
+                    Token::DayLong => {
+                        if let Some(pos) = names
+                            .weekdays_full
+                            .iter()
+                            .position(|&day| day.eq_ignore_ascii_case(norm.as_bytes()))
+                        {
+                            target_weekday = Some(pos as u8);
+                        }
+                    }
+
+                    Token::MonthShort => {
+                        if let Some(pos) = names
+                            .months_abbr
+                            .iter()
+                            .position(|&m| m.eq_ignore_ascii_case(norm.as_bytes()))
+                        {
+                            target_month = Some(pos as u8);
+                        }
+                    }
+                    Token::MonthLong => {
+                        if let Some(pos) = names
+                            .months_full
+                            .iter()
+                            .position(|&m| m.eq_ignore_ascii_case(norm.as_bytes()))
+                        {
+                            target_month = Some(pos as u8);
+                        }
+                    }
+
+                    Token::Week => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_WEEK, overall_multiplier);
+                        } else {
+                            week_offset = match direction {
+                                Direction::Future => 1,
+                                Direction::Past => -1,
+                                _ => 0,
+                            };
+                        }
+                    }
+
+                    Token::Month => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_MONTH, overall_multiplier);
+                        } else {
+                            month_offset = match direction {
+                                Direction::Future => 1,
+                                Direction::Past => -1,
+                                _ => 0,
+                            };
+                        }
+                    }
+
+                    Token::Year => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_YEAR, overall_multiplier);
+                        } else {
+                            year_offset = match direction {
+                                Direction::Future => 1,
+                                Direction::Past => -1,
+                                _ => 0,
+                            };
+                        }
+                    }
+
+                    Token::Day => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_DAY, overall_multiplier);
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_DAY);
+                        }
+                    }
+                    Token::Hour => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_HOUR, overall_multiplier);
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_HOUR);
+                        }
+                    }
+                    Token::Minute => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_MINUTE, overall_multiplier);
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_MINUTE);
+                        }
+                    }
+                    Token::Second => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Millisecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                ATTOS_PER_MS_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(ATTOS_PER_MS_I128);
+                        }
+                    }
+                    Token::Microsecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                ATTOS_PER_US_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(ATTOS_PER_US_I128);
+                        }
+                    }
+                    Token::Nanosecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                ATTOS_PER_NS_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(ATTOS_PER_NS_I128);
+                        }
+                    }
+                    Token::Millennium => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1000 * AS_PER_YEAR,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1000 * AS_PER_YEAR);
+                        }
+                    }
+                    Token::Century => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                100 * AS_PER_YEAR,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(100 * AS_PER_YEAR);
+                        }
+                    }
+                    Token::Decade => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                10 * AS_PER_YEAR,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(10 * AS_PER_YEAR);
+                        }
+                    }
+                    Token::Quarter => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                3 * AS_PER_MONTH,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(3 * AS_PER_MONTH);
+                        }
+                    }
+                    Token::Fortnight => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                14 * AS_PER_DAY,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(14 * AS_PER_DAY);
+                        }
+                    }
+                    Token::Kilosecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Megasecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Gigasecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000_000_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000_000_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Terasecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000_000_000_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000_000_000_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Petasecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000_000_000_000_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000_000_000_000_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Am => is_pm = false,
+                    Token::Pm => is_pm = true,
+
+                    Token::Scale => {
+                        if let Some(scl) = Scale::from_abbrev(norm) {
+                            scale = scl;
+                        }
+                    }
+
+                    _ => {}
+                }
+            } else {
+                // peek at next token to see if it's a duration unit
+                let is_time = if let Some(next) = splitter.peek() {
+                    term_map
+                        .get(next.0)
+                        .map(|(_, token)| !token.is_duration())
+                        .unwrap_or(true)
+                } else {
+                    true
+                };
+
+                if is_time && let Some((h, m, sec, attos)) = parse_hms(part) {
+                    target_hour = Some(h);
+                    target_minute = Some(m);
+                    target_second = Some(sec);
+                    target_attos = attos;
+                } else {
+                    if let Some(num) = extract_number(part, &mut part_chars, *d) {
+                        if let Some(unit_attos) = pending_unit_attos.take() {
+                            add_to_total(&mut total_attos, num, unit_attos, overall_multiplier);
+                        } else {
+                            pending_num = Some(num);
+                        }
+                    }
+                }
+            }
+        }
+
+        // Apply leftover numeric duration
+        if let Some(num) = pending_num.take() {
+            add_to_total(&mut total_attos, num, AS_PER_DAY, overall_multiplier);
+        }
+
+        let mut result = ref_date.target(scale);
+
+        if year_offset != 0 {
+            result = result.add_yr(year_offset as i64);
+        }
+        if month_offset != 0 {
+            result = result.add_mo(month_offset as i64);
+        }
+        if week_offset != 0 {
+            result = result.add_wk(week_offset as i64);
+        }
+        if day_offset != 0 {
+            result = result.add_days(day_offset as i64);
+        }
+
+        // Target month name
+        if let Some(target_mo) = target_month {
+            let current = result.to_ymd();
+            let cur_mo = (current.mo() - 1) as i32;
+            let raw_delta = (target_mo as i32 - cur_mo + 12) % 12;
+
+            let month_delta = match direction {
+                Direction::Present => {
+                    if raw_delta <= 6 {
+                        raw_delta
+                    } else {
+                        raw_delta - 12
+                    }
+                }
+                Direction::Future => {
+                    if raw_delta == 0 {
+                        12
+                    } else {
+                        raw_delta
+                    }
+                }
+                Direction::Past => {
+                    if raw_delta == 0 {
+                        -12
+                    } else {
+                        raw_delta - 12
+                    }
+                }
+                Direction::None => raw_delta,
+            };
+
+            if month_delta != 0 {
+                result = result.add_mo(month_delta as i64);
+            }
+        }
+
+        // Target weekday
+        if let Some(target_wd) = target_weekday {
+            let current_wd = result.to_ymd().wkday() as i32;
+            let raw_delta = (target_wd as i32 - current_wd + 7) % 7;
+
+            let day_delta = match direction {
+                Direction::Present => {
+                    if raw_delta <= 3 {
+                        raw_delta
+                    } else {
+                        raw_delta - 7
+                    }
+                }
+                Direction::Future => {
+                    if raw_delta == 0 {
+                        7
+                    } else {
+                        raw_delta
+                    }
+                }
+                Direction::Past => {
+                    if raw_delta == 0 {
+                        -7
+                    } else {
+                        raw_delta - 7
+                    }
+                }
+                Direction::None => raw_delta,
+            };
+
+            if day_delta != 0 {
+                result = result.add(Dt::span(day_delta as i128 * AS_PER_DAY));
+            }
+        }
+
+        if total_attos != 0 {
+            result = result.add(Dt::span(total_attos));
+        }
+
+        // Time of day
+        if target_hour.is_some()
+            || is_pm
+            || target_minute.is_some()
+            || target_second.is_some()
+            || target_attos != 0
+        {
+            let mut h = target_hour.unwrap_or(0);
+            if is_pm && h < 12 {
+                h += 12;
+            }
+            if !is_pm && h == 12 {
+                h = 0;
+            }
+
+            let ymd = result.to_ymd();
+            result = Dt::from_ymd(
+                ymd.yr(),
+                ymd.mo(),
+                ymd.day(),
+                ymd.scale(),
+                h,
+                target_minute.unwrap_or(0),
+                target_second.unwrap_or(0),
+                target_attos,
+            );
+        }
+
+        Ok(result)
+    }
+
+    /// Expects s to be lowercase
+    pub(crate) fn from_natural_duration(
+        s: &str,
+        lang: Lang,
+        use_dur_finder: bool,
+    ) -> Result<Dt, DtErr> {
+        let Some(LangData {
+            map: term_map,
+            duration_ac,
+            date_ac,
+            decimal_char: d,
+        }) = lang_map().get(&lang)
+        else {
+            return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+        };
+        let finder = if use_dur_finder { duration_ac } else { date_ac };
+
+        let overall_negative = if let Some(rest) = s.strip_prefix('-') {
+            rest.trim_start()
+                .chars()
+                .next()
+                .is_some_and(|c| c.is_numeric() || c == '.' || c.is_whitespace())
+        } else {
+            false
+        };
+
+        let mut overall_multiplier: i128 = if overall_negative { -1 } else { 1 };
+        let mut part_chars: Vec<char> = Vec::with_capacity(50);
+        let mut has_duration = false;
+        let mut pending_num: Option<ParsedNumber> = None;
+        let mut pending_unit_attos: Option<i128> = None;
+        let mut total_attos: i128 = 0;
+
+        let splitter = SplitKeepWithPos::new(finder, s);
+
+        for (part, _) in splitter {
+            if let Some((_, token)) = term_map.get(part) {
+                match token {
+                    Token::Future => overall_multiplier = 1,
+                    Token::Past => overall_multiplier = -1,
+                    Token::Now | Token::Today => {
+                        if !has_duration {
+                            return Ok(Dt::ZERO);
+                        }
+                    }
+                    Token::Tomorrow => {
+                        if !has_duration {
+                            return Ok(Dt::span(AS_PER_DAY));
+                        }
+                    }
+                    Token::Yesterday => {
+                        if !has_duration {
+                            return Ok(Dt::span(-AS_PER_DAY));
+                        }
+                    }
+                    Token::Ago => {
+                        total_attos = -total_attos;
+                    }
+                    Token::Year => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_YEAR, overall_multiplier);
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_YEAR);
+                        }
+                    }
+                    Token::Month => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_MONTH, overall_multiplier);
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_MONTH);
+                        }
+                    }
+                    Token::Week => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_WEEK, overall_multiplier);
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_WEEK);
+                        }
+                    }
+                    Token::Day => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_DAY, overall_multiplier);
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_DAY);
+                        }
+                    }
+                    Token::Hour => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_HOUR, overall_multiplier);
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_HOUR);
+                        }
+                    }
+                    Token::Minute => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_MINUTE, overall_multiplier);
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(AS_PER_MINUTE);
+                        }
+                    }
+                    Token::Second => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Millisecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                ATTOS_PER_MS_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(ATTOS_PER_MS_I128);
+                        }
+                    }
+                    Token::Microsecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                ATTOS_PER_US_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(ATTOS_PER_US_I128);
+                        }
+                    }
+                    Token::Nanosecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                ATTOS_PER_NS_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(ATTOS_PER_NS_I128);
+                        }
+                    }
+                    Token::Millennium => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1000 * AS_PER_YEAR,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1000 * AS_PER_YEAR);
+                        }
+                    }
+                    Token::Century => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                100 * AS_PER_YEAR,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(100 * AS_PER_YEAR);
+                        }
+                    }
+                    Token::Decade => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                10 * AS_PER_YEAR,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(10 * AS_PER_YEAR);
+                        }
+                    }
+                    Token::Quarter => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                3 * AS_PER_MONTH,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(3 * AS_PER_MONTH);
+                        }
+                    }
+                    Token::Fortnight => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                14 * AS_PER_DAY,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(14 * AS_PER_DAY);
+                        }
+                    }
+                    // SI large units
+                    Token::Kilosecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Megasecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Gigasecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000_000_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000_000_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Terasecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000_000_000_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000_000_000_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+                    Token::Petasecond => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(
+                                &mut total_attos,
+                                num,
+                                1_000_000_000_000_000 * ATTOS_PER_SEC_I128,
+                                overall_multiplier,
+                            );
+                            has_duration = true;
+                        } else if pending_unit_attos.is_none() {
+                            pending_unit_attos = Some(1_000_000_000_000_000 * ATTOS_PER_SEC_I128);
+                        }
+                    }
+
+                    _ => {}
+                }
+            } else if let Some(num) = extract_number(part, &mut part_chars, *d) {
+                if let Some(unit_attos) = pending_unit_attos.take() {
+                    // unit came first → apply it to this number
+                    add_to_total(&mut total_attos, num, unit_attos, overall_multiplier);
+                    has_duration = true;
+                } else {
+                    // normal number-first case
+                    pending_num = Some(num);
+                }
+            }
+        }
+
+        if !has_duration {
+            return Err(an_err!(DtErrKind::InvalidInput, "{}", s));
+        }
+
+        Ok(Dt::span(total_attos))
+    }
+}
+
+// Expects s to be lowercase
 pub(crate) fn natural_duration_to_iso(
-    input: &str,
+    s: &str,
     lang: Lang,
     use_dur_finder: bool,
 ) -> Result<String, DtErr> {
-    let span = natural_duration_to_span(input, lang, use_dur_finder)?;
+    let span = Dt::from_natural_duration(s, lang, use_dur_finder)?;
     Ok(span.to_string())
 }

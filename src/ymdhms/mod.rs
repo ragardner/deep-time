@@ -448,3 +448,83 @@ impl YmdHms {
         )
     }
 }
+
+impl core::fmt::Display for YmdHms {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        // Year: 4-digit padded when |yr| < 10000, natural width otherwise
+        if self.yr >= 0 {
+            if self.yr < 10000 {
+                core::write!(f, "{:04}", self.yr)?;
+            } else {
+                core::write!(f, "{}", self.yr)?;
+            }
+        } else {
+            let abs = (-self.yr) as u64;
+            if abs < 10000 {
+                core::write!(f, "-{:04}", abs)?;
+            } else {
+                core::write!(f, "-{}", abs)?;
+            }
+        }
+
+        // Month (pad only if < 10)
+        if self.mo < 10 {
+            core::write!(f, "-0{}", self.mo)?;
+        } else {
+            core::write!(f, "-{}", self.mo)?;
+        }
+
+        // Day (pad only if < 10)
+        if self.day < 10 {
+            core::write!(f, "-0{}", self.day)?;
+        } else {
+            core::write!(f, "-{}", self.day)?;
+        }
+
+        core::write!(f, "T")?;
+
+        // Hour (pad only if < 10)
+        if self.hr < 10 {
+            core::write!(f, "0{}", self.hr)?;
+        } else {
+            core::write!(f, "{}", self.hr)?;
+        }
+
+        core::write!(f, ":")?;
+
+        // Minute (pad only if < 10)
+        if self.min < 10 {
+            core::write!(f, "0{}", self.min)?;
+        } else {
+            core::write!(f, "{}", self.min)?;
+        }
+
+        core::write!(f, ":")?;
+
+        // Second (pad only if < 10) — 60 is still fine
+        if self.sec < 10 {
+            core::write!(f, "0{}", self.sec)?;
+        } else {
+            core::write!(f, "{}", self.sec)?;
+        }
+
+        // Fractional attoseconds (trimmed, zero allocation)
+        if self.attos != 0 {
+            let mut buf = [0u8; 18];
+            let mut n = self.attos;
+            for i in (0..18).rev() {
+                buf[i] = (n % 10) as u8 + b'0';
+                n /= 10;
+            }
+            let mut end = 18;
+            while end > 0 && buf[end - 1] == b'0' {
+                end -= 1;
+            }
+            let frac = core::str::from_utf8(&buf[..end]).expect("digits are ASCII");
+            core::write!(f, ".{}", frac)?;
+        }
+
+        // Scale abbreviation at the end
+        core::write!(f, " {}", self.scale.abbrev())
+    }
+}

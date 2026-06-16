@@ -37,7 +37,7 @@ impl Dt {
     /// | `order`        | [`Order::Smart`]                 | How to resolve ambiguous numeric dates like `01/02/03`                                            |
     /// | `mode`         | [`Mode::Auto`]                   | Special handling for purely numeric inputs                                                        |
     /// | `parse`        | [`Option<Vec<String>>`] - `None` | An explicit list of formats to try, if the [`Mode`] is Explicit then only these formats are tried |
-    /// | `relative`     | [`bool`] - `true`                | Enable phrases like "tomorrow", "in 3 days", limited support for relative dates                   |
+    /// | `relative`     | [`bool`] - `true`                | Enable phrases like "tomorrow", "in 3 days"                   |
     /// | `ref_time`     | [`Option<Dt>`] - `None`          | Reference time for relative dates and syslog-style "no-year" dates                                |
     /// | `to_lower`     | [`bool`] - `true`                | Automatically lowercase the input, **only** set to false if it's already lowercase                |
     ///
@@ -97,8 +97,6 @@ impl Dt {
     /// - **12-hour time**: `2:30 PM`, `14:30:45.123`
     /// - **Offsets and timezones**: `+0100`, `-05:30`, `Z`, IANA timezone names (with the `jiff-tz feature enabled`)
     /// - **Library time scales**: `TAI`, `TT`, etc. are detected and parsed, must come after the date part of the input.
-    ///
-    /// Note that relative date support is quite limited and phrases such as `"next friday at 9am"` will not parse.
     ///
     /// ## Examples
     ///
@@ -225,7 +223,7 @@ impl Dt {
             (opts.mode, opts.order)
         };
 
-        // if s == "2006-04-02 02:30-05 America/Indiana/Vevay" {
+        // if s == "on the 5th of april 2024 at 00:00am" {
         //     std::eprintln!("{:?}", classification);
         // }
         // std::eprintln!("{:?}", classification);
@@ -448,8 +446,14 @@ where
 
     // for fmt in formats.into_iter() {
     //     eprintln!("TRYING FMT: {}", fmt);
-    //     if let Ok(parsed) = Dt::from_str(s, &fmt, true, true, false) {
-    //         dt = Some(parsed);
+    //     dt = match Dt::from_str(s, &fmt, true, true, false) {
+    //         Ok(parsed) => Some(parsed),
+    //         Err(e) => {
+    //             eprintln!("  FAILED with: {:?}", e);
+    //             continue;
+    //         }
+    //     };
+    //     if dt.is_some() {
     //         break;
     //     }
     //     // === DEBUG ===

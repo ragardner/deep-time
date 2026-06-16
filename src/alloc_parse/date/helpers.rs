@@ -8,7 +8,10 @@ pub struct SplitKeepWithPos<'a> {
     haystack: &'a str,
     finder: FindIter<'a, 'a>,
     last: usize,
-    pending: Option<(usize, usize)>, // next match we pulled but haven't yielded yet
+    /// Next Aho-Corasick match we've already pulled but haven't processed yet.
+    pending: Option<(usize, usize)>,
+    /// Cached next item that `next()` will return (enables `peek()`).
+    peeked: Option<(&'a str, Range<usize>)>,
 }
 
 impl<'a> SplitKeepWithPos<'a> {
@@ -19,29 +22,38 @@ impl<'a> SplitKeepWithPos<'a> {
             finder: ac.find_iter(haystack),
             last: 0,
             pending: None,
+            peeked: None,
         }
     }
-}
 
-impl<'a> Iterator for SplitKeepWithPos<'a> {
-    type Item = (&'a str, Range<usize>);
+    /// Peek at the next item without advancing the iterator.
+    ///
+    /// Returns `Some(&item)` if there is a next item, or `None` if exhausted.
+    /// Repeated calls return the same value until `next()` is called.
+    pub fn peek(&mut self) -> Option<&<Self as Iterator>::Item> {
+        if self.peeked.is_none() {
+            self.peeked = self.advance();
+        }
+        self.peeked.as_ref()
+    }
 
-    fn next(&mut self) -> Option<Self::Item> {
+    /// Core splitting logic. Called by both `peek()` and `next()`.
+    fn advance(&mut self) -> Option<(&'a str, Range<usize>)> {
         if self.last >= self.haystack.len() {
             return None;
         }
 
-        // 1. Handle any match we already pulled from Aho-Corasick
+        // 1. Handle a pending match we already pulled from Aho-Corasick
         if let Some((mstart, mend)) = self.pending.take() {
             if mstart > self.last {
-                // yield gap first, keep the match pending
+                // Yield gap first, keep the match pending
                 let gap = &self.haystack[self.last..mstart];
                 let range = self.last..mstart;
                 self.last = mstart;
                 self.pending = Some((mstart, mend));
                 return Some((gap, range));
             } else {
-                // yield the keyword itself
+                // Yield the match itself
                 self.last = mend;
                 return Some((&self.haystack[mstart..mend], mstart..mend));
             }
@@ -50,16 +62,29 @@ impl<'a> Iterator for SplitKeepWithPos<'a> {
         // 2. Pull next match from Aho-Corasick
         if let Some(m) = self.finder.next() {
             self.pending = Some((m.start(), m.end()));
-            return self.next(); // one recursive step to handle it (harmless, depth=1)
+            return self.advance(); // single level of recursion (depth = 1)
         }
 
-        // 3. Final tail
+        // 3. Final tail segment
         let start = self.last;
         let end = self.haystack.len();
         self.last = end;
         Some((&self.haystack[start..end], start..end))
     }
 }
+
+impl<'a> Iterator for SplitKeepWithPos<'a> {
+    type Item = (&'a str, Range<usize>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(item) = self.peeked.take() {
+            return Some(item);
+        }
+        self.advance()
+    }
+}
+
+impl<'a> core::iter::FusedIterator for SplitKeepWithPos<'a> {}
 
 macro_rules! define_ends_with_methods {
     ($($method_name:ident => $byte:literal),* $(,)?) => {

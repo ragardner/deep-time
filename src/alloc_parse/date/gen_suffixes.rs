@@ -25,7 +25,7 @@ pub(crate) fn get_compatible_time_suffixes(class: &DateClassification) -> Vec<St
             base.push_str(&zone);
         }
     }
-    // eprintln!("{:?}", time_bases);
+
     time_bases
 }
 
@@ -132,13 +132,13 @@ fn build_time_bases(class: &DateClassification) -> Vec<String> {
     };
 
     if is_12h {
+        // %I cases first
         for &sec in &has_seconds_options {
             let mut base = String::with_capacity(32);
             base.push_str(connector_str);
             base.push_str("%I");
             base.push_str(time_sep);
             base.push_str("%M");
-
             if use_fractional {
                 base.push_str(time_sep);
                 base.push_str("%S%.f");
@@ -146,6 +146,27 @@ fn build_time_bases(class: &DateClassification) -> Vec<String> {
             } else if sec {
                 base.push_str(time_sep);
                 base.push_str("%S");
+                suffixes.push(base);
+            } else {
+                suffixes.push(base);
+            }
+        }
+        // %H cases after all %I cases are done
+        for &sec in &has_seconds_options {
+            let mut base = String::with_capacity(32);
+            base.push_str(connector_str);
+            base.push_str("%H");
+            base.push_str(time_sep);
+            base.push_str("%M");
+            if use_fractional {
+                base.push_str(time_sep);
+                base.push_str("%S%.f");
+                suffixes.push(base);
+            } else if sec {
+                base.push_str(time_sep);
+                base.push_str("%S");
+                suffixes.push(base);
+            } else {
                 suffixes.push(base);
             }
         }

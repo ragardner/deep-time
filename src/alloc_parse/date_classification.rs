@@ -78,7 +78,9 @@ pub(crate) enum Token {
     Yesterday,
     Future,
     Past,
+    Present,
     Plus,
+    Ago,
     // Duration units (largest → smallest)
     Millennium,
     Century,
@@ -113,6 +115,41 @@ pub(crate) enum Token {
 }
 
 impl Token {
+    pub(crate) fn is_duration(&self) -> bool {
+        matches!(
+            self,
+            Token::Millennium
+                | Token::Century
+                | Token::Decade
+                | Token::Quarter
+                | Token::Month
+                | Token::Fortnight
+                | Token::Year
+                | Token::Week
+                | Token::Day
+                | Token::Hour
+                | Token::Minute
+                | Token::Second
+                // Large SI-prefixed seconds
+                | Token::Kilosecond
+                | Token::Megasecond
+                | Token::Gigasecond
+                | Token::Terasecond
+                | Token::Petasecond
+                // Sub-second SI units
+                | Token::Millisecond
+                | Token::Microsecond
+                | Token::Nanosecond
+                | Token::Picosecond
+                | Token::Femtosecond
+                | Token::Attosecond
+                | Token::Zeptosecond
+                | Token::Yoctosecond
+                | Token::Rontosecond
+                | Token::Quectosecond
+        )
+    }
+
     #[inline]
     pub(crate) fn is_relative(&self) -> bool {
         matches!(
@@ -123,16 +160,8 @@ impl Token {
                 | Token::Yesterday
                 | Token::Future
                 | Token::Past
-                | Token::Nanosecond
-                | Token::Microsecond
-                | Token::Millisecond
-                | Token::Second
-                | Token::Minute
-                | Token::Hour
-                | Token::Day
-                | Token::Week
-                | Token::Month
-                | Token::Year
+                | Token::Ago
+                | Token::Present
         )
     }
 
@@ -236,6 +265,7 @@ impl IndexIn {
     }
 }
 
+#[allow(unused)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Cat {
     /// Ambiguous relative
@@ -249,6 +279,8 @@ pub enum Cat {
     Day,
     AmPm,
     TScl,
+    /// Special for the word ago
+    Ago,
 }
 
 #[derive(Clone, Copy, Debug)]

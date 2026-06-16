@@ -150,8 +150,10 @@ impl Div<Dt> for Dt {
 impl Dt {
     /// Compares the time values represented by two `Dt`s.
     ///
-    /// - This comparison is based on the total attosecond value (`self.attos` vs `other.attos`).
-    /// - Does **not** perform scale conversion.
+    /// - This comparison is based solely on the raw total attosecond
+    ///   value (`self.attos` vs `other.attos`).
+    /// - Does **not** perform scale conversion and does not compare anything
+    ///   other than the `attos` field.
     pub const fn cmp(&self, other: &Self) -> Ordering {
         if self.attos < other.attos {
             Ordering::Less
