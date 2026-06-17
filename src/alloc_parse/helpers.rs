@@ -38,6 +38,9 @@ impl<'a> SplitKeepWithPos<'a> {
     }
 
     /// Core splitting logic. Called by both `peek()` and `next()`.
+    ///
+    /// Pure-whitespace gaps (leading, between matches, or trailing) are
+    /// silently skipped so they are never emitted as parts.
     fn advance(&mut self) -> Option<(&'a str, Range<usize>)> {
         if self.last >= self.haystack.len() {
             return None;
@@ -46,12 +49,20 @@ impl<'a> SplitKeepWithPos<'a> {
         // 1. Handle a pending match we already pulled from Aho-Corasick
         if let Some((mstart, mend)) = self.pending.take() {
             if mstart > self.last {
-                // Yield gap first, keep the match pending
                 let gap = &self.haystack[self.last..mstart];
-                let range = self.last..mstart;
-                self.last = mstart;
-                self.pending = Some((mstart, mend));
-                return Some((gap, range));
+
+                if gap.trim().is_empty() {
+                    // Skip pure-whitespace gap (leading or between tokens)
+                    self.last = mstart;
+                    self.pending = Some((mstart, mend));
+                    return self.advance();
+                } else {
+                    // Yield the non-whitespace gap, keep match pending
+                    let range = self.last..mstart;
+                    self.last = mstart;
+                    self.pending = Some((mstart, mend));
+                    return Some((gap, range));
+                }
             } else {
                 // Yield the match itself
                 self.last = mend;
@@ -65,11 +76,17 @@ impl<'a> SplitKeepWithPos<'a> {
             return self.advance(); // single level of recursion (depth = 1)
         }
 
-        // 3. Final tail segment
+        // 3. Final tail segment (drop if it's only whitespace)
         let start = self.last;
         let end = self.haystack.len();
+        let tail = &self.haystack[start..end];
+
+        if tail.trim().is_empty() {
+            self.last = end;
+            return None;
+        }
         self.last = end;
-        Some((&self.haystack[start..end], start..end))
+        Some((tail, start..end))
     }
 }
 

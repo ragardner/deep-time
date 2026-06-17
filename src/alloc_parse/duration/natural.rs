@@ -364,8 +364,9 @@ impl Dt {
         if is_relative {
             Dt::from_natural_relative_date(s, ref_date, lang, use_dur_finder)
         } else {
-            let result = Dt::from_natural_duration(s, lang, use_dur_finder)?;
-            Ok(ref_date.add(result))
+            // let result = Dt::from_natural_duration(s, lang, use_dur_finder)?;
+            // Ok(ref_date.add(result))
+            Dt::from_natural_relative_date(s, ref_date, lang, use_dur_finder)
         }
     }
 
@@ -416,7 +417,8 @@ impl Dt {
         let mut target_attos: u64 = 0;
         let mut is_pm = false;
         let mut scale: Scale = Scale::UTC;
-        let mut direction = Direction::default();
+        let mut pending_bare_unit: Option<Token> = None;
+        let mut direction: Direction = Direction::None;
 
         let mut splitter = SplitKeepWithPos::new(finder, s);
 
@@ -425,15 +427,43 @@ impl Dt {
                 match token {
                     Token::Future => {
                         overall_multiplier = 1;
+                        if let Some(unit) = pending_bare_unit.take() {
+                            match unit {
+                                Token::Week => week_offset = 1,
+                                Token::Month => month_offset = 1,
+                                Token::Year => year_offset = 1,
+                                _ => {}
+                            }
+                        }
                         direction = Direction::Future;
                     }
                     Token::Past => {
                         overall_multiplier = -1;
+                        if let Some(unit) = pending_bare_unit.take() {
+                            match unit {
+                                Token::Week => week_offset = -1,
+                                Token::Month => month_offset = -1,
+                                Token::Year => year_offset = -1,
+                                _ => {}
+                            }
+                        }
                         direction = Direction::Past;
                     }
-                    Token::Present => direction = Direction::Present,
+                    Token::Present => {
+                        if let Some(unit) = pending_bare_unit.take() {
+                            match unit {
+                                Token::Week => week_offset = 0,
+                                Token::Month => month_offset = 0,
+                                Token::Year => year_offset = 0,
+                                _ => {}
+                            }
+                        }
+                        direction = Direction::Present;
+                    }
                     Token::Tomorrow => day_offset = 1,
+                    Token::TwoDaysLater => day_offset = 2,
                     Token::Yesterday => day_offset = -1,
+                    Token::TwoDaysBefore => day_offset = -2,
                     Token::Ago => {
                         total_attos = -total_attos;
                         overall_multiplier = -1;
@@ -478,39 +508,52 @@ impl Dt {
                         }
                     }
 
-                    Token::Week => {
-                        if let Some(num) = pending_num.take() {
-                            add_to_total(&mut total_attos, num, AS_PER_WEEK, overall_multiplier);
-                        } else {
-                            week_offset = match direction {
-                                Direction::Future => 1,
-                                Direction::Past => -1,
-                                _ => 0,
-                            };
-                        }
-                    }
-
-                    Token::Month => {
-                        if let Some(num) = pending_num.take() {
-                            add_to_total(&mut total_attos, num, AS_PER_MONTH, overall_multiplier);
-                        } else {
-                            month_offset = match direction {
-                                Direction::Future => 1,
-                                Direction::Past => -1,
-                                _ => 0,
-                            };
-                        }
-                    }
-
                     Token::Year => {
                         if let Some(num) = pending_num.take() {
                             add_to_total(&mut total_attos, num, AS_PER_YEAR, overall_multiplier);
                         } else {
-                            year_offset = match direction {
-                                Direction::Future => 1,
-                                Direction::Past => -1,
-                                _ => 0,
-                            };
+                            if direction == Direction::None {
+                                pending_bare_unit = Some(Token::Year);
+                            } else {
+                                match direction {
+                                    Direction::Future => year_offset = 1,
+                                    Direction::Past => year_offset = -1,
+                                    Direction::Present => year_offset = 0,
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    Token::Month => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_MONTH, overall_multiplier);
+                        } else {
+                            if direction == Direction::None {
+                                pending_bare_unit = Some(Token::Month);
+                            } else {
+                                match direction {
+                                    Direction::Future => month_offset = 1,
+                                    Direction::Past => month_offset = -1,
+                                    Direction::Present => month_offset = 0,
+                                    _ => {}
+                                }
+                            }
+                        }
+                    }
+                    Token::Week => {
+                        if let Some(num) = pending_num.take() {
+                            add_to_total(&mut total_attos, num, AS_PER_WEEK, overall_multiplier);
+                        } else {
+                            if direction == Direction::None {
+                                pending_bare_unit = Some(Token::Week);
+                            } else {
+                                match direction {
+                                    Direction::Future => week_offset = 1,
+                                    Direction::Past => week_offset = -1,
+                                    Direction::Present => week_offset = 0,
+                                    _ => {}
+                                }
+                            }
                         }
                     }
 
@@ -747,6 +790,15 @@ impl Dt {
             add_to_total(&mut total_attos, num, AS_PER_DAY, overall_multiplier);
         }
 
+        if let Some(unit) = pending_bare_unit.take() {
+            match unit {
+                Token::Week => week_offset = 0,
+                Token::Month => month_offset = 0,
+                Token::Year => year_offset = 0,
+                _ => {}
+            }
+        }
+
         let mut result = ref_date.target(scale);
 
         if year_offset != 0 {
@@ -768,29 +820,35 @@ impl Dt {
             let cur_mo = (current.mo() - 1) as i32;
             let raw_delta = (target_mo as i32 - cur_mo + 12) % 12;
 
-            let month_delta = match direction {
-                Direction::Present => {
-                    if raw_delta <= 6 {
-                        raw_delta
-                    } else {
-                        raw_delta - 12
+            let month_delta = if month_offset != 0 || year_offset != 0 || week_offset != 0 {
+                // Explicit unit shift already applied (e.g. from "mes pasado")
+                // → just move to the target month in the shifted period
+                if raw_delta == 0 { 0 } else { raw_delta }
+            } else {
+                match direction {
+                    Direction::Present => {
+                        if raw_delta <= 6 {
+                            raw_delta
+                        } else {
+                            raw_delta - 12
+                        }
                     }
-                }
-                Direction::Future => {
-                    if raw_delta == 0 {
-                        12
-                    } else {
-                        raw_delta
+                    Direction::Future => {
+                        if raw_delta == 0 {
+                            12
+                        } else {
+                            raw_delta
+                        }
                     }
-                }
-                Direction::Past => {
-                    if raw_delta == 0 {
-                        -12
-                    } else {
-                        raw_delta - 12
+                    Direction::Past => {
+                        if raw_delta == 0 {
+                            -12
+                        } else {
+                            raw_delta - 12
+                        }
                     }
+                    Direction::None => raw_delta,
                 }
-                Direction::None => raw_delta,
             };
 
             if month_delta != 0 {
@@ -803,29 +861,42 @@ impl Dt {
             let current_wd = result.to_ymd().wkday() as i32;
             let raw_delta = (target_wd as i32 - current_wd + 7) % 7;
 
-            let day_delta = match direction {
-                Direction::Present => {
-                    if raw_delta <= 3 {
-                        raw_delta
-                    } else {
-                        raw_delta - 7
-                    }
+            let day_delta = if week_offset != 0 || month_offset != 0 || year_offset != 0 {
+                // Explicit unit shift already applied (bare unit like "week last" / "semana pasada")
+                // → use Present-style logic so we pick the closest day in the shifted period
+                if raw_delta == 0 {
+                    0
+                } else if raw_delta <= 3 {
+                    raw_delta
+                } else {
+                    raw_delta - 7
                 }
-                Direction::Future => {
-                    if raw_delta == 0 {
-                        7
-                    } else {
-                        raw_delta
+            } else {
+                // No explicit unit shift → original nearest-occurrence logic
+                match direction {
+                    Direction::Present => {
+                        if raw_delta <= 3 {
+                            raw_delta
+                        } else {
+                            raw_delta - 7
+                        }
                     }
-                }
-                Direction::Past => {
-                    if raw_delta == 0 {
-                        -7
-                    } else {
-                        raw_delta - 7
+                    Direction::Future => {
+                        if raw_delta == 0 {
+                            7
+                        } else {
+                            raw_delta
+                        }
                     }
+                    Direction::Past => {
+                        if raw_delta == 0 {
+                            -7
+                        } else {
+                            raw_delta - 7
+                        }
+                    }
+                    Direction::None => raw_delta,
                 }
-                Direction::None => raw_delta,
             };
 
             if day_delta != 0 {

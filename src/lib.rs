@@ -112,7 +112,8 @@ pub mod sidereal;
 // _________________________________________
 #[cfg(feature = "parse")]
 pub(crate) use alloc_parse::{
-    alloc_constants::*, date::*, date_classification::*, duration::*, parse_date::*, types::*,
+    alloc_constants::*, date::*, date_classification::*, duration::*, helpers::*, parse_date::*,
+    types::*,
 };
 #[cfg(feature = "parse")]
 pub(crate) use locale::{lang_data::*, lang_map::*};

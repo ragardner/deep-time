@@ -203,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn relative_parsing() {
+    fn es_relative_parsing() {
         // Reference time: Tuesday 16 June 2026, 12:00 UTC
         let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
 
@@ -247,7 +247,7 @@ mod tests {
                 Dt::from_ymd(2026, 6, 19, Scale::UTC, 14, 0, 0, 0),
             ),
             (
-                "la semana pasada el viernes a las 14:00",
+                "la semana pasada el viernes a las 14:00", // week last friday at 14:00
                 &es_cfg,
                 Dt::from_ymd(2026, 6, 12, Scale::UTC, 14, 0, 0, 0),
             ),
@@ -275,6 +275,76 @@ mod tests {
                 "hoy a las 10",
                 &es_cfg,
                 Dt::from_ymd(2026, 6, 16, Scale::UTC, 10, 0, 0, 0),
+            ),
+            (
+                "hoy",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "ayer",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 15, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "este jueves",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 18, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "el jueves pasado a las 11:00",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 11, Scale::UTC, 11, 0, 0, 0),
+            ),
+            (
+                "el próximo jueves",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 18, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "hace 2 días a las 8:00",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 14, Scale::UTC, 8, 0, 0, 0),
+            ),
+            (
+                "en 4 días",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 20, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "esta semana el viernes a las 17:00",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 19, Scale::UTC, 17, 0, 0, 0),
+            ),
+            (
+                "hace 7 días",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 9, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "dentro de 2 días",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 18, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "la semana pasada el lunes",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 8, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "en 1 semana a las 10:00",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 23, Scale::UTC, 10, 0, 0, 0),
+            ),
+            (
+                "pasado mañana",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 18, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "anteayer",
+                &es_cfg,
+                Dt::from_ymd(2026, 6, 14, Scale::UTC, 12, 0, 0, 0),
             ),
         ];
 

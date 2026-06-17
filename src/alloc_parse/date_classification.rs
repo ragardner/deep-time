@@ -44,8 +44,10 @@ pub(crate) enum ClassifiedDate {
     Cls(DateClassification),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Token {
+    #[default]
+    Null,
     DayShort,
     DayLong,
     MonthShort,
@@ -75,7 +77,9 @@ pub(crate) enum Token {
     Now,
     Today,
     Tomorrow,
+    TwoDaysLater,
     Yesterday,
+    TwoDaysBefore,
     Future,
     Past,
     Present,
@@ -162,8 +166,15 @@ impl Token {
                 | Token::Past
                 | Token::Ago
                 | Token::Present
+                | Token::TwoDaysLater
+                | Token::TwoDaysBefore
         )
     }
+
+    // #[inline(always)]
+    // pub(crate) fn is_direction(&self) -> bool {
+    //     matches!(self, Token::Future | Token::Past | Token::Ago)
+    // }
 
     #[inline]
     pub(crate) fn to_fmt(&self) -> &'static [&'static str] {

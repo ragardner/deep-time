@@ -9,7 +9,7 @@ mod tests {
     }
 
     #[test]
-    fn relative_parsing() {
+    fn en_relative_parsing() {
         // Reference time: Tuesday 16 June 2026, 12:00 UTC
         let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
 
@@ -90,6 +90,11 @@ mod tests {
                 Dt::from_ymd(2026, 6, 24, Scale::UTC, 12, 0, 0, 0),
             ),
             (
+                "next week wed at 900",
+                &en_cfg,
+                Dt::from_ymd(2026, 6, 24, Scale::UTC, 9, 0, 0, 0),
+            ),
+            (
                 "next Monday at 14:00",
                 &en_cfg,
                 Dt::from_ymd(2026, 6, 22, Scale::UTC, 14, 0, 0, 0),
@@ -98,6 +103,21 @@ mod tests {
                 "next month",
                 &en_cfg,
                 Dt::from_ymd(2026, 7, 16, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "PT tomorrow at 0900",
+                &en_cfg,
+                Dt::from_ymd(2026, 6, 17, Scale::UTC, 9, 0, 0, 0),
+            ),
+            (
+                "week last monday",
+                &en_cfg,
+                Dt::from_ymd(2026, 6, 8, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "2 years ago",
+                &en_cfg,
+                Dt::from_ymd(2024, 6, 16, Scale::UTC, 12, 0, 0, 0),
             ),
         ];
 

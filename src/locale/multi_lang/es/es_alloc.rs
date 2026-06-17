@@ -69,7 +69,9 @@ pub const ES_WORDS: &[Word] = &[
     Word::new("ahora", "now", Token::Now, Cat::UnamRel),
     Word::new("hoy", "today", Token::Today, Cat::UnamRel),
     Word::new("mañana", "tomorrow", Token::Tomorrow, Cat::UnamRel),
+    Word::new("pasado mañana", "2 days", Token::TwoDaysLater, Cat::UnamRel),
     Word::new("ayer", "yesterday", Token::Yesterday, Cat::UnamRel),
+    Word::new("anteayer", "-2 days", Token::TwoDaysBefore, Cat::UnamRel),
     Word::new("hace", "ago", Token::Ago, Cat::Ago),
     // Sub-second
     Word::new("nanosegundos", "ns", Token::Nanosecond, Cat::UnamRel),
