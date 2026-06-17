@@ -149,6 +149,16 @@ mod tests {
                 &en_cfg,
                 Dt::from_ymd(2026, 5, 26, Scale::UTC, 12, 0, 0, 0),
             ),
+            (
+                "PT friday, 0900",
+                &en_cfg,
+                Dt::from_ymd(2026, 6, 19, Scale::UTC, 9, 0, 0, 0),
+            ),
+            (
+                "friday at 9",
+                &en_cfg,
+                Dt::from_ymd(2026, 6, 19, Scale::UTC, 9, 0, 0, 0),
+            ),
         ];
 
         for (phrase, cfg, expected) in phrases {

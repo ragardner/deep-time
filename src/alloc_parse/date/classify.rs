@@ -5,6 +5,32 @@ use crate::{
 use alloc::string::String;
 use alloc::vec::Vec;
 
+fn send_to_relative_parser(
+    s: &str,
+    lang: Lang,
+    ref_time: &Option<Dt>,
+) -> Result<ClassifiedDate, DtErr> {
+    let now: Dt = if let Some(tp) = ref_time {
+        *tp
+    } else {
+        #[cfg(feature = "std")]
+        {
+            Dt::now()
+        }
+        #[cfg(not(feature = "std"))]
+        {
+            return Err(an_err!(
+                DtErrKind::InternalErr,
+                "relative dates need ref time/std"
+            ));
+        }
+    };
+
+    let dt = Dt::from_natural_relative_or_duration(s, now, lang, false)?;
+
+    return Ok(ClassifiedDate::Parsed(dt));
+}
+
 /// Expects s to be lowercase.
 pub(crate) fn classify_date(
     s: &str,
@@ -58,25 +84,7 @@ pub(crate) fn classify_date(
     for (part, _) in splitter {
         if let Some((norm_part, token)) = term_map.get(part) {
             if (token.is_relative() || token.is_duration()) && !currently.after_date() {
-                let now: Dt = if let Some(tp) = ref_time {
-                    *tp
-                } else {
-                    #[cfg(feature = "std")]
-                    {
-                        Dt::now()
-                    }
-                    #[cfg(not(feature = "std"))]
-                    {
-                        return Err(an_err!(
-                            DtErrKind::InternalErr,
-                            "relative dates need ref time/std"
-                        ));
-                    }
-                };
-
-                let dt = Dt::from_natural_relative_or_duration(s, now, lang, false)?;
-
-                return Ok(ClassifiedDate::Parsed(dt));
+                return send_to_relative_parser(s, lang, ref_time);
             }
 
             match token {
@@ -515,6 +523,10 @@ pub(crate) fn classify_date(
         date_tokens.pop();
     }
 
+    if tokens_look_like_relative(&date_tokens, has_ampm) {
+        return send_to_relative_parser(s, lang, ref_time);
+    }
+
     if in_time_digit_run && time_digit_run_len > 0 && currently.after_date() {
         if currently == IndexIn::Offset {
             let tok = if offset_colons > 0 {
@@ -575,4 +587,40 @@ pub(crate) fn classify_date(
         num_date_digit_groups,
         year_maybe_on_end,
     }))
+}
+
+#[inline(always)]
+fn tokens_look_like_relative(date_tokens: &[Token], has_ampm: bool) -> bool {
+    let mut has_digit_block = false;
+    let mut has_named = false;
+
+    for token in date_tokens {
+        match token {
+            Token::MonthShort | Token::MonthLong => return false,
+            Token::Digits(n) => {
+                if has_digit_block {
+                    return false;
+                } else if *n <= 4 {
+                    has_digit_block = true;
+                } else {
+                    return false;
+                }
+            }
+            Token::DayShort | Token::DayLong => {
+                if has_named {
+                    return false;
+                } else {
+                    has_named = true;
+                }
+            }
+            Token::W => return false,
+            _ => {}
+        }
+    }
+
+    if has_digit_block && !has_named && !has_ampm {
+        return false;
+    } else {
+        return true;
+    }
 }
