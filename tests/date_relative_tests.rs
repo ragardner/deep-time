@@ -119,6 +119,36 @@ mod tests {
                 &en_cfg,
                 Dt::from_ymd(2024, 6, 16, Scale::UTC, 12, 0, 0, 0),
             ),
+            (
+                "this friday",
+                &en_cfg,
+                Dt::from_ymd(2026, 6, 19, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "last tuesday",
+                &en_cfg,
+                Dt::from_ymd(2026, 6, 9, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "in 1 month",
+                &en_cfg,
+                Dt::from_ymd(2026, 7, 16, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "last month",
+                &en_cfg,
+                Dt::from_ymd(2026, 5, 16, Scale::UTC, 12, 0, 0, 0),
+            ),
+            (
+                "friday at 17:00",
+                &en_cfg,
+                Dt::from_ymd(2026, 6, 19, Scale::UTC, 17, 0, 0, 0),
+            ),
+            (
+                "3 weeks ago",
+                &en_cfg,
+                Dt::from_ymd(2026, 5, 26, Scale::UTC, 12, 0, 0, 0),
+            ),
         ];
 
         for (phrase, cfg, expected) in phrases {

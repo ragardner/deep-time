@@ -855,12 +855,24 @@ impl Dt {
 
         let mut result = ref_date.target(scale);
 
-        result = result.add_yr(pending_year_count);
-        result = result.add_mo(pending_month_count);
-        result = result.add_yr(year_offset);
-        result = result.add_mo(month_offset);
-        result = result.add_wk(week_offset);
-        result = result.add_days(day_offset);
+        if pending_year_count != 0 {
+            result = result.add_yr(pending_year_count);
+        }
+        if pending_month_count != 0 {
+            result = result.add_mo(pending_month_count);
+        }
+        if year_offset != 0 {
+            result = result.add_yr(year_offset);
+        }
+        if month_offset != 0 {
+            result = result.add_mo(month_offset);
+        }
+        if week_offset != 0 {
+            result = result.add_wk(week_offset);
+        }
+        if day_offset != 0 {
+            result = result.add_days(day_offset);
+        }
 
         // Target month name
         if let Some(target_mo) = target_month {
