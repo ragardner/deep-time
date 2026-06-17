@@ -207,6 +207,36 @@ fn extract_number(part: &str, part_chars: &mut Vec<char>, d: char) -> Option<Par
     })
 }
 
+/// Returns the signed integer count for add_yr / add_mo / etc.
+/// Also routes any fractional part into total_attos.
+fn take_numeric_unit(
+    total_attos: &mut i128,
+    num: ParsedNumber,
+    unit_attos: i128,
+    overall_multiplier: i128,
+) -> i64 {
+    // fractional part still goes through the attos path
+    if num.decimal_places > 0 && num.decimals != 0 {
+        let frac = ParsedNumber {
+            integer: 0,
+            decimals: num.decimals,
+            decimal_places: num.decimal_places,
+            sign: num.sign,
+        };
+        add_to_total(total_attos, frac, unit_attos, overall_multiplier);
+    }
+
+    if num.integer == 0 {
+        return 0;
+    }
+
+    match num.sign {
+        Sign::Negative => -num.integer,
+        Sign::Positive => num.integer,
+        Sign::None => (num.integer as i128 * overall_multiplier) as i64,
+    }
+}
+
 fn add_to_total(
     total_attos: &mut i128,
     num: ParsedNumber,
@@ -406,10 +436,12 @@ impl Dt {
 
         let mut target_weekday: Option<u8> = None;
         let mut target_month: Option<u8> = None;
-        let mut month_offset: i32 = 0;
-        let mut year_offset: i32 = 0;
-        let mut week_offset: i32 = 0;
-        let mut day_offset: i32 = 0;
+        let mut month_offset: i64 = 0;
+        let mut year_offset: i64 = 0;
+        let mut week_offset: i64 = 0;
+        let mut day_offset: i64 = 0;
+        let mut pending_year_count: i64 = 0;
+        let mut pending_month_count: i64 = 0;
 
         let mut target_hour: Option<u8> = None;
         let mut target_minute: Option<u8> = None;
@@ -466,6 +498,8 @@ impl Dt {
                     Token::TwoDaysBefore => day_offset = -2,
                     Token::Ago => {
                         total_attos = -total_attos;
+                        pending_year_count = -pending_year_count;
+                        pending_month_count = -pending_month_count;
                         overall_multiplier = -1;
                         direction = Direction::Past;
                     }
@@ -510,7 +544,13 @@ impl Dt {
 
                     Token::Year => {
                         if let Some(num) = pending_num.take() {
-                            add_to_total(&mut total_attos, num, AS_PER_YEAR, overall_multiplier);
+                            let years = take_numeric_unit(
+                                &mut total_attos,
+                                num,
+                                AS_PER_YEAR,
+                                overall_multiplier,
+                            );
+                            pending_year_count = pending_year_count.saturating_add(years);
                         } else {
                             if direction == Direction::None {
                                 pending_bare_unit = Some(Token::Year);
@@ -526,7 +566,13 @@ impl Dt {
                     }
                     Token::Month => {
                         if let Some(num) = pending_num.take() {
-                            add_to_total(&mut total_attos, num, AS_PER_MONTH, overall_multiplier);
+                            let months = take_numeric_unit(
+                                &mut total_attos,
+                                num,
+                                AS_PER_MONTH,
+                                overall_multiplier,
+                            );
+                            pending_month_count = pending_month_count.saturating_add(months);
                         } else {
                             if direction == Direction::None {
                                 pending_bare_unit = Some(Token::Month);
@@ -628,48 +674,56 @@ impl Dt {
                     }
                     Token::Millennium => {
                         if let Some(num) = pending_num.take() {
-                            add_to_total(
+                            let millennia = take_numeric_unit(
                                 &mut total_attos,
                                 num,
                                 1000 * AS_PER_YEAR,
                                 overall_multiplier,
                             );
+                            pending_year_count =
+                                pending_year_count.saturating_add(millennia.saturating_mul(1000));
                         } else if pending_unit_attos.is_none() {
                             pending_unit_attos = Some(1000 * AS_PER_YEAR);
                         }
                     }
                     Token::Century => {
                         if let Some(num) = pending_num.take() {
-                            add_to_total(
+                            let centuries = take_numeric_unit(
                                 &mut total_attos,
                                 num,
                                 100 * AS_PER_YEAR,
                                 overall_multiplier,
                             );
+                            pending_year_count =
+                                pending_year_count.saturating_add(centuries.saturating_mul(100));
                         } else if pending_unit_attos.is_none() {
                             pending_unit_attos = Some(100 * AS_PER_YEAR);
                         }
                     }
                     Token::Decade => {
                         if let Some(num) = pending_num.take() {
-                            add_to_total(
+                            let decades = take_numeric_unit(
                                 &mut total_attos,
                                 num,
                                 10 * AS_PER_YEAR,
                                 overall_multiplier,
                             );
+                            pending_year_count =
+                                pending_year_count.saturating_add(decades.saturating_mul(10));
                         } else if pending_unit_attos.is_none() {
                             pending_unit_attos = Some(10 * AS_PER_YEAR);
                         }
                     }
                     Token::Quarter => {
                         if let Some(num) = pending_num.take() {
-                            add_to_total(
+                            let quarters = take_numeric_unit(
                                 &mut total_attos,
                                 num,
                                 3 * AS_PER_MONTH,
                                 overall_multiplier,
                             );
+                            pending_month_count =
+                                pending_month_count.saturating_add(quarters.saturating_mul(3));
                         } else if pending_unit_attos.is_none() {
                             pending_unit_attos = Some(3 * AS_PER_MONTH);
                         }
@@ -801,18 +855,12 @@ impl Dt {
 
         let mut result = ref_date.target(scale);
 
-        if year_offset != 0 {
-            result = result.add_yr(year_offset as i64);
-        }
-        if month_offset != 0 {
-            result = result.add_mo(month_offset as i64);
-        }
-        if week_offset != 0 {
-            result = result.add_wk(week_offset as i64);
-        }
-        if day_offset != 0 {
-            result = result.add_days(day_offset as i64);
-        }
+        result = result.add_yr(pending_year_count);
+        result = result.add_mo(pending_month_count);
+        result = result.add_yr(year_offset);
+        result = result.add_mo(month_offset);
+        result = result.add_wk(week_offset);
+        result = result.add_days(day_offset);
 
         // Target month name
         if let Some(target_mo) = target_month {
