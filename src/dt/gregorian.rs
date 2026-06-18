@@ -78,8 +78,7 @@ impl Dt {
     ///
     /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
     pub const fn to_ymd(&self) -> YmdHms {
-        let tai = self.to_tai();
-        let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, false);
+        let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, true);
 
         let unix_sec = from_unix_epoch.to_sec64();
         let frac = from_unix_epoch.to_sec_ufrac();
@@ -90,7 +89,7 @@ impl Dt {
         let min = ((seconds_since_midnight % 3600) / 60) as u8;
         let mut sec = (seconds_since_midnight % 60) as u8;
         let is_leap = if self.target.uses_leap_seconds() {
-            match tai.leap_sec(false) {
+            match self.to_tai().leap_sec(false) {
                 Some(i) => i.is_leap_sec,
                 None => false,
             }
@@ -110,6 +109,7 @@ impl Dt {
             sec,
             attos: frac,
             scale: self.target,
+            old_scale: self.scale,
         }
     }
 

@@ -44,21 +44,25 @@ pub struct YmdHms {
     pub(crate) sec: u8,    // 0–60 (60 only during leap seconds)
     pub(crate) attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
     pub(crate) scale: Scale,
+    pub(crate) old_scale: Scale,
 }
 
 impl YmdHms {
-    /// Reconstructs a [`Dt`].
-    #[inline]
+    /// Reconstructs a [`Dt`] using converting back to `old_scale`,
+    /// the time scale that the original [`Dt`] was on.
+    #[inline(always)]
     pub const fn to_dt(&self) -> Dt {
         Dt::from_ymd(
             self.yr, self.mo, self.day, self.scale, self.hr, self.min, self.sec, self.attos,
         )
+        .to(self.old_scale)
     }
 
     /// Internal helper that round-trips through [`Dt`] to obtain a normalized
     /// `YmdHms` (handles clamping, leap seconds, etc.).
     #[inline(always)]
     const fn reconstruct(
+        &self,
         yr: i64,
         mo: u8,
         day: u8,
@@ -68,7 +72,9 @@ impl YmdHms {
         attos: u64,
         scale: Scale,
     ) -> Self {
-        Dt::from_ymd(yr, mo, day, scale, hr, min, sec, attos).to_ymd()
+        let mut ymd = Dt::from_ymd(yr, mo, day, scale, hr, min, sec, attos).to_ymd();
+        ymd.old_scale = self.old_scale;
+        ymd
     }
 
     /// Adds (or subtracts) whole years, preserving month and day-of-month.
@@ -81,7 +87,7 @@ impl YmdHms {
         let new_yr = self.yr.saturating_add(n);
         let max_day = Dt::days_in_month(new_yr, self.mo);
         let new_day = Dt::clamp_u8(self.day, 1, max_day);
-        Self::reconstruct(
+        self.reconstruct(
             new_yr, self.mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
     }
@@ -104,13 +110,13 @@ impl YmdHms {
         let max_day = Dt::days_in_month(new_yr, new_mo);
         let new_day = Dt::clamp_u8(self.day, 1, max_day);
 
-        Self::reconstruct(
+        self.reconstruct(
             new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
     }
 
     /// Adds (or subtracts) calendar weeks. Negative values subtract.
-    #[inline]
+    #[inline(always)]
     pub const fn add_wk(&self, n: i64) -> Self {
         self.add_days(n.saturating_mul(7))
     }
@@ -123,7 +129,7 @@ impl YmdHms {
         let jd = Dt::ymd_to_jd(self.yr, self.mo, self.day);
         let new_jd = jd.saturating_add(n);
         let (new_yr, new_mo, new_day) = Dt::jd_to_ymd(new_jd);
-        Self::reconstruct(
+        self.reconstruct(
             new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
         )
     }
@@ -140,13 +146,13 @@ impl YmdHms {
     }
 
     /// Adds (or subtracts) attoseconds. Negative values subtract.
-    #[inline]
+    #[inline(always)]
     pub const fn add_attos(&self, n: i128) -> Self {
         self._add_attos(n)
     }
 
     /// Adds (or subtracts) whole seconds. Negative values subtract.
-    #[inline]
+    #[inline(always)]
     pub const fn add_sec(&self, n: i64) -> Self {
         self._add_attos((n as i128).saturating_mul(ATTOS_PER_SEC_I128))
     }
@@ -170,57 +176,67 @@ impl YmdHms {
     }
 
     /// Returns the year component.
-    #[inline]
+    #[inline(always)]
     pub const fn yr(&self) -> i64 {
         self.yr
     }
 
     /// Returns the month component (1–12).
-    #[inline]
+    #[inline(always)]
     pub const fn mo(&self) -> u8 {
         self.mo
     }
 
     /// Returns the day-of-month component (1–31, depending on month/year).
-    #[inline]
+    #[inline(always)]
     pub const fn day(&self) -> u8 {
         self.day
     }
 
     /// Returns the hour component (0–23).
-    #[inline]
+    #[inline(always)]
     pub const fn hr(&self) -> u8 {
         self.hr
     }
 
     /// Returns the minute component (0–59).
-    #[inline]
+    #[inline(always)]
     pub const fn min(&self) -> u8 {
         self.min
     }
 
     /// Returns the second component (0–60). The value 60 only occurs during
     /// a positive leap second on `Scale::UTC` / `UtcSpice` / `UtcHist`.
-    #[inline]
+    #[inline(always)]
     pub const fn sec(&self) -> u8 {
         self.sec
     }
 
     /// Returns the attosecond (sub-second) component (0 ≤ attos < 10¹⁸).
-    #[inline]
+    #[inline(always)]
     pub const fn attos(&self) -> u64 {
         self.attos
     }
 
     /// The time scale that the object was created on.
-    #[inline]
+    #[inline(always)]
     pub const fn scale(&self) -> Scale {
         self.scale
     }
 
+    /// The time scale that the original [`Dt`] had before being converted to
+    /// its `target` time scale and turned into a [`YmdHms`].
+    ///
+    /// Is used when returning to a [`Dt`] to keep the originals time scales
+    /// intact.
+    #[inline(always)]
+    pub const fn old_scale(&self) -> Scale {
+        self.old_scale
+    }
+
     /// Returns the **ISO week year** (can differ from the calendar year near
     /// January 1 / December 31).
-    #[inline]
+    #[inline(always)]
     pub const fn iso_yr(&self) -> i64 {
         let (iso_yr, _, _) = Dt::_to_iso_wk_date(self.yr, self.mo, self.day);
         iso_yr
@@ -228,7 +244,7 @@ impl YmdHms {
 
     /// Returns the **ISO week number** (1–53). Weeks start on Monday; week 1
     /// is the week containing the first Thursday of the year.
-    #[inline]
+    #[inline(always)]
     pub const fn iso_wk(&self) -> u8 {
         let (_, iso_wk, _) = Dt::_to_iso_wk_date(self.yr, self.mo, self.day);
         iso_wk
@@ -236,7 +252,7 @@ impl YmdHms {
 
     /// Returns the **day of the year** (ordinal date), 1-based (Jan 1 = 1,
     /// Dec 31 = 365 or 366 in leap years).
-    #[inline]
+    #[inline(always)]
     pub const fn day_of_yr(&self) -> u16 {
         Dt::_day_of_yr(self.yr, self.mo, self.day)
     }
@@ -244,7 +260,7 @@ impl YmdHms {
     /// Returns the **weekday** number according to [`Dt::jd_to_wkday`]
     /// (typically 0 = Sunday … 6 = Saturday; exact convention is defined
     /// by the Julian Day helper).
-    #[inline]
+    #[inline(always)]
     pub const fn wkday(&self) -> u8 {
         let jd = Dt::ymd_to_jd(self.yr, self.mo, self.day);
         Dt::jd_to_wkday(jd)
@@ -252,14 +268,14 @@ impl YmdHms {
 
     /// Returns the **week of year** number when weeks are considered to start
     /// on Sunday (US-style numbering).
-    #[inline]
+    #[inline(always)]
     pub const fn wk_of_yr_sun(&self) -> u8 {
         Dt::_wk_sun(self.yr, self.day_of_yr())
     }
 
     /// Returns the **week of year** number when weeks are considered to start
     /// on Monday.
-    #[inline]
+    #[inline(always)]
     pub const fn wk_of_yr_mon(&self) -> u8 {
         Dt::_wk_mon(self.yr, self.day_of_yr())
     }
@@ -312,7 +328,7 @@ impl YmdHms {
     /// - If Jiff cannot find the timezone name or if applying the timezone would cause
     ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
     ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
-    #[inline]
+    #[inline(always)]
     pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         self.add_days_tz(n.saturating_mul(7), tz)
     }
@@ -436,7 +452,7 @@ impl YmdHms {
     fn from_jiff_zoned(&self, zoned: jiff::Zoned) -> Self {
         let civil = zoned.datetime();
 
-        Self::reconstruct(
+        self.reconstruct(
             civil.year() as i64,
             civil.month() as u8,
             civil.day() as u8,

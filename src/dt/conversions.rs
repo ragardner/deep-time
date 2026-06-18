@@ -269,6 +269,12 @@ impl Dt {
     /// let tai = Dt::from_ymd(2024, 6, 15, Scale::UTC, 12, 0, 0, 0);
     /// let tt = tai.to(Scale::TT);
     /// let tdb = tt.to(Scale::TDB);
+    ///
+    /// // the objects have kept the scale they originally came
+    /// // from using their `target` field, which was UTC in the
+    /// // from_ymd function
+    /// assert_eq!(tdb.target, Scale::UTC);
+    ///
     /// let roundtrip = tdb.to(Scale::TAI);
     ///
     /// let ymd = roundtrip.to_ymd();
@@ -322,12 +328,13 @@ impl Dt {
 
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
     /// using only the numerical value of the supplied `Dt` (scale is ignored).
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn to_attos_since_tcg_tcb_epoch(numerical: Dt) -> i128 {
         numerical.to_attos() - TCG_TCB_REF_ATTOS_SINCE_J2000
     }
 
-    /// Exact fixed-point multiplication: `attos * num / den` (handles negative values safely, no overflow for library time range).
+    /// Exact fixed-point multiplication: `attos * num / den` (handles negative values safely,
+    /// no overflow for library time range).
     pub(crate) const fn mul_rate(attos: i128, num: i128, den: i128) -> i128 {
         if attos == 0 {
             return 0;
@@ -339,12 +346,12 @@ impl Dt {
         sign * (q * num + (r * num) / den)
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn mul_lg(attos: i128) -> i128 {
         Self::mul_rate(attos, LG_NUM, LG_DEN)
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn mul_lb(attos: i128) -> i128 {
         Self::mul_rate(attos, LB_NUM, LB_DEN)
     }
@@ -375,7 +382,6 @@ impl Dt {
 
     /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
     /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
-    #[inline]
     pub const fn convert_using_drift(self, reference: Dt, drift: Drift) -> Dt {
         let span = self.to_diff_raw(reference);
         let correction = drift.time_diff_after(&span);
