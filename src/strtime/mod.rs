@@ -8,6 +8,13 @@ use core::str;
 
 pub(crate) use parser::*;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Sign {
+    None,
+    Positive,
+    Negative,
+}
+
 /// Optional `%` directive extensions: flag, width, and colon count.
 #[derive(Clone, Copy, Debug, Default)]
 pub(crate) struct FormatExtensions {

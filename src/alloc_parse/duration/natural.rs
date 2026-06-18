@@ -1,19 +1,13 @@
 use crate::{
     AS_PER_DAY, AS_PER_HOUR, AS_PER_MINUTE, AS_PER_MONTH, AS_PER_WEEK, AS_PER_YEAR,
     ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_US_I128, Dt, DtErr,
-    DtErrKind, Lang, LangData, Scale, SplitKeepWithPos, Token, an_err, lang_map, to_ascii_digit,
+    DtErrKind, Lang, LangData, Scale, Sign, SplitKeepWithPos, Token, an_err, lang_map,
+    to_ascii_digit,
 };
 use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-enum Sign {
-    None,
-    Positive,
-    Negative,
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, Default)]
 enum Direction {

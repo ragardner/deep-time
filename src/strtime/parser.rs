@@ -1,7 +1,7 @@
 use super::{FormatExtensions, FormatFlag};
 use crate::error::{DtErr, DtErrKind};
 use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
-use crate::{Meridiem, Offset, Scale, TimeParts, Weekday, an_err};
+use crate::{Meridiem, Offset, Scale, Sign, TimeParts, Weekday, an_err};
 use core::result::Result;
 use core::str;
 
@@ -1053,7 +1053,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if flag == FormatFlag::None
             && width.is_none()
             && !arbitrary
-            && !matches!(bytes.first(), Some(b'+' | b'-'))
+            && !matches!(bytes[0], b'+' | b'-')
         {
             if !bytes[0].is_ascii_digit() {
                 return Err(());
@@ -1082,9 +1082,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
         // Handle optional sign
         let (sign, bytes) = match bytes.first() {
-            Some(b'-') => (-1i64, &bytes[1..]),
-            Some(b'+') => (1i64, &bytes[1..]),
-            _ => (1i64, bytes),
+            Some(b'-') => (Sign::Negative, &bytes[1..]),
+            Some(b'+') => (Sign::Positive, &bytes[1..]),
+            _ => (Sign::Positive, bytes),
         };
 
         if bytes.is_empty() || !bytes[0].is_ascii_digit() {
@@ -1119,7 +1119,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             consumed += 1;
         }
 
-        let n = if sign < 0 {
+        let n = if sign == Sign::Negative {
             (acc as i64).wrapping_neg()
         } else {
             acc as i64
