@@ -337,13 +337,6 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_century(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
-        // Floor division → -123 becomes -2 (exactly matches parse_century)
-        let century = self.yr.div_euclid(100);
-        Self::write_i64(buf, pos, century, b'-', Some(0), b'0');
-    }
-
-    #[inline(always)]
     fn write_day_of_month(
         &self,
         buf: &mut [u8; STRTIME_SIZE],
@@ -636,18 +629,6 @@ impl YmdHms {
     }
 
     #[inline(always)]
-    fn write_two_digit_year(
-        &self,
-        buf: &mut [u8; STRTIME_SIZE],
-        pos: &mut usize,
-        flag: u8,
-        width: Option<u8>,
-    ) {
-        let yy = (self.yr % 100).saturating_abs() as u32;
-        Self::write_u32(buf, pos, yy, flag, width.or(Some(2)), b'0');
-    }
-
-    #[inline(always)]
     fn write_unbounded_year(
         &self,
         buf: &mut [u8; STRTIME_SIZE],
@@ -656,6 +637,24 @@ impl YmdHms {
         width: Option<u8>,
     ) {
         Self::write_i64(buf, pos, self.yr, flag, width, b'0');
+    }
+
+    #[inline(always)]
+    fn write_two_digit_year(
+        &self,
+        buf: &mut [u8; STRTIME_SIZE],
+        pos: &mut usize,
+        flag: u8,
+        width: Option<u8>,
+    ) {
+        let yy = self.yr % 100; // signed modulo (can be negative)
+        Self::write_i64(buf, pos, yy, flag, width.or(Some(2)), b'0');
+    }
+
+    #[inline(always)]
+    fn write_century(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
+        let century = self.yr / 100; // truncating division (towards zero)
+        Self::write_i64(buf, pos, century, b'-', Some(0), b'0');
     }
 
     fn write_timezone_offset(

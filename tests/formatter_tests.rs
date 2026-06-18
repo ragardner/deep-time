@@ -203,7 +203,7 @@ mod format_tests {
         assert_eq!(s.as_str(), "-0123-06-15");
 
         let s = t_neg.to_str_lite("%C", Lang::En).unwrap();
-        assert_eq!(s.as_str(), "-2");
+        assert_eq!(s.as_str(), "-1");
 
         let t_zero = Dt::from_ymd(0, 1, 1, Scale::TAI, 0, 0, 0, 0);
         let s = t_zero.to_str_lite("%Y", Lang::En).unwrap();
