@@ -13,7 +13,7 @@ impl Dt {
     /// Automatically parses datetime [`str`] into a [`Dt`] by guessing and generating the format. Supports the vast
     /// majority of date formats.
     ///
-    /// - Requires the `"alloc"` feature.
+    /// - Requires the `"parse"` feature (which enables `alloc`).
     /// - The returned [`Dt`] is internally on the TAI time scale. The `attos` field is an [`i128`] attosecond
     ///   count since TAI 2000-01-01 noon. See [`Scale`] for more information.
     /// - The returned [`Dt`] is **not** in local time, if a timezone is parsed then it's used to find the offset
@@ -80,11 +80,11 @@ impl Dt {
     ///
     /// ## Supported Formats
     ///
-    /// The main part of the parser basically works by using aho-corasick with day names, month names, and other things to
-    /// tokenize an input and then automatically generate candidate formats to try on it. Due to this it's difficult to
-    /// say the number of supported formats, but it's probably in the thousands.
+    /// The parser tokenizes known words (month/day names, relative phrases, timezones, etc.), generates candidate
+    /// formats from the token pattern, and tries them until one matches. Thousands of layouts are supported.
     ///
-    /// Separators generally don't matter, they could be spaces, slashes, whatever.
+    /// Separators generally don't matter, they could be spaces, slashes, or hyphens, but **not colons** - colons are
+    /// reserved for the time connector, times, and offsets.
     ///
     /// Generally speaking the date part must come first, and stuff like time components, offsets and iana timezone names
     /// must come afterwards.
@@ -95,13 +95,16 @@ impl Dt {
     /// - **Syslog-style** (no year): `Mar  5 10:23:45` (year inferred from `ref_time`)
     /// - **Relative expressions**: `tomorrow`, `in 3 days`, `2 weeks ago`
     /// - **12-hour time**: `2:30 PM`, `14:30:45.123`
-    /// - **Offsets and timezones**: `+0100`, `-05:30`, `Z`, IANA timezone names (with the `jiff-tz feature enabled`)
-    /// - **Library time scales**: `TAI`, `TT`, etc. are detected and parsed, must come after the date part of the input.
+    /// - **Offsets and timezones**: `+0100`, `-05:30`, `Z`, IANA timezone names (with the `jiff-tz` feature enabled)
+    /// - **Library time scales**: `TAI`, `TT`, etc. are detected and parsed, must come after the date part of the input
+    ///
+    /// Relative dates are also automatically supported, except for bare numbers with no colons like `0900`, as these
+    /// are differently interpreted.
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, ParseCfg, Order, Mode, Lang};
+    /// use deep_time::{Dt, ParseCfg, Order, Mode, Lang, Scale};
     ///
     /// // Default smart parsing
     /// let dt = Dt::from_str_parse("2024-03-15 14:30:00", &None).unwrap();
@@ -129,13 +132,25 @@ impl Dt {
     /// };
     /// let dt = Dt::from_str_parse("15/03/2024", &Some(cfg)).unwrap();
     ///
-    /// // Relative date
+    /// // Relative dates
     /// let dt = Dt::from_str_parse("2 days from now", &None).unwrap();
+    ///
+    /// let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
+    /// let en_cfg = Some(ParseCfg {
+    ///     ref_time: Some(ref_time),
+    ///     ..Default::default()
+    /// });
+    /// let dt = Dt::from_str_parse("next Monday at 14:00", &en_cfg).unwrap();
+    ///
+    /// assert_eq!(dt, Dt::from_ymd(2026, 6, 22, Scale::UTC, 14, 0, 0, 0));
     /// ```
     ///
     /// ## Notes
     ///
     /// - The `Smart` + `Auto` combination gives the best real-world success rate for mixed data.
+    /// - Relative expressions and syslog-style no-year dates need a reference time. If `ref_time` is `None`
+    ///   and the `std` feature is enabled, system time is used; without `std`, set `ref_time` explicitly or
+    ///   parsing will fail.
     /// - All successfully parsed [`Dt`] values are stored with attosecond precision on the internal
     ///   TAI timescale.
     /// - Timezone handling (IANA names and fixed offsets) is fully supported when the `jiff-tz` feature
@@ -153,6 +168,7 @@ impl Dt {
     /// - De
     ///     - Won't parse "t" as short form for day.
     /// - Es
+    ///     - English word "ago" won't be detected as relative date word.
     ///     - Won't parse "mar" as tuesday, will instead parse as march.
     /// - Fr
     ///     - Won't parse "mar" as tuesday, will instead parse as march.

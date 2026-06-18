@@ -26,7 +26,6 @@ mod tests {
             // === Short month forms ===
             ("15 ene 2024", "2024-01-15T00:00:00Z", es()),
             ("3 feb 2025", "2025-02-03T00:00:00Z", es()),
-            ("20 ago 2024", "2024-08-20T00:00:00Z", es()),
             ("1 dic 2024", "2024-12-01T00:00:00Z", es()),
             // === With weekday ===
             ("lunes 15 de enero de 2024", "2024-01-15T00:00:00Z", es()),
@@ -51,6 +50,7 @@ mod tests {
             // === "el" prefix ===
             ("el 1 de enero de 2024", "2024-01-01T00:00:00Z", es()),
             ("El 15 de marzo de 2025", "2025-03-15T00:00:00Z", es()),
+            ("20 ago 2024", "2024-08-20T00:00:00Z", es()),
         ];
 
         for (input, expected, opts) in cases {
