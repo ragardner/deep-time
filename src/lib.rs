@@ -83,7 +83,7 @@ mod lite_str;
 mod locale;
 mod position;
 mod scale;
-mod strptime;
+mod strtime;
 mod time_parts;
 mod time_range;
 mod ymdhms;
@@ -133,7 +133,7 @@ pub(crate) use math::{
     sin::sin,
     sqrt::{hypot, sqrt},
 };
-pub(crate) use strptime::*;
+pub(crate) use strtime::*;
 
 // _________________________________________
 // FEATURE PUB USE
@@ -163,7 +163,7 @@ pub use lite_str::LiteStr;
 pub use locale::Lang;
 pub use position::{Position, Velocity};
 pub use scale::Scale;
-pub use strptime::StrPTimeFmt;
+pub use strtime::StrPTimeFmt;
 pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
 pub use time_range::{Every, TimeRange};
 pub use ymdhms::YmdHms;

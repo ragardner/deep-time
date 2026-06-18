@@ -1,54 +1,9 @@
+use super::{FormatExtensions, FormatFlag};
 use crate::error::{DtErr, DtErrKind};
 use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
 use crate::{Meridiem, Offset, Scale, TimeParts, Weekday, an_err};
 use core::result::Result;
 use core::str;
-
-/// Optional `%` directive extensions: flag, width, and colon count.
-#[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct FormatExtensions {
-    pub(crate) flag: FormatFlag,
-    pub(crate) width: Option<u8>,
-    pub(crate) colons: u8,
-}
-
-/// Flags that may appear immediately after `%` and before the directive.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) enum FormatFlag {
-    #[default]
-    None,
-    PadSpace,
-    PadZero,
-    NoPad,
-    Uppercase,
-    Swapcase,
-}
-
-impl FormatFlag {
-    #[inline(always)]
-    fn from_byte(byte: u8) -> Self {
-        match byte {
-            b'_' => Self::PadSpace,
-            b'0' => Self::PadZero,
-            b'-' => Self::NoPad,
-            b'^' => Self::Uppercase,
-            b'#' => Self::Swapcase,
-            _ => Self::None,
-        }
-    }
-
-    /// Resolve the padding flag for numeric parsing.
-    ///
-    /// `None`, `Uppercase`, and `Swapcase` defer to the directive default;
-    /// the three pad flags override it.
-    #[inline(always)]
-    fn resolve(self, default: FormatFlag) -> FormatFlag {
-        match self {
-            Self::None | Self::Uppercase | Self::Swapcase => default,
-            pad => pad,
-        }
-    }
-}
 
 pub(crate) struct Parser<'f, 'i, 't> {
     pub(crate) fmt: &'f [u8], // remaining format string

@@ -1,4 +1,5 @@
 pub mod parser;
+pub mod printer;
 
 use crate::error::{DtErr, DtErrKind};
 use crate::{Dt, Lang, LiteStr, STRTIME_SIZE, TimeParts, an_err};
@@ -6,6 +7,52 @@ use core::result::Result;
 use core::str;
 
 pub(crate) use parser::*;
+
+/// Optional `%` directive extensions: flag, width, and colon count.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct FormatExtensions {
+    pub(crate) flag: FormatFlag,
+    pub(crate) width: Option<u8>,
+    pub(crate) colons: u8,
+}
+
+/// Flags that may appear immediately after `%` and before the directive.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum FormatFlag {
+    #[default]
+    None,
+    PadSpace,
+    PadZero,
+    NoPad,
+    Uppercase,
+    Swapcase,
+}
+
+impl FormatFlag {
+    #[inline(always)]
+    pub(crate) fn from_byte(byte: u8) -> Self {
+        match byte {
+            b'_' => Self::PadSpace,
+            b'0' => Self::PadZero,
+            b'-' => Self::NoPad,
+            b'^' => Self::Uppercase,
+            b'#' => Self::Swapcase,
+            _ => Self::None,
+        }
+    }
+
+    /// Resolve the padding flag for numeric parsing.
+    ///
+    /// `None`, `Uppercase`, and `Swapcase` defer to the directive default;
+    /// the three pad flags override it.
+    #[inline(always)]
+    pub(crate) fn resolve(self, default: FormatFlag) -> FormatFlag {
+        match self {
+            Self::None | Self::Uppercase | Self::Swapcase => default,
+            pad => pad,
+        }
+    }
+}
 
 /// A pre-validated, reusable date/time format string.
 ///
