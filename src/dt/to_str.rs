@@ -1,7 +1,10 @@
 use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRTIME_SIZE, YmdHms, an_err};
 
 #[cfg(feature = "alloc")]
-use {crate::ATTOS_PER_SEC_U128, alloc::string::String};
+use {
+    crate::ATTOS_PER_SEC_U128,
+    alloc::string::{String, ToString},
+};
 
 #[cfg(not(feature = "jiff-tz"))]
 use crate::tz::UTC_ALIASES;

@@ -28,7 +28,7 @@ fn send_to_relative_parser(
 
     let dt = Dt::from_natural_relative_or_duration(s, now, lang, false)?;
 
-    return Ok(ClassifiedDate::Parsed(dt));
+    Ok(ClassifiedDate::Parsed(dt))
 }
 
 /// Expects s to be lowercase.
@@ -523,7 +523,7 @@ pub(crate) fn classify_date(
         date_tokens.pop();
     }
 
-    if tokens_look_like_relative(&date_tokens, has_ampm) {
+    if tokens_look_like_relative(&date_tokens, has_ampm, num_colon, has_time) {
         return send_to_relative_parser(s, lang, ref_time);
     }
 
@@ -590,7 +590,12 @@ pub(crate) fn classify_date(
 }
 
 #[inline(always)]
-fn tokens_look_like_relative(date_tokens: &[Token], has_ampm: bool) -> bool {
+fn tokens_look_like_relative(
+    date_tokens: &[Token],
+    has_ampm: bool,
+    num_colon: u8,
+    has_time: bool,
+) -> bool {
     let mut has_digit_block = false;
     let mut has_named = false;
 
@@ -619,8 +624,10 @@ fn tokens_look_like_relative(date_tokens: &[Token], has_ampm: bool) -> bool {
     }
 
     if has_digit_block && !has_named && !has_ampm {
-        return false;
-    } else {
-        return true;
+        if num_colon == 0 {
+            return false;
+        }
+        return !has_time;
     }
+    true
 }

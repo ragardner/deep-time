@@ -377,11 +377,11 @@ impl Dt {
         let mut is_relative = false;
 
         for (part, _) in splitter {
-            if let Some((_, token)) = term_map.get(part) {
-                if token.is_relative() {
-                    is_relative = true;
-                    break;
-                }
+            if let Some((_, token)) = term_map.get(part)
+                && token.is_relative()
+            {
+                is_relative = true;
+                break;
             }
         }
 

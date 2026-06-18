@@ -522,7 +522,7 @@ impl core::fmt::Display for YmdHms {
             core::write!(f, "{}", self.sec)?;
         }
 
-        // Fractional attoseconds (trimmed, zero allocation)
+        // Fractional attoseconds
         if self.attos != 0 {
             let mut buf = [0u8; 18];
             let mut n = self.attos;
@@ -534,8 +534,11 @@ impl core::fmt::Display for YmdHms {
             while end > 0 && buf[end - 1] == b'0' {
                 end -= 1;
             }
-            let frac = core::str::from_utf8(&buf[..end]).expect("digits are ASCII");
-            core::write!(f, ".{}", frac)?;
+
+            core::write!(f, ".")?;
+            for &byte in &buf[..end] {
+                core::write!(f, "{}", byte as char)?;
+            }
         }
 
         // Scale abbreviation at the end

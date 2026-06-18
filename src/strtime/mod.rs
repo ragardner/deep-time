@@ -10,6 +10,7 @@ pub(crate) use parser::*;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Sign {
+    #[cfg(feature = "parse")]
     None,
     Positive,
     Negative,
