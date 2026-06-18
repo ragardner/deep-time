@@ -4,6 +4,52 @@ use crate::{Meridiem, Offset, Scale, TimeParts, Weekday, an_err};
 use core::result::Result;
 use core::str;
 
+/// Optional `%` directive extensions: flag, width, and colon count.
+#[derive(Clone, Copy, Debug, Default)]
+pub(crate) struct FormatExtensions {
+    pub(crate) flag: FormatFlag,
+    pub(crate) width: Option<u8>,
+    pub(crate) colons: u8,
+}
+
+/// Flags that may appear immediately after `%` and before the directive.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub(crate) enum FormatFlag {
+    #[default]
+    None,
+    PadSpace,
+    PadZero,
+    NoPad,
+    Uppercase,
+    Swapcase,
+}
+
+impl FormatFlag {
+    #[inline(always)]
+    fn from_byte(byte: u8) -> Self {
+        match byte {
+            b'_' => Self::PadSpace,
+            b'0' => Self::PadZero,
+            b'-' => Self::NoPad,
+            b'^' => Self::Uppercase,
+            b'#' => Self::Swapcase,
+            _ => Self::None,
+        }
+    }
+
+    /// Resolve the padding flag for numeric parsing.
+    ///
+    /// `None`, `Uppercase`, and `Swapcase` defer to the directive default;
+    /// the three pad flags override it.
+    #[inline(always)]
+    fn resolve(self, default: FormatFlag) -> FormatFlag {
+        match self {
+            Self::None | Self::Uppercase | Self::Swapcase => default,
+            pad => pad,
+        }
+    }
+}
+
 pub(crate) struct Parser<'f, 'i, 't> {
     pub(crate) fmt: &'f [u8], // remaining format string
     pub(crate) inp: &'i [u8], // remaining input string
@@ -64,7 +110,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 return Err(an_err!(DtErrKind::TruncatedDirective, "after %"));
             }
 
-            let (flag, width, colons) = self.parse_format_extensions();
+            let FormatExtensions {
+                flag,
+                width,
+                colons,
+            } = self.parse_fmt_extensions();
 
             let directive = self.fmt.first().copied().unwrap_or(0);
 
@@ -232,11 +282,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_full_year(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_number(self.inp, flag, width, 4, b'0', false) {
-            Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%Y full year")),
-        };
+    fn parse_full_year(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (y, remaining) =
+            match Self::parse_number(self.inp, flag, width, 4, FormatFlag::PadZero, false) {
+                Ok(v) => v,
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%Y full year")),
+            };
         self.tm.yr = Some(y);
         self.inp = remaining;
         Ok(())
@@ -244,7 +295,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_unbounded_year(&mut self) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_number(self.inp, None, None, 0, b'0', true) {
+        let (y, remaining) = match Self::parse_number(
+            self.inp,
+            FormatFlag::None,
+            None,
+            0,
+            FormatFlag::PadZero,
+            true,
+        ) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%* unbounded year")),
         };
@@ -255,8 +313,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_two_digit_year(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+    fn parse_two_digit_year(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (y, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%y two-digit year")),
         };
@@ -271,11 +329,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_century(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (c, remaining) = match Self::parse_number(self.inp, flag, width, 2, b'_', false) {
-            Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%C century")),
-        };
+    fn parse_century(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (c, remaining) =
+            match Self::parse_number(self.inp, flag, width, 2, FormatFlag::PadSpace, false) {
+                Ok(v) => v,
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%C century")),
+            };
         self.tm.yr = Some(c * 100);
         self.inp = remaining;
         self.advance_fmt();
@@ -283,11 +342,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_iso_week_year(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_number(self.inp, flag, width, 4, b'0', false) {
-            Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%G iso week year")),
-        };
+    fn parse_iso_week_year(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (y, remaining) =
+            match Self::parse_number(self.inp, flag, width, 4, FormatFlag::PadZero, false) {
+                Ok(v) => v,
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%G iso week year")),
+            };
         self.tm.iso_wk_yr = Some(y);
         self.inp = remaining;
         self.advance_fmt();
@@ -297,10 +357,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_two_digit_iso_week_year(
         &mut self,
-        flag: Option<u8>,
+        flag: FormatFlag,
         width: Option<u8>,
     ) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+        let (y, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -321,8 +381,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_month_number(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (m, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+    fn parse_month_number(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (m, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedMonth, "%m digit month")),
         };
@@ -335,8 +395,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_day_of_month(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (d, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+    fn parse_day_of_month(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (d, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedDay, "%d or %e day")),
         };
@@ -353,11 +413,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_day_of_year(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (n, remaining) = match Self::parse_number(self.inp, flag, width, 3, b'0', false) {
-            Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedDayOfYear, "%j day of year")),
-        };
+    fn parse_day_of_year(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (n, remaining) =
+            match Self::parse_number(self.inp, flag, width, 3, FormatFlag::PadZero, false) {
+                Ok(v) => v,
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedDayOfYear, "%j day of year")),
+            };
         let day = n as u16;
         if !(1..=366).contains(&day) {
             return Err(an_err!(
@@ -373,8 +434,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_hour24(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (h, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+    fn parse_hour24(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (h, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedHour, "%H or %k hour 24")),
         };
@@ -391,8 +452,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_hour12(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (h, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+    fn parse_hour12(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (h, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedHour, "%I or %l hour 12")),
         };
@@ -410,8 +471,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_minute(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (m, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+    fn parse_minute(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (m, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedMinute, "%M minute")),
         };
@@ -424,8 +485,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_second(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (s, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+    fn parse_second(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (s, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedSecond, "%S seconds")),
         };
@@ -476,11 +537,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_unix_timestamp(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (n, remaining) = match Self::parse_number(self.inp, flag, width, 19, b' ', false) {
-            Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp, "%s timestamp")),
-        };
+    fn parse_unix_timestamp(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (n, remaining) =
+            match Self::parse_number(self.inp, flag, width, 19, FormatFlag::PadSpace, false) {
+                Ok(v) => v,
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp, "%s timestamp")),
+            };
         self.tm.unix_timestamp_seconds = Some(n);
         self.inp = remaining;
         self.advance_fmt();
@@ -589,10 +651,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_weekday_number_monday_based(
         &mut self,
-        flag: Option<u8>,
+        flag: FormatFlag,
         width: Option<u8>,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 1, b'_') {
+        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 1, FormatFlag::PadSpace) {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -612,10 +674,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_weekday_number_sunday_based(
         &mut self,
-        flag: Option<u8>,
+        flag: FormatFlag,
         width: Option<u8>,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 1, b'_') {
+        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 1, FormatFlag::PadSpace) {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -656,10 +718,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_week_number_sunday_based(
         &mut self,
-        flag: Option<u8>,
+        flag: FormatFlag,
         width: Option<u8>,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -677,10 +739,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_week_number_monday_based(
         &mut self,
-        flag: Option<u8>,
+        flag: FormatFlag,
         width: Option<u8>,
     ) -> Result<(), DtErr> {
-        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => {
                 return Err(an_err!(
@@ -696,8 +758,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_week_iso(&mut self, flag: Option<u8>, width: Option<u8>) -> Result<(), DtErr> {
-        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 2, b'0') {
+    fn parse_week_iso(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+        let (w, remaining) = match Self::parse_u8(self.inp, flag, width, 2, FormatFlag::PadZero) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedWeekNumber, "%V iso week")),
         };
@@ -890,42 +952,42 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_iso_date(&mut self) -> Result<(), DtErr> {
-        self.parse_full_year(None, None)?;
+        self.parse_full_year(FormatFlag::None, None)?;
         self.parse_literal_character_byte(b'-')?;
-        self.parse_month_number(None, None)?;
+        self.parse_month_number(FormatFlag::None, None)?;
         self.parse_literal_character_byte(b'-')?;
-        self.parse_day_of_month(None, None)?;
+        self.parse_day_of_month(FormatFlag::None, None)?;
         self.advance_fmt(); // eat %F
         Ok(())
     }
 
     #[inline(always)]
     fn parse_us_date_shortcut(&mut self) -> Result<(), DtErr> {
-        self.parse_month_number(None, None)?;
+        self.parse_month_number(FormatFlag::None, None)?;
         self.parse_literal_character_byte(b'/')?;
-        self.parse_day_of_month(None, None)?;
+        self.parse_day_of_month(FormatFlag::None, None)?;
         self.parse_literal_character_byte(b'/')?;
-        self.parse_two_digit_year(None, None)?;
+        self.parse_two_digit_year(FormatFlag::None, None)?;
         self.advance_fmt(); // eat %D
         Ok(())
     }
 
     #[inline(always)]
     fn parse_time_with_seconds_shortcut(&mut self) -> Result<(), DtErr> {
-        self.parse_hour24(None, None)?;
+        self.parse_hour24(FormatFlag::None, None)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_minute(None, None)?;
+        self.parse_minute(FormatFlag::None, None)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_second(None, None)?;
+        self.parse_second(FormatFlag::None, None)?;
         self.advance_fmt(); // eat %T
         Ok(())
     }
 
     #[inline(always)]
     fn parse_time_without_seconds_shortcut(&mut self) -> Result<(), DtErr> {
-        self.parse_hour24(None, None)?;
+        self.parse_hour24(FormatFlag::None, None)?;
         self.parse_literal_character_byte(b':')?;
-        self.parse_minute(None, None)?;
+        self.parse_minute(FormatFlag::None, None)?;
         self.advance_fmt(); // eat %R
         Ok(())
     }
@@ -944,28 +1006,33 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    pub(crate) fn parse_format_extensions(&mut self) -> (Option<u8>, Option<u8>, u8) {
+    pub(crate) fn parse_fmt_extensions(&mut self) -> FormatExtensions {
         if self.fmt.is_empty() {
-            return (None, None, 0);
+            return FormatExtensions::default();
         }
 
         let first = self.fmt[0];
 
         // Early exit for the common case (no flag, no width, no colons)
         if !matches!(first, b'-' | b'_' | b'0' | b'^' | b'#' | b'0'..=b'9' | b':') {
-            return (None, None, 0);
+            return FormatExtensions::default();
         }
 
-        let mut flag = None;
+        let mut flag = FormatFlag::None;
         let mut width = None;
         let mut colons = 0u8;
 
         // Flag
-        if matches!(first, b'-' | b'_' | b'0' | b'^' | b'#') {
-            flag = Some(first);
+        let f = FormatFlag::from_byte(first);
+        if f != FormatFlag::None {
+            flag = f;
             self.fmt = &self.fmt[1..];
             if self.fmt.is_empty() {
-                return (flag, None, 0);
+                return FormatExtensions {
+                    flag,
+                    width: None,
+                    colons: 0,
+                };
             }
         }
 
@@ -997,21 +1064,65 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             self.fmt = &self.fmt[1..];
         }
 
-        (flag, width, colons)
+        FormatExtensions {
+            flag,
+            width,
+            colons,
+        }
+    }
+
+    #[inline(always)]
+    fn trim_inp_if_ws(inp: &[u8]) -> &[u8] {
+        if inp.first().is_some_and(|b| b.is_ascii_whitespace()) {
+            inp.trim_ascii_start()
+        } else {
+            inp
+        }
     }
 
     #[inline(always)]
     fn parse_number(
         input: &[u8],
-        flag: Option<u8>,
+        flag: FormatFlag,
         width: Option<u8>,
         default_pad_width: usize,
-        default_flag: u8,
+        default_flag: FormatFlag,
         arbitrary: bool,
     ) -> Result<(i64, &[u8]), ()> {
-        let bytes = input.trim_ascii_start();
+        let bytes = Self::trim_inp_if_ws(input);
         if bytes.is_empty() {
             return Err(());
+        }
+
+        // Fast path: no format extensions and no sign prefix.
+        if flag == FormatFlag::None
+            && width.is_none()
+            && !arbitrary
+            && !matches!(bytes.first(), Some(b'+' | b'-'))
+        {
+            if !bytes[0].is_ascii_digit() {
+                return Err(());
+            }
+            let max_digits = default_pad_width;
+            let mut consumed = 0usize;
+            let mut acc: u64 = 0;
+
+            // Skip leading zeros (we keep this to avoid mul/add on padding zeros)
+            while consumed < max_digits && consumed < bytes.len() && bytes[consumed] == b'0' {
+                consumed += 1;
+            }
+
+            // Accumulate significant digits
+            while consumed < max_digits && consumed < bytes.len() {
+                let b = bytes[consumed];
+                if !b.is_ascii_digit() {
+                    break;
+                }
+                acc = acc * 10 + (b - b'0') as u64;
+                consumed += 1;
+            }
+
+            return Ok((acc as i64, &bytes[consumed..]));
         }
 
         // Handle optional sign
@@ -1025,20 +1136,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             return Err(());
         }
 
-        // Flag / width logic
-        let effective_flag = match flag {
-            Some(b'^') | Some(b'#') => default_flag,
-            Some(f) => f,
-            None => default_flag,
-        };
-
         let max_digits = if arbitrary {
             19
         } else {
-            let zero_pad_width = if matches!(effective_flag, b'_' | b' ' | b'-') {
-                0
-            } else {
-                width.map_or(0, usize::from)
+            let zero_pad_width = match flag.resolve(default_flag) {
+                FormatFlag::PadSpace | FormatFlag::NoPad => 0,
+                _ => width.map_or(0, usize::from),
             };
             zero_pad_width.max(default_pad_width)
         };
@@ -1073,27 +1176,23 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_u8(
         inp: &[u8],
-        flag: Option<u8>,
+        flag: FormatFlag,
         width: Option<u8>,
         default_pad_width: usize,
-        default_flag: u8,
+        default_flag: FormatFlag,
     ) -> Result<(u8, &[u8]), ()> {
-        let bytes = inp.trim_ascii_start();
+        let bytes = Self::trim_inp_if_ws(inp);
         if bytes.is_empty() {
             return Err(());
         }
 
-        let effective_flag = match flag {
-            Some(b'^') | Some(b'#') => default_flag,
-            Some(f) => f,
-            None => default_flag,
-        };
-
-        let zero_pad = matches!(effective_flag, b'_' | b' ' | b'-');
-        let max_d = if zero_pad {
+        let max_d = if flag == FormatFlag::None && width.is_none() {
             default_pad_width
         } else {
-            width.map_or(default_pad_width, usize::from)
+            match flag.resolve(default_flag) {
+                FormatFlag::PadSpace | FormatFlag::NoPad => default_pad_width,
+                _ => width.map_or(default_pad_width, usize::from),
+            }
         }
         .min(3);
 
