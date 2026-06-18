@@ -89,11 +89,15 @@ impl Dt {
         let hr = (seconds_since_midnight / 3600) as u8;
         let min = ((seconds_since_midnight % 3600) / 60) as u8;
         let mut sec = (seconds_since_midnight % 60) as u8;
-        let is_leap = match tai.leap_sec(false) {
-            Some(i) => i.is_leap_sec,
-            None => false,
+        let is_leap = if self.target.uses_leap_seconds() {
+            match tai.leap_sec(false) {
+                Some(i) => i.is_leap_sec,
+                None => false,
+            }
+        } else {
+            false
         };
-        if self.target.uses_leap_seconds() && is_leap {
+        if is_leap {
             sec += 1;
         }
 

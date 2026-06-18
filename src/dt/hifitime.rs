@@ -46,7 +46,7 @@ impl Dt {
     ///   automatically normalizes centuries/nanoseconds and saturates at
     ///   [`Duration::MAX`] / [`Duration::MIN`] if outside hifitime's range
     ///   (±32,768 centuries).
-    #[inline]
+    #[inline(always)]
     pub fn to_hifitime_duration(&self) -> Duration {
         Duration::from_total_nanoseconds(self.to_attos() / 1_000_000_000i128)
     }
@@ -54,7 +54,7 @@ impl Dt {
     /// Creates a [`Dt`] from a [`hifitime::Duration`] (nanosecond precision).
     ///
     /// Inverse of [`Dt::to_hifitime_duration`].
-    #[inline]
+    #[inline(always)]
     pub fn from_hifitime_duration(dur: Duration) -> Dt {
         Self::from_ns(dur.total_nanoseconds(), Scale::TAI)
     }

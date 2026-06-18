@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_FS_I128, ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US_I128, Drift, Dt, Real, Scale, Spacetime, floor_f,
+    ATTOS_PER_SECF, ATTOS_PER_US_I128, Drift, Dt, Real, Spacetime, floor_f,
 };
 
 impl Dt {
@@ -414,7 +414,7 @@ impl Dt {
             return Self::ZERO;
         }
         let total = self.attos.saturating_mul(rhs as i128);
-        Self::from_attos(total, Scale::TAI)
+        Dt::new(total, self.scale, self.target)
     }
 
     /// Divides this `Dt` by an integer scalar.
@@ -426,7 +426,7 @@ impl Dt {
             return Self::ZERO;
         }
         let result = self.attos / (rhs as i128);
-        Self::from_attos(result, Scale::TAI)
+        Dt::new(result, self.scale, self.target)
     }
 
     /// Returns the **largest** multiple of `unit` that is ≤ `self`.
@@ -439,7 +439,7 @@ impl Dt {
         let b = unit.attos;
         let q = safe_div_euc!(a, b, 0i128);
         let result = q.wrapping_mul(b);
-        Self::from_attos(result, Scale::TAI)
+        Dt::new(result, self.scale, self.target)
     }
 
     /// Returns the **smallest** multiple of `unit` that is ≥ `self`.
@@ -455,7 +455,7 @@ impl Dt {
         let q = safe_div_euc!(neg_a, b, 0i128);
         let q_ceil = q.wrapping_neg();
         let result = q_ceil.wrapping_mul(b);
-        Self::from_attos(result, Scale::TAI)
+        Dt::new(result, self.scale, self.target)
     }
 
     /// Returns the nearest multiple of `unit`.
@@ -488,7 +488,7 @@ impl Dt {
 
         let result = if a < 0 { -rounded_abs } else { rounded_abs };
 
-        Self::from_attos(result, Scale::TAI)
+        Dt::new(result, self.scale, self.target)
     }
 
     /// Returns `floor(|self| / |unit|)` as `usize`, saturating at `usize::MAX`.
@@ -509,8 +509,36 @@ impl Dt {
         }
     }
 
-    /// - Integer part of `rhs` is multiplied **exactly** (pure i128 arithmetic).
-    /// - Fractional part (|frac| < 1) uses the 10¹⁵ scaling.
+    /// Multiplies this [`Dt`] by a floating-point scalar using saturating attosecond arithmetic.
+    ///
+    /// ## Algorithm
+    ///
+    /// - `rhs` is split into an **integer part** ([`floor_f`]) and a **fractional part** in `[0, 1)`.
+    /// - The integer part is multiplied exactly via [`i128::checked_mul`], saturating to
+    ///   [`Dt::MAX`] / [`Dt::MIN`] on overflow.
+    /// - The fractional part is applied via a `10¹⁵`-scaled decomposition that avoids
+    ///   intermediate `i128` overflow.
+    /// - The two parts are combined with [`i128::saturating_add`] and clamped to the
+    ///   representable attosecond range.
+    ///
+    /// ## Precision
+    ///
+    /// - Integer scalars (e.g. `2.0`, `-3.0`) use exact integer arithmetic for their whole part.
+    /// - General `f64` scalars are limited by IEEE-754 precision (~15 decimal digits) and the
+    ///   `10¹⁵` fractional quantization.
+    ///
+    /// ## Special cases
+    ///
+    /// | Condition | Result |
+    /// |---|---|
+    /// | `rhs` is NaN | [`Dt::ZERO`] |
+    /// | `rhs` is ±∞ and `self` is zero | [`Dt::ZERO`] |
+    /// | `rhs` is ±∞ and `self` is non-zero | [`Dt::MAX`] or [`Dt::MIN`] (sign of product) |
+    /// | `rhs == 0.0` or `self` is zero | [`Dt::ZERO`] |
+    /// | Product exceeds `i128` range | [`Dt::MAX`] or [`Dt::MIN`] (sign of product) |
+    ///
+    /// `NaN` maps to zero rather than poisoning the result: [`Dt`] has no NaN state, and zero
+    /// is the additive identity (a safe, non-saturating default for invalid scale factors).
     pub const fn mul_by_f(&self, rhs: Real) -> Dt {
         if rhs.is_nan() {
             return Self::ZERO;
@@ -543,7 +571,7 @@ impl Dt {
             floor_f(rhs) as i128
         };
 
-        // Huge |rhs| → definitely saturates the type
+        // Huge |rhs| integer → product cannot fit; saturate immediately.
         if int_part == i128::MAX || int_part == i128::MIN {
             let self_pos = self.attos > 0;
             return if (rhs > 0.0) == self_pos {
@@ -555,47 +583,13 @@ impl Dt {
 
         let frac_part = rhs - f!(int_part); // always in [0, 1)
 
-        // Integer part with explicit type-range saturation
         let int_attos = if int_part == 0 {
             0
-        } else if int_part > 0 {
-            if self_attos > 0 {
-                if int_part > max_attos / self_attos {
-                    max_attos
-                } else {
-                    self_attos.saturating_mul(int_part)
-                }
-            } else {
-                let abs_self = self_attos.wrapping_neg();
-                let abs_min = min_attos.wrapping_neg();
-                if int_part > abs_min / abs_self {
-                    min_attos
-                } else {
-                    self_attos.saturating_mul(int_part)
-                }
-            }
         } else {
-            // int_part < 0
-            if self_attos > 0 {
-                let abs_int = int_part.wrapping_neg();
-                let abs_min = min_attos.wrapping_neg();
-                if abs_int > abs_min / self_attos {
-                    min_attos
-                } else {
-                    self_attos.saturating_mul(int_part)
-                }
-            } else {
-                let abs_self = self_attos.wrapping_neg();
-                let abs_int = int_part.wrapping_neg();
-                if abs_int > max_attos / abs_self {
-                    max_attos
-                } else {
-                    self_attos.saturating_mul(int_part)
-                }
-            }
+            Self::saturating_mul_attos(int_part, self_attos, max_attos, min_attos)
         };
 
-        // --- Fractional part: decomposed exact computation (never overflows i128) ---
+        // Fractional part: decomposed exact computation (never overflows i128)
         const SCALE: i128 = 1_000_000_000_000_000; // 10¹⁵
         let frac_scaled = (frac_part * (SCALE as Real)) as i128;
 
@@ -615,7 +609,6 @@ impl Dt {
             pos.wrapping_neg()
         };
 
-        // Combine + final clamp
         let total_attos = int_attos.saturating_add(frac_attos);
         let clamped = if total_attos > max_attos {
             max_attos
@@ -625,7 +618,25 @@ impl Dt {
             total_attos
         };
 
-        Self::from_attos(clamped, Scale::TAI)
+        Dt::new(clamped, self.scale, self.target)
+    }
+
+    /// `a * b` as attoseconds, saturating to `[min_attos, max_attos]` when not representable.
+    #[inline(always)]
+    pub(crate) const fn saturating_mul_attos(
+        a: i128,
+        b: i128,
+        max_attos: i128,
+        min_attos: i128,
+    ) -> i128 {
+        match a.checked_mul(b) {
+            Some(product) => product,
+            None => {
+                let a_neg = a < 0;
+                let b_neg = b < 0;
+                if a_neg == b_neg { max_attos } else { min_attos }
+            }
+        }
     }
 
     /// Divides by a real number (routes through the high-precision `mul_by_f`).

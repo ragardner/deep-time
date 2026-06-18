@@ -1,6 +1,8 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::Dt;
+use deep_time::{Dt, constants::ATTOS_PER_SEC_I128};
+
+const APS: i128 = ATTOS_PER_SEC_I128;
 
 #[test]
 fn test_from_sec_f() {
@@ -39,4 +41,34 @@ fn test_from_sec_f() {
             sec_f, label, dt, roundtrip
         );
     }
+}
+
+#[test]
+fn test_mul_by_f() {
+    let three_sec = Dt::span(3 * APS);
+    let neg_three_sec = Dt::span(-(3 * APS));
+    let two_sec = Dt::span(2 * APS);
+
+    // Integer and fractional products (exact i128 path for the whole part)
+    assert_eq!(three_sec.mul_by_f(2.0).to_attos(), 6 * APS);
+    assert_eq!(three_sec.mul_by_f(0.5).to_attos(), (3 * APS) / 2);
+    assert_eq!(three_sec.mul_by_f(-2.5).to_attos(), -(7 * APS + APS / 2));
+    assert_eq!(neg_three_sec.mul_by_f(2.0).to_attos(), -(6 * APS));
+    assert_eq!(neg_three_sec.mul_by_f(-2.5).to_attos(), 7 * APS + APS / 2);
+    assert_eq!(two_sec.mul_by_f(-1.0).to_attos(), -(2 * APS));
+
+    // Special floats
+    assert_eq!(three_sec.mul_by_f(f64::NAN), Dt::ZERO);
+    assert_eq!(Dt::ZERO.mul_by_f(f64::INFINITY), Dt::ZERO);
+    assert_eq!(three_sec.mul_by_f(0.0), Dt::ZERO);
+    assert_eq!(three_sec.mul_by_f(f64::INFINITY), Dt::MAX);
+    assert_eq!(three_sec.mul_by_f(f64::NEG_INFINITY), Dt::MIN);
+
+    // Saturation
+    assert_eq!(Dt::MAX.mul_by_f(1.0), Dt::MAX);
+    assert_eq!(Dt::MAX.mul_by_f(2.0), Dt::MAX);
+    assert_eq!(Dt::MIN.mul_by_f(2.0), Dt::MIN);
+
+    // div_by_f delegates here
+    assert_eq!(Dt::span(10 * APS).div_by_f(4.0).to_attos(), (10 * APS) / 4);
 }
