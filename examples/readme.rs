@@ -7,7 +7,7 @@ fn main() -> Result<(), DtErr> {
 
     // Smart auto-parsing (multi-language + timezone)
     let cfg = ParseCfg {
-        lang: Lang::De,
+        lang: Lang::Fr,
         ..Default::default()
     };
     let dt = Dt::from_str_parse("15 mars 2024 à 14:30 [Europe/Paris]", &cfg)?;
