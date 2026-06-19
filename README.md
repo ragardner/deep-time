@@ -26,7 +26,7 @@ A non-exhaustive list of functionality:
 - Const fn [libm math](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/math/index.html) functions
 - Safe, saturating arithmetic throughout
 - [Lunar](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/mars/index.html) modules
-- [Sidereal time](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/sidereal/struct.Sidereal.html) with a rust implementation of ERFA Equation of the Origins / Equinoxes
+- [Sidereal time](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/sidereal/struct.Sidereal.html) with a const fn implementation of ERFA Equation of the Origins / Equinoxes
 - [UT1 and EOP](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/eop/index.html)
 - [Light-time (Shapiro delay, etc.)](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.ObserverState.html)
 - [Proper time along trajectories](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.proper_time_from_states)
