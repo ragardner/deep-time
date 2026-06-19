@@ -16,6 +16,15 @@ impl Dt {
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
     ///   if it's not then the output will be incorrect.
     ///
+    /// ## Returns
+    ///
+    /// - A [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH).
+    /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
+    ///   `Scale::UTC` if you built it with `from_ymd(..., Scale::UTC, ...)`. The result's
+    ///   `scale` and `target` are both set to that same value.
+    /// - Use `.to_sec()` or `.to_attos()` to read the number.
+    ///
     /// ## Examples
     ///
     /// ```rust
@@ -55,7 +64,7 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// -
+    /// - [`Dt::from_unix`](../struct.Dt.html#method.from_unix)
     #[inline(always)]
     pub const fn to_unix(&self) -> Dt {
         self.to_scale_and_diff(Self::UNIX_EPOCH, true)
@@ -96,6 +105,15 @@ impl Dt {
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
     ///   if it's not then the output will be incorrect.
     ///
+    /// ## Returns
+    ///
+    /// - A [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`NTP_EPOCH`](../struct.Dt.html#associatedconstant.NTP_EPOCH).
+    /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
+    ///   `Scale::UTC` if you built it with `from_ymd(..., Scale::UTC, ...)`. The result's
+    ///   `scale` and `target` are both set to that same value.
+    /// - Use `.to_sec()` or `.to_attos()` to read the number.
+    ///
     /// ## Examples
     ///
     /// ```rust
@@ -131,7 +149,7 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// -
+    /// - [`Dt::from_ntp`](../struct.Dt.html#method.from_ntp)
     #[inline(always)]
     pub const fn to_ntp(&self) -> Dt {
         self.to_scale_and_diff(Self::NTP_EPOCH, true)
@@ -141,66 +159,6 @@ impl Dt {
     #[inline(always)]
     pub const fn from_ntp(ntp: Dt) -> Dt {
         Self::from_diff_and_scale(ntp, Self::NTP_EPOCH, true)
-    }
-
-    /// Returns the GPS week number and the exact Time of Week (TOW) for this instant
-    /// when expressed in **GPS Time**.
-    ///
-    /// - GPS Time is continuous (no leap seconds) and starts at the
-    ///   [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH)
-    ///   (1980-01-06 00:00:00 UTC).
-    /// - The returned TOW is a [`Dt`] on the TAI scale.
-    ///
-    /// This is the inverse of
-    /// [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow).
-    ///
-    /// - `week`: Full GPS week number (can be negative for dates before 1980).
-    /// - `tow`: Time of Week as a [`Dt`]. Values ≥ 604800 seconds are
-    ///   automatically carried into the week number.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::{Dt, Scale};
-    ///
-    /// let x = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
-    /// let g = x.to_gps_wk_and_tow();
-    /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
-    /// assert_eq!(x, z);
-    /// ```
-    pub const fn to_gps_wk_and_tow(&self) -> (i64, Dt) {
-        let total_attos = self.to_gps().to_attos();
-        let wk = total_attos.div_euclid(ATTOS_PER_WEEK) as i64;
-        let tow_attos = total_attos.rem_euclid(ATTOS_PER_WEEK);
-        // was converted to target scale, scale is now target
-        (wk, Dt::new(tow_attos, self.target, self.target))
-    }
-
-    /// Creates a [`Dt`] from a GPS week number and Time of Week (TOW).
-    ///
-    /// This is the inverse of
-    /// [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow).
-    ///
-    /// - `week`: Full GPS week number (can be negative for dates before 1980).
-    /// - `tow`: Time of Week as a [`Dt`]. Values ≥ 604800 seconds are
-    ///   automatically carried into the week number.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::{Dt, Scale};
-    ///
-    /// let x = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
-    /// let g = x.to_gps_wk_and_tow();
-    /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
-    /// assert_eq!(x, z);
-    /// ```
-    pub const fn from_gps_wk_and_tow(wk: i64, tow: Dt) -> Dt {
-        let total_attos = (wk as i128)
-            .saturating_mul(ATTOS_PER_WEEK)
-            .saturating_add(tow.to_attos());
-
-        Self::from_gps(Dt::new(total_attos, tow.scale, tow.target))
     }
 
     /// Returns this [`Dt`] but as time since the
@@ -215,6 +173,15 @@ impl Dt {
     ///   if you need the timestamp to be on a particular time scale, e.g. `UTC`.
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
     ///   if it's not then the output will be incorrect.
+    ///
+    /// ## Returns
+    ///
+    /// - A [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH).
+    /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
+    ///   `Scale::GPS` after `.target(Scale::GPS)`. The result's `scale` and `target` are both
+    ///   set to that same value.
+    /// - Use `.to_sec()` or `.to_attos()` to read the number.
     ///
     /// ## See also
     ///
@@ -241,6 +208,123 @@ impl Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
     }
 
+    /// Returns the GPS week number and Time of Week (TOW) for this instant.
+    ///
+    /// Elapsed time since [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH)
+    /// is computed by [`Dt::to_gps`](../struct.Dt.html#method.to_gps) — on this [`Dt`]'s
+    /// `target` time scale — and then split into whole weeks plus a remainder.
+    ///
+    /// This is the inverse of
+    /// [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow).
+    ///
+    /// ## Important:
+    ///
+    /// - Uses [`Dt::to_gps`](../struct.Dt.html#method.to_gps) internally: this [`Dt`] and
+    ///   [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) are both converted
+    ///   to the `target` time scale before differencing.
+    /// - **You may need to change the [`Dt`]'s `target` field** before calling if you need
+    ///   week/TOW on a particular time scale, e.g. `Scale::GPS`.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
+    ///   if it's not then the output will be incorrect.
+    ///
+    /// ## Returns
+    ///
+    /// A `(week, tow)` pair:
+    ///
+    /// - `week` (`i64`): whole weeks in the elapsed time from
+    ///   [`Dt::to_gps`](../struct.Dt.html#method.to_gps). Week 0 starts at the GPS epoch
+    ///   (1980-01-06). Before that date the elapsed time is negative and `div_euclid` yields a
+    ///   negative week — this is not a broadcast GPS week number, just how the split is defined.
+    ///   A plain integer is enough here; it is only a week count, not a duration in attoseconds.
+    /// - `tow` ([`Dt`]): seconds-within-the-week as attoseconds in `0 .. 604800`. Its `scale` and
+    ///   `target` are set to this [`Dt`]'s `target` so
+    ///   [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow) knows which
+    ///   time scale the pair belongs to. `tow` is a [`Dt`] rather than a bare integer so
+    ///   sub-second precision and scale are preserved together; the week number alone cannot
+    ///   carry either. `div_euclid` / `rem_euclid` are used (not truncating `/`) so TOW stays
+    ///   non-negative even when the elapsed time is negative.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+    /// let g = x.to_gps_wk_and_tow();
+    /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
+    /// assert_eq!(x, z);
+    ///
+    /// // for conventional GPS-time week/TOW, set target first:
+    /// let g = x.target(Scale::GPS).to_gps_wk_and_tow();
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow)
+    /// - [`Dt::to_gps`](../struct.Dt.html#method.to_gps)
+    pub const fn to_gps_wk_and_tow(&self) -> (i64, Dt) {
+        let total_attos = self.to_gps().to_attos();
+        let wk = total_attos.div_euclid(ATTOS_PER_WEEK) as i64;
+        let tow_attos = total_attos.rem_euclid(ATTOS_PER_WEEK);
+        // was converted to target scale, scale is now target
+        (wk, Dt::new(tow_attos, self.target, self.target))
+    }
+
+    /// Creates a [`Dt`] from a GPS week number and Time of Week (TOW).
+    ///
+    /// Recombines `week` and `tow` into elapsed time since
+    /// [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH), then passes that to
+    /// [`Dt::from_gps`](../struct.Dt.html#method.from_gps).
+    ///
+    /// This is the inverse of
+    /// [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow).
+    ///
+    /// ## Important:
+    ///
+    /// - Uses [`Dt::from_gps`](../struct.Dt.html#method.from_gps) internally: the elapsed time
+    ///   is interpreted on the `tow` [`Dt`]'s `scale` / `target` fields, and
+    ///   [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) is converted to that
+    ///   same scale before the sum.
+    /// - Pass back the `tow` from [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
+    ///   unchanged if you want a round trip.
+    ///
+    /// ## Returns
+    ///
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `target` field is taken from `tow`.
+    ///
+    /// `tow` must be a [`Dt`] (not a bare second count) because
+    /// [`Dt::from_gps`](../struct.Dt.html#method.from_gps) needs both the within-week attoseconds
+    /// and the `scale` / `target` that say which time scale `week` and `tow` were expressed on.
+    /// The week number is multiplied back into attoseconds (`week * 604800` seconds); only `tow`
+    /// carries the scale and sub-week precision needed for the round trip.
+    ///
+    /// `tow` should be in `0 .. 604800` seconds, as returned by
+    /// [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow). Negative `week`
+    /// values only arise from dates before 1980-01-06 (see that function).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+    /// let g = x.to_gps_wk_and_tow();
+    /// let z = Dt::from_gps_wk_and_tow(g.0, g.1);
+    /// assert_eq!(x, z);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
+    /// - [`Dt::from_gps`](../struct.Dt.html#method.from_gps)
+    pub const fn from_gps_wk_and_tow(wk: i64, tow: Dt) -> Dt {
+        let total_attos = (wk as i128)
+            .saturating_mul(ATTOS_PER_WEEK)
+            .saturating_add(tow.to_attos());
+
+        Self::from_gps(Dt::new(total_attos, tow.scale, tow.target))
+    }
+
     /// Returns the day of the GPS week (0 = Sunday, 1 = Monday, …, 6 = Saturday).
     ///
     /// This value is computed directly from the GPS Time of Week and is
@@ -265,6 +349,15 @@ impl Dt {
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
     ///   if it's not then the output will be incorrect.
     ///
+    /// ## Returns
+    ///
+    /// - A [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH).
+    /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
+    ///   `Scale::TT` after `.target(Scale::TT)`. The result's `scale` and `target` are both
+    ///   set to that same value.
+    /// - Use `.to_sec()` or `.to_attos()` to read the number.
+    ///
     /// ## Examples
     ///
     /// ```rust
@@ -278,6 +371,10 @@ impl Dt {
     /// // cxcsec 694224032.184 (matches Astropy)
     /// assert_eq!(cxc, 694224032.184);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_cxcsec`](../struct.Dt.html#method.from_cxcsec)
     #[inline(always)]
     pub const fn to_cxcsec(&self) -> Dt {
         self.to_scale_and_diff(Self::CXC_EPOCH, true)
@@ -298,11 +395,11 @@ impl Dt {
     /// Returns the elapsed time since the GALEX epoch as a [`Dt`] expressed
     /// in this object's current `target` scale.
     ///
-    /// The GALEX epoch is [`Self::GPS_EPOCH`] (same epoch used by GPS time).
-    ///
     /// This method can match Astropy’s `Time.galexsec` format. To match
     /// Astropy output, set `.target(Scale::UTC)` (or the appropriate scale)
     /// before calling.
+    ///
+    /// The GALEX epoch is [`Self::GPS_EPOCH`] (same epoch used by GPS time).
     ///
     /// ## Important:
     ///
@@ -310,6 +407,15 @@ impl Dt {
     ///   scale of its `target` field before doing a raw difference with the epoch.
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon
     ///   epoch, if it's not then the output will be incorrect.
+    ///
+    /// ## Returns
+    ///
+    /// - A [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH).
+    /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
+    ///   `Scale::UTC` after `.target(Scale::UTC)`. The result's `scale` and `target` are both
+    ///   set to that same value.
+    /// - Use `.to_sec()` or `.to_attos()` to read the number.
     ///
     /// ## Examples
     ///
