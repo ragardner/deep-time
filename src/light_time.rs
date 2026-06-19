@@ -117,7 +117,7 @@ impl Dt {
 /// methods in this library.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct ObserverState {
     /// The time of this state.
     ///

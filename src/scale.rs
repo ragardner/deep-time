@@ -49,7 +49,7 @@ use core::fmt;
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub enum Scale {
     /// International Atomic Time (TAI).
     #[default]

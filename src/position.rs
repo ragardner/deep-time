@@ -10,7 +10,7 @@ use crate::{C_SQUARED, Real, hypot, sqrt};
 /// calculated with respect to the Sun.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Position {
     pub x: Real,
     pub y: Real,
@@ -105,7 +105,7 @@ impl Position {
 /// with units of meters per second (SI).
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Velocity {
     pub vx: Real,
     pub vy: Real,

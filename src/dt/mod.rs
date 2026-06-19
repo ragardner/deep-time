@@ -256,7 +256,7 @@ use core::fmt;
 /// ```
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Dt {
     pub attos: i128,
     pub scale: Scale,

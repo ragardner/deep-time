@@ -54,13 +54,19 @@ use earth_eo_ee::*;
 /// let era = earth.rotation_angle(mjd);
 ///
 /// // Local Mean Sidereal Time using the mean Equation of the Origins
+/// // (requires the "sidereal-earth" feature)
+/// # #[cfg(feature = "sidereal-earth")] {
 /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
 /// let lmst = earth.local_sidereal_time_mean(mjd, eo_mean);
+/// # }
 /// ```
 ///
 /// Realistic usage with DUT1 correction (UT1 time scale):
 ///
 /// ```rust
+/// // This advanced example requires the "eop" feature for EopData
+/// // and "sidereal-earth" for the EO calculations.
+/// # #[cfg(all(feature = "eop", feature = "sidereal-earth"))] {
 /// use deep_time::{Dt, Sidereal};
 /// use deep_time::eop::{EopData, EopFormat, Separator};
 ///
@@ -78,12 +84,12 @@ use earth_eo_ee::*;
 ///
 /// let era = earth.rotation_angle(mjd_ut1);
 ///
-/// // Greenwich Mean Sidereal Time
 /// let eo_mean = earth.earth_eo_mean(mjd_ut1 + 32.184 / 86400.0);
 /// let gmst = earth.sidereal_angle_mean(mjd_ut1, eo_mean);
 ///
 /// // Local Mean Sidereal Time
 /// let lmst = earth.local_sidereal_time_mean(mjd_ut1, eo_mean);
+/// # }
 /// ```
 #[derive(Debug, Clone, Copy)]
 pub struct Sidereal {
@@ -247,9 +253,11 @@ impl Sidereal {
     /// let era = earth.sidereal_angle_mean(mjd, 0.0);
     ///
     /// // Traditional mean sidereal time using the mean Equation of the Origins
-    /// // convert to the mjd to tt if necessary
+    /// // (requires "sidereal-earth" feature)
+    /// # #[cfg(feature = "sidereal-earth")] {
     /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
     /// let gmst = earth.sidereal_angle_mean(mjd, eo_mean);
+    /// # }
     /// ```
     #[inline]
     pub const fn sidereal_angle_mean(&self, mjd: Real, eo_rad: Real) -> Real {
@@ -302,8 +310,11 @@ impl Sidereal {
     /// let local_era = earth.local_sidereal_angle_mean(mjd, 0.0);
     ///
     /// // Local Mean Sidereal Time using the mean Equation of the Origins
+    /// // (requires "sidereal-earth" feature)
+    /// # #[cfg(feature = "sidereal-earth")] {
     /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
     /// let lmst = earth.local_sidereal_angle_mean(mjd, eo_mean);
+    /// # }
     /// ```
     #[inline]
     pub const fn local_sidereal_angle_mean(&self, mjd: Real, eo_rad: Real) -> Real {
@@ -348,8 +359,11 @@ impl Sidereal {
     /// let era_seconds = earth.sidereal_time_mean(mjd, 0.0);
     ///
     /// // Greenwich Mean Sidereal Time in seconds
+    /// // (requires "sidereal-earth" feature)
+    /// # #[cfg(feature = "sidereal-earth")] {
     /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
     /// let gmst_seconds = earth.sidereal_time_mean(mjd, eo_mean);
+    /// # }
     /// ```
     pub const fn sidereal_time_mean(&self, mjd: Real, eo_rad: Real) -> Real {
         let angle = self.sidereal_angle_mean(mjd, eo_rad);
@@ -396,8 +410,11 @@ impl Sidereal {
     /// let local_era_seconds = earth.local_sidereal_time_mean(mjd, 0.0);
     ///
     /// // Local Mean Sidereal Time in seconds
+    /// // (requires "sidereal-earth" feature)
+    /// # #[cfg(feature = "sidereal-earth")] {
     /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
     /// let lmst_seconds = earth.local_sidereal_time_mean(mjd, eo_mean);
+    /// # }
     /// ```
     pub const fn local_sidereal_time_mean(&self, mjd: Real, eo_rad: Real) -> Real {
         let angle = self.local_sidereal_angle_mean(mjd, eo_rad);
@@ -439,8 +456,11 @@ impl Sidereal {
     /// let mjd = 60000.0;
     ///
     /// // Greenwich Apparent Sidereal Time
+    /// // (requires "sidereal-earth" feature)
+    /// # #[cfg(feature = "sidereal-earth")] {
     /// let eo_app = earth.earth_eo_apparent(mjd + 32.184 / 86400.0);
     /// let gast = earth.sidereal_angle_apparent(mjd, eo_app);
+    /// # }
     /// ```
     pub const fn sidereal_angle_apparent(&self, mjd: Real, eo_rad: Real) -> Real {
         let angle = self.rotation_angle(mjd) - eo_rad;
@@ -483,8 +503,11 @@ impl Sidereal {
     /// let mjd = 60000.0;
     ///
     /// // Local Apparent Sidereal Time
+    /// // (requires "sidereal-earth" feature)
+    /// # #[cfg(feature = "sidereal-earth")] {
     /// let eo_app = earth.earth_eo_apparent(mjd + 32.184 / 86400.0);
     /// let last = earth.local_sidereal_angle_apparent(mjd, eo_app);
+    /// # }
     /// ```
     pub const fn local_sidereal_angle_apparent(&self, mjd: Real, eo_rad: Real) -> Real {
         let angle = self.rotation_angle(mjd) + self.longitude_rad - eo_rad;
@@ -527,8 +550,11 @@ impl Sidereal {
     /// let mjd = 60000.0;
     ///
     /// // Greenwich Apparent Sidereal Time in seconds
+    /// // (requires "sidereal-earth" feature)
+    /// # #[cfg(feature = "sidereal-earth")] {
     /// let eo_app = earth.earth_eo_apparent(mjd + 32.184 / 86400.0);
     /// let gast_seconds = earth.sidereal_time_apparent(mjd, eo_app);
+    /// # }
     /// ```
     pub const fn sidereal_time_apparent(&self, mjd: Real, eo_rad: Real) -> Real {
         let angle = self.sidereal_angle_apparent(mjd, eo_rad);
@@ -574,8 +600,11 @@ impl Sidereal {
     /// let mjd = 60000.0;
     ///
     /// // Local Apparent Sidereal Time in seconds
+    /// // (requires "sidereal-earth" feature)
+    /// # #[cfg(feature = "sidereal-earth")] {
     /// let eo_app = earth.earth_eo_apparent(mjd + 32.184 / 86400.0);
     /// let last_seconds = earth.local_sidereal_time_apparent(mjd, eo_app);
+    /// # }
     /// ```
     pub const fn local_sidereal_time_apparent(&self, mjd: Real, eo_rad: Real) -> Real {
         let angle = self.local_sidereal_angle_apparent(mjd, eo_rad);

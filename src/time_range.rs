@@ -6,7 +6,7 @@ use crate::{Dt, Scale};
 /// construct a [`TimeRange`] via either `.until(end)` (inclusive) or
 /// `.up_to(end)` (exclusive).
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Debug)]
 pub struct Every {
     pub(crate) start: Dt,
@@ -139,7 +139,7 @@ impl Every {
 /// - The iterator is **lazy** and evaluates in constant time per step.
 /// - Implements [`DoubleEndedIterator`] and [`ExactSizeIterator`].
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TimeRange {
     pub(crate) start: Dt,

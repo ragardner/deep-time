@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(feature = "jiff-tz")]
+#[cfg(all(feature = "jiff-tz", feature = "parse"))]
 mod tests {
     use deep_time::{Dt, ParseCfg, Scale};
     use jiff::{Timestamp, Zoned, civil::DateTime};

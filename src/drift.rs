@@ -107,7 +107,7 @@ use crate::{
 /// It is the low-level input that `Drift` uses internally.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Spacetime {
     /// Gravitational lapse (redshift) factor α.  
     /// This is the factor by which clocks run slower in a gravitational potential.
@@ -362,7 +362,7 @@ impl Spacetime {
 ///
 /// All three coefficients are stored using [`Dt`].
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Drift {
     /// Constant term a₀ expressed in seconds.  

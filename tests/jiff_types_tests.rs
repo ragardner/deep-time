@@ -34,6 +34,7 @@ mod tests {
         assert_eq!(ts, Timestamp::from_second(1713191400).unwrap());
     }
 
+    #[cfg(feature = "jiff-tz")]
     #[test]
     fn test_iana_timezone() {
         let parsed = TimeParts::from_str(

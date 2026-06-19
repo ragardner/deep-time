@@ -31,7 +31,7 @@ use crate::{DtErr, DtErrKind, an_err};
 /// assert_eq!(x.day(), 28);
 /// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct YmdHms {
     pub(crate) yr: i64,

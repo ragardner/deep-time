@@ -29,7 +29,7 @@ use crate::{LiteStr, Scale};
 /// - Conversions to types from other crates require relevant features to
 ///   be enabled.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct TimeParts {
     /// Year (can be negative for BCE dates).
@@ -88,7 +88,7 @@ impl TimeParts {
 
 /// AM / PM indicator.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Meridiem {
     #[default]
@@ -98,7 +98,7 @@ pub enum Meridiem {
 
 /// Day of the week. Default is set to Sunday.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Weekday {
     #[default]
@@ -195,7 +195,7 @@ impl Weekday {
 
 /// Timezone offset representation.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "js", derive(tsify::Tsify))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Offset {
     #[default]
