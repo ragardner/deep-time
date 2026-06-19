@@ -7,6 +7,39 @@ mod perf_tests {
 
     #[test]
     fn combined_perf_tests() {
+        // All timing loops and test cases are left unchanged.
+        // Results are captured and only two tables are emitted (via eprintln!) at the very end.
+
+        // ── results (populated by the benchmark blocks below) ───────────────────
+        let mut gps_deep_ns = 0.0f64;
+        let mut gps_hifi_ns = 0.0f64;
+        let mut tow_deep_ns = 0.0f64;
+        let mut tow_hifi_ns = 0.0f64;
+
+        let mut tai_utc_deep_ns = 0.0f64;
+        let mut tai_utc_hifi_ns = 0.0f64;
+        let mut utc_tai_deep_ns = 0.0f64;
+        let mut utc_tai_hifi_ns = 0.0f64;
+
+        let mut tai_tdb_deep_ns = 0.0f64;
+        let mut tai_tdb_hifi_ns = 0.0f64;
+        let mut tdb_tai_deep_ns = 0.0f64;
+        let mut tdb_tai_hifi_ns = 0.0f64;
+
+        let mut auto_ns_per = 0.0f64;
+
+        let mut strptime_timeparts_ns = 0.0f64;
+        let mut strptime_jiff_ns = 0.0f64;
+
+        let mut zoned_deep_ns = 0.0f64;
+        let mut zoned_jiff_ns = 0.0f64;
+
+        let mut iso_deep_ns = 0.0f64;
+        let mut iso_jiff_ns = 0.0f64;
+
+        let mut strftime_deep_ns = 0.0f64;
+        let mut strftime_jiff_ns = 0.0f64;
+
         // ═══════════════════════════════════════════════════════════════════════
         // GPS CONVERSION PERF — deep_time vs hifitime 4.x
         // ═══════════════════════════════════════════════════════════════════════
@@ -19,72 +52,28 @@ mod perf_tests {
             let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
 
-            println!("\n=== GPS CONVERSION PERF — deep_time vs hifitime 4.x ===");
-
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(deep_tai).to_gps();
             }
-            let deep_gps = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            gps_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::GPST));
             }
-            let hifi_gps = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            gps_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(deep_tai).to_gps_wk_and_tow();
             }
-            let deep_tow = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            tow_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(hifi_tai).to_gpst_seconds();
             }
-            let hifi_tow_equiv = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("Method                    | deep_time      | hifitime       | deep/hifi");
-            println!("--------------------------|----------------|----------------|----------");
-            println!(
-                "to_gps() / to_GPST        | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_gps,
-                hifi_gps,
-                deep_gps / hifi_gps
-            );
-            println!(
-                "to_gps_wk_and_tow()       | {:7.2} ns/it   | {:7.2} ns/it * | {:.2}x",
-                deep_tow,
-                hifi_tow_equiv,
-                deep_tow / hifi_tow_equiv
-            );
-
-            // ── Summary lines (deep_time vs hifitime) ─────────────────────────────
-            let ratio_gps = deep_gps / hifi_gps;
-            if ratio_gps < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than hifitime on to_gps() / to_GPST",
-                    (1.0 - ratio_gps) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than hifitime on to_gps() / to_GPST",
-                    (ratio_gps - 1.0) * 100.0
-                );
-            }
-
-            let ratio_tow = deep_tow / hifi_tow_equiv;
-            if ratio_tow < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than hifitime on to_gps_wk_and_tow()",
-                    (1.0 - ratio_tow) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than hifitime on to_gps_wk_and_tow()",
-                    (ratio_tow - 1.0) * 100.0
-                );
-            }
+            tow_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -99,20 +88,18 @@ mod perf_tests {
             let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 0, 0, 0, 0);
 
-            println!("\n=== TAI ↔ UTC PERF — deep_time vs hifitime 4.x ===");
-
             // TAI → UTC
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(deep_tai).to(black_box(Scale::UTC));
             }
-            let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            tai_utc_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::UTC));
             }
-            let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            tai_utc_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // UTC → TAI
             let deep_utc = deep_tai.to(Scale::UTC);
@@ -122,55 +109,13 @@ mod perf_tests {
             for _ in 0..ITERATIONS {
                 let _ = black_box(deep_utc).to(black_box(Scale::TAI));
             }
-            let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            utc_tai_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(hifi_utc).to_time_scale(black_box(TimeScale::TAI));
             }
-            let hifi_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            println!("Direction     | deep_time      | hifitime       | deep/hifi");
-            println!("--------------|----------------|----------------|----------");
-            println!(
-                "TAI → UTC     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_fwd,
-                hifi_fwd,
-                deep_fwd / hifi_fwd
-            );
-            println!(
-                "UTC → TAI     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_bwd,
-                hifi_bwd,
-                deep_bwd / hifi_bwd
-            );
-
-            // ── Summary lines (deep_time vs hifitime) ─────────────────────────────
-            let ratio_fwd = deep_fwd / hifi_fwd;
-            if ratio_fwd < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than hifitime on TAI → UTC",
-                    (1.0 - ratio_fwd) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than hifitime on TAI → UTC",
-                    (ratio_fwd - 1.0) * 100.0
-                );
-            }
-
-            let ratio_bwd = deep_bwd / hifi_bwd;
-            if ratio_bwd < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than hifitime on UTC → TAI",
-                    (1.0 - ratio_bwd) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than hifitime on UTC → TAI",
-                    (ratio_bwd - 1.0) * 100.0
-                );
-            }
+            utc_tai_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -186,20 +131,18 @@ mod perf_tests {
             let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
 
-            println!("\n=== TAI ↔ TDB PERF — deep_time vs hifitime 4.x ===");
-
             // ── TAI → TDB ─────────────────────────────────────────────────────
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(deep_tai).to(black_box(Scale::TDB));
             }
-            let deep_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            tai_tdb_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(hifi_tai).to_time_scale(black_box(TimeScale::TDB));
             }
-            let hifi_fwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            tai_tdb_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── TDB → TAI ─────────────────────────────────────────────────────
             let deep_tdb = deep_tai.to(Scale::TDB);
@@ -209,56 +152,13 @@ mod perf_tests {
             for _ in 0..ITERATIONS {
                 let _ = black_box(deep_tdb).to(black_box(Scale::TAI));
             }
-            let deep_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            tdb_tai_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(hifi_tdb).to_time_scale(black_box(TimeScale::TAI));
             }
-            let hifi_bwd = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // ── Results table ─────────────────────────────────────────────────
-            println!("Direction     | deep_time      | hifitime       | deep/hifi");
-            println!("--------------|----------------|----------------|----------");
-            println!(
-                "TAI → TDB     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_fwd,
-                hifi_fwd,
-                deep_fwd / hifi_fwd
-            );
-            println!(
-                "TDB → TAI     | {:7.2} ns/it   | {:7.2} ns/it   | {:.2}x",
-                deep_bwd,
-                hifi_bwd,
-                deep_bwd / hifi_bwd
-            );
-
-            // ── Summary lines (deep_time vs hifitime) ─────────────────────────────
-            let ratio_fwd = deep_fwd / hifi_fwd;
-            if ratio_fwd < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than hifitime on TAI → TDB",
-                    (1.0 - ratio_fwd) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than hifitime on TAI → TDB",
-                    (ratio_fwd - 1.0) * 100.0
-                );
-            }
-
-            let ratio_bwd = deep_bwd / hifi_bwd;
-            if ratio_bwd < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than hifitime on TDB → TAI",
-                    (1.0 - ratio_bwd) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than hifitime on TDB → TAI",
-                    (ratio_bwd - 1.0) * 100.0
-                );
-            }
+            tdb_tai_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -307,14 +207,7 @@ mod perf_tests {
             let elapsed = start.elapsed();
 
             let total_parses = cases.len() * ITERATIONS;
-            let ns_per_parse = elapsed.as_nanos() as f64 / total_parses as f64;
-
-            println!("\n=== DATE AUTO PARSER PERF ===");
-            println!("Avg time     : {:.2} ns/parse", ns_per_parse);
-            println!(
-                "Throughput   : {:.0} k parses/sec",
-                1_000_000.0 / ns_per_parse
-            );
+            auto_ns_per = elapsed.as_nanos() as f64 / total_parses as f64;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -332,40 +225,14 @@ mod perf_tests {
             for _ in 0..ITERATIONS {
                 let x = BrokenDownTime::parse(FORMAT, INPUT).unwrap();
             }
-            let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            strptime_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── TimeParts ───────────────────────
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
                 let x = TimeParts::from_str(FORMAT, INPUT, true, true, false).unwrap();
             }
-            let timeparts_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== strptime — TimeParts vs Jiff BrokenDownTime ===");
-            println!(
-                "TimeParts : {:7.2} ns/parse  |  {:7.0} k parses/sec",
-                timeparts_ns,
-                1_000_000.0 / timeparts_ns
-            );
-            println!(
-                "Jiff      : {:7.2} ns/parse  |  {:7.0} k parses/sec",
-                jiff_ns,
-                1_000_000.0 / jiff_ns
-            );
-
-            let ratio = timeparts_ns / jiff_ns;
-            if ratio < 1.0 {
-                println!(
-                    "→ TimeParts is {:.1}% **faster** than Jiff strtime on this format",
-                    (1.0 - ratio) * 100.0
-                );
-            } else {
-                println!(
-                    "→ TimeParts is {:.1}% slower than Jiff strtime on this format",
-                    (ratio - 1.0) * 100.0
-                );
-            }
+            strptime_timeparts_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -384,40 +251,14 @@ mod perf_tests {
                 let tm = BrokenDownTime::parse(FORMAT_WITH_Q, INPUT).unwrap();
                 let x = tm.to_zoned().unwrap();
             }
-            let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            zoned_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── deep_time with %Q directive ─────────────────
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
                 let x = Dt::from_str(INPUT, FORMAT_WITH_Q, true, true, false).unwrap();
             }
-            let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== Zoned strptime — Dt vs Jiff Zoned using strtime ===");
-            println!(
-                "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
-                deep_time_ns,
-                1_000_000.0 / deep_time_ns
-            );
-            println!(
-                "jiff      : {:7.2} ns/parse  |  {:7.0} k parses/sec",
-                jiff_ns,
-                1_000_000.0 / jiff_ns
-            );
-
-            let ratio = deep_time_ns / jiff_ns;
-            if ratio < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than jiff on zoned IANA parsing",
-                    (1.0 - ratio) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than jiff on zoned IANA parsing",
-                    (ratio - 1.0) * 100.0
-                );
-            }
+            zoned_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -436,7 +277,7 @@ mod perf_tests {
                 let tm = BrokenDownTime::parse(FORMAT, INPUT).unwrap();
                 let x = tm.to_datetime().unwrap();
             }
-            let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            let _dt_strptime_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── deep time  parsing ───────────────────────
 
@@ -444,33 +285,7 @@ mod perf_tests {
             for _ in 0..ITERATIONS {
                 let x = Dt::from_str(INPUT, FORMAT, true, true, false).unwrap();
             }
-            let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== DateTime strptime — Dt::from_str vs Jiff strtime -> to_datetime ===");
-            println!(
-                "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
-                deep_time_ns,
-                1_000_000.0 / deep_time_ns
-            );
-            println!(
-                "jiff      : {:7.2} ns/parse  |  {:7.0} k parses/sec",
-                jiff_ns,
-                1_000_000.0 / jiff_ns
-            );
-
-            let ratio = deep_time_ns / jiff_ns;
-            if ratio < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than jiff on datetime parsing",
-                    (1.0 - ratio) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than jiff on datetime parsing",
-                    (ratio - 1.0) * 100.0
-                );
-            }
+            let _dt_strptime_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -487,40 +302,14 @@ mod perf_tests {
             for _ in 0..ITERATIONS {
                 let x = INPUT.parse::<DateTime>().unwrap();
             }
-            let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            iso_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── deep_time CCSDS/ISO dedicated parser ───────────────────────
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
                 let x = TimeParts::from_str_iso(INPUT).unwrap();
             }
-            let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== DateTime parse — TimeParts::from_str_iso vs Jiff parse::DateTime ===");
-            println!(
-                "deep_time : {:7.2} ns/parse  |  {:7.0} k parses/sec",
-                deep_time_ns,
-                1_000_000.0 / deep_time_ns
-            );
-            println!(
-                "jiff      : {:7.2} ns/parse  |  {:7.0} k parses/sec",
-                jiff_ns,
-                1_000_000.0 / jiff_ns
-            );
-
-            let ratio = deep_time_ns / jiff_ns;
-            if ratio < 1.0 {
-                println!(
-                    "→ deep_time (from_str_iso) is {:.1}% **faster** than Jiff on ISO datetime parsing",
-                    (1.0 - ratio) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time (from_str_iso) is {:.1}% slower than Jiff on ISO datetime parsing",
-                    (ratio - 1.0) * 100.0
-                );
-            }
+            iso_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
 
         // ═══════════════════════════════════════════════════════════════════════
@@ -537,7 +326,7 @@ mod perf_tests {
             for _ in 0..ITERATIONS {
                 let x = dt.to_str_lite(FORMAT, Lang::En);
             }
-            let deep_time_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+            strftime_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
             // ── Jiff ───────────────────────
             use jiff::civil::DateTime;
@@ -548,33 +337,113 @@ mod perf_tests {
             for _ in 0..ITERATIONS {
                 let x = jiff_dt.strftime(FORMAT).to_string();
             }
-            let jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-
-            // ── Results ───────────────────────────────────────────────────────────────
-            println!("\n=== strftime — Dt::to_str_lite vs Jiff DateTime::strftime ===");
-            println!(
-                "deep_time : {:7.2} ns/fmt    |  {:7.0} k fmts/sec",
-                deep_time_ns,
-                1_000_000.0 / deep_time_ns
-            );
-            println!(
-                "jiff      : {:7.2} ns/fmt    |  {:7.0} k fmts/sec",
-                jiff_ns,
-                1_000_000.0 / jiff_ns
-            );
-
-            let ratio = deep_time_ns / jiff_ns;
-            if ratio < 1.0 {
-                println!(
-                    "→ deep_time is {:.1}% **faster** than jiff on strftime formatting",
-                    (1.0 - ratio) * 100.0
-                );
-            } else {
-                println!(
-                    "→ deep_time is {:.1}% slower than jiff on strftime formatting",
-                    (ratio - 1.0) * 100.0
-                );
-            }
+            strftime_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // Emit two neat tables (only output; using eprintln! so it is easy to capture)
+        // These tables are formatted to be directly droppable into the README.
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let fmt_ns = |x: f64| -> String {
+            if x >= 99.5 {
+                format!("{:.0} ns", x)
+            } else {
+                format!("{:.1} ns", x)
+            }
+        };
+
+        // For parse/format table we use "% faster/slower" style (matching historical README)
+        let pct = |d: f64, j: f64| -> String {
+            let r = d / j;
+            if r < 1.0 {
+                format!("{:.1}% faster", (1.0 - r) * 100.0)
+            } else {
+                format!("{:.1}% slower", (r - 1.0) * 100.0)
+            }
+        };
+
+        // For scale conversions we use "× faster/slower" style (matching historical README)
+        let xrel = |d: f64, h: f64| -> String {
+            let r = d / h;
+            if r < 1.0 {
+                format!("{:.1}× faster", 1.0 / r)
+            } else {
+                format!("{:.1}× slower", r)
+            }
+        };
+
+        eprintln!();
+        eprintln!("#### Parsing and Formatting");
+        eprintln!();
+        eprintln!("| Operation                              | Time          | vs Jiff 0.2.28           |");
+        eprintln!("|----------------------------------------|---------------|--------------------------|");
+        eprintln!(
+            "| ISO datetime parsing                   | {:<13} | {:<24} |",
+            fmt_ns(iso_deep_ns),
+            pct(iso_deep_ns, iso_jiff_ns)
+        );
+        eprintln!(
+            "| `strptime`                             | {:<13} | {:<24} |",
+            fmt_ns(strptime_timeparts_ns),
+            pct(strptime_timeparts_ns, strptime_jiff_ns)
+        );
+        eprintln!(
+            "| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | {:<13} | {:<24} |",
+            fmt_ns(zoned_deep_ns),
+            pct(zoned_deep_ns, zoned_jiff_ns)
+        );
+        eprintln!(
+            "| `strftime`                             | {:<13} | {:<24} |",
+            fmt_ns(strftime_deep_ns),
+            pct(strftime_deep_ns, strftime_jiff_ns)
+        );
+        eprintln!(
+            "| Auto parser (`from_str_parse`)         | {:<13} | —                        |",
+            fmt_ns(auto_ns_per)
+        );
+
+        eprintln!();
+        eprintln!("#### Time Scale Conversions");
+        eprintln!();
+        eprintln!("| Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |");
+        eprintln!("|------------------|---------------|---------------|---------------------------|");
+        eprintln!(
+            "| TAI → UTC        | {:<13} | {:<13} | {:<25} |",
+            fmt_ns(tai_utc_deep_ns),
+            fmt_ns(tai_utc_hifi_ns),
+            xrel(tai_utc_deep_ns, tai_utc_hifi_ns)
+        );
+        eprintln!(
+            "| UTC → TAI        | {:<13} | {:<13} | {:<25} |",
+            fmt_ns(utc_tai_deep_ns),
+            fmt_ns(utc_tai_hifi_ns),
+            xrel(utc_tai_deep_ns, utc_tai_hifi_ns)
+        );
+        eprintln!(
+            "| TAI → TDB        | {:<13} | {:<13} | {:<25} |",
+            fmt_ns(tai_tdb_deep_ns),
+            fmt_ns(tai_tdb_hifi_ns),
+            xrel(tai_tdb_deep_ns, tai_tdb_hifi_ns)
+        );
+        eprintln!(
+            "| TDB → TAI        | {:<13} | {:<13} | {:<25} |",
+            fmt_ns(tdb_tai_deep_ns),
+            fmt_ns(tdb_tai_hifi_ns),
+            xrel(tdb_tai_deep_ns, tdb_tai_hifi_ns)
+        );
+        eprintln!(
+            "| GPS conversion   | {:<13} | {:<13} | {:<25} |",
+            fmt_ns(gps_deep_ns),
+            fmt_ns(gps_hifi_ns),
+            xrel(gps_deep_ns, gps_hifi_ns)
+        );
+        eprintln!(
+            "| GPS week + TOW   | {:<13} | {:<13} | {:<25} |",
+            fmt_ns(tow_deep_ns),
+            fmt_ns(tow_hifi_ns),
+            xrel(tow_deep_ns, tow_hifi_ns)
+        );
+        eprintln!();
     }
 }

@@ -232,22 +232,22 @@ Benchmarks were measured on an AMD Ryzen 7 7800X3D.
 
 | Operation                              | Time          | vs Jiff 0.2.28           |
 |----------------------------------------|---------------|--------------------------|
-| ISO datetime parsing                   | 17.7 ns       | 32.8% faster             |
-| `strptime`                             | 34.1 ns       | 17.1% faster             |
-| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 180.9 ns      | 14.1% slower             |
-| `strftime`                             | 97.9 ns       | 58.0% slower             |
-| Auto parser (`from_str_parse`)         | 619 ns        | —                        |
+| ISO datetime parsing                   | 17.7 ns       | 33.4% faster             |
+| `strptime`                             | 34.5 ns       | 16.0% faster             |
+| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 193 ns        | 18.4% slower             |
+| `strftime`                             | 93.5 ns       | 50.9% slower             |
+| Auto parser (`from_str_parse`)         | 650 ns        | —                        |
 
 #### Time Scale Conversions
 
 | Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |
 |------------------|---------------|---------------|---------------------------|
-| TAI → UTC        | 9.7 ns        | 45.4 ns       | 4.7× faster               |
-| UTC → TAI        | 12.7 ns       | 46.5 ns       | 3.7× faster               |
-| TAI → TDB        | 141 ns        | 91 ns         | 1.55× slower              |
-| TDB → TAI        | 599 ns        | 26.9 ns       | 22.3× slower              |
-| GPS conversion   | 20.5 ns       | 7.1 ns        | 2.9× slower               |
-| GPS week + TOW   | 27.6 ns       | 6.8 ns        | 4.1× slower               |
+| TAI → UTC        | 9.7 ns        | 45.2 ns       | 4.6× faster               |
+| UTC → TAI        | 13.0 ns       | 47.2 ns       | 3.6× faster               |
+| TAI → TDB        | 136 ns        | 90.3 ns       | 1.5× slower               |
+| TDB → TAI        | 599 ns        | 27.0 ns       | 22.2× slower              |
+| GPS conversion   | 21.6 ns       | 5.3 ns        | 4.1× slower               |
+| GPS week + TOW   | 28.0 ns       | 7.0 ns        | 4.0× slower               |
 
 The tests were run with:
 
