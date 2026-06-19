@@ -69,6 +69,8 @@ pub const DE_WORDS: &[Word] = &[
     Word::new("heute", "today", Token::Today, Cat::UnamRel),
     Word::new("morgen", "tomorrow", Token::Tomorrow, Cat::UnamRel),
     Word::new("gestern", "yesterday", Token::Yesterday, Cat::UnamRel),
+    Word::new("übermorgen", "2 days", Token::TwoDaysLater, Cat::UnamRel),
+    Word::new("vorgestern", "-2 days", Token::TwoDaysBefore, Cat::UnamRel),
     Word::new("vor", "ago", Token::Ago, Cat::Ago),
     // am/pm
     Word::new("morgens", "AM", Token::Am, Cat::AmPm),
