@@ -1,4 +1,4 @@
-use deep_time::{Dt, DtErr, Lang, LiteStr, Scale, YmdHms};
+use deep_time::{Dt, DtErr, Lang, LiteStr, ParseCfg, Scale, YmdHms};
 
 fn main() -> Result<(), DtErr> {
     // ============================================
@@ -14,13 +14,30 @@ fn main() -> Result<(), DtErr> {
     let dt: Dt = "1 jan 2000 07:00 [America/New_York] TAI".parse()?; // noon utc
     assert_eq!(Dt::ZERO, dt); // library zero
 
+    // Relative dates are also supported
+    let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
+    let en_cfg = Some(ParseCfg {
+        ref_time: Some(ref_time),
+        ..Default::default()
+    });
+
+    let dt = Dt::from_str_parse("2 days from now at 9am", &en_cfg).unwrap();
+    assert_eq!(dt, Dt::from_ymd(2026, 6, 18, Scale::UTC, 9, 0, 0, 0));
+
+    let dt = Dt::from_str_parse("next Monday at 14:00", &en_cfg).unwrap();
+    assert_eq!(dt, Dt::from_ymd(2026, 6, 22, Scale::UTC, 14, 0, 0, 0));
+
+    // Relative dates use Dt::now if the `std` feature is enabled and no
+    // ref_time is provided in the ParseCfg
+    let _ = Dt::from_str_parse("next Monday at 14:00", &None).unwrap();
+
     // Fast ISO parsing with time scale and no alloc output
     let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;
     let lite_str: LiteStr<512> = dt.to_str_lite_iso8601()?;
     assert_eq!("2000-01-01T12:00:00+00:00", lite_str.as_str());
 
     // ============================================
-    // Formatting (multi-language, no allocation)
+    // Formatting
     // ============================================
 
     let s = dt.to_str_in_tz("%A, %d %B %Y %I:%M%P", "America/New_York", Lang::En)?;
