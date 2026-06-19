@@ -671,7 +671,7 @@ impl Dt {
         }
     }
 
-    /// Converts seconds (i64) → total attoseconds (i128)
+    /// Converts seconds i128 → total attoseconds i128
     #[inline(always)]
     pub const fn sec_to_attos(sec: i128) -> i128 {
         sec.saturating_mul(ATTOS_PER_SEC_I128)

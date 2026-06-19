@@ -326,16 +326,13 @@ impl fmt::Display for Dt {
                     n /= 10;
                 }
 
-                // Find rightmost non-zero digit
-                let mut last = 0;
-                for i in 0..precision {
-                    if digits[i] != 0 {
-                        last = i;
-                    }
-                }
+                let last = digits[..precision]
+                    .iter()
+                    .rposition(|&d| d != 0)
+                    .unwrap_or(0);
 
-                for i in 0..=last {
-                    write!(f, "{}", digits[i])?;
+                for &d in &digits[..=last] {
+                    write!(f, "{}", d)?;
                 }
             }
         }

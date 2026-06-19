@@ -23,7 +23,6 @@ impl Dt {
     /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
     ///   `Scale::UTC` if you built it with `from_ymd(..., Scale::UTC, ...)`. The result's
     ///   `scale` and `target` are both set to that same value.
-    /// - Use `.to_sec()` or `.to_attos()` to read the number.
     ///
     /// ## Examples
     ///
@@ -112,20 +111,15 @@ impl Dt {
     /// // 2012-08-08 15:30:00 → 1344439800.000000 s
     /// let unix = 1344439800_i128;
     ///
-    /// // use TAI to avoid time scale conversions on the
-    /// // seconds count
-    /// let unix_dt = Dt::from_sec(unix, Scale::TAI);
-    ///
-    /// // changing the target isn't really necessary but will help
-    /// // with round tripping of values and any further conversions
-    /// // if you want the future conversions output to be on the
-    /// // UTC time scale
-    /// let unix_dt = unix_dt.with(Scale::UTC).target(Scale::UTC);
+    /// // use Dt::new to avoid time scale conversions on the
+    /// // seconds count, other functions can do the same thing
+    /// // but this way lets us easily set the time scale fields
+    /// // in one go
+    /// let unix_dt = Dt::new_sec(unix, Scale::UTC, Scale::UTC);
     ///
     /// let dt = Dt::from_unix(unix_dt);
     ///
     /// let ymd = dt.to_ymd();
-    ///
     /// assert_eq!(ymd.yr(), 2012);
     /// assert_eq!(ymd.mo(), 8);
     /// assert_eq!(ymd.day(), 8);
@@ -163,7 +157,6 @@ impl Dt {
     /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
     ///   `Scale::UTC` if you built it with `from_ymd(..., Scale::UTC, ...)`. The result's
     ///   `scale` and `target` are both set to that same value.
-    /// - Use `.to_sec()` or `.to_attos()` to read the number.
     ///
     /// ## Examples
     ///
@@ -269,7 +262,6 @@ impl Dt {
     /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
     ///   `Scale::GPS` after `.target(Scale::GPS)`. The result's `scale` and `target` are both
     ///   set to that same value.
-    /// - Use `.to_sec()` or `.to_attos()` to read the number.
     ///
     /// ## See also
     ///
@@ -481,7 +473,6 @@ impl Dt {
     /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
     ///   `Scale::TT` after `.target(Scale::TT)`. The result's `scale` and `target` are both
     ///   set to that same value.
-    /// - Use `.to_sec()` or `.to_attos()` to read the number.
     ///
     /// ## Examples
     ///
@@ -551,14 +542,14 @@ impl Dt {
     /// Convenience wrapper around [`Self::from_cxcsec`] for a bare floating-point
     /// second count.
     ///
-    /// Wraps `elapsed_sec` in a [`Dt`] via [`Dt::sec_f_to_total_attos`] and
+    /// Wraps `sec` in a [`Dt`] via [`Dt::sec_f_to_attos`] and
     /// [`Dt::new`], then passes it to [`Self::from_cxcsec`]. Unlike [`Dt::from_sec_f`],
     /// this does not convert the count to TAI up front — [`Self::from_cxcsec`] performs
     /// that conversion once, from `on`.
     ///
     /// ## Parameters
     ///
-    /// - `elapsed_sec` — seconds elapsed since
+    /// - `sec` — seconds elapsed since
     ///   [`CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH).
     /// - `on` — which [`Scale`] the count is measured in (for example `Scale::TT` or
     ///   `Scale::UTC`). This becomes the wrapped [`Dt`]'s `scale`; [`Self::from_cxcsec`]
@@ -583,8 +574,8 @@ impl Dt {
     /// - [`Dt::from_cxcsec`](../struct.Dt.html#method.from_cxcsec)
     /// - [`Dt::to_cxcsec`](../struct.Dt.html#method.to_cxcsec)
     #[inline(always)]
-    pub const fn from_cxcsec_f(elapsed_sec: Real, on: Scale) -> Dt {
-        Self::from_cxcsec(Dt::new(Dt::sec_f_to_total_attos(elapsed_sec), on, on))
+    pub const fn from_cxcsec_f(sec: Real, on: Scale) -> Dt {
+        Self::from_cxcsec(Dt::new(Dt::sec_f_to_attos(sec), on, on))
     }
 
     /// Returns the elapsed time since the GALEX epoch as a [`Dt`] expressed
@@ -610,7 +601,6 @@ impl Dt {
     /// - The count is on whatever scale sits in this [`Dt`]'s `target` field — for example
     ///   `Scale::UTC` after `.target(Scale::UTC)`. The result's `scale` and `target` are both
     ///   set to that same value.
-    /// - Use `.to_sec()` or `.to_attos()` to read the number.
     ///
     /// ## Examples
     ///
@@ -680,14 +670,14 @@ impl Dt {
     /// Convenience wrapper around [`Self::from_galexsec`] for a bare floating-point
     /// second count.
     ///
-    /// Wraps `elapsed_sec` in a [`Dt`] via [`Dt::sec_f_to_total_attos`] and
+    /// Wraps `sec` in a [`Dt`] via [`Dt::sec_f_to_attos`] and
     /// [`Dt::new`], then passes it to [`Self::from_galexsec`]. Unlike [`Dt::from_sec_f`],
     /// this does not convert the count to TAI up front — [`Self::from_galexsec`] performs
     /// that conversion once, from `on`.
     ///
     /// ## Parameters
     ///
-    /// - `elapsed_sec` — seconds elapsed since
+    /// - `sec` — seconds elapsed since
     ///   [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH).
     /// - `on` — which [`Scale`] the count is measured in (for example `Scale::UTC` or
     ///   `Scale::TT`). This becomes the wrapped [`Dt`]'s `scale`; [`Self::from_galexsec`]
@@ -712,8 +702,8 @@ impl Dt {
     /// - [`Dt::from_galexsec`](../struct.Dt.html#method.from_galexsec)
     /// - [`Dt::to_galexsec`](../struct.Dt.html#method.to_galexsec)
     #[inline(always)]
-    pub const fn from_galexsec_f(elapsed_sec: Real, on: Scale) -> Dt {
-        Self::from_galexsec(Dt::new(Dt::sec_f_to_total_attos(elapsed_sec), on, on))
+    pub const fn from_galexsec_f(sec: Real, on: Scale) -> Dt {
+        Self::from_galexsec(Dt::new(Dt::sec_f_to_attos(sec), on, on))
     }
 
     /// Returns the **Julian epoch year** (JYEAR) for this instant.
