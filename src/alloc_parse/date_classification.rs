@@ -44,6 +44,7 @@ pub(crate) enum ClassifiedDate {
     Cls(DateClassification),
 }
 
+#[allow(unused)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Token {
     #[default]
@@ -74,12 +75,12 @@ pub(crate) enum Token {
     Offset,
     OffsetColon,
     // relative
+    TwoDaysLater,
+    TwoDaysBefore,
     Now,
     Today,
     Tomorrow,
-    TwoDaysLater,
     Yesterday,
-    TwoDaysBefore,
     Future,
     Past,
     Present,

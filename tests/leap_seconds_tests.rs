@@ -5,25 +5,25 @@ use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128, leap_seconds::leap_sec
 #[cfg(feature = "parse")]
 #[test]
 fn leap_seconds_various() {
-    use deep_time::{Dt, Scale};
+    use deep_time::{Dt, ParseCfg, Scale};
 
     // not a leap second date, don't roll over to next day
     let orig = Dt::from_ymd(2000, 1, 1, Scale::UTC, 23, 59, 60, 0);
     let new = Dt::from_ymd(2000, 1, 2, Scale::UTC, 0, 0, 0, 0);
     assert_ne!(orig, new);
-    let orig = Dt::from_str_parse("2000-01-01T23:59:60", &None).unwrap();
-    let new = Dt::from_str_parse("2000-01-02T00:00:00", &None).unwrap();
+    let orig = Dt::from_str_parse("2000-01-01T23:59:60", &ParseCfg::DEFAULT).unwrap();
+    let new = Dt::from_str_parse("2000-01-02T00:00:00", &ParseCfg::DEFAULT).unwrap();
     assert_ne!(orig, new);
 
-    let before = Dt::from_str_parse("2015-06-30T23:59:59", &None).unwrap();
+    let before = Dt::from_str_parse("2015-06-30T23:59:59", &ParseCfg::DEFAULT).unwrap();
     assert_eq!(before.to_sec(), 488980834, "59 failed");
     assert_eq!(before.to_sec_ufrac(), 0);
 
-    let leap = Dt::from_str_parse("2015-06-30T23:59:60", &None).unwrap();
+    let leap = Dt::from_str_parse("2015-06-30T23:59:60", &ParseCfg::DEFAULT).unwrap();
     assert_eq!(leap.to_sec(), 488980835, "60 failed");
     assert_eq!(leap.to_sec_ufrac(), 0);
 
-    let after = Dt::from_str_parse("2015-07-01T00:00:00", &None).unwrap();
+    let after = Dt::from_str_parse("2015-07-01T00:00:00", &ParseCfg::DEFAULT).unwrap();
     assert_eq!(after.to_sec(), 488980836, "00 failed");
     assert_eq!(after.to_sec_ufrac(), 0);
 
@@ -40,8 +40,8 @@ fn leap_seconds_various() {
     assert_eq!(after.to_sec_ufrac(), 0);
 
     // NOT utc, BUT it's a leap seconds date, don't roll over to next day
-    let leap = Dt::from_str_parse("2015-06-30T23:59:60 TT", &None).unwrap();
-    let after = Dt::from_str_parse("2015-07-01T00:00:00 TT", &None).unwrap();
+    let leap = Dt::from_str_parse("2015-06-30T23:59:60 TT", &ParseCfg::DEFAULT).unwrap();
+    let after = Dt::from_str_parse("2015-07-01T00:00:00 TT", &ParseCfg::DEFAULT).unwrap();
     assert_ne!(leap, after);
     let orig = Dt::from_ymd(2015, 6, 30, Scale::TT, 23, 59, 60, 0);
     let new = Dt::from_ymd(2015, 7, 1, Scale::TT, 0, 0, 0, 0);
@@ -53,19 +53,19 @@ fn leap_seconds_various() {
     let orig = Dt::from_ymd(1972, 2, 1, Scale::UTC, 23, 59, 60, 0);
     let new = Dt::from_ymd(1972, 2, 2, Scale::UTC, 0, 0, 0, 0);
     assert_ne!(orig, new);
-    let orig = Dt::from_str_parse("1972-02-01T23:59:60", &None).unwrap();
-    let new = Dt::from_str_parse("1972-02-02T00:00:00", &None).unwrap();
+    let orig = Dt::from_str_parse("1972-02-01T23:59:60", &ParseCfg::DEFAULT).unwrap();
+    let new = Dt::from_str_parse("1972-02-02T00:00:00", &ParseCfg::DEFAULT).unwrap();
     assert_ne!(orig, new);
 
-    let before = Dt::from_str_parse("1972-12-31T23:59:59", &None).unwrap();
+    let before = Dt::from_str_parse("1972-12-31T23:59:59", &ParseCfg::DEFAULT).unwrap();
     assert_eq!(before.to_sec(), -852033590, "59 failed");
     assert_eq!(before.to_sec_ufrac(), 0);
 
-    let leap = Dt::from_str_parse("1972-12-31T23:59:60", &None).unwrap();
+    let leap = Dt::from_str_parse("1972-12-31T23:59:60", &ParseCfg::DEFAULT).unwrap();
     assert_eq!(leap.to_sec(), -852033589, "60 failed");
     assert_eq!(leap.to_sec_ufrac(), 0);
 
-    let after = Dt::from_str_parse("1973-01-01T00:00:00", &None).unwrap();
+    let after = Dt::from_str_parse("1973-01-01T00:00:00", &ParseCfg::DEFAULT).unwrap();
     assert_eq!(after.to_sec(), -852033588, "00 failed");
     assert_eq!(after.to_sec_ufrac(), 0);
 
@@ -82,8 +82,8 @@ fn leap_seconds_various() {
     assert_eq!(after.to_sec_ufrac(), 0);
 
     // NOT utc, BUT it's a leap seconds date, don't roll over to next day
-    let leap = Dt::from_str_parse("1972-12-31T23:59:60 TT", &None).unwrap();
-    let after = Dt::from_str_parse("1973-01-01T00:00:00 TT", &None).unwrap();
+    let leap = Dt::from_str_parse("1972-12-31T23:59:60 TT", &ParseCfg::DEFAULT).unwrap();
+    let after = Dt::from_str_parse("1973-01-01T00:00:00 TT", &ParseCfg::DEFAULT).unwrap();
     assert_ne!(leap, after);
     let orig = Dt::from_ymd(1973, 6, 30, Scale::TT, 23, 59, 60, 0);
     let new = Dt::from_ymd(1973, 7, 1, Scale::TT, 0, 0, 0, 0);
@@ -91,21 +91,21 @@ fn leap_seconds_various() {
 
     // boundary 1972
 
-    let before = Dt::from_str_parse("1971-12-31T23:59:59 UtcHist", &None).unwrap();
+    let before = Dt::from_str_parse("1971-12-31T23:59:59 UtcHist", &ParseCfg::DEFAULT).unwrap();
     assert!(
         (before.to_sec_f() - -883655991.10775816440582275391).abs() < 1e-6,
         "59 failed {}",
         (before.to_sec_f() - -883655991.10775816440582275391).abs()
     );
 
-    let leap = Dt::from_str_parse("1971-12-31T23:59:60 UtcHist", &None).unwrap();
+    let leap = Dt::from_str_parse("1971-12-31T23:59:60 UtcHist", &ParseCfg::DEFAULT).unwrap();
     assert_eq!(
         leap.to_sec_f(),
         -883655990.10775804519653320312,
         "60 failed"
     );
 
-    let after = Dt::from_str_parse("1972-01-01T00:00:00 UtcHist", &None).unwrap();
+    let after = Dt::from_str_parse("1972-01-01T00:00:00 UtcHist", &ParseCfg::DEFAULT).unwrap();
     assert_eq!(
         after.to_sec_f(),
         -883655990.00000000000000000000,

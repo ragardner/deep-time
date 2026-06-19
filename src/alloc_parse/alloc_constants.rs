@@ -1,12 +1,4 @@
-use crate::ParseCfg;
-use alloc::boxed::Box;
 use core::ops::RangeInclusive;
-use once_cell::race::OnceBox;
-
-static DEFAULT_DATE_PARSE_OPTIONS: OnceBox<ParseCfg> = OnceBox::new();
-pub(crate) fn default_date_parse_options() -> &'static ParseCfg {
-    DEFAULT_DATE_PARSE_OPTIONS.get_or_init(|| Box::new(ParseCfg::default()))
-}
 
 #[cfg(feature = "locale")]
 use {once_cell::race::OnceBool, sys_locale};

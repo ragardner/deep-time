@@ -5,7 +5,9 @@ mod tests {
     use deep_time::{Dt, Lang, ParseCfg, Scale};
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
-        let dt = Dt::from_str_parse(input.trim(), &opts)
+        let d = ParseCfg::DEFAULT;
+        let o = opts.as_ref().unwrap_or(&d);
+        let dt = Dt::from_str_parse(input.trim(), o)
             .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
         let actual = dt.to_str_rfc3339();
 
@@ -110,11 +112,11 @@ mod tests {
     #[test]
     fn relative_date_parser_comprehensive_de() {
         let cases = generate_relative_date_test_cases_de();
-        let opts = Some(ParseCfg {
+        let opts = ParseCfg {
             lang: Lang::De,
             ref_time: Some(Dt::from_tai_sec(5_000_000)),
             ..Default::default()
-        });
+        };
 
         for input in cases {
             let result = Dt::from_str_parse(input.trim(), &opts);

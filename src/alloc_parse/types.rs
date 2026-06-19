@@ -144,17 +144,30 @@ fn default_true() -> bool {
     true
 }
 
+impl ParseCfg {
+    /// Default configuration (all smart defaults).
+    ///
+    /// Pass a reference to this when you want the standard parsing behavior:
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, ParseCfg};
+    ///
+    /// let dt = Dt::from_str_parse("2024-03-15 12:00", &ParseCfg::DEFAULT).unwrap();
+    /// ```
+    pub const DEFAULT: Self = Self {
+        parse: None,
+        mode: Mode::Auto,
+        order: Order::Smart,
+        lang: Lang::En,
+        to_lower: true,
+        relative: true,
+        ref_time: None,
+    };
+}
+
 impl Default for ParseCfg {
     fn default() -> ParseCfg {
-        Self {
-            parse: None,
-            mode: Mode::default(),
-            order: Order::default(),
-            lang: Lang::default(),
-            to_lower: true,
-            relative: true,
-            ref_time: None,
-        }
+        Self::DEFAULT
     }
 }
 

@@ -157,7 +157,7 @@ locale = [
     "dep:sys-locale",
 ]
 
-perf-tests = ["parse", "std"]
+perf-tests = ["parse", "jiff-tz"]
 eop-tests = ["eop", "std"]
 
 [lints.clippy]

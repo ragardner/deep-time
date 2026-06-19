@@ -2,7 +2,7 @@
 
 #[cfg(feature = "perf-tests")]
 mod perf_tests {
-    use deep_time::{Dt, Lang, Scale, TimeParts};
+    use deep_time::{Dt, Lang, ParseCfg, Scale, TimeParts};
     use std::time::Instant;
 
     #[test]
@@ -301,7 +301,7 @@ mod perf_tests {
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 for &input in &cases {
-                    let _ = Dt::from_str_parse(input, &None);
+                    let _ = Dt::from_str_parse(input, &ParseCfg::DEFAULT);
                 }
             }
             let elapsed = start.elapsed();

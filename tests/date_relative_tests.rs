@@ -13,10 +13,10 @@ mod tests {
         // Reference time: Tuesday 16 June 2026, 12:00 UTC
         let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
 
-        let en_cfg = Some(ParseCfg {
+        let en_cfg = ParseCfg {
             ref_time: Some(ref_time),
             ..Default::default()
-        });
+        };
 
         let phrases = [
             (

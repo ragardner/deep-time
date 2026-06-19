@@ -2,7 +2,7 @@
 
 #[cfg(feature = "jiff-tz")]
 mod tests {
-    use deep_time::{Dt, Scale};
+    use deep_time::{Dt, ParseCfg, Scale};
     use jiff::{Timestamp, Zoned, civil::DateTime};
 
     #[test]
@@ -475,7 +475,7 @@ mod tests {
             // ─── deep_time ─────────────────────────────────────────────────────────────
             let our_input = format!("{} {}", civil_str, offset_str);
 
-            let our_dt: Dt = Dt::from_str_parse(&our_input, &None)
+            let our_dt: Dt = Dt::from_str_parse(&our_input, &ParseCfg::DEFAULT)
                 .unwrap_or_else(|e| panic!("deep_time failed on '{}': {}", our_input, e));
 
             let our_rfc = our_dt.to_str_rfc3339();

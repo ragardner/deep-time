@@ -11,7 +11,7 @@ mod tests {
         let expected_snapped = "2023-03-12 03:00:00 America/New_York";
 
         // Parse the non-existent local time (should succeed via lenient gap handling)
-        let our_dt: Dt = Dt::from_str_parse(our_input, &None)
+        let our_dt: Dt = Dt::from_str_parse(our_input, &ParseCfg::DEFAULT)
             .expect("parse should succeed (lenient gap handling)");
 
         // Verify internal representation (the snapped UTC instant)
@@ -34,8 +34,8 @@ mod tests {
         );
 
         // Bonus: verify the round-trip is stable (parse → format → parse → format)
-        let our_dt2: Dt =
-            Dt::from_str_parse(&output, &None).expect("second parse should also succeed");
+        let our_dt2: Dt = Dt::from_str_parse(&output, &ParseCfg::DEFAULT)
+            .expect("second parse should also succeed");
         let output2 = our_dt2
             .to_str_in_tz(fmt, "America/New_York", Lang::En)
             .expect("second format should succeed");
@@ -64,7 +64,9 @@ mod tests {
     }
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
-        let dt = Dt::from_str_parse(input.trim(), &opts)
+        let d = ParseCfg::DEFAULT;
+        let o = opts.as_ref().unwrap_or(&d);
+        let dt = Dt::from_str_parse(input.trim(), o)
             .unwrap_or_else(|e| panic!("Failed to parse '{}': {}", input, e));
         let actual = dt.to_str_rfc3339();
 
@@ -72,14 +74,18 @@ mod tests {
     }
 
     fn assert_millis(input: &str, expected_millis: i128, opts: Option<ParseCfg>) {
-        let millis = Dt::str_to_unix_ms(input, &opts)
+        let d = ParseCfg::DEFAULT;
+        let o = opts.as_ref().unwrap_or(&d);
+        let millis = Dt::str_to_unix_ms(input, o)
             .unwrap_or_else(|| panic!("Failed millis parse: {}", input));
         assert_eq!(millis, expected_millis, "Input: {}", input);
     }
 
     fn assert_fails(input: &str, opts: Option<ParseCfg>) {
+        let d = ParseCfg::DEFAULT;
+        let o = opts.as_ref().unwrap_or(&d);
         assert!(
-            Dt::from_str_parse(input, &opts).is_err(),
+            Dt::from_str_parse(input, o).is_err(),
             "Expected failure: {}",
             input
         );
@@ -384,11 +390,11 @@ mod tests {
                 .target(Scale::UTC)
                 .to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600, Lang::En)
                 .unwrap();
-            let tp2 = Dt::from_str_parse(&xp1, &None).unwrap();
+            let tp2 = Dt::from_str_parse(&xp1, &ParseCfg::DEFAULT).unwrap();
             let xp2 = tp2
                 .to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600, Lang::En)
                 .unwrap();
-            let tp3 = Dt::from_str_parse(&xp2, &None).unwrap();
+            let tp3 = Dt::from_str_parse(&xp2, &ParseCfg::DEFAULT).unwrap();
             assert_eq!(tp, tp3);
         }
     }
@@ -1054,10 +1060,10 @@ mod tests {
     #[test]
     fn relative_duration_parser_comprehensive() {
         let cases = generate_relative_duration_test_cases();
-        let opts = Some(ParseCfg {
+        let opts = ParseCfg {
             ref_time: Some(Dt::from_tai_sec(5_000_000)),
             ..Default::default()
-        });
+        };
 
         for input in cases {
             let result = Dt::from_str_parse(input.trim(), &opts);

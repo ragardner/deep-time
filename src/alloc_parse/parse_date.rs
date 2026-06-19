@@ -1,6 +1,6 @@
 use crate::{
     ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, Lang, Mode, Order, OrderFirst,
-    ParseCfg, STRTIME_SIZE, an_err, classify_date, default_date_parse_options,
+    ParseCfg, STRTIME_SIZE, an_err, classify_date,
     generate_ambiguous_day_first_candidates, generate_ambiguous_month_first_candidates,
     generate_ambiguous_year_first_candidates, generate_unambiguous_candidates,
     is_week_date_missing_weekday, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
@@ -23,7 +23,9 @@ impl Dt {
     ///
     /// - `s`: The string to parse. Must be non-empty and no longer than 255 bytes. Empty strings or overly
     ///   long inputs return an error.
-    /// - `opts`: Optional [`ParseCfg`]. Pass `None` to use the defaults.
+    /// - `opts`: The [`ParseCfg`] to use. Pass `&ParseCfg::DEFAULT` (or `&ParseCfg::default()`)
+    ///   to use the standard smart defaults. You can create a `ParseCfg` once and pass `&cfg`
+    ///   on every call for consistent behavior and to avoid repeated construction.
     ///
     /// ## Configuration Options
     ///
@@ -104,25 +106,25 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, ParseCfg, Order, Mode, Lang, Scale};
+    /// use deep_time::{Dt, ParseCfg, Order, Mode, Scale};
     ///
     /// // Default smart parsing
-    /// let dt = Dt::from_str_parse("2024-03-15 14:30:00", &None).unwrap();
+    /// let dt = Dt::from_str_parse("2024-03-15 14:30:00", &ParseCfg::DEFAULT).unwrap();
     ///
-    /// // German named date
+    /// // German named date (requires the `de` feature)
+    /// # #[cfg(feature = "de")]
+    /// # {
+    /// # use deep_time::Lang;
     /// let cfg = ParseCfg { lang: Lang::De, ..Default::default() };
-    /// let dt = Dt::from_str_parse("15. März 2024 um 14:30", &Some(cfg)).unwrap();
-    ///
-    /// // Force month-first
-    /// let cfg = ParseCfg { order: Order::Month, ..Default::default() };
-    /// let dt = Dt::from_str_parse("03/15/2024", &Some(cfg)).unwrap();
+    /// let dt = Dt::from_str_parse("15. März 2024 um 14:30", &cfg).unwrap();
+    /// # }
     ///
     /// // Pure numeric compact form
-    /// let dt = Dt::from_str_parse("20240315", &None).unwrap(); // March 15, 2024
+    /// let dt = Dt::from_str_parse("20240315", &ParseCfg::DEFAULT).unwrap(); // March 15, 2024
     ///
     /// // Unix timestamp (milliseconds)
     /// let cfg = ParseCfg { mode: Mode::UnixTimestamp, ..Default::default() };
-    /// let dt = Dt::from_str_parse("1735689600123", &Some(cfg)).unwrap();
+    /// let dt = Dt::from_str_parse("1735689600123", &cfg).unwrap();
     ///
     /// // Explicit formats only (no fallback)
     /// let cfg = ParseCfg {
@@ -130,17 +132,15 @@ impl Dt {
     ///     mode: Mode::Explicit,
     ///     ..Default::default()
     /// };
-    /// let dt = Dt::from_str_parse("15/03/2024", &Some(cfg)).unwrap();
+    /// let dt = Dt::from_str_parse("15/03/2024", &cfg).unwrap();
     ///
-    /// // Relative dates
-    /// let dt = Dt::from_str_parse("2 days from now", &None).unwrap();
-    ///
+    /// // Relative dates — build config once, borrow repeatedly
     /// let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
-    /// let en_cfg = Some(ParseCfg {
+    /// let cfg = ParseCfg {
     ///     ref_time: Some(ref_time),
     ///     ..Default::default()
-    /// });
-    /// let dt = Dt::from_str_parse("next Monday at 14:00", &en_cfg).unwrap();
+    /// };
+    /// let dt = Dt::from_str_parse("next Monday at 14:00", &cfg).unwrap();
     ///
     /// assert_eq!(dt, Dt::from_ymd(2026, 6, 22, Scale::UTC, 14, 0, 0, 0));
     /// ```
@@ -181,10 +181,7 @@ impl Dt {
     /// - [`Lang`]
     /// - [`Dt`]
     /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
-    pub fn from_str_parse(s: &str, opts: &Option<ParseCfg>) -> Result<Dt, DtErr> {
-        let opts: &ParseCfg = opts
-            .as_ref()
-            .unwrap_or_else(|| default_date_parse_options());
+    pub fn from_str_parse(s: &str, opts: &ParseCfg) -> Result<Dt, DtErr> {
 
         if s.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
@@ -398,7 +395,7 @@ impl Dt {
     /// Returns `Some(attos)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
     #[inline]
-    pub fn str_to_attos(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+    pub fn str_to_attos(s: &str, opts: &ParseCfg) -> Option<i128> {
         Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_attos())
     }
 
@@ -409,7 +406,7 @@ impl Dt {
     /// Returns `Some(millis)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
     #[inline]
-    pub fn str_to_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+    pub fn str_to_ms(s: &str, opts: &ParseCfg) -> Option<i128> {
         Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_ms())
     }
 
@@ -420,7 +417,7 @@ impl Dt {
     /// Returns `Some(nanos)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
     #[inline]
-    pub fn str_to_ns(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+    pub fn str_to_ns(s: &str, opts: &ParseCfg) -> Option<i128> {
         Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_ns())
     }
 
@@ -430,7 +427,7 @@ impl Dt {
     /// Returns `Some(millis)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
     #[inline]
-    pub fn str_to_unix_ms(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+    pub fn str_to_unix_ms(s: &str, opts: &ParseCfg) -> Option<i128> {
         Dt::from_str_parse(s, opts)
             .ok()
             .map(|tp| tp.to_scale_and_diff(Dt::UNIX_EPOCH, false).to_ms())
@@ -442,7 +439,7 @@ impl Dt {
     /// Returns `Some(nanos)` on success (negative for pre-2000 dates) or `None`
     /// on any parse error.
     #[inline]
-    pub fn str_to_unix_ns(s: &str, opts: &Option<ParseCfg>) -> Option<i128> {
+    pub fn str_to_unix_ns(s: &str, opts: &ParseCfg) -> Option<i128> {
         Dt::from_str_parse(s, opts)
             .ok()
             .map(|tp| tp.to_scale_and_diff(Dt::UNIX_EPOCH, false).to_ns())

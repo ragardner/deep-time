@@ -44,20 +44,24 @@ fn main() -> Result<(), DtErr> {
     // ============================================
 
     // Smart auto-parsing (multi-language + timezone)
-    let dt = Dt::from_str_parse("15 mars 2024 à 14:30 [Europe/Paris]", &None)?;
+    let cfg = ParseCfg {
+        lang: Lang::De,
+        ..Default::default()
+    };
+    let dt = Dt::from_str_parse("15 mars 2024 à 14:30 [Europe/Paris]", &cfg)?;
     let s = dt.to_str_rfc9557("Europe/Paris")?;
     assert_eq!("2024-03-15T14:30:00+01:00[Europe/Paris]", s);
 
     // or with .parse
-    let dt: Dt = "1 jan 2000 07:00 [America/New_York] TAI".parse()?; // noon utc
-    assert_eq!(Dt::ZERO, dt); // library zero
+    let dt: Dt = "1 jan 2000 07:00 [America/New_York] TAI".parse()?; // noon
+    assert_eq!(Dt::ZERO, dt);
 
     // Relative dates are also supported
     let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
-    let en_cfg = Some(ParseCfg {
+    let en_cfg = ParseCfg {
         ref_time: Some(ref_time),
         ..Default::default()
-    });
+    };
 
     let dt = Dt::from_str_parse("2 days from now at 9am", &en_cfg).unwrap();
     assert_eq!(dt, Dt::from_ymd(2026, 6, 18, Scale::UTC, 9, 0, 0, 0));
@@ -67,7 +71,7 @@ fn main() -> Result<(), DtErr> {
 
     // Relative dates use Dt::now if the `std` feature is enabled and no
     // ref_time is provided in the ParseCfg
-    let _ = Dt::from_str_parse("next Monday at 14:00", &None).unwrap();
+    let _ = Dt::from_str_parse("next Monday at 14:00", &ParseCfg::DEFAULT).unwrap();
 
     // Fast ISO parsing with time scale and no alloc output
     let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;

@@ -5,12 +5,15 @@ use crate::{
 use core::str::FromStr;
 
 #[cfg(feature = "parse")]
+use crate::ParseCfg;
+
+#[cfg(feature = "parse")]
 impl FromStr for Dt {
     type Err = DtErr;
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, DtErr> {
-        Dt::from_str_parse(s, &None)
+        Dt::from_str_parse(s, &ParseCfg::DEFAULT)
     }
 }
 
@@ -63,7 +66,7 @@ impl Dt {
     pub fn parse(s: &str) -> Result<Self, DtErr> {
         #[cfg(feature = "parse")]
         {
-            Self::from_str_parse(s, &None)
+            Self::from_str_parse(s, &ParseCfg::DEFAULT)
         }
         #[cfg(not(feature = "parse"))]
         {
