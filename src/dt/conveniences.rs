@@ -170,7 +170,8 @@ impl Dt {
     /// - The [`Dt`] first converts itself and the epoch to the time scale of its
     ///   `target` field before doing a raw difference with the epoch.
     /// - **You may need to change the [`Dt`]'s `target` field** before calling the function
-    ///   if you need the timestamp to be on a particular time scale, e.g. `UTC`.
+    ///   if you need the timestamp to be on a particular time scale, e.g.
+    ///   `.target(Scale::GPS)`.
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
     ///   if it's not then the output will be incorrect.
     ///
