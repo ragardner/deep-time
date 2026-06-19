@@ -6,9 +6,14 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        // let x: Dt = "2025:01:10T00:00:00".parse().unwrap();
-        // let x: Dt = "2025:01:10:00:00:00".parse().unwrap();
-        // let x: Dt = "2025 01 10:00:00:00".parse().unwrap();
-        // let x: Dt = "2025 01:10:00:00:00".parse().unwrap();
+        // let x = Dt::from_ymd(2020, 1, 1, Scale::TT, 0, 0, 0, 0);
+        // let g = x.target(Scale::GPS).to_gps();
+
+        // eprintln!("{}", g);
+
+        // let y = x.to_ymd();
+        // let z = y.to_dt();
+
+        // eprintln!("{}, {}", x, z);
     }
 }

@@ -78,7 +78,7 @@ impl Dt {
     ///
     /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
     pub const fn to_ymd(&self) -> YmdHms {
-        let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, true);
+        let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, false);
 
         let unix_sec = from_unix_epoch.to_sec64();
         let frac = from_unix_epoch.to_sec_ufrac();
