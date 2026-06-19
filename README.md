@@ -48,9 +48,9 @@ fn main() -> Result<(), DtErr> {
         lang: Lang::Fr,
         ..Default::default()
     };
-    let dt = Dt::from_str_parse("15 mars 2024 à 14:30 [Europe/Paris]", &cfg)?;
+    let dt = Dt::from_str_parse("15 août 2024 à 14:30 [Europe/Paris]", &cfg)?;
     let s = dt.to_str_rfc9557("Europe/Paris")?;
-    assert_eq!("2024-03-15T14:30:00+01:00[Europe/Paris]", s);
+    assert_eq!("2024-08-15T14:30:00+02:00[Europe/Paris]", s);
 
     // or with .parse
     let dt: Dt = "1 jan 2000 07:00 [America/New_York] TAI".parse()?; // noon
