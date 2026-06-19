@@ -77,6 +77,15 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
+    ///
+    /// ## Implementation
+    ///
+    /// `convert_epoch` is `false`. If we converted the epoch too, the difference would cancel
+    /// out — we would not find the same instant on a different scale.
+    ///
+    /// [`Dt::to_gps`](../struct.Dt.html#method.to_gps) etc. do the opposite: if we did not convert
+    /// the epoch there, we would not get seconds since the GPS epoch; we would get seconds since
+    /// something else.
     pub const fn to_ymd(&self) -> YmdHms {
         let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, false);
 
@@ -241,6 +250,11 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
+    ///
+    /// ## Implementation
+    ///
+    /// Same as [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) — `convert_epoch` is `false`. See
+    /// that function's Implementation section.
     pub const fn from_ymd(
         yr: i64,
         mo: u8,

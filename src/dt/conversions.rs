@@ -13,8 +13,9 @@ impl Dt {
     ///
     /// ## Arguments
     ///
-    /// - `epoch` — The reference epoch (e.g. [`Dt::UNIX_EPOCH`]) from which the
-    ///   difference is calculated.
+    /// - `epoch` — The reference epoch (e.g.
+    ///   [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH))
+    ///   from which the difference is calculated.
     /// - `convert_epoch` — Whether to also convert the provided `epoch` to this
     ///   [`Dt`]'s `target` time scale.
     ///

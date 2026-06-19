@@ -3,12 +3,16 @@ use crate::{
 };
 
 impl Dt {
-    /// Returns this [`Dt`] but as a unix timestamp since the UNIX epoch (1970-01-01 00:00:00).
+    /// Returns this [`Dt`] but as time since the
+    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) on its
+    /// `target` time scale.
     ///
-    /// ## Notes:
+    /// ## Important:
     ///
-    /// - The [`Dt`] first converts itself and the unix epoch to the time scale of its
+    /// - The [`Dt`] first converts itself and the epoch to the time scale of its
     ///   `target` field before doing a raw difference with the epoch.
+    /// - **You may need to change the [`Dt`]'s `target` field** before calling the function
+    ///   if you need the timestamp to be on a particular time scale, e.g. `UTC`.
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
     ///   if it's not then the output will be incorrect.
     ///
@@ -17,6 +21,10 @@ impl Dt {
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
+    /// // because from_ymd() with Scale::UTC sets the returned
+    /// // Dt's target field to Scale::UTC, we do not need to use
+    /// // .target() prior to calling to_unix() in order to get
+    /// // a utc unix timestamp
     /// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
     /// let unix = dt.to_unix();
     ///
@@ -44,6 +52,10 @@ impl Dt {
     /// assert_eq!(ymd.sec(), 0);
     /// assert_eq!(ymd.attos(), 0);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// -
     #[inline(always)]
     pub const fn to_unix(&self) -> Dt {
         self.to_scale_and_diff(Self::UNIX_EPOCH, true)
@@ -71,12 +83,16 @@ impl Dt {
         Self::from_diff_and_scale(unix, Dt::UNIX_EPOCH, true)
     }
 
-    /// Returns this [`Dt`] but as an ntp timestamp since the epoch 1900-01-01 00:00:00 UTC.
+    /// Returns this [`Dt`] but as time since the
+    /// [`Dt::NTP_EPOCH`](../struct.Dt.html#associatedconstant.NTP_EPOCH) on its
+    /// `target` time scale.
     ///
-    /// ## Notes:
+    /// ## Important:
     ///
-    /// - The [`Dt`] first converts itself and the ntp epoch to the time scale of its
+    /// - The [`Dt`] first converts itself and the epoch to the time scale of its
     ///   `target` field before doing a raw difference with the epoch.
+    /// - **You may need to change the [`Dt`]'s `target` field** before calling the function
+    ///   if you need the timestamp to be on a particular time scale, e.g. `UTC`.
     /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
     ///   if it's not then the output will be incorrect.
     ///
@@ -112,6 +128,10 @@ impl Dt {
     /// assert_eq!(ymd.sec(), 0);
     /// assert_eq!(ymd.attos(), 0);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// -
     #[inline(always)]
     pub const fn to_ntp(&self) -> Dt {
         self.to_scale_and_diff(Self::NTP_EPOCH, true)
@@ -183,15 +203,39 @@ impl Dt {
         Self::from_gps(Dt::new(total_attos, tow.scale, tow.target))
     }
 
-    /// Returns the elapsed time since the GPS epoch as a [`Dt`] on the GPS scale.
+    /// Returns this [`Dt`] but as time since the
+    /// [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) on its
+    /// `target` time scale.
     ///
-    /// The GPS epoch is [`Dt::GPS_EPOCH`].
+    /// ## Important:
+    ///
+    /// - The [`Dt`] first converts itself and the epoch to the time scale of its
+    ///   `target` field before doing a raw difference with the epoch.
+    /// - **You may need to change the [`Dt`]'s `target` field** before calling the function
+    ///   if you need the timestamp to be on a particular time scale, e.g. `UTC`.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
+    ///   if it's not then the output will be incorrect.
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_gps`](../struct.Dt.html#method.from_gps)
+    /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
+    /// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
+    ///
+    /// ## Implementation
+    ///
+    /// `convert_epoch` is `true`. If we did not convert the epoch, we would not get seconds
+    /// since the GPS epoch; we would get seconds since something else.
+    ///
+    /// [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd) / [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
+    /// do the opposite: if they converted the epoch too, the difference would cancel out. See
+    /// [`to_ymd`](../struct.Dt.html#method.to_ymd).
     #[inline(always)]
     pub const fn to_gps(&self) -> Dt {
         self.to_scale_and_diff(Self::GPS_EPOCH, true)
     }
 
-    /// Inverse of [`Self::to_gps`].
+    /// Inverse of [`Dt::to_gps`](../struct.Dt.html#method.to_gps).
     #[inline(always)]
     pub const fn from_gps(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
@@ -208,13 +252,18 @@ impl Dt {
         (secs / SEC_PER_DAYI64 as i128) as u8
     }
 
-    /// Returns the elapsed time since the Chandra X-ray Center (CXC) epoch
-    /// as a [`Dt`] on the **TT** scale.
+    /// Returns this [`Dt`] but as time since the
+    /// [`Dt::CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH) on its
+    /// `target` time scale.
     ///
-    /// The CXC epoch is [`Dt::CXC_EPOCH`] = 1998-01-01 00:00:00 TT
-    /// (standard reference epoch for Chandra MET — Mission Elapsed Time).
+    /// ## Important:
     ///
-    /// This is the inverse of [`Self::from_cxcsec`].
+    /// - The [`Dt`] first converts itself and the epoch to the time scale of its
+    ///   `target` field before doing a raw difference with the epoch.
+    /// - **You may need to change the [`Dt`]'s `target` field** before calling the function
+    ///   if you need the timestamp to be on a particular time scale, e.g. `UTC`.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
+    ///   if it's not then the output will be incorrect.
     ///
     /// ## Examples
     ///
@@ -234,7 +283,7 @@ impl Dt {
         self.to_scale_and_diff(Self::CXC_EPOCH, true)
     }
 
-    /// Inverse of [`Self::to_cxcsec`].
+    /// Inverse of [`Dt::to_cxcsec`](../struct.Dt.html#method.to_cxcsec).
     #[inline(always)]
     pub const fn from_cxcsec(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::CXC_EPOCH, true)
@@ -250,11 +299,17 @@ impl Dt {
     /// in this object's current `target` scale.
     ///
     /// The GALEX epoch is [`Self::GPS_EPOCH`] (same epoch used by GPS time).
+    ///
     /// This method can match Astropy’s `Time.galexsec` format. To match
     /// Astropy output, set `.target(Scale::UTC)` (or the appropriate scale)
     /// before calling.
     ///
-    /// This is the inverse of [`Self::from_galexsec`].
+    /// ## Important:
+    ///
+    /// - The [`Dt`] first converts itself and the [`Dt::GPS_EPOCH`] to the time
+    ///   scale of its `target` field before doing a raw difference with the epoch.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon
+    ///   epoch, if it's not then the output will be incorrect.
     ///
     /// ## Examples
     ///
@@ -268,18 +323,23 @@ impl Dt {
     ///
     /// assert_eq!(galexsec, 1261871963.0);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_galexsec`](../struct.Dt.html#method.from_galexsec)
     #[inline(always)]
     pub const fn to_galexsec(&self) -> Dt {
         self.to_scale_and_diff(Self::GPS_EPOCH, true)
     }
 
-    /// Inverse of [`Self::to_galexsec`].
+    /// Inverse of [`Dt::to_galexsec`](../struct.Dt.html#method.to_galexsec).
     #[inline(always)]
     pub const fn from_galexsec(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
     }
 
-    /// Floating-point counterpart of [`Self::from_galexsec`].
+    /// Floating-point counterpart of
+    /// [`Dt::from_galexsec`](../struct.Dt.html#method.from_galexsec).
     #[inline(always)]
     pub const fn from_galexsec_f(elapsed_sec: Real) -> Dt {
         Self::from_galexsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))

@@ -286,7 +286,7 @@ impl Default for Dt {
 impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let total = self.to_attos();
-        let precision = f.precision().unwrap_or(9).min(18);
+        let precision = f.precision().unwrap_or(18).min(18);
 
         let is_negative = total < 0;
         let abs_attos = if is_negative {
@@ -305,16 +305,34 @@ impl fmt::Display for Dt {
         let whole_seconds = abs_attos / attos_per_sec;
         let fractional_attos = abs_attos % attos_per_sec;
 
-        // Integer seconds
         write!(f, "{}", whole_seconds)?;
 
-        // Fractional part (only when requested *and* non-zero after truncation)
         if precision > 0 && fractional_attos > 0 {
             let scale = 10u128.pow(18 - precision as u32);
             let frac_value = fractional_attos / scale;
 
             if frac_value > 0 {
-                write!(f, ".{:0>width$}", frac_value, width = precision)?;
+                f.write_str(".")?;
+
+                let mut digits = [0u8; 18];
+                let mut n = frac_value;
+
+                for i in (0..precision).rev() {
+                    digits[i] = (n % 10) as u8;
+                    n /= 10;
+                }
+
+                // Find rightmost non-zero digit
+                let mut last = 0;
+                for i in 0..precision {
+                    if digits[i] != 0 {
+                        last = i;
+                    }
+                }
+
+                for i in 0..=last {
+                    write!(f, "{}", digits[i])?;
+                }
             }
         }
 
