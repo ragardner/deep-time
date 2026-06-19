@@ -115,7 +115,8 @@ impl Dt {
     /// Creates a [`Dt`] from a floating-point number of seconds without performing
     /// any time scale conversions.
     ///
-    /// This is an easy way to create a duration.
+    /// This is an easy way to create a duration or a seconds count that doesn't
+    /// include any time scale conversions, just holds the seconds count as is.
     #[inline(always)]
     pub const fn span_f(sec_f: Real) -> Dt {
         Self::from_sec_f_on(sec_f, Scale::TAI)

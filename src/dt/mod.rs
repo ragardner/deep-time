@@ -271,8 +271,12 @@ impl Dt {
         Dt::new(self.attos, self.scale, t)
     }
 
+    /// Returns a new [`Dt`] with the `scale` field sr to the given
+    /// `s` arg.
+    ///
+    /// **Does NOT perform any time scale conversions**.
     #[inline(always)]
-    pub(crate) const fn with(&self, s: Scale) -> Dt {
+    pub const fn with(&self, s: Scale) -> Dt {
         Dt::new(self.attos, s, self.target)
     }
 }

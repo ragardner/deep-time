@@ -70,23 +70,74 @@ impl Dt {
         self.to_scale_and_diff(Self::UNIX_EPOCH, true)
     }
 
-    /// Creates a TAI [`Dt`] from a unix (1970 epoch) timestamp.
+    /// Creates a **TAI** [`Dt`] from a [`Dt`] that is attoseconds since
+    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH).
+    ///
+    /// This is the inverse of [`Dt::to_unix`](../struct.Dt.html#method.to_unix).
+    ///
+    /// ## Important:
+    ///
+    /// - `unix` must be a [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) — typically the
+    ///   return value of [`Dt::to_unix`](../struct.Dt.html#method.to_unix).
+    ///   The input's `scale` field says which time scale that count is on — if it
+    ///   is `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
+    ///   included).
+    /// - [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) is converted
+    ///   to that same scale before the sum.
+    ///
+    /// ## Returns
+    ///
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `attos` is no longer a count since
+    /// [`UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) — it is attoseconds since
+    /// the library epoch (2000-01-01 noon TAI). Its `target` field is taken from `unix`.
     ///
     /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let dt = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
-    ///
-    /// let unix = dt.to_unix().to_sec();
-    ///
-    /// assert_eq!(unix, 0);
-    ///
-    /// let roundtrip = Dt::from_unix(Dt::from_tai_sec(unix));
+    /// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+    /// let unix = dt.to_unix();
+    /// let roundtrip = Dt::from_unix(unix);
     ///
     /// assert_eq!(roundtrip, dt);
     /// ```
+    ///
+    /// ### From an external POSIX unix seconds count
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // 2012-08-08 15:30:00 → 1344439800.000000 s
+    /// let unix = 1344439800_i128;
+    ///
+    /// // use TAI to avoid time scale conversions on the
+    /// // seconds count
+    /// let unix_dt = Dt::from_sec(unix, Scale::TAI);
+    ///
+    /// // changing the target isn't really necessary but will help
+    /// // with round tripping of values and any further conversions
+    /// // if you want the future conversions output to be on the
+    /// // UTC time scale
+    /// let unix_dt = unix_dt.with(Scale::UTC).target(Scale::UTC);
+    ///
+    /// let dt = Dt::from_unix(unix_dt);
+    ///
+    /// let ymd = dt.to_ymd();
+    ///
+    /// assert_eq!(ymd.yr(), 2012);
+    /// assert_eq!(ymd.mo(), 8);
+    /// assert_eq!(ymd.day(), 8);
+    /// assert_eq!(ymd.hr(), 15);
+    /// assert_eq!(ymd.min(), 30);
+    /// assert_eq!(ymd.sec(), 0);
+    /// assert_eq!(ymd.attos(), 0);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
     #[inline(always)]
     pub const fn from_unix(unix: Dt) -> Dt {
         Self::from_diff_and_scale(unix, Dt::UNIX_EPOCH, true)
@@ -155,7 +206,43 @@ impl Dt {
         self.to_scale_and_diff(Self::NTP_EPOCH, true)
     }
 
-    /// Creates a TAI [`Dt`] from an ntp (1900 epoch) timestamp.
+    /// Creates a **TAI** [`Dt`] from a [`Dt`] that is attoseconds since
+    /// [`Dt::NTP_EPOCH`](../struct.Dt.html#associatedconstant.NTP_EPOCH).
+    ///
+    /// This is the inverse of [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp).
+    ///
+    /// ## Important:
+    ///
+    /// - `ntp` must be a [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`NTP_EPOCH`](../struct.Dt.html#associatedconstant.NTP_EPOCH) — typically the
+    ///   return value of [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp)
+    ///   The input's `scale` field says which time scale that count is on — if it
+    ///   is `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
+    ///   included).
+    /// - [`Dt::NTP_EPOCH`](../struct.Dt.html#associatedconstant.NTP_EPOCH) is converted
+    ///   to that same scale before the sum.
+    ///
+    /// ## Returns
+    ///
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `attos` is no longer a count since
+    /// [`NTP_EPOCH`](../struct.Dt.html#associatedconstant.NTP_EPOCH) — it is attoseconds since
+    /// the library epoch (2000-01-01 noon TAI). Its `target` field is taken from `ntp`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt = Dt::from_ymd(1985, 7, 1, Scale::TAI, 0, 0, 0, 0);
+    /// let ntp = dt.to_ntp();
+    /// let roundtrip = Dt::from_ntp(ntp);
+    ///
+    /// assert_eq!(roundtrip, dt);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp)
     #[inline(always)]
     pub const fn from_ntp(ntp: Dt) -> Dt {
         Self::from_diff_and_scale(ntp, Self::NTP_EPOCH, true)
@@ -203,7 +290,44 @@ impl Dt {
         self.to_scale_and_diff(Self::GPS_EPOCH, true)
     }
 
-    /// Inverse of [`Dt::to_gps`](../struct.Dt.html#method.to_gps).
+    /// Creates a **TAI** [`Dt`] from a [`Dt`] that is attoseconds since
+    /// [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH).
+    ///
+    /// This is the inverse of [`Dt::to_gps`](../struct.Dt.html#method.to_gps).
+    ///
+    /// ## Important:
+    ///
+    /// - `elapsed` must be a [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) — typically the
+    ///   return value of [`Dt::to_gps`](../struct.Dt.html#method.to_gps)
+    ///   The input's `scale` field says which time scale that count is on — if it
+    ///   is `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
+    ///   included).
+    /// - [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) is converted
+    ///   to that same scale before the sum.
+    ///
+    /// ## Returns
+    ///
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `attos` is no longer a count since
+    /// [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) — it is attoseconds since
+    /// the library epoch (2000-01-01 noon TAI). Its `target` field is taken from `elapsed`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+    /// let gps = x.target(Scale::GPS).to_gps();
+    /// let roundtrip = Dt::from_gps(gps);
+    ///
+    /// assert_eq!(roundtrip, x);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_gps`](../struct.Dt.html#method.to_gps)
+    /// - [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow)
     #[inline(always)]
     pub const fn from_gps(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
@@ -381,16 +505,86 @@ impl Dt {
         self.to_scale_and_diff(Self::CXC_EPOCH, true)
     }
 
-    /// Inverse of [`Dt::to_cxcsec`](../struct.Dt.html#method.to_cxcsec).
+    /// Creates a **TAI** [`Dt`] from a [`Dt`] that is attoseconds since
+    /// [`Dt::CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH).
+    ///
+    /// This is the inverse of [`Dt::to_cxcsec`](../struct.Dt.html#method.to_cxcsec).
+    ///
+    /// ## Important:
+    ///
+    /// - `elapsed` must be a [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH) — typically the
+    ///   return value of [`Dt::to_cxcsec`](../struct.Dt.html#method.to_cxcsec)
+    ///   The input's `scale` field says which time scale that count is on — if it
+    ///   is `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
+    ///   included).
+    /// - [`Dt::CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH) is converted
+    ///   to that same scale before the sum.
+    ///
+    /// ## Returns
+    ///
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `attos` is no longer a count since
+    /// [`CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH) — it is attoseconds since
+    /// the library epoch (2000-01-01 noon TAI). Its `target` field is taken from `elapsed`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
+    /// let cxc = x.target(Scale::TT).to_cxcsec();
+    /// let roundtrip = Dt::from_cxcsec(cxc);
+    ///
+    /// assert_eq!(roundtrip, x);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_cxcsec`](../struct.Dt.html#method.to_cxcsec)
+    /// - [`Dt::from_cxcsec_f`](../struct.Dt.html#method.from_cxcsec_f)
     #[inline(always)]
     pub const fn from_cxcsec(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::CXC_EPOCH, true)
     }
 
-    /// Floating-point counterpart of [`Self::from_cxcsec`].
+    /// Convenience wrapper around [`Self::from_cxcsec`] for a bare floating-point
+    /// second count.
+    ///
+    /// Wraps `elapsed_sec` in a [`Dt`] via [`Dt::sec_f_to_total_attos`] and
+    /// [`Dt::new`], then passes it to [`Self::from_cxcsec`]. Unlike [`Dt::from_sec_f`],
+    /// this does not convert the count to TAI up front — [`Self::from_cxcsec`] performs
+    /// that conversion once, from `on`.
+    ///
+    /// ## Parameters
+    ///
+    /// - `elapsed_sec` — seconds elapsed since
+    ///   [`CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH).
+    /// - `on` — which [`Scale`] the count is measured in (for example `Scale::TT` or
+    ///   `Scale::UTC`). This becomes the wrapped [`Dt`]'s `scale`; [`Self::from_cxcsec`]
+    ///   then uses it when turning the elapsed count into an absolute TAI instant
+    ///   (including leap-second handling where applicable). Same role as the `scale`
+    ///   field on the [`Dt`] you would hand to [`Self::from_cxcsec`] directly.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
+    /// let cxc = x.target(Scale::TT).to_cxcsec().to_sec_f();
+    /// let roundtrip = Dt::from_cxcsec_f(cxc, Scale::TT);
+    ///
+    /// assert_eq!(roundtrip.to_cxcsec().to_sec_f(), cxc);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_cxcsec`](../struct.Dt.html#method.from_cxcsec)
+    /// - [`Dt::to_cxcsec`](../struct.Dt.html#method.to_cxcsec)
     #[inline(always)]
-    pub const fn from_cxcsec_f(elapsed_sec: Real) -> Dt {
-        Self::from_cxcsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))
+    pub const fn from_cxcsec_f(elapsed_sec: Real, on: Scale) -> Dt {
+        Self::from_cxcsec(Dt::new(Dt::sec_f_to_total_attos(elapsed_sec), on, on))
     }
 
     /// Returns the elapsed time since the GALEX epoch as a [`Dt`] expressed
@@ -439,17 +633,87 @@ impl Dt {
         self.to_scale_and_diff(Self::GPS_EPOCH, true)
     }
 
-    /// Inverse of [`Dt::to_galexsec`](../struct.Dt.html#method.to_galexsec).
+    /// Creates a **TAI** [`Dt`] from a [`Dt`] that is attoseconds since
+    /// [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH).
+    ///
+    /// This is the inverse of [`Dt::to_galexsec`](../struct.Dt.html#method.to_galexsec).
+    /// GALEX seconds use the same epoch as GPS time.
+    ///
+    /// ## Important:
+    ///
+    /// - `elapsed` must be a [`Dt`] whose `attos` is how many attoseconds have elapsed since
+    ///   [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) — typically the
+    ///   return value of [`Dt::to_galexsec`](../struct.Dt.html#method.to_galexsec)
+    ///   The input's `scale` field says which time scale that count is on — if it
+    ///   is `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
+    ///   included).
+    /// - [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) is converted
+    ///   to that same scale before the sum.
+    ///
+    /// ## Returns
+    ///
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `attos` is no longer a count since
+    /// [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) — it is attoseconds since
+    /// the library epoch (2000-01-01 noon TAI). Its `target` field is taken from `elapsed`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
+    /// let galex = x.target(Scale::UTC).to_galexsec();
+    /// let roundtrip = Dt::from_galexsec(galex);
+    ///
+    /// assert_eq!(roundtrip, x);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_galexsec`](../struct.Dt.html#method.to_galexsec)
+    /// - [`Dt::from_galexsec_f`](../struct.Dt.html#method.from_galexsec_f)
     #[inline(always)]
     pub const fn from_galexsec(elapsed: Dt) -> Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
     }
 
-    /// Floating-point counterpart of
-    /// [`Dt::from_galexsec`](../struct.Dt.html#method.from_galexsec).
+    /// Convenience wrapper around [`Self::from_galexsec`] for a bare floating-point
+    /// second count.
+    ///
+    /// Wraps `elapsed_sec` in a [`Dt`] via [`Dt::sec_f_to_total_attos`] and
+    /// [`Dt::new`], then passes it to [`Self::from_galexsec`]. Unlike [`Dt::from_sec_f`],
+    /// this does not convert the count to TAI up front — [`Self::from_galexsec`] performs
+    /// that conversion once, from `on`.
+    ///
+    /// ## Parameters
+    ///
+    /// - `elapsed_sec` — seconds elapsed since
+    ///   [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH).
+    /// - `on` — which [`Scale`] the count is measured in (for example `Scale::UTC` or
+    ///   `Scale::TT`). This becomes the wrapped [`Dt`]'s `scale`; [`Self::from_galexsec`]
+    ///   then uses it when turning the elapsed count into an absolute TAI instant
+    ///   (including leap-second handling where applicable). Same role as the `scale`
+    ///   field on the [`Dt`] you would hand to [`Self::from_galexsec`] directly.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
+    /// let galex = x.target(Scale::UTC).to_galexsec().to_sec_f();
+    /// let roundtrip = Dt::from_galexsec_f(galex, Scale::UTC);
+    ///
+    /// assert_eq!(roundtrip, x);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_galexsec`](../struct.Dt.html#method.from_galexsec)
+    /// - [`Dt::to_galexsec`](../struct.Dt.html#method.to_galexsec)
     #[inline(always)]
-    pub const fn from_galexsec_f(elapsed_sec: Real) -> Dt {
-        Self::from_galexsec(Dt::from_sec_f(elapsed_sec, Scale::TAI))
+    pub const fn from_galexsec_f(elapsed_sec: Real, on: Scale) -> Dt {
+        Self::from_galexsec(Dt::new(Dt::sec_f_to_total_attos(elapsed_sec), on, on))
     }
 
     /// Returns the **Julian epoch year** (JYEAR) for this instant.
