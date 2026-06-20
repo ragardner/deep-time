@@ -30,7 +30,7 @@ A non-exhaustive list of functionality:
 - [UT1 and EOP](https://docs.rs/deep-time/latest/deep_time/eop/index.html)
 - [Light-time (Shapiro delay, etc.)](https://docs.rs/deep-time/latest/deep_time/struct.Observer.html)
 - [Proper time along trajectories](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.proper_time_from_states)
-- Relativity: [Drift](https://docs.rs/deep-time/latest/deep_time/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/latest/deep_time/struct.Spacetime.html), [Position](https://docs.rs/deep-time/latest/deep_time/struct.Position.html), and [Velocity](https://docs.rs/deep-time/latest/deep_time/struct.Velocity.html)
+- Relativity: [Drift](https://docs.rs/deep-time/latest/deep_time/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/latest/deep_time/struct.Spacetime.html), [Position](https://docs.rs/deep-time/latest/deep_time/struct.Position.html), and [Velocity](https://docs.rs/deep-time/latest/deep_time/struct.Velocity.html) — see [docs/relativity.md](docs/relativity.md) for the underlying model.
 - CCSDS [CUC](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cuc), [CDS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cds), and [CCS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_ccs)
 
 ### Examples

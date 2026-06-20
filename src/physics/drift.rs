@@ -2,6 +2,9 @@
 //!
 //! Used to model the accumulated difference between Proper time (τ)
 //! and a coordinate time such as TT (or any other `Scale`).
+//!
+//! The underlying physical model (master Lagrangian, regimes, relationship to GR)
+//! is documented in `docs/relativity.md`.
 
 use crate::{
     ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Position, Real, Scale, Velocity, sqrt,
