@@ -10,28 +10,28 @@ A fully featured and high performance **Rust date and time library** with attose
 
 A non-exhaustive list of functionality:
 
-- Auto-parsers for [datetimes](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats, relative dates and multiple languages, requires the `parse` feature
-- No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_ymd).
+- Auto-parsers for [datetimes](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats, relative dates and multiple languages, requires the `parse` feature
+- No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd).
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
-- Fast [ISO](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str_iso) parser
-- [Time scales](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/enum.Scale.html) e.g. UTC with full leap second support, including historical, TT, TAI, TDB, LTC, GPS, etc.
-- [Strptime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.from_str)
-- [Strftime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
-- First class [timezone](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature.
-- To and from all kinds of inputs and outputs, functions mostly prefixed with `to` and `from`, available on the library's types, see the main time types functions: [Dt](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html). Including [JD](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_jd_f), [MJD](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_mjd_f), [Unix](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_unix), [NTP](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ntp), etc.
-- [Calendar aware](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.add_days) and, with the `jiff-tz` feature, [timezone aware](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.add_days_tz) math
-- To and from [jiff](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), and [hifitime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_hifitime_epoch) types
-- No-alloc [error type](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.AnErr.html) with rich tracing
-- No-alloc [string return type](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.LiteStr.html)
-- Const fn [libm math](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/math/index.html) functions
+- Fast [ISO](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_iso) parser
+- [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with full leap second support, including historical, TT, TAI, TDB, LTC, GPS, etc.
+- [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str)
+- [Strftime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
+- First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature.
+- To and from all kinds of inputs and outputs, functions mostly prefixed with `to` and `from`, available on the library's types, see the main time types functions: [Dt](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html). Including [JD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jd_f), [MJD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_mjd_f), [Unix](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_unix), [NTP](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ntp), etc.
+- [Calendar aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days) and, with the `jiff-tz` feature, [timezone aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days_tz) math
+- To and from [jiff](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), and [hifitime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_hifitime_epoch) types
+- No-alloc [error type](https://docs.rs/deep-time/latest/deep_time/struct.AnErr.html) with rich tracing
+- No-alloc [string return type](https://docs.rs/deep-time/latest/deep_time/struct.LiteStr.html)
+- Const fn [libm math](https://docs.rs/deep-time/latest/deep_time/math/index.html) functions
 - Safe, saturating arithmetic throughout
-- [Lunar](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/mars/index.html) modules
-- [Sidereal time](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/sidereal/struct.Sidereal.html) with a const fn implementation of ERFA Equation of the Origins / Equinoxes
-- [UT1 and EOP](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/eop/index.html)
-- [Light-time (Shapiro delay, etc.)](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Observer.html)
-- [Proper time along trajectories](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.proper_time_from_states)
-- Relativity: [Drift](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Spacetime.html), [Position](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Position.html), and [Velocity](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Velocity.html)
-- CCSDS [CUC](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_cuc), [CDS](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_cds), and [CCS](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_ccs)
+- [Lunar](https://docs.rs/deep-time/latest/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/latest/deep_time/mars/index.html) modules
+- [Sidereal time](https://docs.rs/deep-time/latest/deep_time/sidereal/struct.Sidereal.html) with a const fn implementation of ERFA Equation of the Origins / Equinoxes
+- [UT1 and EOP](https://docs.rs/deep-time/latest/deep_time/eop/index.html)
+- [Light-time (Shapiro delay, etc.)](https://docs.rs/deep-time/latest/deep_time/struct.Observer.html)
+- [Proper time along trajectories](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.proper_time_from_states)
+- Relativity: [Drift](https://docs.rs/deep-time/latest/deep_time/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/latest/deep_time/struct.Spacetime.html), [Position](https://docs.rs/deep-time/latest/deep_time/struct.Position.html), and [Velocity](https://docs.rs/deep-time/latest/deep_time/struct.Velocity.html)
+- CCSDS [CUC](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cuc), [CDS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cds), and [CCS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_ccs)
 
 ### Examples
 
@@ -167,38 +167,47 @@ fn main() -> Result<(), DtErr> {
 }
 ```
 
+### Documentation
+
+- [Library's main documentation page](https://docs.rs/deep-time/latest)
+
+- [Changelog](https://github.com/ragardner/deep-time/blob/main/CHANGELOG.md)
+
+- [The main time type](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html)
+
+- [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html)
+
 ### Installation
 
-Add this to your `Cargo.toml` in the `dependencies` section:
+- This crate has no default features.
+- Enable `parse` for the auto-parsers and `jiff-tz` for timezone support and DST-aware calendar math.
+
+For example, add this to your `Cargo.toml` in the `dependencies` section:
 
 ```toml
 [dependencies]
 deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
 ```
 
-Important: **This crate has no default features.**
-
-Most users will want to enable at least `parse` (for the auto-parsers) and `jiff-tz` (for timezone support and DST-aware calendar math).
-
 ### Feature Flags
 
 | Feature              | Description                                                                 | Requires     |
 |----------------------|-----------------------------------------------------------------------------|--------------|
-| `parse`              | Enables the powerful multi-language auto-parsers (`from_str_parse`, `from_str_duration`, etc.) | `alloc`     |
+| `parse`              | Enables the auto-parsers (`from_str_parse`, `from_str_duration`, etc.)      | `alloc`      |
 | `jiff-tz`            | Enables timezone-aware calendar math (`add_days_tz`, `add_hr_tz`, etc.) and `to_str_in_tz` | `std`       |
 | `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                  | `std`       |
 | `jiff`               | Enables basic Jiff interop                                                | `alloc`     |
 | `chrono`             | Enables Chrono interop                                                    | `alloc`     |
 | `hifitime`           | Enables Hifitime interop                                                  | —           |
-| `serde`              | Enables `Serialize` / `Deserialize` for `Dt` and other types              | —           |
+| `serde`              | Enables `Serialize` / `Deserialize` for `Dt` and other types              | `alloc`     |
 | `js`                 | WebAssembly support (includes `serde` and JS bindings)                    | `std`       |
 | `tsify`              | TypeScript definitions via `tsify` (for WASM)                             | `js`        |
-| `std`                | Enables `std` functionality (including `Dt::now()`)                       | —           |
+| `std`                | Enables `std` functionality including `Dt::now()` and file handling       | —           |
 | `alloc`              | Enables allocation (required for parsing and some conversions)            | —           |
-| `es` / `de` / `fr`   | Individual language support for parsing and formatting                    | `parse` (for parsing) |
+| `es` / `de` / `fr`   | Language support, parsing different languages requires alloc, formatting does not | —           |
 | `euro`               | Enables all European languages                                            |             |
 | `lang`               | Enables all languages                                                     | `euro`      |
-| `panic-handler`      | Provides a simple `#[panic_handler]` for `no_std` environments            | `no_std`    |
+| `panic-handler`      | Provides an optional simple `#[panic_handler]` for `no_std` environments  | `no_std`    |
 | `wire`               | Enables wire format (serialization) support                               | —           |
 | `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                  | —           |
 | `sidereal`           | Enables sidereal time support                                             | —           |
