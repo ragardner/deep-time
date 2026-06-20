@@ -9,6 +9,7 @@
 This document presents the complete, self-contained physics engine for massive probes (navigation and proper-time clocks) and null-ray signals (light propagation and ranging) in arbitrary spacetime backgrounds. The framework is a minimal classical extension that enforces finite proper time along all massive worldlines while remaining empirically indistinguishable from GR on all observable scales. It recovers standard GR geodesics and clock rates exactly at low curvature and supplies a natural Planck-scale core at would-be classical singularities **directly within the master Lagrangian itself**. No auxiliary regulator function is required.
 
 ### Master Lagrangian
+
 The entire dynamics follows from a single algebraic action principle (einbein eliminated):
 \[
 S = \int L \, dt, \qquad L = -\mu \sqrt{ \frac{ \delta (1 + x) + x (1 - \delta)^2 }{1 + x} },
@@ -26,6 +27,7 @@ K_{\rm eff} \equiv \frac{ \delta (1 + x) + x (1 - \delta)^2 }{1 + x} > 0
 This closed-form rational expression is the exact algebraic substitution of the minimal Padé regulator into the original structure. It is **inherently non-singular**: even if the background curvature \(\mathcal{K} \to \infty\) (i.e., \(x \to \infty\)), \(K_{\rm eff} \to \delta^2 - \delta + 1 \geq 3/4 > 0\). The main Lagrangian equation therefore never predicts a divergence or vanishing proper-time measure.
 
 ### On-Shell Reductions
+
 **Massive timelike sector (\(\mu = 1\))**
 \[
 L\big|_{\rm on-shell} = -\sqrt{K_{\rm eff}}, \qquad \frac{d\tau}{dt} = \sqrt{K_{\rm eff}}.
@@ -43,6 +45,7 @@ In both sectors the variational principle reduces (after affine reparameterizati
 where \(\delta f^\mu\) is the \(\mathcal{O}(\ell_{\rm Pl}^4 \mathcal{K})\) term (negligible in all coded regimes). Because the saturation is already baked into \(K_{\rm eff}\), no separate regulator appears anywhere.
 
 ### Low-Curvature Expansions (for Debugging and Weak-Field Recovery)
+
 When \(x \ll 1\),
 \[
 K_{\rm eff} = \delta + x (1-\delta)^2 + \mathcal{O}(x^2).
@@ -63,9 +66,11 @@ K_{\rm eff} \to \delta^2 - \delta + 1, \qquad \frac{d\tau}{dt} \to \sqrt{\delta^
 Proper time never stops; a smooth Planck-scale core replaces any would-be GR singularity.
 
 ### Background-Generalization Modules (Spacetime Interface)
+
 The same interface is implemented for every spacetime (FLRW, multi-body PN, Kerr ZAMO, NR grids). In every case the low-curvature limit (\(x \ll 1\)) is exact GR; the intrinsic saturation activates algebraically only when \(\mathcal{K}^{1/4} \gtrsim 1/\ell_{\rm Pl}\).
 
 ### Numerical Implementation and Code Integration
+
 **Weak-field spacecraft / ground-station clocks**
 In post-Newtonian regimes \(x \ll 10^{-100}\), so \(K_{\rm eff} \approx \delta\) and the correction is negligible. Existing integrators require only the direct evaluation of the rational form (no separate regulator branch).
 
@@ -87,9 +92,11 @@ def step_probe(t, x, v, dt, local_metric):
 For null rays enforce \(K_{\rm eff} \approx 0\) algebraically at each step (standard null geodesic integrator). The main equation remains non-singular everywhere.
 
 ### Observational and Numerical Status
+
 The theory is empirically identical to GR on all tested scales (solar system, binary pulsars, LIGO/Virgo, EHT, NICER, CMB, large-scale structure). The built-in saturation remains dormant to better than 140 decimal places everywhere outside Planck cores. Numerical implementations on NR grids are stable with no time-stopping or division-by-zero artifacts.
 
 ### Philosophy
+
 General relativity is recovered exactly as the low-curvature projection of this larger structure. The Planck-scale UV cutoff is now an **intrinsic algebraic property** of the master Lagrangian (via direct substitution of the minimal Padé form), enforcing that proper time never actually stops for massive observers while preserving the local light-cone everywhere. Would-be singularities are replaced by smooth finite-curvature cores **without any auxiliary regulator function**, new fields, new parameters, or observable deviations. The regulator is therefore redundant.
 
 This formulation is production-ready for any mixed weak/strong-field probe adventure. All prior stages are recovered algebraically in the low-curvature limit. The engine is minimal, modular, and fully first-principles at the level of the master Lagrangian.
@@ -508,8 +515,8 @@ impl Drift {
         Self::from_spacetime(&spacetime)
     }
 
-    /// Canonical low-level constructor that implements the exact intrinsic
-    /// expression from the master Lagrangian.  
+    /// Canonical low-level constructor that implements the library's general
+    /// relativity formula.
     ///
     /// This function is the single source of truth for the proper-time rate
     /// calculation used throughout the library. Most users will never call it
@@ -551,16 +558,69 @@ impl Drift {
 }
 
 impl Dt {
+    /// Builds a clock-drift model in which this [`Dt`] is treated as the
+    /// initial fixed time difference between the observer’s proper time and
+    /// the chosen coordinate time.
+    ///
+    /// In practice you often compute or measure a one-time offset (for example
+    /// after a clock synchronization or a leap-second jump) and then want to
+    /// combine it with a steady rate difference and any quadratic change.
+    /// This method lets you do that directly from a [`Dt`] without having to
+    /// call the more verbose [`Drift::new`].
+    ///
+    /// The other two arguments describe how the difference between the two
+    /// clocks will evolve:
+    /// - `rate` — the constant fractional speed difference (how much faster or
+    ///   slower one clock runs compared with the other).
+    /// - `accel` — how quickly that speed difference itself is changing (for
+    ///   example because the spacecraft is moving through a varying gravitational
+    ///   field).
+    ///
+    /// See [`Drift`] and [`Drift::from_offset_and_rate`] for more background on
+    /// why these three numbers are used to model real clocks.
     #[inline]
     pub const fn to_drift_as_constant(self, rate: Dt, accel: Dt) -> Drift {
         Drift::new(self, rate, accel)
     }
 
+    /// Builds a clock-drift model in which this [`Dt`] supplies the constant
+    /// fractional rate difference between the observer’s proper time and the
+    /// chosen coordinate time.
+    ///
+    /// If you have already calculated (or measured) a steady rate offset as a
+    /// [`Dt`], you can use this method to attach an initial time offset and a
+    /// quadratic term and obtain a complete [`Drift`] polynomial.
+    ///
+    /// Physically, the rate term captures the fact that two clocks that are
+    /// moving at different velocities or sitting at different gravitational
+    /// potentials will accumulate a steadily growing time difference. The
+    /// other two parameters let you also describe any starting bias and any
+    /// change in that rate over time.
+    ///
+    /// See the documentation on [`Drift`] for the meaning of the three
+    /// coefficients in a relativistic timing context.
     #[inline]
     pub const fn to_drift_as_rate(self, constant: Dt, accel: Dt) -> Drift {
         Drift::new(constant, self, accel)
     }
 
+    /// Builds a clock-drift model in which this [`Dt`] supplies the quadratic
+    /// term that describes how the rate difference itself is changing.
+    ///
+    /// Some situations (a spacecraft on a highly elliptical orbit, a clock
+    /// whose frequency is aging, or a trajectory that takes it through regions
+    /// of changing gravitational potential) cause the *rate* at which two
+    /// clocks diverge to change over time. If you have computed that changing
+    /// rate as a [`Dt`], this method lets you combine it with an initial offset
+    /// and a base rate to form a full [`Drift`].
+    ///
+    /// The other two arguments are:
+    /// - `constant` — any fixed time bias present at the start.
+    /// - `rate` — the base fractional rate difference that will itself be
+    ///   modified by the quadratic term supplied by `self`.
+    ///
+    /// See [`Drift`] for more explanation of why a quadratic model is used for
+    /// relativistic clock predictions.
     #[inline]
     pub const fn to_drift_as_accel(self, constant: Dt, rate: Dt) -> Drift {
         Drift::new(constant, rate, self)
