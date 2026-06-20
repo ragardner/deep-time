@@ -171,7 +171,7 @@ fn main() -> Result<(), DtErr> {
 
 - [Library's main documentation page](https://docs.rs/deep-time/latest)
 
-- [Changelog](https://github.com/ragardner/deep-time/blob/main/CHANGELOG.md)
+- [Changelog](https://github.com/ragardner/deep-time/blob/main/docs/CHANGELOG.md)
 
 - [The main time type](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html)
 
