@@ -1,6 +1,6 @@
-use crate::{DtErr, DtErrKind, Offset, STRTIME_SIZE, Scale, TimeParts, an_err};
+use crate::{DtErr, DtErrKind, Offset, STRTIME_SIZE, Scale, Parts, an_err};
 
-impl TimeParts {
+impl Parts {
     /// Generalized ISO / CCSDS ASCII Time Code parser (A or B variant).
     /// - Parses e.g. **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
     /// - Only supports ASCII characters.
@@ -49,7 +49,7 @@ impl TimeParts {
         let bytes = input.as_bytes();
         let len_ = bytes.len();
         let mut pos: usize = 0;
-        let mut tp = TimeParts::new_utc();
+        let mut tp = Parts::new_utc();
 
         // Year (manual accumulation, optional sign)
         let mut year: i64 = 0;

@@ -2,7 +2,7 @@
 
 #[cfg(feature = "perf-tests")]
 mod perf_tests {
-    use deep_time::time_parts::TimeParts;
+    use deep_time::civil_parts::Parts;
     use deep_time::{Dt, Lang, ParseCfg, Scale};
     use std::time::Instant;
 
@@ -212,7 +212,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // strptime — TimeParts vs Jiff BrokenDownTime strtime
+        // strptime — Parts vs Jiff BrokenDownTime strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
@@ -228,10 +228,10 @@ mod perf_tests {
             }
             strptime_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
-            // ── TimeParts ───────────────────────
+            // ── Parts ───────────────────────
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let x = TimeParts::from_str(FORMAT, INPUT, true, true, false).unwrap();
+                let x = Parts::from_str(FORMAT, INPUT, true, true, false).unwrap();
             }
             strptime_timeparts_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }
@@ -290,7 +290,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // Datetime parse — TimeParts::from_str_iso vs Jiff parse::DateTime
+        // Datetime parse — Parts::from_str_iso vs Jiff parse::DateTime
         // ═══════════════════════════════════════════════════════════════════════
         {
             const ITERATIONS: usize = 10_000_000;
@@ -308,7 +308,7 @@ mod perf_tests {
             // ── deep_time CCSDS/ISO dedicated parser ───────────────────────
             let start = std::time::Instant::now();
             for _ in 0..ITERATIONS {
-                let x = TimeParts::from_str_iso(INPUT).unwrap();
+                let x = Parts::from_str_iso(INPUT).unwrap();
             }
             iso_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
         }

@@ -90,12 +90,12 @@ mod ymdhms;
 // PUB MOD
 // _________________________________________
 pub mod an_err;
+pub mod civil_parts;
 pub mod constants;
 pub mod error;
 pub mod historical_utc;
 pub mod leap_seconds;
 pub mod math;
-pub mod time_parts;
 pub mod tz;
 
 // _________________________________________
@@ -121,7 +121,7 @@ pub(crate) use locale::{lang_data::*, lang_map::*};
 // _________________________________________
 // CRATE USE
 // _________________________________________
-pub(crate) use an_err::AnErr;
+pub(crate) use civil_parts::*;
 pub(crate) use constants::*;
 pub(crate) use locale::*;
 #[allow(unused_imports)]
@@ -135,7 +135,6 @@ pub(crate) use math::{
     sqrt::{hypot, sqrt},
 };
 pub(crate) use strtime::*;
-pub(crate) use time_parts::*;
 
 // _________________________________________
 // FEATURE PUB USE
@@ -146,9 +145,13 @@ pub use alloc_parse::types::{Mode, Order, ParseCfg};
 #[cfg(feature = "mars")]
 pub use dt::mars;
 
+#[cfg(feature = "sidereal")]
+pub use sidereal::Sidereal;
+
 // _________________________________________
 // PUB USE
 // _________________________________________
+pub use an_err::AnErr;
 pub use drift::{Drift, Spacetime};
 pub use dt::Dt;
 pub use dt::lunar;

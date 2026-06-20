@@ -67,7 +67,8 @@ use earth_eo_ee::*;
 /// // This advanced example requires the "eop" feature for EopData
 /// // and "sidereal-earth" for the EO calculations.
 /// # #[cfg(all(feature = "eop", feature = "sidereal-earth"))] {
-/// use deep_time::{Dt, Sidereal};
+/// use deep_time::Dt;
+/// use deep_time::Sidereal;
 /// use deep_time::eop::{EopData, EopFormat, Separator};
 ///
 /// let eop = EopData::from_text_file(

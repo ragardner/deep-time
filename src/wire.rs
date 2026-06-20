@@ -1,5 +1,5 @@
 use crate::{
-    Drift, Dt, Every, LiteStr, Meridiem, Offset, Scale, Spacetime, TimeParts, TimeRange, Weekday,
+    Drift, Dt, Every, LiteStr, Meridiem, Offset, Scale, Spacetime, Parts, TimeRange, Weekday,
 };
 
 impl Dt {
@@ -318,14 +318,14 @@ impl Weekday {
     }
 }
 
-impl TimeParts {
+impl Parts {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
     /// Total size of the wire representation (119 bytes).
     pub const WIRE_SIZE: usize = 119;
 
-    /// Serializes `TimeParts` into a fixed 119-byte buffer.
+    /// Serializes `Parts` into a fixed 119-byte buffer.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -415,7 +415,7 @@ impl TimeParts {
         buf
     }
 
-    /// Deserializes `TimeParts` from exactly 119 bytes.
+    /// Deserializes `Parts` from exactly 119 bytes.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -424,7 +424,7 @@ impl TimeParts {
             return None;
         }
 
-        let mut dc = TimeParts::default();
+        let mut dc = Parts::default();
         let mut offset = 1usize;
 
         // year (8 bytes)

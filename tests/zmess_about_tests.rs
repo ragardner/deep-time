@@ -2,6 +2,8 @@
 
 #[cfg(all(feature = "parse", feature = "jiff-tz"))]
 mod tests {
+    use deep_time::DtErr;
+    use deep_time::Sidereal;
     use deep_time::{Dt, Lang, ParseCfg, Scale, YmdHms};
 
     #[test]

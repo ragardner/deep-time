@@ -1,7 +1,7 @@
-use crate::{Dt, DtErr, TimeParts};
+use crate::{Dt, DtErr, Parts};
 
-impl TimeParts {
-    /// Formats this [`TimeParts`] as a **CCSDS C (CUC)** binary time code.
+impl Parts {
+    /// Formats this [`Parts`] as a **CCSDS C (CUC)** binary time code.
     ///
     /// - Fully configurable for round-tripping with [`from_ccsds_cuc`].
     /// - Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support
@@ -22,9 +22,9 @@ impl TimeParts {
         self.to_dt()?.to_ccsds_cuc(n_coarse, n_frac, extension)
     }
 
-    /// Formats this [`TimeParts`] as a **CCSDS D (CDS)** binary time code.
+    /// Formats this [`Parts`] as a **CCSDS D (CDS)** binary time code.
     ///
-    /// - Fully configurable for round-tripping with [`TimeParts::from_ccsds_cds`].
+    /// - Fully configurable for round-tripping with [`Parts::from_ccsds_cds`].
     /// - Conforms to CCSDS 301.0-B-4 §3.3 (Level 1): UTC day count + ms-of-day since
     ///   1958-01-01 UTC.
     #[inline]
@@ -37,7 +37,7 @@ impl TimeParts {
         self.to_dt()?.to_ccsds_cds(n_day, sub_ms_code, extension)
     }
 
-    /// Formats this [`TimeParts`] as a **CCSDS CCS (Calendar Segmented Time Code)**.
+    /// Formats this [`Parts`] as a **CCSDS CCS (Calendar Segmented Time Code)**.
     ///
     /// Implements **CCSDS 301.0-B-4 §3.4** (Level 1 only).
     ///
@@ -64,7 +64,7 @@ impl TimeParts {
     }
 
     /// Convenience method that automatically selects the most appropriate
-    /// CCSDS binary time code based on this `TimeParts`’s [`Scale`].
+    /// CCSDS binary time code based on this `Parts`’s [`Scale`].
     ///
     /// ## Automatic selection (matches common mission practice)
     ///

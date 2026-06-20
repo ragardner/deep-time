@@ -5,11 +5,11 @@ mod tests {
     use chrono::{
         DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
     };
-    use deep_time::time_parts::TimeParts;
+    use deep_time::civil_parts::Parts;
 
     #[test]
     fn test_to_chrono_naive_datetime_basic_ymd_hms() {
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%Y-%m-%d %H:%M:%S",
             "2024-04-15 14:30:45",
             false,
@@ -29,7 +29,7 @@ mod tests {
     #[test]
     fn test_to_chrono_naive_datetime_ordinal_date() {
         let parsed =
-            TimeParts::from_str("%Y-%j %H:%M:%S", "2024-106 14:30:45", false, false, false)
+            Parts::from_str("%Y-%j %H:%M:%S", "2024-106 14:30:45", false, false, false)
                 .unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
@@ -44,7 +44,7 @@ mod tests {
     fn test_to_chrono_naive_datetime_iso_week_date() {
         use chrono::Weekday as ChronoWeekday;
 
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%G-W%V-%u %H:%M:%S",
             "2024-W16-2 14:30:45",
             false,
@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_fractional_seconds() {
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%Y-%m-%d %H:%M:%S.%N",
             "2024-04-15 14:30:45.123456789012345678901234567890",
             false,
@@ -83,7 +83,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_leap_second() {
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%Y-%m-%d %H:%M:%S",
             "2024-04-15 23:59:60",
             false,
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_fixed_offset() {
         let parsed =
-            TimeParts::from_str("%F %T %z", "2024-04-15 14:30:45 -0400", false, false, false)
+            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 -0400", false, false, false)
                 .unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
@@ -124,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_colon_z_offset() {
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %:z",
             "2024-04-15 14:30:45 -04:00",
             false,
@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_direct() {
-        let parsed = TimeParts::from_str("%s", "1713191445", false, false, false).unwrap();
+        let parsed = Parts::from_str("%s", "1713191445", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         // 1713191445 = 2024-04-15 14:30:45 UTC
@@ -164,7 +164,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_with_fraction() {
         let parsed =
-            TimeParts::from_str("%s.%N", "1713191445.123456789", false, false, false).unwrap();
+            Parts::from_str("%s.%N", "1713191445.123456789", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_utc = DateTime::from_timestamp(1713191445, 123_456_789).unwrap();
@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_timestamp_basic() {
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%Y-%m-%d %H:%M:%S",
             "2024-04-15 14:30:45",
             false,
@@ -190,7 +190,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_timestamp_unix_direct() {
-        let parsed = TimeParts::from_str("%s", "1713191445", false, false, false).unwrap();
+        let parsed = Parts::from_str("%s", "1713191445", false, false, false).unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         assert_eq!(ts, 1713191445);
     }
@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn test_to_chrono_timestamp_with_offset() {
         let parsed =
-            TimeParts::from_str("%F %T %z", "2024-04-15 10:30:45 -0400", false, false, false)
+            Parts::from_str("%F %T %z", "2024-04-15 10:30:45 -0400", false, false, false)
                 .unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         // 10:30:45 EDT = 14:30:45 UTC → same as above
@@ -208,14 +208,14 @@ mod tests {
     #[test]
     fn test_to_chrono_naive_datetime_incomplete_date_fails_in_finish_but_assembly_fails_here() {
         // Parser already rejects incomplete date in finish(), but we test the assembly path too
-        let parsed = TimeParts::from_str("%H:%M:%S", "14:30:45", false, false, false);
+        let parsed = Parts::from_str("%H:%M:%S", "14:30:45", false, false, false);
         assert!(parsed.is_err()); // finish() already fails with IncompleteDate
     }
 
     #[test]
     fn test_to_chrono_datetime_utc_explicit() {
         let parsed =
-            TimeParts::from_str("%F %T %z", "2024-04-15 14:30:45 +0000", false, false, false)
+            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 +0000", false, false, false)
                 .unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
@@ -232,7 +232,7 @@ mod tests {
     fn test_to_chrono_datetime_civil_with_fixed_positive_offset() {
         // 2024-04-15 14:30:45 +05:00  → local time in +5 zone
         let parsed =
-            TimeParts::from_str("%F %T %z", "2024-04-15 14:30:45 +0500", false, false, false)
+            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 +0500", false, false, false)
                 .unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_civil_with_iana_america_new_york_edt() {
         // 2024-04-15 10:30:00 America/New_York  (EDT = UTC-4)
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -270,7 +270,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_civil_with_iana_fallback_offset_at() {
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -288,7 +288,7 @@ mod tests {
     fn test_to_chrono_datetime_unix_timestamp_ignores_iana_name() {
         // %s + IANA name → must still be pure UTC (+0000)
         let parsed =
-            TimeParts::from_str("%s %Q", "1713191400 America/New_York", false, false, false)
+            Parts::from_str("%s %Q", "1713191400 America/New_York", false, false, false)
                 .unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
@@ -299,7 +299,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_ignores_fixed_offset() {
         // %s + %z → must still be pure UTC (+0000)
-        let parsed = TimeParts::from_str("%s %z", "1713191400 -0400", false, false, false).unwrap();
+        let parsed = Parts::from_str("%s %z", "1713191400 -0400", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         assert_eq!(dt.offset(), &FixedOffset::east_opt(0).unwrap());
@@ -309,7 +309,7 @@ mod tests {
     #[test]
     fn test_to_chrono_timestamp_with_iana_name() {
         // Civil time in IANA zone → correct UTC unix timestamp
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -325,7 +325,7 @@ mod tests {
     fn test_to_chrono_datetime_iana_spring_forward_gap() {
         // 2023-03-12 02:30:00 America/New_York is inside the DST spring-forward gap (non-existent)
         // Our code must shift it forward and succeed with the post-gap offset (EDT = -4h)
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2023-03-12 02:30:00 America/New_York",
             false,
@@ -344,7 +344,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_iana_exact_spring_forward_boundary() {
         // Exact transition moment: 2023-03-12 02:00:00 America/New_York (start of gap)
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2023-03-12 02:00:00 America/New_York",
             false,
@@ -364,7 +364,7 @@ mod tests {
     fn test_to_chrono_datetime_iana_fall_back_overlap() {
         // 2023-11-05 01:00:00 America/New_York is ambiguous (fall-back overlap)
         // We follow Jiff behavior: pick earlier occurrence (still on EDT, -04:00)
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2023-11-05 01:00:00 America/New_York",
             false,
@@ -383,7 +383,7 @@ mod tests {
     fn test_to_chrono_datetime_iana_exact_fall_back_boundary() {
         // Exact transition moment: 2023-11-05 01:00:00 America/New_York (overlap boundary)
         // We follow Jiff behavior: pick earlier occurrence (EDT, -04:00)
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2023-11-05 01:00:00 America/New_York",
             false,
@@ -402,7 +402,7 @@ mod tests {
     fn test_to_chrono_datetime_iana_southern_hemisphere_gap() {
         // Southern hemisphere spring-forward gap (Australia/Sydney)
         // 02:30 is in the gap → shifts to 03:30 AEDT
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2024-10-06 02:30:00 Australia/Sydney",
             false,

@@ -1,7 +1,7 @@
-use crate::{Dt, DtErr, DtErrKind, Scale, TimeParts, an_err};
+use crate::{Dt, DtErr, DtErrKind, Scale, Parts, an_err};
 
-impl TimeParts {
-    /// Parses a CCSDS Calendar Segmented Time Code (CCS) into [`TimeParts`].
+impl Parts {
+    /// Parses a CCSDS Calendar Segmented Time Code (CCS) into [`Parts`].
     ///
     /// Implements **CCSDS 301.0-B-4 §3.4 (Level 1 only)**.
     ///
@@ -21,7 +21,7 @@ impl TimeParts {
     /// - Year is encoded as 4 BCD digits (0001–9999).
     /// - Time of day uses BCD with leap second support (`second == 60`).
     /// - When a leap second is present, `second` is normalized to 59 and
-    ///   `is_leap_second` is set to `true` in the returned [`TimeParts`].
+    ///   `is_leap_second` is set to `true` in the returned [`Parts`].
     ///
     /// ## Epoch
     ///
@@ -33,8 +33,8 @@ impl TimeParts {
     /// BCD digits are invalid, field lengths are insufficient, or any
     /// component (month, day, DOY, hour, minute, second) is out of range.
     ///
-    /// The resulting [`TimeParts`] has `scale = UTC`.
-    pub fn from_ccsds_ccs(input: &[u8]) -> Result<TimeParts, DtErr> {
+    /// The resulting [`Parts`] has `scale = UTC`.
+    pub fn from_ccsds_ccs(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -147,7 +147,7 @@ impl TimeParts {
             ((frac_value * 1_000_000_000_000_000_000u128) / denom) as u64
         };
 
-        let mut pd = TimeParts {
+        let mut pd = Parts {
             yr: Some(year),
             mo: month,
             day,
@@ -157,7 +157,7 @@ impl TimeParts {
             sec: second,
             attos,
             scale: Scale::UTC,
-            ..TimeParts::default()
+            ..Parts::default()
         };
 
         pd.finish(false)?;
@@ -165,7 +165,7 @@ impl TimeParts {
     }
 
     /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
-    /// into a [`TimeParts`].
+    /// into a [`Parts`].
     ///
     /// Implements **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support
     /// for the extended 2-byte P-field.
@@ -199,7 +199,7 @@ impl TimeParts {
     ///
     /// ## Returns
     ///
-    /// A [`TimeParts`] with `scale = TAI` and the decoded civil date/time.
+    /// A [`Parts`] with `scale = TAI` and the decoded civil date/time.
     ///
     /// ## Errors
     ///
@@ -210,7 +210,7 @@ impl TimeParts {
     ///   P-field octet) is set.
     /// - [`DtErrKind::InvalidSyntax`] if the declared coarse + fractional field lengths
     ///   make the T-field longer than the remaining input bytes.
-    pub fn from_ccsds_cuc(input: &[u8]) -> Result<TimeParts, DtErr> {
+    pub fn from_ccsds_cuc(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -286,7 +286,7 @@ impl TimeParts {
         let minute = ((sec_of_day % 3600) / 60) as u8;
         let second = (sec_of_day % 60) as u8;
 
-        let mut pd = TimeParts {
+        let mut pd = Parts {
             yr: Some(year),
             mo: Some(month),
             day: Some(day),
@@ -295,14 +295,14 @@ impl TimeParts {
             sec: second,
             attos: frac_attos,
             scale: Scale::TAI,
-            ..TimeParts::default()
+            ..Parts::default()
         };
         pd.finish(false)?;
         Ok(pd)
     }
 
     /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
-    /// into a [`TimeParts`].
+    /// into a [`Parts`].
     ///
     /// Implements **CCSDS 301.0-B-4 §3.3 (Level 1)**.
     ///
@@ -338,11 +338,11 @@ impl TimeParts {
     /// Correctly supports leap seconds. When the millisecond-of-day value
     /// represents 23:59:60 (i.e. `millis_of_day >= 86_400_000`), `sec` is set
     /// to `60` and `is_leap_second` is effectively indicated via the `sec` field
-    /// in the returned [`TimeParts`].
+    /// in the returned [`Parts`].
     ///
     /// ## Returns
     ///
-    /// A [`TimeParts`] with `scale = UTC` and the decoded civil date/time.
+    /// A [`Parts`] with `scale = UTC` and the decoded civil date/time.
     ///
     /// ## Errors
     ///
@@ -353,7 +353,7 @@ impl TimeParts {
     ///   set (non-Level-1 epoch), or the sub-millisecond code is `0b11`.
     /// - [`DtErrKind::InvalidSyntax`] if the declared field lengths make the
     ///   T-field longer than the remaining input bytes.
-    pub fn from_ccsds_cds(input: &[u8]) -> Result<TimeParts, DtErr> {
+    pub fn from_ccsds_cds(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }
@@ -450,7 +450,7 @@ impl TimeParts {
             second = 60;
         }
 
-        let mut pd = TimeParts {
+        let mut pd = Parts {
             yr: Some(year),
             mo: Some(month),
             day: Some(day),
@@ -459,7 +459,7 @@ impl TimeParts {
             sec: second,
             attos: frac_attos as u64,
             scale: Scale::UTC,
-            ..TimeParts::default()
+            ..Parts::default()
         };
         pd.finish(false)?;
         Ok(pd)
@@ -482,9 +482,9 @@ impl TimeParts {
     /// - [`DtErrKind::InvalidItem`] if the Code ID is not one of the three
     ///   recognized Level 1 values (`001`, `100`, or `101`).
     ///
-    /// The resulting [`TimeParts`] has `scale` set according to the detected format
+    /// The resulting [`Parts`] has `scale` set according to the detected format
     /// (TAI for CUC, UTC for CDS, and format-dependent for CCS).
-    pub fn from_ccsds_bin(input: &[u8]) -> Result<TimeParts, DtErr> {
+    pub fn from_ccsds_bin(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Incomplete, "empty"));
         }

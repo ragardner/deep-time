@@ -1,3 +1,12 @@
+//! Intermediate "parts" of a civil date and time.
+//!
+//! [`Parts`] is produced by the parsers (string formats, ISO-like, CCSDS
+//! binary and text, etc.). It is then typically converted into a
+//! [`Dt`](../struct.Dt.html) or a type from `chrono`/`jiff`.
+//!
+//! It holds the individual components (various ways to express the date,
+//! time-of-day down to attoseconds, offset, scale, weekday/week info, etc.).
+
 mod from_bin_ccsds;
 mod from_str;
 mod from_str_iso;
@@ -15,23 +24,25 @@ mod to_jiff;
 
 use crate::{LiteStr, Scale};
 
-/// A flexible, partially-filled representation of a civil datetime.
+/// Intermediate representation of parsed civil date and time.
 ///
-/// [`TimeParts`] is the central intermediate type used throughout the library
-/// for parsing, formatting, and converting between different time representations
-/// (CCSDS, ISO-like strings, `chrono`, `jiff`, `Dt`, etc.).
+/// After parsing you typically convert the `Parts` to a final type
+/// such as [`Dt`] or one from `chrono`/`jiff`.
 ///
-/// Most fields are optional, allowing partial dates/times. It also carries
-/// metadata such as the time `scale`, IANA zone name, leap-second flag,
-/// and various weekday/week-number representations.
+/// ## Examples
 ///
-/// - Convert to [`Dt`] using [`TimeParts::to_dt`].
-/// - Conversions to types from other crates require relevant features to
-///   be enabled.
+/// ```rust
+/// use deep_time::civil_parts::Parts;
+///
+/// let parts = Parts::from_str_iso("2024-06-20T14:30:00Z").unwrap();
+///
+/// // now you can convert to whichever type you need
+/// let dt = parts.to_dt().unwrap();
+/// ```
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
-pub struct TimeParts {
+pub struct Parts {
     /// Year (can be negative for BCE dates).
     pub yr: Option<i64>,
     /// Month of the year (1–12).
@@ -70,9 +81,9 @@ pub struct TimeParts {
     pub unix_timestamp_seconds: Option<i64>,
 }
 
-impl TimeParts {
+impl Parts {
     #[inline(always)]
-    pub fn new_utc() -> TimeParts {
+    pub fn new_utc() -> Parts {
         Self {
             scale: Scale::UTC,
             ..Default::default()

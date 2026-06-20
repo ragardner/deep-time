@@ -63,71 +63,12 @@ where
 /// `AnErr` stores up to `DEPTH` levels of error context. Each level contains:
 /// - an error kind of type `K`,
 /// - the source location where the level was created,
-/// - an optional reason specific to that level (`LiteStr<REASON_LEN>`).
+/// - an optional reason specific to that level in the form of [`LiteStr`].
 ///
-/// The kind enum provides the general error category while the per-level reason
-/// carries concrete details (e.g. a bad value, file path, token, etc.).
+/// The kind enum provides the error category while a per-level reason
+/// carries extra info (e.g. a bad value, file path, token, etc.).
 ///
-/// The type implements `Copy` and performs no heap allocation. Default memory
-/// footprint is small and fully controllable via the generic parameters.
-///
-/// ## Type Parameters
-///
-/// - `K`: Error kind type. Must implement `Copy + Clone + Debug + PartialEq + Eq`.
-/// - `DEPTH`: Maximum number of context levels (default `3`). Additional context
-///   beyond this limit is silently discarded.
-/// - `REASON_LEN`: Maximum length of each individual reason in bytes
-///   (default `29`). Longer reasons are silently truncated.
-///
-/// ## Construction
-///
-/// ```rust
-/// use deep_time::{AnErr, an_err};
-///
-/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-/// pub enum MyKind {
-///     Parse,
-///     Io,
-///     Validation,
-/// }
-///
-/// pub type MyError = AnErr<MyKind, 4, 64>;
-///
-/// fn parse() -> Result<(), MyError> {
-///     Err(an_err!(MyKind::Parse, "unexpected token at byte {}", 42))
-/// }
-///
-/// fn load(path: &str) -> Result<(), MyError> {
-///     let inner = parse()
-///         .map_err(|e| an_err!(MyKind::Io, "while loading config from {}", path => e))?;
-///     Ok(())
-/// }
-/// ```
-///
-/// All constructors and the `context` method capture the call site via `#[track_caller]`.
-///
-/// ## Display
-///
-/// The `Display` implementation produces output of the following form:
-///
-/// ```text
-/// --
-/// • Trace (2 levels):
-///    1. Io    @ src/io.rs:42:10    while loading config from /etc/foo
-///    2. Parse @ src/parser.rs:17:5  unexpected token at byte 42
-/// ```
-///
-/// Each trace level shows its own reason (if present) immediately after the location.
-///
-/// ## Invariants
-///
-/// Maintained by all constructors and `context`:
-///
-/// - `len` is always in `1..=DEPTH`.
-/// - For every `i` in `0..len`, `kinds[i]` and `locations[i]` are `Some`.
-/// - `reasons[i]` is `Some` only if a non-empty reason was supplied for that level.
-///
-/// ## Accessing the stack
+/// ## Accessing the stack of errors
 ///
 /// In addition to the top-level convenience methods (`kind()`, `location()`, `reason()`),
 /// you can access any level directly or iterate the entire trace.
@@ -164,8 +105,6 @@ where
 ///
 /// ### Iterating with `trace()`
 ///
-/// The most common way to walk the full stack is with [`trace`](Self::trace):
-///
 /// ```rust
 /// # #[cfg(feature = "std")]
 /// # {
@@ -195,6 +134,69 @@ where
 /// - Iteration order is **most recent → oldest** (same order as `Display`).
 /// - The iterator implements `ExactSizeIterator`, so you can call `.len()`, use it in `for` loops, etc.
 /// - No allocation — it just borrows the `AnErr`.
+///
+/// ## Making and using your own Error type using AnErr
+///
+/// ```rust
+/// use deep_time::{AnErr, an_err};
+///
+/// // Your error variants
+/// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// pub enum MyKind {
+///     Parse,
+///     Io,
+///     Validation,
+/// }
+///
+/// // Your error type, wrapper around AnErr
+/// pub type MyError = AnErr<MyKind, 4, 64>;
+///
+/// // A function that returns your new error type
+/// fn parse() -> Result<(), MyError> {
+///     // using the an_err! macro with a variant, and a reason
+///     Err(an_err!(MyKind::Parse, "unexpected token at byte {}", 42))
+/// }
+///
+///
+/// fn load(path: &str) -> Result<(), MyError> {
+///     let inner = parse()
+///         // adding another error to the stack of errors using
+///         // an_err! macro and the `=>` syntax
+///         .map_err(|e| an_err!(MyKind::Io, "while loading config from {}", path => e))?;
+///     Ok(())
+/// }
+/// ```
+///
+/// All constructors and the `context` method capture the call site via `#[track_caller]`.
+///
+/// ## Type Parameters
+///
+/// - `K`: Error kind type. Must implement `Copy + Clone + Debug + PartialEq + Eq`.
+/// - `DEPTH`: Maximum number of context levels (default `3`). Additional context
+///   beyond this limit is silently discarded.
+/// - `REASON_LEN`: Maximum length of each individual reason in bytes
+///   (default `29`). Longer reasons are silently truncated.
+///
+/// ## Display
+///
+/// The `Display` implementation produces output of the following form:
+///
+/// ```text
+/// --
+/// • Trace (2 levels):
+///    1. Io    @ src/io.rs:42:10    while loading config from /etc/foo
+///    2. Parse @ src/parser.rs:17:5  unexpected token at byte 42
+/// ```
+///
+/// Each trace level shows its own reason (if present) immediately after the location.
+///
+/// ## Invariants
+///
+/// Maintained by all constructors and `context`:
+///
+/// - `len` is always in `1..=DEPTH`.
+/// - For every `i` in `0..len`, `kinds[i]` and `locations[i]` are `Some`.
+/// - `reasons[i]` is `Some` only if a non-empty reason was supplied for that level.
 #[derive(Clone, Copy, PartialEq, Eq)]
 #[must_use = "this error should be handled or converted to a different type e.g `pub type DtErr = AnErr<MyError, 2, 49>;`"]
 pub struct AnErr<K, const DEPTH: usize = 3, const REASON_LEN: usize = 29>

@@ -1,14 +1,14 @@
-use crate::{DtErr, TimeParts};
+use crate::{DtErr, Parts};
 use alloc::string::String;
 
-impl TimeParts {
+impl Parts {
     /// Returns this instant as a **CCSDS ASCII Time Code** (calendar variant A).
     ///
     /// Example: `"2025-04-17T14:30:45.123456789Z"`
     ///
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
-    /// - Round-trips with `Dt::from_str_iso` / `TimeParts::from_str_iso`.
+    /// - Round-trips with `Dt::from_str_iso` / `Parts::from_str_iso`.
     #[inline]
     pub fn to_str_ccsds(&self) -> Result<String, DtErr> {
         self.to_dt()?.to_str_ccsds()

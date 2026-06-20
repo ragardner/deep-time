@@ -9,7 +9,7 @@ mod tests {
     use core::fmt::Debug;
     use deep_time::{
         Drift, Dt, Scale, TimeRange, YmdHms,
-        time_parts::{Meridiem, Offset, TimeParts, Weekday},
+        civil_parts::{Meridiem, Offset, Parts, Weekday},
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -67,8 +67,8 @@ mod tests {
     }
 
     #[test]
-    fn test_time_parts_roundtrip() {
-        let mut dc = TimeParts::default();
+    fn test_civil_parts_roundtrip() {
+        let mut dc = Parts::default();
         dc.yr = Some(2025);
         dc.mo = Some(6);
         dc.day = Some(15);
@@ -82,7 +82,7 @@ mod tests {
         assert_roundtrip(
             &dc,
             |d| d.to_wire_bytes().to_vec(),
-            TimeParts::from_wire_bytes,
+            Parts::from_wire_bytes,
         );
     }
 

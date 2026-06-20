@@ -1,14 +1,14 @@
 use crate::{
     ATTOS_PER_NS, Dt, an_err,
     error::{DtErr, DtErrKind},
-    {Meridiem, Offset, TimeParts, Weekday},
+    {Meridiem, Offset, Parts, Weekday},
 };
 use chrono::{
     DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
 };
 
-impl TimeParts {
-    /// Converts [`TimeParts`] → [`chrono::NaiveDateTime`] (civil time, no TZ).
+impl Parts {
+    /// Converts [`Parts`] → [`chrono::NaiveDateTime`] (civil time, no TZ).
     pub fn to_chrono_naive_datetime(&self) -> Result<NaiveDateTime, DtErr> {
         let date = self.build_naive_date()?;
         let time = self.build_naive_time()?;
@@ -131,8 +131,8 @@ impl TimeParts {
         }
     }
 
-    /// Converts [`TimeParts`] → [`chrono::DateTime<FixedOffset>`].
-    /// - If this [`TimeParts`] has a unix timestamp then it is used
+    /// Converts [`Parts`] → [`chrono::DateTime<FixedOffset>`].
+    /// - If this [`Parts`] has a unix timestamp then it is used
     ///   instead of anything else (timezones are ignored in this route).
     pub fn to_chrono_datetime(&self) -> Result<DateTime<FixedOffset>, DtErr> {
         // ============================================================
@@ -279,10 +279,10 @@ impl TimeParts {
             .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset: {:?}", offset))
     }
 
-    /// Converts [`TimeParts`] → [`i64`].
-    /// - If this [`TimeParts`] has a unix timestamp then it is used
+    /// Converts [`Parts`] → [`i64`].
+    /// - If this [`Parts`] has a unix timestamp then it is used
     ///   instead of anything else (timezones are ignored).
-    /// - Uses [`TimeParts::to_chrono_datetime`] internally.
+    /// - Uses [`Parts::to_chrono_datetime`] internally.
     pub fn to_chrono_timestamp(&self) -> Result<i64, DtErr> {
         if let Some(secs) = self.unix_timestamp_seconds {
             return Ok(secs);

@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, TimeParts};
+use crate::{Dt, DtErr, Parts};
 
 impl Dt {
     /// Parses a **CCSDS CCS (Calendar Segmented Time Code)** binary time code
@@ -28,7 +28,7 @@ impl Dt {
     /// - [`Dt::from_ccsds_cds`](../struct.Dt.html#method.from_ccsds_cds)
     #[inline(always)]
     pub fn from_ccsds_ccs(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_ccs(input)?.to_dt()
+        Parts::from_ccsds_ccs(input)?.to_dt()
     }
 
     /// Parses a **CCSDS C (CUC – Unsegmented Time Code)** binary time code
@@ -78,10 +78,10 @@ impl Dt {
     /// - [`DtErrKind::InvalidSyntax`] if the declared coarse + fractional field lengths
     ///   make the T-field longer than the remaining input bytes.
     ///
-    /// Errors from [`TimeParts::finish`] and [`TimeParts::to_dt`] may also propagate.
+    /// Errors from [`Parts::finish`] and [`Parts::to_dt`] may also propagate.
     #[inline(always)]
     pub fn from_ccsds_cuc(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_cuc(input)?.to_dt()
+        Parts::from_ccsds_cuc(input)?.to_dt()
     }
 
     /// Parses a **CCSDS D (CDS – Day Segmented Time Code)** binary time code
@@ -136,16 +136,16 @@ impl Dt {
     /// - [`DtErrKind::InvalidSyntax`] if the declared field lengths make the
     ///   T-field longer than the remaining input bytes.
     ///
-    /// Errors from [`TimeParts::finish`] and [`TimeParts::to_dt`] may also propagate.
+    /// Errors from [`Parts::finish`] and [`Parts::to_dt`] may also propagate.
     #[inline(always)]
     pub fn from_ccsds_cds(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_cds(input)?.to_dt()
+        Parts::from_ccsds_cds(input)?.to_dt()
     }
 
     /// Auto-detects and parses a CCSDS binary time code (CUC, CDS, or CCS)
     /// based on the Code ID in the first P-field byte, then returns a [`Dt`].
     ///
-    /// Convenience wrapper around [`TimeParts::from_ccsds_bin`].
+    /// Convenience wrapper around [`Parts::from_ccsds_bin`].
     ///
     /// Dispatches as follows:
     /// - Code ID `001` → [`from_ccsds_cuc`](Self::from_ccsds_cuc)
@@ -174,6 +174,6 @@ impl Dt {
     /// Any error returned by the dispatched parser is also propagated.
     #[inline(always)]
     pub fn from_ccsds_bin(input: &[u8]) -> Result<Dt, DtErr> {
-        TimeParts::from_ccsds_bin(input)?.to_dt()
+        Parts::from_ccsds_bin(input)?.to_dt()
     }
 }

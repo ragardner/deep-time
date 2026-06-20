@@ -2,7 +2,7 @@ pub mod parser;
 pub mod printer;
 
 use crate::error::{DtErr, DtErrKind};
-use crate::{Dt, Lang, LiteStr, STRTIME_SIZE, TimeParts, an_err};
+use crate::{Dt, Lang, LiteStr, STRTIME_SIZE, Parts, an_err};
 use core::result::Result;
 use core::str;
 
@@ -164,7 +164,7 @@ impl StrPTimeFmt {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<Dt, DtErr> {
-        TimeParts::from_str(
+        Parts::from_str(
             self.as_str()?,
             s,
             inp_can_end_before_fmt,
@@ -211,7 +211,7 @@ impl StrPTimeFmt {
         allow_partial_date: bool,
         lang: Lang,
     ) -> Result<alloc::string::String, DtErr> {
-        let parts = TimeParts::from_str(
+        let parts = Parts::from_str(
             self.as_str()?,
             s,
             inp_can_end_before_fmt,
@@ -252,7 +252,7 @@ impl StrPTimeFmt {
         allow_partial_date: bool,
         lang: Lang,
     ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
-        let parts = TimeParts::from_str(
+        let parts = Parts::from_str(
             self.as_str()?,
             s,
             inp_can_end_before_fmt,

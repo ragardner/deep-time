@@ -1,14 +1,14 @@
 use super::{FormatExtensions, FormatFlag};
 use crate::error::{DtErr, DtErrKind};
 use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
-use crate::{Meridiem, Offset, Scale, Sign, TimeParts, Weekday, an_err};
+use crate::{Meridiem, Offset, Scale, Sign, Parts, Weekday, an_err};
 use core::result::Result;
 use core::str;
 
 pub(crate) struct Parser<'f, 'i, 't> {
     pub(crate) fmt: &'f [u8], // remaining format string
     pub(crate) inp: &'i [u8], // remaining input string
-    tm: &'t mut TimeParts,
+    tm: &'t mut Parts,
     inp_can_end_before_fmt: bool,
 }
 
@@ -17,7 +17,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     pub(crate) fn new(
         fmt: &'f [u8],
         inp: &'i [u8],
-        tm: &'t mut TimeParts,
+        tm: &'t mut Parts,
         inp_can_end_before_fmt: bool,
     ) -> Self {
         Self {

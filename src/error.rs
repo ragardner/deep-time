@@ -43,5 +43,7 @@ pub enum DtErrKind {
     IOErr,
 }
 
-// 120 bytes
+/// Wrapper around [`AnErr`].
+///
+/// A [`DtErr`] object is 120 bytes.
 pub type DtErr = AnErr<DtErrKind, 2, 49>;

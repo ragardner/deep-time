@@ -1,9 +1,9 @@
-use crate::{Dt, MAX_YEAR, MIN_YEAR, Scale, TimeParts};
+use crate::{Dt, MAX_YEAR, MIN_YEAR, Scale, Parts};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline]
 pub(crate) fn parse_yymmdd(input: &str) -> Option<Dt> {
-    let parsed = TimeParts::from_str("%y%m%d", input, true, true, false).ok()?;
+    let parsed = Parts::from_str("%y%m%d", input, true, true, false).ok()?;
     parsed.to_dt().ok()
 }
 
@@ -97,7 +97,7 @@ pub(crate) fn parse_yyyymm(s: &str) -> Option<Dt> {
         }
         if (1..=12).contains(&m) && (crate::MIN_YEAR..=crate::MAX_YEAR).contains(&y) {
             let parsed =
-                TimeParts::from_str("%Y%m", s.trim_start_matches('-'), true, true, true).ok()?;
+                Parts::from_str("%Y%m", s.trim_start_matches('-'), true, true, true).ok()?;
             return parsed.to_dt().ok();
         }
     }

@@ -3,11 +3,11 @@
 #[cfg(all(test, feature = "jiff"))]
 mod tests {
     use deep_time::DtErr;
-    use deep_time::time_parts::TimeParts;
+    use deep_time::civil_parts::Parts;
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtErr> {
-        let parsed = TimeParts::from_str(fmt, input, strict, false, false)?;
+        let parsed = Parts::from_str(fmt, input, strict, false, false)?;
         parsed.to_jiff_timestamp()
     }
 
@@ -38,7 +38,7 @@ mod tests {
     #[cfg(feature = "jiff-tz")]
     #[test]
     fn test_iana_timezone() {
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_broken_down_time_assembly() {
-        let parsed = TimeParts::from_str(
+        let parsed = Parts::from_str(
             "%Y-%m-%d %H:%M:%S %z",
             "2024-04-15 14:30:45 +0200",
             false,

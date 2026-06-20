@@ -2,13 +2,13 @@ use crate::leap_seconds::leap_sec;
 use crate::{
     Dt, JD_2000_2_451_545, SEC_PER_DAYI64, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
     error::{DtErr, DtErrKind},
-    {Meridiem, Offset, TimeParts, Weekday},
+    {Meridiem, Offset, Parts, Weekday},
 };
 
-impl TimeParts {
-    /// Converts [`TimeParts`] → [`Dt`].
+impl Parts {
+    /// Converts [`Parts`] → [`Dt`].
     /// - Resulting [`Dt`] is on the TAI timescale.
-    /// - If this [`TimeParts`] has a unix timestamp then it is used
+    /// - If this [`Parts`] has a unix timestamp then it is used
     ///   instead of anything else.
     pub fn to_dt(&self) -> Result<Dt, DtErr> {
         // ──────────────────────────────────────────────────────────────

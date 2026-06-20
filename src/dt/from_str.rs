@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK,
-    SEC_PER_YEAR, StrPTimeFmt, TimeParts, an_err,
+    SEC_PER_YEAR, StrPTimeFmt, Parts, an_err,
 };
 use core::str::FromStr;
 
@@ -173,7 +173,7 @@ impl Dt {
     /// ## Errors
     ///
     /// Returns a [`DtErr`] if either the strptime-style parser or the subsequent
-    /// conversion from [`TimeParts`] to [`Dt`] fails.
+    /// conversion from [`Parts`] to [`Dt`] fails.
     ///
     /// ### Format string errors
     ///
@@ -222,7 +222,7 @@ impl Dt {
     /// ### Conversion to [`Dt`] errors
     ///
     /// These errors can occur *after* successful parsing, inside
-    /// [`TimeParts::to_dt`], when constructing the final [`Dt`]:
+    /// [`Parts::to_dt`], when constructing the final [`Dt`]:
     ///
     /// - [`DtErrKind::InvalidInput`] — Invalid YMD date, or unable to construct
     ///   a Julian date from the parsed components (e.g. conflicting or
@@ -256,7 +256,7 @@ impl Dt {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<Dt, DtErr> {
-        TimeParts::from_str(
+        Parts::from_str(
             fmt,
             s,
             inp_can_end_before_fmt,
@@ -310,7 +310,7 @@ impl Dt {
     ///   your date-time string is in the supported formats.
     #[inline(always)]
     pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
-        let mut tp = TimeParts::from_str_iso(input)?;
+        let mut tp = Parts::from_str_iso(input)?;
         tp.finish(true)?;
         tp.to_dt()
     }

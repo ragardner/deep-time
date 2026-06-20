@@ -1,9 +1,9 @@
-use crate::{DtErr, DtErrKind, Parser, TimeParts, an_err};
+use crate::{DtErr, DtErrKind, Parser, Parts, an_err};
 
-impl TimeParts {
+impl Parts {
     /// Parser equivalent to `strptime` with a provided format string.
     ///
-    /// The parser populates a [`TimeParts`] struct. After successful parsing,
+    /// The parser populates a [`Parts`] struct. After successful parsing,
     /// [`Self::finish`] is called automatically to apply defaults and validation.
     ///
     /// ## Parameters
@@ -153,8 +153,8 @@ impl TimeParts {
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
-    ) -> Result<TimeParts, DtErr> {
-        let mut parts = TimeParts::new_utc();
+    ) -> Result<Parts, DtErr> {
+        let mut parts = Parts::new_utc();
         let mut parser = Parser::new(
             fmt.as_bytes(),
             input.as_bytes(),
@@ -172,7 +172,7 @@ impl TimeParts {
         }
     }
 
-    /// Finalizes a [`TimeParts`] after parsing by applying sensible defaults and
+    /// Finalizes a [`Parts`] after parsing by applying sensible defaults and
     /// performing validation.
     ///
     /// This is called automatically by the various parsing paths (`from_str`,

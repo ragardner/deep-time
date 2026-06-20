@@ -1,6 +1,6 @@
 use {
     crate::{
-        ATTOS_PER_NS, Meridiem, Offset, TimeParts, Weekday, an_err,
+        ATTOS_PER_NS, Meridiem, Offset, Parts, Weekday, an_err,
         error::{DtErr, DtErrKind},
     },
     alloc::string::String,
@@ -12,8 +12,8 @@ use {
     },
 };
 
-impl TimeParts {
-    /// Converts [`TimeParts`] → [`jiff::fmt::strtime::BrokenDownTime`].
+impl Parts {
+    /// Converts [`Parts`] → [`jiff::fmt::strtime::BrokenDownTime`].
     pub fn to_jiff_broken_down_time(&self) -> Result<BrokenDownTime, DtErr> {
         let mut bdt = BrokenDownTime::default();
 
@@ -132,7 +132,7 @@ impl TimeParts {
         Ok(bdt)
     }
 
-    /// Converts [`TimeParts`] → [`jiff::Zoned`].
+    /// Converts [`Parts`] → [`jiff::Zoned`].
     pub fn to_jiff_zoned(&self) -> Result<Zoned, DtErr> {
         let bdt = self.to_jiff_broken_down_time()?;
         if let Ok(zoned) = bdt.to_zoned() {
@@ -160,7 +160,7 @@ impl TimeParts {
         ))
     }
 
-    /// Converts [`TimeParts`] → [`jiff::Timestamp`].
+    /// Converts [`Parts`] → [`jiff::Timestamp`].
     #[inline(always)]
     pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtErr> {
         self.to_jiff_zoned().map(|z| z.timestamp())
