@@ -1,7 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 mod light_time_tests {
-    use deep_time::{Dt, ObserverState, Position, Scale, Spacetime, Velocity, constants::C};
+    use deep_time::{Dt, Observer, Position, Scale, Spacetime, Velocity, constants::C};
 
     fn make_state(
         tai_sec: i128,
@@ -9,8 +9,8 @@ mod light_time_tests {
         vel: Velocity,
         phi_m2_s2: f64,
         char_scale: f64,
-    ) -> ObserverState {
-        ObserverState {
+    ) -> Observer {
+        Observer {
             time: Dt::span(Dt::sec_to_attos(tai_sec)),
             position: pos,
             velocity: vel,

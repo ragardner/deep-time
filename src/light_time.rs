@@ -6,7 +6,7 @@ impl Dt {
     /// Shapiro gravitational time scale for the Sun (`2 G M_☉ / c³`).
     ///
     /// Recommended value for the Sun when building the `bodies` slice passed to
-    /// [`ObserverState::shapiro_delay`], [`ObserverState::shapiro_delay`],
+    /// [`Observer::shapiro_delay`], [`Observer::shapiro_delay`],
     /// and related methods.
     pub const SHAPIRO_SOLAR: Self = Self::from_sec_f(TWO_GM_SUN_OVER_C3, Scale::TAI);
 
@@ -18,27 +18,28 @@ impl Dt {
     /// planets, stars, or other massive bodies.
     ///
     /// The returned value is intended to be used for the `bodies` parameter
-    /// when calling [`ObserverState::shapiro_delay`] or
-    /// [`ObserverState::shapiro_delay`].
+    /// when calling [`Observer::shapiro_delay`] or
+    /// [`Observer::shapiro_delay`].
     #[inline]
     pub const fn shapiro_from_grav_param(gm: Real) -> Dt {
         let secs = 2.0 * gm / (C * C_SQUARED);
         Self::from_sec_f(secs, Scale::TAI)
     }
 
-    /// Creates an [`ObserverState`] using this time value along with the
+    /// Creates an [`Observer`] using this time value along with the
     /// provided position, velocity, and gravitational information.
     ///
-    /// An `ObserverState` represents a complete snapshot of an observer
-    /// (spacecraft, ground station, planet, etc.) at a specific moment.
+    /// An [`Observer`] represents a complete snapshot of an observer
+    /// (spacecraft, ground station, planet, person, etc.) at a
+    /// specific moment.
+    ///
     /// It bundles together the time, position, velocity, and local
     /// gravitational environment so that relativistic calculations
     /// (light time, clock rates, Shapiro delay, etc.) can be performed.
     ///
     /// This method is a convenience constructor. It is useful when you
     /// already have a [`Dt`] (a time value) and want to build an
-    /// `ObserverState` directly from it, rather than calling
-    /// [`ObserverState::new`] or [`ObserverState::new_strong_field`].
+    /// [`Observer`] directly from it.
     ///
     /// ## Parameters
     ///
@@ -53,17 +54,6 @@ impl Dt {
     ///   gravity varies significantly at this location. Use `0.0` for normal
     ///   solar-system and weak-field cases. Only provide a non-zero value when
     ///   working in strong gravitational fields.
-    ///
-    /// ## When to use this method
-    ///
-    /// Use this method when you already have a time value as a [`Dt`] and
-    /// want to construct an `ObserverState` in one step. It is especially
-    /// convenient when working with time values that were previously
-    /// computed or converted.
-    ///
-    /// For most normal use, [`ObserverState::new`] is simpler. Use
-    /// [`ObserverState::new_strong_field`] instead if you need to specify
-    /// a non-zero `characteristic_length_scale`.
     ///
     /// ## Examples
     ///
@@ -85,7 +75,7 @@ impl Dt {
     ///
     /// let t = Dt::span_f(1234.5);
     ///
-    /// let state = t.to_observer_state(
+    /// let state = t.to_observer(
     ///     Position::ZERO,
     ///     Velocity::ZERO,
     ///     grav_potential,
@@ -93,14 +83,14 @@ impl Dt {
     /// );
     /// ```
     #[inline]
-    pub const fn to_observer_state(
+    pub const fn to_observer(
         self,
         position: Position,
         velocity: Velocity,
         grav_potential_m2_s2: Real,
         characteristic_length_scale: Real,
-    ) -> ObserverState {
-        ObserverState {
+    ) -> Observer {
+        Observer {
             time: self,
             position,
             velocity,
@@ -110,16 +100,16 @@ impl Dt {
     }
 }
 
-/// A snapshot of an observer’s relativistic state at a specific instant.
+/// An observer at a specific instant.
 ///
-/// `ObserverState` combines time, position, velocity, and local gravitational
+/// Combines time, position, velocity, and local gravitational
 /// information. It is the main input type used by relativistic light-time
 /// methods in this library.
 #[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-pub struct ObserverState {
-    /// The time of this state.
+pub struct Observer {
+    /// The time of this observer.
     ///
     /// Any [`Scale`] is accepted. This time is treated as coordinate time
     /// for light-time calculations.
@@ -152,8 +142,8 @@ pub struct ObserverState {
     pub characteristic_length_scale: Real,
 }
 
-impl ObserverState {
-    /// Creates a new `ObserverState` for typical solar-system, GNSS,
+impl Observer {
+    /// Creates a new `Observer` for typical solar-system, GNSS,
     /// or weak-field use.
     ///
     /// This is the recommended constructor for most applications.
@@ -162,7 +152,7 @@ impl ObserverState {
     ///
     /// ## Parameters
     ///
-    /// - `time`: The time of the state.
+    /// - `time`: The time of the observer.
     /// - `position`: Position in meters (usually barycentric or heliocentric).
     /// - `velocity`: Velocity in m/s.
     /// - `grav_potential_m2_s2`: Newtonian gravitational potential Φ
@@ -173,7 +163,7 @@ impl ObserverState {
         position: Position,
         velocity: Velocity,
         grav_potential_m2_s2: Real,
-    ) -> ObserverState {
+    ) -> Observer {
         Self {
             time,
             position,
@@ -185,10 +175,10 @@ impl ObserverState {
 
     /// Returns the instantaneous proper-time rate `dτ/dt` for this observer.
     ///
-    /// This value indicates how fast a physical clock located at this state
-    /// would advance relative to the time used by this `ObserverState`.
+    /// This value indicates how fast a physical clock located at this observer
+    /// would advance relative to the time used by this `Observer`.
     /// A returned value of `1.0` means the clock advances at the same rate
-    /// as the state's time coordinate. Values are typically slightly different
+    /// as the observer's time coordinate. Values are typically slightly different
     /// from `1.0` due to the effects of velocity and gravitational potential.
     ///
     /// This rate is computed using the library’s unified proper-time model.
@@ -242,7 +232,7 @@ impl ObserverState {
     /// For round-trip (two-way) measurements, square the one-way ratio:
     ///
     /// ```rust
-    /// use deep_time::{Dt, ObserverState, Position, Spacetime, Velocity};
+    /// use deep_time::{Dt, Observer, Position, Spacetime, Velocity};
     ///
     /// let bodies = [
     ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20), // Sun
@@ -255,14 +245,14 @@ impl ObserverState {
     /// let grav_potential_tx = Spacetime::grav_potential_from_point_masses(tx_pos, bodies.iter().copied());
     /// let grav_potential_rx = Spacetime::grav_potential_from_point_masses(rx_pos, bodies.iter().copied());
     ///
-    /// let transmitter = ObserverState::new(
+    /// let transmitter = Observer::new(
     ///     Dt::span_f(0.0),
     ///     tx_pos,
     ///     Velocity::ZERO,
     ///     grav_potential_tx,
     /// );
     ///
-    /// let receiver = ObserverState::new(
+    /// let receiver = Observer::new(
     ///     Dt::span_f(0.0),
     ///     rx_pos,
     ///     Velocity::from_speed(800.0),
@@ -299,7 +289,7 @@ impl ObserverState {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, ObserverState, Position, Spacetime, Velocity, constants::C};
+    /// use deep_time::{Dt, Observer, Position, Spacetime, Velocity, constants::C};
     ///
     /// let bodies = [
     ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20), // Sun
@@ -312,7 +302,7 @@ impl ObserverState {
     /// let grav_potential_tx = Spacetime::grav_potential_from_point_masses(tx_pos, bodies.iter().copied());
     /// let grav_potential_rx = Spacetime::grav_potential_from_point_masses(rx_pos, bodies.iter().copied());
     ///
-    /// let transmitter = ObserverState::new(
+    /// let transmitter = Observer::new(
     ///     Dt::span_f(0.0),
     ///     tx_pos,
     ///     Velocity::ZERO,
@@ -320,7 +310,7 @@ impl ObserverState {
     /// );
     ///
     /// // Receiver receding at ~1.2 km/s (example spacecraft)
-    /// let receiver = ObserverState::new(
+    /// let receiver = Observer::new(
     ///     Dt::span_f(0.0),
     ///     rx_pos,
     ///     Velocity::from_speed(1200.0),
@@ -335,7 +325,7 @@ impl ObserverState {
     /// let approx_frequency_shift = ratio * classical_doppler;
     /// ```
     #[inline]
-    pub const fn relativistic_clock_rate_ratio(&self, rx: ObserverState) -> Real {
+    pub const fn relativistic_clock_rate_ratio(&self, rx: Observer) -> Real {
         rx.proper_time_rate() / self.proper_time_rate()
     }
 
@@ -412,11 +402,7 @@ impl ObserverState {
     ///
     /// This value should normally be **added** to the Newtonian geometric
     /// light time.
-    pub const fn one_way_relativistic_delay(
-        &self,
-        rx: ObserverState,
-        bodies: &[(Dt, Position)],
-    ) -> Dt {
+    pub const fn one_way_relativistic_delay(&self, rx: Observer, bodies: &[(Dt, Position)]) -> Dt {
         let prop = self.shapiro_delay(rx, bodies);
         let drift = self.compute_differential_clock_correction(rx);
         prop.add(drift)
@@ -442,7 +428,7 @@ impl ObserverState {
     ///
     /// ## Parameters
     ///
-    /// * `rx_provider` — Closure returning the full [`ObserverState`] of the
+    /// * `rx_provider` — Closure returning the full [`Observer`] of the
     ///   receiver at a given coordinate time.
     /// * `bodies` — Slice of `(shapiro_coefficient, body_position)` pairs
     ///   controlling the Shapiro contribution. Use `&[(Dt::SHAPIRO_SOLAR, sun_pos)]`
@@ -465,9 +451,9 @@ impl ObserverState {
         bodies: &[(Dt, Position)],
         tolerance: Dt,
         max_iter: usize,
-    ) -> (Dt, Dt, ObserverState)
+    ) -> (Dt, Dt, Observer)
     where
-        F: FnMut(Dt) -> ObserverState,
+        F: FnMut(Dt) -> Observer,
     {
         // Initial geometric guess
         let initial_rx = rx_provider(self.time);
@@ -544,10 +530,10 @@ impl ObserverState {
     ///
     /// ## Parameters
     ///
-    /// * `rx_provider` — Closure that returns the full [`ObserverState`] of
+    /// * `rx_provider` — Closure that returns the full [`Observer`] of
     ///   the remote receiver (planet, spacecraft, etc.) at any given
     ///   coordinate time.
-    /// * `tx_provider` — Closure that returns the full [`ObserverState`] of
+    /// * `tx_provider` — Closure that returns the full [`Observer`] of
     ///   the local transmitter at any given coordinate time (used only for
     ///   the downlink leg).
     /// * `bodies` — Slice of `(shapiro_coefficient, body_position)` pairs
@@ -574,8 +560,8 @@ impl ObserverState {
         max_iter: usize,
     ) -> Dt
     where
-        RxF: FnMut(Dt) -> ObserverState,
-        TxF: FnMut(Dt) -> ObserverState,
+        RxF: FnMut(Dt) -> Observer,
+        TxF: FnMut(Dt) -> Observer,
     {
         // Uplink leg: transmitter → receiver
         let (uplink_prop, rx_time, _rx_state) =
@@ -653,7 +639,7 @@ impl ObserverState {
     /// The total one-way Shapiro gravitational propagation delay, in the
     /// same time scale as `self.time`. This value should normally be
     /// **added** to the Newtonian geometric light time.
-    pub const fn shapiro_delay(&self, rx: ObserverState, bodies: &[(Dt, Position)]) -> Dt {
+    pub const fn shapiro_delay(&self, rx: Observer, bodies: &[(Dt, Position)]) -> Dt {
         let mut total = Dt::ZERO;
         let mut i = 0;
 
@@ -762,7 +748,7 @@ impl ObserverState {
     /// ## Returns
     ///
     /// The differential clock-rate correction (`rx_proper_advance − tx_proper_advance`).
-    pub const fn compute_differential_clock_correction(&self, rx: ObserverState) -> Dt {
+    pub const fn compute_differential_clock_correction(&self, rx: Observer) -> Dt {
         let span = rx.time.to_diff_raw(self.time);
 
         let tx_drift = Drift::from_velocity_potential_and_scale(

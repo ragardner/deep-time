@@ -71,7 +71,7 @@ impl Position {
     ///
     /// This is known as linear interpolation (lerp). It is most commonly used when
     /// you need to generate evenly spaced sample points along a path — for example,
-    /// when building the `samples` slice for [`ObserverState::one_way_relativistic_delay_integrated`].
+    /// when building the `samples` slice for [`Observer::one_way_relativistic_delay_integrated`].
     ///
     /// ## Parameters
     ///

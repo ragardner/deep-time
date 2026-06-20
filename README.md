@@ -28,7 +28,7 @@ A non-exhaustive list of functionality:
 - [Lunar](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/mars/index.html) modules
 - [Sidereal time](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/sidereal/struct.Sidereal.html) with a const fn implementation of ERFA Equation of the Origins / Equinoxes
 - [UT1 and EOP](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/eop/index.html)
-- [Light-time (Shapiro delay, etc.)](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.ObserverState.html)
+- [Light-time (Shapiro delay, etc.)](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Observer.html)
 - [Proper time along trajectories](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.proper_time_from_states)
 - Relativity: [Drift](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Spacetime.html), [Position](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Position.html), and [Velocity](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Velocity.html)
 - CCSDS [CUC](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_cuc), [CDS](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_cds), and [CCS](https://docs.rs/deep-time/0.1.0-beta.10/deep_time/struct.Dt.html#method.to_ccsds_ccs)
