@@ -75,12 +75,10 @@ mod wire;
 // _________________________________________
 // MOD
 // _________________________________________
-mod drift;
 mod dt;
-mod light_time;
 mod lite_str;
 mod locale;
-mod position;
+mod physics;
 mod scale;
 mod strtime;
 mod time_range;
@@ -152,15 +150,15 @@ pub use sidereal::Sidereal;
 // PUB USE
 // _________________________________________
 pub use an_err::AnErr;
-pub use drift::{Drift, Spacetime};
 pub use dt::Dt;
 pub use dt::lunar;
 pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use error::{DtErr, DtErrKind};
-pub use light_time::Observer;
 pub use lite_str::LiteStr;
 pub use locale::Lang;
-pub use position::{Position, Velocity};
+pub use physics::drift::{Drift, Spacetime};
+pub use physics::light_time::Observer;
+pub use physics::position::{Position, Velocity};
 pub use scale::Scale;
 pub use strtime::StrPTimeFmt;
 pub use time_range::{Every, TimeRange};

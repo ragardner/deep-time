@@ -14,7 +14,6 @@ mod to_str;
 
 pub mod lunar;
 pub mod numbers_traits;
-pub mod trajectory;
 
 #[cfg(feature = "alloc")]
 mod to_str_ccsds;
