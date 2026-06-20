@@ -16,6 +16,10 @@
 //! dilation, gravitational light-propagation delay, and accumulated proper
 //! time needed for high-precision astronomical timescales and deep-space
 //! timing.
+//!
+//! Information on the underlying physical model (the master Lagrangian,
+//! different regimes of behavior, and its relationship to general relativity)
+//! can be found [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
 
 mod trajectory;
 

@@ -3,8 +3,9 @@
 //! Used to model the accumulated difference between Proper time (τ)
 //! and a coordinate time such as TT (or any other `Scale`).
 //!
-//! The underlying physical model (master Lagrangian, regimes, relationship to GR)
-//! is documented in `docs/relativity.md`.
+//! Information on the underlying physical model (the master Lagrangian, different
+//! regimes of behavior, and its relationship to general relativity) can be found
+//! [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
 
 use crate::{
     ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Position, Real, Scale, Velocity, sqrt,
@@ -113,6 +114,10 @@ impl Spacetime {
     /// relativity experienced by a local observer at the observer’s spacetime point.
     ///
     /// This is the canonical, physics-true convenience function for the master Lagrangian.
+    ///
+    /// Information on the master Lagrangian can be found
+    /// [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
+    ///
     /// It uses:
     /// - `phi` = Φ/c² — the total local gravitational potential (redshift/gravity effect)
     ///   felt by the observer from all masses.
