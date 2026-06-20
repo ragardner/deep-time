@@ -25,15 +25,15 @@ fn main() -> Result<(), DtErr> {
         ..Default::default()
     };
 
-    let dt = Dt::from_str_parse("2 days from now at 9am", &en_cfg).unwrap();
+    let dt = Dt::from_str_parse("2 days from now at 9am", &en_cfg)?;
     assert_eq!(dt, Dt::from_ymd(2026, 6, 18, Scale::UTC, 9, 0, 0, 0));
 
-    let dt = Dt::from_str_parse("next Monday at 14:00", &en_cfg).unwrap();
+    let dt = Dt::from_str_parse("next Monday at 14:00", &en_cfg)?;
     assert_eq!(dt, Dt::from_ymd(2026, 6, 22, Scale::UTC, 14, 0, 0, 0));
 
     // Relative dates use Dt::now if the `std` feature is enabled and no
     // ref_time is provided in the ParseCfg
-    let _ = Dt::from_str_parse("next Monday at 14:00", &ParseCfg::DEFAULT).unwrap();
+    let _ = Dt::from_str_parse("next Monday at 14:00", &ParseCfg::DEFAULT)?;
 
     // Fast ISO parsing with time scale and no alloc output
     let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;

@@ -121,7 +121,7 @@ jiff-tz-bundle = [
 
 chrono = [
     "dep:chrono",
-    "chrono?/alloc",
+    "alloc",
 ]
 
 hifitime = [
@@ -163,6 +163,7 @@ perf-tests = ["parse", "jiff-tz", "hifitime"]
 eop-tests = ["eop", "std"]
 
 [lints.clippy]
+# cargo clippy --all-features --all-targets -- -D warnings
 non_canonical_partial_ord_impl = "allow"
 wrong_self_convention          = "allow"
 excessive_precision            = "allow"
