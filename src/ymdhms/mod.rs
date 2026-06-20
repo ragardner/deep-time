@@ -46,6 +46,22 @@ pub struct YmdHms {
 }
 
 impl YmdHms {
+    /// Create a new [`YmdHms`], wrapper around
+    /// [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd).
+    #[inline(always)]
+    pub const fn new(
+        yr: i64,
+        mo: u8,
+        day: u8,
+        scale: Scale,
+        hr: u8,
+        min: u8,
+        sec: u8,
+        attos: u64,
+    ) -> YmdHms {
+        Dt::from_ymd(yr, mo, day, scale, hr, min, sec, attos).to_ymd()
+    }
+
     /// Reconstructs a [`Dt`] using converting back to `old_scale`,
     /// the time scale that the original [`Dt`] was on.
     #[inline(always)]

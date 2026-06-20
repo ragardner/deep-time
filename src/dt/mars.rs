@@ -44,7 +44,7 @@ pub const MARS_TROPICAL_YEAR_DAYS: Real = f!(686.9725);
 
 impl Dt {
     /// helper: elapsed attoseconds since the Mars MSD reference epoch (JD 2405522.0028779 TT).
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn to_attos_since_mars_msd_epoch(numerical_tt: Dt) -> i128 {
         numerical_tt.to_attos() - MARS_REF_TT_ATTOS
     }
@@ -153,7 +153,6 @@ impl Dt {
         ls
     }
 
-    #[inline]
     const fn mars_perturber_sum(dt_j2000: Real) -> Real {
         let base = f!(0.985626) * dt_j2000;
 

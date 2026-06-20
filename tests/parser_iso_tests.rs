@@ -1,7 +1,8 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 use deep_time::constants::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
-use deep_time::{Dt, DtErrKind, Offset, Scale, TimeParts};
+use deep_time::time_parts::{Offset, TimeParts};
+use deep_time::{Dt, DtErrKind, Scale};
 
 mod from_str_iso_tests {
     use super::*;

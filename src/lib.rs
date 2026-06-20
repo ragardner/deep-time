@@ -75,7 +75,6 @@ mod wire;
 // _________________________________________
 // MOD
 // _________________________________________
-mod an_err;
 mod drift;
 mod dt;
 mod light_time;
@@ -84,18 +83,19 @@ mod locale;
 mod position;
 mod scale;
 mod strtime;
-mod time_parts;
 mod time_range;
 mod ymdhms;
 
 // _________________________________________
 // PUB MOD
 // _________________________________________
+pub mod an_err;
 pub mod constants;
 pub mod error;
 pub mod historical_utc;
 pub mod leap_seconds;
 pub mod math;
+pub mod time_parts;
 pub mod tz;
 
 // _________________________________________
@@ -121,6 +121,7 @@ pub(crate) use locale::{lang_data::*, lang_map::*};
 // _________________________________________
 // CRATE USE
 // _________________________________________
+pub(crate) use an_err::AnErr;
 pub(crate) use constants::*;
 pub(crate) use locale::*;
 #[allow(unused_imports)]
@@ -134,6 +135,7 @@ pub(crate) use math::{
     sqrt::{hypot, sqrt},
 };
 pub(crate) use strtime::*;
+pub(crate) use time_parts::*;
 
 // _________________________________________
 // FEATURE PUB USE
@@ -141,22 +143,16 @@ pub(crate) use strtime::*;
 #[cfg(feature = "parse")]
 pub use alloc_parse::types::{Mode, Order, ParseCfg};
 
-#[cfg(feature = "wire")]
-pub use an_err::{WireErr, WireLocation};
-
-#[cfg(feature = "sidereal")]
-pub use sidereal::Sidereal;
-
 #[cfg(feature = "mars")]
 pub use dt::mars;
 
 // _________________________________________
 // PUB USE
 // _________________________________________
-pub use an_err::AnErr;
 pub use drift::{Drift, Spacetime};
+pub use dt::Dt;
+pub use dt::lunar;
 pub use dt::numbers_traits::{AttosTraits, TimeTraits};
-pub use dt::{Dt, lunar};
 pub use error::{DtErr, DtErrKind};
 pub use light_time::ObserverState;
 pub use lite_str::LiteStr;
@@ -164,6 +160,5 @@ pub use locale::Lang;
 pub use position::{Position, Velocity};
 pub use scale::Scale;
 pub use strtime::StrPTimeFmt;
-pub use time_parts::{Meridiem, Offset, TimeParts, Weekday};
 pub use time_range::{Every, TimeRange};
 pub use ymdhms::YmdHms;

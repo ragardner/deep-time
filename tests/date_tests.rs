@@ -2,7 +2,8 @@
 
 #[cfg(feature = "lang")]
 mod tests {
-    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale, TimeParts};
+    use deep_time::time_parts::TimeParts;
+    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
 
     #[cfg(feature = "jiff-tz")]
     #[test]

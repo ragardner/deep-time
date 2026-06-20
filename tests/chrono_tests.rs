@@ -5,7 +5,7 @@ mod tests {
     use chrono::{
         DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
     };
-    use deep_time::TimeParts;
+    use deep_time::time_parts::TimeParts;
 
     #[test]
     fn test_to_chrono_naive_datetime_basic_ymd_hms() {

@@ -7,7 +7,10 @@ extern crate alloc;
 mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
-    use deep_time::{Drift, Dt, Meridiem, Offset, Scale, TimeParts, TimeRange, Weekday, YmdHms};
+    use deep_time::{
+        Drift, Dt, Scale, TimeRange, YmdHms,
+        time_parts::{Meridiem, Offset, TimeParts, Weekday},
+    };
 
     /// Helper function to test round-trip serialization/deserialization.
 

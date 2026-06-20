@@ -2,7 +2,8 @@
 
 #[cfg(all(test, feature = "jiff"))]
 mod tests {
-    use deep_time::{DtErr, TimeParts};
+    use deep_time::DtErr;
+    use deep_time::time_parts::TimeParts;
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtErr> {

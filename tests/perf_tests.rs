@@ -2,7 +2,8 @@
 
 #[cfg(feature = "perf-tests")]
 mod perf_tests {
-    use deep_time::{Dt, Lang, ParseCfg, Scale, TimeParts};
+    use deep_time::time_parts::TimeParts;
+    use deep_time::{Dt, Lang, ParseCfg, Scale};
     use std::time::Instant;
 
     #[test]
@@ -376,8 +377,12 @@ mod perf_tests {
         eprintln!();
         eprintln!("#### Parsing and Formatting");
         eprintln!();
-        eprintln!("| Operation                              | Time          | vs Jiff 0.2.28           |");
-        eprintln!("|----------------------------------------|---------------|--------------------------|");
+        eprintln!(
+            "| Operation                              | Time          | vs Jiff 0.2.28           |"
+        );
+        eprintln!(
+            "|----------------------------------------|---------------|--------------------------|"
+        );
         eprintln!(
             "| ISO datetime parsing                   | {:<13} | {:<24} |",
             fmt_ns(iso_deep_ns),
@@ -406,8 +411,12 @@ mod perf_tests {
         eprintln!();
         eprintln!("#### Time Scale Conversions");
         eprintln!();
-        eprintln!("| Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |");
-        eprintln!("|------------------|---------------|---------------|---------------------------|");
+        eprintln!(
+            "| Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |"
+        );
+        eprintln!(
+            "|------------------|---------------|---------------|---------------------------|"
+        );
         eprintln!(
             "| TAI → UTC        | {:<13} | {:<13} | {:<25} |",
             fmt_ns(tai_utc_deep_ns),

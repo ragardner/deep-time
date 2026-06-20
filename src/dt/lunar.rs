@@ -90,7 +90,7 @@ pub const LUNAR_PERIODIC_TERMS: [LunarPeriodicTerm; 13] = [
 ];
 
 impl Dt {
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn mul_lm(attos: i128) -> i128 {
         Self::mul_rate(attos, LM_NUM, LM_DEN)
     }
@@ -130,7 +130,7 @@ impl Dt {
         tt
     }
 
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn mul_tl(attos: i128) -> i128 {
         Self::mul_rate(attos, TL_NUM, TL_DEN)
     }
@@ -189,7 +189,7 @@ impl Dt {
     /// Integer helper: elapsed attoseconds since J2000.0 TDB.
     /// Used exclusively for the TCL pathway to match LTE440
     /// (TCL = TDB + L_D^M × (JD_TDB − 2451545.0) × 86400 + periodic).
-    #[inline]
+    #[inline(always)]
     pub(crate) const fn to_attos_since_j2000_tdb_epoch(numerical_tdb: Self) -> i128 {
         numerical_tdb.to_attos()
     }
