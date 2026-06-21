@@ -103,6 +103,7 @@ impl Parts {
         }
 
         // Explicit timestamp (highest priority) — convert Noon2000 to unix for jiff
+        // TODO: incorrect
         if let Some(ts) = self.timestamp_sec {
             let secs = match ts {
                 TimestampSec::Unix(u) => u,
