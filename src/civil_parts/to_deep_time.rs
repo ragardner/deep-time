@@ -14,7 +14,7 @@ impl Parts {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit Unix timestamp
         // ──────────────────────────────────────────────────────────────
-        if let Some(unix_secs) = self.unix_timestamp_seconds {
+        if let Some(unix_secs) = self.timestamp_sec {
             let total_sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
             return Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale));
         }

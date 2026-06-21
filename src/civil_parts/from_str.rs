@@ -193,7 +193,7 @@ impl Parts {
     /// - [`DtErrKind::Incomplete`] if no valid date representation is present.
     #[inline(always)]
     pub fn finish(&mut self, allow_partial_date: bool) -> Result<(), DtErr> {
-        if self.unix_timestamp_seconds.is_none() {
+        if self.timestamp_sec.is_none() {
             let has_calendar_date = if allow_partial_date {
                 if self.day.is_none() {
                     self.day = Some(1);

@@ -27,7 +27,7 @@ mod tests {
     #[test]
     fn test_unix_timestamp_direct() {
         let parsed = Parts::from_str("%s", "1713191445", false, false, false).unwrap();
-        assert_eq!(parsed.unix_timestamp_seconds, Some(1713191445));
+        assert_eq!(parsed.timestamp_sec, Some(1713191445));
     }
 
     #[test]
@@ -90,8 +90,7 @@ mod tests {
     fn test_fixed_offset_parsing() {
         // Space before %z is required by the current parser (no literal character between %T and %z otherwise)
         let parsed =
-            Parts::from_str("%F %T %z", "2024-04-15 10:30:00 -0400", false, false, false)
-                .unwrap();
+            Parts::from_str("%F %T %z", "2024-04-15 10:30:00 -0400", false, false, false).unwrap();
         assert_eq!(parsed.offset, Some(Offset::Fixed(-14400)));
     }
 
@@ -143,8 +142,7 @@ mod tests {
 
     #[test]
     fn test_strict_mode_trailing_chars() {
-        let err =
-            Parts::from_str("%Y-%m-%d", "2024-04-15 extra", false, false, false).unwrap_err();
+        let err = Parts::from_str("%Y-%m-%d", "2024-04-15 extra", false, false, false).unwrap_err();
         assert!(matches!(err.kind().unwrap(), DtErrKind::TrailingCharacters));
     }
 
@@ -238,13 +236,13 @@ mod tests {
     #[test]
     fn test_format_extensions_timezone_colons() {
         // %z (no colons)
-        let p = Parts::from_str("%F %T%z", "2024-04-15 10:30:00-0400", false, false, false)
-            .unwrap();
+        let p =
+            Parts::from_str("%F %T%z", "2024-04-15 10:30:00-0400", false, false, false).unwrap();
         assert_eq!(p.offset, Some(Offset::Fixed(-14400)));
 
         // %:z (one colon)
-        let p = Parts::from_str("%F %T%:z", "2024-04-15 10:30:00-04:00", false, false, false)
-            .unwrap();
+        let p =
+            Parts::from_str("%F %T%:z", "2024-04-15 10:30:00-04:00", false, false, false).unwrap();
         assert_eq!(p.offset, Some(Offset::Fixed(-14400)));
 
         // %::z (two colons)

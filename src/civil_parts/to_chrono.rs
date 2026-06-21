@@ -139,7 +139,7 @@ impl Parts {
         // UNIX TIMESTAMP PATH
         // Always UTC. Completely ignores offset + iana_name.
         // ============================================================
-        if let Some(secs) = self.unix_timestamp_seconds {
+        if let Some(secs) = self.timestamp_sec {
             let subsec_nano = if self.attos != 0 {
                 let ns_u64 = self.attos / ATTOS_PER_NS;
                 if ns_u64 > 999_999_999 {
@@ -284,7 +284,7 @@ impl Parts {
     ///   instead of anything else (timezones are ignored).
     /// - Uses [`Parts::to_chrono_datetime`] internally.
     pub fn to_chrono_timestamp(&self) -> Result<i64, DtErr> {
-        if let Some(secs) = self.unix_timestamp_seconds {
+        if let Some(secs) = self.timestamp_sec {
             return Ok(secs);
         }
         let dt = self.to_chrono_datetime()?;

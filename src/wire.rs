@@ -1,5 +1,5 @@
 use crate::{
-    Drift, Dt, Every, LiteStr, Meridiem, Offset, Scale, Spacetime, Parts, TimeRange, Weekday,
+    Drift, Dt, Every, LiteStr, Meridiem, Offset, Parts, Scale, Spacetime, TimeRange, Weekday,
 };
 
 impl Dt {
@@ -408,8 +408,8 @@ impl Parts {
         buf[offset] = self.meridiem.map_or(255, |m| m.to_wire_byte());
         offset += 1;
 
-        // unix_timestamp_seconds
-        let unix = self.unix_timestamp_seconds.unwrap_or(i64::MIN);
+        // timestamp_sec
+        let unix = self.timestamp_sec.unwrap_or(i64::MIN);
         buf[offset..offset + 8].copy_from_slice(&unix.to_le_bytes());
 
         buf
@@ -536,10 +536,10 @@ impl Parts {
         }
         offset += 1;
 
-        // unix_timestamp_seconds (8 bytes)
+        // timestamp_sec (8 bytes)
         let unix = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
         if unix != i64::MIN {
-            dc.unix_timestamp_seconds = Some(unix);
+            dc.timestamp_sec = Some(unix);
         }
 
         Some(dc)

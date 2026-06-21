@@ -498,7 +498,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 Ok(v) => v,
                 Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp, "%s timestamp")),
             };
-        self.tm.unix_timestamp_seconds = Some(n);
+        self.tm.timestamp_sec = Some(n);
         self.inp = remaining;
         self.advance_fmt();
         Ok(())

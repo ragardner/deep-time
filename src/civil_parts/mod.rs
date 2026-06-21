@@ -78,7 +78,7 @@ pub struct Parts {
     /// AM / PM indicator.
     pub meridiem: Option<Meridiem>,
     /// Unix timestamp in seconds (`%s`).
-    pub unix_timestamp_seconds: Option<i64>,
+    pub timestamp_sec: Option<i64>,
 }
 
 impl Parts {

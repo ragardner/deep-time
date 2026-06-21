@@ -102,7 +102,7 @@ impl Parts {
         }
 
         // Explicit Unix timestamp (highest priority)
-        if let Some(secs) = self.unix_timestamp_seconds {
+        if let Some(secs) = self.timestamp_sec {
             let ts = Timestamp::from_second(secs)
                 .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e))?;
             bdt.set_timestamp(Some(ts));
