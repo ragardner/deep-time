@@ -1,4 +1,4 @@
-use crate::{DtErr, DtErrKind, Offset, STRTIME_SIZE, Scale, Parts, an_err};
+use crate::{DtErr, DtErrKind, Offset, Parts, STRTIME_SIZE, Scale, an_err};
 
 impl Parts {
     /// Generalized ISO / CCSDS ASCII Time Code parser (A or B variant).

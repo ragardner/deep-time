@@ -111,8 +111,7 @@ impl Dt {
 pub struct Observer {
     /// The time of this observer.
     ///
-    /// Any [`Scale`] is accepted. This time is treated as coordinate time
-    /// for light-time calculations.
+    /// Any [`Scale`] is accepted. This time is treated as coordinate time.
     pub time: Dt,
 
     /// Position of the observer in meters.
