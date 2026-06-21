@@ -82,8 +82,7 @@ impl Parts {
             pos += 1;
         }
 
-        // DOY vs calendar detection, uses required datetime separator to detect
-        let is_doy = pos + 3 == len_ || (pos + 3 < len_ && !bytes[pos + 3].is_ascii_digit());
+        let is_doy = is_doy(bytes, pos, len_);
 
         if is_doy {
             // 3-digit day of year
@@ -91,46 +90,35 @@ impl Parts {
             // digit 1
             if bytes[pos].is_ascii_digit() {
                 doy = doy * 10 + (bytes[pos] - b'0') as u16;
-                pos += 1;
-            } else {
-                return Err(an_err!(DtErrKind::ExpectedDayOfYear, "0/3 digits"));
             }
-
+            pos += 1;
             // digit 2
             if bytes[pos].is_ascii_digit() {
                 doy = doy * 10 + (bytes[pos] - b'0') as u16;
-                pos += 1;
-            } else {
-                return Err(an_err!(DtErrKind::ExpectedDayOfYear, "1/3 digits"));
             }
-
+            pos += 1;
             // digit 3
             if bytes[pos].is_ascii_digit() {
                 doy = doy * 10 + (bytes[pos] - b'0') as u16;
                 pos += 1;
             } else {
-                return Err(an_err!(DtErrKind::ExpectedDayOfYear, "2/3 digits"));
+                return Err(an_err!(DtErrKind::ExpectedDayOfYear));
             }
-
             tp.day_of_yr = Some(doy);
         } else {
-            // 2-digit month
+            // 1 or 2 digit month
             let mut mo: u8 = 0;
-            // digit 1
-            if bytes[pos].is_ascii_digit() {
+            if pos < len_ && bytes[pos].is_ascii_digit() {
                 mo = mo * 10 + (bytes[pos] - b'0');
                 pos += 1;
-            } else {
-                return Err(an_err!(DtErrKind::ExpectedMonth, "0/2 digits"));
+                if pos < len_ && bytes[pos].is_ascii_digit() {
+                    mo = mo * 10 + (bytes[pos] - b'0');
+                    pos += 1;
+                }
             }
-            // digit 2
-            if bytes[pos].is_ascii_digit() {
-                mo = mo * 10 + (bytes[pos] - b'0');
-                pos += 1;
-            } else {
-                return Err(an_err!(DtErrKind::ExpectedMonth, "1/2 digits"));
+            if mo == 0 {
+                return Err(an_err!(DtErrKind::ExpectedMonth));
             }
-
             tp.mo = Some(mo);
 
             // Optional separator after month
@@ -138,23 +126,19 @@ impl Parts {
                 pos += 1;
             }
 
-            // 2-digit day
+            // 1 or 2 digit day
             let mut day: u8 = 0;
-            // digit 1
-            if bytes[pos].is_ascii_digit() {
+            if pos < len_ && bytes[pos].is_ascii_digit() {
                 day = day * 10 + (bytes[pos] - b'0');
                 pos += 1;
-            } else {
-                return Err(an_err!(DtErrKind::ExpectedDay, "0/2 digits"));
+                if pos < len_ && bytes[pos].is_ascii_digit() {
+                    day = day * 10 + (bytes[pos] - b'0');
+                    pos += 1;
+                }
             }
-            // digit 2
-            if bytes[pos].is_ascii_digit() {
-                day = day * 10 + (bytes[pos] - b'0');
-                pos += 1;
-            } else {
-                return Err(an_err!(DtErrKind::ExpectedDay, "1/2 digits"));
+            if day == 0 {
+                return Err(an_err!(DtErrKind::ExpectedDay));
             }
-
             tp.day = Some(day);
         }
 
@@ -406,5 +390,33 @@ impl Parts {
         }
 
         Ok(tp)
+    }
+}
+
+#[inline(always)]
+fn is_doy(bytes: &[u8], mut pos: usize, len_: usize) -> bool {
+    // index 1
+    if pos == len_ || (!bytes[pos].is_ascii_digit() && !matches!(bytes[pos], b' ')) {
+        return false;
+    } else {
+        pos += 1;
+    }
+    // index 2
+    if pos == len_ || (!bytes[pos].is_ascii_digit() && !matches!(bytes[pos], b' ')) {
+        return false;
+    } else {
+        pos += 1;
+    }
+    // index 3
+    if pos == len_ || (!bytes[pos].is_ascii_digit() && !matches!(bytes[pos], b' ')) {
+        return false;
+    } else {
+        pos += 1;
+    }
+    // index 4 end of non digit
+    if pos == len_ || !bytes[pos].is_ascii_digit() {
+        return true;
+    } else {
+        return false;
     }
 }

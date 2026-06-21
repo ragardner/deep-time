@@ -1,7 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::constants::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
 use deep_time::civil_parts::{Offset, Parts};
+use deep_time::constants::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
 use deep_time::{Dt, DtErrKind, Scale};
 
 mod from_str_iso_tests {
@@ -74,8 +74,7 @@ mod from_str_iso_tests {
     #[test]
     fn test_iso_full_example_from_docs() {
         // Matches the example in the doc comment
-        let tp =
-            Parts::from_str_iso("+2000-01-01T17:00:00 -0500 [America/New_York] TAI").unwrap();
+        let tp = Parts::from_str_iso("+2000-01-01T17:00:00 -0500 [America/New_York] TAI").unwrap();
 
         assert_eq!(tp.yr, Some(2000));
         assert_eq!(tp.mo, Some(1));
@@ -90,8 +89,8 @@ mod from_str_iso_tests {
 
     #[test]
     fn test_iso_whitespace_variations() {
-        let tp = Parts::from_str_iso("2024-04-18  14:30:25   +02:00   [Europe/Berlin]   TAI")
-            .unwrap();
+        let tp =
+            Parts::from_str_iso("2024-04-18  14:30:25   +02:00   [Europe/Berlin]   TAI").unwrap();
         assert_eq!(tp.hr, 14);
         assert_eq!(tp.offset, Some(Offset::Fixed(2 * 3600)));
         assert!(tp.iana_name.is_some());
@@ -399,5 +398,42 @@ mod from_str_iso_tests {
         assert_eq!(dt.mo, Some(4));
         assert_eq!(dt.day, Some(18));
         assert_eq!(dt.scale, Scale::UTC); // default is UTC
+    }
+
+    #[test]
+    fn test_iso_single_digit_month_day() {
+        // single digit month and day
+        let dt = Parts::from_str_iso("2024-1-1").unwrap();
+        assert_eq!(dt.yr, Some(2024));
+        assert_eq!(dt.mo, Some(1));
+        assert_eq!(dt.day, Some(1));
+
+        // mixed
+        let dt = Parts::from_str_iso("2024-4-18").unwrap();
+        assert_eq!(dt.mo, Some(4));
+        assert_eq!(dt.day, Some(18));
+
+        let dt = Parts::from_str_iso("2024-12-5").unwrap();
+        assert_eq!(dt.mo, Some(12));
+        assert_eq!(dt.day, Some(5));
+
+        // with time (times remain 2-digit)
+        let dt = Parts::from_str_iso("2024-1-2T03:04:05").unwrap();
+        assert_eq!(dt.mo, Some(1));
+        assert_eq!(dt.day, Some(2));
+        assert_eq!(dt.hr, 3);
+
+        // with offset, no time
+        let dt = Parts::from_str_iso("2024-5-6+02:00").unwrap();
+        assert_eq!(dt.mo, Some(5));
+        assert_eq!(dt.day, Some(6));
+        assert_eq!(dt.offset, Some(Offset::Fixed(2 * 3600)));
+
+        // date only, single digits, default scale
+        let dt = Parts::from_str_iso("2025-9-9").unwrap();
+        assert_eq!(dt.mo, Some(9));
+        assert_eq!(dt.day, Some(9));
+
+        let _dt = Dt::from_str_iso("2024-1-5T12:00:00Z").unwrap();
     }
 }
