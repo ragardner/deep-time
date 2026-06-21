@@ -1,6 +1,5 @@
 use crate::{
-    ATTOS_PER_NS, Dt, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
-    civil_parts::TimestampSec,
+    ATTOS_PER_NS, Dt, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, Parts, Weekday},
 };
@@ -140,27 +139,11 @@ impl Parts {
         // UNIX TIMESTAMP PATH
         // Always UTC. Completely ignores offset + iana_name.
         // ============================================================
-        if let Some(ts) = self.timestamp_sec {
-            let secs = match ts {
-                TimestampSec::Unix(u) => u,
-                TimestampSec::Noon2000(j) => j + TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
-            };
-            let subsec_nano = if self.attos != 0 {
-                let ns_u64 = self.attos / ATTOS_PER_NS;
-                if ns_u64 > 999_999_999 {
-                    999_999_999
-                } else {
-                    ns_u64 as u32
-                }
-            } else {
-                0
-            };
-
-            let utc_dt = DateTime::from_timestamp(secs, subsec_nano)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidNumber, "timestamp: {:?}", secs))?;
+        if let Some(_) = self.timestamp_sec {
             let offset = FixedOffset::east_opt(0)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset))?;
-            return Ok(utc_dt.with_timezone(&offset));
+            let dt = self.to_dt()?.to_chrono_datetime_utc();
+            return Ok(dt.with_timezone(&offset));
         }
 
         // ============================================================
