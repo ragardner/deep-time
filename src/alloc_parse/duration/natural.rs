@@ -982,7 +982,7 @@ impl Dt {
                 ymd.yr(),
                 ymd.mo(),
                 ymd.day(),
-                ymd.scale(),
+                ymd.dt.target,
                 h,
                 target_minute.unwrap_or(0),
                 target_second.unwrap_or(0),

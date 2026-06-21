@@ -2,7 +2,7 @@ pub mod parser;
 pub mod printer;
 
 use crate::error::{DtErr, DtErrKind};
-use crate::{Dt, Lang, LiteStr, STRTIME_SIZE, Parts, an_err};
+use crate::{Dt, Lang, LiteStr, Parts, STRTIME_SIZE, an_err};
 use core::result::Result;
 use core::str;
 
@@ -14,6 +14,11 @@ pub(crate) enum Sign {
     None,
     Positive,
     Negative,
+}
+
+pub(crate) enum Epoch {
+    Unix,
+    Noon2000,
 }
 
 /// Optional `%` directive extensions: flag, width, and colon count.
@@ -307,7 +312,7 @@ impl StrPTimeFmt {
             // all currently supported directives
             b'%' | b'A' | b'a' | b'B' | b'b' | b'h' | b'C' | b'd' | b'e' |
             b'f' | b'N' | b'G' | b'g' | b'H' | b'k' | b'I' | b'l' | b'j' |
-            b'M' | b'm' | b'n' | b't' | b'P' | b'p' | b'Q' | b'S' | b's' |
+            b'J' | b'M' | b'm' | b'n' | b't' | b'P' | b'p' | b'Q' | b'S' | b's' |
             b'U' | b'u' | b'V' | b'W' | b'w' | b'Y' | b'y' | b'z' |
             // shortcuts
             b'F' | b'D' | b'T' | b'R' |

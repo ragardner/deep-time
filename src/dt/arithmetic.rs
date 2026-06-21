@@ -671,6 +671,21 @@ impl Dt {
         }
     }
 
+    /// Combines [`i64`] seconds and [`u64`] attoseconds into a total signed
+    /// [`i128`] attoseconds value.
+    ///
+    /// - When `seconds >= 0`, the result is `seconds * 10¹⁸ + attoseconds`.
+    /// - When `seconds < 0`, the fractional attoseconds are treated as negative:
+    ///   `seconds * 10¹⁸ - attoseconds`.
+    #[inline(always)]
+    pub const fn sec_and_attos_to_attos(sec: i64, attos: u64) -> i128 {
+        if sec >= 0 {
+            (sec as i128) * ATTOS_PER_SEC_I128 + attos as i128
+        } else {
+            (sec as i128) * ATTOS_PER_SEC_I128 - attos as i128
+        }
+    }
+
     /// Converts seconds i128 → total attoseconds i128
     #[inline(always)]
     pub const fn sec_to_attos(sec: i128) -> i128 {

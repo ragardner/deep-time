@@ -117,8 +117,85 @@ impl Dt {
             min,
             sec,
             attos: frac,
-            scale: self.target,
-            old_scale: self.scale,
+            dt: *self,
+        }
+    }
+
+    /// Creates a **TAI** [`Dt`] from a proleptic gregorian date which is assumed to be on
+    /// the provided time scale.
+    ///
+    /// - Equivalent to converting to `TAI` for the provided date. This means for example that
+    ///   when using `Scale::UTC` leap seconds are potentially added to the returned [`Dt`].
+    /// - The returned [`Dt`] will have its `scale` field set to `TAI` and its `target` field
+    ///   set to the provided time scale argument from this fn. This makes functions such as
+    ///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) more ergonomic.
+    ///
+    /// All input components are clamped to their valid ranges:
+    /// - `mo`   → 1..=12 **1 based**
+    /// - `day`  → 1..=31 **1 based**
+    /// - `hr`   → 0..=23 **0 based**
+    /// - `min`  → 0..=59 **0 based**
+    /// - `sec`  → 0..=60 **0 based** (permits leap seconds)
+    /// - `attos` → 10¹⁸ **0 based** (clamped to under 1 second)
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "jiff-tz")]
+    /// # {
+    /// use deep_time::{Dt, Lang, Scale};
+    ///
+    /// // library zero is 2000-01-01 noon TAI
+    /// let tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+    /// assert_eq!(tai, Dt::ZERO);
+    ///
+    /// // utc noon
+    /// let utc = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+    /// // output with timezone requires jiff-tz feature
+    /// // because from_ymd used Scale::UTC, the output is converted
+    /// // back to UTC before being offset by the timezone
+    /// let s = utc.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En).unwrap();
+    /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
+    /// # }
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
+    ///
+    /// ## Implementation
+    ///
+    /// Same as [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) — `convert_epoch` is `false`. See
+    /// that function's Implementation section.
+    pub const fn from_ymd(
+        yr: i64,
+        mo: u8,
+        day: u8,
+        scale: Scale,
+        hr: u8,
+        min: u8,
+        sec: u8,
+        attos: u64,
+    ) -> Dt {
+        let (mo, day, hr, min, sec) = Dt::clamp_mdhms(yr, mo, day, hr, min, sec);
+        let attos = Dt::clamp_u64(attos, 0, ATTOS_PER_SEC - 1);
+
+        let sec_is_60 = sec == 60;
+        let s_for_unix = if sec_is_60 { 59 } else { sec };
+
+        let unix_sec = Dt::ymd_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
+        let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (attos as i128);
+
+        if sec_is_60 && scale.uses_leap_seconds() {
+            let t =
+                Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false);
+            let is_leap = match leap_sec(t.add_sec(1).to_sec64(), false) {
+                Some(i) => i.is_leap_sec,
+                None => false,
+            };
+            if is_leap { t.add_sec(1) } else { t }
+        } else {
+            Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false)
         }
     }
 
@@ -207,84 +284,6 @@ impl Dt {
         let yr_part = 365 * y + y4 - y100 + y400 - 32045;
 
         Dt::i128_to_i64(day_mo as i128 + yr_part)
-    }
-
-    /// Creates a **TAI** [`Dt`] from a proleptic gregorian date which is assumed to be on
-    /// the provided time scale.
-    ///
-    /// - Equivalent to converting to `TAI` for the provided date. This means for example that
-    ///   when using `Scale::UTC` leap seconds are potentially added to the returned [`Dt`].
-    /// - The returned [`Dt`] will have its `scale` field set to `TAI` and its `target` field
-    ///   set to the provided time scale argument from this fn. This makes functions such as
-    ///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) more ergonomic.
-    ///
-    /// All input components are clamped to their valid ranges:
-    /// - `mo`   → 1..=12 **1 based**
-    /// - `day`  → 1..=31 **1 based**
-    /// - `hr`   → 0..=23 **0 based**
-    /// - `min`  → 0..=59 **0 based**
-    /// - `sec`  → 0..=60 **0 based** (permits leap seconds)
-    /// - `attos` → 10¹⁸ **0 based** (clamped to under 1 second)
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// # #[cfg(feature = "jiff-tz")]
-    /// # {
-    /// use deep_time::{Dt, Lang, Scale};
-    ///
-    /// // library zero is 2000-01-01 noon TAI
-    /// let tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
-    /// assert_eq!(tai, Dt::ZERO);
-    ///
-    /// // utc noon
-    /// let utc = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
-    /// // output with timezone requires jiff-tz feature
-    /// // because from_ymd used Scale::UTC, the output is converted
-    /// // back to UTC before being offset by the timezone
-    /// let s = utc.to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En).unwrap();
-    /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
-    /// # }
-    /// ```
-    ///
-    /// ## See also
-    ///
-    /// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
-    ///
-    /// ## Implementation
-    ///
-    /// Same as [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) — `convert_epoch` is `false`. See
-    /// that function's Implementation section.
-    pub const fn from_ymd(
-        yr: i64,
-        mo: u8,
-        day: u8,
-        scale: Scale,
-        hr: u8,
-        min: u8,
-        sec: u8,
-        attos: u64,
-    ) -> Dt {
-        let (mo, day, hr, min, sec) = Dt::clamp_mdhms(yr, mo, day, hr, min, sec);
-        let attos = Dt::clamp_u64(attos, 0, ATTOS_PER_SEC - 1);
-
-        let sec_is_60 = sec == 60;
-        let s_for_unix = if sec_is_60 { 59 } else { sec };
-
-        let unix_sec = Dt::ymd_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
-        let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (attos as i128);
-
-        if sec_is_60 && scale.uses_leap_seconds() {
-            let t =
-                Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false);
-            let is_leap = match leap_sec(t.add_sec(1).to_sec64(), false) {
-                Some(i) => i.is_leap_sec,
-                None => false,
-            };
-            if is_leap { t.add_sec(1) } else { t }
-        } else {
-            Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false)
-        }
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.

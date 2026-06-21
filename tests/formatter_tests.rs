@@ -56,6 +56,24 @@ mod format_tests {
 
         let s = t.to_str_lite("%R", Lang::En).unwrap();
         assert_eq!(s.as_str(), "14:30");
+
+        let z = Dt::from_ymd(2025, 4, 16, Scale::TDB, 14, 30, 45, 123_456_789_000_000_000);
+        eprintln!("{}", t.to_ymd());
+        eprintln!("{}", z.to_ymd());
+        let s1 = t.to_str_lite("%J", Lang::En).unwrap();
+        let s2 = z.to_str_lite("%J", Lang::En).unwrap();
+        eprintln!("{}, {}", t, s1);
+        eprintln!("{}, {}", z, s2);
+
+        let s3 = t.to_str_lite("%s", Lang::En).unwrap();
+        let s4 = z.to_str_lite("%s", Lang::En).unwrap();
+        eprintln!("{}, {}", t, s3);
+        eprintln!("{}, {}", z, s4);
+
+        eprintln!("{:?}, {:?}", t, z);
+        eprintln!("{}, {}", t.to_unix().to_sec(), z.to_unix().to_sec());
+
+        // assert_eq!(s.as_str(), "");
     }
 
     #[test]

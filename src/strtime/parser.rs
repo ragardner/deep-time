@@ -1,7 +1,7 @@
 use super::{FormatExtensions, FormatFlag};
 use crate::error::{DtErr, DtErrKind};
 use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
-use crate::{Meridiem, Offset, Scale, Sign, Parts, Weekday, an_err};
+use crate::{Epoch, Meridiem, Offset, Parts, Scale, Sign, TimestampSec, Weekday, an_err};
 use core::result::Result;
 use core::str;
 
@@ -156,7 +156,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'G' => self.parse_iso_week_year(flag, width)?,
                 b'g' => self.parse_two_digit_iso_week_year(flag, width)?,
                 b'n' | b't' => self.skip_whitespace(),
-                b's' => self.parse_unix_timestamp(flag, width)?,
+                b's' => self.parse_timestamp_sec(flag, width, Epoch::Unix)?,
                 b'U' => self.parse_week_number_sunday_based(flag, width)?,
                 b'u' => self.parse_weekday_number_monday_based(flag, width)?,
                 b'V' => self.parse_week_iso(flag, width)?,
@@ -168,6 +168,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'T' => self.parse_time_with_seconds_shortcut()?,
                 b'R' => self.parse_time_without_seconds_shortcut()?,
                 // Library directives
+                b'J' => self.parse_timestamp_sec(flag, width, Epoch::Noon2000)?,
                 b'*' => self.parse_unbounded_year()?,
                 b'L' => self.parse_scale()?,
                 b'c' | b'r' | b'X' | b'x' | b'Z' => {
@@ -492,13 +493,22 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn parse_unix_timestamp(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
+    fn parse_timestamp_sec(
+        &mut self,
+        flag: FormatFlag,
+        width: Option<u8>,
+        epoch: Epoch,
+    ) -> Result<(), DtErr> {
         let (n, remaining) =
             match Self::parse_number(self.inp, flag, width, 19, FormatFlag::PadSpace, false) {
                 Ok(v) => v,
-                Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp, "%s timestamp")),
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp, "timestamp")),
             };
-        self.tm.timestamp_sec = Some(n);
+        let ts = match epoch {
+            Epoch::Unix => TimestampSec::Unix(n),
+            Epoch::Noon2000 => TimestampSec::Noon2000(n),
+        };
+        self.tm.timestamp_sec = Some(ts);
         self.inp = remaining;
         self.advance_fmt();
         Ok(())

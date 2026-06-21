@@ -1,8 +1,12 @@
 use crate::{ATTOS_PER_SEC_I128, Dt, Scale};
+
 #[cfg(feature = "jiff-tz")]
 use crate::{DtErr, DtErrKind, an_err};
+#[cfg(feature = "jiff-tz")]
+use jiff::civil;
 
-/// Combined Gregorian date + wall time with subsecond precision.
+/// Combined date + time object.
+///
 /// Has calendar aware and, when the `jiff-tz` feature is enabled,
 /// timezone aware math functions.
 ///
@@ -41,8 +45,7 @@ pub struct YmdHms {
     pub(crate) min: u8,
     pub(crate) sec: u8,    // 0–60 (60 only during leap seconds)
     pub(crate) attos: u64, // attoseconds (0 ≤ subsec < 10¹⁸)
-    pub(crate) scale: Scale,
-    pub(crate) old_scale: Scale,
+    pub(crate) dt: Dt,
 }
 
 impl YmdHms {
@@ -62,14 +65,10 @@ impl YmdHms {
         Dt::from_ymd(yr, mo, day, scale, hr, min, sec, attos).to_ymd()
     }
 
-    /// Reconstructs a [`Dt`] using converting back to `old_scale`,
-    /// the time scale that the original [`Dt`] was on.
+    /// Returns the [`Dt`] that was used to make this [`YmdHms`] object.
     #[inline(always)]
     pub const fn to_dt(&self) -> Dt {
-        Dt::from_ymd(
-            self.yr, self.mo, self.day, self.scale, self.hr, self.min, self.sec, self.attos,
-        )
-        .to(self.old_scale)
+        self.dt
     }
 
     /// Internal helper that round-trips through [`Dt`] to obtain a normalized
@@ -84,10 +83,9 @@ impl YmdHms {
         min: u8,
         sec: u8,
         attos: u64,
-        scale: Scale,
     ) -> Self {
-        let mut ymd = Dt::from_ymd(yr, mo, day, scale, hr, min, sec, attos).to_ymd();
-        ymd.old_scale = self.old_scale;
+        let mut ymd = Dt::from_ymd(yr, mo, day, self.dt.target, hr, min, sec, attos).to_ymd();
+        ymd.dt.scale = self.dt.scale;
         ymd
     }
 
@@ -102,7 +100,7 @@ impl YmdHms {
         let max_day = Dt::days_in_month(new_yr, self.mo);
         let new_day = Dt::clamp_u8(self.day, 1, max_day);
         self.reconstruct(
-            new_yr, self.mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
+            new_yr, self.mo, new_day, self.hr, self.min, self.sec, self.attos,
         )
     }
 
@@ -125,7 +123,7 @@ impl YmdHms {
         let new_day = Dt::clamp_u8(self.day, 1, max_day);
 
         self.reconstruct(
-            new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
+            new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos,
         )
     }
 
@@ -144,19 +142,26 @@ impl YmdHms {
         let new_jd = jd.saturating_add(n);
         let (new_yr, new_mo, new_day) = Dt::jd_to_ymd(new_jd);
         self.reconstruct(
-            new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos, self.scale,
+            new_yr, new_mo, new_day, self.hr, self.min, self.sec, self.attos,
         )
     }
 
     /// Internal implementation detail for all sub-day / physical-time additions.
     /// Creates a temporary [`Dt`], performs the addition, then converts back to `YmdHms`.
-    #[inline(never)]
     const fn _add_attos(&self, attos_delta: i128) -> Self {
         let tai = Dt::from_ymd(
-            self.yr, self.mo, self.day, self.scale, self.hr, self.min, self.sec, self.attos,
+            self.yr,
+            self.mo,
+            self.day,
+            self.dt.target,
+            self.hr,
+            self.min,
+            self.sec,
+            self.attos,
         );
-        let new_tai = tai.add(Dt::span(attos_delta));
-        new_tai.to_ymd()
+        let mut ymd = tai.add(Dt::span(attos_delta)).to_ymd();
+        ymd.dt.scale = self.dt.scale;
+        ymd
     }
 
     /// Adds (or subtracts) attoseconds. Negative values subtract.
@@ -235,17 +240,7 @@ impl YmdHms {
     /// The time scale that the object was created on.
     #[inline(always)]
     pub const fn scale(&self) -> Scale {
-        self.scale
-    }
-
-    /// The time scale that the original [`Dt`] had before being converted to
-    /// its `target` time scale and turned into a [`YmdHms`].
-    ///
-    /// Is used when returning to a [`Dt`] to keep the originals time scales
-    /// intact.
-    #[inline(always)]
-    pub const fn old_scale(&self) -> Scale {
-        self.old_scale
+        self.dt.target
     }
 
     /// Returns the **ISO week year** (can differ from the calendar year near
@@ -420,8 +415,6 @@ impl YmdHms {
     // helpers
 
     fn to_jiff_zoned(&self, tz: &str) -> Result<jiff::Zoned, DtErr> {
-        use jiff::civil;
-
         if !(-9999..=9999).contains(&self.yr) {
             return Err(an_err!(
                 DtErrKind::OutOfRange,
@@ -474,7 +467,6 @@ impl YmdHms {
             civil.minute() as u8,
             civil.second() as u8,
             self.attos,
-            self.scale,
         )
     }
 }
@@ -558,6 +550,6 @@ impl core::fmt::Display for YmdHms {
         }
 
         // Scale abbreviation at the end
-        core::write!(f, " {}", self.scale.abbrev())
+        core::write!(f, " {}", self.dt.target.abbrev())
     }
 }

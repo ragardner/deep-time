@@ -1,5 +1,6 @@
 use crate::{
     Drift, Dt, Every, LiteStr, Meridiem, Offset, Parts, Scale, Spacetime, TimeRange, Weekday,
+    civil_parts::TimestampSec,
 };
 
 impl Dt {
@@ -322,8 +323,8 @@ impl Parts {
     /// Current wire format version.
     pub const WIRE_VERSION: u8 = 1;
 
-    /// Total size of the wire representation (119 bytes).
-    pub const WIRE_SIZE: usize = 119;
+    /// Total size of the wire representation (120 bytes).
+    pub const WIRE_SIZE: usize = 120;
 
     /// Serializes `Parts` into a fixed 119-byte buffer.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
@@ -408,9 +409,16 @@ impl Parts {
         buf[offset] = self.meridiem.map_or(255, |m| m.to_wire_byte());
         offset += 1;
 
-        // timestamp_sec
-        let unix = self.timestamp_sec.unwrap_or(i64::MIN);
-        buf[offset..offset + 8].copy_from_slice(&unix.to_le_bytes());
+        // timestamp_sec: kind (1 byte) + value (8 bytes)
+        // kind: 0=none, 1=Unix, 2=Noon2000
+        let (kind, val) = match self.timestamp_sec {
+            None => (0u8, i64::MIN),
+            Some(TimestampSec::Unix(v)) => (1, v),
+            Some(TimestampSec::Noon2000(v)) => (2, v),
+        };
+        buf[offset] = kind;
+        offset += 1;
+        buf[offset..offset + 8].copy_from_slice(&val.to_le_bytes());
 
         buf
     }
@@ -536,10 +544,14 @@ impl Parts {
         }
         offset += 1;
 
-        // timestamp_sec (8 bytes)
-        let unix = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
-        if unix != i64::MIN {
-            dc.timestamp_sec = Some(unix);
+        // timestamp_sec: kind (1) + value (8)
+        let kind = bytes[offset];
+        offset += 1;
+        let val = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
+        match kind {
+            1 => dc.timestamp_sec = Some(TimestampSec::Unix(val)),
+            2 => dc.timestamp_sec = Some(TimestampSec::Noon2000(val)),
+            _ => {}
         }
 
         Some(dc)

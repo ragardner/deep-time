@@ -1,5 +1,6 @@
 use crate::{
-    ATTOS_PER_NS, Dt, an_err,
+    ATTOS_PER_NS, Dt, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
+    civil_parts::TimestampSec,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, Parts, Weekday},
 };
@@ -139,7 +140,11 @@ impl Parts {
         // UNIX TIMESTAMP PATH
         // Always UTC. Completely ignores offset + iana_name.
         // ============================================================
-        if let Some(secs) = self.timestamp_sec {
+        if let Some(ts) = self.timestamp_sec {
+            let secs = match ts {
+                TimestampSec::Unix(u) => u,
+                TimestampSec::Noon2000(j) => j + TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
+            };
             let subsec_nano = if self.attos != 0 {
                 let ns_u64 = self.attos / ATTOS_PER_NS;
                 if ns_u64 > 999_999_999 {
@@ -283,11 +288,8 @@ impl Parts {
     /// - If this [`Parts`] has a unix timestamp then it is used
     ///   instead of anything else (timezones are ignored).
     /// - Uses [`Parts::to_chrono_datetime`] internally.
+    #[inline(always)]
     pub fn to_chrono_timestamp(&self) -> Result<i64, DtErr> {
-        if let Some(secs) = self.timestamp_sec {
-            return Ok(secs);
-        }
-        let dt = self.to_chrono_datetime()?;
-        Ok(dt.timestamp())
+        Ok(self.to_chrono_datetime()?.timestamp())
     }
 }

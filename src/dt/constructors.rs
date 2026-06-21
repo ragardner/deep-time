@@ -191,9 +191,9 @@ impl Dt {
     /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
     /// the given `scale`.
     ///
-    /// - Requires a seconds and attoseconds count such that would be returned from the
+    /// - **Requires** a seconds and attoseconds count such that would be returned from the
     ///   functions [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64) and
-    ///   [`Dt::to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
+    ///   **[`Dt::to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac)**.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
     /// - The `sec` should be from the epoch TAI 2000-01-01 12:00:00.
@@ -209,7 +209,7 @@ impl Dt {
     /// - [`Dt::span_f`](../struct.Dt.html#method.span_f)
     /// - [`Dt::from_tai_sec`](../struct.Dt.html#method.from_tai_sec)
     #[inline(always)]
-    pub(crate) fn from_sec_and_attos(sec: i64, attos: u64, scale: Scale) -> Dt {
+    pub fn from_sec_and_ufrac(sec: i64, attos: u64, scale: Scale) -> Dt {
         if attos == 0 {
             Dt::from_attos((sec as i128) * ATTOS_PER_SEC_I128, scale)
         } else {
@@ -220,10 +220,12 @@ impl Dt {
     /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
     /// the given `scale`.
     ///
-    /// - Requires a total attoseconds value.
-    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
+    /// - **Requires** a seconds and attoseconds count such that would be returned from the
+    ///   functions [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64) and
+    ///   **[`Dt::to_sec_frac`](../struct.Dt.html#method.to_sec_frac)**.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
+    /// - The `sec` should be from the epoch TAI 2000-01-01 12:00:00.
     ///
     /// This function performs a time scale conversion from the given `scale` to **TAI**,
     /// if you don't want any time scale conversion to take place then either use
@@ -236,8 +238,9 @@ impl Dt {
     /// - [`Dt::span_f`](../struct.Dt.html#method.span_f)
     /// - [`Dt::from_tai_sec`](../struct.Dt.html#method.from_tai_sec)
     #[inline(always)]
-    pub const fn from_attos(attos: i128, current: Scale) -> Dt {
-        Dt::new(attos, current, current).to_tai()
+    pub fn from_sec_and_attos(sec: i64, attos: u64, scale: Scale) -> Dt {
+        let attos = Dt::sec_and_attos_to_attos(sec, attos);
+        Dt::from_attos(attos, scale)
     }
 
     /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
@@ -259,8 +262,31 @@ impl Dt {
     /// - [`Dt::span_f`](../struct.Dt.html#method.span_f)
     /// - [`Dt::from_tai_sec`](../struct.Dt.html#method.from_tai_sec)
     #[inline(always)]
-    pub const fn from_attos_with_target(attos: i128, current: Scale, target: Scale) -> Dt {
-        Dt::new(attos, current, target).to_tai()
+    pub const fn from_attos(attos: i128, scale: Scale) -> Dt {
+        Dt::new(attos, scale, scale).to_tai()
+    }
+
+    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
+    /// the given `scale`.
+    ///
+    /// - Requires a total attoseconds value.
+    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
+    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
+    ///   the given `scale` arg.
+    ///
+    /// This function performs a time scale conversion from the given `scale` to **TAI**,
+    /// if you don't want any time scale conversion to take place then either use
+    /// `Scale::TAI` as an arg or use any of the following constructors:
+    ///
+    /// - [`Dt::new`](../struct.Dt.html#method.new)
+    /// - [`Dt::new_sec`](../struct.Dt.html#method.new_sec)
+    /// - [`Dt::new_f`](../struct.Dt.html#method.new_f)
+    /// - [`Dt::span`](../struct.Dt.html#method.span)
+    /// - [`Dt::span_f`](../struct.Dt.html#method.span_f)
+    /// - [`Dt::from_tai_sec`](../struct.Dt.html#method.from_tai_sec)
+    #[inline(always)]
+    pub const fn from_attos_with_target(attos: i128, scale: Scale, target: Scale) -> Dt {
+        Dt::new(attos, scale, target).to_tai()
     }
 
     /// Creates a new [`Dt`] from a total number of seconds (signed i128) without

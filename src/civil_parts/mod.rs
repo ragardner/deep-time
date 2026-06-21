@@ -77,8 +77,8 @@ pub struct Parts {
     pub wk_mon: Option<u8>,
     /// AM / PM indicator.
     pub meridiem: Option<Meridiem>,
-    /// Unix timestamp in seconds (`%s`).
-    pub timestamp_sec: Option<i64>,
+    /// Timestamp in seconds since a known epoch (`%s` = Unix 1970, `%J` = noon 2000 / J2000).
+    pub timestamp_sec: Option<TimestampSec>,
 }
 
 impl Parts {
@@ -95,6 +95,19 @@ impl Parts {
     pub fn set_iana_name(&mut self, name: Option<&str>) {
         self.iana_name = name.map(LiteStr::new);
     }
+}
+
+/// Timestamp seconds relative to a specific epoch.
+///
+/// Used by the `%s` (Unix epoch) and `%J` (J2000.0 noon 2000-01-01 12:00 TAI) directives.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimestampSec {
+    /// Seconds since 1970-01-01 00:00:00 UTC (for `%s`).
+    Unix(i64),
+    /// Seconds since 2000-01-01 12:00:00 TAI (J2000.0 noon, for `%J`).
+    Noon2000(i64),
 }
 
 /// AM / PM indicator.

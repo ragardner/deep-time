@@ -1,6 +1,7 @@
 use {
     crate::{
-        ATTOS_PER_NS, Meridiem, Offset, Parts, Weekday, an_err,
+        ATTOS_PER_NS, Meridiem, Offset, Parts, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, TimestampSec,
+        Weekday, an_err,
         error::{DtErr, DtErrKind},
     },
     alloc::string::String,
@@ -101,8 +102,12 @@ impl Parts {
             bdt.set_meridiem(Some(jmer));
         }
 
-        // Explicit Unix timestamp (highest priority)
-        if let Some(secs) = self.timestamp_sec {
+        // Explicit timestamp (highest priority) — convert Noon2000 to unix for jiff
+        if let Some(ts) = self.timestamp_sec {
+            let secs = match ts {
+                TimestampSec::Unix(u) => u,
+                TimestampSec::Noon2000(j) => j + TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
+            };
             let ts = Timestamp::from_second(secs)
                 .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e))?;
             bdt.set_timestamp(Some(ts));

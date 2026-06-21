@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK,
-    SEC_PER_YEAR, StrPTimeFmt, Parts, an_err,
+    ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, Parts, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK,
+    SEC_PER_YEAR, StrPTimeFmt, an_err,
 };
 use core::str::FromStr;
 
@@ -163,7 +163,8 @@ impl Dt {
     ///
     /// ### Other
     /// - `%%` — Literal `%` character.
-    /// - `%s` — Unix timestamp (seconds since epoch; up to 19 digits, can be negative).
+    /// - `%s` — Unix timestamp (seconds since 1970-01-01 00:00 UTC, can be negative).
+    /// - `%J` — Seconds since 2000-01-01 12:00 TAI (J2000.0 noon epoch).
     /// - `%n`, `%t` — Any whitespace (consumes it from input).
     ///
     /// ### Unsupported / Unknown

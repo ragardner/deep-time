@@ -10,6 +10,9 @@ use crate::{
 ///
 /// Unit detection is chosen for maximum real-world compatibility and uses
 /// `div_euclid`/`rem_euclid` everywhere for negative-timestamp handling.
+///
+/// It's purely numeric so the scale is assumed to be UTC so the use of
+/// TAI_SECS_1970_MIDNIGHT_TO_2000_NOON seems to be ok here
 pub(crate) fn parse_pure_numeric_unix_timestamp(
     trimmed: &str,
     integer_digits: usize,

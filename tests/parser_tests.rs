@@ -2,7 +2,9 @@
 
 mod tests {
     use deep_time::DtErrKind;
-    use deep_time::civil_parts::{Offset, Parts, Weekday};
+    use deep_time::Lang;
+    use deep_time::civil_parts::{Offset, Parts, TimestampSec, Weekday};
+    use deep_time::{Dt, Scale};
 
     #[test]
     fn test_basic_ymd_hms() {
@@ -27,7 +29,34 @@ mod tests {
     #[test]
     fn test_unix_timestamp_direct() {
         let parsed = Parts::from_str("%s", "1713191445", false, false, false).unwrap();
-        assert_eq!(parsed.timestamp_sec, Some(1713191445));
+        assert_eq!(parsed.timestamp_sec, Some(TimestampSec::Unix(1713191445)));
+    }
+
+    #[test]
+    fn test_timestamps() {
+        // 0 should be the J2000 noon epoch
+        let parsed = Parts::from_str("%J", "0", false, false, false).unwrap();
+        assert_eq!(parsed.timestamp_sec, Some(TimestampSec::Noon2000(0)));
+
+        // Same instant as the known 946728000 via %s
+        let via_s = Parts::from_str("%s", "946728000", false, false, false).unwrap();
+        let via_j = Parts::from_str("%J", "0", false, false, false).unwrap();
+        assert_eq!(via_s.to_dt().unwrap(), via_j.to_dt().unwrap());
+
+        let zero_tai = Dt::ZERO;
+        let zero_tdb = Dt::from_attos(0, Scale::TDB);
+
+        let p_tai = Dt::from_str("0 TAI", "%J %L", false, false, false).unwrap();
+        let p_tdb = Dt::from_str("0 TDB", "%J %L", false, false, false).unwrap();
+
+        assert_eq!(zero_tai, p_tai);
+        assert_eq!(zero_tdb, p_tdb);
+
+        let back_tai = p_tai.to_str_lite("%J %L", Lang::En).unwrap();
+        let back_tdb = p_tdb.to_str_lite("%J %L", Lang::En).unwrap();
+
+        assert_eq!(back_tai.as_str(), "0 TAI");
+        assert_eq!(back_tdb.as_str(), "0 TDB");
     }
 
     #[test]

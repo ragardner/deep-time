@@ -1,6 +1,7 @@
 use crate::leap_seconds::leap_sec;
 use crate::{
-    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, an_err,
+    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, an_err,
+    civil_parts::TimestampSec,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, Parts, Weekday},
 };
@@ -12,11 +13,20 @@ impl Parts {
     ///   instead of anything else.
     pub fn to_dt(&self) -> Result<Dt, DtErr> {
         // ──────────────────────────────────────────────────────────────
-        // Fast path: explicit Unix timestamp
+        // Fast path: explicit timestamp (%s or %J)
         // ──────────────────────────────────────────────────────────────
-        if let Some(unix_secs) = self.timestamp_sec {
-            let total_sec = unix_secs.saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
-            return Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale));
+        if let Some(ts) = self.timestamp_sec {
+            match ts {
+                TimestampSec::Unix(u) => {
+                    let attos = Dt::sec_and_attos_to_attos(u, self.attos);
+                    let unix = Dt::new(attos, self.scale, self.scale);
+                    return Ok(Dt::from_unix(unix));
+                }
+                TimestampSec::Noon2000(j) => {
+                    let attos = Dt::sec_and_attos_to_attos(j, self.attos);
+                    return Ok(Dt::from_attos(attos, self.scale));
+                }
+            };
         }
 
         // ──────────────────────────────────────────────────────────────
@@ -117,6 +127,7 @@ impl Parts {
             if !name_str.is_empty() {
                 #[cfg(feature = "jiff-tz")]
                 {
+                    use crate::TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
                     use jiff::{Timestamp, tz::TimeZone};
 
                     let tz = TimeZone::get(name_str).map_err(|e| {
@@ -179,17 +190,17 @@ impl Parts {
         // Final construction
         // ──────────────────────────────────────────────────────────────
         if !sec_is_60 {
-            Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale))
+            Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
         } else {
             if self.scale.uses_leap_seconds() {
-                let t = Dt::from_sec_and_attos(total_sec, self.attos, self.scale);
+                let t = Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale);
                 let is_leap_sec = match leap_sec(total_sec.saturating_add(1), true) {
                     Some(info) => info.is_leap_sec,
                     None => false,
                 };
                 if is_leap_sec { Ok(t.add_sec(1)) } else { Ok(t) }
             } else {
-                Ok(Dt::from_sec_and_attos(total_sec, self.attos, self.scale))
+                Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
             }
         }
     }

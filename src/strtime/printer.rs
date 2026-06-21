@@ -211,6 +211,7 @@ impl YmdHms {
                 b'p' => self.write_ampm(&mut buf, &mut pos, true),
                 b'r' => self.write_12hour_time_with_ampm(&mut buf, &mut pos),
                 b's' => self.write_unix_timestamp(&mut buf, &mut pos),
+                b'J' => self.write_noon2000_timestamp(&mut buf, &mut pos),
                 b'U' => self.write_week_number_sunday_based(&mut buf, &mut pos, flag, width),
                 b'u' => self.write_weekday_number_monday_based(&mut buf, &mut pos, flag, width),
                 b'V' => self.write_week_iso(&mut buf, &mut pos, flag, width),
@@ -222,8 +223,8 @@ impl YmdHms {
                 b'R' => self.write_time_without_seconds_shortcut(&mut buf, &mut pos),
                 b'Z' => self.write_timezone_abbrev(abbrev, &mut buf, &mut pos),
                 b'L' => {
-                    if self.scale != Scale::UTC {
-                        Self::write_bytes(&mut buf, &mut pos, self.scale.abbrev().as_bytes());
+                    if self.dt.target != Scale::UTC {
+                        Self::write_bytes(&mut buf, &mut pos, self.dt.target.abbrev().as_bytes());
                     }
                 }
                 b'*' => self.write_unbounded_year(&mut buf, &mut pos, flag, width),
@@ -523,15 +524,14 @@ impl YmdHms {
 
     #[inline(always)]
     fn write_unix_timestamp(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
-        let seconds = Dt::ymd_to_unix_sec(
-            self.yr(),
-            self.mo(),
-            self.day(),
-            self.hr(),
-            self.min(),
-            self.sec(),
-        );
-        Self::write_i64(buf, pos, seconds, b'-', Some(0), b'0');
+        let sec = self.dt.to_unix().to_sec64();
+        Self::write_i64(buf, pos, sec, b'-', Some(0), b'0');
+    }
+
+    #[inline(always)]
+    fn write_noon2000_timestamp(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
+        let sec = self.dt.to(self.dt.target).to_sec64();
+        Self::write_i64(buf, pos, sec, b'-', Some(0), b'0');
     }
 
     #[inline(always)]
