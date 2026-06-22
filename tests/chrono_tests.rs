@@ -161,7 +161,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_with_fraction() {
-        let parsed = Parts::from_str("%s.%N", "1713191445.123456789", false, false, false).unwrap();
+        let parsed = Parts::from_str("%s", "1713191445.123456789", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_utc = DateTime::from_timestamp(1713191445, 123_456_789).unwrap();

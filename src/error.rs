@@ -18,6 +18,7 @@ pub enum DtErrKind {
     MismatchedLiteral,
     ExpectedValue,
     ExpectedYear,
+    ExpectedCentury,
     ExpectedMonth,
     ExpectedDay,
     ExpectedDayOfYear,

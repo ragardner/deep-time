@@ -239,7 +239,7 @@ impl YmdHms {
 
     /// The time scale that the object was created on.
     #[inline(always)]
-    pub const fn scale(&self) -> Scale {
+    pub const fn time_scale(&self) -> Scale {
         self.dt.target
     }
 

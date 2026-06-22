@@ -264,7 +264,7 @@ impl StrPTimeFmt {
 
             // lone % at end of format
             if fmt.len() == 1 {
-                return Err(an_err!(DtErrKind::UnexpectedEnd, "after %"));
+                return Err(an_err!(DtErrKind::TruncatedDirective, "after %"));
             }
             fmt = &fmt[1..]; // eat %
 
@@ -290,7 +290,7 @@ impl StrPTimeFmt {
             }
 
             if fmt.is_empty() {
-                return Err(an_err!(DtErrKind::UnexpectedEnd, "expected directive"));
+                return Err(an_err!(DtErrKind::TruncatedDirective, "expected directive"));
             }
 
             let directive = fmt[0];
@@ -317,7 +317,10 @@ impl StrPTimeFmt {
                     fmt = &fmt[1..];
                 }
 
-                let next = fmt.first().copied().unwrap_or(0);
+                if fmt.is_empty() {
+                    return Err(an_err!(DtErrKind::TruncatedDirective, "after ."));
+                }
+                let next = fmt[0];
                 if !matches!(next, b'f' | b'N') {
                     return Err(an_err!(DtErrKind::BadFractional, "{}", char::from(next)));
                 }

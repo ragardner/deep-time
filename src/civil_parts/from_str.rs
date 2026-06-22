@@ -60,8 +60,6 @@ impl Parts {
     ///   dot before the fraction is **optional** in the input (consumes literal `.` if present).
     /// - `%P`, `%p` — `AM`/`PM` indicator (case-insensitive).
     ///
-    /// Fractional seconds directives also work with timestamp directives.
-    ///
     /// ### Weekday / Week number
     /// - `%A` — Full English weekday name (e.g. `Monday`).
     /// - `%a` — Abbreviated English weekday name (3 letters, e.g. `Mon`).
@@ -91,7 +89,9 @@ impl Parts {
     /// ### Other
     /// - `%%` — Literal `%` character.
     /// - `%s` — Unix timestamp (seconds since 1970-01-01 00:00 UTC, can be negative).
-    /// - `%J` — Seconds since 2000-01-01 12:00 TAI (J2000.0 noon epoch).
+    ///   This directive greedily consumes any fractional seconds.
+    /// - `%J` — Seconds since 2000-01-01 12:00 TAI (J2000.0 noon epoch), can be negative.
+    ///   This directive greedily consumes any fractional seconds.
     /// - `%n`, `%t` — Any whitespace (consumes it from input).
     ///
     /// ### Unsupported / Unknown
@@ -105,7 +105,8 @@ impl Parts {
     /// ### Format string errors
     ///
     /// - [`DtErrKind::TruncatedDirective`] — The format string ended immediately
-    ///   after a `%` or after a `.` in a fractional directive (e.g. `%.`).
+    ///   after a `%`, after a `.` (in a fractional directive), or after flags/width/colons
+    ///   with no directive character following (e.g. `%.`, `%_`, `%3`).
     /// - [`DtErrKind::UnknownItem`] — Unknown `%` directive character.
     /// - [`DtErrKind::UnsupportedItem`] — Known but unsupported directive
     ///   (e.g. `%c`, `%r`, `%x`, `%X`, `%Z`).
@@ -118,6 +119,7 @@ impl Parts {
     ///   could be parsed.
     /// - `Expected*` variants:
     ///   - [`DtErrKind::ExpectedYear`]
+    ///   - [`DtErrKind::ExpectedCentury`]
     ///   - [`DtErrKind::ExpectedMonth`]
     ///   - [`DtErrKind::ExpectedDay`]
     ///   - [`DtErrKind::ExpectedDayOfYear`]
@@ -376,12 +378,14 @@ impl Parts {
             int_attos + frac_attos
         };
 
-        let mut parts = Parts::default();
-        parts.timestamp = Some(Timestamp {
-            attos: total_attos,
-            epoch: Epoch::Noon2000,
-        });
-        parts.scale = parsed.scale;
+        let parts = Parts {
+            timestamp: Some(Timestamp {
+                attos: total_attos,
+                epoch: Epoch::Noon2000,
+            }),
+            scale: parsed.scale,
+            ..Default::default()
+        };
 
         Some(parts)
     }

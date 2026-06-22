@@ -40,10 +40,12 @@ impl Parts {
                 let b0 = bytes[start].to_ascii_uppercase();
                 let b1 = bytes[start + 1].to_ascii_uppercase();
                 let b2 = bytes[start + 2].to_ascii_uppercase();
-                if b0 == b'S' && b1 == b'E' && b2 == b'C' {
-                    if let Some(p) = Self::from_str_sec_f(&input[start..], None) {
-                        return Ok(p);
-                    }
+                if b0 == b'S'
+                    && b1 == b'E'
+                    && b2 == b'C'
+                    && let Some(p) = Self::from_str_sec_f(&input[start..], None)
+                {
+                    return Ok(p);
                     // from_str_sec_f didn't like it (no number, etc.) -> treat "S" as junk and continue
                 }
             }
@@ -380,10 +382,10 @@ impl Parts {
         }
 
         // Optional trailing scale (e.g. TAI, UTC)
-        if pos < len_ {
-            if let Some(sc) = Self::parse_scale(&bytes[pos..]) {
-                tp.scale = sc;
-            }
+        if pos < len_
+            && let Some(sc) = Self::parse_scale(&bytes[pos..])
+        {
+            tp.scale = sc;
         }
 
         Ok(tp)
@@ -427,9 +429,5 @@ fn is_doy(bytes: &[u8], mut pos: usize, len_: usize) -> bool {
         pos += 1;
     }
     // index 4 end of non digit
-    if pos == len_ || !bytes[pos].is_ascii_digit() {
-        return true;
-    } else {
-        return false;
-    }
+    pos == len_ || !bytes[pos].is_ascii_digit()
 }

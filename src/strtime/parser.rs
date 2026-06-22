@@ -18,6 +18,9 @@ pub(crate) struct Parser<'f, 'i, 't> {
     pub(crate) fmt: &'f [u8], // remaining format string
     pub(crate) inp: &'i [u8], // remaining input string
     tm: &'t mut Parts,
+    /// When true, the parser is in lenient mode: it will succeed as soon as
+    /// the input is exhausted, even if the format string has not been fully
+    /// consumed. Essentially parse what you can.
     inp_can_end_before_fmt: bool,
 }
 
@@ -66,6 +69,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     pub(crate) fn parse(&mut self) -> Result<(), DtErr> {
         while !self.fmt.is_empty() {
+            // Simple lenient rule for inp_can_end_before_fmt:
+            // When true, we are allowed to stop as soon as the input is exhausted.
+            if self.inp.is_empty() && self.inp_can_end_before_fmt {
+                return Ok(());
+                // When false we fall through and produce normal "expected X" / mismatch errors.
+            }
+
             if self.current_fmt_byte() != b'%' {
                 self.parse_literal_character()?;
                 continue;
@@ -80,17 +90,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 colons,
             } = self.parse_fmt_extensions();
 
-            let directive = self.fmt.first().copied().unwrap_or(0);
-
-            if self.inp.is_empty() {
-                if self.inp_can_end_before_fmt {
-                    if !matches!(directive, b'.' | b'f' | b'N') {
-                        return Err(an_err!(DtErrKind::UnexpectedInputEnd, "input exhausted"));
-                    }
-                } else {
-                    return Ok(());
-                }
+            if self.fmt.is_empty() {
+                return Err(an_err!(DtErrKind::TruncatedDirective, "expected directive"));
             }
+
+            let directive = self.fmt.first().copied().unwrap_or(0);
 
             match directive {
                 b'%' => self.parse_percent_sign()?,
@@ -204,16 +208,15 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             if self.inp.is_empty() {
                 return Err(an_err!(
                     DtErrKind::MismatchedLiteral,
-                    "{} got: {}",
-                    self.current_inp_byte(),
-                    c
+                    "expected literal '{}' but input ended",
+                    char::from(c)
                 ));
             } else if self.current_inp_byte() != c {
                 return Err(an_err!(
                     DtErrKind::MismatchedLiteral,
-                    "{} got: {}",
-                    self.current_inp_byte(),
-                    c
+                    "expected literal '{}' got '{}'",
+                    char::from(c),
+                    char::from(self.current_inp_byte())
                 ));
             }
 
@@ -231,10 +234,16 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_percent_sign(&mut self) -> Result<(), DtErr> {
-        if self.inp.is_empty() || self.current_inp_byte() != b'%' {
+        if self.inp.is_empty() {
             return Err(an_err!(
                 DtErrKind::MismatchedLiteral,
-                "% got: {}",
+                "expected '%%' literal but input ended"
+            ));
+        }
+        if self.current_inp_byte() != b'%' {
+            return Err(an_err!(
+                DtErrKind::MismatchedLiteral,
+                "expected '%%' got '{}'",
                 char::from(self.current_inp_byte())
             ));
         }
@@ -306,7 +315,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (c, remaining, _) =
             match Self::parse_number(self.inp, flag, width, 2, FormatFlag::PadSpace, false) {
                 Ok(v) => v,
-                Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%C century")),
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedCentury, "%C century")),
             };
         self.tm.yr = Some(c * 100);
         self.inp = remaining;
