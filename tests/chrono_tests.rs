@@ -29,8 +29,7 @@ mod tests {
     #[test]
     fn test_to_chrono_naive_datetime_ordinal_date() {
         let parsed =
-            Parts::from_str("%Y-%j %H:%M:%S", "2024-106 14:30:45", false, false, false)
-                .unwrap();
+            Parts::from_str("%Y-%j %H:%M:%S", "2024-106 14:30:45", false, false, false).unwrap();
         let ndt = parsed.to_chrono_naive_datetime().unwrap();
 
         let expected_date = NaiveDate::from_yo_opt(2024, 106).unwrap();
@@ -104,8 +103,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_fixed_offset() {
         let parsed =
-            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 -0400", false, false, false)
-                .unwrap();
+            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 -0400", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_naive = NaiveDateTime::new(
@@ -163,8 +161,7 @@ mod tests {
 
     #[test]
     fn test_to_chrono_datetime_unix_timestamp_with_fraction() {
-        let parsed =
-            Parts::from_str("%s.%N", "1713191445.123456789", false, false, false).unwrap();
+        let parsed = Parts::from_str("%s.%N", "1713191445.123456789", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_utc = DateTime::from_timestamp(1713191445, 123_456_789).unwrap();
@@ -198,8 +195,7 @@ mod tests {
     #[test]
     fn test_to_chrono_timestamp_with_offset() {
         let parsed =
-            Parts::from_str("%F %T %z", "2024-04-15 10:30:45 -0400", false, false, false)
-                .unwrap();
+            Parts::from_str("%F %T %z", "2024-04-15 10:30:45 -0400", false, false, false).unwrap();
         let ts = parsed.to_chrono_timestamp().unwrap();
         // 10:30:45 EDT = 14:30:45 UTC → same as above
         assert_eq!(ts, 1713191445);
@@ -215,8 +211,7 @@ mod tests {
     #[test]
     fn test_to_chrono_datetime_utc_explicit() {
         let parsed =
-            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 +0000", false, false, false)
-                .unwrap();
+            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 +0000", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected = DateTime::from_timestamp(1713191445, 0)
@@ -232,8 +227,7 @@ mod tests {
     fn test_to_chrono_datetime_civil_with_fixed_positive_offset() {
         // 2024-04-15 14:30:45 +05:00  → local time in +5 zone
         let parsed =
-            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 +0500", false, false, false)
-                .unwrap();
+            Parts::from_str("%F %T %z", "2024-04-15 14:30:45 +0500", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         let expected_naive = NaiveDateTime::new(
@@ -288,8 +282,7 @@ mod tests {
     fn test_to_chrono_datetime_unix_timestamp_ignores_iana_name() {
         // %s + IANA name → must still be pure UTC (+0000)
         let parsed =
-            Parts::from_str("%s %Q", "1713191400 America/New_York", false, false, false)
-                .unwrap();
+            Parts::from_str("%s %Q", "1713191400 America/New_York", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
         assert_eq!(dt.offset(), &FixedOffset::east_opt(0).unwrap());

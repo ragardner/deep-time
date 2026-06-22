@@ -524,14 +524,44 @@ impl YmdHms {
 
     #[inline(always)]
     fn write_unix_timestamp(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
-        let sec = self.dt.to_unix().to_sec64();
-        Self::write_i64(buf, pos, sec, b'-', Some(0), b'0');
+        let dt = self.dt.to_unix();
+        if dt.to_attos() < 0 {
+            Self::write_byte(buf, pos, b'-');
+        }
+        Self::write_i64(
+            buf,
+            pos,
+            dt.to_sec64_trunc().saturating_abs(),
+            b'-',
+            Some(0),
+            b'0',
+        );
+        let frac = dt.to_sec_frac().saturating_abs() as u64;
+        if frac != 0 {
+            Self::write_byte(buf, pos, b'.');
+            let _ = Self::write_fractional(buf, pos, frac, None, true);
+        }
     }
 
     #[inline(always)]
     fn write_noon2000_timestamp(&self, buf: &mut [u8; STRTIME_SIZE], pos: &mut usize) {
-        let sec = self.dt.to(self.dt.target).to_sec64();
-        Self::write_i64(buf, pos, sec, b'-', Some(0), b'0');
+        let dt = self.dt.to(self.dt.target);
+        if dt.to_attos() < 0 {
+            Self::write_byte(buf, pos, b'-');
+        }
+        Self::write_i64(
+            buf,
+            pos,
+            dt.to_sec64_trunc().saturating_abs(),
+            b'-',
+            Some(0),
+            b'0',
+        );
+        let frac = dt.to_sec_frac().saturating_abs() as u64;
+        if frac != 0 {
+            Self::write_byte(buf, pos, b'.');
+            let _ = Self::write_fractional(buf, pos, frac, None, true);
+        }
     }
 
     #[inline(always)]

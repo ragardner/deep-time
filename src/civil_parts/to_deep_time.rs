@@ -1,7 +1,6 @@
 use crate::leap_seconds::leap_sec;
 use crate::{
-    Dt, JD_2000_2_451_545, SEC_PER_DAYI64, an_err,
-    civil_parts::TimestampSec,
+    Dt, Epoch, JD_2000_2_451_545, SEC_PER_DAYI64, an_err,
     error::{DtErr, DtErrKind},
     {Meridiem, Offset, Parts, Weekday},
 };
@@ -15,18 +14,14 @@ impl Parts {
         // ──────────────────────────────────────────────────────────────
         // Fast path: explicit timestamp (%s or %J)
         // ──────────────────────────────────────────────────────────────
-        if let Some(ts) = self.timestamp_sec {
-            match ts {
-                TimestampSec::Unix(u) => {
-                    let attos = Dt::sec_and_attos_to_attos(u, self.attos);
-                    let unix = Dt::new(attos, self.scale, self.scale);
+        if let Some(ts) = self.timestamp {
+            match ts.epoch {
+                Epoch::Unix => {
+                    let unix = Dt::new(ts.attos, self.scale, self.scale);
                     return Ok(Dt::from_unix(unix));
                 }
-                TimestampSec::Noon2000(j) => {
-                    let attos = Dt::sec_and_attos_to_attos(j, self.attos);
-                    return Ok(Dt::from_attos(attos, self.scale));
-                }
-            };
+                Epoch::Noon2000 => return Ok(Dt::from_attos(ts.attos, self.scale)),
+            }
         }
 
         // ──────────────────────────────────────────────────────────────

@@ -16,6 +16,8 @@ impl Parts {
     ///     - Timezone name, **requires square brackets** and requires `jiff-tz` feature,
     ///       after time or offset e.g. `T12:00:00 [America/New_York]`.
     ///     - Library time scale right on the end of the input, e.g. `TAI`.
+    ///     - Leading `SEC`/`sec` (case-insensitive) to parse bare seconds since the
+    ///       library epoch, e.g. `SEC 1234.567 TDB` (delegates to [`Parts::from_str_sec_f`]).
     /// - This function is considerably faster than all other string parsing methods if
     ///   your date-time string is in the supported formats.
     pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
@@ -34,7 +36,18 @@ impl Parts {
                     && bytes[start + 1].is_ascii_digit())
             {
                 break;
+            } else if matches!(b, b'S' | b's') && start + 3 <= len_ {
+                let b0 = bytes[start].to_ascii_uppercase();
+                let b1 = bytes[start + 1].to_ascii_uppercase();
+                let b2 = bytes[start + 2].to_ascii_uppercase();
+                if b0 == b'S' && b1 == b'E' && b2 == b'C' {
+                    if let Some(p) = Self::from_str_sec_f(&input[start..], None) {
+                        return Ok(p);
+                    }
+                    // from_str_sec_f didn't like it (no number, etc.) -> treat "S" as junk and continue
+                }
             }
+
             start += 1;
         }
 

@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, Parts, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK,
-    SEC_PER_YEAR, STRTIME_SIZE, Scale, StrPTimeFmt, an_err,
+    SEC_PER_YEAR, Scale, StrPTimeFmt, an_err,
 };
 use core::str::FromStr;
 
@@ -361,100 +361,16 @@ impl Dt {
     /// assert_eq!(d.to_attos() % 1_000_000_000_000_000_000, 1);
     /// ```
     pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
-        let bytes = s.as_bytes();
-        if bytes.is_empty() || bytes.len() > STRTIME_SIZE {
-            return None;
-        }
+        let parsed = Parts::parse_sec_f(s, scale)?;
 
-        // Skip leading junk until we see +, -, ., or a digit.
-        let mut pos = 0usize;
-        while pos < bytes.len() {
-            match bytes[pos] {
-                b'+' | b'-' | b'.' | b'0'..=b'9' => break,
-                _ => pos += 1,
-            }
-        }
-
-        if pos >= bytes.len() {
-            return None;
-        }
-
-        // Optional sign (only at the start of the number we decided to parse)
-        let negative = match bytes[pos] {
-            b'-' => {
-                pos += 1;
-                true
-            }
-            b'+' => {
-                pos += 1;
-                false
-            }
-            _ => false,
-        };
-
-        if pos >= bytes.len() {
-            return None;
-        }
-
-        // Integer part (may be empty when we landed on '.')
-        let mut int_u: u64 = 0;
-        let mut saw_digit = false;
-
-        while pos < bytes.len() && bytes[pos].is_ascii_digit() {
-            saw_digit = true;
-            let d = (bytes[pos] - b'0') as u64;
-            if int_u > u64::MAX / 10 {
-                int_u = u64::MAX;
-                pos += 1;
-                while pos < bytes.len() && bytes[pos].is_ascii_digit() {
-                    pos += 1;
-                }
-                break;
-            } else {
-                int_u = int_u * 10 + d;
-                pos += 1;
-            }
-        }
-
-        // Optional fractional part
-        let mut frac_attos: u64 = 0;
-        let mut frac_digits: usize = 0;
-
-        if pos < bytes.len() && bytes[pos] == b'.' {
-            pos += 1;
-
-            while pos < bytes.len() && bytes[pos].is_ascii_digit() && frac_digits < 18 {
-                saw_digit = true;
-                let d = (bytes[pos] - b'0') as u64;
-                frac_attos = frac_attos * 10 + d;
-                frac_digits += 1;
-                pos += 1;
-            }
-        }
-
-        if !saw_digit {
-            return None;
-        }
-
-        let scl = match scale {
-            Some(s) => s,
-            None => Parts::parse_scale(&bytes[pos..]).unwrap_or_default(),
-        };
-
-        // Left-pad the fractional attos value to 18 digits total
-        if frac_digits > 0 {
-            let shift = 18 - frac_digits;
-            frac_attos *= 10u64.pow(shift as u32);
-        }
-
-        let int_attos = (int_u as i128) * ATTOS_PER_SEC_I128;
-        let signed_attos = if negative {
-            -int_attos - (frac_attos as i128)
+        let int_attos = (parsed.int_u as i128) * ATTOS_PER_SEC_I128;
+        let signed_attos = if parsed.negative {
+            -int_attos - (parsed.frac_attos as i128)
         } else {
-            int_attos + (frac_attos as i128)
+            int_attos + (parsed.frac_attos as i128)
         };
 
-        Some(Dt::from_attos(signed_attos, scl))
+        Some(Dt::from_attos(signed_attos, parsed.scale))
     }
 
     /// Parses an ISO 8601 duration string into a [`Dt`] representing a pure time interval.

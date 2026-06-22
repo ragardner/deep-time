@@ -139,7 +139,7 @@ impl Parts {
         // UNIX TIMESTAMP PATH
         // Always UTC. Completely ignores offset + iana_name.
         // ============================================================
-        if let Some(_) = self.timestamp_sec {
+        if let Some(_) = self.timestamp {
             let offset = FixedOffset::east_opt(0)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset))?;
             let dt = self.to_dt()?.to_chrono_datetime_utc();

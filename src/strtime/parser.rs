@@ -1,9 +1,18 @@
 use super::{FormatExtensions, FormatFlag};
 use crate::error::{DtErr, DtErrKind};
 use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
-use crate::{Epoch, Meridiem, Offset, Parts, Scale, Sign, TimestampSec, Weekday, an_err};
+use crate::{
+    ATTOS_DIGITS, ATTOS_PER_SEC_I128, Epoch, Meridiem, Offset, Parts, Scale, Timestamp, Weekday,
+    an_err,
+};
 use core::result::Result;
 use core::str;
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum Sign {
+    Positive,
+    Negative,
+}
 
 pub(crate) struct Parser<'f, 'i, 't> {
     pub(crate) fmt: &'f [u8], // remaining format string
@@ -192,7 +201,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if c.is_ascii_whitespace() {
             self.inp = self.inp.trim_ascii_start();
         } else {
-            if self.inp.is_empty() || self.current_inp_byte() != c {
+            if self.inp.is_empty() {
+                return Err(an_err!(
+                    DtErrKind::MismatchedLiteral,
+                    "{} got: {}",
+                    self.current_inp_byte(),
+                    c
+                ));
+            } else if self.current_inp_byte() != c {
                 return Err(an_err!(
                     DtErrKind::MismatchedLiteral,
                     "{} got: {}",
@@ -200,6 +216,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                     c
                 ));
             }
+
             self.advance_inp();
         }
         self.advance_fmt();
@@ -239,7 +256,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_full_year(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
-        let (y, remaining) =
+        let (y, remaining, _) =
             match Self::parse_number(self.inp, flag, width, 4, FormatFlag::PadZero, false) {
                 Ok(v) => v,
                 Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%Y full year")),
@@ -251,7 +268,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_unbounded_year(&mut self) -> Result<(), DtErr> {
-        let (y, remaining) = match Self::parse_number(
+        let (y, remaining, _) = match Self::parse_number(
             self.inp,
             FormatFlag::None,
             None,
@@ -286,7 +303,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_century(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
-        let (c, remaining) =
+        let (c, remaining, _) =
             match Self::parse_number(self.inp, flag, width, 2, FormatFlag::PadSpace, false) {
                 Ok(v) => v,
                 Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%C century")),
@@ -299,7 +316,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_iso_week_year(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
-        let (y, remaining) =
+        let (y, remaining, _) =
             match Self::parse_number(self.inp, flag, width, 4, FormatFlag::PadZero, false) {
                 Ok(v) => v,
                 Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%G iso week year")),
@@ -370,7 +387,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_day_of_year(&mut self, flag: FormatFlag, width: Option<u8>) -> Result<(), DtErr> {
-        let (n, remaining) =
+        let (n, remaining, _) =
             match Self::parse_number(self.inp, flag, width, 3, FormatFlag::PadZero, false) {
                 Ok(v) => v,
                 Err(_) => return Err(an_err!(DtErrKind::ExpectedDayOfYear, "%j day of year")),
@@ -462,14 +479,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             self.advance_inp();
         }
         let max_digits = width.map(|w| w as usize).unwrap_or(usize::MAX);
-        const TARGET_DIGITS: usize = 18; // attoseconds
+
         let mut frac: u64 = 0;
         let mut digits_read = 0usize;
         while !self.inp.is_empty()
             && self.current_inp_byte().is_ascii_digit()
             && digits_read < max_digits
         {
-            if digits_read < TARGET_DIGITS {
+            if digits_read < ATTOS_DIGITS {
                 let d = (self.current_inp_byte() - b'0') as u64;
                 frac = frac * 10 + d;
             }
@@ -482,10 +499,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 "%f or %N frac seconds"
             ));
         }
-        let attos = if digits_read >= TARGET_DIGITS {
+        let attos = if digits_read >= ATTOS_DIGITS {
             frac
         } else {
-            let multiplier = 10u64.pow((TARGET_DIGITS - digits_read) as u32);
+            let multiplier = 10u64.pow((ATTOS_DIGITS - digits_read) as u32);
             frac * multiplier
         };
         self.tm.attos = attos;
@@ -499,17 +516,63 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         width: Option<u8>,
         epoch: Epoch,
     ) -> Result<(), DtErr> {
-        let (n, remaining) =
+        let (sec_val, remaining, sign) =
             match Self::parse_number(self.inp, flag, width, 19, FormatFlag::PadSpace, false) {
                 Ok(v) => v,
                 Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp, "timestamp")),
             };
-        let ts = match epoch {
-            Epoch::Unix => TimestampSec::Unix(n),
-            Epoch::Noon2000 => TimestampSec::Noon2000(n),
-        };
-        self.tm.timestamp_sec = Some(ts);
         self.inp = remaining;
+
+        // Start with integer seconds converted to attoseconds
+        let mut total_attos: i128 = (sec_val as i128) * ATTOS_PER_SEC_I128;
+
+        // Greedily consume optional fractional seconds (e.g. 1712345678.123456789012345678)
+        // This allows a single %s (or %J) directive to parse a full high-precision timestamp
+        // without requiring a separate %.f / %N directive afterward.
+        if !self.inp.is_empty()
+            && self.current_inp_byte() == b'.'
+            && self.inp.len() >= 2
+            && self.inp[1].is_ascii_digit()
+        {
+            // Only consume the dot if it's followed by at least one digit
+
+            self.advance_inp(); // eat '.'
+
+            let mut frac: u64 = 0;
+            let mut digits_read: usize = 0;
+
+            while digits_read < ATTOS_DIGITS
+                && !self.inp.is_empty()
+                && self.current_inp_byte().is_ascii_digit()
+            {
+                let d = (self.current_inp_byte() - b'0') as u64;
+                frac = frac * 10 + d;
+                self.advance_inp();
+                digits_read += 1;
+            }
+
+            if digits_read > 0 {
+                let frac_attos = if digits_read >= ATTOS_DIGITS {
+                    frac
+                } else {
+                    let multiplier = 10u64.pow((ATTOS_DIGITS - digits_read) as u32);
+                    frac * multiplier
+                };
+
+                if sign == Sign::Negative {
+                    total_attos -= frac_attos as i128;
+                } else {
+                    total_attos += frac_attos as i128;
+                }
+            }
+            // dot with no following digit → leave it in input (do not consume)
+        }
+
+        let ts = Timestamp {
+            attos: total_attos,
+            epoch,
+        };
+        self.tm.timestamp = Some(ts);
         self.advance_fmt();
         Ok(())
     }
@@ -1053,7 +1116,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         default_pad_width: usize,
         default_flag: FormatFlag,
         arbitrary: bool,
-    ) -> Result<(i64, &[u8]), ()> {
+    ) -> Result<(i64, &[u8], Sign), ()> {
         let bytes = Self::trim_inp_if_ws(input);
         if bytes.is_empty() {
             return Err(());
@@ -1087,7 +1150,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 consumed += 1;
             }
 
-            return Ok((acc as i64, &bytes[consumed..]));
+            return Ok((acc as i64, &bytes[consumed..], Sign::Positive));
         }
 
         // Handle optional sign
@@ -1135,7 +1198,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             acc as i64
         };
 
-        Ok((n, &bytes[consumed..]))
+        Ok((n, &bytes[consumed..], sign))
     }
 
     #[inline(always)]

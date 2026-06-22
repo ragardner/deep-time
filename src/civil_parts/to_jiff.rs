@@ -1,13 +1,12 @@
 use {
     crate::{
-        ATTOS_PER_NS, Meridiem, Offset, Parts, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, TimestampSec,
-        Weekday, an_err,
+        ATTOS_PER_NS, Dt, Epoch, Meridiem, Offset, Parts, Scale, Weekday, an_err,
         error::{DtErr, DtErrKind},
     },
     alloc::string::String,
     core::result::Result,
     jiff::{
-        Timestamp, Zoned,
+        Zoned,
         fmt::strtime::{BrokenDownTime, Meridiem as JiffMeridiem},
         tz::Offset as JiffOffset,
     },
@@ -102,15 +101,24 @@ impl Parts {
             bdt.set_meridiem(Some(jmer));
         }
 
-        // Explicit timestamp (highest priority) — convert Noon2000 to unix for jiff
-        // TODO: incorrect
-        if let Some(ts) = self.timestamp_sec {
-            let secs = match ts {
-                TimestampSec::Unix(u) => u,
-                TimestampSec::Noon2000(j) => j + TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
+        // Explicit timestamp
+        if let Some(ts) = self.timestamp {
+            let unix = {
+                match ts.epoch {
+                    Epoch::Unix => {
+                        let from_unix = Dt::new(ts.attos, self.scale, self.scale);
+                        let tai = Dt::from_unix(from_unix);
+                        tai.target(Scale::UTC).to_unix()
+                    }
+                    Epoch::Noon2000 => {
+                        let dt = Dt::new(ts.attos, self.scale, Scale::UTC);
+                        dt.to_unix()
+                    }
+                }
             };
-            let ts = Timestamp::from_second(secs)
-                .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", secs, e))?;
+            let nanos = unix.to_ns();
+            let ts = jiff::Timestamp::from_nanosecond(nanos)
+                .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", nanos, e))?;
             bdt.set_timestamp(Some(ts));
         }
 
@@ -168,7 +176,7 @@ impl Parts {
 
     /// Converts [`Parts`] → [`jiff::Timestamp`].
     #[inline(always)]
-    pub fn to_jiff_timestamp(&self) -> Result<Timestamp, DtErr> {
+    pub fn to_jiff_timestamp(&self) -> Result<jiff::Timestamp, DtErr> {
         self.to_jiff_zoned().map(|z| z.timestamp())
     }
 }

@@ -24,6 +24,71 @@ impl Dt {
         }
     }
 
+    /// Returns the whole seconds portion of this [`Dt`] using truncation towards zero
+    /// (i.e., the integer part obtained via truncating division, without rounding).
+    ///
+    /// This is equivalent to `self.attos / ATTOS_PER_SEC_I128`.
+    ///
+    /// Unlike [`to_sec`](Self::to_sec) (which uses Euclidean division, flooring towards
+    /// negative infinity for negative values to keep the fractional part non-negative),
+    /// this version truncates towards zero.
+    ///
+    /// Consequently, for values in `(-1, 0)` seconds (e.g. -0.3 s or -0.8 s),
+    /// both return `0`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    ///
+    /// // -0.3 seconds → truncates to 0
+    /// let dt = Dt::span(-300_000_000_000_000_000);
+    /// assert_eq!(dt.to_sec_trunc(), 0);
+    ///
+    /// // -0.8 seconds → truncates to 0
+    /// let dt = Dt::span(-800_000_000_000_000_000);
+    /// assert_eq!(dt.to_sec_trunc(), 0);
+    ///
+    /// // -1.3 seconds → truncates to -1 (while to_sec gives -2)
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// assert_eq!(dt.to_sec_trunc(), -1);
+    /// assert_eq!(dt.to_sec(), -2);
+    ///
+    /// // Positive values behave the same as `to_sec`
+    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// assert_eq!(dt.to_sec_trunc(), 1);
+    /// assert_eq!(dt.to_sec(), 1);
+    /// ```
+    #[inline(always)]
+    pub const fn to_sec_trunc(&self) -> i128 {
+        self.attos / ATTOS_PER_SEC_I128
+    }
+
+    /// Returns the whole seconds portion of this [`Dt`] using truncation towards zero,
+    /// then clamped to an [`i64`].
+    ///
+    /// If the truncated seconds value lies outside the `i64` range, the result
+    /// saturates to [`i64::MAX`] or [`i64::MIN`].
+    ///
+    /// See [`to_sec_trunc`](Self::to_sec_trunc) for the truncation semantics
+    /// (towards zero, no rounding).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    ///
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// assert_eq!(dt.to_sec64_trunc(), -1);
+    ///
+    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// assert_eq!(dt.to_sec64_trunc(), 1);
+    /// ```
+    #[inline(always)]
+    pub const fn to_sec64_trunc(&self) -> i64 {
+        Self::i128_to_i64(self.attos / ATTOS_PER_SEC_I128)
+    }
+
     /// If this time were turned into [`i128`] seconds and [`u64`] (always
     /// pushing to the positive) fractional attoseconds, this returns the
     /// whole seconds part.

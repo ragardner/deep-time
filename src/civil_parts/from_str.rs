@@ -1,4 +1,7 @@
-use crate::{DtErr, DtErrKind, Parser, Parts, an_err};
+use crate::{
+    ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch, Parser, Parts, STRTIME_SIZE, Scale, SecF,
+    Timestamp, an_err,
+};
 
 impl Parts {
     /// Parser equivalent to `strptime` with a provided format string.
@@ -56,6 +59,8 @@ impl Parts {
     /// - `%.f`, `%.N`, `%.3f`, `%.6N`, ... — Same fractional parsing, but the
     ///   dot before the fraction is **optional** in the input (consumes literal `.` if present).
     /// - `%P`, `%p` — `AM`/`PM` indicator (case-insensitive).
+    ///
+    /// Fractional seconds directives also work with timestamp directives.
     ///
     /// ### Weekday / Week number
     /// - `%A` — Full English weekday name (e.g. `Monday`).
@@ -194,7 +199,7 @@ impl Parts {
     /// - [`DtErrKind::Incomplete`] if no valid date representation is present.
     #[inline(always)]
     pub fn finish(&mut self, allow_partial_date: bool) -> Result<(), DtErr> {
-        if self.timestamp_sec.is_none() {
+        if self.timestamp.is_none() {
             let has_calendar_date = if allow_partial_date {
                 if self.day.is_none() {
                     self.day = Some(1);
@@ -215,5 +220,169 @@ impl Parts {
         }
 
         Ok(())
+    }
+
+    #[inline]
+    pub(crate) fn parse_sec_f(s: &str, scale: Option<Scale>) -> Option<SecF> {
+        let bytes = s.as_bytes();
+        if bytes.is_empty() || bytes.len() > STRTIME_SIZE {
+            return None;
+        }
+
+        // Skip leading junk until we see +, -, ., or a digit.
+        let mut pos = 0usize;
+        while pos < bytes.len() {
+            match bytes[pos] {
+                b'+' | b'-' | b'.' | b'0'..=b'9' => break,
+                _ => pos += 1,
+            }
+        }
+
+        if pos >= bytes.len() {
+            return None;
+        }
+
+        // Optional sign (only at the start of the number we decided to parse)
+        let negative = match bytes[pos] {
+            b'-' => {
+                pos += 1;
+                true
+            }
+            b'+' => {
+                pos += 1;
+                false
+            }
+            _ => false,
+        };
+
+        if pos >= bytes.len() {
+            return None;
+        }
+
+        // Integer part (may be empty when we landed on '.')
+        let mut int_u: u64 = 0;
+        let mut saw_digit = false;
+
+        while pos < bytes.len() && bytes[pos].is_ascii_digit() {
+            saw_digit = true;
+            let d = (bytes[pos] - b'0') as u64;
+            if int_u > u64::MAX / 10 {
+                int_u = u64::MAX;
+                pos += 1;
+                while pos < bytes.len() && bytes[pos].is_ascii_digit() {
+                    pos += 1;
+                }
+                break;
+            } else {
+                int_u = int_u * 10 + d;
+                pos += 1;
+            }
+        }
+
+        // Optional fractional part
+        let mut frac_attos: u64 = 0;
+        let mut frac_digits: usize = 0;
+
+        if pos < bytes.len() && bytes[pos] == b'.' {
+            pos += 1;
+
+            while pos < bytes.len() && bytes[pos].is_ascii_digit() && frac_digits < 18 {
+                saw_digit = true;
+                let d = (bytes[pos] - b'0') as u64;
+                frac_attos = frac_attos * 10 + d;
+                frac_digits += 1;
+                pos += 1;
+            }
+        }
+
+        if !saw_digit {
+            return None;
+        }
+
+        let scl = match scale {
+            Some(s) => s,
+            None => Parts::parse_scale(&bytes[pos..]).unwrap_or_default(),
+        };
+
+        // Left-pad the fractional attos value to 18 digits total
+        if frac_digits > 0 {
+            let shift = 18 - frac_digits;
+            frac_attos *= 10u64.pow(shift as u32);
+        }
+
+        Some(SecF {
+            negative,
+            int_u,
+            frac_attos,
+            scale: scl,
+        })
+    }
+
+    /// Parses a decimal seconds string (with optional fractional part) as seconds
+    /// since [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)
+    /// and returns a [`Parts`] that represents the same instant.
+    ///
+    /// This is the [`Parts`] equivalent of
+    /// [`Dt::from_str_sec_f`](crate::Dt::from_str_sec_f).
+    ///
+    /// - If `scale` is `Some(s)`, the value is interpreted on scale `s`.
+    /// - If `scale` is `None`, a trailing scale abbreviation (e.g. `GPS`, `TAI`,
+    ///   `UTC`) is parsed from the input. If none is found, `TAI` is used.
+    ///
+    /// Leading non-numeric characters are skipped until a number start is found
+    /// (`+`, `-`, `.`, or digit).
+    ///
+    /// - Fractional seconds are limited to the first 18 digits (attosecond
+    ///   precision); extra digits are truncated.
+    /// - Oversized integer parts saturate to the limits of `i64` (because
+    ///   [`Parts`] stores the offset via [`TimestampSec::Noon2000`]).
+    /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
+    /// - Returns `None` only for completely unparseable input.
+    ///
+    /// The returned [`Parts`] has its `timestamp_sec` set to a `Noon2000` value
+    /// (seconds since the library epoch) plus the fractional `attos`. Calling
+    /// [`.to_dt()`](Self::to_dt) on it produces the equivalent instant.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Scale, civil_parts::Parts};
+    ///
+    /// let p = Parts::from_str_sec_f("1700000000.123456789012345678", Some(Scale::TAI)).unwrap();
+    /// let dt = p.to_dt().unwrap();
+    /// assert_eq!(dt.to_sec64(), 1700000000);
+    ///
+    /// // Trailing scale is recognized when scale arg is None
+    /// let p = Parts::from_str_sec_f("42.75 GPS", None).unwrap();
+    /// assert_eq!(p.scale, Scale::GPS);
+    /// ```
+    /// Shared parser for decimal "seconds + optional fraction" input.
+    ///
+    /// Used by both [`Parts::from_str_sec_f`] and [`Dt::from_str_sec_f`].
+    /// Returns the raw numeric components + resolved scale; the caller decides
+    /// how to materialize the value (full attos for `Dt`, or Noon2000 timestamp
+    /// for `Parts`).
+    pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
+        let parsed = Self::parse_sec_f(s, scale)?;
+
+        // Combine integer seconds + fractional attoseconds into one i128 value.
+        // This replaces the old TimestampSec + separate attos split.
+        let int_attos = (parsed.int_u as i128) * ATTOS_PER_SEC_I128;
+        let frac_attos = parsed.frac_attos as i128;
+
+        let total_attos = if parsed.negative {
+            -(int_attos + frac_attos)
+        } else {
+            int_attos + frac_attos
+        };
+
+        let mut parts = Parts::default();
+        parts.timestamp = Some(Timestamp {
+            attos: total_attos,
+            epoch: Epoch::Noon2000,
+        });
+        parts.scale = parsed.scale;
+
+        Some(parts)
     }
 }

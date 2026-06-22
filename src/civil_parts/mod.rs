@@ -78,7 +78,18 @@ pub struct Parts {
     /// AM / PM indicator.
     pub meridiem: Option<Meridiem>,
     /// Timestamp in seconds since a known epoch (`%s` = Unix 1970, `%J` = noon 2000 / J2000).
-    pub timestamp_sec: Option<TimestampSec>,
+    pub timestamp: Option<Timestamp>,
+}
+
+/// Raw parsed components from a "seconds + optional fraction" string.
+#[derive(Clone, Copy)]
+pub(crate) struct SecF {
+    pub(crate) negative: bool,
+    /// Accumulated absolute integer part (u64::MAX on overflow during accumulation).
+    pub(crate) int_u: u64,
+    /// Fractional attoseconds, already left-padded to 18 digits.
+    pub(crate) frac_attos: u64,
+    pub(crate) scale: Scale,
 }
 
 impl Parts {
@@ -97,17 +108,26 @@ impl Parts {
     }
 }
 
+/// Used by [`TimestampSec`]
+///
+/// Records the epoch of the timestamp.
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Epoch {
+    Unix,
+    Noon2000,
+}
+
 /// Timestamp seconds relative to a specific epoch.
 ///
 /// Used by the `%s` (Unix epoch) and `%J` (J2000.0 noon 2000-01-01 12:00 TAI) directives.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TimestampSec {
-    /// Seconds since 1970-01-01 00:00:00 UTC (for `%s`).
-    Unix(i64),
-    /// Seconds since 2000-01-01 12:00:00 TAI (J2000.0 noon, for `%J`).
-    Noon2000(i64),
+pub struct Timestamp {
+    pub attos: i128,
+    pub epoch: Epoch,
 }
 
 /// AM / PM indicator.

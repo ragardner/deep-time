@@ -1,6 +1,6 @@
 use crate::{
     Drift, Dt, Every, LiteStr, Meridiem, Offset, Parts, Scale, Spacetime, TimeRange, Weekday,
-    civil_parts::TimestampSec,
+    civil_parts::{Epoch, Timestamp},
 };
 
 impl Dt {
@@ -324,9 +324,10 @@ impl Parts {
     pub const WIRE_VERSION: u8 = 1;
 
     /// Total size of the wire representation (120 bytes).
+    /// The timestamp field now uses 17 bytes (tag + i128), using some of the previous slack space.
     pub const WIRE_SIZE: usize = 120;
 
-    /// Serializes `Parts` into a fixed 119-byte buffer.
+    /// Serializes `Parts` into a fixed 120-byte buffer.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -409,21 +410,27 @@ impl Parts {
         buf[offset] = self.meridiem.map_or(255, |m| m.to_wire_byte());
         offset += 1;
 
-        // timestamp_sec: kind (1 byte) + value (8 bytes)
-        // kind: 0=none, 1=Unix, 2=Noon2000
-        let (kind, val) = match self.timestamp_sec {
-            None => (0u8, i64::MIN),
-            Some(TimestampSec::Unix(v)) => (1, v),
-            Some(TimestampSec::Noon2000(v)) => (2, v),
+        // timestamp: tag (1 byte) + i128 attos (16 bytes) = 17 bytes total
+        // tag: 0 = none, 1 = Unix, 2 = Noon2000
+        let (tag, attos) = match self.timestamp {
+            None => (0u8, 0i128),
+            Some(ts) => {
+                let t = match ts.epoch {
+                    Epoch::Unix => 1u8,
+                    Epoch::Noon2000 => 2u8,
+                };
+                (t, ts.attos)
+            }
         };
-        buf[offset] = kind;
+        buf[offset] = tag;
         offset += 1;
-        buf[offset..offset + 8].copy_from_slice(&val.to_le_bytes());
+        buf[offset..offset + 16].copy_from_slice(&attos.to_le_bytes());
+        // offset += 16;
 
         buf
     }
 
-    /// Deserializes `Parts` from exactly 119 bytes.
+    /// Deserializes `Parts` from exactly `WIRE_SIZE` bytes.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -544,14 +551,24 @@ impl Parts {
         }
         offset += 1;
 
-        // timestamp_sec: kind (1) + value (8)
-        let kind = bytes[offset];
+        // timestamp: tag (1) + i128 attos (16)
+        // tag: 0=none, 1=Unix, 2=Noon2000
+        let tag = bytes[offset];
         offset += 1;
-        let val = i64::from_le_bytes(bytes[offset..offset + 8].try_into().ok()?);
-        match kind {
-            1 => dc.timestamp_sec = Some(TimestampSec::Unix(val)),
-            2 => dc.timestamp_sec = Some(TimestampSec::Noon2000(val)),
-            _ => {}
+
+        if tag != 0 {
+            let attos_arr: [u8; 16] = bytes[offset..offset + 16].try_into().ok()?;
+            let attos = i128::from_le_bytes(attos_arr);
+            // offset += 16;
+
+            let epoch = match tag {
+                1 => Epoch::Unix,
+                2 => Epoch::Noon2000,
+                _ => return None,
+            };
+            dc.timestamp = Some(Timestamp { attos, epoch });
+        } else {
+            // offset += 16;
         }
 
         Some(dc)

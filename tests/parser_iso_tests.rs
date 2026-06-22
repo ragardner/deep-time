@@ -436,4 +436,41 @@ mod from_str_iso_tests {
 
         let _dt = Dt::from_str_iso("2024-1-5T12:00:00Z").unwrap();
     }
+
+    #[test]
+    fn test_iso_sec_prefix() {
+        // TAI case (exact integer + frac)
+        let p = Parts::from_str_iso("SEC 1234.567").unwrap();
+        let dt = p.to_dt().unwrap();
+        assert_eq!(dt.target, Scale::TAI);
+        assert_eq!(dt.to_sec64(), 1234);
+        assert_eq!(dt.to_sec_ufrac(), 567_000_000_000_000_000);
+
+        // lowercase + explicit TAI
+        let p = Parts::from_str_iso("sec1234.5 TAI").unwrap();
+        let dt = p.to_dt().unwrap();
+        assert_eq!(dt.target, Scale::TAI);
+        assert_eq!(dt.to_sec64(), 1234);
+        assert_eq!(dt.to_sec_ufrac(), 500_000_000_000_000_000);
+
+        // "SEC 0 TDB" must equal the TDB epoch
+        let tdb_epoch = Dt::from_ymd(2000, 1, 1, Scale::TDB, 12, 0, 0, 0);
+        let p = Parts::from_str_iso("SEC 0 TDB").unwrap();
+        let parsed = p.to_dt().unwrap();
+        assert_eq!(parsed, tdb_epoch);
+
+        // Non-zero TDB: build expected using exact raw attos + from_attos (avoids f64)
+        let raw = 1234i128 * ATTOS_PER_SEC_I128 + 567_000_000_000_000_000;
+        let expected_tdb = Dt::from_attos(raw, Scale::TDB);
+        let p = Parts::from_str_iso("SEC 1234.567 TDB").unwrap();
+        let parsed = p.to_dt().unwrap();
+        assert_eq!(parsed, expected_tdb);
+
+        // Same for GPS
+        let raw_gps = 42i128 * ATTOS_PER_SEC_I128 + 750_000_000_000_000_000;
+        let expected_gps = Dt::from_attos(raw_gps, Scale::GPS);
+        let p = Parts::from_str_iso("Sec 42.75 GPS").unwrap();
+        let parsed = p.to_dt().unwrap();
+        assert_eq!(parsed, expected_gps);
+    }
 }
