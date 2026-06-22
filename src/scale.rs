@@ -164,40 +164,34 @@ impl Scale {
     /// Returns `None` for any non-ASCII input.
     pub fn from_abbrev(s: &str) -> Option<Self> {
         let bytes = s.as_bytes();
-        if !bytes.is_ascii() {
-            return None;
-        }
         let mut buf = [0u8; 8];
         let mut len = 0;
+
         for &byte in bytes {
-            if len >= 8 {
-                return None;
+            if len >= 8 || !byte.is_ascii_alphabetic() {
+                break;
             }
-            buf[len] = if byte.is_ascii_lowercase() {
-                byte - 32
-            } else {
-                byte
-            };
+            buf[len] = byte.to_ascii_uppercase();
             len += 1;
         }
-        let upper = core::str::from_utf8(&buf[..len]).ok()?;
-        match upper {
-            "TAI" => Some(Self::TAI),
-            "TT" => Some(Self::TT),
-            "ET" => Some(Self::ET),
-            "TDB" => Some(Self::TDB),
-            "UTC" => Some(Self::UTC),
-            "UTCSPICE" => Some(Self::UtcSpice),
-            "UTCHIST" => Some(Self::UtcHist),
-            "GPS" => Some(Self::GPS),
-            "GST" => Some(Self::GST),
-            "BDT" => Some(Self::BDT),
-            "QZSS" => Some(Self::QZSS),
-            "TCG" => Some(Self::TCG),
-            "TCB" => Some(Self::TCB),
-            "LTC" => Some(Self::LTC),
-            "TCL" => Some(Self::TCL),
-            "CUSTOM" => Some(Self::Custom),
+
+        match &buf[..len] {
+            b"TAI" => Some(Self::TAI),
+            b"TT" => Some(Self::TT),
+            b"ET" => Some(Self::ET),
+            b"TDB" => Some(Self::TDB),
+            b"UTC" => Some(Self::UTC),
+            b"UTCSPICE" => Some(Self::UtcSpice),
+            b"UTCHIST" => Some(Self::UtcHist),
+            b"GPS" => Some(Self::GPS),
+            b"GST" => Some(Self::GST),
+            b"BDT" => Some(Self::BDT),
+            b"QZSS" => Some(Self::QZSS),
+            b"TCG" => Some(Self::TCG),
+            b"TCB" => Some(Self::TCB),
+            b"LTC" => Some(Self::LTC),
+            b"TCL" => Some(Self::TCL),
+            b"CUSTOM" => Some(Self::Custom),
             _ => None,
         }
     }

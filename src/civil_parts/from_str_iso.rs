@@ -368,28 +368,28 @@ impl Parts {
 
         // Optional trailing scale (e.g. TAI, UTC)
         if pos < len_ {
-            while pos < len_ && !bytes[pos].is_ascii_alphabetic() {
-                pos += 1;
-            }
-            if pos < len_ {
-                let end = {
-                    let mut i = pos;
-                    while i < len_ && bytes[i].is_ascii_alphabetic() {
-                        i += 1;
-                        if i - pos > 8 {
-                            break;
-                        }
-                    }
-                    i
-                };
-                if let Some(sc) = Scale::from_abbrev(&input[pos..end]) {
-                    tp.scale = sc;
-                    // pos += end - pos;
-                }
+            if let Some(sc) = Self::parse_scale(&bytes[pos..]) {
+                tp.scale = sc;
             }
         }
 
         Ok(tp)
+    }
+
+    /// Parse a time scale abbreviation from a bytes slice.
+    /// Skips leading non-alphabetic bytes, then takes up to 8 ASCII alphabetic
+    /// characters and attempts to interpret them as a scale via [`Scale::from_abbrev`].
+    #[inline(always)]
+    pub(crate) fn parse_scale(bytes: &[u8]) -> Option<Scale> {
+        let len_ = bytes.len();
+        let mut pos = 0usize;
+        while pos < len_ && !bytes[pos].is_ascii_alphabetic() {
+            pos += 1;
+        }
+        if let Ok(s) = core::str::from_utf8(&bytes[pos..(pos + 8).min(len_)]) {
+            return Scale::from_abbrev(s);
+        }
+        None
     }
 }
 

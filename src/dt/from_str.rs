@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, Parts, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK,
-    SEC_PER_YEAR, StrPTimeFmt, an_err,
+    SEC_PER_YEAR, STRTIME_SIZE, Scale, StrPTimeFmt, an_err,
 };
 use core::str::FromStr;
 
@@ -314,6 +314,147 @@ impl Dt {
         let mut tp = Parts::from_str_iso(input)?;
         tp.finish(true)?;
         tp.to_dt()
+    }
+
+    /// Parses a decimal seconds string (with optional fractional part) as seconds
+    /// since
+    /// [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)
+    /// on the chosen time scale.
+    ///
+    /// - If `scale` is `Some(s)`, the value is interpreted on scale `s`.
+    /// - If `scale` is `None`, a trailing scale abbreviation (e.g. `GPS`, `TAI`,
+    ///   `UTC`) is parsed from the input using the same logic as [`Dt::from_str_iso`].
+    ///   If none is found, `TAI` is used.
+    ///
+    /// Leading non-numeric characters are skipped until a number start is found
+    /// (`+`, `-`, `.`, or digit).
+    ///
+    /// - Fractional seconds are limited to the first 18 digits (attosecond
+    ///   precision); extra digits are truncated.
+    /// - Oversized integer parts saturate instead of failing.
+    /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
+    /// - Returns `None` only for completely unparseable input (empty, sign/dot
+    ///   only, no digits after skipping, etc.).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let d = Dt::from_str_sec_f("1700000000.123456789012345678", Some(Scale::TAI)).unwrap();
+    /// assert_eq!(d.to_sec64(), 1700000000);
+    ///
+    /// // Leading junk is skipped
+    /// let d = Dt::from_str_sec_f("ts= -0.00123 suffix", Some(Scale::TAI)).unwrap();
+    /// assert!(d.to_attos() < 0);
+    ///
+    /// // Pure negative fraction
+    /// let d = Dt::from_str_sec_f("-.5", Some(Scale::TT)).unwrap();
+    /// assert!(d.to_attos() < 0);
+    ///
+    /// // Scale parsed from trailing abbreviation when passing None
+    /// let d = Dt::from_str_sec_f("42.75 GPS", None).unwrap();
+    /// assert_eq!(d.target, Scale::GPS);
+    ///
+    /// // 1 attosecond
+    /// let d = Dt::from_str_sec_f("0.000000000000000001", Some(Scale::TAI)).unwrap();
+    /// assert_eq!(d.to_attos() % 1_000_000_000_000_000_000, 1);
+    /// ```
+    pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
+        let bytes = s.as_bytes();
+        if bytes.is_empty() || bytes.len() > STRTIME_SIZE {
+            return None;
+        }
+
+        // Skip leading junk until we see +, -, ., or a digit.
+        let mut pos = 0usize;
+        while pos < bytes.len() {
+            match bytes[pos] {
+                b'+' | b'-' | b'.' | b'0'..=b'9' => break,
+                _ => pos += 1,
+            }
+        }
+
+        if pos >= bytes.len() {
+            return None;
+        }
+
+        // Optional sign (only at the start of the number we decided to parse)
+        let negative = match bytes[pos] {
+            b'-' => {
+                pos += 1;
+                true
+            }
+            b'+' => {
+                pos += 1;
+                false
+            }
+            _ => false,
+        };
+
+        if pos >= bytes.len() {
+            return None;
+        }
+
+        // Integer part (may be empty when we landed on '.')
+        let mut int_u: u64 = 0;
+        let mut saw_digit = false;
+
+        while pos < bytes.len() && bytes[pos].is_ascii_digit() {
+            saw_digit = true;
+            let d = (bytes[pos] - b'0') as u64;
+            if int_u > u64::MAX / 10 {
+                int_u = u64::MAX;
+                pos += 1;
+                while pos < bytes.len() && bytes[pos].is_ascii_digit() {
+                    pos += 1;
+                }
+                break;
+            } else {
+                int_u = int_u * 10 + d;
+                pos += 1;
+            }
+        }
+
+        // Optional fractional part
+        let mut frac_attos: u64 = 0;
+        let mut frac_digits: usize = 0;
+
+        if pos < bytes.len() && bytes[pos] == b'.' {
+            pos += 1;
+
+            while pos < bytes.len() && bytes[pos].is_ascii_digit() && frac_digits < 18 {
+                saw_digit = true;
+                let d = (bytes[pos] - b'0') as u64;
+                frac_attos = frac_attos * 10 + d;
+                frac_digits += 1;
+                pos += 1;
+            }
+        }
+
+        if !saw_digit {
+            return None;
+        }
+
+        let scl = match scale {
+            Some(s) => s,
+            None => Parts::parse_scale(&bytes[pos..]).unwrap_or_default(),
+        };
+
+        // Left-pad the fractional attos value to 18 digits total
+        if frac_digits > 0 {
+            let shift = 18 - frac_digits;
+            frac_attos *= 10u64.pow(shift as u32);
+        }
+
+        let int_attos = (int_u as i128) * ATTOS_PER_SEC_I128;
+        let signed_attos = if negative {
+            -int_attos - (frac_attos as i128)
+        } else {
+            int_attos + (frac_attos as i128)
+        };
+
+        Some(Dt::from_attos(signed_attos, scl))
     }
 
     /// Parses an ISO 8601 duration string into a [`Dt`] representing a pure time interval.

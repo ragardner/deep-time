@@ -72,3 +72,125 @@ fn test_mul_by_f() {
     // div_by_f delegates here
     assert_eq!(Dt::span(10 * APS).div_by_f(4.0).to_attos(), (10 * APS) / 4);
 }
+
+#[test]
+fn test_from_str_sec_f() {
+    use deep_time::Scale;
+
+    // Basic positive
+    let d = Dt::from_str_sec_f("123", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), 123);
+    assert_eq!(d.to_sec_ufrac(), 0);
+
+    let d = Dt::from_str_sec_f("123.5", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), 123);
+    assert_eq!(d.to_sec_ufrac(), 500_000_000_000_000_000);
+
+    // Negative integer
+    let d = Dt::from_str_sec_f("-42", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), -42);
+
+    // Negative with fraction
+    let d = Dt::from_str_sec_f("-1.25", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), -2); // accessors use floor + positive ufrac
+    assert_eq!(d.to_sec_ufrac(), 750_000_000_000_000_000);
+
+    // Leading dot positive and negative (the special < 1 negative case)
+    let d = Dt::from_str_sec_f(".5", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), 0);
+    assert_eq!(d.to_sec_ufrac(), 500_000_000_000_000_000);
+
+    let d = Dt::from_str_sec_f("-.5", Some(Scale::TAI)).unwrap();
+    assert!(d.to_attos() < 0);
+    // -0.5 should be represented as sec=-1 + 0.5 ufrac in the pair
+    assert_eq!(d.to_sec64(), -1);
+    assert_eq!(d.to_sec_ufrac(), 500_000_000_000_000_000);
+
+    // Explicit positive sign
+    let d = Dt::from_str_sec_f("+0.25", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec_ufrac(), 250_000_000_000_000_000);
+
+    // Trailing dot
+    let d = Dt::from_str_sec_f("99.", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), 99);
+    assert_eq!(d.to_sec_ufrac(), 0);
+
+    // Full 18 fractional digits (exact attos)
+    let d = Dt::from_str_sec_f("0.123456789012345678", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec_ufrac(), 123_456_789_012_345_678);
+
+    // More than 18 frac digits → truncated (first 18 used)
+    let d = Dt::from_str_sec_f("0.1234567890123456789", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec_ufrac(), 123_456_789_012_345_678);
+
+    // Tiny 1 attosecond
+    let d = Dt::from_str_sec_f("0.000000000000000001", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec_ufrac(), 1);
+
+    // Leading + and dot
+    let d = Dt::from_str_sec_f("+.000000000000000001", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec_ufrac(), 1);
+
+    // Error cases (completely unparseable)
+    assert!(Dt::from_str_sec_f("", Some(Scale::TAI)).is_none());
+    assert!(Dt::from_str_sec_f("-", Some(Scale::TAI)).is_none());
+    assert!(Dt::from_str_sec_f(".", Some(Scale::TAI)).is_none());
+    assert!(Dt::from_str_sec_f("abc", Some(Scale::TAI)).is_none());
+    assert!(Dt::from_str_sec_f("+", Some(Scale::TAI)).is_none());
+    assert!(Dt::from_str_sec_f("---", Some(Scale::TAI)).is_none());
+
+    // With new tolerant parsing, these now succeed (leading junk skipped / trailing ignored)
+    let d = Dt::from_str_sec_f("123x", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), 123);
+
+    let d = Dt::from_str_sec_f("prefix:123.45.67", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), 123);
+    assert_eq!(d.to_sec_ufrac(), 450_000_000_000_000_000);
+
+    // Leading junk skipped, trailing ignored
+    let d = Dt::from_str_sec_f("time = -42.75 (end)", Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), -43);
+    assert_eq!(d.to_sec_ufrac(), 250_000_000_000_000_000);
+
+    // Very large (but valid) i64 — no clamping
+    let big = "9223372036854775807"; // i64::MAX
+    let d = Dt::from_str_sec_f(big, Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), i64::MAX);
+
+    // i64::MIN
+    let min = "-9223372036854775808";
+    let d = Dt::from_str_sec_f(min, Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), i64::MIN);
+
+    // Extremely large integers saturate (to_sec* views are clamped by the library)
+    let huge_pos = "1234567890123456789012345678901234567890.123";
+    let d = Dt::from_str_sec_f(huge_pos, Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), i64::MAX);
+    assert!(d.to_sec_ufrac() > 0);
+
+    let huge_neg = "-99999999999999999999999999999999999999.9";
+    let d = Dt::from_str_sec_f(huge_neg, Some(Scale::TAI)).unwrap();
+    assert_eq!(d.to_sec64(), i64::MIN);
+
+    // Length limit (STRTIME_SIZE)
+    let too_long = "1".repeat(600);
+    assert!(Dt::from_str_sec_f(&too_long, Some(Scale::TAI)).is_none());
+
+    // Optional scale parsing when passing None (trailing abbrev like ISO parser)
+    // Use GPS as a concrete non-default scale.
+    let d = Dt::from_str_sec_f("123.5 GPS", None).unwrap();
+    assert_eq!(d.target, Scale::GPS);
+
+    // Equivalent to explicit Some(GPS)
+    let d_auto = Dt::from_str_sec_f("9876.25 GPS", None).unwrap();
+    let d_exp = Dt::from_str_sec_f("9876.25", Some(Scale::GPS)).unwrap();
+    assert_eq!(d_auto, d_exp);
+
+    // Scale after whitespace / with leading junk
+    let d = Dt::from_str_sec_f("val= 10 TAI", None).unwrap();
+    assert_eq!(d.target, Scale::TAI);
+
+    // No scale present -> defaults to TAI
+    let d = Dt::from_str_sec_f("55.5", None).unwrap();
+    assert_eq!(d.target, Scale::TAI);
+}
