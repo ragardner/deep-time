@@ -108,7 +108,7 @@ impl Parts {
     }
 }
 
-/// Used by [`TimestampSec`]
+/// Used by [`Timestamp`]
 ///
 /// Records the epoch of the timestamp.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

@@ -224,9 +224,13 @@ impl Parts {
         Ok(())
     }
 
-    #[inline]
-    pub(crate) fn parse_sec_f(s: &str, scale: Option<Scale>) -> Option<SecF> {
-        let bytes = s.as_bytes();
+    /// Shared parser for decimal "seconds + optional fraction" input.
+    ///
+    /// Used by both [`Parts::from_str_sec_f`] and [`Dt::from_str_sec_f`].
+    /// Returns the raw numeric components + resolved scale; the caller decides
+    /// how to materialize the value (full attos for `Dt`, or a Noon2000
+    /// [`Timestamp`] for `Parts`).
+    pub(crate) fn parse_sec_f(bytes: &[u8], scale: Option<Scale>) -> Option<SecF> {
         if bytes.is_empty() || bytes.len() > STRTIME_SIZE {
             return None;
         }
@@ -325,7 +329,7 @@ impl Parts {
     /// and returns a [`Parts`] that represents the same instant.
     ///
     /// This is the [`Parts`] equivalent of
-    /// [`Dt::from_str_sec_f`](crate::Dt::from_str_sec_f).
+    /// [`Dt::from_str_sec_f`](../struct.Dt.html#method.from_str_sec_f).
     ///
     /// - If `scale` is `Some(s)`, the value is interpreted on scale `s`.
     /// - If `scale` is `None`, a trailing scale abbreviation (e.g. `GPS`, `TAI`,
@@ -336,14 +340,12 @@ impl Parts {
     ///
     /// - Fractional seconds are limited to the first 18 digits (attosecond
     ///   precision); extra digits are truncated.
-    /// - Oversized integer parts saturate to the limits of `i64` (because
-    ///   [`Parts`] stores the offset via [`TimestampSec::Noon2000`]).
+    /// - Oversized integer parts set the integer component to `u64::MAX`.
     /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
     /// - Returns `None` only for completely unparseable input.
     ///
-    /// The returned [`Parts`] has its `timestamp_sec` set to a `Noon2000` value
-    /// (seconds since the library epoch) plus the fractional `attos`. Calling
-    /// [`.to_dt()`](Self::to_dt) on it produces the equivalent instant.
+    /// The returned [`Parts`] has its [`timestamp`](Parts::timestamp) field set to a
+    /// [`Timestamp`] using [`Epoch::Noon2000`] (attoseconds since the library epoch).
     ///
     /// ## Examples
     ///
@@ -358,17 +360,9 @@ impl Parts {
     /// let p = Parts::from_str_sec_f("42.75 GPS", None).unwrap();
     /// assert_eq!(p.scale, Scale::GPS);
     /// ```
-    /// Shared parser for decimal "seconds + optional fraction" input.
-    ///
-    /// Used by both [`Parts::from_str_sec_f`] and [`Dt::from_str_sec_f`].
-    /// Returns the raw numeric components + resolved scale; the caller decides
-    /// how to materialize the value (full attos for `Dt`, or Noon2000 timestamp
-    /// for `Parts`).
     pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
-        let parsed = Self::parse_sec_f(s, scale)?;
+        let parsed = Self::parse_sec_f(s.as_bytes(), scale)?;
 
-        // Combine integer seconds + fractional attoseconds into one i128 value.
-        // This replaces the old TimestampSec + separate attos split.
         let int_attos = (parsed.int_u as i128) * ATTOS_PER_SEC_I128;
         let frac_attos = parsed.frac_attos as i128;
 

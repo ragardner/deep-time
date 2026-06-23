@@ -8,11 +8,11 @@ use crate::{
 impl Parts {
     /// Converts [`Parts`] → [`Dt`].
     /// - Resulting [`Dt`] is on the TAI timescale.
-    /// - If this [`Parts`] has a unix timestamp then it is used
+    /// - If this [`Parts`] has a timestamp then it is used
     ///   instead of anything else.
     pub fn to_dt(&self) -> Result<Dt, DtErr> {
         // ──────────────────────────────────────────────────────────────
-        // Fast path: explicit timestamp (%s or %J)
+        // Explicit timestamp (%s or %J)
         // ──────────────────────────────────────────────────────────────
         if let Some(ts) = self.timestamp {
             match ts.epoch {

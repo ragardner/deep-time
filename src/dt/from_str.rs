@@ -365,7 +365,7 @@ impl Dt {
     /// assert_eq!(d.to_attos() % 1_000_000_000_000_000_000, 1);
     /// ```
     pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
-        let parsed = Parts::parse_sec_f(s, scale)?;
+        let parsed = Parts::parse_sec_f(s.as_bytes(), scale)?;
 
         let int_attos = (parsed.int_u as i128) * ATTOS_PER_SEC_I128;
         let signed_attos = if parsed.negative {

@@ -69,9 +69,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     pub(crate) fn parse(&mut self) -> Result<(), DtErr> {
         while !self.fmt.is_empty() {
-            // Simple lenient rule for inp_can_end_before_fmt:
             // When true, we are allowed to stop as soon as the input is exhausted.
-            if self.inp.is_empty() && self.inp_can_end_before_fmt {
+            if self.inp_can_end_before_fmt && self.inp.is_empty() {
                 return Ok(());
                 // When false we fall through and produce normal "expected X" / mismatch errors.
             }
@@ -90,11 +89,10 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 colons,
             } = self.parse_fmt_extensions();
 
-            if self.fmt.is_empty() {
-                return Err(an_err!(DtErrKind::TruncatedDirective, "expected directive"));
-            }
-
-            let directive = self.fmt.first().copied().unwrap_or(0);
+            let directive = match self.fmt.first() {
+                Some(b) => *b,
+                None => return Err(an_err!(DtErrKind::TruncatedDirective, "expected directive")),
+            };
 
             match directive {
                 b'%' => self.parse_percent_sign()?,
@@ -239,16 +237,16 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 DtErrKind::MismatchedLiteral,
                 "expected '%%' literal but input ended"
             ));
-        }
-        if self.current_inp_byte() != b'%' {
+        } else if self.current_inp_byte() != b'%' {
             return Err(an_err!(
                 DtErrKind::MismatchedLiteral,
                 "expected '%%' got '{}'",
                 char::from(self.current_inp_byte())
             ));
+        } else {
+            self.advance_inp();
+            self.advance_fmt();
         }
-        self.advance_inp();
-        self.advance_fmt();
         Ok(())
     }
 
@@ -1044,10 +1042,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     pub(crate) fn parse_fmt_extensions(&mut self) -> FormatExtensions {
-        if self.fmt.is_empty() {
-            return FormatExtensions::default();
-        }
-
         let first = self.fmt[0];
 
         // Early exit for the common case (no flag, no width, no colons)
@@ -1108,26 +1102,18 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
     }
 
-    #[inline(always)]
-    fn trim_inp_if_ws(inp: &[u8]) -> &[u8] {
-        if inp.first().is_some_and(|b| b.is_ascii_whitespace()) {
-            inp.trim_ascii_start()
-        } else {
-            inp
-        }
-    }
-
-    #[inline(always)]
     fn parse_number(
-        input: &[u8],
+        mut inp: &[u8],
         flag: FormatFlag,
         width: Option<u8>,
         default_pad_width: usize,
         default_flag: FormatFlag,
         arbitrary: bool,
     ) -> Result<(i64, &[u8], Sign), ()> {
-        let bytes = Self::trim_inp_if_ws(input);
-        if bytes.is_empty() {
+        while inp.get(0).map_or(false, |b| b.is_ascii_whitespace()) {
+            inp = &inp[1..];
+        }
+        if inp.is_empty() {
             return Err(());
         }
 
@@ -1135,9 +1121,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if flag == FormatFlag::None
             && width.is_none()
             && !arbitrary
-            && !matches!(bytes[0], b'+' | b'-')
+            && !matches!(inp[0], b'+' | b'-')
         {
-            if !bytes[0].is_ascii_digit() {
+            if !inp[0].is_ascii_digit() {
                 return Err(());
             }
             let max_digits = default_pad_width;
@@ -1145,13 +1131,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             let mut acc: u64 = 0;
 
             // Skip leading zeros (we keep this to avoid mul/add on padding zeros)
-            while consumed < max_digits && consumed < bytes.len() && bytes[consumed] == b'0' {
+            while consumed < max_digits && consumed < inp.len() && inp[consumed] == b'0' {
                 consumed += 1;
             }
 
             // Accumulate significant digits
-            while consumed < max_digits && consumed < bytes.len() {
-                let b = bytes[consumed];
+            while consumed < max_digits && consumed < inp.len() {
+                let b = inp[consumed];
                 if !b.is_ascii_digit() {
                     break;
                 }
@@ -1159,17 +1145,17 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 consumed += 1;
             }
 
-            return Ok((acc as i64, &bytes[consumed..], Sign::Positive));
+            return Ok((acc as i64, &inp[consumed..], Sign::Positive));
         }
 
         // Handle optional sign
-        let (sign, bytes) = match bytes.first() {
-            Some(b'-') => (Sign::Negative, &bytes[1..]),
-            Some(b'+') => (Sign::Positive, &bytes[1..]),
-            _ => (Sign::Positive, bytes),
+        let (sign, inp) = match inp.first() {
+            Some(b'-') => (Sign::Negative, &inp[1..]),
+            Some(b'+') => (Sign::Positive, &inp[1..]),
+            _ => (Sign::Positive, inp),
         };
 
-        if bytes.is_empty() || !bytes[0].is_ascii_digit() {
+        if inp.is_empty() || !inp[0].is_ascii_digit() {
             return Err(());
         }
 
@@ -1187,13 +1173,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let mut acc: u64 = 0;
 
         // Skip leading zeros (we keep this to avoid mul/add on padding zeros)
-        while consumed < max_digits && consumed < bytes.len() && bytes[consumed] == b'0' {
+        while consumed < max_digits && consumed < inp.len() && inp[consumed] == b'0' {
             consumed += 1;
         }
 
         // Accumulate significant digits
-        while consumed < max_digits && consumed < bytes.len() {
-            let b = bytes[consumed];
+        while consumed < max_digits && consumed < inp.len() {
+            let b = inp[consumed];
             if !b.is_ascii_digit() {
                 break;
             }
@@ -1207,19 +1193,21 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             acc as i64
         };
 
-        Ok((n, &bytes[consumed..], sign))
+        Ok((n, &inp[consumed..], sign))
     }
 
     #[inline(always)]
     fn parse_u8(
-        inp: &[u8],
+        mut inp: &[u8],
         flag: FormatFlag,
         width: Option<u8>,
         default_pad_width: usize,
         default_flag: FormatFlag,
     ) -> Result<(u8, &[u8]), ()> {
-        let bytes = Self::trim_inp_if_ws(inp);
-        if bytes.is_empty() {
+        while inp.get(0).map_or(false, |b| b.is_ascii_whitespace()) {
+            inp = &inp[1..];
+        }
+        if inp.is_empty() {
             return Err(());
         }
 
@@ -1233,46 +1221,24 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         .min(3);
 
-        let len = bytes.len();
+        let len = inp.len();
         let mut consumed = 0usize;
         let mut acc: u16 = 0;
 
-        // Digit 1
-        if consumed < max_d && consumed < len {
-            let b = bytes[consumed];
-            if b.is_ascii_digit() {
-                acc = (b - b'0') as u16;
-                consumed += 1;
-            } else {
-                return Ok((acc as u8, &bytes[consumed..]));
+        while consumed < max_d && consumed < len {
+            let b = inp[consumed];
+            if !b.is_ascii_digit() {
+                break;
             }
-        }
-
-        // Digit 2
-        if consumed < max_d && consumed < len {
-            let b = bytes[consumed];
-            if b.is_ascii_digit() {
-                acc = acc * 10 + (b - b'0') as u16;
-                consumed += 1;
-            } else {
-                return Ok((acc as u8, &bytes[consumed..]));
-            }
-        }
-
-        // Digit 3
-        if consumed < max_d && consumed < len {
-            let b = bytes[consumed];
-            if b.is_ascii_digit() {
-                acc = acc * 10 + (b - b'0') as u16;
-                consumed += 1;
-            }
+            acc = acc * 10 + (b - b'0') as u16;
+            consumed += 1;
         }
 
         if acc > 255 {
             return Err(());
         }
 
-        Ok((acc as u8, &bytes[consumed..]))
+        Ok((acc as u8, &inp[consumed..]))
     }
 
     #[inline(always)]
