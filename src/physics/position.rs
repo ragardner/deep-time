@@ -102,3 +102,43 @@ impl Position {
         )
     }
 }
+
+#[cfg(feature = "wire")]
+impl Position {
+    /// Size of the canonical wire representation in bytes (24 bytes).
+    pub const WIRE_SIZE: usize = 24;
+
+    /// Serializes this [[`Position`] into a fixed 24-byte buffer.
+    ///
+    /// All fields are stored as little-endian IEEE 754 `f64`.
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0..8].copy_from_slice(&self.x.to_le_bytes());
+        buf[8..16].copy_from_slice(&self.y.to_le_bytes());
+        buf[16..24].copy_from_slice(&self.z.to_le_bytes());
+        buf
+    }
+
+    /// Deserializes a [`Position`] from exactly 24 bytes.
+    ///
+    /// ## Security
+    ///
+    /// Accepts any `f64` bit pattern (including `NaN`/`Inf`) to match the
+    /// type’s own invariants. Fixed size makes it immune to length-based
+    /// attacks. Safe for untrusted input.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+        let x = Real::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]);
+        let y = Real::from_le_bytes([
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        ]);
+        let z = Real::from_le_bytes([
+            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
+        ]);
+        Some(Self { x, y, z })
+    }
+}

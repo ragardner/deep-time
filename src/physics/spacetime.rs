@@ -137,8 +137,6 @@ impl Spacetime {
         f!(12.0) * (curvature_scale * curvature_scale)
     }
 
-    /// Recommended constructor for most users.
-    ///
     /// Computes both the gravitational lapse factor `α` and an estimate of the
     /// Kretschmann scalar from the dimensionless gravitational potential Φ/c²
     /// and a characteristic length scale.
@@ -251,5 +249,49 @@ impl Spacetime {
             }
         }
         phi
+    }
+}
+
+#[cfg(feature = "wire")]
+impl Spacetime {
+    /// Size of the canonical wire representation in bytes (24 bytes).
+    pub const WIRE_SIZE: usize = 24;
+
+    /// Serializes this [`Spacetime`] snapshot into a fixed 24-byte buffer.
+    ///
+    /// All fields are stored as little-endian IEEE 754 `f64`.
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0..8].copy_from_slice(&self.alpha.to_le_bytes());
+        buf[8..16].copy_from_slice(&self.beta.to_le_bytes());
+        buf[16..24].copy_from_slice(&self.kretschmann.to_le_bytes());
+        buf
+    }
+
+    /// Deserializes a [`Spacetime`] from exactly 24 bytes.
+    ///
+    /// ## Security
+    ///
+    /// Accepts any `f64` bit pattern (including `NaN`/`Inf`) to match the
+    /// type’s own invariants. Fixed size makes it immune to length-based
+    /// attacks. Safe for untrusted input.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+        let alpha = Real::from_le_bytes([
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+        ]);
+        let beta = Real::from_le_bytes([
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
+        ]);
+        let kretschmann = Real::from_le_bytes([
+            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
+        ]);
+        Some(Self {
+            alpha,
+            beta,
+            kretschmann,
+        })
     }
 }

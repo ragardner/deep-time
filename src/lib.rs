@@ -69,9 +69,6 @@ macro_rules! byte_arrays {
 #[cfg(feature = "parse")]
 mod alloc_parse;
 
-#[cfg(feature = "wire")]
-mod wire;
-
 // _________________________________________
 // MOD
 // _________________________________________

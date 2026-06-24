@@ -193,3 +193,102 @@ impl Observer {
         rx.proper_time_rate() / self.proper_time_rate()
     }
 }
+
+#[cfg(feature = "wire")]
+impl Observer {
+    /// Current wire format version.
+    pub const WIRE_VERSION: u8 = 1;
+
+    /// Size of the canonical wire representation in bytes.
+    pub const WIRE_SIZE: usize = 1 + Dt::WIRE_SIZE + Position::WIRE_SIZE + Velocity::WIRE_SIZE + 16;
+
+    /// Serializes this [`Observer`] into a fixed buffer.
+    ///
+    /// Layout:
+    /// - Byte 0: Version
+    /// - Bytes [1..]: time (Dt wire) + position (24) + velocity (24) + grav_potential (8) + char_length_scale (8)
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0] = Self::WIRE_VERSION;
+
+        let mut offset = 1usize;
+
+        let time = self.time.to_wire_bytes();
+        buf[offset..offset + Dt::WIRE_SIZE].copy_from_slice(&time);
+        offset += Dt::WIRE_SIZE;
+
+        let pos = self.position.to_wire_bytes();
+        buf[offset..offset + Position::WIRE_SIZE].copy_from_slice(&pos);
+        offset += Position::WIRE_SIZE;
+
+        let vel = self.velocity.to_wire_bytes();
+        buf[offset..offset + Velocity::WIRE_SIZE].copy_from_slice(&vel);
+        offset += Velocity::WIRE_SIZE;
+
+        buf[offset..offset + 8].copy_from_slice(&self.grav_potential_m2_s2.to_le_bytes());
+        offset += 8;
+
+        buf[offset..offset + 8].copy_from_slice(&self.characteristic_length_scale.to_le_bytes());
+
+        buf
+    }
+
+    /// Deserializes an [`Observer`] from exactly `WIRE_SIZE` bytes.
+    ///
+    /// Returns `None` if the version is unknown or any component is invalid.
+    ///
+    /// ## Security
+    ///
+    /// Safe for untrusted input. Fixed size with layered validation of inner types.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+
+        if bytes[0] != Self::WIRE_VERSION {
+            return None;
+        }
+
+        let mut offset = 1usize;
+
+        let time = Dt::from_wire_bytes(&bytes[offset..offset + Dt::WIRE_SIZE])?;
+        offset += Dt::WIRE_SIZE;
+
+        let position = Position::from_wire_bytes(&bytes[offset..offset + Position::WIRE_SIZE])?;
+        offset += Position::WIRE_SIZE;
+
+        let velocity = Velocity::from_wire_bytes(&bytes[offset..offset + Velocity::WIRE_SIZE])?;
+        offset += Velocity::WIRE_SIZE;
+
+        let grav_potential_m2_s2 = Real::from_le_bytes([
+            bytes[offset],
+            bytes[offset + 1],
+            bytes[offset + 2],
+            bytes[offset + 3],
+            bytes[offset + 4],
+            bytes[offset + 5],
+            bytes[offset + 6],
+            bytes[offset + 7],
+        ]);
+        offset += 8;
+
+        let characteristic_length_scale = Real::from_le_bytes([
+            bytes[offset],
+            bytes[offset + 1],
+            bytes[offset + 2],
+            bytes[offset + 3],
+            bytes[offset + 4],
+            bytes[offset + 5],
+            bytes[offset + 6],
+            bytes[offset + 7],
+        ]);
+
+        Some(Self {
+            time,
+            position,
+            velocity,
+            grav_potential_m2_s2,
+            characteristic_length_scale,
+        })
+    }
+}

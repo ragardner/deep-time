@@ -313,3 +313,102 @@ impl ExactSizeIterator for TimeRange {
         }
     }
 }
+
+#[cfg(feature = "wire")]
+impl Every {
+    /// Size of the canonical wire representation in bytes (33 bytes).
+    pub const WIRE_SIZE: usize = Dt::WIRE_SIZE + Dt::WIRE_SIZE;
+
+    /// Serializes this `Every` builder into a fixed 33-byte buffer.
+    ///
+    /// The layout is simply the concatenation of `start` (17 bytes) and `step` (16 bytes).
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        let start = self.start.to_wire_bytes();
+        let step = self.step.to_wire_bytes();
+        buf[0..17].copy_from_slice(&start);
+        buf[17..33].copy_from_slice(&step);
+        buf
+    }
+
+    /// Deserializes an `Every` builder from exactly 33 bytes.
+    ///
+    /// ## Security
+    ///
+    /// Safe for untrusted input. Fixed size with strict validation
+    /// of the inner `Dt` and `Dt`.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+        let start = Dt::from_wire_bytes(&bytes[0..17])?;
+        let step = Dt::from_wire_bytes(&bytes[17..33])?;
+        Some(Self { start, step })
+    }
+}
+
+#[cfg(feature = "wire")]
+impl TimeRange {
+    /// Current wire format version.
+    pub const WIRE_VERSION: u8 = 1;
+
+    /// Size of the canonical wire representation in bytes.
+    /// Only the logical definition is stored (runtime state is not serialized).
+    pub const WIRE_SIZE: usize = 1 + 2 * Dt::WIRE_SIZE + Dt::WIRE_SIZE + 1;
+
+    /// Serializes this `TimeRange` into a fixed buffer.
+    ///
+    /// Only the logical definition is stored:
+    /// - `start` + `end` + `step` + `inclusive` flag
+    ///
+    /// Runtime iterator state (`current`, `finished`) is **not** serialized.
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0] = Self::WIRE_VERSION;
+
+        let start = self.start.to_wire_bytes();
+        let end = self.end.to_wire_bytes();
+        let step = self.step.to_wire_bytes();
+
+        let tp_size = Dt::WIRE_SIZE;
+        let span_size = Dt::WIRE_SIZE;
+
+        buf[1..1 + tp_size].copy_from_slice(&start);
+        buf[1 + tp_size..1 + 2 * tp_size].copy_from_slice(&end);
+        buf[1 + 2 * tp_size..1 + 2 * tp_size + span_size].copy_from_slice(&step);
+        buf[1 + 2 * tp_size + span_size] = if self.inclusive { 1 } else { 0 };
+
+        buf
+    }
+
+    /// Deserializes a `TimeRange` from exactly `WIRE_SIZE` bytes.
+    ///
+    /// The iterator is reconstructed in its initial state
+    /// (`current = start`, `finished = false`).
+    ///
+    /// Returns `None` if the version is unknown or any component is invalid.
+    ///
+    /// ## Security
+    ///
+    /// Safe for untrusted input. Fixed size with layered validation
+    /// of all inner types. No runtime iterator state is accepted from the wire.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+
+        if bytes[0] != Self::WIRE_VERSION {
+            return None;
+        }
+
+        let tp_size = Dt::WIRE_SIZE;
+        let span_size = Dt::WIRE_SIZE;
+
+        let start = Dt::from_wire_bytes(&bytes[1..1 + tp_size])?;
+        let end = Dt::from_wire_bytes(&bytes[1 + tp_size..1 + 2 * tp_size])?;
+        let step = Dt::from_wire_bytes(&bytes[1 + 2 * tp_size..1 + 2 * tp_size + span_size])?;
+        let inclusive = bytes[1 + 2 * tp_size + span_size] != 0;
+
+        Some(Self::new(start, end, step, inclusive))
+    }
+}

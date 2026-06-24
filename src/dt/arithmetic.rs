@@ -236,7 +236,7 @@ impl Dt {
     /// Converts this [`Dt`] to a floating-point number of seconds since the reference
     /// epoch of its associated scale.
     ///
-    /// - The conversion is lossy, as [`Real`] provides approximately 15.95 decimal
+    /// - The conversion is lossy, as [`f64`] provides approximately 15.95 decimal
     ///   digits of precision.
     pub const fn to_sec_f(&self) -> Real {
         let attos = self.attos;

@@ -8,7 +8,7 @@
 //! [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
 
 use crate::{
-    ATTOS_PER_SEC_I128, C_SQUARED, PLANCK_LENGTH_4, Dt, Real, Scale, Spacetime, Velocity, sqrt,
+    ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Real, Scale, Spacetime, Velocity, sqrt,
 };
 
 /// Quadratic polynomial that describes the accumulated difference between an
@@ -281,5 +281,56 @@ impl Dt {
     #[inline]
     pub const fn to_drift_as_accel(self, constant: Dt, rate: Dt) -> Drift {
         Drift::new(constant, rate, self)
+    }
+}
+
+#[cfg(feature = "wire")]
+impl Drift {
+    /// Current wire format version.
+    pub const WIRE_VERSION: u8 = 1;
+
+    /// Size of the canonical wire representation in bytes.
+    pub const WIRE_SIZE: usize = 3 * Dt::WIRE_SIZE; // 3 × 17 = 51
+
+    /// Serializes this [`Drift`] polynomial into a fixed buffer.
+    ///
+    /// The layout is the concatenation of the three `Dt` fields.
+    pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
+        let mut buf = [0u8; Self::WIRE_SIZE];
+        let c = self.constant.to_wire_bytes();
+        let r = self.rate.to_wire_bytes();
+        let a = self.accel.to_wire_bytes();
+
+        buf[0..Dt::WIRE_SIZE].copy_from_slice(&c);
+        buf[Dt::WIRE_SIZE..2 * Dt::WIRE_SIZE].copy_from_slice(&r);
+        buf[2 * Dt::WIRE_SIZE..].copy_from_slice(&a);
+        buf
+    }
+
+    /// Deserializes a [`Drift`] from exactly `WIRE_SIZE` bytes of wire data.
+    ///
+    /// Returns `None` if any nested `Dt` fails validation or if the version
+    /// byte is unknown.
+    ///
+    /// ## Security
+    ///
+    /// Composes the safety guarantees of
+    /// [`from_wire_bytes`](docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_wire_bytes).
+    ///
+    /// Fixed size and layered validation make it safe for untrusted input.
+    pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
+        if bytes.len() != Self::WIRE_SIZE {
+            return None;
+        }
+
+        if bytes[0] != Self::WIRE_VERSION {
+            return None;
+        }
+
+        let constant = Dt::from_wire_bytes(&bytes[0..Dt::WIRE_SIZE])?;
+        let rate = Dt::from_wire_bytes(&bytes[Dt::WIRE_SIZE..2 * Dt::WIRE_SIZE])?;
+        let accel = Dt::from_wire_bytes(&bytes[2 * Dt::WIRE_SIZE..])?;
+
+        Some(Self::new(constant, rate, accel))
     }
 }
