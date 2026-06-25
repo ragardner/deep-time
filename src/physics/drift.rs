@@ -282,6 +282,58 @@ impl Dt {
     pub const fn to_drift_as_accel(self, constant: Dt, rate: Dt) -> Drift {
         Drift::new(constant, rate, self)
     }
+
+    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
+    /// derived from the supplied `Spacetime` model.
+    ///
+    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
+    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
+    #[inline]
+    pub const fn adjusted_advance(&mut self, elapsed: &Dt, spacetime: &Spacetime) {
+        let dtau = elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
+        *self = self.add(dtau);
+    }
+
+    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
+    /// from a pre-computed `Drift` value.
+    ///
+    /// - This is an optimized variant of [`Dt::adjusted_advance`](../struct.Dt.html#method.adjusted_advance)
+    ///   for callers that already hold a [`Drift`] instance.
+    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
+    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
+    #[inline]
+    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &Drift) {
+        let dtau = elapsed.add(drift.time_diff_after(elapsed));
+        *self = self.add(dtau);
+    }
+
+    /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
+    /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
+    pub const fn convert_using_drift(self, reference: Dt, drift: Drift) -> Dt {
+        let span = self.to_diff_raw(reference);
+        let correction = drift.time_diff_after(&span);
+        self.add(correction)
+    }
+
+    /// Performs the inverse conversion of [`Dt::convert_using_drift`], recovering the original proper
+    /// time on the source clock scale.
+    ///
+    /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
+    /// case of a pure constant offset the function returns immediately without iteration.
+    pub const fn convert_back_using_drift(self, reference: Dt, drift: Drift) -> Dt {
+        if drift.rate.is_zero() && drift.accel.is_zero() {
+            return self.sub(drift.constant);
+        }
+        let mut guess = self;
+        let mut i = 0u32;
+        while i < 16 {
+            let span = guess.to_diff_raw(reference);
+            let correction = drift.time_diff_after(&span);
+            guess = self.sub(correction);
+            i += 1;
+        }
+        guess
+    }
 }
 
 #[cfg(feature = "wire")]

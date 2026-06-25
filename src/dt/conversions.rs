@@ -1,6 +1,6 @@
 use crate::historical_utc::historical_utc_offset;
 use crate::{
-    Drift, Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS,
+    Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS,
     TT_TAI_OFFSET,
 };
 
@@ -379,33 +379,5 @@ impl Dt {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
         tdb.add_attos(span_attos).add_attos(TDB0_ATTOS)
-    }
-
-    /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
-    /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
-    pub const fn convert_using_drift(self, reference: Dt, drift: Drift) -> Dt {
-        let span = self.to_diff_raw(reference);
-        let correction = drift.time_diff_after(&span);
-        self.add(correction)
-    }
-
-    /// Performs the inverse conversion of [`Dt::convert_using_drift`], recovering the original proper
-    /// time on the source clock scale.
-    ///
-    /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
-    /// case of a pure constant offset the function returns immediately without iteration.
-    pub const fn convert_back_using_drift(self, reference: Dt, drift: Drift) -> Dt {
-        if drift.rate.is_zero() && drift.accel.is_zero() {
-            return self.sub(drift.constant);
-        }
-        let mut guess = self;
-        let mut i = 0u32;
-        while i < 16 {
-            let span = guess.to_diff_raw(reference);
-            let correction = drift.time_diff_after(&span);
-            guess = self.sub(correction);
-            i += 1;
-        }
-        guess
     }
 }

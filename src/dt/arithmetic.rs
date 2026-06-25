@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_FS_I128, ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US_I128, Drift, Dt, Real, Spacetime, floor_f,
+    ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, Real, floor_f,
 };
 
 impl Dt {
@@ -866,29 +866,5 @@ impl Dt {
         } else {
             a / b
         }
-    }
-
-    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
-    /// derived from the supplied `Spacetime` model.
-    ///
-    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
-    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
-    #[inline]
-    pub const fn adjusted_advance(&mut self, elapsed: &Dt, spacetime: &Spacetime) {
-        let dtau = elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
-        *self = self.add(dtau);
-    }
-
-    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
-    /// from a pre-computed `Drift` value.
-    ///
-    /// - This is an optimized variant of [`Dt::adjusted_advance`](../struct.Dt.html#method.adjusted_advance)
-    ///   for callers that already hold a [`Drift`] instance.
-    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
-    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
-    #[inline]
-    pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &Drift) {
-        let dtau = elapsed.add(drift.time_diff_after(elapsed));
-        *self = self.add(dtau);
     }
 }
