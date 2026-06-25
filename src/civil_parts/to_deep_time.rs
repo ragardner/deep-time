@@ -32,21 +32,21 @@ impl Parts {
         // Most common case first: Classic YMD
         if let (Some(year), Some(m), Some(d)) = (self.yr, self.mo, self.day) {
             if !Dt::is_valid_ymd(year, m, d) {
-                return Err(an_err!(DtErrKind::InvalidInput, "ymd"));
+                return Err(an_err!(DtErrKind::InvalidDate));
             }
             jd = Some(Dt::ymd_to_jd(year, m, d));
         }
         // Ordinal date (%j)
         else if let (Some(year), Some(doy)) = (self.yr, self.day_of_yr) {
             if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
-                return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
+                return Err(an_err!(DtErrKind::DayOfYearOutOfRange));
             }
             jd = Some(Dt::ydoy_to_jd(year, doy));
         }
         // ISO week date (%G/%V)
         else if let (Some(iso_y), Some(iso_w)) = (self.iso_wk_yr, self.iso_wk) {
             if iso_w == 0 || iso_w > 53 {
-                return Err(an_err!(DtErrKind::OutOfRange, "iso week"));
+                return Err(an_err!(DtErrKind::IsoWeekOutOfRange));
             }
             if iso_w == 53 && !Dt::has_iso_wk_53(iso_y) {
                 return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
@@ -57,7 +57,7 @@ impl Parts {
         // Sunday-based week (%U)
         else if let (Some(y), Some(w)) = (self.yr, self.wk_sun) {
             if w > 53 {
-                return Err(an_err!(DtErrKind::OutOfRange, "week number"));
+                return Err(an_err!(DtErrKind::WeekOutOfRange));
             }
             let wd = self.wkday.unwrap_or(Weekday::Sunday);
             jd = Some(Dt::wk_sun_to_jd(y, w, wd));
@@ -65,7 +65,7 @@ impl Parts {
         // Monday-based week (%W)
         else if let (Some(y), Some(w)) = (self.yr, self.wk_mon) {
             if w > 53 {
-                return Err(an_err!(DtErrKind::OutOfRange, "week number"));
+                return Err(an_err!(DtErrKind::WeekOutOfRange));
             }
             let wd = self.wkday.unwrap_or(Weekday::Monday);
             jd = Some(Dt::wk_mon_to_jd(y, w, wd));
@@ -73,12 +73,9 @@ impl Parts {
 
         let Some(jd) = jd else {
             if self.yr.is_none() && self.iso_wk_yr.is_none() {
-                return Err(an_err!(DtErrKind::Incomplete, "no year"));
+                return Err(an_err!(DtErrKind::ExpectedYear));
             } else {
-                return Err(an_err!(
-                    DtErrKind::InvalidInput,
-                    "could not create julian date"
-                ));
+                return Err(an_err!(DtErrKind::InvalidDate));
             }
         };
 
@@ -89,7 +86,7 @@ impl Parts {
             None => self.hr,
             Some(m) => {
                 if !(1..=12).contains(&self.hr) {
-                    return Err(an_err!(DtErrKind::OutOfRange, "hour: {}", self.hr));
+                    return Err(an_err!(DtErrKind::HourOutOfRange));
                 }
                 match (self.hr, m) {
                     (12, Meridiem::AM) => 0,
@@ -125,38 +122,20 @@ impl Parts {
                     use crate::TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
                     use jiff::{Timestamp, tz::TimeZone};
 
-                    let tz = TimeZone::get(name_str).map_err(|e| {
-                        an_err!(
-                            DtErrKind::InvalidTimezoneOffset,
-                            "invalid tz {:?}: {}",
-                            name,
-                            e
-                        )
-                    })?;
+                    let tz = TimeZone::get(name_str)
+                        .map_err(|_| an_err!(DtErrKind::InvalidTimezoneOffset))?;
 
                     let provisional_unix =
                         total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
 
                     let civil = Timestamp::from_second(provisional_unix)
-                        .map_err(|e| {
-                            an_err!(
-                                DtErrKind::InvalidNumber,
-                                "invalid unix {:?}: {}",
-                                provisional_unix,
-                                e
-                            )
-                        })?
+                        .map_err(|_| an_err!(DtErrKind::InvalidTimestamp))?
                         .to_zoned(jiff::tz::TimeZone::UTC)
                         .datetime();
 
-                    let zoned = tz.to_zoned(civil).map_err(|e| {
-                        an_err!(
-                            DtErrKind::OutOfRange,
-                            "jiff to_zoned failed for {}: {}",
-                            name_str,
-                            e
-                        )
-                    })?;
+                    let zoned = tz
+                        .to_zoned(civil)
+                        .map_err(|_| an_err!(DtErrKind::ConversionFail))?;
 
                     total_sec = zoned
                         .timestamp()
@@ -168,11 +147,7 @@ impl Parts {
                     use crate::tz::UTC_ALIASES;
 
                     if !UTC_ALIASES.contains(&name_str) {
-                        return Err(an_err!(
-                            DtErrKind::InvalidBytes,
-                            "non-utc tz: {} requires jiff-tz feature",
-                            name_str,
-                        ));
+                        return Err(an_err!(DtErrKind::MissingFeature));
                     }
                 }
             }

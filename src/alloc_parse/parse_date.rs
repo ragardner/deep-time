@@ -1,10 +1,10 @@
 use crate::{
     ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, Lang, Mode, Order, OrderFirst,
-    ParseCfg, STRTIME_SIZE, an_err, classify_date,
-    generate_ambiguous_day_first_candidates, generate_ambiguous_month_first_candidates,
-    generate_ambiguous_year_first_candidates, generate_unambiguous_candidates,
-    is_week_date_missing_weekday, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
-    parse_week_date_no_weekday, parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
+    ParseCfg, STRTIME_SIZE, an_err, classify_date, generate_ambiguous_day_first_candidates,
+    generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
+    generate_unambiguous_candidates, is_week_date_missing_weekday,
+    parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
+    parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
 };
 use alloc::borrow::Cow;
 use alloc::string::String;
@@ -182,11 +182,10 @@ impl Dt {
     /// - [`Dt`]
     /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
     pub fn from_str_parse(s: &str, opts: &ParseCfg) -> Result<Dt, DtErr> {
-
         if s.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Empty));
         } else if s.len() > STRTIME_SIZE {
-            return Err(an_err!(DtErrKind::InvalidInput, "too long: {}", s));
+            return Err(an_err!(DtErrKind::InvalidLen));
         }
 
         let lang: Lang = opts.lang;
@@ -203,11 +202,7 @@ impl Dt {
             Ok(ClassifiedDate::Cls(c)) => c,
             Err(e) => {
                 // std::eprintln!("{}", e);
-                return Err(an_err!(
-                    DtErrKind::InvalidInput,
-                    "{}",
-                    s => e
-                ));
+                return Err(an_err!(" {}", s => e));
             }
         };
 

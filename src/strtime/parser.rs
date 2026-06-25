@@ -18,9 +18,9 @@ pub(crate) struct Parser<'f, 'i, 't> {
     pub(crate) fmt: &'f [u8], // remaining format string
     pub(crate) inp: &'i [u8], // remaining input string
     tm: &'t mut Parts,
-    /// When true, the parser is in lenient mode: it will succeed as soon as
-    /// the input is exhausted, even if the format string has not been fully
-    /// consumed. Essentially parse what you can.
+    /// When true, the parser will succeed regardless of whether
+    /// the format string has not been fully consumed. Essentially
+    /// parse what you can.
     inp_can_end_before_fmt: bool,
 }
 
@@ -80,14 +80,14 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 continue;
             }
             if !self.advance_fmt_checked() {
-                return Err(an_err!(DtErrKind::TruncatedDirective, "after %"));
+                return Err(an_err!(DtErrKind::TruncatedDirective));
             }
 
             let ext = self.parse_fmt_extensions();
 
             let directive = match self.fmt.first() {
                 Some(b) => *b,
-                None => return Err(an_err!(DtErrKind::TruncatedDirective, "expected directive")),
+                None => return Err(an_err!(DtErrKind::TruncatedDirective)),
             };
 
             match directive {
@@ -132,7 +132,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 }
                 b'.' => {
                     if !self.advance_fmt_checked() {
-                        return Err(an_err!(DtErrKind::TruncatedDirective, "after ."));
+                        return Err(an_err!(DtErrKind::ExpectedFractional));
                     }
 
                     let width = if !self.fmt.is_empty() && self.current_fmt_byte().is_ascii_digit()
@@ -150,7 +150,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
                     let next: u8 = self.fmt.first().copied().unwrap_or(0);
                     if !matches!(next, b'f' | b'N') {
-                        return Err(an_err!(DtErrKind::BadFractional, "{}", char::from(next)));
+                        return Err(an_err!(DtErrKind::InvalidFractional));
                     }
                     self.advance_fmt();
 
@@ -197,18 +197,16 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_literal_character(&mut self) -> Result<(), DtErr> {
         let c = self.current_fmt_byte();
         if c.is_ascii_whitespace() {
-            self.inp = self.inp.trim_ascii_start();
+            while self.inp.get(0).map_or(false, |b| b.is_ascii_whitespace()) {
+                self.inp = &self.inp[1..];
+            }
         } else {
             if self.inp.is_empty() {
-                return Err(an_err!(
-                    DtErrKind::MismatchedLiteral,
-                    "expected literal '{}' but input ended",
-                    char::from(c)
-                ));
+                return Err(an_err!(DtErrKind::UnexpectedEnd));
             } else if self.current_inp_byte() != c {
                 return Err(an_err!(
                     DtErrKind::MismatchedLiteral,
-                    "expected literal '{}' got '{}'",
+                    "{} got: {}",
                     char::from(c),
                     char::from(self.current_inp_byte())
                 ));
@@ -229,14 +227,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_percent_sign(&mut self) -> Result<(), DtErr> {
         if self.inp.is_empty() {
-            return Err(an_err!(
-                DtErrKind::MismatchedLiteral,
-                "expected '%%' literal but input ended"
-            ));
+            return Err(an_err!(DtErrKind::UnexpectedEnd));
         } else if self.current_inp_byte() != b'%' {
             return Err(an_err!(
                 DtErrKind::MismatchedLiteral,
-                "expected '%%' got '{}'",
+                "%% got: {}",
                 char::from(self.current_inp_byte())
             ));
         } else {
@@ -262,7 +257,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (y, _sign, remaining) = match ext.parse_number(4, FormatFlag::PadZero, self.inp, false)
         {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%Y full year")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
         self.inp = remaining;
         self.tm.yr = Some(y);
@@ -275,7 +270,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let ext = FormatExtensions::default();
         let (y, _sign, remaining) = match ext.parse_number(0, FormatFlag::PadZero, self.inp, true) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%* unbounded year")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
         self.inp = remaining;
         self.tm.yr = Some(y);
@@ -287,7 +282,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_two_digit_year(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
         let (y, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%y two-digit year")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
         self.inp = remaining;
         let year = if y <= 68 {
@@ -304,7 +299,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (c, _sign, remaining) = match ext.parse_number(2, FormatFlag::PadSpace, self.inp, false)
         {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedCentury, "%C century")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedCentury)),
         };
         self.inp = remaining;
         self.tm.yr = Some(c * 100);
@@ -317,7 +312,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (y, _sign, remaining) = match ext.parse_number(4, FormatFlag::PadZero, self.inp, false)
         {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear, "%G iso week year")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
         self.inp = remaining;
         self.tm.iso_wk_yr = Some(y);
@@ -330,10 +325,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (y, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
             Err(_) => {
-                return Err(an_err!(
-                    DtErrKind::ExpectedYear,
-                    "%g two digit iso week year"
-                ));
+                return Err(an_err!(DtErrKind::ExpectedYear));
             }
         };
         self.inp = remaining;
@@ -351,11 +343,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_month_number(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
         let (m, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedMonth, "%m digit month")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedMonth)),
         };
         self.inp = remaining;
         if !(1..=12).contains(&m) {
-            return Err(an_err!(DtErrKind::OutOfRange, "%m month (1..=12): {}", m));
+            return Err(an_err!(DtErrKind::MonthOutOfRange));
         }
         self.tm.mo = Some(m);
         Ok(())
@@ -365,15 +357,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_day_of_month(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
         let (d, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedDay, "%d or %e day")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedDay)),
         };
         self.inp = remaining;
         if !(1..=31).contains(&d) {
-            return Err(an_err!(
-                DtErrKind::OutOfRange,
-                "%d or %e day (1..=31): {}",
-                d
-            ));
+            return Err(an_err!(DtErrKind::DayOutOfRange));
         }
         self.tm.day = Some(d);
         Ok(())
@@ -384,16 +372,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (n, _sign, remaining) = match ext.parse_number(3, FormatFlag::PadZero, self.inp, false)
         {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedDayOfYear, "%j day of year")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedDayOfYear)),
         };
         self.inp = remaining;
         let day = n as u16;
         if !(1..=366).contains(&day) {
-            return Err(an_err!(
-                DtErrKind::OutOfRange,
-                "%j day of year (1..=366): {}",
-                day
-            ));
+            return Err(an_err!(DtErrKind::DayOfYearOutOfRange));
         }
         self.tm.day_of_yr = Some(day);
         self.advance_fmt();
@@ -404,15 +388,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_hour24(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
         let (h, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedHour, "%H or %k hour 24")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedHour)),
         };
         self.inp = remaining;
         if h > 23 {
-            return Err(an_err!(
-                DtErrKind::OutOfRange,
-                "%H or %k hour (0..=23): {}",
-                h
-            ));
+            return Err(an_err!(DtErrKind::HourOutOfRange));
         }
         self.tm.hr = h;
         Ok(())
@@ -422,15 +402,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_hour12(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
         let (h, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedHour, "%I or %l hour 12")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedHour)),
         };
         self.inp = remaining;
         if !(1..=12).contains(&h) {
-            return Err(an_err!(
-                DtErrKind::OutOfRange,
-                "%I or %l hour (1..=12): {}",
-                h
-            ));
+            return Err(an_err!(DtErrKind::HourOutOfRange));
         }
         self.tm.hr = h;
         self.advance_fmt();
@@ -441,11 +417,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_minute(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
         let (m, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedMinute, "%M minute")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedMinute)),
         };
         self.inp = remaining;
         if m > 59 {
-            return Err(an_err!(DtErrKind::OutOfRange, "%M minute (0..=59): {}", m));
+            return Err(an_err!(DtErrKind::MinuteOutOfRange));
         }
         self.tm.min = m;
         Ok(())
@@ -455,11 +431,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_second(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
         let (s, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedSecond, "%S seconds")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedSecond)),
         };
         self.inp = remaining;
         if s > 60 {
-            return Err(an_err!(DtErrKind::OutOfRange, "%S seconds (0..=60): {}", s));
+            return Err(an_err!(DtErrKind::SecondOutOfRange));
         }
         self.tm.sec = s;
         Ok(())
@@ -489,7 +465,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         if digits_read == 0 {
             return Err(an_err!(
-                DtErrKind::ExpectedFractionalSeconds,
+                DtErrKind::ExpectedFractional,
                 "%f or %N frac seconds"
             ));
         }
@@ -508,7 +484,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (sec_val, sign, remaining) =
             match ext.parse_number(19, FormatFlag::PadSpace, self.inp, false) {
                 Ok(v) => v,
-                Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp, "timestamp")),
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp)),
             };
         self.inp = remaining;
 
@@ -569,10 +545,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_month_name_abbrev(&mut self) -> Result<(), DtErr> {
         if self.inp.len() < 3 {
-            return Err(an_err!(
-                DtErrKind::InvalidName,
-                "%b or %h abbrev. month name"
-            ));
+            return Err(an_err!(DtErrKind::InvalidMonthName));
         }
         let x = &self.inp[..3];
         let candidate = [
@@ -594,10 +567,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             b"nov" => 10,
             b"dec" => 11,
             _ => {
-                return Err(an_err!(
-                    DtErrKind::InvalidName,
-                    "%b or %h abbrev. month name"
-                ));
+                return Err(an_err!(DtErrKind::InvalidMonthName));
             }
         };
         self.inp = &self.inp[3..];
@@ -610,7 +580,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_month_name_full(&mut self) -> Result<(), DtErr> {
         let (index, remaining) = match Self::match_from_choice_list(self.inp, &EN_MONTHS_FULL) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::InvalidName, "%B month name")),
+            Err(_) => return Err(an_err!(DtErrKind::InvalidMonthName)),
         };
         self.inp = remaining;
         self.tm.mo = Some(index + 1);
@@ -621,7 +591,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_weekday_abbrev(&mut self) -> Result<(), DtErr> {
         if self.inp.len() < 3 {
-            return Err(an_err!(DtErrKind::InvalidName, "%a abbrev. weekday"));
+            return Err(an_err!(DtErrKind::InvalidWeekdayName));
         }
         let x = &self.inp[..3];
         let candidate = [
@@ -638,13 +608,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             b"fri" => 5,
             b"sat" => 6,
             _ => {
-                return Err(an_err!(DtErrKind::InvalidName, "%a abbrev. weekday"));
+                return Err(an_err!(DtErrKind::InvalidWeekdayName));
             }
         };
         self.inp = &self.inp[3..];
         self.tm.wkday = Some(
             Weekday::from_sunday_0_based(index)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidName, "%a abbrev. weekday"))?,
+                .ok_or_else(|| an_err!(DtErrKind::InvalidWeekdayName))?,
         );
         self.advance_fmt();
         Ok(())
@@ -654,12 +624,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_weekday_full(&mut self) -> Result<(), DtErr> {
         let (index, remaining) = match Self::match_from_choice_list(self.inp, &EN_WEEKDAYS_FULL) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::InvalidName, "%A weekday")),
+            Err(_) => return Err(an_err!(DtErrKind::InvalidWeekdayName)),
         };
         self.inp = remaining;
         self.tm.wkday = Some(
             Weekday::from_sunday_0_based(index)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidName, "%A weekday"))?,
+                .ok_or_else(|| an_err!(DtErrKind::InvalidWeekdayName))?,
         );
         self.advance_fmt();
         Ok(())
@@ -670,15 +640,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (w, remaining) = match ext.parse_u8(1, FormatFlag::PadSpace, self.inp) {
             Ok(v) => v,
             Err(_) => {
-                return Err(an_err!(
-                    DtErrKind::ExpectedWeekdayNumber,
-                    "%u monday based weekday number"
-                ));
+                return Err(an_err!(DtErrKind::ExpectedMonWeekday));
             }
         };
         self.inp = remaining;
         let wd = Weekday::from_monday_1_based(w)
-            .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "%u monday based weekday number"))?;
+            .ok_or_else(|| an_err!(DtErrKind::MonWeekdayOutOfRange))?;
         self.tm.wkday = Some(wd);
         self.advance_fmt();
         Ok(())
@@ -689,15 +656,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (w, remaining) = match ext.parse_u8(1, FormatFlag::PadSpace, self.inp) {
             Ok(v) => v,
             Err(_) => {
-                return Err(an_err!(
-                    DtErrKind::ExpectedWeekdayNumber,
-                    "%w sunday based weekday number"
-                ));
+                return Err(an_err!(DtErrKind::ExpectedSunWeekday));
             }
         };
         self.inp = remaining;
         let wd = Weekday::from_sunday_0_based(w)
-            .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "%w sunday based weekday number"))?;
+            .ok_or_else(|| an_err!(DtErrKind::SunWeekdayOutOfRange))?;
         self.tm.wkday = Some(wd);
         self.advance_fmt();
         Ok(())
@@ -706,7 +670,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_ampm(&mut self) -> Result<(), DtErr> {
         if self.inp.len() < 2 {
-            return Err(an_err!(DtErrKind::InvalidName, "%P or %p am/pm"));
+            return Err(an_err!(DtErrKind::InvalidMeridiem));
         }
         let slice = &self.inp[..2];
         self.tm.meridiem = Some(if slice.eq_ignore_ascii_case(b"am") {
@@ -714,7 +678,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         } else if slice.eq_ignore_ascii_case(b"pm") {
             Meridiem::PM
         } else {
-            return Err(an_err!(DtErrKind::InvalidName, "%P or %p am/pm"));
+            return Err(an_err!(DtErrKind::InvalidMeridiem));
         });
         if self.tm.hr == 0 {
             self.tm.hr = 12;
@@ -729,10 +693,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (w, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
             Err(_) => {
-                return Err(an_err!(
-                    DtErrKind::ExpectedWeekNumber,
-                    "%U week number sunday based"
-                ));
+                return Err(an_err!(DtErrKind::ExpectedSunWeek));
             }
         };
         self.inp = remaining;
@@ -746,10 +707,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (w, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
             Err(_) => {
-                return Err(an_err!(
-                    DtErrKind::ExpectedWeekNumber,
-                    "%W week number monday based"
-                ));
+                return Err(an_err!(DtErrKind::ExpectedMonWeek));
             }
         };
         self.inp = remaining;
@@ -762,15 +720,11 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_week_iso(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
         let (w, remaining) = match ext.parse_u8(2, FormatFlag::PadZero, self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedWeekNumber, "%V iso week")),
+            Err(_) => return Err(an_err!(DtErrKind::ExpectedWeekNumber)),
         };
         self.inp = remaining;
         if !(1..=53).contains(&w) {
-            return Err(an_err!(
-                DtErrKind::OutOfRange,
-                "%V iso week (1..=53): {}",
-                w
-            ));
+            return Err(an_err!(DtErrKind::IsoWeekOutOfRange));
         }
         self.tm.iso_wk = Some(w);
         self.advance_fmt();
@@ -783,7 +737,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Some(b'+') => 1i32,
             Some(b'-') => -1i32,
             _ => {
-                return Err(an_err!(DtErrKind::MustStartWith, "+ or -"));
+                return Err(an_err!(DtErrKind::MustStartWith));
             }
         };
         self.advance_inp();
@@ -873,10 +827,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     fn parse_offset_mm_ss(&mut self) -> Result<i32, DtErr> {
         if self.inp.len() < 2 {
-            return Err(an_err!(
-                DtErrKind::InvalidTimezoneOffset,
-                "%z minutes or seconds"
-            ));
+            return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z mins or secs"));
         }
 
         let a = self.inp[0];
@@ -884,19 +835,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
         // Must be two ASCII digits
         if !a.is_ascii_digit() || !b.is_ascii_digit() {
-            return Err(an_err!(
-                DtErrKind::InvalidTimezoneOffset,
-                "%z minutes or seconds"
-            ));
+            return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z mins or secs"));
         }
 
         let n = ((a - b'0') as i32) * 10 + (b - b'0') as i32;
 
         if !(0..=59).contains(&n) {
-            return Err(an_err!(
-                DtErrKind::InvalidTimezoneOffset,
-                "%z minutes or seconds"
-            ));
+            return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z mins or secs"));
         }
 
         self.inp = &self.inp[2..];
@@ -911,10 +856,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let (iana_str, remaining) = match Self::parse_iana(self.inp) {
             Ok(v) => v,
             Err(_) => {
-                return Err(an_err!(
-                    DtErrKind::InvalidTimezoneOffset,
-                    "%Q expected iana or offset"
-                ));
+                return Err(an_err!(DtErrKind::InvalidTimezoneOffset));
             }
         };
         let name_to_use = if iana_str.len() > 50 {
@@ -932,22 +874,22 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_scale(&mut self) -> Result<(), DtErr> {
         if self.inp.is_empty() || !self.inp[0].is_ascii_alphabetic() {
-            return Err(an_err!(DtErrKind::InvalidItem, "%L time scale"));
+            return Err(an_err!(DtErrKind::InvalidScale));
         }
         let start = self.inp;
         let mut pos = 0usize;
         while pos < start.len() && pos < 8 && start[pos].is_ascii_alphanumeric() {
             pos += 1;
         }
-        let abbrev = core::str::from_utf8(&start[..pos])
-            .map_err(|_| an_err!(DtErrKind::InvalidItem, "%L time scale"))?;
+        let abbrev =
+            core::str::from_utf8(&start[..pos]).map_err(|_| an_err!(DtErrKind::InvalidScale))?;
         self.inp = &start[pos..];
         self.advance_fmt();
         if let Some(ct) = Scale::from_abbrev(abbrev) {
             self.tm.scale = ct;
             Ok(())
         } else {
-            Err(an_err!(DtErrKind::InvalidItem, "%L time scale"))
+            Err(an_err!(DtErrKind::InvalidScale))
         }
     }
 
@@ -1161,6 +1103,7 @@ impl FormatExtensions {
         Ok((acc as u8, &inp[consumed..]))
     }
 
+    #[inline(always)]
     fn parse_number<'i>(
         &self,
         default_pad_width: usize,

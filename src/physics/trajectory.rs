@@ -170,10 +170,7 @@ impl Dt {
 
         for (t, ls) in iter {
             if t.lt(&prev_t) {
-                return Err(an_err!(
-                    DtErrKind::InvalidInput,
-                    "proper_time_from_path requires monotonically non-decreasing coordinate times"
-                ));
+                return Err(an_err!(DtErrKind::NonMonotonic));
             }
 
             let dt = t.to_diff_raw(prev_t);

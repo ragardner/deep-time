@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, Scale, Parts, an_err};
+use crate::{Dt, DtErr, DtErrKind, Parts, Scale, an_err};
 
 impl Parts {
     /// Parses a CCSDS Calendar Segmented Time Code (CCS) into [`Parts`].
@@ -36,41 +36,38 @@ impl Parts {
     /// The resulting [`Parts`] has `scale = UTC`.
     pub fn from_ccsds_ccs(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Empty));
         }
 
         let p1 = input[0];
         let mut idx = 1usize;
 
         if (p1 & 0b1000_0000) != 0 {
-            return Err(an_err!(
-                DtErrKind::InvalidInput,
-                "p-field ext. not supported"
-            ));
+            return Err(an_err!(DtErrKind::UnsupportedItem, "p ext"));
         }
 
         let code_id = (p1 >> 4) & 0b0111;
         if code_id != 0b101 {
-            return Err(an_err!(DtErrKind::InvalidItem, "code id"));
+            return Err(an_err!(DtErrKind::InvalidCodeId));
         }
 
         let is_doy = ((p1 >> 3) & 1) != 0;
         let n_subsec = (p1 & 0b0000_0111) as usize;
 
         if n_subsec > 6 {
-            return Err(an_err!(DtErrKind::InvalidItem, "subsecond count"));
+            return Err(an_err!(DtErrKind::InvalidItem));
         }
 
         let min_len = 1 + 2 + 2 + 3 + n_subsec;
         if input.len() < min_len {
-            return Err(an_err!(DtErrKind::InvalidSyntax, "t-field too short"));
+            return Err(an_err!(DtErrKind::TFieldTooShort));
         }
 
         let bcd_byte = |b: u8| -> Result<u8, DtErr> {
             let hi = b >> 4;
             let lo = b & 0x0F;
             if hi > 9 || lo > 9 {
-                Err(an_err!(DtErrKind::InvalidBytes, "invalid bcd digit"))
+                Err(an_err!(DtErrKind::InvalidBytes, "bcd digit"))
             } else {
                 Ok(hi * 10 + lo)
             }
@@ -89,10 +86,10 @@ impl Parts {
             idx += 2;
 
             if !(1..=12).contains(&mo) {
-                return Err(an_err!(DtErrKind::OutOfRange, "month"));
+                return Err(an_err!(DtErrKind::MonthOutOfRange));
             }
             if !(1..=31).contains(&d) {
-                return Err(an_err!(DtErrKind::OutOfRange, "day"));
+                return Err(an_err!(DtErrKind::DayOutOfRange));
             }
             (Some(mo), Some(d), None)
         } else {
@@ -102,7 +99,7 @@ impl Parts {
             let doy = (d1 as u16) * 100 + (d2 as u16);
 
             if doy == 0 || doy > 366 || (doy == 366 && !Dt::is_leap_yr(year)) {
-                return Err(an_err!(DtErrKind::OutOfRange, "day of year"));
+                return Err(an_err!(DtErrKind::DayOfYearOutOfRange));
             }
             (None, None, Some(doy))
         };
@@ -114,16 +111,16 @@ impl Parts {
         idx += 3;
 
         if hour > 23 {
-            return Err(an_err!(DtErrKind::OutOfRange, "hour"));
+            return Err(an_err!(DtErrKind::HourOutOfRange));
         }
         if minute > 59 {
-            return Err(an_err!(DtErrKind::OutOfRange, "minute"));
+            return Err(an_err!(DtErrKind::MinuteOutOfRange));
         }
 
         if second == 60 {
             second = 59;
         } else if second > 59 {
-            return Err(an_err!(DtErrKind::OutOfRange, "second"));
+            return Err(an_err!(DtErrKind::SecondOutOfRange));
         }
 
         // Subseconds (BCD → attoseconds)
@@ -133,7 +130,7 @@ impl Parts {
             let hi = (b >> 4) as u128;
             let lo = (b & 0x0F) as u128;
             if hi > 9 || lo > 9 {
-                return Err(an_err!(DtErrKind::InvalidBytes, "invalid subsecond bcd"));
+                return Err(an_err!(DtErrKind::InvalidBytes, "subsecond bcd"));
             }
             frac_value = frac_value * 100 + hi * 10 + lo;
             idx += 1;
@@ -203,16 +200,16 @@ impl Parts {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Incomplete`] if `input` is empty.
-    /// - [`DtErrKind::InvalidItem`] if the Code ID is not `001`.
-    /// - [`DtErrKind::InvalidInput`] if the input is too short to contain the declared
+    /// - [`DtErrKind::Empty`] if `input` is empty.
+    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not `001`.
+    /// - [`DtErrKind::PFieldTooShort`] if the input is too short to contain the declared
     ///   extended P-field, or if the "further extension" flag (bit 7 of the second
     ///   P-field octet) is set.
-    /// - [`DtErrKind::InvalidSyntax`] if the declared coarse + fractional field lengths
+    /// - [`DtErrKind::TFieldTooShort`] if the declared coarse + fractional field lengths
     ///   make the T-field longer than the remaining input bytes.
     pub fn from_ccsds_cuc(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Empty));
         }
 
         let p1 = input[0];
@@ -221,7 +218,7 @@ impl Parts {
         let extension = (p1 & 0b1000_0000) != 0;
         let code_id = (p1 >> 4) & 0b0111;
         if code_id != 0b001 {
-            return Err(an_err!(DtErrKind::InvalidItem, "code id"));
+            return Err(an_err!(DtErrKind::InvalidCodeId));
         }
 
         let base_coarse = (((p1 >> 2) & 0b0011) as usize) + 1;
@@ -229,16 +226,13 @@ impl Parts {
 
         let (n_coarse, n_frac) = if extension {
             if input.len() < 2 {
-                return Err(an_err!(DtErrKind::InvalidInput, "p-field too short"));
+                return Err(an_err!(DtErrKind::PFieldTooShort));
             }
             let p2 = input[1];
             idx += 1;
 
             if (p2 & 0b1000_0000) != 0 {
-                return Err(an_err!(
-                    DtErrKind::InvalidInput,
-                    "further p-field ext. not supported"
-                ));
+                return Err(an_err!(DtErrKind::UnsupportedItem, "p ext"));
             }
 
             let add_coarse = ((p2 >> 5) & 0b0000_0011) as usize;
@@ -250,7 +244,7 @@ impl Parts {
         };
 
         if n_coarse == 0 || input.len() < idx + n_coarse + n_frac {
-            return Err(an_err!(DtErrKind::InvalidSyntax, "t-field too short"));
+            return Err(an_err!(DtErrKind::TFieldTooShort));
         }
 
         // Read coarse time (big-endian)
@@ -346,16 +340,17 @@ impl Parts {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Incomplete`] if `input` is empty.
-    /// - [`DtErrKind::InvalidInput`] if the P-field indicates an extended second
+    /// - [`DtErrKind::Empty`] if `input` is empty.
+    /// - [`DtErrKind::PFieldTooShort`] if the P-field indicates an extended second
     ///   octet but the input is too short to contain it.
-    /// - [`DtErrKind::InvalidItem`] if the Code ID is not `100`, the Epoch bit is
-    ///   set (non-Level-1 epoch), or the sub-millisecond code is `0b11`.
-    /// - [`DtErrKind::InvalidSyntax`] if the declared field lengths make the
+    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not `100` or the Epoch bit is
+    ///   set (non-Level-1 epoch).
+    /// - [`DtErrKind::InvalidSubmillisecond`] if the sub-millisecond code is `0b11`.
+    /// - [`DtErrKind::TFieldTooShort`] if the declared field lengths make the
     ///   T-field longer than the remaining input bytes.
     pub fn from_ccsds_cds(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Empty));
         }
 
         let p1 = input[0];
@@ -364,21 +359,18 @@ impl Parts {
         let extension = (p1 & 0b1000_0000) != 0;
         if extension {
             if input.len() < 2 {
-                return Err(an_err!(DtErrKind::InvalidInput, "p-field too short"));
+                return Err(an_err!(DtErrKind::PFieldTooShort));
             }
             idx += 1;
         }
 
         let code_id = (p1 >> 4) & 0b0111;
         if code_id != 0b100 {
-            return Err(an_err!(DtErrKind::InvalidItem, "code id"));
+            return Err(an_err!(DtErrKind::InvalidCodeId));
         }
 
         if (p1 & 0b0000_1000) != 0 {
-            return Err(an_err!(
-                DtErrKind::InvalidItem,
-                "non-level-1 epoch not supported"
-            ));
+            return Err(an_err!(DtErrKind::ExpectedValue, "level1 epoch"));
         }
 
         let n_day = if (p1 & 0b0000_0100) == 0 { 2 } else { 3 };
@@ -388,11 +380,11 @@ impl Parts {
             0b00 => 0,
             0b01 => 2,
             0b10 => 4,
-            _ => return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code")),
+            _ => return Err(an_err!(DtErrKind::InvalidSubmillisecond)),
         };
 
         if input.len() < idx + n_day + 4 + n_subsec {
-            return Err(an_err!(DtErrKind::InvalidSyntax, "t-field too short"));
+            return Err(an_err!(DtErrKind::TFieldTooShort));
         }
 
         // Read fields
@@ -478,22 +470,22 @@ impl Parts {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Incomplete`] if `input` is empty.
-    /// - [`DtErrKind::InvalidItem`] if the Code ID is not one of the three
+    /// - [`DtErrKind::Empty`] if `input` is empty.
+    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not one of the three
     ///   recognized Level 1 values (`001`, `100`, or `101`).
     ///
     /// The resulting [`Parts`] has `scale` set according to the detected format
     /// (TAI for CUC, UTC for CDS, and format-dependent for CCS).
     pub fn from_ccsds_bin(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Empty));
         }
         let code_id = (input[0] >> 4) & 0b0111;
         match code_id {
             0b001 => Self::from_ccsds_cuc(input),
             0b100 => Self::from_ccsds_cds(input),
             0b101 => Self::from_ccsds_ccs(input),
-            _ => Err(an_err!(DtErrKind::InvalidItem, "unknown code id")),
+            _ => Err(an_err!(DtErrKind::InvalidCodeId)),
         }
     }
 }

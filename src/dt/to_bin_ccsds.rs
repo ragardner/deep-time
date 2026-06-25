@@ -39,8 +39,10 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::OutOfRange`] if `n_coarse` is not in `1..=7`, `n_frac > 10`,
-    ///   or if this instant is before **1958-01-01 00:00:00 TAI** (the CUC epoch).
+    /// - [`DtErrKind::OutOfRange`] if `n_coarse` is not in `1..=7`.
+    /// - [`DtErrKind::FracOutOfRange`] if `n_frac > 10`.
+    /// - [`DtErrKind::YearOutOfRange`] if this instant is before
+    ///   **1958-01-01 00:00:00 TAI** (the CUC epoch).
     ///
     /// ## See also
     ///
@@ -52,9 +54,9 @@ impl Dt {
         extension: bool,
     ) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         if !(1..=7).contains(&n_coarse) {
-            return Err(an_err!(DtErrKind::OutOfRange, "coarse: {}", n_coarse));
+            return Err(an_err!(DtErrKind::OutOfRange));
         } else if n_frac > 10 {
-            return Err(an_err!(DtErrKind::OutOfRange, "frac: {}", n_frac));
+            return Err(an_err!(DtErrKind::FracOutOfRange));
         }
 
         let tai_since_1958 = self
@@ -65,10 +67,7 @@ impl Dt {
         let total_tai_seconds = tai_since_1958.to_sec64();
 
         if total_tai_seconds < 0 {
-            return Err(an_err!(
-                DtErrKind::OutOfRange,
-                "time before 1958-01-01 TAI (CUC epoch)"
-            ));
+            return Err(an_err!(DtErrKind::YearOutOfRange, "<1958"));
         }
 
         let frac_scaled = if n_frac == 0 {
@@ -170,9 +169,9 @@ impl Dt {
     /// ## Errors
     ///
     /// - [`DtErrKind::InvalidNumber`] if `n_day` is not `2` or `3`.
-    /// - [`DtErrKind::InvalidItem`] if `sub_ms_code` is not in `0..=2`.
-    /// - [`DtErrKind::OutOfRange`] if this instant is before **1958-01-01 00:00:00 UTC**
-    ///   (the CDS Level 1 epoch).
+    /// - [`DtErrKind::InvalidSubmillisecond`] if `sub_ms_code` is not in `0..=2`.
+    /// - [`DtErrKind::YearOutOfRange`] if this instant is before
+    ///   **1958-01-01 00:00:00 UTC** (the CDS Level 1 epoch).
     ///
     /// ## See also
     ///
@@ -186,7 +185,7 @@ impl Dt {
         if !matches!(n_day, 2 | 3) {
             return Err(an_err!(DtErrKind::InvalidNumber, "n_day: {}", n_day));
         } else if !matches!(sub_ms_code, 0..=2) {
-            return Err(an_err!(DtErrKind::InvalidItem, "sub-millisecond code"));
+            return Err(an_err!(DtErrKind::InvalidSubmillisecond));
         }
 
         let utc_since_1958 = self
@@ -197,10 +196,7 @@ impl Dt {
         let total_utc_seconds = utc_since_1958.to_sec64();
 
         if total_utc_seconds < 0 {
-            return Err(an_err!(
-                DtErrKind::OutOfRange,
-                "time before 1958-01-01 UTC (CDS epoch)"
-            ));
+            return Err(an_err!(DtErrKind::YearOutOfRange, "<1958"));
         }
 
         let day_count = (total_utc_seconds / SEC_PER_DAYI64) as u64;
@@ -296,7 +292,8 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::OutOfRange`] if `n_subsec > 6` or if the year is outside `1..=9999`.
+    /// - [`DtErrKind::FracOutOfRange`] if `n_subsec > 6`.
+    /// - [`DtErrKind::YearOutOfRange`] if the year is outside `1..=9999`.
     ///
     /// ## See also
     ///
@@ -307,7 +304,7 @@ impl Dt {
         n_subsec: u8,
     ) -> Result<([u8; Self::CCSDS_CCS_MAX_SIZE], usize), DtErr> {
         if n_subsec > 6 {
-            return Err(an_err!(DtErrKind::OutOfRange, "n_subsec: {}", n_subsec));
+            return Err(an_err!(DtErrKind::FracOutOfRange));
         }
 
         // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
@@ -315,7 +312,7 @@ impl Dt {
 
         let year = ymd.yr;
         if !(1..=9999).contains(&year) {
-            return Err(an_err!(DtErrKind::OutOfRange, "year: {}", year));
+            return Err(an_err!(DtErrKind::YearOutOfRange));
         }
 
         let mut buf = [0u8; Self::CCSDS_CCS_MAX_SIZE];

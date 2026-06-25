@@ -376,7 +376,7 @@ impl Dt {
             decimal_char: _,
         }) = lang_map().get(&lang)
         else {
-            return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+            return Err(an_err!(DtErrKind::InternalErr, "{}", lang));
         };
         let finder = if use_dur_finder { duration_ac } else { date_ac };
         let splitter = SplitKeepWithPos::new(finder, s);
@@ -414,7 +414,7 @@ impl Dt {
             decimal_char: d,
         }) = lang_map().get(&lang)
         else {
-            return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+            return Err(an_err!(DtErrKind::InternalErr, "{}", lang));
         };
         let finder = if use_dur_finder { duration_ac } else { date_ac };
         let names = Lang::En.names();
@@ -1012,7 +1012,7 @@ impl Dt {
             decimal_char: d,
         }) = lang_map().get(&lang)
         else {
-            return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+            return Err(an_err!(DtErrKind::InternalErr, "{}", lang));
         };
         let finder = if use_dur_finder { duration_ac } else { date_ac };
 
@@ -1304,7 +1304,7 @@ impl Dt {
         }
 
         if !has_duration {
-            return Err(an_err!(DtErrKind::InvalidInput, "{}", s));
+            return Err(an_err!(DtErrKind::InvalidInput));
         }
 
         Ok(Dt::span(total_attos))

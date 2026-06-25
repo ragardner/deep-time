@@ -24,7 +24,7 @@ impl Parts {
         let bytes = input.as_bytes();
         let len_ = bytes.len();
         if len_ > STRTIME_SIZE {
-            return Err(an_err!(DtErrKind::InvalidInput, "too long: {}", input));
+            return Err(an_err!(DtErrKind::InvalidLen));
         }
 
         let mut start = 0usize;
@@ -54,10 +54,7 @@ impl Parts {
         }
 
         if start == len_ {
-            return Err(an_err!(
-                DtErrKind::ExpectedYear,
-                "year start (digit or +/- and digit)"
-            ));
+            return Err(an_err!(DtErrKind::ExpectedYear));
         }
 
         let input = &input[start..];
@@ -81,10 +78,7 @@ impl Parts {
                 pos += 1;
             }
         } else {
-            return Err(an_err!(
-                DtErrKind::ExpectedYear,
-                "year (digits after optional sign)"
-            ));
+            return Err(an_err!(DtErrKind::ExpectedYear));
         }
 
         if negative_year {
@@ -185,14 +179,14 @@ impl Parts {
                 hr = hr * 10 + (bytes[pos] - b'0');
                 pos += 1;
             } else {
-                return Err(an_err!(DtErrKind::ExpectedHour, "0/2 digits"));
+                return Err(an_err!(DtErrKind::ExpectedHour));
             }
             // digit 2
             if bytes[pos].is_ascii_digit() {
                 hr = hr * 10 + (bytes[pos] - b'0');
                 pos += 1;
             } else {
-                return Err(an_err!(DtErrKind::ExpectedHour, "1/2 digits"));
+                return Err(an_err!(DtErrKind::ExpectedHour));
             }
 
             tp.hr = hr;
@@ -218,14 +212,14 @@ impl Parts {
                     min = min * 10 + (bytes[pos] - b'0');
                     pos += 1;
                 } else {
-                    return Err(an_err!(DtErrKind::ExpectedMinute, "0/2 digits"));
+                    return Err(an_err!(DtErrKind::ExpectedMinute));
                 }
                 // digit 2
                 if bytes[pos].is_ascii_digit() {
                     min = min * 10 + (bytes[pos] - b'0');
                     pos += 1;
                 } else {
-                    return Err(an_err!(DtErrKind::ExpectedMinute, "0/2 digits"));
+                    return Err(an_err!(DtErrKind::ExpectedMinute));
                 }
 
                 tp.min = min;
@@ -250,14 +244,14 @@ impl Parts {
                     sec = sec * 10 + (bytes[pos] - b'0');
                     pos += 1;
                 } else {
-                    return Err(an_err!(DtErrKind::ExpectedSecond, "0/2 digits"));
+                    return Err(an_err!(DtErrKind::ExpectedSecond));
                 }
                 // digit 2
                 if bytes[pos].is_ascii_digit() {
                     sec = sec * 10 + (bytes[pos] - b'0');
                     pos += 1;
                 } else {
-                    return Err(an_err!(DtErrKind::ExpectedSecond, "1/2 digits"));
+                    return Err(an_err!(DtErrKind::ExpectedSecond));
                 }
 
                 tp.sec = sec;
@@ -361,21 +355,14 @@ impl Parts {
             }
 
             if pos >= len_ {
-                return Err(an_err!(
-                    DtErrKind::InvalidTimezoneOffset,
-                    "unclosed IANA tz name (missing ']')"
-                ));
+                return Err(an_err!(DtErrKind::InvalidTimezoneOffset));
             }
 
             // pos is now at ']'
             let iana_bytes = &bytes[name_start..pos];
 
-            let iana = core::str::from_utf8(iana_bytes).map_err(|_| {
-                an_err!(
-                    DtErrKind::InvalidBytes,
-                    "IANA tz name contains invalid UTF-8"
-                )
-            })?;
+            let iana =
+                core::str::from_utf8(iana_bytes).map_err(|_| an_err!(DtErrKind::InvalidBytes))?;
 
             tp.set_iana_name(Some(iana));
             pos += 1; // consume ']'

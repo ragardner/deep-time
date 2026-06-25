@@ -19,10 +19,7 @@ fn send_to_relative_parser(
         }
         #[cfg(not(feature = "std"))]
         {
-            return Err(an_err!(
-                DtErrKind::InternalErr,
-                "relative dates need ref time/std"
-            ));
+            return Err(an_err!(DtErrKind::MissingRefTimeOrStd));
         }
     };
 
@@ -43,7 +40,7 @@ pub(crate) fn classify_date(
         ..
     }) = lang_map().get(&lang)
     else {
-        return Err(an_err!(DtErrKind::InternalErr, "no langdata for: {}", lang));
+        return Err(an_err!(DtErrKind::InternalErr, "{}", lang));
     };
 
     let bytes_len = s.len();
@@ -510,7 +507,7 @@ pub(crate) fn classify_date(
     }
 
     if num_digits == 0 {
-        return Err(an_err!(DtErrKind::InvalidInput, "0 digits"));
+        return Err(an_err!(DtErrKind::ExpectedDigits));
     }
 
     // final remaining (end of string)

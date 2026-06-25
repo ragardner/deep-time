@@ -100,61 +100,64 @@ impl Parts {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] containing one of the following [`DtErrKind`] variants:
+    /// Returns a [`DtErr`] if parsing fails. The concrete error kind is available via
+    /// [`DtErr::kind()`].
     ///
     /// ### Format string errors
     ///
-    /// - [`DtErrKind::TruncatedDirective`] — The format string ended immediately
-    ///   after a `%`, after a `.` (in a fractional directive), or after flags/width/colons
-    ///   with no directive character following (e.g. `%.`, `%_`, `%3`).
-    /// - [`DtErrKind::UnknownItem`] — Unknown `%` directive character.
-    /// - [`DtErrKind::UnsupportedItem`] — Known but unsupported directive
-    ///   (e.g. `%c`, `%r`, `%x`, `%X`, `%Z`).
-    /// - [`DtErrKind::BadFractional`] — Malformed fractional directive
-    ///   (e.g. `%.x` where `x` is not `f` or `N`).
+    /// - [`DtErrKind::TruncatedDirective`] — A `%` appeared at the end of the format
+    ///   string, or after flags/width/colons with no directive character following it.
+    /// - [`DtErrKind::UnexpectedEnd`] — A `%` was followed only by extensions with no
+    ///   directive character.
+    /// - [`DtErrKind::InvalidFractional`] — A `%.` fractional directive was followed by
+    ///   an invalid character (not `f` or `N`).
+    /// - [`DtErrKind::ExpectedFractional`] — A `%.` fractional directive was started
+    ///   but no directive character followed the dot.
+    /// - [`DtErrKind::UnsupportedItem`] — The format contains `%c`, `%r`, `%x`, `%X`,
+    ///   or `%Z`.
+    /// - [`DtErrKind::UnknownItem`] — The format contains an unrecognized `%` directive.
     ///
     /// ### Input parsing errors
     ///
-    /// - [`DtErrKind::UnexpectedInputEnd`] — Input ended before a required value
-    ///   could be parsed.
+    /// - [`DtErrKind::UnexpectedEnd`] — The input ended before a required value could
+    ///   be parsed.
     /// - `Expected*` variants:
-    ///   - [`DtErrKind::ExpectedYear`]
-    ///   - [`DtErrKind::ExpectedCentury`]
-    ///   - [`DtErrKind::ExpectedMonth`]
-    ///   - [`DtErrKind::ExpectedDay`]
-    ///   - [`DtErrKind::ExpectedDayOfYear`]
-    ///   - [`DtErrKind::ExpectedHour`]
-    ///   - [`DtErrKind::ExpectedMinute`]
-    ///   - [`DtErrKind::ExpectedSecond`]
-    ///   - [`DtErrKind::ExpectedFractionalSeconds`]
-    ///   - [`DtErrKind::ExpectedTimestamp`]
-    ///   - [`DtErrKind::ExpectedWeekNumber`]
-    ///   - [`DtErrKind::ExpectedWeekdayNumber`]
-    /// - [`DtErrKind::MismatchedLiteral`] — A literal character from the format
-    ///   string did not match the input.
-    /// - [`DtErrKind::OutOfRange`] — A numeric value was parsed but is outside
-    ///   the valid range for that component (e.g. month 13, hour 25, day 32).
-    /// - [`DtErrKind::InvalidName`] — Unrecognized month name, weekday name,
-    ///   or `am`/`pm` value.
-    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid or malformed timezone
-    ///   offset / IANA name.
-    /// - [`DtErrKind::MustStartWith`] — Timezone offset did not start with
-    ///   `+` or `-`.
+    ///   - [`DtErrKind::ExpectedYear`], [`DtErrKind::ExpectedCentury`],
+    ///     [`DtErrKind::ExpectedMonth`], [`DtErrKind::ExpectedDay`],
+    ///     [`DtErrKind::ExpectedDayOfYear`], [`DtErrKind::ExpectedHour`],
+    ///     [`DtErrKind::ExpectedMinute`], [`DtErrKind::ExpectedSecond`],
+    ///     [`DtErrKind::ExpectedFractional`], [`DtErrKind::ExpectedTimestamp`],
+    ///     [`DtErrKind::ExpectedWeekNumber`], [`DtErrKind::ExpectedMonWeekday`],
+    ///     [`DtErrKind::ExpectedSunWeekday`], [`DtErrKind::ExpectedMonWeek`],
+    ///     [`DtErrKind::ExpectedSunWeek`]
+    /// - Out-of-range errors:
+    ///   - [`DtErrKind::MonthOutOfRange`], [`DtErrKind::DayOutOfRange`],
+    ///     [`DtErrKind::DayOfYearOutOfRange`], [`DtErrKind::HourOutOfRange`],
+    ///     [`DtErrKind::MinuteOutOfRange`], [`DtErrKind::SecondOutOfRange`],
+    ///     [`DtErrKind::IsoWeekOutOfRange`], [`DtErrKind::MonWeekdayOutOfRange`],
+    ///     [`DtErrKind::SunWeekdayOutOfRange`]
+    /// - [`DtErrKind::MismatchedLiteral`] — A literal character in the format string
+    ///   did not match the input.
+    /// - Name errors: [`DtErrKind::InvalidMonthName`], [`DtErrKind::InvalidWeekdayName`],
+    ///   [`DtErrKind::InvalidMeridiem`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid or malformed timezone offset
+    ///   or IANA timezone name.
+    /// - [`DtErrKind::MustStartWith`] — A timezone offset did not start with `+` or `-`.
+    /// - [`DtErrKind::InvalidScale`] — An invalid time scale abbreviation was provided
+    ///   after `%L`.
     ///
     /// ### Post-processing / validation errors
     ///
-    /// - [`DtErrKind::Incomplete`] — Required date components (month/day) were
+    /// - [`DtErrKind::TrailingCharacters`] — The input contained trailing characters
+    ///   after parsing and `fmt_can_end_before_inp` was `false`.
+    /// - [`DtErrKind::Incomplete`] — Required date components (month or day) were
     ///   missing and `allow_partial_date` was `false`.
-    /// - [`DtErrKind::TrailingCharacters`] — The input contained trailing
-    ///   characters after parsing and `fmt_can_end_before_inp` was `false`.
     ///
-    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may
-    /// appear in the future. You can match on the variants you care about and
-    /// use a wildcard arm for the rest.
+    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may appear
+    /// in the future. Use `match`` on the variants you care about and use a wildcard
+    /// arm for the rest.
     ///
-    /// The concrete error kind is available via [`DtErr::kind()`] (or by
-    /// iterating [`DtErr::trace()`] if the error was chained with context
-    /// higher up the call stack).
+    /// The error kind is available via [`DtErr::kind()`].
     pub fn from_str(
         fmt: &str,
         input: &str,

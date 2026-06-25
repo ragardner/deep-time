@@ -70,12 +70,12 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Incomplete`] if `input` is empty.
-    /// - [`DtErrKind::InvalidItem`] if the Code ID is not `001`.
+    /// - [`DtErrKind::Empty`] if `input` is empty.
+    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not `001`.
     /// - [`DtErrKind::InvalidInput`] if the input is too short to contain the declared
     ///   extended P-field, or if the "further extension" flag (bit 7 of the second
     ///   P-field octet) is set.
-    /// - [`DtErrKind::InvalidSyntax`] if the declared coarse + fractional field lengths
+    /// - [`DtErrKind::TFieldTooShort`] if the declared coarse + fractional field lengths
     ///   make the T-field longer than the remaining input bytes.
     ///
     /// Errors from [`Parts::finish`] and [`Parts::to_dt`] may also propagate.
@@ -128,11 +128,12 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Incomplete`] if `input` is empty.
-    /// - [`DtErrKind::InvalidInput`] if the P-field indicates an extended second
+    /// - [`DtErrKind::Empty`] if `input` is empty.
+    /// - [`DtErrKind::PFieldTooShort`] if the P-field indicates an extended second
     ///   octet but the input is too short to contain it.
-    /// - [`DtErrKind::InvalidItem`] if the Code ID is not `100`, the Epoch bit is
-    ///   set (non-Level-1 epoch), or the sub-millisecond code is `0b11`.
+    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not `100` or the Epoch bit is
+    ///   set (non-Level-1 epoch).
+    /// - [`DtErrKind::InvalidSubmillisecond`] if the sub-millisecond code is `0b11`.
     /// - [`DtErrKind::InvalidSyntax`] if the declared field lengths make the
     ///   T-field longer than the remaining input bytes.
     ///
@@ -167,8 +168,8 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Incomplete`] if `input` is empty.
-    /// - [`DtErrKind::InvalidItem`] if the Code ID is not one of the three
+    /// - [`DtErrKind::Empty`] if `input` is empty.
+    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not one of the three
     ///   recognized Level 1 values (`001`, `100`, or `101`).
     ///
     /// Any error returned by the dispatched parser is also propagated.

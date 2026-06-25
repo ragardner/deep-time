@@ -110,7 +110,7 @@ impl EopData {
                 Ok(0) => break,
                 Ok(n) => n,
                 Err(e) => {
-                    return Err(an_err!(DtErrKind::IOErr, "read line: {}", e));
+                    return Err(an_err!(DtErrKind::IOErr, "{}", e));
                 }
             };
 
@@ -129,7 +129,7 @@ impl EopData {
         }
 
         if rows.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "no valid rows"));
+            return Err(an_err!(DtErrKind::Empty));
         }
 
         rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
@@ -162,8 +162,7 @@ impl EopData {
         use std::io::BufReader;
 
         let path = path.as_ref();
-        let file = File::open(path)
-            .map_err(|e| an_err!(DtErrKind::IOErr, "open file: '{}': {}", path.display(), e))?;
+        let file = File::open(path).map_err(|e| an_err!(DtErrKind::IOErr, "{}", e))?;
 
         let reader = BufReader::new(file);
         Self::data_from_reader(reader, format, separator)
@@ -333,7 +332,7 @@ impl EopData {
         }
 
         if rows.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "no valid rows"));
+            return Err(an_err!(DtErrKind::Empty));
         }
 
         rows.sort_by(|a, b| a.mjd.partial_cmp(&b.mjd).unwrap_or(Ordering::Equal));
@@ -462,7 +461,7 @@ impl Dt {
     pub fn mjd_to_eop_offset(mjd: Real, op_data: &EopData) -> Result<EopOffset, DtErr> {
         let offset = op_data
             .eop_offset(mjd)
-            .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?;
+            .ok_or_else(|| an_err!(DtErrKind::MjdOutOfRange, "{mjd}"))?;
         Ok(offset)
     }
 
@@ -494,7 +493,7 @@ impl Dt {
     /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
     pub fn from_eop(&self, op_data: &EopData) -> Result<Self, DtErr> {
         if op_data.rows.is_empty() {
-            return Err(an_err!(DtErrKind::InternalErr, "contains no data"));
+            return Err(an_err!(DtErrKind::Empty));
         }
         let mut guess = *self;
 
@@ -502,7 +501,7 @@ impl Dt {
             let mjd = guess.to_mjd_f();
             let offset = op_data
                 .eop_offset(mjd)
-                .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "mjd: {mjd}"))?
+                .ok_or_else(|| an_err!(DtErrKind::MjdOutOfRange, "{mjd}"))?
                 .offset;
 
             guess = self.sub(Dt::from_sec_f(offset, Scale::TAI)); // TODO: guess or self?

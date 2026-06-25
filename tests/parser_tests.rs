@@ -184,13 +184,13 @@ mod tests {
     #[test]
     fn test_strict_mode_trailing_chars() {
         let err = Parts::from_str("%Y-%m-%d", "2024-04-15 extra", false, false, false).unwrap_err();
-        assert!(matches!(err.kind().unwrap(), DtErrKind::TrailingCharacters));
+        assert!(matches!(err.kind(), DtErrKind::TrailingCharacters));
     }
 
     #[test]
     fn test_incomplete_date_error() {
         let err = Parts::from_str("%H:%M:%S", "14:30:45", false, false, false).unwrap_err();
-        assert!(matches!(err.kind().unwrap(), DtErrKind::Incomplete));
+        assert!(matches!(err.kind(), DtErrKind::Incomplete));
     }
 
     #[test]

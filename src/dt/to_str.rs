@@ -669,25 +669,13 @@ impl Dt {
         let (offset_secs, abbrev): (i32, LiteStr<49>) = {
             use jiff::{Timestamp, tz::TimeZone};
 
-            let tz = TimeZone::get(tz_name).map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidTimezoneOffset,
-                    "invalid tz {:?}: {}",
-                    tz_name,
-                    e
-                )
-            })?;
+            let tz = TimeZone::get(tz_name)
+                .map_err(|e| an_err!(DtErrKind::InvalidTimezoneOffset, "{}", e))?;
 
             let unix_sec = self.to_unix().to_sec64();
 
-            let ts = Timestamp::from_second(unix_sec).map_err(|e| {
-                an_err!(
-                    DtErrKind::InvalidNumber,
-                    "invalid unix {:?} for jiff Timestamp: {}",
-                    unix_sec,
-                    e
-                )
-            })?;
+            let ts = Timestamp::from_second(unix_sec)
+                .map_err(|e| an_err!(DtErrKind::InvalidTimestamp, "{}", e))?;
 
             let info = tz.to_offset_info(ts);
             let offset_secs = info.offset().seconds();
@@ -699,11 +687,7 @@ impl Dt {
         #[cfg(not(feature = "jiff-tz"))]
         let (offset_secs, abbrev): (i32, LiteStr<49>) = {
             if !UTC_ALIASES.contains(&tz_name) {
-                return Err(an_err!(
-                    DtErrKind::InvalidBytes,
-                    "non-utc tz: {} requires jiff-tz feature",
-                    tz_name,
-                ));
+                return Err(an_err!(DtErrKind::MissingFeature));
             }
             // UTC → offset 0, canonical abbrev "UTC"
             let abbrev: LiteStr<49> = LiteStr::new("UTC");
@@ -729,8 +713,8 @@ impl Dt {
         self.to_str_lite_media_duration().to_string()
     }
 
-    /// Same as [`to_media_duration`](Self::to_media_duration) but returns a
-    /// stack-allocated [`LiteStr`].
+    /// Formats the duration using the common media/video player style
+    /// (e.g. `"0:45"`, `"9:41"`, `"1:23:45"`, `"1:07:54:30"`).
     #[inline(always)]
     pub fn to_str_lite_media_duration(&self) -> LiteStr<STRTIME_SIZE> {
         let (buf, len) = self.format_media_duration();

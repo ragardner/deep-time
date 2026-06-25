@@ -21,27 +21,27 @@ impl Parts {
         if let (Some(y), Some(m), Some(d)) = (self.yr, self.mo, self.day) {
             let year_i32: i32 = y
                 .try_into()
-                .map_err(|e| an_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidYear, "year: {}: {}", y, e))?;
             return NaiveDate::from_ymd_opt(year_i32, m as u32, d as u32)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidInput, "ymd: {}-{}-{}", year_i32, m, d));
+                .ok_or_else(|| an_err!(DtErrKind::InvalidDate, "ymd: {}-{}-{}", year_i32, m, d));
         }
 
         // Ordinal date (%j)
         if let (Some(y), Some(doy)) = (self.yr, self.day_of_yr) {
             let year_i32: i32 = y
                 .try_into()
-                .map_err(|e| an_err!(DtErrKind::InvalidNumber, "year: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidYear, "year: {}: {}", y, e))?;
             return NaiveDate::from_yo_opt(year_i32, doy as u32)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidInput, "ydoy: {}-{}", y, doy));
+                .ok_or_else(|| an_err!(DtErrKind::InvalidDate, "ydoy: {}-{}", y, doy));
         }
 
         // Small helper: JD → chrono NaiveDate
         let jd_to_naive_date = |jd: i64| -> Result<NaiveDate, DtErr> {
             let days_from_ce: i32 = (jd - 1721425)
                 .try_into()
-                .map_err(|e| an_err!(DtErrKind::InvalidInput, "jd: {}: {}", jd, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidDate, "jd: {}: {}", jd, e))?;
             NaiveDate::from_num_days_from_ce_opt(days_from_ce)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidInput, "days_from_ce: {}", days_from_ce))
+                .ok_or_else(|| an_err!(DtErrKind::InvalidDate, "jd: {}", days_from_ce))
         };
 
         // ISO week date (%G/%V + weekday)
@@ -65,7 +65,7 @@ impl Parts {
             return jd_to_naive_date(jd);
         }
 
-        Err(an_err!(DtErrKind::InvalidInput, "failed to convert"))
+        Err(an_err!(DtErrKind::InvalidDate))
     }
 
     fn build_naive_time(&self) -> Result<NaiveTime, DtErr> {
@@ -90,7 +90,7 @@ impl Parts {
 
         let is_leap = second == 60;
         if !is_leap && raw_ns_u64 > 999_999_999 {
-            return Err(an_err!(DtErrKind::OutOfRange, "leap ns: {}", raw_ns_u64));
+            return Err(an_err!(DtErrKind::InvalidFractional));
         }
 
         let mut subsec_nano: u32 = if raw_ns_u64 > 1_999_999_999 {
@@ -106,28 +106,20 @@ impl Parts {
                 subsec_nano = 1_999_999_999;
             }
         } else if second > 59 {
-            return Err(an_err!(DtErrKind::OutOfRange, "seconds: {}", second));
+            return Err(an_err!(DtErrKind::SecondOutOfRange));
         }
 
-        NaiveTime::from_hms_nano_opt(hour, minute, second, subsec_nano).ok_or_else(|| {
-            an_err!(
-                DtErrKind::InvalidInput,
-                "hms: {} {} {} {}",
-                hour,
-                minute,
-                second,
-                subsec_nano
-            )
-        })
+        NaiveTime::from_hms_nano_opt(hour, minute, second, subsec_nano)
+            .ok_or_else(|| an_err!(DtErrKind::InvalidTime))
     }
 
     /// Helper: resolve fixed offset / UTC only.
     fn to_chrono_offset(&self) -> Result<FixedOffset, DtErr> {
         match self.offset {
             Some(Offset::Fixed(secs)) => FixedOffset::east_opt(secs)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: {}", secs)),
+                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "{}", secs)),
             Some(Offset::None) | None => FixedOffset::east_opt(0)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset secs: 0")),
+                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "0")),
         }
     }
 
@@ -159,40 +151,23 @@ impl Parts {
                 {
                     use jiff::{Timestamp, tz::TimeZone};
 
-                    let tz = TimeZone::get(name_str).map_err(|e| {
-                        an_err!(
-                            DtErrKind::InvalidTimezoneOffset,
-                            "invalid tz {:?}: {}",
-                            name,
-                            e
-                        )
-                    })?;
+                    let tz = TimeZone::get(name_str)
+                        .map_err(|e| an_err!(DtErrKind::InvalidTimezoneOffset, "{}", e))?;
 
                     let provisional_unix =
                         DateTime::<chrono::Utc>::from_naive_utc_and_offset(naive, chrono::Utc)
                             .timestamp();
 
                     let civil = Timestamp::from_second(provisional_unix)
-                        .map_err(|e| {
-                            an_err!(
-                                DtErrKind::InvalidNumber,
-                                "invalid unix {:?}: {}",
-                                provisional_unix,
-                                e
-                            )
-                        })?
+                        .map_err(|e| an_err!(DtErrKind::InvalidTimestamp, "{}", e))?
                         .to_zoned(jiff::tz::TimeZone::UTC)
                         .datetime();
 
                     // Use jiff's "compatible" strategy (gaps → later, folds → earlier)
-                    let zoned = tz.to_ambiguous_zoned(civil).compatible().map_err(|e| {
-                        an_err!(
-                            DtErrKind::OutOfRange,
-                            "jiff compatible resolution failed for {}: {}",
-                            name_str,
-                            e
-                        )
-                    })?;
+                    let zoned = tz
+                        .to_ambiguous_zoned(civil)
+                        .compatible()
+                        .map_err(|e| an_err!(DtErrKind::InvalidDate, "{}", e))?;
 
                     // Use the civil time that jiff actually resolved to
                     // (critical for spring-forward gaps)
@@ -204,56 +179,41 @@ impl Parts {
                             resolved.month() as u32,
                             resolved.day() as u32,
                         )
-                        .ok_or_else(|| {
-                            an_err!(DtErrKind::InvalidInput, "resolved date from jiff")
-                        })?,
+                        .ok_or_else(|| an_err!(DtErrKind::InvalidDate))?,
                         NaiveTime::from_hms_nano_opt(
                             resolved.hour() as u32,
                             resolved.minute() as u32,
                             resolved.second() as u32,
                             resolved.subsec_nanosecond() as u32,
                         )
-                        .ok_or_else(|| {
-                            an_err!(DtErrKind::InvalidInput, "resolved time from jiff")
-                        })?,
+                        .ok_or_else(|| an_err!(DtErrKind::InvalidTime))?,
                     );
 
                     let offset_secs = zoned.offset().seconds();
                     let offset = FixedOffset::east_opt(offset_secs).ok_or_else(|| {
-                        an_err!(DtErrKind::InvalidTimezoneOffset, "offset: {}", offset_secs)
+                        an_err!(DtErrKind::InvalidTimezoneOffset, "{}", offset_secs)
                     })?;
 
                     return offset
                         .from_local_datetime(&resolved_naive)
                         .single()
-                        .ok_or_else(|| {
-                            an_err!(
-                                DtErrKind::InvalidTimezoneOffset,
-                                "could not construct chrono datetime after jiff resolution"
-                            )
-                        });
+                        .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset));
                 }
 
                 #[cfg(not(feature = "jiff-tz"))]
                 {
                     use crate::tz::UTC_ALIASES;
 
-                    if !name_str.is_empty() {
-                        if UTC_ALIASES.contains(&name_str) {
-                            // UTC alias — explicitly return +00:00
-                            let offset = FixedOffset::east_opt(0)
-                                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "UTC"))?;
+                    if UTC_ALIASES.contains(&name_str) {
+                        // UTC alias — explicitly return +00:00
+                        let offset = FixedOffset::east_opt(0)
+                            .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "0"))?;
 
-                            return offset.from_local_datetime(&naive).single().ok_or_else(|| {
-                                an_err!(DtErrKind::InvalidTimezoneOffset, "UTC alias")
-                            });
-                        } else {
-                            return Err(an_err!(
-                                DtErrKind::InvalidBytes,
-                                "non-utc tz: {} requires jiff-tz feature",
-                                name_str,
-                            ));
-                        }
+                        return offset.from_local_datetime(&naive).single().ok_or_else(|| {
+                            an_err!(DtErrKind::InvalidTimezoneOffset, "{}", name_str)
+                        });
+                    } else {
+                        return Err(an_err!(DtErrKind::MissingFeature));
                     }
                 }
             }
@@ -264,7 +224,7 @@ impl Parts {
         offset
             .from_local_datetime(&naive)
             .single()
-            .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "offset: {:?}", offset))
+            .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "{:?}", offset))
     }
 
     /// Converts [`Parts`] → [`i64`].

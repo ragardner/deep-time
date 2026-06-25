@@ -2,20 +2,12 @@
 
 #[cfg(all(feature = "parse", feature = "jiff-tz"))]
 mod tests {
-    use deep_time::DtErr;
-    use deep_time::Sidereal;
+    use deep_time::{AnErr, DtErr, DtErrKind, an_err};
+    // use deep_time::Sidereal;  // needs "sidereal" feature
     use deep_time::{Dt, Lang, ParseCfg, Scale, YmdHms};
 
     #[test]
     fn print_stuff() {
-        // let x = Dt::from_ymd(2020, 1, 1, Scale::TT, 0, 0, 0, 0);
-        // let g = x.target(Scale::GPS).to_gps();
-
-        // eprintln!("{}", g);
-
-        // let y = x.to_ymd();
-        // let z = y.to_dt();
-
-        // eprintln!("{}, {}", x, z);
+        eprintln!("Size of DtErr: {} bytes", core::mem::size_of::<DtErr>());
     }
 }

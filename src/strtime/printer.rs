@@ -53,7 +53,7 @@ impl YmdHms {
             i += 1; // skip '%'
 
             if i >= fmt.len() {
-                return Err(an_err!(DtErrKind::UnexpectedEnd, "after %"));
+                return Err(an_err!(DtErrKind::TruncatedDirective));
             }
 
             // %% → literal percent
@@ -101,7 +101,7 @@ impl YmdHms {
             }
 
             if i >= fmt.len() {
-                return Err(an_err!(DtErrKind::UnexpectedEnd, "after %"));
+                return Err(an_err!(DtErrKind::TruncatedDirective));
             }
 
             let directive = fmt[i];
@@ -121,7 +121,7 @@ impl YmdHms {
                     frac_width = Some(w);
                 }
                 if i >= fmt.len() {
-                    return Err(an_err!(DtErrKind::BadFractional, "expected f or N after ."));
+                    return Err(an_err!(DtErrKind::InvalidFractional));
                 }
 
                 // optional ~ after width
@@ -131,7 +131,7 @@ impl YmdHms {
                 }
 
                 if i >= fmt.len() {
-                    return Err(an_err!(DtErrKind::BadFractional, "expected f or N after ."));
+                    return Err(an_err!(DtErrKind::InvalidFractional));
                 }
 
                 let next = fmt[i];
@@ -165,7 +165,7 @@ impl YmdHms {
                     }
                     continue;
                 } else {
-                    return Err(an_err!(DtErrKind::BadFractional, "expected f or N after ."));
+                    return Err(an_err!(DtErrKind::InvalidFractional));
                 }
             }
 
@@ -229,7 +229,7 @@ impl YmdHms {
                 }
                 b'*' => self.write_unbounded_year(&mut buf, &mut pos, flag, width),
                 b'c' | b'X' | b'x' => {}
-                _ => return Err(an_err!(DtErrKind::UnknownItem, "{}", directive)),
+                _ => return Err(an_err!(DtErrKind::UnknownItem, "{}", char::from(directive))),
             }
         }
 

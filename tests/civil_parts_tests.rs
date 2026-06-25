@@ -120,7 +120,7 @@ mod tests {
         // Default Parts has no year → early failure in to_time_point.
         let pd = Parts::default();
         let err = pd.to_dt().unwrap_err();
-        assert!(matches!(err.kind().unwrap(), DtErrKind::Incomplete));
+        assert!(matches!(err.kind(), DtErrKind::ExpectedYear));
     }
 
     #[test]
@@ -132,7 +132,7 @@ mod tests {
         pd.yr = Some(2023);
         pd.day_of_yr = Some(366);
         let err = pd.to_dt().unwrap_err();
-        assert!(matches!(err.kind().unwrap(), DtErrKind::OutOfRange));
+        assert!(matches!(err.kind(), DtErrKind::DayOfYearOutOfRange));
     }
 
     #[test]
@@ -143,7 +143,7 @@ mod tests {
         pd.iso_wk = Some(54);
         pd.wkday = Some(Weekday::Monday); // required for the ISO path
         let err = pd.to_dt().unwrap_err();
-        assert!(matches!(err.kind().unwrap(), DtErrKind::OutOfRange));
+        assert!(matches!(err.kind(), DtErrKind::IsoWeekOutOfRange));
     }
 
     #[test]

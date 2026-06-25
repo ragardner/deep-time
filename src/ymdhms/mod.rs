@@ -297,11 +297,14 @@ impl YmdHms {
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     pub fn add_yr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
@@ -315,11 +318,14 @@ impl YmdHms {
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     pub fn add_mo_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
@@ -332,11 +338,14 @@ impl YmdHms {
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         self.add_days_tz(n.saturating_mul(7), tz)
@@ -346,11 +355,14 @@ impl YmdHms {
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     pub fn add_days_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
@@ -364,11 +376,14 @@ impl YmdHms {
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     pub fn add_hr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let new_zoned = self
             .to_jiff_zoned(tz)?
@@ -382,11 +397,14 @@ impl YmdHms {
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     pub fn add_min_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
@@ -399,11 +417,14 @@ impl YmdHms {
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     pub fn add_sec_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
@@ -416,38 +437,34 @@ impl YmdHms {
 
     fn to_jiff_zoned(&self, tz: &str) -> Result<jiff::Zoned, DtErr> {
         if !(-9999..=9999).contains(&self.yr) {
-            return Err(an_err!(
-                DtErrKind::OutOfRange,
-                "yr {} is outside Jiff's supported range (-9999..=9999)",
-                self.yr
-            ));
+            return Err(an_err!(DtErrKind::YearOutOfRange));
         }
 
         let hr: i8 = self
             .hr
             .try_into()
-            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "hr: {} u8 -> i8", self.hr))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidHour))?;
         let min: i8 = self
             .min
             .try_into()
-            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "min: {} u8 -> i8", self.min))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidMinute))?;
 
         let sec_for_jiff: i8 = if self.sec == 60 {
             59
         } else {
             self.sec
                 .try_into()
-                .map_err(|_| an_err!(DtErrKind::InvalidNumber, "sec: {} u8 -> i8", self.sec))?
+                .map_err(|_| an_err!(DtErrKind::InvalidSecond))?
         };
 
         let mo: i8 = self
             .mo
             .try_into()
-            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "mo: {} u8 -> i8", self.mo))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidMonth))?;
         let day: i8 = self
             .day
             .try_into()
-            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "day: {} u8 -> i8", self.day))?;
+            .map_err(|_| an_err!(DtErrKind::InvalidDay))?;
 
         let civil_time = civil::date(self.yr as i16, mo, day).at(hr, min, sec_for_jiff, 0);
 

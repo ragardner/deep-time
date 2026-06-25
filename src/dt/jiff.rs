@@ -76,7 +76,7 @@ impl Dt {
     #[inline]
     pub fn from_jiff_span(span: Span) -> Result<Self, DtErr> {
         let dur = SignedDuration::try_from(span)
-            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{:?}: {}", span, e))?;
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
         Ok(Self::from_jiff_signed_duration(dur))
     }
 }

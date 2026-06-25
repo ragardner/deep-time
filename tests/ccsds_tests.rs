@@ -1,7 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::constants::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
 use deep_time::civil_parts::Parts;
+use deep_time::constants::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
 use deep_time::{Dt, DtErrKind, Scale};
 
 mod ccsds_tests {
@@ -107,28 +107,23 @@ mod ccsds_tests {
 
         assert!(matches!(
             dt.to_ccsds_cuc(0, 0, false),
-            Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
-        ));
+            Err(e) if e.kind() == DtErrKind::OutOfRange));
 
         assert!(matches!(
             dt.to_ccsds_cuc( 4, 11, false),
-            Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
-        ));
+            Err(e) if e.kind() == DtErrKind::FracOutOfRange));
 
         assert!(matches!(
             dt.to_ccsds_cds( 1, 0, false),
-            Err(e) if e.kind() == Some(DtErrKind::InvalidNumber)
-        ));
+            Err(e) if e.kind() == DtErrKind::InvalidNumber));
 
         assert!(matches!(
             dt.to_ccsds_cds( 2, 3, false),
-            Err(e) if e.kind() == Some(DtErrKind::InvalidItem)
-        ));
+            Err(e) if e.kind() == DtErrKind::InvalidSubmillisecond));
 
         assert!(matches!(
             dt.to_ccsds_ccs( false, 7),
-            Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
-        ));
+            Err(e) if e.kind() == DtErrKind::FracOutOfRange));
     }
 
     // ====================== Convenience ======================
@@ -509,8 +504,7 @@ mod ccsds_tests {
         assert!(
             matches!(
                 before.to_ccsds_cuc(4, 0, false),
-                Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
-            ),
+                Err(e) if e.kind() == DtErrKind::YearOutOfRange),
             "CUC should reject pre-1958 time"
         );
 
@@ -519,8 +513,7 @@ mod ccsds_tests {
         assert!(
             matches!(
                 before_utc.to_ccsds_cds(2, 0, false),
-                Err(e) if e.kind() == Some(DtErrKind::OutOfRange)
-            ),
+                Err(e) if e.kind() == DtErrKind::YearOutOfRange),
             "CDS should reject pre-1958 time"
         );
     }

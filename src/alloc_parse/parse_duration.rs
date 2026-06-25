@@ -12,14 +12,13 @@ impl Dt {
     /// Returns a [`Dt`].
     pub fn from_str_duration(s: &str, lang: Lang) -> Result<Dt, DtErr> {
         if s.is_empty() {
-            return Err(an_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Empty));
         }
 
         if Dt::looks_like_iso(s) {
             return Dt::from_iso_duration(s).map_err(|e| {
                 an_err!(
-                    DtErrKind::InvalidInput,
-                    "iso: {}",
+                    " {}",
                     s => e
                 )
             });
@@ -52,8 +51,7 @@ impl Dt {
         match natural_duration_to_iso(&lower, lang, true) {
             Ok(iso) => Ok(iso),
             Err(e) => Err(an_err!(
-                DtErrKind::InvalidInput,
-                "{}",
+                " {}",
                 s => e
             )),
         }

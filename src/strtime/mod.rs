@@ -78,7 +78,24 @@ impl StrPTimeFmt {
     ///
     /// - Validates syntax and supported directives.
     /// - Requires the format to be valid ASCII and ≤ 256 bytes.
-    /// - Returns a `DtErr` on any failure.
+    /// - Returns a [`DtErr`] on any failure.
+    ///
+    /// ## Errors
+    ///
+    /// - [`DtErrKind::InvalidLen`] if the format string is longer than 256 bytes.
+    /// - [`DtErrKind::InvalidInput`] if the format string is not valid ASCII.
+    /// - [`DtErrKind::TruncatedDirective`] if a `%` appears at the end of the format
+    ///   with no directive character following it.
+    /// - [`DtErrKind::UnexpectedEnd`] if a `%` is followed only by flags, width digits,
+    ///   or colons, with no directive character after them.
+    /// - [`DtErrKind::ExpectedFractional`] if a `%.` sequence is not followed by a
+    ///   directive character.
+    /// - [`DtErrKind::InvalidFractional`] if a `%.` sequence is followed by a character
+    ///   other than `f` or `N`.
+    /// - [`DtErrKind::UnsupportedItem`] if the format contains `%c`, `%r`, `%x`, `%X`,
+    ///   or `%Z`.
+    /// - [`DtErrKind::UnknownItem`] if the format contains any other unrecognized `%`
+    ///   directive.
     ///
     /// ## Examples
     ///
@@ -100,18 +117,11 @@ impl StrPTimeFmt {
     /// ```
     pub fn new(fmt: &str) -> Result<Self, DtErr> {
         if fmt.len() > Self::MAX_FORMAT_LEN {
-            return Err(an_err!(
-                DtErrKind::UnexpectedEnd,
-                "format string too long (max {} bytes)",
-                Self::MAX_FORMAT_LEN
-            ));
+            return Err(an_err!(DtErrKind::InvalidLen));
         }
         let fmt = fmt.as_bytes();
         if !fmt.is_ascii() {
-            return Err(an_err!(
-                DtErrKind::UnexpectedEnd,
-                "format string must be ASCII"
-            ));
+            return Err(an_err!(DtErrKind::InvalidInput, "must be ascii"));
         }
 
         Self::validate_format(fmt)?;
@@ -139,7 +149,10 @@ impl StrPTimeFmt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] for parse failures, incomplete data, trailing characters, etc.
+    /// - [`DtErrKind::InvalidBytes`] if `as_str()` fails to convert the stored format
+    ///   back to `&str`.
+    /// - Any error returned by `Parts::from_str` followed by `Parts::to_dt` (see the
+    ///   error documentation on [`Dt::from_str`] for the complete list).
     ///
     /// ## Examples
     ///
@@ -264,7 +277,7 @@ impl StrPTimeFmt {
 
             // lone % at end of format
             if fmt.len() == 1 {
-                return Err(an_err!(DtErrKind::TruncatedDirective, "after %"));
+                return Err(an_err!(DtErrKind::TruncatedDirective));
             }
             fmt = &fmt[1..]; // eat %
 
@@ -290,7 +303,7 @@ impl StrPTimeFmt {
             }
 
             if fmt.is_empty() {
-                return Err(an_err!(DtErrKind::TruncatedDirective, "expected directive"));
+                return Err(an_err!(DtErrKind::UnexpectedEnd));
             }
 
             let directive = fmt[0];
@@ -318,16 +331,16 @@ impl StrPTimeFmt {
                 }
 
                 if fmt.is_empty() {
-                    return Err(an_err!(DtErrKind::TruncatedDirective, "after ."));
+                    return Err(an_err!(DtErrKind::ExpectedFractional));
                 }
                 let next = fmt[0];
                 if !matches!(next, b'f' | b'N') {
-                    return Err(an_err!(DtErrKind::BadFractional, "{}", char::from(next)));
+                    return Err(an_err!(DtErrKind::InvalidFractional, "{}", char::from(next)));
                 }
                 fmt = &fmt[1..];
             }
 
-            // explicitly unsupported (same as Parser)
+            // explicitly unsupported
             b'c' | b'r' | b'X' | b'x' | b'Z' => {
                 return Err(an_err!(
                     DtErrKind::UnsupportedItem,

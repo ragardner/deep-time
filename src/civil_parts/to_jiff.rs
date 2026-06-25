@@ -21,52 +21,52 @@ impl Parts {
         if let Some(year) = self.yr {
             let y: i16 = year
                 .try_into()
-                .map_err(|e| an_err!(DtErrKind::InvalidInput, "year: {}: {}", year, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidYear, "{}", e))?;
             bdt.set_year(Some(y))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "year: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidYear, "{}", e))?;
         }
         if let Some(m) = self.mo {
             bdt.set_month(Some(m as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "month: {}: {}", m, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidMonth, "{}", e))?;
         }
         if let Some(d) = self.day {
             bdt.set_day(Some(d as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "day: {}: {}", d, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidDay, "{}", e))?;
         }
 
         // Week / day-of-year fields
         if let Some(doy) = self.day_of_yr {
             bdt.set_day_of_year(Some(doy as i16))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "doy: {}: {}", doy, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidDayOfYear, "{}", e))?;
         }
         if let Some(y) = self.iso_wk_yr {
             let y: i16 = y
                 .try_into()
-                .map_err(|e| an_err!(DtErrKind::InvalidInput, "iso wk yr: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidIsoWeekYear, "{}", e))?;
             bdt.set_iso_week_year(Some(y))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "iso wk yr: {}: {}", y, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidIsoWeekYear, "{}", e))?;
         }
         if let Some(w) = self.iso_wk {
             bdt.set_iso_week(Some(w as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "iso wk: {}: {}", w, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidIsoWeek, "{}", e))?;
         }
         if let Some(w) = self.wk_sun {
             bdt.set_sunday_based_week(Some(w as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "sun based wk: {}: {}", w, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidSunWeek, "{}", e))?;
         }
         if let Some(w) = self.wk_mon {
             bdt.set_monday_based_week(Some(w as i8))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "mon based wk: {}: {}", w, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidMonWeek, "{}", e))?;
         }
 
         // Time of day
         bdt.set_hour(Some(self.hr as i8))
-            .map_err(|e| an_err!(DtErrKind::InvalidItem, "hour: {}: {}", self.hr, e))?;
+            .map_err(|e| an_err!(DtErrKind::InvalidHour, "{}", e))?;
         bdt.set_minute(Some(self.min as i8))
-            .map_err(|e| an_err!(DtErrKind::InvalidItem, "minute: {}: {}", self.min, e))?;
+            .map_err(|e| an_err!(DtErrKind::InvalidMinute, "{}", e))?;
         let non_ls_s = if self.sec == 60 { 59 } else { self.sec };
         bdt.set_second(Some(non_ls_s as i8))
-            .map_err(|e| an_err!(DtErrKind::InvalidItem, "second: {}: {}", non_ls_s, e))?;
+            .map_err(|e| an_err!(DtErrKind::InvalidSecond, "{}", e))?;
 
         // Subsecond precision (attoseconds → nanoseconds)
         if self.attos != 0 {
@@ -77,7 +77,7 @@ impl Parts {
                 ns_u64 as i32
             };
             bdt.set_subsec_nanosecond(Some(ns))
-                .map_err(|e| an_err!(DtErrKind::InvalidItem, "ns: {}: {}", ns, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidFractional, "{}", e))?;
         }
 
         // Infallible setters
@@ -118,7 +118,7 @@ impl Parts {
             };
             let nanos = unix.to_ns();
             let ts = jiff::Timestamp::from_nanosecond(nanos)
-                .map_err(|e| an_err!(DtErrKind::InvalidInput, "timestamp: {}: {}", nanos, e))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidTimestamp, "{}", e))?;
             bdt.set_timestamp(Some(ts));
         }
 
@@ -132,11 +132,7 @@ impl Parts {
             if let Ok(jiff_offset) = JiffOffset::from_seconds(secs) {
                 bdt.set_offset(Some(jiff_offset));
             } else {
-                return Err(an_err!(
-                    DtErrKind::InvalidTimezoneOffset,
-                    "offset secs: {}",
-                    secs
-                ));
+                return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "{}", secs));
             }
         } else {
             // Utc / None → treat as UTC
@@ -168,10 +164,7 @@ impl Parts {
             return Ok(dt);
         }
 
-        Err(an_err!(
-            DtErrKind::InvalidInput,
-            "could not convert to jiff zoned"
-        ))
+        Err(an_err!(DtErrKind::InvalidDate))
     }
 
     /// Converts [`Parts`] → [`jiff::Timestamp`].

@@ -47,11 +47,14 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_yr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_yr_tz(n, tz)?.to_dt())
@@ -65,15 +68,18 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-    /// - Will error if the year is outside of `-9999..=9999`.
+
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_mo_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_mo_tz(n, tz)?.to_dt())
@@ -87,15 +93,18 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-    /// - Will error if the year is outside of `-9999..=9999`.
+
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_wk_tz(n, tz)?.to_dt())
@@ -109,15 +118,18 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-    /// - Will error if the year is outside of `-9999..=9999`.
+
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_days_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_days_tz(n, tz)?.to_dt())
@@ -131,15 +143,18 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-    /// - Will error if the year is outside of `-9999..=9999`.
+
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_hr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_hr_tz(n, tz)?.to_dt())
@@ -153,15 +168,18 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-    /// - Will error if the year is outside of `-9999..=9999`.
+
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_min_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_min_tz(n, tz)?.to_dt())
@@ -175,15 +193,18 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-    /// - Will error if the year is outside of `-9999..=9999`.
+
     ///
     /// ## Errors
     ///
-    /// - Jiff only supports years in the range `-9999..=9999`. Years outside
-    ///   this range will return a [`DtErr`].
-    /// - If Jiff cannot find the timezone name or if applying the timezone would cause
-    ///   the [`jiff::Zoned`] to be outside the `-9999..=9999` year range then a
-    ///   [`DtErr`] with [`DtErrKind::InvalidTimezoneOffset`] is returned.
+    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    ///   `-9999..=9999` range (checked before involving Jiff).
+    /// - Specific errors for invalid time components when preparing values for Jiff:
+    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
+    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_sec_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         Ok(self.to_ymd().add_sec_tz(n, tz)?.to_dt())

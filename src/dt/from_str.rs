@@ -180,79 +180,73 @@ impl Dt {
     ///
     /// ### Format string errors
     ///
-    /// - [`DtErrKind::TruncatedDirective`] — The format string ended immediately
-    ///   after a `%`, after a `.` (in a fractional directive), or after flags/width/colons
-    ///   with no directive character following (e.g. `%.`, `%_`, `%3`).
-    /// - [`DtErrKind::UnknownItem`] — Unknown `%` directive character.
-    /// - [`DtErrKind::UnsupportedItem`] — Known but unsupported directive
-    ///   (e.g. `%c`, `%r`, `%x`, `%X`, `%Z`).
-    /// - [`DtErrKind::BadFractional`] — Malformed fractional directive
-    ///   (e.g. `%.x` where `x` is not `f` or `N`).
+    /// - [`DtErrKind::TruncatedDirective`] — A `%` appeared at the end of the format
+    ///   string, or after flags/width/colons with no directive character following it.
+    /// - [`DtErrKind::UnexpectedEnd`] — A `%` was followed only by extensions with no
+    ///   directive character.
+    /// - [`DtErrKind::InvalidFractional`] — A `%.` fractional directive was followed by
+    ///   an invalid character (not `f` or `N`).
+    /// - [`DtErrKind::ExpectedFractional`] — A `%.` fractional directive was started
+    ///   but no directive character followed the dot.
+    /// - [`DtErrKind::UnsupportedItem`] — The format contains `%c`, `%r`, `%x`, `%X`,
+    ///   or `%Z`.
+    /// - [`DtErrKind::UnknownItem`] — The format contains an unrecognized `%` directive.
     ///
     /// ### Input parsing errors
     ///
-    /// - [`DtErrKind::UnexpectedInputEnd`] — Input ended before a required value
-    ///   could be parsed.
+    /// - [`DtErrKind::UnexpectedEnd`] — The input ended before a required value could
+    ///   be parsed.
     /// - `Expected*` variants:
-    ///   - [`DtErrKind::ExpectedYear`]
-    ///   - [`DtErrKind::ExpectedCentury`]
-    ///   - [`DtErrKind::ExpectedMonth`]
-    ///   - [`DtErrKind::ExpectedDay`]
-    ///   - [`DtErrKind::ExpectedDayOfYear`]
-    ///   - [`DtErrKind::ExpectedHour`]
-    ///   - [`DtErrKind::ExpectedMinute`]
-    ///   - [`DtErrKind::ExpectedSecond`]
-    ///   - [`DtErrKind::ExpectedFractionalSeconds`]
-    ///   - [`DtErrKind::ExpectedTimestamp`]
-    ///   - [`DtErrKind::ExpectedWeekNumber`]
-    ///   - [`DtErrKind::ExpectedWeekdayNumber`]
-    /// - [`DtErrKind::MismatchedLiteral`] — A literal character from the format
-    ///   string did not match the input.
-    /// - [`DtErrKind::OutOfRange`] — A numeric value was parsed but is outside
-    ///   the valid range for that component (e.g. month 13, hour 25, day 32).
-    /// - [`DtErrKind::InvalidName`] — Unrecognized month name, weekday name,
-    ///   or `am`/`pm` value.
-    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid or malformed timezone
-    ///   offset / IANA name.
-    /// - [`DtErrKind::MustStartWith`] — Timezone offset did not start with
-    ///   `+` or `-`.
+    ///   - [`DtErrKind::ExpectedYear`], [`DtErrKind::ExpectedCentury`],
+    ///     [`DtErrKind::ExpectedMonth`], [`DtErrKind::ExpectedDay`],
+    ///     [`DtErrKind::ExpectedDayOfYear`], [`DtErrKind::ExpectedHour`],
+    ///     [`DtErrKind::ExpectedMinute`], [`DtErrKind::ExpectedSecond`],
+    ///     [`DtErrKind::ExpectedFractional`], [`DtErrKind::ExpectedTimestamp`],
+    ///     [`DtErrKind::ExpectedWeekNumber`], [`DtErrKind::ExpectedMonWeekday`],
+    ///     [`DtErrKind::ExpectedSunWeekday`], [`DtErrKind::ExpectedMonWeek`],
+    ///     [`DtErrKind::ExpectedSunWeek`]
+    /// - Out-of-range errors:
+    ///   - [`DtErrKind::MonthOutOfRange`], [`DtErrKind::DayOutOfRange`],
+    ///     [`DtErrKind::DayOfYearOutOfRange`], [`DtErrKind::HourOutOfRange`],
+    ///     [`DtErrKind::MinuteOutOfRange`], [`DtErrKind::SecondOutOfRange`],
+    ///     [`DtErrKind::IsoWeekOutOfRange`], [`DtErrKind::MonWeekdayOutOfRange`],
+    ///     [`DtErrKind::SunWeekdayOutOfRange`]
+    /// - [`DtErrKind::MismatchedLiteral`] — A literal character in the format string
+    ///   did not match the input.
+    /// - Name errors: [`DtErrKind::InvalidMonthName`], [`DtErrKind::InvalidWeekdayName`],
+    ///   [`DtErrKind::InvalidMeridiem`].
+    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid or malformed timezone offset
+    ///   or IANA timezone name.
+    /// - [`DtErrKind::MustStartWith`] — A timezone offset did not start with `+` or `-`.
+    /// - [`DtErrKind::InvalidScale`] — An invalid time scale abbreviation was provided
+    ///   after `%L`.
     ///
     /// ### Post-processing / validation errors
     ///
-    /// - [`DtErrKind::Incomplete`] — Required date components (month/day) were
+    /// - [`DtErrKind::TrailingCharacters`] — The input contained trailing characters
+    ///   after parsing and `fmt_can_end_before_inp` was `false`.
+    /// - [`DtErrKind::Incomplete`] — Required date components (month or day) were
     ///   missing and `allow_partial_date` was `false`.
-    /// - [`DtErrKind::TrailingCharacters`] — The input contained trailing
-    ///   characters after parsing and `fmt_can_end_before_inp` was `false`.
     ///
     /// ### Conversion to [`Dt`] errors
     ///
-    /// These errors can occur *after* successful parsing, inside
-    /// [`Parts::to_dt`], when constructing the final [`Dt`]:
+    /// These errors can occur *after* successful parsing, inside [`Parts::to_dt`]:
     ///
-    /// - [`DtErrKind::InvalidInput`] — Invalid YMD date, or unable to construct
-    ///   a Julian date from the parsed components (e.g. conflicting or
-    ///   insufficient fields).
-    /// - [`DtErrKind::OutOfRange`] — Day-of-year out of range for the year,
-    ///   ISO week 53 does not exist in the target year, week number > 53,
-    ///   or hour outside `1..=12` when an AM/PM indicator was also parsed.
-    /// - [`DtErrKind::InvalidItem`] — ISO week 53 was requested for a year that
-    ///   does not contain 53 ISO weeks.
-    /// - [`DtErrKind::Incomplete`] — No year (neither `%Y`/`%y` nor `%G`/`%g`)
-    ///   was present in the input at all.
-    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid IANA timezone name
-    ///   (only possible when the `jiff-tz` feature is enabled).
-    /// - [`DtErrKind::InvalidNumber`] — Internal timestamp conversion error
-    ///   (rare; only occurs with the `jiff-tz` feature).
-    /// - [`DtErrKind::InvalidBytes`] — A non-UTC IANA timezone name was used
-    ///   but the `jiff-tz` feature is not enabled.
+    /// - [`DtErrKind::InvalidDate`] or [`DtErrKind::InvalidInput`] — Unable to
+    ///   construct a valid date from the parsed components.
+    /// - Out-of-range or conflicting field errors (e.g. [`DtErrKind::DayOfYearOutOfRange`],
+    ///   [`DtErrKind::IsoWeekOutOfRange`], [`DtErrKind::WeekOutOfRange`], etc.).
+    /// - [`DtErrKind::InvalidItem`] — ISO week 53 requested for a year that does not
+    ///   contain 53 ISO weeks.
+    /// - Feature-dependent errors (when `jiff-tz` is involved):
+    ///   - [`DtErrKind::InvalidTimezoneOffset`], [`DtErrKind::InvalidNumber`],
+    ///     [`DtErrKind::InvalidBytes`].
     ///
-    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may
-    /// appear in the future. You can match on the variants you care about and
-    /// use a wildcard arm for the rest.
+    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may appear
+    /// in the future. Use `match`` on the variants you care about and use a wildcard
+    /// arm for the rest.
     ///
-    /// The concrete error kind is available via [`DtErr::kind()`] (or by
-    /// iterating [`DtErr::trace()`] if the error was chained with context
-    /// higher up the call stack).
+    /// The error kind is available via [`DtErr::kind()`].
     #[inline(always)]
     pub fn from_str(
         s: &str,
@@ -384,7 +378,8 @@ impl Dt {
     /// - `P` / `p` prefix (required)
     /// - Optional `T` / `t` separator between date and time parts
     /// - Weeks (`W` / `w`)
-    /// - Fractional seconds with up to 18 digits of precision (attosecond resolution)
+    /// - Fractional seconds with up to 9 digits of precision (nanosecond resolution;
+    ///   the parsed value is scaled to attosecond resolution in the resulting [`Dt`]).
     ///
     /// The returned [`Dt`] is a **duration** (signed interval) on the TAI scale.
     /// It can be added to/subtracted from other `Dt` values, multiplied/divided,
@@ -405,16 +400,46 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] for:
-    /// - Empty string
-    /// - Missing `P` prefix
-    /// - Invalid syntax (`T` with no time part, multiple `T`s, etc.)
-    /// - Unknown unit designators
-    /// - Numeric values that are out of range or cause overflow
+    /// Returns a [`DtErr`] if parsing fails. The concrete error kind is available via
+    /// [`DtErr::kind()`] (or by iterating [`DtErr::trace()`] if context was added higher
+    /// in the call stack). Because [`DtErrKind`] is `#[non_exhaustive]`, new variants
+    /// may appear in the future.
+    ///
+    /// ### Input / structure errors
+    ///
+    /// - [`DtErrKind::Empty`] — The input string is empty.
+    /// - [`DtErrKind::MustStartWith`] — Missing `P` / `p` prefix (after optional leading sign).
+    /// - [`DtErrKind::InvalidSyntax`] — Invalid syntax, e.g. `T` with no following time part,
+    ///   or more than one `T`/`t` separator.
+    /// - [`DtErrKind::TrailingCharacters`] — Additional components appear after a fractional
+    ///   seconds value (only the final `S` component may carry a fraction).
+    ///
+    /// ### Component parsing errors
+    ///
+    /// - [`DtErrKind::ExpectedValue`] — Expected a numeric value for a component but found none.
+    /// - [`DtErrKind::ExpectedFractional`] — A `.` or `,` was present for a fractional part
+    ///   but no digits followed.
+    /// - [`DtErrKind::ExpectedUnit`] — A number was parsed but no unit designator
+    ///   (`Y`/`M`/`W`/`D`/`H`/`S` etc.) followed it.
+    /// - [`DtErrKind::InvalidNumber`] — A numeric component could not be parsed as an `i64`
+    ///   (typically too large).
+    /// - [`DtErrKind::InvalidBytes`] — Internal UTF-8 conversion failure while reading a number
+    ///   (should not occur for valid ASCII input).
+    /// - [`DtErrKind::InvalidFractional`] — The fractional part digits could not be parsed as an integer.
+    /// - [`DtErrKind::FracOutOfRange`] — More than 9 digits were supplied for fractional seconds.
+    /// - [`DtErrKind::InvalidItem`] — A fractional part was supplied on a unit other than seconds.
+    ///
+    /// ### Unit and range errors
+    ///
+    /// - [`DtErrKind::UnknownItem`] — An unknown unit designator character was used.
+    /// - [`DtErrKind::YearOutOfRange`], [`DtErrKind::MonthOutOfRange`],
+    ///   [`DtErrKind::WeekOutOfRange`], [`DtErrKind::DayOutOfRange`] — The component value
+    ///   (after sign) overflows when multiplied by the corresponding fixed-length constant
+    ///   (checked arithmetic).
     pub fn from_iso_duration(s: &str) -> Result<Dt, DtErr> {
         let len = s.len();
         if len == 0 {
-            return Err(an_err!(DtErrKind::Incomplete, "empty"));
+            return Err(an_err!(DtErrKind::Empty));
         }
 
         let b = s.as_bytes();
@@ -431,7 +456,7 @@ impl Dt {
 
         // Must start with P/p
         if i >= len || !matches!(b[i], b'P' | b'p') {
-            return Err(an_err!(DtErrKind::MustStartWith, "P"));
+            return Err(an_err!(DtErrKind::MustStartWith));
         }
         i += 1;
 
@@ -444,10 +469,10 @@ impl Dt {
         let (date_part, time_part) = match t_pos {
             Some(pos) => {
                 if pos == len - 1 {
-                    return Err(an_err!(DtErrKind::InvalidSyntax, "T with no time"));
+                    return Err(an_err!(DtErrKind::InvalidSyntax));
                 }
                 if b[pos + 1..].iter().any(|&c| matches!(c, b'T' | b't')) {
-                    return Err(an_err!(DtErrKind::InvalidSyntax, "multiple T"));
+                    return Err(an_err!(DtErrKind::InvalidSyntax));
                 }
                 (&b[i..pos], &b[pos + 1..])
             }
@@ -479,7 +504,7 @@ impl Dt {
         }
 
         if *has_fraction {
-            return Err(an_err!(DtErrKind::InvalidSyntax, "components after frac"));
+            return Err(an_err!(DtErrKind::TrailingCharacters));
         }
 
         // Parse integer part
@@ -488,11 +513,11 @@ impl Dt {
             *i += 1;
         }
         if start == *i {
-            return Err(an_err!(DtErrKind::ExpectedValue, "number"));
+            return Err(an_err!(DtErrKind::ExpectedValue));
         }
 
         let int_str = core::str::from_utf8(&chars[start..*i])
-            .map_err(|_| an_err!(DtErrKind::InvalidNumber, "invalid utf8 in int"))?;
+            .map_err(|e| an_err!(DtErrKind::InvalidBytes, "{}", e))?;
         let int: i64 = int_str.parse().map_err(|e: core::num::ParseIntError| {
             an_err!(DtErrKind::InvalidNumber, "{}: {}", int_str, e)
         })?;
@@ -508,25 +533,22 @@ impl Dt {
             }
             frac_digits = *i - frac_start;
             if frac_digits == 0 {
-                return Err(an_err!(DtErrKind::ExpectedValue, "empty frac after ."));
+                return Err(an_err!(DtErrKind::ExpectedFractional));
             }
             if frac_digits > 9 {
-                return Err(an_err!(DtErrKind::OutOfRange, "frac >9"));
+                return Err(an_err!(DtErrKind::FracOutOfRange));
             }
 
             let frac_str = core::str::from_utf8(&chars[frac_start..*i])
-                .map_err(|_| an_err!(DtErrKind::InvalidNumber, "invalid utf8 in frac"))?;
+                .map_err(|e| an_err!(DtErrKind::InvalidBytes, "{}", e))?;
             frac_num = frac_str.parse().map_err(|e: core::num::ParseIntError| {
-                an_err!(DtErrKind::InvalidNumber, "{}: {}", frac_str, e)
+                an_err!(DtErrKind::InvalidFractional, "{}: {}", frac_str, e)
             })?;
         }
 
         // Unit must follow
         if *i >= chars.len() {
-            return Err(an_err!(
-                DtErrKind::InvalidSyntax,
-                "missing unit after number"
-            ));
+            return Err(an_err!(DtErrKind::ExpectedUnit));
         }
         let unit = chars[*i];
         *i += 1;
@@ -534,10 +556,7 @@ impl Dt {
         // Only seconds support a fractional part
         if frac_digits > 0 {
             if !matches!(unit, b'S' | b's') {
-                return Err(an_err!(
-                    DtErrKind::InvalidSyntax,
-                    "frac only supported for seconds"
-                ));
+                return Err(an_err!(DtErrKind::InvalidItem));
             }
             *has_fraction = true;
         }
@@ -570,25 +589,25 @@ impl Dt {
                 (true, b'Y' | b'y') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SEC_PER_YEAR)
-                        .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "year"))?;
+                        .ok_or_else(|| an_err!(DtErrKind::YearOutOfRange))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'M' | b'm') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SEC_PER_MONTH)
-                        .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "month"))?;
+                        .ok_or_else(|| an_err!(DtErrKind::MonthOutOfRange))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'W' | b'w') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SEC_PER_WEEK as i128)
-                        .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "week"))?;
+                        .ok_or_else(|| an_err!(DtErrKind::WeekOutOfRange))?;
                     total_secs * 1_000_000_000i128
                 }
                 (true, b'D' | b'd') => {
                     let total_secs = (comp.signed_int as i128)
                         .checked_mul(SEC_PER_DAY)
-                        .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "day"))?;
+                        .ok_or_else(|| an_err!(DtErrKind::DayOutOfRange))?;
                     total_secs * 1_000_000_000i128
                 }
                 (false, b'H' | b'h') => (comp.signed_int as i128) * 3_600_000_000_000i128,
@@ -603,7 +622,7 @@ impl Dt {
                     sec_nanos
                 }
                 _ => {
-                    return Err(an_err!(DtErrKind::InvalidItem, "{}", comp.unit as char));
+                    return Err(an_err!(DtErrKind::UnknownItem, "{}", comp.unit as char));
                 }
             };
 
@@ -620,10 +639,34 @@ impl Dt {
     /// - `"1:07:54:30"`
     /// - `"-1:23:45"`
     ///
+    /// ## Errors
+    ///
+    /// Returns a [`DtErr`] if the input cannot be parsed as a valid media-style
+    /// duration. The concrete error kind is available via [`DtErr::kind()`].
+    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may appear
+    /// in the future.
+    ///
+    /// This function uses saturating arithmetic, so it never returns range or
+    /// overflow errors.
+    ///
+    /// ### Input / structure errors
+    ///
+    /// - [`DtErrKind::Empty`] — The string is empty or contains only ASCII whitespace.
+    /// - [`DtErrKind::InvalidInput`] — A single minus sign with nothing after it.
+    /// - [`DtErrKind::InvalidSyntax`] — The input does not contain exactly 2, 3, or 4
+    ///   colon-separated numeric components.
+    /// - [`DtErrKind::TrailingCharacters`] — Non-whitespace characters remain after
+    ///   the final numeric component.
+    ///
+    /// ### Parsing errors
+    ///
+    /// - [`DtErrKind::ExpectedValue`] — A component was expected to begin with a digit
+    ///   (either at the start of the string or immediately after a `:`) but did not.
+    ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_media_duration`]
-    /// - [`Dt::to_str_lite_media_duration`]
+    /// - [`Dt::to_str_media_duration`](../struct.Dt.html#method.to_str_media_duration)
+    /// - [`Dt::to_str_lite_media_duration`](../struct.Dt.html#method.to_str_lite_media_duration)
     pub fn from_str_media_duration(input: &str) -> Result<Dt, DtErr> {
         let bytes = input.as_bytes();
         let len = bytes.len();
@@ -635,17 +678,14 @@ impl Dt {
         }
 
         if pos == len {
-            return Err(an_err!(
-                DtErrKind::InvalidBytes,
-                "empty media duration string"
-            ));
+            return Err(an_err!(DtErrKind::Empty));
         }
 
         // Optional single leading minus
         let negative = if bytes[pos] == b'-' {
             pos += 1;
             if pos == len {
-                return Err(an_err!(DtErrKind::InvalidBytes, "invalid media duration"));
+                return Err(an_err!(DtErrKind::InvalidInput));
             }
             true
         } else {
@@ -663,10 +703,7 @@ impl Dt {
 
             // Parse one number
             if pos >= len || !bytes[pos].is_ascii_digit() {
-                return Err(an_err!(
-                    DtErrKind::InvalidNumber,
-                    "expected digit in media duration component"
-                ));
+                return Err(an_err!(DtErrKind::ExpectedValue));
             }
 
             let mut value: i128 = 0;
@@ -689,18 +726,12 @@ impl Dt {
 
             // Reject trailing ':' with no number after it
             if pos >= len || !bytes[pos].is_ascii_digit() {
-                return Err(an_err!(
-                    DtErrKind::InvalidBytes,
-                    "expected number after ':' in media duration"
-                ));
+                return Err(an_err!(DtErrKind::ExpectedValue));
             }
         }
 
         if !(2..=4).contains(&count) {
-            return Err(an_err!(
-                DtErrKind::InvalidBytes,
-                "media duration must contain 2 to 4 colon-separated components"
-            ));
+            return Err(an_err!(DtErrKind::InvalidSyntax));
         }
 
         // Skip trailing whitespace
@@ -709,10 +740,7 @@ impl Dt {
         }
 
         if pos != len {
-            return Err(an_err!(
-                DtErrKind::InvalidBytes,
-                "trailing characters in media duration string"
-            ));
+            return Err(an_err!(DtErrKind::TrailingCharacters));
         }
 
         // Convert to total seconds
