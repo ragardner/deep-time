@@ -1061,8 +1061,7 @@ impl FormatExtensions {
         default_flag: FormatFlag,
         mut inp: &'i [u8],
     ) -> Result<(u8, &'i [u8]), ()> {
-        // Strip leading whitespace. This only copies the fat pointer (ptr+len),
-        // never the underlying input bytes.
+        // Strip leading whitespace
         while inp.get(0).map_or(false, |b| b.is_ascii_whitespace()) {
             inp = &inp[1..];
         }
