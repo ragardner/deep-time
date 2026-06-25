@@ -1,8 +1,5 @@
 //! [`DtErrKind`] and main error type [`DtErr`].
-//!
-//! [`DtErr`] is a type alias to [`AnErr`] — a compact,
-//! zero-allocation error that supports chaining with
-//! source locations and short per-level reasons.
+//! [`DtErr`] is a type alias to [`AnErr`].
 
 use crate::AnErr;
 

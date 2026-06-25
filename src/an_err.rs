@@ -1,3 +1,71 @@
+//! `AnErr<K, const N: usize = 31>` is a `Copy` error type consisting of
+//! an error kind and a bounded human-readable reason string (`N` bytes).
+//! Additional context can be appended to the reason.
+//!
+//! ## Defining error kinds
+//!
+//! ```rust
+//! use deep_time::{AnErr, an_err};
+//!
+//! #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+//! #[repr(u8)]
+//! pub enum MyKind {
+//!     NotFound,
+//!     InvalidInput,
+//!     Timeout,
+//! }
+//!
+//! pub type MyError = AnErr<MyKind, 63>;
+//! ```
+//!
+//! ## Construction and context
+//!
+//! Use the [`an_err!`] macro to create errors and add context:
+//!
+//! ```rust
+//! use deep_time::{AnErr, an_err};
+//!
+//! #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+//! enum MyKind {
+//!     NotFound,
+//!     InvalidInput,
+//! }
+//!
+//! let err: AnErr<MyKind> = an_err!(MyKind::NotFound);
+//!
+//! let max = 100u32;
+//! let err: AnErr<MyKind> = an_err!(MyKind::InvalidInput, "expected value in range [0, {}]", max);
+//!
+//! let user_id = 42u64;
+//! let detailed: AnErr<MyKind> = an_err!("while processing user {}", user_id => err);
+//! ```
+//!
+//! The following methods are also available:
+//!
+//! - [`AnErr::new`]
+//! - [`AnErr::with_fmt`]
+//! - [`AnErr::with_reason`]
+//! - [`AnErr::context`]
+//! - [`AnErr::context_fmt`]
+//!
+//! When context is added, the new text is appended to the existing reason.
+//! The total length is silently truncated to `REASON_LEN` bytes if necessary.
+//!
+//! ## Display
+//!
+//! `AnErr` implements `Display` in the form `KindName` or `KindName: reason text`.
+//!
+//! ## Wire format (`wire` feature)
+//!
+//! With the `wire` feature enabled, the following methods become available:
+//!
+//! - [`AnErr::wire_size`]
+//! - [`AnErr::to_wire_bytes`]
+//! - [`AnErr::from_wire_bytes`]
+//!
+//! [`AnErr`]: AnErr
+//! [`an_err!`]: an_err
+
 use crate::LiteStr;
 use core::fmt;
 use core::fmt::Write;
@@ -11,8 +79,8 @@ use core::fmt::Write;
 /// The total is silently truncated to `REASON_LEN`
 /// bytes if necessary.
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[must_use = "this error should be handled or converted to a different type e.g. `pub type DtErr = AnErr<MyKind, 49>;`"]
-pub struct AnErr<K, const REASON_LEN: usize = 29>
+#[must_use = "this error should be handled or converted to a different type e.g. `pub type DtErr = AnErr<MyKind, 31>;`"]
+pub struct AnErr<K, const REASON_LEN: usize = 31>
 where
     K: Copy + Clone + core::fmt::Debug + PartialEq + Eq,
 {
