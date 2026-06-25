@@ -51,18 +51,18 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     }
 
     #[inline(always)]
-    fn advance_fmt_checked(&mut self) -> bool {
+    fn bump_fmt_checked(&mut self) -> bool {
         self.fmt = &self.fmt[1..];
         !self.fmt.is_empty()
     }
 
     #[inline(always)]
-    fn advance_fmt(&mut self) {
+    fn bump_fmt(&mut self) {
         self.fmt = &self.fmt[1..];
     }
 
     #[inline(always)]
-    fn advance_inp(&mut self) {
+    fn bump_inp(&mut self) {
         self.inp = &self.inp[1..];
     }
 
@@ -79,7 +79,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 self.parse_literal_character()?;
                 continue;
             }
-            if !self.advance_fmt_checked() {
+            if !self.bump_fmt_checked() {
                 return Err(an_err!(DtErrKind::TruncatedDirective));
             }
 
@@ -93,27 +93,27 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             match directive {
                 b'Y' => {
                     self.parse_full_year(ext)?;
-                    self.advance_fmt();
+                    self.bump_fmt();
                 }
                 b'm' => {
                     self.parse_month_number(ext)?;
-                    self.advance_fmt();
+                    self.bump_fmt();
                 }
                 b'd' | b'e' => {
                     self.parse_day_of_month(ext)?;
-                    self.advance_fmt();
+                    self.bump_fmt();
                 }
                 b'H' | b'k' => {
                     self.parse_hour24(ext)?;
-                    self.advance_fmt();
+                    self.bump_fmt();
                 }
                 b'M' => {
                     self.parse_minute(ext)?;
-                    self.advance_fmt();
+                    self.bump_fmt();
                 }
                 b'S' => {
                     self.parse_second(ext)?;
-                    self.advance_fmt();
+                    self.bump_fmt();
                 }
                 b'Q' => self.parse_iana_or_offset(ext.colons)?,
                 b'z' => self.parse_timezone_offset(ext.colons)?,
@@ -123,15 +123,15 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'b' | b'h' => self.parse_month_name_abbrev()?,
                 b'f' | b'N' => {
                     self.parse_fractional_seconds(ext.width)?;
-                    self.advance_fmt();
+                    self.bump_fmt();
                 }
                 b'I' | b'l' => self.parse_hour12(ext)?,
                 b'y' => {
                     self.parse_two_digit_year(ext)?;
-                    self.advance_fmt();
+                    self.bump_fmt();
                 }
                 b'.' => {
-                    if !self.advance_fmt_checked() {
+                    if !self.bump_fmt_checked() {
                         return Err(an_err!(DtErrKind::ExpectedFractional));
                     }
 
@@ -139,7 +139,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                     {
                         let start = self.fmt;
                         while !self.fmt.is_empty() && self.current_fmt_byte().is_ascii_digit() {
-                            self.advance_fmt();
+                            self.bump_fmt();
                         }
                         core::str::from_utf8(&start[..start.len() - self.fmt.len()])
                             .ok()
@@ -152,7 +152,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                     if !matches!(next, b'f' | b'N') {
                         return Err(an_err!(DtErrKind::InvalidFractional));
                     }
-                    self.advance_fmt();
+                    self.bump_fmt();
 
                     self.parse_optional_dot_fractional(width)?;
                 }
@@ -212,16 +212,16 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 ));
             }
 
-            self.advance_inp();
+            self.bump_inp();
         }
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
     #[inline(always)]
     fn skip_whitespace(&mut self) {
         self.inp = self.inp.trim_ascii_start();
-        self.advance_fmt();
+        self.bump_fmt();
     }
 
     #[inline(always)]
@@ -235,8 +235,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 char::from(self.current_inp_byte())
             ));
         } else {
-            self.advance_inp();
-            self.advance_fmt();
+            self.bump_inp();
+            self.bump_fmt();
         }
         Ok(())
     }
@@ -246,7 +246,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         // dot is optional in the input for %.f
         // (also supports explicit literal dot before %.f, e.g. %S.%.f)
         if !self.inp.is_empty() && self.current_inp_byte() == b'.' {
-            self.advance_inp();
+            self.bump_inp();
         }
         self.parse_fractional_seconds(width)?;
         Ok(())
@@ -254,8 +254,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_full_year(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
-        let (y, _sign, remaining) = match ext.parse_number(4, FormatFlag::PadZero, self.inp, false)
-        {
+        let (y, _sign, remaining) = match ext.parse_i64(4, FormatFlag::PadZero, self.inp, false) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
@@ -268,13 +267,13 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_unbounded_year(&mut self) -> Result<(), DtErr> {
         // %* is special (arbitrary width year), use FormatExtensions for number parse
         let ext = FormatExtensions::default();
-        let (y, _sign, remaining) = match ext.parse_number(0, FormatFlag::PadZero, self.inp, true) {
+        let (y, _sign, remaining) = match ext.parse_i64(0, FormatFlag::PadZero, self.inp, true) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
         self.inp = remaining;
         self.tm.yr = Some(y);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -296,27 +295,25 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_century(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
-        let (c, _sign, remaining) = match ext.parse_number(2, FormatFlag::PadSpace, self.inp, false)
-        {
+        let (c, _sign, remaining) = match ext.parse_i64(2, FormatFlag::PadSpace, self.inp, false) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedCentury)),
         };
         self.inp = remaining;
         self.tm.yr = Some(c * 100);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
     #[inline(always)]
     fn parse_iso_week_year(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
-        let (y, _sign, remaining) = match ext.parse_number(4, FormatFlag::PadZero, self.inp, false)
-        {
+        let (y, _sign, remaining) = match ext.parse_i64(4, FormatFlag::PadZero, self.inp, false) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
         self.inp = remaining;
         self.tm.iso_wk_yr = Some(y);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -335,7 +332,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             1900i64 + (y as i64)
         };
         self.tm.iso_wk_yr = Some(year);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -369,8 +366,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_day_of_year(&mut self, ext: FormatExtensions) -> Result<(), DtErr> {
-        let (n, _sign, remaining) = match ext.parse_number(3, FormatFlag::PadZero, self.inp, false)
-        {
+        let (n, _sign, remaining) = match ext.parse_i64(3, FormatFlag::PadZero, self.inp, false) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedDayOfYear)),
         };
@@ -380,7 +376,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             return Err(an_err!(DtErrKind::DayOfYearOutOfRange));
         }
         self.tm.day_of_yr = Some(day);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -409,7 +405,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             return Err(an_err!(DtErrKind::HourOutOfRange));
         }
         self.tm.hr = h;
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -446,7 +442,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         // Make %f, %N, %3N, %6N, etc. also accept an optional leading '.'
         // (symmetric with the %.f case handled in parse_optional_dot_fractional)
         if !self.inp.is_empty() && self.current_inp_byte() == b'.' {
-            self.advance_inp();
+            self.bump_inp();
         }
         let max_digits = width.map(|w| w as usize).unwrap_or(usize::MAX);
 
@@ -460,7 +456,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 let d = (self.current_inp_byte() - b'0') as u64;
                 frac = frac * 10 + d;
             }
-            self.advance_inp();
+            self.bump_inp();
             digits_read += 1;
         }
         if digits_read == 0 {
@@ -479,7 +475,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     #[inline(always)]
     fn parse_timestamp_sec(&mut self, ext: FormatExtensions, epoch: Epoch) -> Result<(), DtErr> {
         let (sec_val, sign, remaining) =
-            match ext.parse_number(19, FormatFlag::PadSpace, self.inp, false) {
+            match ext.parse_i64(19, FormatFlag::PadSpace, self.inp, false) {
                 Ok(v) => v,
                 Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp)),
             };
@@ -498,7 +494,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         {
             // Only consume the dot if it's followed by at least one digit
 
-            self.advance_inp(); // eat '.'
+            self.bump_inp(); // eat '.'
 
             let mut frac: u64 = 0;
             let mut digits_read: usize = 0;
@@ -509,7 +505,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             {
                 let d = (self.current_inp_byte() - b'0') as u64;
                 frac = frac * 10 + d;
-                self.advance_inp();
+                self.bump_inp();
                 digits_read += 1;
             }
 
@@ -535,7 +531,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             epoch,
         };
         self.tm.timestamp = Some(ts);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -569,7 +565,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = &self.inp[3..];
         self.tm.mo = Some(index + 1);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -581,7 +577,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = remaining;
         self.tm.mo = Some(index + 1);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -613,7 +609,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Weekday::from_sunday_0_based(index)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidWeekdayName))?,
         );
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -628,7 +624,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             Weekday::from_sunday_0_based(index)
                 .ok_or_else(|| an_err!(DtErrKind::InvalidWeekdayName))?,
         );
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -644,7 +640,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let wd = Weekday::from_monday_1_based(w)
             .ok_or_else(|| an_err!(DtErrKind::MonWeekdayOutOfRange))?;
         self.tm.wkday = Some(wd);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -660,7 +656,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let wd = Weekday::from_sunday_0_based(w)
             .ok_or_else(|| an_err!(DtErrKind::SunWeekdayOutOfRange))?;
         self.tm.wkday = Some(wd);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -681,7 +677,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             self.tm.hr = 12;
         }
         self.inp = &self.inp[2..];
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -695,7 +691,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = remaining;
         self.tm.wk_sun = Some(w);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -709,7 +705,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         };
         self.inp = remaining;
         self.tm.wk_mon = Some(w);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -724,7 +720,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             return Err(an_err!(DtErrKind::IsoWeekOutOfRange));
         }
         self.tm.iso_wk = Some(w);
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -737,7 +733,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 return Err(an_err!(DtErrKind::MustStartWith));
             }
         };
-        self.advance_inp();
+        self.bump_inp();
 
         let mut total_seconds = self.parse_offset_hours()? * 3600;
 
@@ -762,7 +758,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             1..=3 => {
                 let minutes_required = colons != 3;
                 if self.inp.first() == Some(&b':') {
-                    self.advance_inp();
+                    self.bump_inp();
                     let minutes = match self.parse_offset_mm_ss() {
                         Ok(m) => m,
                         Err(_) => {
@@ -771,7 +767,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                     };
                     total_seconds += minutes * 60;
                     if self.inp.first() == Some(&b':') {
-                        self.advance_inp();
+                        self.bump_inp();
                         let seconds = match self.parse_offset_mm_ss() {
                             Ok(s) => s,
                             Err(_) => {
@@ -796,7 +792,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
         // Store the fixed offset (in seconds) in our core TimeZone type.
         self.tm.offset = Some(Offset::Fixed(sign * total_seconds));
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -806,7 +802,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let mut digits = 0;
         while digits < 2 && !self.inp.is_empty() && self.current_inp_byte().is_ascii_digit() {
             n = n * 10 + (self.current_inp_byte() - b'0') as i32;
-            self.advance_inp();
+            self.bump_inp();
             digits += 1;
         }
         if digits == 0 {
@@ -864,7 +860,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.tm.set_iana_name(Some(name_to_use));
         self.tm.offset = Some(Offset::None);
         self.inp = remaining;
-        self.advance_fmt();
+        self.bump_fmt();
         Ok(())
     }
 
@@ -881,7 +877,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let abbrev =
             core::str::from_utf8(&start[..pos]).map_err(|_| an_err!(DtErrKind::InvalidScale))?;
         self.inp = &start[pos..];
-        self.advance_fmt();
+        self.bump_fmt();
         if let Some(ct) = Scale::from_abbrev(abbrev) {
             self.tm.scale = ct;
             Ok(())
@@ -897,7 +893,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.parse_month_number(FormatExtensions::default())?;
         self.parse_literal_character_byte(b'-')?;
         self.parse_day_of_month(FormatExtensions::default())?;
-        self.advance_fmt(); // eat %F
+        self.bump_fmt(); // eat %F
         Ok(())
     }
 
@@ -908,7 +904,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.parse_day_of_month(FormatExtensions::default())?;
         self.parse_literal_character_byte(b'/')?;
         self.parse_two_digit_year(FormatExtensions::default())?;
-        self.advance_fmt(); // eat %D
+        self.bump_fmt(); // eat %D
         Ok(())
     }
 
@@ -919,7 +915,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.parse_minute(FormatExtensions::default())?;
         self.parse_literal_character_byte(b':')?;
         self.parse_second(FormatExtensions::default())?;
-        self.advance_fmt(); // eat %T
+        self.bump_fmt(); // eat %T
         Ok(())
     }
 
@@ -928,7 +924,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.parse_hour24(FormatExtensions::default())?;
         self.parse_literal_character_byte(b':')?;
         self.parse_minute(FormatExtensions::default())?;
-        self.advance_fmt(); // eat %R
+        self.bump_fmt(); // eat %R
         Ok(())
     }
 
@@ -941,7 +937,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 expected,
             ));
         }
-        self.advance_inp();
+        self.bump_inp();
         Ok(())
     }
 
@@ -1099,7 +1095,7 @@ impl FormatExtensions {
     }
 
     #[inline(always)]
-    fn parse_number<'i>(
+    fn parse_i64<'i>(
         &self,
         default_pad_width: usize,
         default_flag: FormatFlag,
