@@ -49,7 +49,7 @@ impl Parts {
                 return Err(an_err!(DtErrKind::IsoWeekOutOfRange));
             }
             if iso_w == 53 && !Dt::has_iso_wk_53(iso_y) {
-                return Err(an_err!(DtErrKind::InvalidItem, "iso week"));
+                return Err(an_err!(DtErrKind::InvalidIsoWeek));
             }
             let wd = self.wkday.unwrap_or(Weekday::Monday);
             jd = Some(Dt::iso_wk_to_jd(iso_y, iso_w, wd));

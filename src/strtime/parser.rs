@@ -198,22 +198,26 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_literal_character(&mut self) -> Result<(), DtErr> {
         let c = self.current_fmt_byte();
         if c.is_ascii_whitespace() {
-            while self.inp.get(0).is_some_and(|b| b.is_ascii_whitespace()) {
-                self.inp = &self.inp[1..];
+            let mut inp = self.inp;
+            while let Some((&b, rest)) = inp.split_first() {
+                if !b.is_ascii_whitespace() {
+                    break;
+                }
+                inp = rest;
             }
-        } else {
-            if self.inp.is_empty() {
-                return Err(an_err!(DtErrKind::UnexpectedEnd));
-            } else if self.current_inp_byte() != c {
+            self.inp = inp;
+        } else if let Some((&b, rest)) = self.inp.split_first() {
+            if b != c {
                 return Err(an_err!(
                     DtErrKind::MismatchedLiteral,
                     "{} got: {}",
                     char::from(c),
-                    char::from(self.current_inp_byte())
+                    char::from(b)
                 ));
             }
-
-            self.bump_inp();
+            self.inp = rest;
+        } else {
+            return Err(an_err!(DtErrKind::UnexpectedEnd));
         }
         self.bump_fmt();
         Ok(())

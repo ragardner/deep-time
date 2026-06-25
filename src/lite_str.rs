@@ -54,7 +54,7 @@ impl<const N: usize> LiteStr<N> {
     ///   sequence (everything after the first error is discarded).
     ///
     /// This method is infallible and never allocates.
-    #[inline(always)]
+    #[inline]
     pub fn as_str(&self) -> &str {
         let end = find_first_nul(&self.bytes);
         let slice = &self.bytes[..end];

@@ -70,10 +70,10 @@ impl Dt {
         let mut tt = tdb.sub(Dt::span(linear_span)).sub(Dt::span(TDB0_ATTOS));
 
         // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
-        let mut i = 0u32;
+        let mut i = 0u8;
         while i < 8 {
             let p = Self::tdb_minus_tt(tt.to_sec_f());
-            let new_tt = tdb.sub(Dt::from_sec_f(p, Scale::TAI));
+            let new_tt = tdb.sub(Dt::span_f(p));
 
             // Early exit when change is smaller than ~1 atto-second
             let delta = new_tt.to_diff_raw(tt);
