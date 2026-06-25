@@ -1,5 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
+#[cfg(feature = "physics")]
 mod proper_time_tests {
     use deep_time::{Dt, Scale, Spacetime};
 

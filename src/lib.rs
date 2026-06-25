@@ -68,6 +68,8 @@ macro_rules! byte_arrays {
 // _________________________________________
 #[cfg(feature = "parse")]
 mod alloc_parse;
+#[cfg(feature = "physics")]
+mod physics;
 
 // _________________________________________
 // MOD
@@ -75,7 +77,6 @@ mod alloc_parse;
 mod dt;
 mod lite_str;
 mod locale;
-mod physics;
 mod scale;
 mod strtime;
 mod time_range;
@@ -143,6 +144,11 @@ pub use dt::mars;
 #[cfg(feature = "sidereal")]
 pub use sidereal::Sidereal;
 
+#[cfg(feature = "physics")]
+pub use physics::{
+    drift::Drift, observer::Observer, position::Position, spacetime::Spacetime, velocity::Velocity,
+};
+
 // _________________________________________
 // PUB USE
 // _________________________________________
@@ -153,11 +159,6 @@ pub use dt::numbers_traits::{AttosTraits, TimeTraits};
 pub use error::{DtErr, DtErrKind};
 pub use lite_str::LiteStr;
 pub use locale::Lang;
-pub use physics::drift::Drift;
-pub use physics::observer::Observer;
-pub use physics::position::Position;
-pub use physics::spacetime::Spacetime;
-pub use physics::velocity::Velocity;
 pub use scale::Scale;
 pub use strtime::StrPTimeFmt;
 pub use time_range::{Every, TimeRange};

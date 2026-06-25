@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Drift, Dt, Scale};
+use deep_time::{Dt, Scale};
 
 #[test]
 fn test_ymd_to_jd() {
@@ -169,8 +169,11 @@ fn tdb_correction_stays_within_bounds() {
     }
 }
 
+#[cfg(feature = "physics")]
 #[test]
 fn proper_to_tt_with_drift_roundtrip() {
+    use deep_time::Drift;
+
     let epoch = Dt::from_sec(0, Scale::TAI);
     let drift = Drift::new(
         Dt::from_ms(100, Scale::TAI), // exactly 0.1 s

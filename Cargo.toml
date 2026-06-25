@@ -34,6 +34,7 @@ default = []
 panic-handler = []
 wire = []
 
+physics = []
 mars = []
 sidereal = []
 sidereal-earth = ["sidereal"]
@@ -161,6 +162,7 @@ locale = [
 
 perf-tests = ["parse", "jiff-tz", "hifitime"]
 eop-tests = ["eop", "std"]
+# cargo test --release --features "physics mars parse hifitime chrono std wire eop-tests lang sidereal-earth jiff-tz" -- --nocapture
 
 [lints.clippy]
 # cargo clippy --all-features --all-targets -- -D warnings
@@ -170,6 +172,7 @@ excessive_precision            = "allow"
 indexing_slicing               = "allow"
 too_many_arguments             = "allow"
 result_unit_err                = "allow"
+get_first                      = "allow"
 unwrap_used                    = "deny"
 expect_used                    = "deny"
 panic                          = "deny"

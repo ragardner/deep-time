@@ -1,5 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
+#[cfg(feature = "physics")]
 mod unified_vs_gr_tests {
     use deep_time::{Drift, Real, Spacetime, constants::C_SQUARED, f, math::sqrt};
 

@@ -68,7 +68,6 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-
     ///
     /// ## Errors
     ///
@@ -93,7 +92,6 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-
     ///
     /// ## Errors
     ///
@@ -118,7 +116,6 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-
     ///
     /// ## Errors
     ///
@@ -143,7 +140,6 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-
     ///
     /// ## Errors
     ///
@@ -168,7 +164,6 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-
     ///
     /// ## Errors
     ///
@@ -193,7 +188,6 @@ impl Dt {
     /// - Requires the `jiff-tz` feature.
     /// - Assumes this [`Dt`] is counting seconds from the library's
     ///   `2000-01-01 12:00:00` epoch.
-
     ///
     /// ## Errors
     ///

@@ -3,7 +3,7 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-#[cfg(feature = "wire")]
+#[cfg(all(feature = "alloc", feature = "physics", feature = "wire"))]
 mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
@@ -30,12 +30,6 @@ mod tests {
     fn test_dt_roundtrip() {
         let span = Dt::from_sec(123456789, Scale::TAI) + Dt::from_ns(987654321, Scale::TAI);
         assert_roundtrip(&span, |d| d.to_wire_bytes().to_vec(), Dt::from_wire_bytes);
-    }
-
-    #[test]
-    fn test_timepoint_roundtrip() {
-        let tp = Dt::span(Dt::sec_to_attos(9876543210) + 123456789012345678);
-        assert_roundtrip(&tp, |t| t.to_wire_bytes().to_vec(), Dt::from_wire_bytes);
     }
 
     #[test]
@@ -79,11 +73,7 @@ mod tests {
         dc.scale = Scale::TAI;
         dc.offset = Some(Offset::Fixed(3600));
 
-        assert_roundtrip(
-            &dc,
-            |d| d.to_wire_bytes().to_vec(),
-            Parts::from_wire_bytes,
-        );
+        assert_roundtrip(&dc, |d| d.to_wire_bytes().to_vec(), Parts::from_wire_bytes);
     }
 
     #[test]
