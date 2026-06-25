@@ -669,8 +669,8 @@ impl Dt {
         let (offset_secs, abbrev): (i32, LiteStr<49>) = {
             use jiff::{Timestamp, tz::TimeZone};
 
-            let tz = TimeZone::get(tz_name)
-                .map_err(|e| an_err!(DtErrKind::InvalidTimezoneOffset, "{}", e))?;
+            let tz =
+                TimeZone::get(tz_name).map_err(|e| an_err!(DtErrKind::InvalidTimezone, "{}", e))?;
 
             let unix_sec = self.to_unix().to_sec64();
 

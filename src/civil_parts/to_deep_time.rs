@@ -122,8 +122,8 @@ impl Parts {
                     use crate::TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
                     use jiff::{Timestamp, tz::TimeZone};
 
-                    let tz = TimeZone::get(name_str)
-                        .map_err(|_| an_err!(DtErrKind::InvalidTimezoneOffset))?;
+                    let tz =
+                        TimeZone::get(name_str).map_err(|_| an_err!(DtErrKind::InvalidTimezone))?;
 
                     let provisional_unix =
                         total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);

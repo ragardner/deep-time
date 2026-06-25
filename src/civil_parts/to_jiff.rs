@@ -132,7 +132,7 @@ impl Parts {
             if let Ok(jiff_offset) = JiffOffset::from_seconds(secs) {
                 bdt.set_offset(Some(jiff_offset));
             } else {
-                return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "{}", secs));
+                return Err(an_err!(DtErrKind::InvalidOffset, "{}", secs));
             }
         } else {
             // Utc / None → treat as UTC

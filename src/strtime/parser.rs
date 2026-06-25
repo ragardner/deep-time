@@ -178,6 +178,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
                 b'J' => self.parse_timestamp_sec(ext, Epoch::Noon2000)?,
                 b'*' => self.parse_unbounded_year()?,
                 b'L' => self.parse_scale()?,
+                // Unsupported
                 b'c' | b'r' | b'X' | b'x' | b'Z' => {
                     return Err(an_err!(
                         DtErrKind::UnsupportedItem,
@@ -729,9 +730,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         let sign = match self.inp.first() {
             Some(b'+') => 1i32,
             Some(b'-') => -1i32,
-            _ => {
-                return Err(an_err!(DtErrKind::MustStartWith));
-            }
+            _ => return Err(an_err!(DtErrKind::OffsetMissingSign)),
         };
         self.bump_inp();
 
@@ -757,40 +756,34 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             }
             1..=3 => {
                 let minutes_required = colons != 3;
+
                 if self.inp.first() == Some(&b':') {
                     self.bump_inp();
+
                     let minutes = match self.parse_offset_mm_ss() {
                         Ok(m) => m,
-                        Err(_) => {
-                            return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z minutes"));
-                        }
+                        Err(_) => return Err(an_err!(DtErrKind::InvalidOffsetMinute)),
                     };
                     total_seconds += minutes * 60;
+
                     if self.inp.first() == Some(&b':') {
                         self.bump_inp();
+
                         let seconds = match self.parse_offset_mm_ss() {
                             Ok(s) => s,
-                            Err(_) => {
-                                return Err(an_err!(
-                                    DtErrKind::InvalidTimezoneOffset,
-                                    "%z seconds",
-                                ));
-                            }
+                            Err(_) => return Err(an_err!(DtErrKind::InvalidOffsetSecond)),
                         };
                         total_seconds += seconds;
                     } else if colons == 2 {
-                        return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z num colons"));
+                        return Err(an_err!(DtErrKind::InvalidOffsetColons));
                     }
                 } else if minutes_required {
-                    return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z num colons"));
+                    return Err(an_err!(DtErrKind::InvalidOffsetColons));
                 }
             }
-            _ => {
-                return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z num colons"));
-            }
+            _ => return Err(an_err!(DtErrKind::InvalidOffsetColons)),
         }
 
-        // Store the fixed offset (in seconds) in our core TimeZone type.
         self.tm.offset = Some(Offset::Fixed(sign * total_seconds));
         self.bump_fmt();
         Ok(())
@@ -800,41 +793,37 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_offset_hours(&mut self) -> Result<i32, DtErr> {
         let mut n = 0i32;
         let mut digits = 0;
+
         while digits < 2 && !self.inp.is_empty() && self.current_inp_byte().is_ascii_digit() {
             n = n * 10 + (self.current_inp_byte() - b'0') as i32;
             self.bump_inp();
             digits += 1;
         }
-        if digits == 0 {
-            return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z hour"));
+
+        if digits == 0 || n > 23 {
+            return Err(an_err!(DtErrKind::InvalidOffsetHour));
         }
-        if n > 23 {
-            return Err(an_err!(
-                DtErrKind::InvalidTimezoneOffset,
-                "hr !0..=23: {}",
-                n
-            ));
-        }
+
         Ok(n)
     }
 
+    #[inline(always)]
     fn parse_offset_mm_ss(&mut self) -> Result<i32, DtErr> {
         if self.inp.len() < 2 {
-            return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z mins or secs"));
+            return Err(an_err!(DtErrKind::InvalidOffsetMinute));
         }
 
         let a = self.inp[0];
         let b = self.inp[1];
 
-        // Must be two ASCII digits
         if !a.is_ascii_digit() || !b.is_ascii_digit() {
-            return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z mins or secs"));
+            return Err(an_err!(DtErrKind::InvalidOffsetMinute));
         }
 
         let n = ((a - b'0') as i32) * 10 + (b - b'0') as i32;
 
         if !(0..=59).contains(&n) {
-            return Err(an_err!(DtErrKind::InvalidTimezoneOffset, "%z mins or secs"));
+            return Err(an_err!(DtErrKind::InvalidOffsetMinute));
         }
 
         self.inp = &self.inp[2..];
@@ -846,22 +835,54 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if !self.inp.is_empty() && matches!(self.current_inp_byte(), b'+' | b'-') {
             return self.parse_timezone_offset(colons);
         }
+
         let (iana_str, remaining) = match Self::parse_iana(self.inp) {
             Ok(v) => v,
-            Err(_) => {
-                return Err(an_err!(DtErrKind::InvalidTimezoneOffset));
-            }
+            Err(_) => return Err(an_err!(DtErrKind::InvalidTimezone)),
         };
+
         let name_to_use = if iana_str.len() > 50 {
             &iana_str[0..50]
         } else {
             iana_str
         };
+
         self.tm.set_iana_name(Some(name_to_use));
         self.tm.offset = Some(Offset::None);
         self.inp = remaining;
         self.bump_fmt();
         Ok(())
+    }
+
+    #[inline(always)]
+    fn parse_iana(inp: &[u8]) -> Result<(&str, &[u8]), ()> {
+        let start = inp;
+        let mut pos = 0;
+
+        if pos >= inp.len() || !matches!(inp[pos], b'_' | b'.' | b'A'..=b'Z' | b'a'..=b'z') {
+            return Err(());
+        }
+        pos += 1;
+
+        while pos < inp.len() {
+            if matches!(
+                inp[pos],
+                b'_' | b'.' | b'+' | b'-' | b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z'
+            ) {
+                pos += 1;
+            } else if inp[pos] == b'/' {
+                pos += 1;
+                if pos >= inp.len() || !matches!(inp[pos], b'_' | b'.' | b'A'..=b'Z' | b'a'..=b'z')
+                {
+                    return Err(());
+                }
+                pos += 1;
+            } else {
+                break;
+            }
+        }
+        let iana = core::str::from_utf8(&start[..pos]).map_err(|_| ())?;
+        Ok((iana, &start[pos..]))
     }
 
     #[inline(always)]
@@ -933,8 +954,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if self.inp.is_empty() || self.current_inp_byte() != expected {
             return Err(an_err!(
                 DtErrKind::MismatchedLiteral,
-                "expected literal: {}",
-                expected,
+                "expected: {}",
+                expected
             ));
         }
         self.bump_inp();
@@ -959,13 +980,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if f != FormatFlag::None {
             flag = f;
             self.fmt = &self.fmt[1..];
-            if self.fmt.is_empty() {
-                return FormatExtensions {
-                    flag,
-                    width: None,
-                    colons: 0,
-                };
-            }
         }
 
         // Width
@@ -1016,37 +1030,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         }
         Err(())
     }
-
-    #[inline(always)]
-    fn parse_iana(inp: &[u8]) -> Result<(&str, &[u8]), ()> {
-        let start = inp;
-        let mut pos = 0;
-
-        if pos >= inp.len() || !matches!(inp[pos], b'_' | b'.' | b'A'..=b'Z' | b'a'..=b'z') {
-            return Err(());
-        }
-        pos += 1;
-
-        while pos < inp.len() {
-            if matches!(
-                inp[pos],
-                b'_' | b'.' | b'+' | b'-' | b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z'
-            ) {
-                pos += 1;
-            } else if inp[pos] == b'/' {
-                pos += 1;
-                if pos >= inp.len() || !matches!(inp[pos], b'_' | b'.' | b'A'..=b'Z' | b'a'..=b'z')
-                {
-                    return Err(());
-                }
-                pos += 1;
-            } else {
-                break;
-            }
-        }
-        let iana = core::str::from_utf8(&start[..pos]).map_err(|_| ())?;
-        Ok((iana, &start[pos..]))
-    }
 }
 
 impl FormatExtensions {
@@ -1067,10 +1050,9 @@ impl FormatExtensions {
         } else {
             match self.flag.resolve(default_flag) {
                 FormatFlag::PadSpace | FormatFlag::NoPad => default_pad_width,
-                _ => self.width.map_or(default_pad_width, usize::from),
+                _ => self.width.map_or(default_pad_width, usize::from).min(3),
             }
-        }
-        .min(3);
+        };
 
         let mut consumed = 0usize;
         let mut acc: u8 = 0;
@@ -1117,11 +1099,10 @@ impl FormatExtensions {
         let max_digits = if arbitrary {
             19
         } else {
-            let zero_pad_width = match self.flag.resolve(default_flag) {
-                FormatFlag::PadSpace | FormatFlag::NoPad => 0,
-                _ => self.width.map_or(0, usize::from),
-            };
-            zero_pad_width.max(default_pad_width)
+            match self.flag.resolve(default_flag) {
+                FormatFlag::PadSpace | FormatFlag::NoPad => default_pad_width,
+                _ => self.width.map_or(0, usize::from).max(default_pad_width),
+            }
         };
 
         let mut consumed = 0usize;

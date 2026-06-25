@@ -140,11 +140,20 @@ impl Parts {
     ///   did not match the input.
     /// - Name errors: [`DtErrKind::InvalidMonthName`], [`DtErrKind::InvalidWeekdayName`],
     ///   [`DtErrKind::InvalidMeridiem`].
-    /// - [`DtErrKind::InvalidTimezoneOffset`] — Invalid or malformed timezone offset
-    ///   or IANA timezone name.
-    /// - [`DtErrKind::MustStartWith`] — A timezone offset did not start with `+` or `-`.
-    /// - [`DtErrKind::InvalidScale`] — An invalid time scale abbreviation was provided
-    ///   after `%L`.
+    ///
+    /// ### Timezone and Offset errors
+    ///
+    /// - [`DtErrKind::OffsetMissingSign`] — A timezone offset (`%z` / `%Q`) did not
+    ///   start with `+` or `-`.
+    /// - [`DtErrKind::InvalidOffsetHour`] — Invalid hour value in a timezone offset.
+    /// - [`DtErrKind::InvalidOffsetMinute`] — Invalid minute value in a timezone offset.
+    /// - [`DtErrKind::InvalidOffsetSecond`] — Invalid second value in a timezone offset.
+    /// - [`DtErrKind::InvalidOffsetColons`] — Incorrect number of colons or missing
+    ///   required colon in a timezone offset.
+    /// - [`DtErrKind::InvalidOffset`] — General failure while parsing a numeric
+    ///   timezone offset.
+    /// - [`DtErrKind::InvalidTimezone`] — Invalid or unparseable IANA timezone name
+    ///   (used by the `%Q` directive).
     ///
     /// ### Post-processing / validation errors
     ///

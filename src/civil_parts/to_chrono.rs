@@ -117,9 +117,10 @@ impl Parts {
     fn to_chrono_offset(&self) -> Result<FixedOffset, DtErr> {
         match self.offset {
             Some(Offset::Fixed(secs)) => FixedOffset::east_opt(secs)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "{}", secs)),
-            Some(Offset::None) | None => FixedOffset::east_opt(0)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "0")),
+                .ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "{}", secs)),
+            Some(Offset::None) | None => {
+                FixedOffset::east_opt(0).ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "0"))
+            }
         }
     }
 
@@ -132,8 +133,8 @@ impl Parts {
         // Always UTC. Completely ignores offset + iana_name.
         // ============================================================
         if self.timestamp.is_some() {
-            let offset = FixedOffset::east_opt(0)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset))?;
+            let offset =
+                FixedOffset::east_opt(0).ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "0"))?;
             let dt = self.to_dt()?.to_chrono_datetime_utc();
             return Ok(dt.with_timezone(&offset));
         }
@@ -152,7 +153,7 @@ impl Parts {
                     use jiff::{Timestamp, tz::TimeZone};
 
                     let tz = TimeZone::get(name_str)
-                        .map_err(|e| an_err!(DtErrKind::InvalidTimezoneOffset, "{}", e))?;
+                        .map_err(|e| an_err!(DtErrKind::InvalidTimezone, "{}", e))?;
 
                     let provisional_unix =
                         DateTime::<chrono::Utc>::from_naive_utc_and_offset(naive, chrono::Utc)
@@ -190,14 +191,13 @@ impl Parts {
                     );
 
                     let offset_secs = zoned.offset().seconds();
-                    let offset = FixedOffset::east_opt(offset_secs).ok_or_else(|| {
-                        an_err!(DtErrKind::InvalidTimezoneOffset, "{}", offset_secs)
-                    })?;
+                    let offset = FixedOffset::east_opt(offset_secs)
+                        .ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "{}", offset_secs))?;
 
                     return offset
                         .from_local_datetime(&resolved_naive)
                         .single()
-                        .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset));
+                        .ok_or_else(|| an_err!(DtErrKind::InvalidTime, "fold/gap"));
                 }
 
                 #[cfg(not(feature = "jiff-tz"))]
@@ -207,11 +207,12 @@ impl Parts {
                     if UTC_ALIASES.contains(&name_str) {
                         // UTC alias — explicitly return +00:00
                         let offset = FixedOffset::east_opt(0)
-                            .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "0"))?;
+                            .ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "0"))?;
 
-                        return offset.from_local_datetime(&naive).single().ok_or_else(|| {
-                            an_err!(DtErrKind::InvalidTimezoneOffset, "{}", name_str)
-                        });
+                        return offset
+                            .from_local_datetime(&naive)
+                            .single()
+                            .ok_or_else(|| an_err!(DtErrKind::InvalidTime, "fold/gap"));
                     } else {
                         return Err(an_err!(DtErrKind::MissingFeature));
                     }
@@ -224,7 +225,7 @@ impl Parts {
         offset
             .from_local_datetime(&naive)
             .single()
-            .ok_or_else(|| an_err!(DtErrKind::InvalidTimezoneOffset, "{:?}", offset))
+            .ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "{:?}", offset))
     }
 
     /// Converts [`Parts`] → [`i64`].
