@@ -811,7 +811,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if n > 23 {
             return Err(an_err!(
                 DtErrKind::InvalidTimezoneOffset,
-                "%z hour (0..=23): {}",
+                "hr !0..=23: {}",
                 n
             ));
         }
