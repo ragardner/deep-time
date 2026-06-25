@@ -464,10 +464,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             digits_read += 1;
         }
         if digits_read == 0 {
-            return Err(an_err!(
-                DtErrKind::ExpectedFractional,
-                "%f or %N frac seconds"
-            ));
+            return Err(an_err!(DtErrKind::ExpectedFractional));
         }
         let attos = if digits_read >= ATTOS_DIGITS {
             frac
@@ -1069,9 +1066,6 @@ impl FormatExtensions {
         while inp.get(0).map_or(false, |b| b.is_ascii_whitespace()) {
             inp = &inp[1..];
         }
-        if inp.is_empty() {
-            return Err(());
-        }
 
         let max_d = if self.flag == FormatFlag::None && self.width.is_none() {
             default_pad_width
@@ -1098,6 +1092,10 @@ impl FormatExtensions {
             consumed += 1;
         }
 
+        if consumed == 0 {
+            return Err(());
+        }
+
         Ok((acc, &inp[consumed..]))
     }
 
@@ -1113,19 +1111,13 @@ impl FormatExtensions {
         while inp.get(0).map_or(false, |b| b.is_ascii_whitespace()) {
             inp = &inp[1..];
         }
-        if inp.is_empty() {
-            return Err(());
-        }
 
         let (sign, inp) = match inp.first() {
             Some(b'-') => (Sign::Negative, &inp[1..]),
             Some(b'+') => (Sign::Positive, &inp[1..]),
+            None => return Err(()),
             _ => (Sign::Positive, inp),
         };
-
-        if inp.is_empty() || !inp[0].is_ascii_digit() {
-            return Err(());
-        }
 
         let max_digits = if arbitrary {
             19
@@ -1158,12 +1150,14 @@ impl FormatExtensions {
             consumed += 1;
         }
 
-        let n = if sign == Sign::Negative {
-            acc.checked_neg().ok_or(())?
-        } else {
-            acc
-        };
+        if consumed == 0 {
+            return Err(());
+        }
 
-        Ok((n, sign, &inp[consumed..]))
+        if sign == Sign::Positive {
+            Ok((acc, sign, &inp[consumed..]))
+        } else {
+            Ok((acc.checked_neg().ok_or(())?, sign, &inp[consumed..]))
+        }
     }
 }
