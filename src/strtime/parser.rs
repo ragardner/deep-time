@@ -1085,22 +1085,22 @@ impl FormatExtensions {
 
         let len = inp.len();
         let mut consumed = 0usize;
-        let mut acc: u16 = 0;
+        let mut acc: u8 = 0;
 
         while consumed < max_d && consumed < len {
             let b = inp[consumed];
             if !b.is_ascii_digit() {
                 break;
             }
-            acc = acc * 10 + (b - b'0') as u16;
+            acc = acc
+                .checked_mul(10)
+                .and_then(|a| a.checked_add(b - b'0'))
+                .ok_or(())?;
+
             consumed += 1;
         }
 
-        if acc > 255 {
-            return Err(());
-        }
-
-        Ok((acc as u8, &inp[consumed..]))
+        Ok((acc, &inp[consumed..]))
     }
 
     #[inline(always)]
@@ -1111,8 +1111,7 @@ impl FormatExtensions {
         mut inp: &'i [u8],
         arbitrary: bool,
     ) -> Result<(i64, Sign, &'i [u8]), ()> {
-        // Strip leading whitespace. Copying `inp` here only copies the slice
-        // fat pointer (two words: data pointer + length), never the bytes.
+        // Strip leading whitespace
         while inp.get(0).map_or(false, |b| b.is_ascii_whitespace()) {
             inp = &inp[1..];
         }
@@ -1120,7 +1119,7 @@ impl FormatExtensions {
             return Err(());
         }
 
-        // Fast path: no format extensions and no sign prefix.
+        // Fast path: no sign, no format extensions, not arbitrary
         if self.flag == FormatFlag::None
             && self.width.is_none()
             && !arbitrary
@@ -1129,29 +1128,35 @@ impl FormatExtensions {
             if !inp[0].is_ascii_digit() {
                 return Err(());
             }
-            let max_digits = default_pad_width;
-            let mut consumed = 0usize;
-            let mut acc: u64 = 0;
 
-            // Skip leading zeros (we keep this to avoid mul/add on padding zeros)
-            while consumed < max_digits && consumed < inp.len() && inp[consumed] == b'0' {
+            let mut consumed = 0usize;
+            let mut acc: i64 = 0;
+
+            // Skip leading zeros
+            while consumed < default_pad_width && consumed < inp.len() && inp[consumed] == b'0' {
                 consumed += 1;
             }
 
             // Accumulate significant digits
-            while consumed < max_digits && consumed < inp.len() {
+            while consumed < default_pad_width && consumed < inp.len() {
                 let b = inp[consumed];
                 if !b.is_ascii_digit() {
                     break;
                 }
-                acc = acc * 10 + (b - b'0') as u64;
+                let digit = (b - b'0') as i64;
+
+                acc = acc
+                    .checked_mul(10)
+                    .and_then(|a| a.checked_add(digit))
+                    .ok_or(())?;
+
                 consumed += 1;
             }
 
-            return Ok((acc as i64, Sign::Positive, &inp[consumed..]));
+            return Ok((acc, Sign::Positive, &inp[consumed..]));
         }
 
-        // Handle optional sign
+        // Normal path with optional sign
         let (sign, inp) = match inp.first() {
             Some(b'-') => (Sign::Negative, &inp[1..]),
             Some(b'+') => (Sign::Positive, &inp[1..]),
@@ -1173,27 +1178,34 @@ impl FormatExtensions {
         };
 
         let mut consumed = 0usize;
-        let mut acc: u64 = 0;
+        let mut acc: i64 = 0; // always stores non-negative magnitude
 
-        // Skip leading zeros (we keep this to avoid mul/add on padding zeros)
+        // Skip leading zeros
         while consumed < max_digits && consumed < inp.len() && inp[consumed] == b'0' {
             consumed += 1;
         }
 
-        // Accumulate significant digits
+        // Accumulate significant digits (always positive)
         while consumed < max_digits && consumed < inp.len() {
             let b = inp[consumed];
             if !b.is_ascii_digit() {
                 break;
             }
-            acc = acc * 10 + (b - b'0') as u64;
+            let digit = (b - b'0') as i64;
+
+            acc = acc
+                .checked_mul(10)
+                .and_then(|a| a.checked_add(digit))
+                .ok_or(())?;
+
             consumed += 1;
         }
 
+        // Apply sign at the very end
         let n = if sign == Sign::Negative {
-            (acc as i64).wrapping_neg()
+            acc.checked_neg().ok_or(())?
         } else {
-            acc as i64
+            acc
         };
 
         Ok((n, sign, &inp[consumed..]))
