@@ -242,10 +242,6 @@ impl Dt {
     ///   - [`DtErrKind::InvalidTimezoneOffset`], [`DtErrKind::InvalidNumber`],
     ///     [`DtErrKind::InvalidBytes`].
     ///
-    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may appear
-    /// in the future. Use `match`` on the variants you care about and use a wildcard
-    /// arm for the rest.
-    ///
     /// The error kind is available via [`DtErr::kind()`].
     #[inline(always)]
     pub fn from_str(
@@ -400,10 +396,8 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns a [`DtErr`] if parsing fails. The concrete error kind is available via
-    /// [`DtErr::kind()`] (or by iterating [`DtErr::trace()`] if context was added higher
-    /// in the call stack). Because [`DtErrKind`] is `#[non_exhaustive]`, new variants
-    /// may appear in the future.
+    /// Returns a [`DtErr`] if parsing fails. The error kind is available via
+    /// [`DtErr::kind()`].
     ///
     /// ### Input / structure errors
     ///
@@ -642,9 +636,7 @@ impl Dt {
     /// ## Errors
     ///
     /// Returns a [`DtErr`] if the input cannot be parsed as a valid media-style
-    /// duration. The concrete error kind is available via [`DtErr::kind()`].
-    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may appear
-    /// in the future.
+    /// duration. The error kind is available via [`DtErr::kind`].
     ///
     /// This function uses saturating arithmetic, so it never returns range or
     /// overflow errors.

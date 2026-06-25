@@ -153,10 +153,6 @@ impl Parts {
     /// - [`DtErrKind::Incomplete`] — Required date components (month or day) were
     ///   missing and `allow_partial_date` was `false`.
     ///
-    /// Because [`DtErrKind`] is `#[non_exhaustive]`, additional variants may appear
-    /// in the future. Use `match`` on the variants you care about and use a wildcard
-    /// arm for the rest.
-    ///
     /// The error kind is available via [`DtErr::kind()`].
     pub fn from_str(
         fmt: &str,
