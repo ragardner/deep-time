@@ -97,7 +97,7 @@ pub trait TimeTraits: Copy + Sized {
     fn us(self) -> Dt;
     fn ms(self) -> Dt;
     fn sec(self) -> Dt;
-    fn min(self) -> Dt;
+    fn mins(self) -> Dt;
     fn hr(self) -> Dt;
     fn days(self) -> Dt; // 86400 s (civil day, not leap-second aware)
     fn wk(self) -> Dt;
@@ -125,7 +125,7 @@ macro_rules! impl_time_units_int {
                 fn sec(self) -> Dt { Dt::from_sec(self as i128, Scale::TAI) }
 
                 #[inline]
-                fn min(self) -> Dt { Dt::from_min(self as i64, Scale::TAI) }
+                fn mins(self) -> Dt { Dt::from_min(self as i64, Scale::TAI) }
 
                 #[inline]
                 fn hr(self) -> Dt { Dt::from_hr(self as i64, Scale::TAI) }
@@ -173,11 +173,11 @@ impl TimeTraits for f64 {
 
     #[inline]
     fn sec(self) -> Dt {
-        Dt::from_sec(self as i128, Scale::TAI)
+        Dt::span_f(self)
     }
 
     #[inline]
-    fn min(self) -> Dt {
+    fn mins(self) -> Dt {
         (self * 60.0).sec()
     }
 
@@ -230,11 +230,11 @@ impl TimeTraits for f32 {
 
     #[inline]
     fn sec(self) -> Dt {
-        Dt::from_sec(self as i128, Scale::TAI)
+        Dt::span_f(self as f64)
     }
 
     #[inline]
-    fn min(self) -> Dt {
+    fn mins(self) -> Dt {
         (self * 60.0f32).sec()
     }
 

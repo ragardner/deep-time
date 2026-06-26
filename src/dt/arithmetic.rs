@@ -523,14 +523,37 @@ impl Dt {
         Dt::new(result, self.scale, self.target)
     }
 
-    /// Returns the nearest multiple of `unit`.
+    /// ## Examples
     ///
-    /// Halfway cases round **away from zero** (e.g. `2.5 → 3.0`, `-2.5 → -3.0`),
-    /// matching the behavior of the old `f64::round()`.
+    /// ```rust
+    /// use deep_time::{Dt, TimeTraits};
     ///
-    /// - If `unit` is zero, returns `self` unchanged (preserves full precision).
-    /// - Uses Euclidean division internally for negative values.
-    /// - The result is always a multiple of `unit`.
+    /// // Round to nearest second
+    /// let dt = 1.3.sec();
+    /// assert_eq!(dt.round(1.sec()), 1.sec());
+    ///
+    /// let dt = 1.6.sec();
+    /// assert_eq!(dt.round(1.sec()), 2.sec());
+    ///
+    /// // Negative values
+    /// let dt = (-1.3).sec();
+    /// assert_eq!(dt.round(1.sec()), (-1).sec());
+    ///
+    /// // Halfway cases round *away from zero*
+    /// assert_eq!(0.5.sec().round(1.sec()), 1.sec());
+    /// assert_eq!((-0.5).sec().round(1.sec()), (-1).sec());
+    ///
+    /// assert_eq!(1.5.sec().round(1.sec()), 2.sec());
+    /// assert_eq!((-1.5).sec().round(1.sec()), (-2).sec());
+    ///
+    /// // Round to nearest minute
+    /// let dt = (1.mins() + 40.sec()).round(1.mins());
+    /// assert_eq!(dt, 2.mins());
+    ///
+    /// // Round to nearest hour
+    /// let dt = 1.6.hr().round(1.hr());
+    /// assert_eq!(dt, 2.hr());
+    /// ```
     pub const fn round(&self, unit: Dt) -> Dt {
         if unit.is_zero() {
             return *self;
