@@ -6,45 +6,44 @@ use core::fmt;
 /// Each [`Dt`] instance stores its internal time value on the scale indicated by
 /// its `scale` field.
 ///
-/// ## UTC and Leap Seconds
+/// The reference epoch used for conversions between scales is **2000-01-01 12:00:00 TAI**.
+///
+/// ## UTC Variants and Leap Seconds
 ///
 /// The library supports three UTC variants:
 ///
-/// - **`UTC`** — Modern UTC using the library’s built-in IERS leap second table.
-///   Basic functions for run-time loading of leap seconds tables also available.
+/// - **`UTC`** — Modern UTC using the built-in IERS leap second table (recommended for most uses).
+/// - **`UtcSpice`** — SPICE-compatible model with a fixed +9 s offset before 1972-01-01.
+/// - **`UtcHist`** — Historical SOFA model with piecewise linear offsets (“rubber seconds”) from 1961–1972.
+///   Round-tripping is **not supported** for this variant.
 ///
-/// - **`UtcSpice`** — SPICE-compatible model. Uses a fixed +9 s offset before
-///   1972-01-01 and modern leap seconds afterward.
+/// ## Supported Time Scales
 ///
-/// - **`UtcHist`** — Full historical SOFA model with piecewise linear frequency
-///   offsets ("rubber seconds") from 1961–1972. This variant does **not support
-///   round-tripping**.
+/// | Scale       | Description |
+/// |-------------|-------------|
+/// | `TAI`       | International Atomic Time. The primary internal continuous atomic time scale. |
+/// | `TT`        | Terrestrial Time. Smooth atomic time used in astronomy and dynamics (TAI + 32.184 s). |
+/// | `ET`        | Ephemeris Time using the **NAIF/SPICE simplified model** (~30 µs accuracy). Matches NASA/NAIF SPICE for interoperability. Use `TDB` for higher-fidelity. |
+/// | `TDB`       | Barycentric Dynamical Time. High-fidelity relativistic ephemeris time (DE440/LTE440 + VSOP2013 tuned model). |
+/// | `UTC`       | Coordinated Universal Time using modern IERS leap second rules. |
+/// | `UtcSpice`  | Coordinated Universal Time using the SPICE historical model (fixed +9 s offset before 1972-01-01). |
+/// | `UtcHist`   | Coordinated Universal Time using the historical SOFA model with “rubber seconds” (1961–1972). Round-tripping is not supported. |
+/// | `GPS`       | GPS Time (used by the U.S. GPS navigation constellation). |
+/// | `GST`       | Galileo Time (used by Europe’s Galileo navigation system). |
+/// | `BDT`       | BeiDou Time (used by China’s BeiDou navigation system). |
+/// | `QZSS`      | QZSS Time (used by Japan’s QZSS satellite system). |
+/// | `TCG`       | Geocentric Coordinate Time. Relativistic time scale in the GCRS (Earth-centered). |
+/// | `TCB`       | Barycentric Coordinate Time. Relativistic time scale in the BCRS (solar-system barycenter). |
+/// | `LTC`       | Coordinated Lunar Time. Operational lunar time for cislunar use based on the LTE440 model. |
+/// | `TCL`       | Lunar Coordinate Time. IAU relativistic coordinate time in the LCRS based on the LTE440 model. |
+/// | `Custom`    | User-defined or experimental time scale. |
 ///
-/// ## Scale Categories
+/// ## Lunar Time Scales (LTC / TCL)
 ///
-/// | Category                    | Scales                          | Purpose |
-/// |-----------------------------|---------------------------------|---------|
-/// | **Atomic / Proper**         | `TAI`, `TT`, `TDB` (alias `ET`) | Continuous atomic time. `TAI` is the primary internal scale. |
-/// | **Relativistic Coordinate** | `TCG`, `TCB`, `TCL`             | Time scales defined in specific relativistic reference frames (GCRS, BCRS, LCRS). |
-/// | **Civil / Coordinated**     | `UTC`, `UtcSpice`, `UtcHist`    | Real-world civil time, with support for leap seconds and historical behavior. |
-/// | **GNSS / Navigation**       | `GPS`, `GST`, `BDT`, `QZSS`     | Time scales used by satellite navigation constellations. |
-/// | **Lunar**                   | `LTC`, `TCL`                    | Lunar time scales based on the LTE440 model (Lu et al. 2025). |
-/// | **Special**                 | `Custom`                        | User-defined or experimental scales. |
+/// Both `LTC` and `TCL` are based on the **LTE440** model (Lu et al. 2025):
 ///
-/// The reference epoch used for conversions between scales is **2000-01-01 12:00:00 TAI**.
-///
-/// ## Lunar Time Scales
-///
-/// Both `LTC` and `TCL` implement the **LTE440** model (Lu et al. 2025):
-///
-/// - **`LTC`** (Coordinated Lunar Time): Operational lunar time for cislunar operations.
-///   Applies a secular rate of **+56.02 µs per Earth day** relative to TT, plus the
-///   13 dominant periodic terms from the model.
-///
-/// - **`TCL`** (Lunar Coordinate Time): IAU-defined relativistic coordinate time
-///   in the Lunar Celestial Reference System (LCRS). Includes the secular rate
-///   versus TDB, the same periodic terms, and a constant bias calibrated to match
-///   the published LTE440 reference value at J2000.0 TDB.
+/// - `LTC` (Coordinated Lunar Time) — Intended for operational cislunar use. Applies a secular rate of **+56.02 µs/day** relative to TT plus the dominant periodic terms.
+/// - `TCL` (Lunar Coordinate Time) — Theoretical IAU relativistic coordinate time at the Moon’s center of mass. Includes the secular rate versus TDB, periodic terms, and a J2000 bias calibrated to published LTE440 values.
 #[non_exhaustive]
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -57,26 +56,32 @@ pub enum Scale {
 
     /// Terrestrial Time (TT).
     ///
-    /// A smooth, continuous atomic time scale used in astronomy and dynamics.
+    /// A smooth, continuous atomic time scale used in astronomy and dynamics
+    /// (TAI + 32.184 s constant offset).
     TT,
 
-    /// Ephemeris Time (alias for TDB).
+    /// Ephemeris Time (NAIF/SPICE simplified model).
+    ///
+    /// Uses the official NAIF simplified single-term model for interoperability
+    /// with NASA/NAIF SPICE (~30 µs accuracy). For higher-fidelity relativistic
+    /// ephemeris calculations, use [`TDB`](Scale::TDB) instead.
     ET,
 
     /// Barycentric Dynamical Time (TDB).
     ///
-    /// Used for planetary and spacecraft calculations.
+    /// High-fidelity relativistic ephemeris time tuned to DE440/LTE440 + VSOP2013.
+    /// Used for precise planetary and spacecraft trajectory calculations.
     TDB,
 
     /// Coordinated Universal Time (UTC) using modern leap second rules.
     UTC,
 
     /// Coordinated Universal Time using the SPICE historical model
-    /// (fixed +9 s offset before 1972).
+    /// (fixed +9 s offset before 1972-01-01).
     UtcSpice,
 
-    /// Coordinated Universal Time using the full historical SOFA model
-    /// (with "rubber seconds" between 1960–1972).
+    /// Coordinated Universal Time using the historical SOFA model
+    /// (with "rubber seconds" between 1961–1972).
     ///
     /// Round-tripping is not supported.
     UtcHist,

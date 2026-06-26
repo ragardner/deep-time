@@ -145,6 +145,32 @@ fn tdb_tai_roundtrip_is_accurate() {
     }
 }
 
+/// Round-trip accuracy test (TAI → ET → TAI)
+#[test]
+fn et_tai_roundtrip_is_accurate() {
+    let test_points = [
+        Dt::from_sec(0, Scale::TAI),                  // J2000 TAI
+        Dt::from_sec(86_400 * 365, Scale::TAI),       // ~1 year later
+        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI), // 10 years before
+        Dt::from_sec(1_000_000_000, Scale::TAI),      // ~31.7 years later
+        Dt::from_sec(-2_208_945_600, Scale::TAI),     // J1900 epoch
+    ];
+
+    for &p in &test_points {
+        let et = p.to(Scale::ET);
+        let back = et.to(Scale::TAI);
+
+        let diff = back.to_diff_raw(p).to_sec_f().abs();
+
+        assert!(
+            diff == 0.0,
+            "ET round-trip error too large: {} s at {:?}",
+            diff,
+            p
+        );
+    }
+}
+
 /// Check that the *periodic correction* (TDB − TT) stays within sensible bounds
 #[test]
 fn tdb_correction_stays_within_bounds() {

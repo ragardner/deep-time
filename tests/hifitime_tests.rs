@@ -102,6 +102,33 @@ mod tests {
     }
 
     #[test]
+    fn et_matches_hifitime_latest() {
+        use hifitime::{Epoch, TimeScale};
+
+        let tai_sec: f64 = 4_354_905_600.0;
+
+        let epoch_tai = Epoch::from_tai_seconds(tai_sec);
+        let epoch_et = epoch_tai.to_time_scale(TimeScale::ET);
+        let hifi_et_sec = epoch_et.duration.to_seconds();
+
+        let my_2038_tai = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
+
+        let my_et_sec = my_2038_tai.to(Scale::ET).to_sec_f();
+
+        let diff = (my_et_sec - hifi_et_sec).abs();
+
+        // assert!(
+        //     diff < 1e-10,
+        //     "ET mismatch with hifitime: our = {:.9}, hifitime = {:.9}, diff = {:.9} s",
+        //     my_et_sec,
+        //     hifi_et_sec,
+        //     diff
+        // );
+
+        assert_eq!(my_et_sec, hifi_et_sec);
+    }
+
+    #[test]
     fn utc_matches_hifitime_latest() {
         use hifitime::{Epoch, TimeScale};
 

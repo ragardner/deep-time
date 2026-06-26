@@ -167,9 +167,8 @@ impl Dt {
                 Scale::TAI,
                 self.target,
             ),
-            Scale::TDB | Scale::ET => {
-                Self::tdb_to_tai(Dt::new(self.attos, Scale::TAI, self.target))
-            }
+            Scale::TDB => Self::tdb_to_tai(Dt::new(self.attos, Scale::TAI, self.target)),
+            Scale::ET => Self::et_to_tai(Dt::new(self.attos, Scale::TAI, self.target)),
             Scale::TCG => {
                 let tt = Self::tcg_to_tt(Dt::new(self.attos, Scale::TAI, self.target));
                 tt.sub(TT_TAI_OFFSET)
@@ -217,7 +216,8 @@ impl Dt {
                 self.add_attos(-Dt::SEC_19.to_attos()).with(new)
             }
             Scale::BDT => self.add_attos(-Dt::SEC_33.to_attos()).with(new),
-            Scale::TDB | Scale::ET => Self::tai_to_tdb(*self).with(new),
+            Scale::TDB => Self::tai_to_tdb(*self).with(new),
+            Scale::ET => Self::tai_to_et(*self).with(new),
             Scale::TCG => Self::tai_to_tcg(*self).with(new),
             Scale::TCB => Self::tai_to_tcb(*self).with(new),
             Scale::LTC => {
