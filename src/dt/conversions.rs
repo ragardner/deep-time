@@ -194,7 +194,7 @@ impl Dt {
     ///   time scale, or if you really know what you're doing.
     /// - For the normal time scale conversion function see
     ///   [`Dt::to`](../struct.Dt.html#method.to) which first converts
-    ///   to TAI before converting to the target scale.
+    ///   to TAI before converting to the new scale.
     pub const fn convert(&self, new: Scale) -> Dt {
         match new {
             Scale::TAI => self.to_tai(),

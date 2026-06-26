@@ -158,17 +158,17 @@ impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
 impl TimeTraits for f64 {
     #[inline]
     fn ns(self) -> Dt {
-        Dt::from_ns(self as i128, Scale::TAI)
+        Dt::span_f(self * 1e-9)
     }
 
     #[inline]
     fn us(self) -> Dt {
-        Dt::from_us(self as i128, Scale::TAI)
+        Dt::span_f(self * 1e-6)
     }
 
     #[inline]
     fn ms(self) -> Dt {
-        Dt::from_ms(self as i128, Scale::TAI)
+        Dt::span_f(self * 1e-3)
     }
 
     #[inline]
@@ -215,17 +215,17 @@ impl TimeTraits for f64 {
 impl TimeTraits for f32 {
     #[inline]
     fn ns(self) -> Dt {
-        Dt::from_ns(self as i128, Scale::TAI)
+        Dt::span_f(self as f64 * 1e-9)
     }
 
     #[inline]
     fn us(self) -> Dt {
-        Dt::from_us(self as i128, Scale::TAI)
+        Dt::span_f(self as f64 * 1e-6)
     }
 
     #[inline]
     fn ms(self) -> Dt {
-        Dt::from_ms(self as i128, Scale::TAI)
+        Dt::span_f(self as f64 * 1e-3)
     }
 
     #[inline]
