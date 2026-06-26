@@ -295,9 +295,23 @@ impl Dt {
         StrPTimeFmt::new(strptime_fmt)
     }
 
-    /// Generalized ISO / CCSDS ASCII Time Code parser (A or B variant).
-    /// - Parses e.g. **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
+    /// Generalized no alloc parser.
+    ///
     /// - Only supports ASCII characters.
+    /// - The returned [`Dt`] is on the `TAI` time [`Scale`], having been converted
+    ///   to `TAI` from whatever the **trailing** scale is, or if no scale is provided
+    ///   then no conversion takes place.
+    /// - This function is considerably faster than all other string parsing methods if
+    ///   your date-time string is in one of the supported formats.
+    ///
+    /// ## Supported formats
+    ///
+    /// An optional library time scale right on the end of the input, e.g. `TAI` is supported
+    /// for all of the below formats.
+    ///
+    /// ### ISO
+    ///
+    /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
     /// - If a time is included then some kind of date-time separator e.g. `T` is
     ///   required.
     /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
@@ -307,11 +321,24 @@ impl Dt {
     ///     - Time components after a date e.g. `T12:00:00`.
     ///     - Offset after time components or directly after the date e.g. `+0200` or
     ///       `2023-01-01+05:00`.
-    ///     - Timezone name, **requires square brackets** and requires `jiff-tz` feature,
-    ///       after time or offset e.g. `T12:00:00 [America/New_York]`.
-    ///     - Library time scale right on the end of the input, e.g. `TAI`.
-    /// - This function is considerably faster than all other string parsing methods if
-    ///   your date-time string is in the supported formats.
+    ///     - Timezone name, **requires square brackets** and **requires `jiff-tz`**
+    ///       feature, after time or offset e.g. `T12:00:00 [America/New_York]`.
+    ///
+    /// ### Seconds since J2000 Noon
+    ///
+    /// - **`SEC 1234.567 TDB`**.
+    ///
+    /// ### JD
+    ///
+    /// - **`JD 2451545.0 TAI`**.
+    ///
+    /// ### MJD
+    ///
+    /// - **`MJD 51544.5 TT`**.
+    ///
+    /// ## See also
+    ///
+    /// - [`Parts::from_str_iso`](../struct.Parts.html#method.from_str_iso)
     #[inline(always)]
     pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
         let mut tp = Parts::from_str_iso(input)?;
@@ -324,10 +351,9 @@ impl Dt {
     /// [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)
     /// on the chosen time scale.
     ///
-    /// - If `scale` is `Some(s)`, the value is interpreted on scale `s`.
-    /// - If `scale` is `None`, a trailing scale abbreviation (e.g. `GPS`, `TAI`,
-    ///   `UTC`) is parsed from the input using the same logic as [`Dt::from_str_iso`].
-    ///   If none is found, `TAI` is used.
+    /// The returned [`Dt`] is on the `TAI` time [`Scale`], having been converted
+    /// to `TAI` from whatever the **trailing** scale is, or if no scale is provided
+    /// then no conversion takes place.
     ///
     /// Leading non-numeric characters are skipped until a number start is found
     /// (`+`, `-`, `.`, or digit).
@@ -364,7 +390,7 @@ impl Dt {
     /// assert_eq!(d.to_attos() % 1_000_000_000_000_000_000, 1);
     /// ```
     pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
-        let parsed = Parts::parse_sec_f(s.as_bytes(), scale)?;
+        let parsed = Parts::parse_str_f(s.as_bytes(), scale)?;
 
         let int_attos = (parsed.int_u as i128) * ATTOS_PER_SEC_I128;
         let signed_attos = if parsed.negative {
@@ -374,6 +400,68 @@ impl Dt {
         };
 
         Some(Dt::from_attos(signed_attos, parsed.scale))
+    }
+
+    /// Parses a decimal Julian Date string (with optional fractional part).
+    ///
+    /// The returned [`Dt`] is on the `TAI` time [`Scale`], having been converted
+    /// to `TAI` from whatever the **trailing** scale is, or if no scale is provided
+    /// then no conversion takes place.
+    ///
+    /// Leading junk is skipped the same way as [`Dt::from_str_sec_f`].
+    /// Fractional day precision up to 18 digits.
+    ///
+    /// Returns `None` for unparseable input.
+    ///
+    /// JD 2451545.0 is the library epoch (2000-01-01 noon).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let d = Dt::from_str_jd_f("2451545.0", Some(Scale::TAI)).unwrap();
+    /// assert_eq!(d.to_jd(), (2_451_545, 0));
+    ///
+    /// let d = Dt::from_str_jd_f("2451545.25 TT", None).unwrap();
+    /// assert_eq!(d.target, Scale::TT);
+    ///
+    /// let d = Dt::from_str_jd_f("2451544.5", Some(Scale::TAI)).unwrap();
+    /// assert!(d.to_attos() < 0);
+    /// ```
+    pub fn from_str_jd_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
+        Parts::from_str_jd_f(s, scale).and_then(|p| p.to_dt().ok())
+    }
+
+    /// Parses a decimal Modified Julian Date string (with optional fractional part).
+    ///
+    /// The returned [`Dt`] is on the `TAI` time [`Scale`], having been converted
+    /// to `TAI` from whatever the **trailing** scale is, or if no scale is provided
+    /// then no conversion takes place.
+    ///
+    /// Leading junk is skipped the same way as [`Dt::from_str_sec_f`].
+    /// Fractional day precision up to 18 digits.
+    ///
+    /// Returns `None` for unparseable input.
+    ///
+    /// MJD 51544.5 is the library epoch (2000-01-01 noon).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let d = Dt::from_str_mjd_f("51544.5", Some(Scale::TAI)).unwrap();
+    /// assert_eq!(d.to_jd(), (2_451_545, 0));
+    ///
+    /// let d = Dt::from_str_mjd_f("51544.25 TT", None).unwrap();
+    /// assert_eq!(d.target, Scale::TT);
+    ///
+    /// let d = Dt::from_str_mjd_f("51543.5", Some(Scale::TAI)).unwrap();
+    /// assert!(d.to_attos() < 0);
+    /// ```
+    pub fn from_str_mjd_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
+        Parts::from_str_mjd_f(s, scale).and_then(|p| p.to_dt().ok())
     }
 
     /// Parses an ISO 8601 duration string into a [`Dt`] representing a pure time interval.

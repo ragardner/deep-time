@@ -1,6 +1,7 @@
 use crate::{
-    ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch, ParsedReal, Parser, Parts, STRTIME_SIZE, Scale,
-    Timestamp, an_err,
+    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch,
+    JD_2000_2_451_545, ParsedReal, Parser, Parts, SEC_PER_DAYI128, STRTIME_SIZE, Scale, Timestamp,
+    an_err,
 };
 
 impl Parts {
@@ -232,13 +233,13 @@ impl Parts {
         Ok(())
     }
 
-    /// Shared parser for decimal "seconds + optional fraction" input.
+    /// Shared parser for decimal input.
     ///
     /// Used by both [`Parts::from_str_sec_f`] and [`Dt::from_str_sec_f`].
     /// Returns the raw numeric components + resolved scale; the caller decides
     /// how to materialize the value (full attos for `Dt`, or a Noon2000
     /// [`Timestamp`] for `Parts`).
-    pub(crate) fn parse_sec_f(bytes: &[u8], scale: Option<Scale>) -> Option<ParsedReal> {
+    pub(crate) fn parse_str_f(bytes: &[u8], scale: Option<Scale>) -> Option<ParsedReal> {
         if bytes.is_empty() || bytes.len() > STRTIME_SIZE {
             return None;
         }
@@ -369,7 +370,7 @@ impl Parts {
     /// assert_eq!(p.scale, Scale::GPS);
     /// ```
     pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
-        let parsed = Self::parse_sec_f(s.as_bytes(), scale)?;
+        let parsed = Self::parse_str_f(s.as_bytes(), scale)?;
 
         let int_attos = (parsed.int_u as i128) * ATTOS_PER_SEC_I128;
         let frac_attos = parsed.frac_attos as i128;
@@ -379,6 +380,157 @@ impl Parts {
         } else {
             int_attos + frac_attos
         };
+
+        let parts = Parts {
+            timestamp: Some(Timestamp {
+                attos: total_attos,
+                epoch: Epoch::Noon2000,
+            }),
+            scale: parsed.scale,
+            ..Default::default()
+        };
+
+        Some(parts)
+    }
+
+    /// Parses a decimal Julian Date string (with optional fractional part) and returns
+    /// a [`Parts`] that represents the same instant.
+    ///
+    /// - If `scale` is `Some(s)`, the JD value is interpreted on scale `s`.
+    /// - If `scale` is `None`, a trailing scale abbreviation (e.g. `TT`, `TDB`, `TAI`)
+    ///   is parsed from the input. If none is found, `TAI` is used.
+    ///
+    /// Leading non-numeric characters are skipped until a number start is found
+    /// (`+`, `-`, `.`, or digit).
+    ///
+    /// - Fractional days are limited to the first 18 digits (attosecond precision
+    ///   after conversion); extra digits are truncated.
+    /// - Oversized integer parts set the integer component to `u64::MAX`.
+    /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
+    /// - Returns `None` only for completely unparseable input.
+    ///
+    /// The returned [`Parts`] has its [`timestamp`](Parts::timestamp) field set to a
+    /// [`Timestamp`] using [`Epoch::Noon2000`] (attoseconds since the library epoch).
+    /// JD 2451545.0 corresponds to attos = 0 (the library epoch).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Scale, civil_parts::Parts};
+    ///
+    /// // J2000.0 noon (JD 2451545.0) on TAI
+    /// let p = Parts::from_str_jd_f("2451545.0", Some(Scale::TAI)).unwrap();
+    /// let dt = p.to_dt().unwrap();
+    /// assert_eq!(dt.to_jd(), (2_451_545, 0));
+    ///
+    /// // Fractional JD + trailing scale
+    /// let p = Parts::from_str_jd_f("2451545.5 TT", None).unwrap();
+    /// assert_eq!(p.scale, Scale::TT);
+    /// ```
+    pub fn from_str_jd_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
+        let parsed = Self::parse_str_f(s.as_bytes(), scale)?;
+
+        // Build signed JD components. The integer part + frac_attos (scaled to 1e18)
+        // together represent the full JD as a real number of days.
+        let jd_days: i128 = if parsed.negative {
+            -(parsed.int_u as i128)
+        } else {
+            parsed.int_u as i128
+        };
+        let jd_frac: i128 = if parsed.negative {
+            -(parsed.frac_attos as i128)
+        } else {
+            parsed.frac_attos as i128
+        };
+
+        // Convert the signed JD (days + fractional day) to attoseconds since JD epoch 0.
+        // 1 fractional day unit in frac_attos corresponds to SEC_PER_DAY seconds.
+        let jd_attos = jd_days * ATTOS_PER_DAY + jd_frac * SEC_PER_DAYI128;
+
+        // The library's Noon2000 epoch is exactly JD 2451545.0, so subtract its offset.
+        let epoch_offset = (JD_2000_2_451_545 as i128) * ATTOS_PER_DAY;
+        let total_attos = jd_attos - epoch_offset;
+
+        let parts = Parts {
+            timestamp: Some(Timestamp {
+                attos: total_attos,
+                epoch: Epoch::Noon2000,
+            }),
+            scale: parsed.scale,
+            ..Default::default()
+        };
+
+        Some(parts)
+    }
+
+    /// Parses a decimal Modified Julian Date string (with optional fractional part) and returns
+    /// a [`Parts`] that represents the same instant.
+    ///
+    /// - If `scale` is `Some(s)`, the MJD value is interpreted on scale `s`.
+    /// - If `scale` is `None`, a trailing scale abbreviation (e.g. `TT`, `TDB`, `TAI`)
+    ///   is parsed from the input. If none is found, `TAI` is used.
+    ///
+    /// Leading non-numeric characters are skipped until a number start is found
+    /// (`+`, `-`, `.`, or digit).
+    ///
+    /// - Fractional days are limited to the first 18 digits (attosecond precision
+    ///   after conversion); extra digits are truncated.
+    /// - Oversized integer parts set the integer component to `u64::MAX`.
+    /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
+    /// - Returns `None` only for completely unparseable input.
+    ///
+    /// The returned [`Parts`] has its [`timestamp`](Parts::timestamp) field set to a
+    /// [`Timestamp`] using [`Epoch::Noon2000`] (attoseconds since the library epoch).
+    /// MJD 51544.5 corresponds to attos = 0 (the library epoch).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Scale, civil_parts::Parts};
+    ///
+    /// // J2000.0 noon (MJD 51544.5) on TAI
+    /// let p = Parts::from_str_mjd_f("51544.5", Some(Scale::TAI)).unwrap();
+    /// let dt = p.to_dt().unwrap();
+    /// assert_eq!(dt.to_jd(), (2_451_545, 0));
+    ///
+    /// // Fractional MJD + trailing scale
+    /// let p = Parts::from_str_mjd_f("51544.75 TT", None).unwrap();
+    /// assert_eq!(p.scale, Scale::TT);
+    /// ```
+    pub fn from_str_mjd_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
+        let parsed = Self::parse_str_f(s.as_bytes(), scale)?;
+
+        // Build signed MJD components.
+        let mjd_days: i128 = if parsed.negative {
+            -(parsed.int_u as i128)
+        } else {
+            parsed.int_u as i128
+        };
+        let mjd_frac: i128 = if parsed.negative {
+            -(parsed.frac_attos as i128)
+        } else {
+            parsed.frac_attos as i128
+        };
+
+        // Convert MJD to JD by adding the 2400000.5 day offset.
+        // MJD = JD - 2400000.5   =>   JD = MJD + 2400000.5
+        let mut jd_days = mjd_days + 2_400_000;
+        let mut sub_day_attos = mjd_frac * SEC_PER_DAYI128 + ATTOS_PER_HALF_DAY;
+
+        // Normalize sub-day attos (handle carry/borrow when adding the .5 offset)
+        if sub_day_attos >= ATTOS_PER_DAY {
+            jd_days += 1;
+            sub_day_attos -= ATTOS_PER_DAY;
+        } else if sub_day_attos < 0 {
+            jd_days -= 1;
+            sub_day_attos += ATTOS_PER_DAY;
+        }
+
+        let jd_attos = jd_days * ATTOS_PER_DAY + sub_day_attos;
+
+        // The library's Noon2000 epoch is exactly JD 2451545.0, so subtract its offset.
+        let epoch_offset = (JD_2000_2_451_545 as i128) * ATTOS_PER_DAY;
+        let total_attos = jd_attos - epoch_offset;
 
         let parts = Parts {
             timestamp: Some(Timestamp {

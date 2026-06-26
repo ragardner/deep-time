@@ -1,9 +1,20 @@
 use crate::{DtErr, DtErrKind, Offset, Parts, STRTIME_SIZE, Scale, an_err};
 
 impl Parts {
-    /// Generalized ISO / CCSDS ASCII Time Code parser (A or B variant).
-    /// - Parses e.g. **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
+    /// Generalized no alloc parser.
+    ///
     /// - Only supports ASCII characters.
+    /// - This function is considerably faster than all other string parsing methods if
+    ///   your date-time string is in one of the supported formats.
+    ///
+    /// ## Supported formats
+    ///
+    /// An optional library time scale right on the end of the input, e.g. `TAI` is supported
+    /// for all of the below formats.
+    ///
+    /// ### ISO
+    ///
+    /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
     /// - If a time is included then some kind of date-time separator e.g. `T` is
     ///   required.
     /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
@@ -13,13 +24,24 @@ impl Parts {
     ///     - Time components after a date e.g. `T12:00:00`.
     ///     - Offset after time components or directly after the date e.g. `+0200` or
     ///       `2023-01-01+05:00`.
-    ///     - Timezone name, **requires square brackets** and requires `jiff-tz` feature,
-    ///       after time or offset e.g. `T12:00:00 [America/New_York]`.
-    ///     - Library time scale right on the end of the input, e.g. `TAI`.
-    ///     - Leading `SEC`/`sec` (case-insensitive) to parse bare seconds since the
-    ///       library epoch, e.g. `SEC 1234.567 TDB` (delegates to [`Parts::from_str_sec_f`]).
-    /// - This function is considerably faster than all other string parsing methods if
-    ///   your date-time string is in the supported formats.
+    ///     - Timezone name, **requires square brackets** and **requires `jiff-tz`**
+    ///       feature, after time or offset e.g. `T12:00:00 [America/New_York]`.
+    ///
+    /// ### Seconds since J2000 Noon
+    ///
+    /// - **`SEC 1234.567 TDB`**.
+    ///
+    /// ### JD
+    ///
+    /// - **`JD 2451545.0 TAI`**.
+    ///
+    /// ### MJD
+    ///
+    /// - **`MJD 51544.5 TT`**.
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
     pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
         let bytes = input.as_bytes();
         let len_ = bytes.len();
@@ -36,17 +58,34 @@ impl Parts {
                     && bytes[start + 1].is_ascii_digit())
             {
                 break;
-            } else if matches!(b, b'S' | b's') && start + 3 <= len_ {
-                let b0 = bytes[start].to_ascii_uppercase();
-                let b1 = bytes[start + 1].to_ascii_uppercase();
-                let b2 = bytes[start + 2].to_ascii_uppercase();
-                if b0 == b'S'
-                    && b1 == b'E'
-                    && b2 == b'C'
-                    && let Some(p) = Self::from_str_sec_f(&input[start..], None)
-                {
-                    return Ok(p);
-                    // from_str_sec_f didn't like it (no number, etc.) -> treat "S" as junk and continue
+            }
+
+            if start + 3 <= len_ {
+                if matches!(b, b'J' | b'j') {
+                    let b1 = bytes[start + 1].to_ascii_uppercase();
+                    if b1 == b'D'
+                        && let Some(p) = Self::from_str_jd_f(&input[start..], None)
+                    {
+                        return Ok(p);
+                    }
+                } else if matches!(b, b'M' | b'm') {
+                    let b1 = bytes[start + 1].to_ascii_uppercase();
+                    let b2 = bytes[start + 2].to_ascii_uppercase();
+                    if b1 == b'J'
+                        && b2 == b'D'
+                        && let Some(p) = Self::from_str_mjd_f(&input[start..], None)
+                    {
+                        return Ok(p);
+                    }
+                } else if matches!(b, b'S' | b's') {
+                    let b1 = bytes[start + 1].to_ascii_uppercase();
+                    let b2 = bytes[start + 2].to_ascii_uppercase();
+                    if b1 == b'E'
+                        && b2 == b'C'
+                        && let Some(p) = Self::from_str_sec_f(&input[start..], None)
+                    {
+                        return Ok(p);
+                    }
                 }
             }
 

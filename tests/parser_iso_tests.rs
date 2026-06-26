@@ -473,4 +473,72 @@ mod from_str_iso_tests {
         let parsed = p.to_dt().unwrap();
         assert_eq!(parsed, expected_gps);
     }
+
+    #[test]
+    fn test_iso_jd_prefix() {
+        // J2000.0 noon (JD 2451545.0) on TAI — this is the library epoch (attos == 0)
+        let expected = Dt::from_jd_f(2_451_545.0, Scale::TAI);
+        let p = Parts::from_str_iso("JD 2451545.0 TAI").unwrap();
+        assert_eq!(p.to_dt().unwrap(), expected);
+        let d = Dt::from_str_iso("JD 2451545.0 TAI").unwrap();
+        assert_eq!(d, expected);
+        assert_eq!(d.to_attos(), 0);
+
+        // Positive fractional JD, no explicit scale (defaults to TAI inside parser)
+        let expected = Dt::from_jd_f(2_451_545.5, Scale::TAI);
+        let d = Dt::from_str_iso("jd 2451545.5").unwrap();
+        assert_eq!(d, expected);
+
+        // No space after prefix, different scale
+        let expected = Dt::from_jd_f(2_451_545.25, Scale::TT);
+        let p = Parts::from_str_iso("JD2451545.25 TT").unwrap();
+        assert_eq!(p.scale, Scale::TT);
+        assert_eq!(p.to_dt().unwrap(), expected);
+
+        // Positive with scale and junk before (the JD detector still triggers)
+        let expected = Dt::from_jd_f(2_460_000.75, Scale::GPS);
+        let d = Dt::from_str_iso("  jd = 2460000.75 GPS").unwrap();
+        assert_eq!(d, expected);
+        assert_eq!(d.target, Scale::GPS);
+
+        // Negative JD values
+        let expected = Dt::from_jd_f(-2_451_545.0, Scale::TAI);
+        let p = Parts::from_str_iso("JD -2451545.0 TAI").unwrap();
+        assert_eq!(p.to_dt().unwrap(), expected);
+
+        let expected = Dt::from_jd_f(-1_000.5, Scale::UTC);
+        let d = Dt::from_str_iso("prefix: JD -1000.5 UTC").unwrap();
+        assert_eq!(d, expected);
+    }
+
+    #[test]
+    fn test_iso_mjd_prefix() {
+        // J2000.0 as MJD 51544.5
+        let expected = Dt::from_mjd_f(51_544.5, Scale::TAI);
+        let p = Parts::from_str_iso("MJD 51544.5 TAI").unwrap();
+        assert_eq!(p.to_dt().unwrap(), expected);
+        let d = Dt::from_str_iso("MJD 51544.5 TAI").unwrap();
+        assert_eq!(d, expected);
+
+        // Positive fractional MJD, implicit scale
+        let expected = Dt::from_mjd_f(51_544.25, Scale::TAI);
+        let d = Dt::from_str_iso("mjd 51544.25").unwrap();
+        assert_eq!(d, expected);
+
+        // Mixed case, no space, explicit scale
+        let expected = Dt::from_mjd_f(60_000.75, Scale::TDB);
+        let p = Parts::from_str_iso("Mjd60000.75 TDB").unwrap();
+        assert_eq!(p.scale, Scale::TDB);
+        assert_eq!(p.to_dt().unwrap(), expected);
+
+        // Negative MJD
+        let expected = Dt::from_mjd_f(-10_000.0, Scale::GPS);
+        let d = Dt::from_str_iso("MJD -10000 GPS").unwrap();
+        assert_eq!(d, expected);
+        assert_eq!(d.target, Scale::GPS);
+
+        let expected = Dt::from_mjd_f(-51_544.5, Scale::UTC);
+        let p = Parts::from_str_iso("  mjd=-51544.5 UTC  ").unwrap();
+        assert_eq!(p.to_dt().unwrap(), expected);
+    }
 }
