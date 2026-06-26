@@ -81,9 +81,9 @@ pub struct Parts {
     pub timestamp: Option<Timestamp>,
 }
 
-/// Raw parsed components from a "seconds + optional fraction" string.
+/// Raw parsed components from a decimal style number string.
 #[derive(Clone, Copy)]
-pub(crate) struct SecF {
+pub(crate) struct ParsedReal {
     pub(crate) negative: bool,
     /// Accumulated absolute integer part (u64::MAX on overflow during accumulation).
     pub(crate) int_u: u64,

@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch, Parser, Parts, STRTIME_SIZE, Scale, SecF,
+    ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch, ParsedReal, Parser, Parts, STRTIME_SIZE, Scale,
     Timestamp, an_err,
 };
 
@@ -238,7 +238,7 @@ impl Parts {
     /// Returns the raw numeric components + resolved scale; the caller decides
     /// how to materialize the value (full attos for `Dt`, or a Noon2000
     /// [`Timestamp`] for `Parts`).
-    pub(crate) fn parse_sec_f(bytes: &[u8], scale: Option<Scale>) -> Option<SecF> {
+    pub(crate) fn parse_sec_f(bytes: &[u8], scale: Option<Scale>) -> Option<ParsedReal> {
         if bytes.is_empty() || bytes.len() > STRTIME_SIZE {
             return None;
         }
@@ -324,7 +324,7 @@ impl Parts {
             frac_attos *= 10u64.pow(shift as u32);
         }
 
-        Some(SecF {
+        Some(ParsedReal {
             negative,
             int_u,
             frac_attos,
