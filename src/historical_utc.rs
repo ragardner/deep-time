@@ -212,9 +212,8 @@ pub const fn historical_utc_offset(dt: &Dt) -> Option<Real> {
     // if dt.to_attos() >= -883656000000000000000000000 {
     //     return None;
     // }
-
-    let jd = dt.to_jd_f();
-    let mjd = dt.to_mjd_f();
+    let jd = dt.to_jd_f_raw();
+    let mjd = dt.to_mjd_f_raw();
     let len = TAI_UTC_PRE_1972.len();
     let mut i = len;
     while i > 0 {

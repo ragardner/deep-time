@@ -481,7 +481,7 @@ impl Dt {
     #[inline]
     pub fn to_eop(&self, op_data: &EopData) -> Result<Self, DtErr> {
         Ok(self.add(Dt::from_sec_f(
-            Self::mjd_to_eop_offset_f(self.to_mjd_f(), op_data)?,
+            Self::mjd_to_eop_offset_f(self.to_mjd_f_raw(), op_data)?,
             Scale::TAI,
         )))
     }
@@ -498,7 +498,7 @@ impl Dt {
         let mut guess = *self;
 
         for _ in 0..8 {
-            let mjd = guess.to_mjd_f();
+            let mjd = guess.to_mjd_f_raw();
             let offset = op_data
                 .eop_offset(mjd)
                 .ok_or_else(|| an_err!(DtErrKind::MjdOutOfRange, "{mjd}"))?

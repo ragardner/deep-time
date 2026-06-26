@@ -169,7 +169,7 @@ mod tests {
 
         // Round-trip through JD_UT1
         let (jd_days, frac) = ut1.to_jd();
-        let roundtrip = Dt::from_jd(jd_days, frac, Scale::Custom);
+        let roundtrip = Dt::from_jd(jd_days, frac, Scale::UTC);
 
         assert_eq!(ut1.attos, roundtrip.attos);
 
@@ -197,7 +197,7 @@ mod tests {
         let (jd_days, frac) = ut1.to_jd();
 
         // Go back
-        let ut1_back = Dt::from_jd(jd_days, frac, Scale::Custom);
+        let ut1_back = Dt::from_jd(jd_days, frac, Scale::UTC);
         let utc_back = ut1_back.from_eop(&provider).expect("from_ut1 failed");
 
         // Final check: should be extremely close to original UTC
@@ -220,7 +220,7 @@ mod tests {
         let ut1 = utc.to_eop(&provider).expect("to_ut1 failed");
 
         let (mjd_days, frac) = ut1.to_mjd();
-        let roundtrip = Dt::from_mjd(mjd_days, frac, Scale::Custom);
+        let roundtrip = Dt::from_mjd(mjd_days, frac, Scale::UTC);
 
         assert_eq!(ut1.attos, roundtrip.attos);
 
@@ -237,7 +237,7 @@ mod tests {
         let provider = load_finals2000a();
         let dut1_expected = -0.3170554; // known value for MJD 56879.00
 
-        // Create exact UTC midnight using the modern constructor
+        // Create exact UTC midnight using the constructor
         let utc = Dt::from_mjd(56879, 0, Scale::UTC);
         let ut1 = utc.to_eop(&provider).expect("to_ut1 failed");
 
@@ -271,7 +271,7 @@ mod tests {
         let ut1 = utc.to_eop(&provider).expect("to_ut1 failed");
 
         let (jd_days, frac2) = ut1.to_jd();
-        let roundtrip = Dt::from_jd(jd_days, frac2, Scale::Custom);
+        let roundtrip = Dt::from_jd(jd_days, frac2, Scale::UTC);
 
         let diff = ut1.to_diff_raw(roundtrip).to_sec_f();
         assert!(

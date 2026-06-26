@@ -32,7 +32,7 @@ fn jd_tt_exact_roundtrip() {
     ];
 
     for &p in &test_points {
-        let (jd, frac) = p.to(Scale::TT).to_jd();
+        let (jd, frac) = p.target(Scale::TT).to_jd();
         let back = Dt::from_jd(jd, frac, Scale::TT);
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(diff < 1e-10, "JD round-trip error {} s at {:?}", diff, p);
@@ -48,7 +48,7 @@ fn mjd_tt_exact_roundtrip() {
     ];
 
     for &p in &test_points {
-        let (mjd, frac) = p.to(Scale::TT).to_mjd();
+        let (mjd, frac) = p.target(Scale::TT).to_mjd();
         let back = Dt::from_mjd(mjd, frac, Scale::TT);
         let diff = back.to_diff_raw(p).to_sec_f().abs();
         assert!(diff < 1e-10, "MJD round-trip error {} s at {:?}", diff, p);
@@ -60,7 +60,7 @@ fn test_mjd_utc_roundtrip() {
     // Normal instant (non-leap)
     let original = Dt::from_ymd(2025, 4, 27, Scale::UTC, 14, 30, 0, 123_456_789_000_000_000);
     let (mjd, frac) = original.to_mjd();
-    let roundtrip = Dt::from_mjd(mjd, frac, Scale::TAI);
+    let roundtrip = Dt::from_mjd(mjd, frac, Scale::UTC);
     assert_eq!(
         original, roundtrip,
         "MJD UTC round-trip failed for normal time"
@@ -68,12 +68,13 @@ fn test_mjd_utc_roundtrip() {
 
     // Also exercise the JD variant
     let (jd, frac_jd) = original.to_jd();
-    let roundtrip_jd = Dt::from_jd(jd, frac_jd, Scale::TAI);
+    let roundtrip_jd = Dt::from_jd(jd, frac_jd, Scale::UTC);
     assert_eq!(original, roundtrip_jd, "JD UTC round-trip failed");
 
-    // Leap-second case (2015-06-30 23:59:60 UTC) — the trickiest path
+    // How to round trip a leap-second case (2015-06-30 23:59:60 UTC)
+    // Have to use TAI, no conversion at the mjd/jd functions
     let leap = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 0);
-    let (mjd_leap, frac_leap) = leap.to_mjd();
+    let (mjd_leap, frac_leap) = leap.target(Scale::TAI).to_mjd();
     let roundtrip_leap = Dt::from_mjd(mjd_leap, frac_leap, Scale::TAI);
     assert_eq!(
         leap, roundtrip_leap,
@@ -81,7 +82,7 @@ fn test_mjd_utc_roundtrip() {
     );
 
     // Also verify JD round-trip on the leap second
-    let (jd_leap, frac_jd_leap) = leap.to_jd();
+    let (jd_leap, frac_jd_leap) = leap.target(Scale::TAI).to_jd();
     let roundtrip_jd_leap = Dt::from_jd(jd_leap, frac_jd_leap, Scale::TAI);
     assert_eq!(
         leap, roundtrip_jd_leap,

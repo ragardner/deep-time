@@ -202,7 +202,7 @@ impl Dt {
                 // leap seconds table returned an offset, so use that
                 Some(dt) => dt.with(new),
                 // leap seconds table returned None so it must be pre 1972
-                None => match self.scale {
+                None => match new {
                     Scale::UtcHist => match historical_utc_offset(self) {
                         Some(offset) => self.sub(Dt::span_f(offset)).with(new),
                         None => self.with(new),

@@ -119,10 +119,8 @@ impl Dt {
     ///
     /// Works for any input [`Scale`] because it internally converts to TT.
     pub const fn to_mars_ls(&self) -> Real {
-        let tt = self.to(Scale::TT);
-
         // Δt_J2000 = days since J2000.0 TT
-        let jd_tt = tt.to_jd_f();
+        let jd_tt = self.to(Scale::TT).to_jd_f_raw();
         let dt_j2000 = jd_tt - f!(2451545.0);
 
         // B-1: Mean anomaly M (degrees)
@@ -177,8 +175,7 @@ impl Dt {
     /// Longitude is east-positive (standard planetocentric convention, 0–360° E).
     /// Internally converts to TT and uses the current NASA GISS Mars24 definition of MST.
     pub const fn to_mars_lmst(&self, east_longitude_deg: Real) -> Dt {
-        let tt = self.to(Scale::TT);
-        let jd_tt = tt.to_jd_f();
+        let jd_tt = self.to(Scale::TT).to_jd_f_raw();
 
         // MST in hours (0–24) — prime-meridian mean solar time (NASA Mars24 formula)
         let mst = (f!(24.0)
@@ -213,7 +210,7 @@ impl Dt {
         let ls = self.to_mars_ls();
 
         // Equation of center (ν − M) — same term used in to_mars_ls
-        let dt_j2000 = self.to(Scale::TT).to_jd_f() - f!(2451545.0);
+        let dt_j2000 = self.to(Scale::TT).to_jd_f_raw() - f!(2451545.0);
         let m = MARS_LS_M0 + MARS_LS_M_RATE * dt_j2000;
         let pbs = Self::mars_perturber_sum(dt_j2000);
         let eq_center = (f!(10.691) + f!(3.0e-7) * dt_j2000) * sin(m.to_radians())
@@ -252,8 +249,7 @@ impl Dt {
     /// To get the fractional progress through the year, simply use:
     /// `self.to_mars_ls(current) / 360.0`
     pub const fn to_mars_year(&self) -> i64 {
-        let tt = self.to(Scale::TT);
-        let jd_tt = tt.to_jd_f();
+        let jd_tt = self.to(Scale::TT).to_jd_f_raw();
 
         let days_since_epoch = jd_tt - MARS_YEAR_EPOCH_JD;
         let years_elapsed = floor_f(days_since_epoch / MARS_TROPICAL_YEAR_DAYS);

@@ -127,7 +127,7 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(unix, 1000);
 
     // to and from jd
-    let jd = Dt::ZERO.to_jd_f();
+    let jd = Dt::ZERO.to_jd_f_raw();
     assert_eq!(2451545.0, jd);
     let dt = Dt::from_jd_f(jd, Scale::TAI);
     assert_eq!(0, dt.attos);
@@ -241,22 +241,22 @@ Benchmarks were measured on an AMD Ryzen 7 7800X3D.
 
 | Operation                              | Time          | vs Jiff 0.2.28           |
 |----------------------------------------|---------------|--------------------------|
-| ISO datetime parsing                   | 17.7 ns       | 33.4% faster             |
-| `strptime`                             | 34.5 ns       | 16.0% faster             |
-| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 193 ns        | 18.4% slower             |
-| `strftime`                             | 93.5 ns       | 50.9% slower             |
-| Auto parser (`from_str_parse`)         | 650 ns        | —                        |
+| ISO datetime parsing                   | 19.6 ns       | 26.7% faster             |
+| `strptime`                             | 33.9 ns       | 15.8% faster             |
+| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 184 ns        | 8.7% slower              |
+| `strftime`                             | 95.1 ns       | 54.6% slower             |
+| Auto parser (`from_str_parse`)         | 602 ns        | —                        |
 
 #### Time Scale Conversions
 
 | Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |
 |------------------|---------------|---------------|---------------------------|
-| TAI → UTC        | 9.7 ns        | 45.2 ns       | 4.6× faster               |
-| UTC → TAI        | 13.0 ns       | 47.2 ns       | 3.6× faster               |
-| TAI → TDB        | 136 ns        | 90.3 ns       | 1.5× slower               |
-| TDB → TAI        | 599 ns        | 27.0 ns       | 22.2× slower              |
-| GPS conversion   | 21.6 ns       | 5.3 ns        | 4.1× slower               |
-| GPS week + TOW   | 28.0 ns       | 7.0 ns        | 4.0× slower               |
+| TAI → UTC        | 9.8 ns        | 44.5 ns       | 4.5× faster               |
+| UTC → TAI        | 12.8 ns       | 45.6 ns       | 3.6× faster               |
+| TAI → TDB        | 138 ns        | 90.9 ns       | 1.5× slower               |
+| TDB → TAI        | 606 ns        | 27.0 ns       | 22.5× slower              |
+| GPS conversion   | 20.6 ns       | 6.3 ns        | 3.3× slower               |
+| GPS week + TOW   | 27.8 ns       | 6.8 ns        | 4.1× slower               |
 
 The tests were run with:
 

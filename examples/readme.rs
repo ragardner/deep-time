@@ -90,7 +90,7 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(unix, 1000);
 
     // to and from jd
-    let jd = Dt::ZERO.to_jd_f();
+    let jd = Dt::ZERO.to_jd_f_raw();
     assert_eq!(2451545.0, jd);
     let dt = Dt::from_jd_f(jd, Scale::TAI);
     assert_eq!(0, dt.attos);

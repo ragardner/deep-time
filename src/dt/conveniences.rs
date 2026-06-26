@@ -539,23 +539,22 @@ impl Dt {
         Self::from_diff_and_scale(elapsed, Self::CXC_EPOCH, true)
     }
 
-    /// Convenience wrapper around [`Self::from_cxcsec`] for a bare floating-point
-    /// second count.
-    ///
-    /// Wraps `sec` in a [`Dt`] via [`Dt::sec_f_to_attos`] and
-    /// [`Dt::new`], then passes it to [`Self::from_cxcsec`]. Unlike [`Dt::from_sec_f`],
-    /// this does not convert the count to TAI up front — [`Self::from_cxcsec`] performs
-    /// that conversion once, from `on`.
+    /// Convenience wrapper around
+    /// [`Dt::from_cxcsec`](../struct.Dt.html#method.from_cxcsec)
+    /// for a bare floating-point second count.
     ///
     /// ## Parameters
     ///
     /// - `sec` — seconds elapsed since
     ///   [`CXC_EPOCH`](../struct.Dt.html#associatedconstant.CXC_EPOCH).
     /// - `on` — which [`Scale`] the count is measured in (for example `Scale::TT` or
-    ///   `Scale::UTC`). This becomes the wrapped [`Dt`]'s `scale`; [`Self::from_cxcsec`]
+    ///   `Scale::UTC`). This becomes the wrapped [`Dt`]'s `scale`;
+    ///   [`Dt::from_cxcsec`](../struct.Dt.html#method.from_cxcsec)
     ///   then uses it when turning the elapsed count into an absolute TAI instant
     ///   (including leap-second handling where applicable). Same role as the `scale`
-    ///   field on the [`Dt`] you would hand to [`Self::from_cxcsec`] directly.
+    ///   field on the [`Dt`] you would hand to
+    ///   [`Dt::from_cxcsec`](../struct.Dt.html#method.from_cxcsec)
+    ///   directly.
     ///
     /// ## Examples
     ///
@@ -582,10 +581,12 @@ impl Dt {
     /// in this object's current `target` scale.
     ///
     /// This method can match Astropy’s `Time.galexsec` format. To match
-    /// Astropy output, set `.target(Scale::UTC)` (or the appropriate scale)
+    /// Astropy output, set `.target(Scale::UTC)`
     /// before calling.
     ///
-    /// The GALEX epoch is [`Self::GPS_EPOCH`] (same epoch used by GPS time).
+    /// The GALEX epoch is
+    /// [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH)
+    /// (same epoch used by GPS time).
     ///
     /// ## Important:
     ///
@@ -667,23 +668,21 @@ impl Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
     }
 
-    /// Convenience wrapper around [`Self::from_galexsec`] for a bare floating-point
-    /// second count.
-    ///
-    /// Wraps `sec` in a [`Dt`] via [`Dt::sec_f_to_attos`] and
-    /// [`Dt::new`], then passes it to [`Self::from_galexsec`]. Unlike [`Dt::from_sec_f`],
-    /// this does not convert the count to TAI up front — [`Self::from_galexsec`] performs
-    /// that conversion once, from `on`.
+    /// Convenience wrapper around
+    /// [`Dt::from_galexsec`](../struct.Dt.html#method.from_galexsec)
+    /// for a bare floating-point second count.
     ///
     /// ## Parameters
     ///
     /// - `sec` — seconds elapsed since
     ///   [`GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH).
     /// - `on` — which [`Scale`] the count is measured in (for example `Scale::UTC` or
-    ///   `Scale::TT`). This becomes the wrapped [`Dt`]'s `scale`; [`Self::from_galexsec`]
+    ///   `Scale::TT`). This becomes the wrapped [`Dt`]'s `scale`;
+    ///   [`Dt::from_galexsec`](../struct.Dt.html#method.from_galexsec)
     ///   then uses it when turning the elapsed count into an absolute TAI instant
     ///   (including leap-second handling where applicable). Same role as the `scale`
-    ///   field on the [`Dt`] you would hand to [`Self::from_galexsec`] directly.
+    ///   field on the [`Dt`] you would hand to
+    ///   [`Dt::from_galexsec`](../struct.Dt.html#method.from_galexsec) directly.
     ///
     /// ## Examples
     ///
@@ -711,17 +710,27 @@ impl Dt {
     /// Julian years are defined as exactly 365.25 days of 86400 SI seconds.
     /// This is the system used for J2000.0 and many astronomical calculations.
     ///
-    /// This is **not** the same as [`Self::to_decimalyear`], which uses the
-    /// actual length of the specific Gregorian year.
+    /// This is **not** the same as
+    /// [`Dt::to_decimalyear`](../struct.Dt.html#method.to_decimalyear),
+    /// which uses the actual length of the specific Gregorian year.
     ///
-    /// This is the inverse of [`Self::from_jyear`].
+    /// This is the inverse of
+    /// [`Dt::from_jyear`](../struct.Dt.html#method.from_jyear).
+    ///
+    /// ## Important:
+    ///
+    /// - The [`Dt`] first converts itself to the time scale of its `target` field
+    ///   before producing a result.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon
+    ///   epoch, if it's not then the output will be incorrect.
     ///
     /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::UTC, 0, 0, 0, 0);
+    ///
     /// assert_eq!(x.to_jyear(), 2019.9986310746065);
     /// ```
     #[inline(always)]
@@ -730,7 +739,8 @@ impl Dt {
         f!(2000.0) + (jd_tt - JD_2000_2_451_545F) / f!(365.25)
     }
 
-    /// Inverse of [`Self::to_jyear`].
+    /// Inverse of
+    /// [`Dt::to_jyear`](../struct.Dt.html#method.to_jyear).
     pub const fn from_jyear(jyear: Real, scale: Scale) -> Dt {
         if jyear.is_nan() {
             return Self::ZERO;
@@ -752,14 +762,23 @@ impl Dt {
     /// Besselian years are an older astronomical convention based on a
     /// tropical year length of approximately 365.242198781 days.
     ///
-    /// This is the inverse of [`Self::from_byear`].
+    /// This is the inverse of
+    /// [`Dt::from_byear`](../struct.Dt.html#method.from_byear).
+    ///
+    /// ## Important:
+    ///
+    /// - The [`Dt`] first converts itself to the time scale of its `target` field
+    ///   before producing a result.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon
+    ///   epoch, if it's not then the output will be incorrect.
     ///
     /// ## Examples
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale};
     ///
-    /// let x = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0);
+    /// let x = Dt::from_ymd(2020, 1, 1, Scale::UTC, 0, 0, 0, 0);
+    ///
     /// assert!((x.to_byear() - 2020.000335739628).abs() < 1e-12);
     /// ```
     #[inline]
@@ -768,7 +787,8 @@ impl Dt {
         f!(1900.0) + (jd_tt - f!(2415020.31352)) / f!(365.242198781)
     }
 
-    /// Inverse of [`Self::to_byear`].
+    /// Inverse of
+    /// [`Dt::to_byear`](../struct.Dt.html#method.to_byear).
     pub const fn from_byear(byear: Real, scale: Scale) -> Dt {
         if byear.is_nan() {
             return Self::ZERO;
@@ -794,6 +814,13 @@ impl Dt {
     ///   scale before producing an output.
     /// - Exact integer arithmetic for the year boundaries, then a high-precision
     ///   `to_sec_f` division (lossy only at the final `Real` step, same as Astropy).
+    ///
+    /// ## Important:
+    ///
+    /// - The [`Dt`] first converts itself to the time scale of its `target` field
+    ///   before producing a result.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon
+    ///   epoch, if it's not then the output will be incorrect.
     ///
     /// ## Examples
     ///
