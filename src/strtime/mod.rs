@@ -10,15 +10,15 @@ pub(crate) use parser::*;
 
 /// Optional `%` directive extensions: flag, width, and colon count.
 #[derive(Clone, Copy, Debug, Default)]
-pub(crate) struct FormatExtensions {
-    pub(crate) flag: FormatFlag,
+pub(crate) struct FmtExtensions {
+    pub(crate) flag: FmtFlag,
     pub(crate) width: Option<u8>,
     pub(crate) colons: u8,
 }
 
 /// Flags that may appear immediately after `%` and before the directive.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(crate) enum FormatFlag {
+pub(crate) enum FmtFlag {
     #[default]
     None,
     PadSpace,
@@ -28,7 +28,7 @@ pub(crate) enum FormatFlag {
     Swapcase,
 }
 
-impl FormatFlag {
+impl FmtFlag {
     #[inline(always)]
     pub(crate) fn from_byte(byte: u8) -> Self {
         match byte {
@@ -46,7 +46,7 @@ impl FormatFlag {
     /// `None`, `Uppercase`, and `Swapcase` defer to the directive default;
     /// the three pad flags override it.
     #[inline(always)]
-    pub(crate) fn resolve(self, default: FormatFlag) -> FormatFlag {
+    pub(crate) fn resolve(self, default: FmtFlag) -> FmtFlag {
         match self {
             Self::None | Self::Uppercase | Self::Swapcase => default,
             pad => pad,
