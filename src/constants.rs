@@ -3,6 +3,8 @@
 
 use crate::{Dt, Real, Scale};
 
+/// The size limit for parsing and no-alloc formatting with
+/// the strtime related functionality.
 pub const STRTIME_SIZE: usize = 512;
 
 pub(crate) const ATTOS_DIGITS: usize = 18;
@@ -13,6 +15,9 @@ pub(crate) const SEC_PER_DAY: i128 = 86_400;
 /// 86,400 seconds in one standard Earth day  
 /// (24 hours × 60 minutes × 60 seconds).
 pub const SEC_PER_DAY_F: Real = 86_400.0;
+
+/// 86,400 seconds in one standard Earth day  
+/// (24 hours × 60 minutes × 60 seconds).
 pub const SEC_PER_DAYI64: i64 = 86_400;
 pub(crate) const SEC_PER_DAYI128: i128 = 86_400;
 
@@ -23,22 +28,6 @@ pub(crate) const ATTOS_PER_WEEK: i128 = SEC_PER_WEEK as i128 * ATTOS_PER_SEC_I12
 pub const ATTOS_PER_DAY: i128 = SEC_PER_DAYI128 * ATTOS_PER_SEC_I128;
 pub const ATTOS_PER_HALF_DAY: i128 = ATTOS_PER_DAY / 2;
 pub const ATTOS_PER_HALF_DAYU: u128 = ATTOS_PER_HALF_DAY as u128;
-
-/// Solar gravitational parameter GM☉ in m³ s⁻²  
-/// (nominal value from IAU 2015 Resolution B3)
-pub const GM_SUN: Real = 1.3271244e20;
-
-/// Speed of light in m/s (SI definition)
-pub const C: Real = 299792458.0;
-
-/// Speed of light squared (c²) in m² s⁻².  
-pub const C_SQUARED: Real = C * C;
-
-/// GM☉ / c³ in seconds (from `GM_SUN` and `C` — used in Shapiro delay)
-pub const GM_SUN_OVER_C3: Real = GM_SUN / (C * C_SQUARED);
-
-/// 2GM☉ / c³ — the standard prefactor in the one-way Shapiro delay formula
-pub const TWO_GM_SUN_OVER_C3: Real = 2.0 * GM_SUN_OVER_C3;
 
 /// Attoseconds per second.
 pub const ATTOS_PER_SEC: u64 = 1_000_000_000_000_000_000;
@@ -84,9 +73,6 @@ pub const TAI_ATTOS_AT_1972: i128 = -883_655_990_000_000_000_000_000_000;
 /// TAI secs from 1970-01-01 midnight to 2000-01-01 noon
 pub(crate) const TAI_SECS_1970_MIDNIGHT_TO_2000_NOON: i64 = 946_728_000;
 
-pub const PLANCK_LENGTH: Real = 1.616255e-35; // meters (standard value)
-pub const PLANCK_LENGTH_4: Real = PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;
-
 /// L_G = 6.969290134 × 10^{-10} (IAU) as fixed-point fraction.
 pub(crate) const LG_NUM: i128 = 6_969_290_134;
 pub(crate) const LG_DEN: i128 = 10_000_000_000_000_000_000; // 10^19
@@ -110,3 +96,47 @@ pub(crate) const TCG_TCB_REF_ATTOS_SINCE_J2000: i128 = {
 
 /// TDB₀ = −65.5 µs expressed in attoseconds.
 pub(crate) const TDB0_ATTOS: i128 = -65_500_000_000_000;
+
+/// Solar gravitational parameter GM☉ in m³ s⁻²  
+/// (nominal value from IAU 2015 Resolution B3)
+#[cfg(feature = "physics")]
+pub const GM_SUN: Real = 1.3271244e20;
+
+/// Speed of light in m/s (SI definition)
+#[cfg(feature = "physics")]
+pub const C: Real = 299792458.0;
+
+/// Speed of light squared (c²) in m² s⁻².  
+#[cfg(feature = "physics")]
+pub const C_SQUARED: Real = C * C;
+
+/// GM☉ / c³ in seconds (from `GM_SUN` and `C` — used in Shapiro delay)
+#[cfg(feature = "physics")]
+pub const GM_SUN_OVER_C3: Real = GM_SUN / (C * C_SQUARED);
+
+/// 2GM☉ / c³ — the standard prefactor in the one-way Shapiro delay formula
+#[cfg(feature = "physics")]
+pub const TWO_GM_SUN_OVER_C3: Real = 2.0 * GM_SUN_OVER_C3;
+
+/// Planck length ℓ_Pl in meters (standard value).
+///
+/// This is raised to the fourth power to form the dimensionless curvature
+/// parameter `x = ℓ_Pl⁴ × 𝒦` inside the master Lagrangian. The term only
+/// affects the proper-time rate at extreme (Planckian) curvatures.
+/// See the [relativistic timing model](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
+#[cfg(feature = "physics")]
+pub const PLANCK_LENGTH: Real = 1.616255e-35;
+
+/// Planck length to the fourth power (ℓ_Pl⁴) in m⁴.
+///
+/// This is the coefficient actually used at runtime:
+///
+/// ```text
+/// let x = PLANCK_LENGTH_4 * kretschmann;
+/// ```
+///
+/// The fourth power produces a dimensionless `x` because the Kretschmann
+/// scalar has units of L⁻⁴. Information on the underlying model can be found
+/// [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
+#[cfg(feature = "physics")]
+pub const PLANCK_LENGTH_4: Real = PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;
