@@ -306,13 +306,20 @@ impl Dt {
     ///
     /// ## Supported formats
     ///
-    /// An optional library time scale right on the end of the input, e.g. `TAI` is supported
-    /// for all of the below formats.
+    /// An **optional** library time scale right on the end of the input, e.g. `TAI` is
+    /// supported for all of the below formats.
     ///
     /// ### ISO
     ///
+    /// #### Format examples:
+    ///
     /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
-    /// - If a time is included then some kind of date-time separator e.g. `T` is
+    /// - **`2024 Apr 18, 14:30:25 [America/New_York]`**. Abbreviated month
+    /// - **`2024-109 14:30:25 [America/New_York]`**. Day of year
+    ///
+    /// #### Notes:
+    ///
+    /// - If a time is included then some kind of date-time separator e.g. `T` or space is
     ///   required.
     /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
     /// - Treats years digits literally as shown, for example `99-01-01` would be
@@ -326,24 +333,43 @@ impl Dt {
     ///
     /// ### Seconds since J2000 Noon
     ///
+    /// #### Format examples:
+    ///
     /// - **`SEC 1234.567 TDB`**.
+    ///
+    /// #### Notes:
+    ///
+    /// - `sec` prefix is required but case-**in**sensitive.
+    /// - Fractional seconds are optional.
     ///
     /// ### JD
     ///
+    /// #### Format examples:
+    ///
     /// - **`JD 2451545.0 TAI`**.
+    ///
+    /// #### Notes:
+    ///
+    /// - `jd` prefix is required but case-**in**sensitive.
+    /// - Fractional days are optional.
     ///
     /// ### MJD
     ///
+    /// #### Format examples:
+    ///
     /// - **`MJD 51544.5 TT`**.
+    ///
+    /// #### Notes:
+    ///
+    /// - `mjd` prefix is required but case-**in**sensitive.
+    /// - Fractional days are optional.
     ///
     /// ## See also
     ///
     /// - [`Parts::from_str_iso`](../struct.Parts.html#method.from_str_iso)
     #[inline(always)]
     pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
-        let mut tp = Parts::from_str_iso(input)?;
-        tp.finish(true)?;
-        tp.to_dt()
+        Parts::from_str_iso(input)?.to_dt()
     }
 
     /// Parses a decimal seconds string (with optional fractional part) as seconds

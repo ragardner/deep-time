@@ -1,4 +1,5 @@
 use super::{FmtExtensions, FmtFlag};
+use crate::en::parse_month_name_abbrev;
 use crate::error::{DtErr, DtErrKind};
 use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
 use crate::{
@@ -545,31 +546,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if self.inp.len() < 3 {
             return Err(an_err!(DtErrKind::InvalidMonthName));
         }
-        let x = &self.inp[..3];
-        let candidate = [
-            x[0].to_ascii_lowercase(),
-            x[1].to_ascii_lowercase(),
-            x[2].to_ascii_lowercase(),
-        ];
-        let index = match &candidate {
-            b"jan" => 0,
-            b"feb" => 1,
-            b"mar" => 2,
-            b"apr" => 3,
-            b"may" => 4,
-            b"jun" => 5,
-            b"jul" => 6,
-            b"aug" => 7,
-            b"sep" => 8,
-            b"oct" => 9,
-            b"nov" => 10,
-            b"dec" => 11,
-            _ => {
-                return Err(an_err!(DtErrKind::InvalidMonthName));
-            }
-        };
+        self.tm.mo = Some(parse_month_name_abbrev(&self.inp[..3])?);
         self.inp = &self.inp[3..];
-        self.tm.mo = Some(index + 1);
         self.bump_fmt();
         Ok(())
     }

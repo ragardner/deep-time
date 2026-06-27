@@ -25,7 +25,7 @@ use crate::{
 /// ```
 pub trait AttosTraits: Copy + Sized {
     /// attoseconds → seconds (s)
-    fn attos_to_sec(self) -> i64;
+    fn attos_to_sec(self) -> i128;
 
     /// attoseconds → milliseconds (ms)
     fn attos_to_ms(self) -> i128;
@@ -53,8 +53,8 @@ impl AttosTraits for i128 {
     }
 
     #[inline]
-    fn attos_to_sec(self) -> i64 {
-        (self / ATTOS_PER_SEC_I128) as i64
+    fn attos_to_sec(self) -> i128 {
+        self / ATTOS_PER_SEC_I128
     }
 
     #[inline]

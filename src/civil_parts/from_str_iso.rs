@@ -1,3 +1,4 @@
+use crate::en::parse_month_name_abbrev;
 use crate::{DtErr, DtErrKind, Offset, Parts, STRTIME_SIZE, Scale, an_err};
 
 impl Parts {
@@ -9,13 +10,20 @@ impl Parts {
     ///
     /// ## Supported formats
     ///
-    /// An optional library time scale right on the end of the input, e.g. `TAI` is supported
-    /// for all of the below formats.
+    /// An **optional** library time scale right on the end of the input, e.g. `TAI` is
+    /// supported for all of the below formats.
     ///
     /// ### ISO
     ///
+    /// #### Format examples:
+    ///
     /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
-    /// - If a time is included then some kind of date-time separator e.g. `T` is
+    /// - **`2024 Apr 18, 14:30:25 [America/New_York]`**. Abbreviated month
+    /// - **`2024-109 14:30:25 [America/New_York]`**. Day of year
+    ///
+    /// #### Notes:
+    ///
+    /// - If a time is included then some kind of date-time separator e.g. `T` or space is
     ///   required.
     /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
     /// - Treats years digits literally as shown, for example `99-01-01` would be
@@ -29,15 +37,36 @@ impl Parts {
     ///
     /// ### Seconds since J2000 Noon
     ///
+    /// #### Format examples:
+    ///
     /// - **`SEC 1234.567 TDB`**.
+    ///
+    /// #### Notes:
+    ///
+    /// - `sec` prefix is required but case-**in**sensitive.
+    /// - Fractional seconds are optional.
     ///
     /// ### JD
     ///
+    /// #### Format examples:
+    ///
     /// - **`JD 2451545.0 TAI`**.
+    ///
+    /// #### Notes:
+    ///
+    /// - `jd` prefix is required but case-**in**sensitive.
+    /// - Fractional days are optional.
     ///
     /// ### MJD
     ///
+    /// #### Format examples:
+    ///
     /// - **`MJD 51544.5 TT`**.
+    ///
+    /// #### Notes:
+    ///
+    /// - `mjd` prefix is required but case-**in**sensitive.
+    /// - Fractional days are optional.
     ///
     /// ## See also
     ///
@@ -154,14 +183,18 @@ impl Parts {
             }
             tp.day_of_yr = Some(doy);
         } else {
-            // 1 or 2 digit month
+            // Abbreviated month or 1 or 2 digit month
             let mut mo: u8 = 0;
-            if pos < len_ && bytes[pos].is_ascii_digit() {
-                mo = mo * 10 + (bytes[pos] - b'0');
-                pos += 1;
-                if pos < len_ && bytes[pos].is_ascii_digit() {
+            if pos < len_ {
+                if bytes[pos].is_ascii_digit() {
                     mo = mo * 10 + (bytes[pos] - b'0');
                     pos += 1;
+                    if pos < len_ && bytes[pos].is_ascii_digit() {
+                        mo = mo * 10 + (bytes[pos] - b'0');
+                        pos += 1;
+                    }
+                } else if bytes[pos].is_ascii_alphabetic() && pos + 3 < len_ {
+                    mo = parse_month_name_abbrev(&bytes[pos..])?;
                 }
             }
             if mo == 0 {
@@ -169,8 +202,8 @@ impl Parts {
             }
             tp.mo = Some(mo);
 
-            // Optional separator after month
-            if pos < len_ && !bytes[pos].is_ascii_digit() {
+            // Optional separators after month
+            while pos < len_ && !bytes[pos].is_ascii_digit() {
                 pos += 1;
             }
 

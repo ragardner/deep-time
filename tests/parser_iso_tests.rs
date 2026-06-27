@@ -541,4 +541,40 @@ mod from_str_iso_tests {
         let p = Parts::from_str_iso("  mjd=-51544.5 UTC  ").unwrap();
         assert_eq!(p.to_dt().unwrap(), expected);
     }
+
+    #[test]
+    fn test_iso_abbrev_month_name() {
+        let tp = Parts::from_str_iso("2024 Apr 18, 14:30:25 [America/New_York]").unwrap();
+        assert_eq!(tp.yr, Some(2024));
+        assert_eq!(tp.mo, Some(4));
+        assert_eq!(tp.day, Some(18));
+        assert_eq!(tp.hr, 14);
+        assert_eq!(tp.min, 30);
+        assert_eq!(tp.sec, 25);
+        assert_eq!(tp.offset, None);
+        assert!(tp.iana_name.is_some());
+    }
+
+    #[cfg(feature = "jiff-tz")]
+    #[test]
+    fn test_iso_doy() {
+        use deep_time::AttosTraits;
+
+        let tp = Parts::from_str_iso("2024-109 14:30:25.123 [America/New_York]").unwrap();
+        assert_eq!(tp.yr, Some(2024));
+        assert_eq!(tp.day_of_yr, Some(109));
+        assert_eq!(tp.hr, 14);
+        assert_eq!(tp.min, 30);
+        assert_eq!(tp.sec, 25);
+        assert_eq!(tp.offset, None);
+        assert!(tp.iana_name.is_some());
+        let ymd = tp.to_dt().unwrap().to_ymd();
+        assert_eq!(ymd.yr(), 2024);
+        assert_eq!(ymd.mo(), 4);
+        assert_eq!(ymd.day(), 18);
+        assert_eq!(ymd.hr(), 18);
+        assert_eq!(ymd.min(), 30);
+        assert_eq!(ymd.sec(), 25);
+        assert_eq!((ymd.attos() as i128).attos_to_ms(), 123);
+    }
 }
