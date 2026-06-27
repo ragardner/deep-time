@@ -9,7 +9,6 @@ mod from_str;
 mod gregorian;
 mod julian_date;
 mod ops;
-mod tdb;
 mod to_bin_ccsds;
 mod to_str;
 
@@ -19,9 +18,6 @@ pub mod numbers_traits;
 #[cfg(feature = "alloc")]
 mod to_str_ccsds;
 
-#[cfg(feature = "mars")]
-pub mod mars;
-
 #[cfg(feature = "hifitime")]
 mod hifitime;
 
@@ -30,6 +26,15 @@ mod chrono;
 
 #[cfg(feature = "jiff")]
 mod jiff;
+
+#[cfg(feature = "mars")]
+pub mod mars;
+
+#[cfg(feature = "tdb")]
+pub mod tdb_erfa;
+
+#[cfg(not(feature = "tdb"))]
+mod tdb;
 
 use crate::{ATTOS_PER_SEC, Scale};
 use core::fmt;

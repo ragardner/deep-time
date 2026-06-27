@@ -372,12 +372,46 @@ impl Dt {
     pub(crate) const fn tcb_to_tdb(tcb: Dt) -> Dt {
         let elapsed_cg = Self::to_attos_since_tcg_tcb_epoch(tcb);
         let span_attos = Self::mul_rate(elapsed_cg, LB_NUM, LB_DEN + LB_NUM);
-        tcb.add_attos(-span_attos).add_attos(-TDB0_ATTOS)
+        tcb.add_attos(-span_attos).add_attos(TDB0_ATTOS)
     }
 
     pub(crate) const fn tdb_to_tcb(tdb: Dt) -> Dt {
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let span_attos = Self::mul_lb(elapsed);
-        tdb.add_attos(span_attos).add_attos(TDB0_ATTOS)
+        tdb.add_attos(span_attos).add_attos(-TDB0_ATTOS)
+    }
+
+    /// Converts a TAI [`Dt`] to TDB.
+    pub const fn tai_to_tdb(tai: Dt) -> Dt {
+        let tt = tai.add(TT_TAI_OFFSET);
+        let correction = Self::tdb_minus_tt(tt.to_jd_f_raw());
+        tt.add(Dt::from_sec_f(correction, Scale::TAI))
+    }
+
+    /// Converts a TDB [`Dt`] to TAI.
+    pub const fn tdb_to_tai(tdb: Dt) -> Dt {
+        // Linear-rate + constant initial guess (dominant part of the forward transformation)
+        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
+        let linear_span = Self::mul_lb(elapsed); // LB * elapsed
+        let mut tt = tdb.sub(Dt::span(linear_span)).sub(Dt::span(TDB0_ATTOS));
+
+        // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
+        let mut i = 0u8;
+        while i < 8 {
+            let p = Self::tdb_minus_tt(tt.to_jd_f_raw());
+            let new_tt = tdb.sub(Dt::span_f(p));
+
+            // Early exit when change is smaller than ~1 atto-second
+            let delta = new_tt.to_diff_raw(tt);
+            if delta.to_attos().abs() < 1 {
+                tt = new_tt;
+                break;
+            }
+
+            tt = new_tt;
+            i += 1;
+        }
+
+        tt.sub(TT_TAI_OFFSET)
     }
 }

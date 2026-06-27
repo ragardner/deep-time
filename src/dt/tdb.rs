@@ -1,15 +1,15 @@
-use crate::{Dt, Real, Scale, TDB0_ATTOS, TT_TAI_OFFSET, sin};
+use crate::{Dt, JD_2000_2_451_545F, Real, sin};
 
 impl Dt {
     /// DE440/LTE440-tuned compact analytical TT–TDB model
     ///
     /// Exact 13-term Fourier decomposition from LTE440 (Lu et al. 2025, Table 3)
     /// + physical VSOP2013 annual term + tiny JPL secular corrections.
-    pub const fn tdb_minus_tt(seconds_since_j2000_tt: Real) -> Real {
-        // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
-        const J2000_SEC_PER_MILLENNIUM: Real = 31_557_600_000.0;
-
-        let t = seconds_since_j2000_tt / J2000_SEC_PER_MILLENNIUM; // centuries since J2000
+    ///
+    /// Takes the TT Julian Date (as f64, e.g. from `to_jd_f_raw()`).
+    /// This avoids the lossy seconds round-trip.
+    pub const fn tdb_minus_tt(jd_tt: Real) -> Real {
+        let t = (jd_tt - JD_2000_2_451_545F) / 365250.0; // millennia since J2000.0
         let mut correction = f!(0.0);
 
         // Physical annual term (VSOP2013 secular e(t) — replaces LTE440 term #1)
@@ -53,39 +53,5 @@ impl Dt {
         correction += f!(0.00000003638) * t * t; // quadratic secular
 
         correction
-    }
-
-    /// Converts a TAI [`Dt`] to TDB.
-    pub const fn tai_to_tdb(tai: Dt) -> Dt {
-        let tt = tai.add(TT_TAI_OFFSET);
-        let correction = Self::tdb_minus_tt(tt.to_sec_f());
-        tt.add(Dt::from_sec_f(correction, Scale::TAI))
-    }
-
-    /// Converts a TDB [`Dt`] to TAI.
-    pub const fn tdb_to_tai(tdb: Dt) -> Dt {
-        // Linear-rate + constant initial guess (dominant part of the forward transformation)
-        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
-        let linear_span = Self::mul_lb(elapsed); // LB * elapsed
-        let mut tt = tdb.sub(Dt::span(linear_span)).sub(Dt::span(TDB0_ATTOS));
-
-        // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
-        let mut i = 0u8;
-        while i < 8 {
-            let p = Self::tdb_minus_tt(tt.to_sec_f());
-            let new_tt = tdb.sub(Dt::span_f(p));
-
-            // Early exit when change is smaller than ~1 atto-second
-            let delta = new_tt.to_diff_raw(tt);
-            if delta.to_attos().abs() < 1 {
-                tt = new_tt;
-                break;
-            }
-
-            tt = new_tt;
-            i += 1;
-        }
-
-        tt.sub(TT_TAI_OFFSET)
     }
 }

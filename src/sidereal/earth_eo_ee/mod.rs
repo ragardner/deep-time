@@ -1,3 +1,10 @@
+// This file contains code and data derived from ERFA (liberfa/erfa),
+// which is licensed under the 3-clause BSD license.
+// ERFA is derived from the IAU SOFA library.
+//
+// Copyright (C) 2013-2023, NumFOCUS Foundation.
+// See the full license text in the ERFA repository: https://github.com/liberfa/erfa/blob/master/LICENSE
+
 mod constants;
 mod xls;
 mod xpl;
