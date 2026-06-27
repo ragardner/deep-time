@@ -448,12 +448,12 @@ fn is_doy(bytes: &[u8], mut pos: usize, len_: usize) -> bool {
     } else {
         pos += 1;
     }
-    // index 3
-    if pos == len_ || (!bytes[pos].is_ascii_digit() && !matches!(bytes[pos], b' ')) {
+    // index 3, must be digit
+    if pos == len_ || !bytes[pos].is_ascii_digit() {
         return false;
     } else {
         pos += 1;
     }
-    // index 4 end of non digit
+    // index 4 end or non digit
     pos == len_ || !bytes[pos].is_ascii_digit()
 }
