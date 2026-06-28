@@ -5,6 +5,14 @@ impl Parts {
     /// Generalized no alloc parser.
     ///
     /// - Only supports ASCII characters.
+    /// - Timezones beyond UTC aliases require the `jiff-tz` feature which requires the
+    ///   `std` feature.
+    /// - If the format of the input is a typical iso datetime e.g. `2000-01-01T17:00:00`
+    ///   and there is no trailing time scale then the `scale` field of the [`Parts`]
+    ///   is set to [`Scale::UTC`].
+    /// - If the format of the input is a seconds count, jd, or mjd, and there is no
+    ///   trailing time scale then the scale field of the returned [`Parts`] is set
+    ///   to [`Scale::TAI`].
     /// - This function is considerably faster than all other string parsing methods if
     ///   your date-time string is in one of the supported formats.
     ///

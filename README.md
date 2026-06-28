@@ -1,6 +1,6 @@
 # deep-time
 
-A fully featured and high performance **Rust date and time library** with attosecond precision that aims to blend **astronomical** and **civil** timekeeping.
+A fully featured and high performance **Rust date and time library** with attosecond precision that provides **astronomical** and **civil** timekeeping.
 
 [![docs.rs](https://img.shields.io/docsrs/deep-time)](https://docs.rs/deep-time)
 [![Crates.io](https://img.shields.io/crates/v/deep-time)](https://crates.io/crates/deep-time)
@@ -14,7 +14,7 @@ A non-exhaustive list of functionality:
 - No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd).
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
 - Fast [ISO](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_iso) parser
-- [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with full leap second support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc.
+- [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with full leap second support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb_fairhead1990` can be enabled which provides the full ERFA TDB model.
 - [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str)
 - [Strftime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
 - First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature.
@@ -31,6 +31,7 @@ A non-exhaustive list of functionality:
 - [Proper time along trajectories](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.proper_time_from_states), requires the `physics` feature
 - Relativity: [Drift](https://docs.rs/deep-time/latest/deep_time/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/latest/deep_time/struct.Spacetime.html), [Position](https://docs.rs/deep-time/latest/deep_time/struct.Position.html), and [Velocity](https://docs.rs/deep-time/latest/deep_time/struct.Velocity.html) — see [docs/relativity.md](docs/relativity.md) for the underlying model. Requires the `physics` feature.
 - CCSDS [CUC](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cuc), [CDS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cds), and [CCS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_ccs)
+- Binary size is mainly controlled through feature gating.
 
 ### Examples
 

@@ -298,11 +298,24 @@ impl Dt {
     /// Generalized no alloc parser.
     ///
     /// - Only supports ASCII characters.
-    /// - The returned [`Dt`] is on the `TAI` time [`Scale`], having been converted
-    ///   to `TAI` from whatever the **trailing** scale is, or if no scale is provided
-    ///   then no conversion takes place.
     /// - This function is considerably faster than all other string parsing methods if
     ///   your date-time string is in one of the supported formats.
+    /// - Timezones beyond UTC aliases require the `jiff-tz` feature, which requires `std`.
+    ///
+    /// ## Returns
+    ///
+    /// - If there is NOT a trailing time scale in the input and the format of the input
+    ///   is a typical datetime iso e.g. `2000-01-01T17:00:00` then the time scale is
+    ///   assumed to be `UTC` and the [`Dt`] goes through a `UTC` -> `TAI` conversion
+    ///   (adding leap seconds).
+    /// - If there is NOT a trailing time scale in the input and the format of the input
+    ///   is a seconds count, jd, or mjd then the time scale is assumed to be `TAI` and
+    ///   no conversion happens.
+    /// - If there IS a trailing time scale in the input then the input goes through
+    ///   a time scale conversion (regardless of input format) of the provided time
+    ///   scale -> `TAI`. If the trailing time scale is `TAI` then no conversion occurs.
+    ///
+    /// A [`Dt`] of the `TAI` time scale is returned.
     ///
     /// ## Supported formats
     ///
