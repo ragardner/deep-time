@@ -339,10 +339,10 @@ mod astropy_verified_conversions_tests {
                     "{yr}-{mo:02}-01: diff = {diff:.2e} JD (expected {expected:.15}, got {jd:.15})"
                 );
 
-                eprintln!(
-                    "{}-{}-01 Mine: {} Astropy: {} Diff: {}",
-                    yr, mo, jd, results[results_idx], diff,
-                );
+                // eprintln!(
+                //     "{}-{}-01 Mine: {} Astropy: {} Diff: {}",
+                //     yr, mo, jd, results[results_idx], diff,
+                // );
 
                 diffs += diff;
 
@@ -356,9 +356,9 @@ mod astropy_verified_conversions_tests {
 
         let ave_diff = diffs / results_idx as f64;
 
-        eprintln!("=== Summary ===");
-        eprintln!("Average diff: {:.2e}", ave_diff);
-        eprintln!("Max diff:     {:.2e}", max_diff);
+        // eprintln!("=== Summary ===");
+        // eprintln!("Average diff: {:.2e}", ave_diff);
+        // eprintln!("Max diff:     {:.2e}", max_diff);
     }
 
     #[test]
@@ -386,7 +386,7 @@ mod astropy_verified_conversions_tests {
                 // It is not identical to ERFA; differences of O(100 µs) are expected
                 // for TCB.
                 let diff = (jd - expected).abs();
-                eprintln!("TCB our_jd: {} diff: {}", jd, diff);
+                // eprintln!("TCB our_jd: {} diff: {}", jd, diff);
                 assert!(
                     diff < 2e-9,
                     "TCB JD diff too large without tdb_fairhead1990 feature: {}",
