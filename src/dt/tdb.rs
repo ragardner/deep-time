@@ -6,9 +6,10 @@ impl Dt {
     /// Exact 13-term Fourier decomposition from LTE440 (Lu et al. 2025, Table 3)
     /// + physical VSOP2013 annual term + tiny JPL secular corrections.
     pub const fn tdb_minus_tt(seconds_since_j2000_tt: Real) -> Real {
-        // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
+        // Time unit: Julian millennia (exactly 1000 Julian years = 31_557_600_000 s)
         const J2000_SEC_PER_MILLENNIUM: Real = 31_557_600_000.0;
-        let t = seconds_since_j2000_tt / J2000_SEC_PER_MILLENNIUM; // centuries since J2000
+        // millennia since J2000
+        let t = seconds_since_j2000_tt / J2000_SEC_PER_MILLENNIUM;
 
         let mut correction = f!(0.0);
 

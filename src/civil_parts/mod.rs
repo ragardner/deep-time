@@ -77,7 +77,7 @@ pub struct Parts {
     pub wk_mon: Option<u8>,
     /// AM / PM indicator.
     pub meridiem: Option<Meridiem>,
-    /// Timestamp in seconds since a known epoch (`%s` = Unix 1970, `%J` = noon 2000 / J2000).
+    /// Timestamp in seconds since a known epoch (`%s` = Unix 1970, `%J` = noon 2000).
     pub timestamp: Option<Timestamp>,
 }
 

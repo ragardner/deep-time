@@ -43,7 +43,7 @@ impl Parts {
     ///     - Timezone name, **requires square brackets** and **requires `jiff-tz`**
     ///       feature, after time or offset e.g. `T12:00:00 [America/New_York]`.
     ///
-    /// ### Seconds since J2000 Noon
+    /// ### Seconds since 2000-01-01 Noon
     ///
     /// #### Format examples:
     ///

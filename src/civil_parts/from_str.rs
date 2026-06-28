@@ -91,7 +91,8 @@ impl Parts {
     /// - `%%` — Literal `%` character.
     /// - `%s` — Unix timestamp (seconds since 1970-01-01 00:00 UTC, can be negative).
     ///   This directive greedily consumes any fractional seconds.
-    /// - `%J` — Seconds since 2000-01-01 12:00 TAI (J2000.0 noon epoch), can be negative.
+    /// - `%J` — Seconds since 2000-01-01 12:00 TAI (2000-01-01 noon epoch), can be
+    ///   negative.
     ///   This directive greedily consumes any fractional seconds.
     /// - `%n`, `%t` — Any whitespace (consumes it from input).
     ///
@@ -418,7 +419,7 @@ impl Parts {
     /// ```rust
     /// use deep_time::{Scale, civil_parts::Parts};
     ///
-    /// // J2000.0 noon (JD 2451545.0) on TAI
+    /// // 2000-01-01 noon (JD 2451545.0) on TAI
     /// let p = Parts::from_str_jd_f("2451545.0", Some(Scale::TAI)).unwrap();
     /// let dt = p.to_dt().unwrap();
     /// assert_eq!(dt.to_jd(), (2_451_545, 0));
@@ -488,7 +489,7 @@ impl Parts {
     /// ```rust
     /// use deep_time::{Scale, civil_parts::Parts};
     ///
-    /// // J2000.0 noon (MJD 51544.5) on TAI
+    /// // 2000-01-01 noon (MJD 51544.5) on TAI
     /// let p = Parts::from_str_mjd_f("51544.5", Some(Scale::TAI)).unwrap();
     /// let dt = p.to_dt().unwrap();
     /// assert_eq!(dt.to_jd(), (2_451_545, 0));

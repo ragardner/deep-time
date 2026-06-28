@@ -165,7 +165,8 @@ impl Dt {
     /// - `%%` — Literal `%` character.
     /// - `%s` — Unix timestamp (seconds since 1970-01-01 00:00 UTC, can be negative).
     ///   This directive greedily consumes any fractional seconds.
-    /// - `%J` — Seconds since 2000-01-01 12:00 TAI (J2000.0 noon epoch), can be negative.
+    /// - `%J` — Seconds since 2000-01-01 12:00 TAI (2000-01-01 noon epoch), can be
+    ///   negative.
     ///   This directive greedily consumes any fractional seconds.
     /// - `%n`, `%t` — Any whitespace (consumes it from input).
     ///
