@@ -141,7 +141,7 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// # #[cfg(feature = "jiff-tz")]
+    /// # #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///

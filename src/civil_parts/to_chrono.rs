@@ -148,7 +148,7 @@ impl Parts {
             let name_str = name.as_str();
 
             if !name_str.is_empty() {
-                #[cfg(feature = "jiff-tz")]
+                #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
                 {
                     use jiff::{Timestamp, tz::TimeZone};
 
@@ -200,7 +200,7 @@ impl Parts {
                         .ok_or_else(|| an_err!(DtErrKind::InvalidTime, "fold/gap"));
                 }
 
-                #[cfg(not(feature = "jiff-tz"))]
+                #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
                 {
                     use crate::tz::UTC_ALIASES;
 

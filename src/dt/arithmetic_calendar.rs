@@ -1,6 +1,6 @@
 use crate::Dt;
 
-#[cfg(feature = "jiff-tz")]
+#[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
 use crate::DtErr;
 
 impl Dt {
@@ -34,7 +34,7 @@ impl Dt {
     }
 }
 
-#[cfg(feature = "jiff-tz")]
+#[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
 impl Dt {
     /// Adds the given number of years in the specified IANA timezone,
     /// respecting timezone rules (including DST) and calendar arithmetic.

@@ -117,7 +117,7 @@ impl Parts {
             let name_str = name.as_str();
 
             if !name_str.is_empty() {
-                #[cfg(feature = "jiff-tz")]
+                #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
                 {
                     use crate::TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
                     use jiff::{Timestamp, tz::TimeZone};
@@ -142,7 +142,7 @@ impl Parts {
                         .as_second()
                         .saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
                 }
-                #[cfg(not(feature = "jiff-tz"))]
+                #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
                 {
                     use crate::tz::UTC_ALIASES;
 

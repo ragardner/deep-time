@@ -1,8 +1,8 @@
 use crate::{ATTOS_PER_SEC_I128, Dt, Scale};
 
-#[cfg(feature = "jiff-tz")]
+#[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
 use crate::{DtErr, DtErrKind, an_err};
-#[cfg(feature = "jiff-tz")]
+#[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
 use jiff::civil;
 
 /// Combined date + time object.
@@ -290,7 +290,7 @@ impl YmdHms {
     }
 }
 
-#[cfg(feature = "jiff-tz")]
+#[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
 impl YmdHms {
     /// Adds the given number of years in the specified IANA timezone,
     /// respecting timezone rules (including DST) and proper calendar arithmetic.

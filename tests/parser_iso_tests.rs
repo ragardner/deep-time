@@ -555,7 +555,7 @@ mod from_str_iso_tests {
         assert!(tp.iana_name.is_some());
     }
 
-    #[cfg(feature = "jiff-tz")]
+    #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
     fn test_iso_doy() {
         use deep_time::AttosTraits;

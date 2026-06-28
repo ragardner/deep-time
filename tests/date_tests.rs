@@ -5,7 +5,7 @@ mod tests {
     use deep_time::civil_parts::Parts;
     use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
 
-    #[cfg(feature = "jiff-tz")]
+    #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
     fn roundtrip_gap_boundary_new_york() {
         let our_input = "2023-03-12 02:00:00 America/New_York";

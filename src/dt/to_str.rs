@@ -6,7 +6,7 @@ use {
     alloc::string::{String, ToString},
 };
 
-#[cfg(not(feature = "jiff-tz"))]
+#[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
 use crate::tz::UTC_ALIASES;
 
 #[allow(clippy::unwrap_used)]
@@ -163,7 +163,7 @@ impl Dt {
     /// You can offset an output that wasn't originally from a zoned input:
     ///
     /// ```rust
-    /// # #[cfg(all(feature = "jiff-tz", feature = "parse"))]
+    /// # #[cfg(all(any(feature = "jiff-tz", feature = "jiff-tz-bundle"), feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
@@ -176,7 +176,7 @@ impl Dt {
     /// You can also return to a zoned output from a zoned input:
     ///
     /// ```rust
-    /// # #[cfg(all(feature = "jiff-tz", feature = "parse"))]
+    /// # #[cfg(all(any(feature = "jiff-tz", feature = "jiff-tz-bundle"), feature = "parse"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
@@ -499,7 +499,7 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// # #[cfg(feature = "jiff-tz")]
+    /// # #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     /// # {
     /// use deep_time::{Dt, Lang, Scale};
     ///
@@ -665,7 +665,7 @@ impl Dt {
         tz_name: &str,
         apply_offset: bool,
     ) -> Result<(YmdHms, i32, LiteStr<49>), DtErr> {
-        #[cfg(feature = "jiff-tz")]
+        #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
         let (offset_secs, abbrev): (i32, LiteStr<49>) = {
             use jiff::{Timestamp, tz::TimeZone};
 
@@ -684,7 +684,7 @@ impl Dt {
             (offset_secs, abbrev)
         };
 
-        #[cfg(not(feature = "jiff-tz"))]
+        #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
         let (offset_secs, abbrev): (i32, LiteStr<49>) = {
             if !UTC_ALIASES.contains(&tz_name) {
                 return Err(an_err!(DtErrKind::MissingFeature));

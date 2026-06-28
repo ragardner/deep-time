@@ -26,13 +26,13 @@ pub fn tz_names() -> impl Iterator<Item = LiteStr<49>> {
 // alloc version (uses Jiff when available)
 #[cfg(feature = "alloc")]
 fn tz_names_alloc() -> impl Iterator<Item = LiteStr<49>> {
-    #[cfg(feature = "jiff-tz")]
+    #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     {
         jiff::tz::db()
             .available()
             .map(|s| LiteStr::new(&s.to_string()))
     }
-    #[cfg(not(feature = "jiff-tz"))]
+    #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
     {
         UTC_ALIASES.iter().copied().map(LiteStr::new)
     }
