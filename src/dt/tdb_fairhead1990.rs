@@ -1,12 +1,170 @@
-// This file contains code and data derived from ERFA (liberfa/erfa),
-// which is licensed under the 3-clause BSD license.
-// ERFA is derived from the IAU SOFA library.
-//
-// Copyright (C) 2013-2023, NumFOCUS Foundation.
-// See the full license text in the ERFA repository: https://github.com/liberfa/erfa/blob/master/LICENSE
+//! TDB−TT using the full ERFA model (Fairhead & Bretagnon 1990).
+//!
+//! Provides `const fn` ports of ERFA `dtdb` / SOFA `iauDtdb`:
+//!
+//!   • `Dt::tdb_minus_tt` — geocentric result (topocentric terms zeroed).
+//!   • `Dt::erfa_tdb_minus_tt` — full model including UT1 and site
+//!     position (u, v) for topocentric corrections.
+//!
+//! The implementation transcribes the 787-term periodic series, time
+//! argument scaling (Julian millennia since J2000), topocentric
+//! contributions, and JPL planetary mass adjustments directly from
+//! erfa/src/dtdb.c.
+//!
+//! Accuracy: a few nanoseconds over 1950–2050 relative to DE405-class
+//! ephemerides.
+//!
+//! Enabled only under the `tdb` Cargo feature (otherwise the compact
+//! 13-term analytical model in tdb.rs is used).
+//!
+//! Copyright (C) 2013-2023, NumFOCUS Foundation.
+//! This file contains code and data derived from ERFA (liberfa/erfa),
+//! which is licensed under the 3-clause BSD license.
+//! ERFA is derived from the IAU SOFA library.
+//! See the full license text in the ERFA repository:
+//! https://github.com/liberfa/erfa/blob/master/LICENSE
 
-use crate::{Dt, Real, cos, sin};
+use crate::{Dt, JD_2000_2_451_545F, Real, SEC_PER_DAY_F, cos, sin};
 use core::f64::consts::TAU;
+
+pub const ERFA_DJ00: Real = 2451545.0;
+pub const ERFA_DJM: Real = 365250.0;
+pub const ERFA_DD2R: Real = 1.745329251994329576923691e-2;
+
+impl Dt {
+    /// TDB−TT correction given seconds since J2000.0 on the TT scale.
+    ///
+    /// Uses the full ERFA model (with topocentric terms zeroed via u=v=0).
+    #[inline(always)]
+    pub const fn tdb_minus_tt(seconds_since_j2000_tt: Real) -> Real {
+        let jd_tt = JD_2000_2_451_545F + (seconds_since_j2000_tt / SEC_PER_DAY_F);
+        // Pass the full JD as date1; date2=0 is fine.
+        // ut/elong/u/v = 0  (topocentric wt terms are all *u or *v and vanish)
+        Self::erfa_tdb_minus_tt(jd_tt, 0.0, 0.0, 0.0, 0.0, 0.0)
+    }
+
+    /// ERFA TDB (full model, topocentric capable).
+    ///
+    /// Equivalent to SOFA/ERFA `eraDtdb` / `erfa.dtdb`.
+    ///
+    /// Use this directly (when the `tdb` feature is enabled) if you need
+    /// observer-specific topocentric corrections.
+    pub const fn erfa_tdb_minus_tt(
+        date1: Real,
+        date2: Real,
+        ut: Real,
+        elong: Real,
+        u: Real,
+        v: Real,
+    ) -> Real {
+        /* Time since J2000.0 in Julian millennia. */
+        let t = ((date1 - ERFA_DJ00) + date2) / ERFA_DJM;
+
+        /* ================= */
+        /* Topocentric terms */
+        /* ================= */
+
+        /* Convert UT to local solar time in radians. */
+        let tsol = (ut % 1.0) * TAU + elong;
+
+        /* FUNDAMENTAL ARGUMENTS: Simon et al. 1994. */
+
+        /* Combine time argument (millennia) with deg/arcsec factor. */
+        let w = t / 3600.0;
+
+        /* Sun Mean Longitude. */
+        let elsun = ((280.46645683 + 1296027711.03429 * w) % 360.0) * ERFA_DD2R;
+
+        /* Sun Mean Anomaly. */
+        let emsun = ((357.52910918 + 1295965810.481 * w) % 360.0) * ERFA_DD2R;
+
+        /* Mean Elongation of Moon from Sun. */
+        let d = ((297.85019547 + 16029616012.090 * w) % 360.0) * ERFA_DD2R;
+
+        /* Mean Longitude of Jupiter. */
+        let elj = ((34.35151874 + 109306899.89453 * w) % 360.0) * ERFA_DD2R;
+
+        /* Mean Longitude of Saturn. */
+        let els = ((50.07744430 + 44046398.47038 * w) % 360.0) * ERFA_DD2R;
+
+        /* TOPOCENTRIC TERMS: Moyer 1981 and Murray 1983. */
+        let wt = 0.00029e-10 * u * sin(tsol + elsun - els)
+            + 0.00100e-10 * u * sin(tsol - 2.0 * emsun)
+            + 0.00133e-10 * u * sin(tsol - d)
+            + 0.00133e-10 * u * sin(tsol + elsun - elj)
+            - 0.00229e-10 * u * sin(tsol + 2.0 * elsun + emsun)
+            - 0.02200e-10 * v * cos(elsun + emsun)
+            + 0.05312e-10 * u * sin(tsol - emsun)
+            - 0.13677e-10 * u * sin(tsol + 2.0 * elsun)
+            - 1.31840e-10 * v * cos(elsun)
+            + 3.17679e-10 * u * sin(tsol);
+
+        /* ===================== */
+        /* Fairhead et al. model */
+        /* ===================== */
+
+        /* T**0 */
+        let mut w0 = f!(0.0);
+        let mut j: usize = 473;
+        while j != usize::MAX {
+            let term = &ERFA_TDB_TERMS[j];
+            w0 += term.amp * sin(term.freq * t + term.phase);
+            if j == 0 {
+                break;
+            }
+            j -= 1;
+        }
+
+        /* T**1 */
+        let mut w1 = f!(0.0);
+        j = 678;
+        while j >= 474 {
+            let term = &ERFA_TDB_TERMS[j];
+            w1 += term.amp * sin(term.freq * t + term.phase);
+            j -= 1;
+        }
+
+        /* T**2 */
+        let mut w2 = f!(0.0);
+        j = 763;
+        while j >= 679 {
+            let term = &ERFA_TDB_TERMS[j];
+            w2 += term.amp * sin(term.freq * t + term.phase);
+            j -= 1;
+        }
+
+        /* T**3 */
+        let mut w3 = f!(0.0);
+        j = 783;
+        while j >= 764 {
+            let term = &ERFA_TDB_TERMS[j];
+            w3 += term.amp * sin(term.freq * t + term.phase);
+            j -= 1;
+        }
+
+        /* T**4 */
+        let mut w4 = f!(0.0);
+        j = 786;
+        while j >= 784 {
+            let term = &ERFA_TDB_TERMS[j];
+            w4 += term.amp * sin(term.freq * t + term.phase);
+            j -= 1;
+        }
+
+        /* Multiply by powers of T and combine. */
+        let wf = t * (t * (t * (t * w4 + w3) + w2) + w1) + w0;
+
+        /* Adjustments to use JPL planetary masses instead of IAU. */
+        let mut wj = f!(0.00065e-6) * sin(f!(6069.776754) * t + f!(4.021194));
+        wj += f!(0.00033e-6) * sin(f!(213.299095) * t + f!(5.543132));
+        wj += f!(-0.00196e-6) * sin(f!(6208.294251) * t + f!(5.696701));
+        wj += f!(-0.00173e-6) * sin(f!(74.781599) * t + f!(2.435900));
+        wj += f!(0.03638e-6) * t * t;
+
+        /* TDB-TT in seconds. */
+        wt + wf + wj
+    }
+}
 
 pub struct TdbTerm {
     amp: Real,
@@ -892,140 +1050,3 @@ pub static ERFA_TDB_TERMS: [TdbTerm; 787] = [
     TdbTerm::new(0.000303e-6, 12566.151699983, 5.407132842),
     TdbTerm::new(0.000209e-6, 155.420399434, 1.989815753),
 ];
-
-pub const ERFA_DJ00: Real = 2451545.0;
-pub const ERFA_DJM: Real = 365250.0;
-pub const ERFA_DD2R: Real = 1.745329251994329576923691e-2;
-
-impl Dt {
-    /// TDB−TT correction given the TT Julian Date (f64).
-    ///
-    /// Uses the full ERFA model (with topocentric terms zeroed via u=v=0).
-    /// Callers should pass `tt.to_jd_f_raw()` (or equivalent) for best precision.
-    pub const fn tdb_minus_tt(jd_tt: Real) -> Real {
-        // Pass the full JD as date1; date2=0 is fine.
-        // ut/elong/u/v = 0  (topocentric wt terms are all *u or *v and vanish)
-        Self::erfa_tdb_minus_tt(jd_tt, 0.0, 0.0, 0.0, 0.0, 0.0)
-    }
-
-    /// ERFA TDB (full model, topocentric capable).
-    ///
-    /// Equivalent to SOFA/ERFA `eraDtdb` / `erfa.dtdb`.
-    /// Use this directly (when the `tdb` feature is enabled) if you need
-    /// observer-specific topocentric corrections.
-    pub const fn erfa_tdb_minus_tt(
-        date1: Real,
-        date2: Real,
-        ut: Real,
-        elong: Real,
-        u: Real,
-        v: Real,
-    ) -> Real {
-        /* Time since J2000.0 in Julian millennia. */
-        let t = ((date1 - ERFA_DJ00) + date2) / ERFA_DJM;
-
-        /* ================= */
-        /* Topocentric terms */
-        /* ================= */
-
-        /* Convert UT to local solar time in radians. */
-        let tsol = (ut % 1.0) * TAU + elong;
-
-        /* FUNDAMENTAL ARGUMENTS: Simon et al. 1994. */
-
-        /* Combine time argument (millennia) with deg/arcsec factor. */
-        let w = t / 3600.0;
-
-        /* Sun Mean Longitude. */
-        let elsun = ((280.46645683 + 1296027711.03429 * w) % 360.0) * ERFA_DD2R;
-
-        /* Sun Mean Anomaly. */
-        let emsun = ((357.52910918 + 1295965810.481 * w) % 360.0) * ERFA_DD2R;
-
-        /* Mean Elongation of Moon from Sun. */
-        let d = ((297.85019547 + 16029616012.090 * w) % 360.0) * ERFA_DD2R;
-
-        /* Mean Longitude of Jupiter. */
-        let elj = ((34.35151874 + 109306899.89453 * w) % 360.0) * ERFA_DD2R;
-
-        /* Mean Longitude of Saturn. */
-        let els = ((50.07744430 + 44046398.47038 * w) % 360.0) * ERFA_DD2R;
-
-        /* TOPOCENTRIC TERMS: Moyer 1981 and Murray 1983. */
-        let wt = 0.00029e-10 * u * sin(tsol + elsun - els)
-            + 0.00100e-10 * u * sin(tsol - 2.0 * emsun)
-            + 0.00133e-10 * u * sin(tsol - d)
-            + 0.00133e-10 * u * sin(tsol + elsun - elj)
-            - 0.00229e-10 * u * sin(tsol + 2.0 * elsun + emsun)
-            - 0.02200e-10 * v * cos(elsun + emsun)
-            + 0.05312e-10 * u * sin(tsol - emsun)
-            - 0.13677e-10 * u * sin(tsol + 2.0 * elsun)
-            - 1.31840e-10 * v * cos(elsun)
-            + 3.17679e-10 * u * sin(tsol);
-
-        /* ===================== */
-        /* Fairhead et al. model */
-        /* ===================== */
-
-        /* T**0 */
-        let mut w0 = f!(0.0);
-        let mut j: usize = 473;
-        while j != usize::MAX {
-            let term = &ERFA_TDB_TERMS[j];
-            w0 += term.amp * sin(term.freq * t + term.phase);
-            if j == 0 {
-                break;
-            }
-            j -= 1;
-        }
-
-        /* T**1 */
-        let mut w1 = f!(0.0);
-        j = 678;
-        while j >= 474 {
-            let term = &ERFA_TDB_TERMS[j];
-            w1 += term.amp * sin(term.freq * t + term.phase);
-            j -= 1;
-        }
-
-        /* T**2 */
-        let mut w2 = f!(0.0);
-        j = 763;
-        while j >= 679 {
-            let term = &ERFA_TDB_TERMS[j];
-            w2 += term.amp * sin(term.freq * t + term.phase);
-            j -= 1;
-        }
-
-        /* T**3 */
-        let mut w3 = f!(0.0);
-        j = 783;
-        while j >= 764 {
-            let term = &ERFA_TDB_TERMS[j];
-            w3 += term.amp * sin(term.freq * t + term.phase);
-            j -= 1;
-        }
-
-        /* T**4 */
-        let mut w4 = f!(0.0);
-        j = 786;
-        while j >= 784 {
-            let term = &ERFA_TDB_TERMS[j];
-            w4 += term.amp * sin(term.freq * t + term.phase);
-            j -= 1;
-        }
-
-        /* Multiply by powers of T and combine. */
-        let wf = t * (t * (t * (t * w4 + w3) + w2) + w1) + w0;
-
-        /* Adjustments to use JPL planetary masses instead of IAU. */
-        let mut wj = f!(0.00065e-6) * sin(f!(6069.776754) * t + f!(4.021194));
-        wj += f!(0.00033e-6) * sin(f!(213.299095) * t + f!(5.543132));
-        wj += f!(-0.00196e-6) * sin(f!(6208.294251) * t + f!(5.696701));
-        wj += f!(-0.00173e-6) * sin(f!(74.781599) * t + f!(2.435900));
-        wj += f!(0.03638e-6) * t * t;
-
-        /* TDB-TT in seconds. */
-        wt + wf + wj
-    }
-}

@@ -208,6 +208,7 @@ deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
 | `lang`               | Enables all languages                                                     | `euro`      |
 | `panic-handler`      | Provides an optional simple `#[panic_handler]` for `no_std` environments  | `no_std`    |
 | `wire`               | Enables wire format (serialization) support                               | —           |
+| `tdb_fairhead1990`   | Replaces the fast TDB and TCB conversions with the full ERFA TDB model    | —           |
 | `physics`            | Enables relativistic physics support (`Drift`, `Spacetime`, `Position`, `Velocity`, `Observer`, light-time, etc.) | —           |
 | `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                  | —           |
 | `sidereal`           | Enables sidereal time support                                             | —           |
@@ -241,22 +242,22 @@ Benchmarks were measured on an AMD Ryzen 7 7800X3D.
 
 | Operation                              | Time          | vs Jiff 0.2.28           |
 |----------------------------------------|---------------|--------------------------|
-| ISO datetime parsing                   | 19.6 ns       | 26.7% faster             |
-| `strptime`                             | 33.9 ns       | 15.8% faster             |
-| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 184 ns        | 8.7% slower              |
-| `strftime`                             | 95.1 ns       | 54.6% slower             |
-| Auto parser (`from_str_parse`)         | 602 ns        | —                        |
+| ISO datetime parsing                   | 20.4 ns       | 22.5% faster             |
+| `strptime`                             | 34.3 ns       | 19.4% faster             |
+| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 187 ns        | 9.8% slower              |
+| `strftime`                             | 96.8 ns       | 57.5% slower             |
+| Auto parser (`from_str_parse`)         | 615 ns        | —                        |
 
 #### Time Scale Conversions
 
 | Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |
 |------------------|---------------|---------------|---------------------------|
-| TAI → UTC        | 9.8 ns        | 44.5 ns       | 4.5× faster               |
-| UTC → TAI        | 12.8 ns       | 45.6 ns       | 3.6× faster               |
-| TAI → TDB        | 138 ns        | 90.9 ns       | 1.5× slower               |
-| TDB → TAI        | 606 ns        | 27.0 ns       | 22.5× slower              |
-| GPS conversion   | 20.6 ns       | 6.3 ns        | 3.3× slower               |
-| GPS week + TOW   | 27.8 ns       | 6.8 ns        | 4.1× slower               |
+| TAI → UTC        | 9.7 ns        | 44.8 ns       | 4.6× faster               |
+| UTC → TAI        | 13.1 ns       | 45.4 ns       | 3.5× faster               |
+| TAI → TDB        | 136 ns        | 90.4 ns       | 1.5× slower               |
+| TDB → TAI        | 610 ns        | 27.3 ns       | 22.3× slower              |
+| GPS conversion   | 21.1 ns       | 5.4 ns        | 3.9× slower               |
+| GPS week + TOW   | 27.5 ns       | 6.7 ns        | 4.1× slower               |
 
 The tests were run with:
 

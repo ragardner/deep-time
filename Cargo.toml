@@ -30,17 +30,36 @@ sys-locale   = { version = "=0.3", optional = true }
 # CORE FEATURES
 # ──────────────────────────────────────────────────────────────
 
+# Crate has no default features
 default = []
+
+# Basic but energy efficient no std, no alloc panic handler
 panic-handler = []
+
+# Library custom serialization for major types
 wire = []
 
+# Light time, proper time along trajectory, and physics types such as
+# Spacetime, Observer, Position, and Velocity
 physics = []
-tdb = []
+
+# Higher accuracy but larger binary size TDB conversion code
+tdb_fairhead1990 = []
+
+# Mars conversions functions
 mars = []
+
+# Basic sidereal functionality
 sidereal = []
+
+# sidereal + ERFA Equation of the origins and Equation of the equinoxes
 sidereal-earth = ["sidereal"]
+
+# UT1 parsing and conversions
 eop = ["alloc"]
 
+# Required for some file handling such as with the "eop" feature
+# and loading your own leap seconds files
 std = [
     "alloc",
     "jiff?/std",
@@ -49,6 +68,7 @@ std = [
     "serde?/std",
 ]
 
+# String conversions such as formatting to String
 alloc = [
     "jiff?/alloc",
     "chrono?/alloc",
@@ -58,6 +78,7 @@ alloc = [
 # PARSER / LANGUAGES (no_std friendly)
 # ──────────────────────────────────────────────────────────────
 
+# Auto-parsers for dates and durations
 parse = [
     "alloc",
     "dep:aho-corasick",

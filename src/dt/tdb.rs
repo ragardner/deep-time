@@ -1,15 +1,15 @@
-use crate::{Dt, JD_2000_2_451_545F, Real, sin};
+use crate::{Dt, Real, sin};
 
 impl Dt {
     /// DE440/LTE440-tuned compact analytical TT–TDB model
     ///
     /// Exact 13-term Fourier decomposition from LTE440 (Lu et al. 2025, Table 3)
     /// + physical VSOP2013 annual term + tiny JPL secular corrections.
-    ///
-    /// Takes the TT Julian Date (as f64, e.g. from `to_jd_f_raw()`).
-    /// This avoids the lossy seconds round-trip.
-    pub const fn tdb_minus_tt(jd_tt: Real) -> Real {
-        let t = (jd_tt - JD_2000_2_451_545F) / 365250.0; // millennia since J2000.0
+    pub const fn tdb_minus_tt(seconds_since_j2000_tt: Real) -> Real {
+        // J2000.0 = 2000-01-01 12:00:00 TT → 100 Julian years = exactly 3_155_760_000 s
+        const J2000_SEC_PER_MILLENNIUM: Real = 31_557_600_000.0;
+        let t = seconds_since_j2000_tt / J2000_SEC_PER_MILLENNIUM; // centuries since J2000
+
         let mut correction = f!(0.0);
 
         // Physical annual term (VSOP2013 secular e(t) — replaces LTE440 term #1)

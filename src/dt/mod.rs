@@ -30,10 +30,10 @@ mod jiff;
 #[cfg(feature = "mars")]
 pub mod mars;
 
-#[cfg(feature = "tdb")]
-pub mod tdb_erfa;
+#[cfg(feature = "tdb_fairhead1990")]
+pub mod tdb_fairhead1990;
 
-#[cfg(not(feature = "tdb"))]
+#[cfg(not(feature = "tdb_fairhead1990"))]
 mod tdb;
 
 use crate::{ATTOS_PER_SEC, Scale};

@@ -135,6 +135,9 @@ pub(crate) use strtime::*;
 // _________________________________________
 // FEATURE PUB USE
 // _________________________________________
+#[cfg(feature = "tdb_fairhead1990")]
+pub use dt::tdb_fairhead1990;
+
 #[cfg(feature = "parse")]
 pub use alloc_parse::types::{Mode, Order, ParseCfg};
 

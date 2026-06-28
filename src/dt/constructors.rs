@@ -522,8 +522,23 @@ impl Dt {
     /// Creates a [`Dt`] from a floating-point number of seconds.
     ///
     /// - Assumes the value is on the given scale.
-    /// - Converts the values to TAI from the given `scale`.
-    /// - The returned [`Dt`] is on the TAI time scale.
+    /// - Converts the value to TAI from the given `scale`.
+    /// - The returned [`Dt`] is on the TAI time scale - its `scale`
+    ///   field is `TAI` and its `target` field is the provided time
+    ///   scale argument.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let seconds = 5.5;
+    ///
+    /// // use TAI for no conversions
+    /// let duration = Dt::from_sec_f(seconds, Scale::TAI);
+    ///
+    /// assert_eq!(duration.to_sec_f(), seconds);
+    /// ```
     #[inline]
     pub const fn from_sec_f(sec: Real, scale: Scale) -> Dt {
         if sec.is_nan() {

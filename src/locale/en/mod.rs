@@ -66,8 +66,6 @@ pub(crate) fn parse_month_name_abbrev(bytes: &[u8]) -> Result<u8, DtErr> {
         b"oct" => Ok(10),
         b"nov" => Ok(11),
         b"dec" => Ok(12),
-        _ => {
-            return Err(an_err!(DtErrKind::InvalidMonthName));
-        }
+        _ => Err(an_err!(DtErrKind::InvalidMonthName)),
     }
 }

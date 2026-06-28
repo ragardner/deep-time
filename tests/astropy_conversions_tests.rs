@@ -16,14 +16,33 @@ print("byear", t.byear)
 print("decimalyear", t.decimalyear)
 print("yday", t.yday)
 
-scales = ["tai", "tt", "tdb", "tcg", "tcb", "utc", "ut1"]
+scales = ["tai", "tt", "tdb", "tcg", "utc", "ut1"]
 
 for scale in scales:
     ts = getattr(t, scale)
-    print(f"jd_{scale}", ts.jd)
+    print(f"jd_{scale} {ts.jd:.15f}")
 
-print("")
+print("\n-- TCB ---------")
+for year in [
+    1500,
+    2000,
+    2020,
+    4000,
+]:
+    x = Time(f"{year}-01-01 00:00:00", scale="tai")
+    print(f"{x.tcb.jd:.15f},")
 
+print("\n-- TCG ---------")
+for year in [
+    1500,
+    2000,
+    2020,
+    4000,
+]:
+    x = Time(f"{year}-01-01 00:00:00", scale="tai")
+    print(f"{x.tcg.jd:.15f},")
+
+print("\n-- TDB ---------")
 for year in [
     1000,
     1500,
@@ -56,7 +75,8 @@ for year in [
 ]:
     for month in ["01", "04"]:
         x = Time(f"{year}-{month}-01 00:00:00", scale="tai")
-        print(f"{x.tdb.jd:.10f},")
+        print(f"{x.tdb.jd:.15f},")
+
 
 """
 galexsec 1261871963.0
@@ -72,10 +92,22 @@ jd_tai 2458849.500000000000000
 jd_tt 2458849.500372500158846
 jd_tdb 2458849.500372498761863
 jd_tcg 2458849.500383445061743
-jd_tcb 2458849.500616008881480
 jd_utc 2458849.499571759253740
 jd_ut1 2458849.499569708947092
 
+-- TCB ---------
+2268923.497671171557158,
+2451544.500502743292600,
+2458849.500616008881480,
+3182029.511829047929496,
+
+-- TCG ---------
+2268923.500251080375165,
+2451544.500378353986889,
+2458849.500383445061743,
+3182029.500887450296432,
+
+-- TDB ---------
 2086302.500372504815459,
 2086392.500372519250959,
 2268923.500372501555830,
@@ -220,122 +252,7 @@ mod astropy_verified_conversions_tests {
     }
 
     #[test]
-    fn tcg_jd() {
-        let jd = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0)
-            .target(Scale::TCG)
-            .to_jd_f();
-        // jd_tcg 2458849.500383445061743
-        assert_eq!(jd, 2458849.500383445061743);
-    }
-
-    #[cfg(not(feature = "tdb"))]
-    #[test]
     fn tdb_jd_multi() {
-        let results = [
-            2086302.500372504815459,
-            2086392.500372519250959,
-            2268923.500372501555830,
-            2269013.500372519250959,
-            2451544.500372498761863,
-            2451635.500372518785298,
-            2451910.500372499227524,
-            2452000.500372518785298,
-            2452275.500372499227524,
-            2452365.500372518785298,
-            2452640.500372499227524,
-            2452730.500372518785298,
-            2453005.500372499227524,
-            2453096.500372519250959,
-            2453371.500372499693185,
-            2453461.500372519250959,
-            2453736.500372499227524,
-            2453826.500372519250959,
-            2454101.500372499227524,
-            2454191.500372519250959,
-            2454832.500372499227524,
-            2454922.500372519250959,
-            2455197.500372498761863,
-            2455287.500372519250959,
-            2455562.500372498761863,
-            2455652.500372519250959,
-            2455927.500372498761863,
-            2456018.500372519250959,
-            2456293.500372499227524,
-            2456383.500372518785298,
-            2456658.500372499227524,
-            2456748.500372518785298,
-            2457023.500372499227524,
-            2457113.500372519250959,
-            2457388.500372499227524,
-            2457479.500372519250959,
-            2457754.500372499227524,
-            2457844.500372519250959,
-            2458119.500372499227524,
-            2458209.500372519250959,
-            2458849.500372498761863,
-            2458940.500372519250959,
-            2459215.500372498761863,
-            2459305.500372519250959,
-            2461406.500372499227524,
-            2461496.500372518785298,
-            2462502.500372499227524,
-            2462592.500372519250959,
-            2464328.500372498761863,
-            2464418.500372518785298,
-            2487704.500372499227524,
-            2487794.500372519250959,
-            3182029.500372488982975,
-            3182120.500372514594346,
-            4642999.500372484326363,
-            4643090.500372495502234,
-        ];
-        let mut results_idx: usize = 0;
-        // let mut diffs: f64 = 0.0;
-        // let mut max_diff: f64 = 0.0;
-        const TOLERANCE: f64 = 2.0e-9;
-        for yr in [
-            1000, 1500, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2009, 2010, 2011, 2012,
-            2013, 2014, 2015, 2016, 2017, 2018, 2020, 2021, 2027, 2030, 2035, 2099, 4000, 8000,
-        ]
-        .iter()
-        {
-            for mo in [1, 4] {
-                let jd = Dt::from_ymd(*yr as i64, mo, 1, Scale::TAI, 0, 0, 0, 0)
-                    .target(Scale::TDB)
-                    .to_jd_f();
-                let expected = results[results_idx];
-                let diff = (jd - expected).abs();
-
-                assert!(
-                    diff < TOLERANCE,
-                    "{yr}-{mo:02}-01: diff = {diff:.2e} JD (expected {expected}, got {jd})"
-                );
-
-                eprintln!(
-                    "{}-{}-01 Mine: {} Astropy: {} Diff: {}",
-                    yr, mo, jd, results[results_idx], diff,
-                );
-
-                // diffs += diff;
-
-                // if diff > max_diff {
-                //     max_diff = diff;
-                // }
-
-                results_idx += 1;
-            }
-        }
-
-        // let ave_diff = diffs / results_idx as f64;
-
-        // eprintln!("=== Summary ===");
-        // eprintln!("Average diff: {:.2e}", ave_diff);
-        // eprintln!("Max diff:     {:.2e}", max_diff);
-    }
-
-    #[cfg(feature = "tdb")]
-    #[test]
-    fn erfa_tdb_jd_multi() {
         let results = [
             2086302.500372504815459,
             2086392.500372519250959,
@@ -397,7 +314,13 @@ mod astropy_verified_conversions_tests {
         let mut results_idx: usize = 0;
         let mut diffs: f64 = 0.0;
         let mut max_diff: f64 = 0.0;
+
+        #[cfg(feature = "tdb_fairhead1990")]
+        const TOLERANCE: f64 = 0.0;
+
+        #[cfg(not(feature = "tdb_fairhead1990"))]
         const TOLERANCE: f64 = 2.0e-9;
+
         for yr in [
             1000, 1500, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2009, 2010, 2011, 2012,
             2013, 2014, 2015, 2016, 2017, 2018, 2020, 2021, 2027, 2030, 2035, 2099, 4000, 8000,
@@ -409,32 +332,92 @@ mod astropy_verified_conversions_tests {
                     .target(Scale::TDB)
                     .to_jd_f();
                 let expected = results[results_idx];
-                assert_eq!(jd, expected);
+                let diff = (jd - expected).abs();
+
+                assert!(
+                    diff <= TOLERANCE,
+                    "{yr}-{mo:02}-01: diff = {diff:.2e} JD (expected {expected:.15}, got {jd:.15})"
+                );
+
+                eprintln!(
+                    "{}-{}-01 Mine: {} Astropy: {} Diff: {}",
+                    yr, mo, jd, results[results_idx], diff,
+                );
+
+                diffs += diff;
+
+                if diff > max_diff {
+                    max_diff = diff;
+                }
+
                 results_idx += 1;
             }
         }
+
+        let ave_diff = diffs / results_idx as f64;
+
+        eprintln!("=== Summary ===");
+        eprintln!("Average diff: {:.2e}", ave_diff);
+        eprintln!("Max diff:     {:.2e}", max_diff);
     }
 
     #[test]
     fn tcb_jd() {
-        let jd = Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0)
-            .target(Scale::TCB)
-            .to_jd_f();
-        // jd_tcb 2458849.500616009
-        if cfg!(feature = "tdb") {
-            // ERFA path should match Astropy
-            assert_eq!(jd, 2458849.500616008881480);
-        } else {
-            // Default uses the compact DE440/LTE440 analytical model.
-            // It is not identical to ERFA; differences of O(100 µs) are expected
-            // for TCB.
-            let diff = (jd - 2458849.500616008881480).abs();
-            eprintln!("TCB our_jd: {} diff: {}", jd, diff);
-            assert!(
-                diff < 2e-9,
-                "TCB JD diff too large without tdb feature: {}",
-                diff
-            );
+        let results = [
+            2268923.497671171557158,
+            2451544.500502743292600,
+            2458849.500616008881480,
+            3182029.511829047929496,
+        ];
+        let mut result: usize = 0;
+
+        for yr in [1500, 2000, 2020, 4000] {
+            let expected = results[result];
+
+            let jd = Dt::from_ymd(yr as i64, 1, 1, Scale::TAI, 0, 0, 0, 0)
+                .target(Scale::TCB)
+                .to_jd_f();
+
+            if cfg!(feature = "tdb_fairhead1990") {
+                // ERFA path should match Astropy
+                assert_eq!(jd, expected);
+            } else {
+                // Default uses the compact DE440/LTE440 analytical model.
+                // It is not identical to ERFA; differences of O(100 µs) are expected
+                // for TCB.
+                let diff = (jd - expected).abs();
+                eprintln!("TCB our_jd: {} diff: {}", jd, diff);
+                assert!(
+                    diff < 2e-9,
+                    "TCB JD diff too large without tdb_fairhead1990 feature: {}",
+                    diff
+                );
+            }
+
+            result += 1;
+        }
+    }
+
+    #[test]
+    fn tcg_jd() {
+        let results = [
+            2268923.500251080375165,
+            2451544.500378353986889,
+            2458849.500383445061743,
+            3182029.500887450296432,
+        ];
+        let mut result: usize = 0;
+
+        for yr in [1500, 2000, 2020, 4000] {
+            let expected = results[result];
+
+            let jd = Dt::from_ymd(yr as i64, 1, 1, Scale::TAI, 0, 0, 0, 0)
+                .target(Scale::TCG)
+                .to_jd_f();
+
+            assert_eq!(jd, expected);
+
+            result += 1;
         }
     }
 }
