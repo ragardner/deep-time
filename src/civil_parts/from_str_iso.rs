@@ -435,7 +435,7 @@ impl Parts {
             }
 
             if pos >= len_ {
-                return Err(an_err!(DtErrKind::InvalidTimezone));
+                return Err(an_err!(DtErrKind::InvalidTimeZone));
             }
 
             // pos is now at ']'

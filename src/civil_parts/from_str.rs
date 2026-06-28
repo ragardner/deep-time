@@ -153,7 +153,7 @@ impl Parts {
     ///   required colon in a timezone offset.
     /// - [`DtErrKind::InvalidOffset`] — General failure while parsing a numeric
     ///   timezone offset.
-    /// - [`DtErrKind::InvalidTimezone`] — Invalid or unparseable IANA timezone name
+    /// - [`DtErrKind::InvalidTimeZone`] — Invalid or unparseable IANA timezone name
     ///   (used by the `%Q` directive).
     ///
     /// ### Post-processing / validation errors

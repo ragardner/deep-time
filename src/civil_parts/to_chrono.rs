@@ -153,7 +153,7 @@ impl Parts {
                     use jiff::{Timestamp, tz::TimeZone};
 
                     let tz = TimeZone::get(name_str)
-                        .map_err(|e| an_err!(DtErrKind::InvalidTimezone, "{}", e))?;
+                        .map_err(|e| an_err!(DtErrKind::InvalidTimeZone, "{}", e))?;
 
                     let provisional_unix =
                         DateTime::<chrono::Utc>::from_naive_utc_and_offset(naive, chrono::Utc)

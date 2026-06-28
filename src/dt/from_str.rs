@@ -227,7 +227,7 @@ impl Dt {
     ///   required colon in a timezone offset.
     /// - [`DtErrKind::InvalidOffset`] — General failure while parsing a numeric
     ///   timezone offset.
-    /// - [`DtErrKind::InvalidTimezone`] — Invalid or unparseable IANA timezone name
+    /// - [`DtErrKind::InvalidTimeZone`] — Invalid or unparseable IANA timezone name
     ///   (used by the `%Q` directive).
     ///
     /// ### Post-processing / validation errors
@@ -248,7 +248,7 @@ impl Dt {
     /// - [`DtErrKind::InvalidItem`] — ISO week 53 requested for a year that does not
     ///   contain 53 ISO weeks.
     /// - Feature-dependent errors (when `jiff-tz` is involved):
-    ///   - [`DtErrKind::InvalidTimezone`], [`DtErrKind::InvalidNumber`],
+    ///   - [`DtErrKind::InvalidTimeZone`], [`DtErrKind::InvalidNumber`],
     ///     [`DtErrKind::InvalidBytes`].
     ///
     /// The error kind is available via [`DtErr::kind()`].

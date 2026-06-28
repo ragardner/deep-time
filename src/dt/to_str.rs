@@ -670,7 +670,7 @@ impl Dt {
             use jiff::{Timestamp, tz::TimeZone};
 
             let tz =
-                TimeZone::get(tz_name).map_err(|e| an_err!(DtErrKind::InvalidTimezone, "{}", e))?;
+                TimeZone::get(tz_name).map_err(|e| an_err!(DtErrKind::InvalidTimeZone, "{}", e))?;
 
             let unix_sec = self.to_unix().to_sec64();
 

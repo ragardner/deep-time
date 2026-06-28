@@ -820,7 +820,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
         let (iana_str, remaining) = match Self::parse_iana(self.inp) {
             Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::InvalidTimezone)),
+            Err(_) => return Err(an_err!(DtErrKind::InvalidTimeZone)),
         };
 
         let name_to_use = if iana_str.len() > 50 {

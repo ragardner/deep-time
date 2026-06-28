@@ -52,7 +52,7 @@ impl Dt {
     /// - Specific errors for invalid time components when preparing values for Jiff:
     ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
     ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimezone`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
@@ -76,7 +76,7 @@ impl Dt {
     /// - Specific errors for invalid time components when preparing values for Jiff:
     ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
     ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimezone`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
@@ -100,7 +100,7 @@ impl Dt {
     /// - Specific errors for invalid time components when preparing values for Jiff:
     ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
     ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimezone`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
@@ -124,7 +124,7 @@ impl Dt {
     /// - Specific errors for invalid time components when preparing values for Jiff:
     ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
     ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimezone`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
@@ -148,7 +148,7 @@ impl Dt {
     /// - Specific errors for invalid time components when preparing values for Jiff:
     ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
     ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimezone`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
@@ -172,7 +172,7 @@ impl Dt {
     /// - Specific errors for invalid time components when preparing values for Jiff:
     ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
     ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimezone`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
@@ -196,7 +196,7 @@ impl Dt {
     /// - Specific errors for invalid time components when preparing values for Jiff:
     ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
     ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimezone`] if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]

@@ -61,7 +61,7 @@ pub enum DtErrKind {
     InvalidFractional,
     InvalidTimestamp,
     InvalidName,
-    InvalidTimezone,
+    InvalidTimeZone,
     OffsetMissingSign,
     InvalidOffsetHour,
     InvalidOffsetMinute,
