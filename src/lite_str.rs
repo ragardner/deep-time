@@ -68,23 +68,12 @@ impl<const N: usize> LiteStr<N> {
     ///   sequence (everything after the first error is discarded).
     ///
     /// This method is infallible and never allocates.
-    #[inline]
+    #[inline(always)]
     pub fn as_str(&self) -> &str {
-        let end = find_first_nul(&self.bytes);
-        let slice = &self.bytes[..end];
-
+        let slice = &self.bytes[..find_first_nul(&self.bytes)];
         match str::from_utf8(slice) {
             Ok(s) => s,
-            Err(e) => {
-                let valid = e.valid_up_to();
-                if valid == 0 {
-                    "\u{FFFD}" // first bytes are garbage → just show �
-                } else {
-                    // We know this will succeed because `valid_up_to()` returns a
-                    // valid UTF-8 boundary (documented invariant of `Utf8Error`).
-                    str::from_utf8(&slice[..valid]).unwrap()
-                }
-            }
+            Err(e) => handle_invalid_utf8(slice, e),
         }
     }
 
@@ -168,5 +157,59 @@ fn copy_valid_utf8_prefix(dst: &mut [u8], src: &[u8], max_len: usize) -> usize {
             dst[..valid].copy_from_slice(&src[..valid]);
             valid
         }
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn handle_invalid_utf8(slice: &[u8], e: core::str::Utf8Error) -> &str {
+    let valid = e.valid_up_to();
+    if valid == 0 {
+        "\u{FFFD}"
+    } else {
+        str::from_utf8(&slice[..valid]).unwrap_or("\u{FFFD}")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn as_str_valid() {
+        assert_eq!(LiteStr::<16>::new("hello").as_str(), "hello");
+        assert_eq!(LiteStr::<8>::default().as_str(), "");
+    }
+
+    #[test]
+    fn as_str_invalid_leading_byte() {
+        let s = LiteStr::<8>::from_bytes(&[0xFF, b'a']);
+        assert_eq!(s.as_str(), "\u{FFFD}");
+    }
+
+    #[test]
+    fn as_str_valid_prefix_then_garbage() {
+        let s = LiteStr::<8>::from_bytes(&[b'h', b'i', 0xFF, b'!']);
+        assert_eq!(s.as_str(), "hi");
+    }
+
+    #[test]
+    fn as_str_truncated_multibyte_at_start() {
+        // incomplete U+20AC (euro sign)
+        let s = LiteStr::<8>::from_bytes(&[0xE2, 0x82]);
+        assert_eq!(s.as_str(), "\u{FFFD}");
+    }
+
+    #[test]
+    fn as_str_truncated_multibyte_after_valid_prefix() {
+        let s = LiteStr::<8>::from_bytes(&[b'h', b'i', 0xE2, 0x82]);
+        assert_eq!(s.as_str(), "hi");
+    }
+
+    #[test]
+    fn as_str_stops_at_nul() {
+        let s = LiteStr::<8>::from_bytes(b"ab\0cd");
+        assert_eq!(s.as_str(), "ab");
+        assert_eq!(s.as_bytes(), b"ab");
     }
 }
