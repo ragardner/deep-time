@@ -518,7 +518,6 @@ mod from_str_iso_tests {
         let p = Parts::from_str_iso("MJD 51544.5 TAI").unwrap();
         assert_eq!(p.to_dt().unwrap(), expected);
         let d = Dt::from_str_iso("junk MJD 51544.5 TAI").unwrap();
-        eprintln!("{}", d.to_mjd_f_raw());
         assert_eq!(d, expected);
 
         // Positive fractional MJD, implicit scale

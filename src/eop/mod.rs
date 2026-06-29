@@ -35,9 +35,9 @@ pub enum Separator {
 /// custom one to allow specific column indices.
 ///
 /// - `Finals2000A` such as is available from
-///   https://maia.usno.navy.mil/ser7/finals2000A.all
+///   <https://maia.usno.navy.mil/ser7/finals2000A.all>
 /// - `C04` such as is available from
-///   https://datacenter.iers.org/data/latestVersion/EOP_20u24_C04_one_file_1962-now.txt
+///   <https://datacenter.iers.org/data/latestVersion/EOP_20u24_C04_one_file_1962-now.txt>
 /// - `Custom` so you can provide your own specific column indices
 ///   using [`CustomEopCols`].
 #[derive(Debug, Clone, Copy, Default)]
@@ -83,7 +83,7 @@ pub struct EopDataRow {
 ///
 /// - On Earth this would enable time scale conversions to and from
 ///   the **UT1 time scale**.
-/// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
+/// - Earth Orientation Parameters data is available from: <https://maia.usno.navy.mil/ser7/finals2000A.all>
 #[derive(Debug, Clone)]
 pub struct EopData {
     rows: Vec<EopDataRow>,
@@ -93,7 +93,7 @@ pub struct EopData {
 impl EopData {
     /// Parse EOP data from any `std::io::BufRead` (file, network stream, etc.).
     ///
-    /// Lines starting with `#` or longer than [`MAX_LINE_LEN`] are skipped.
+    /// Lines starting with `#` or longer than [`EopData::MAX_LINE_LEN`] are skipped.
     /// The returned vector is always sorted by MJD.
     pub fn data_from_reader<R: std::io::BufRead>(
         mut reader: R,
@@ -457,7 +457,7 @@ impl Dt {
     /// for a particular Modified Julian Date.
     ///
     /// - On Earth this would be the UT1 time scale.
-    /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
+    /// - Earth Orientation Parameters data is available from: <https://maia.usno.navy.mil/ser7/finals2000A.all>
     pub fn mjd_to_eop_offset(mjd: Real, op_data: &EopData) -> Result<EopOffset, DtErr> {
         let offset = op_data
             .eop_offset(mjd)
@@ -468,7 +468,7 @@ impl Dt {
     /// Get an orientation parameters offset in seconds for a particular Modified Julian Date.
     ///
     /// - On Earth this would be the UT1 time scale.
-    /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
+    /// - Earth Orientation Parameters data is available from: <https://maia.usno.navy.mil/ser7/finals2000A.all>
     #[inline]
     pub fn mjd_to_eop_offset_f(mjd: Real, op_data: &EopData) -> Result<Real, DtErr> {
         Self::mjd_to_eop_offset(mjd, op_data).map(|res| res.offset)
@@ -477,7 +477,7 @@ impl Dt {
     /// Offsets a [`Dt`] using orientation parameters data.
     ///
     /// - On Earth this would be the UT1 time scale.
-    /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
+    /// - Earth Orientation Parameters data is available from: <https://maia.usno.navy.mil/ser7/finals2000A.all>
     #[inline]
     pub fn to_eop(&self, op_data: &EopData) -> Result<Self, DtErr> {
         Ok(self.add(Dt::from_sec_f(
@@ -490,7 +490,7 @@ impl Dt {
     /// it was before.
     ///
     /// - On Earth this would be the UT1 time scale.
-    /// - Earth Orientation Parameters data is available from: https://maia.usno.navy.mil/ser7/finals2000A.all
+    /// - Earth Orientation Parameters data is available from: <https://maia.usno.navy.mil/ser7/finals2000A.all>
     pub fn from_eop(&self, op_data: &EopData) -> Result<Self, DtErr> {
         if op_data.rows.is_empty() {
             return Err(an_err!(DtErrKind::Empty));

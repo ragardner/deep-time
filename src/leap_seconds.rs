@@ -270,7 +270,7 @@ impl Dt {
     /// Load directly from a file (e.g. the official IANA `leap-seconds.list`).
     ///
     /// Format should be the same as the file available at:
-    /// https://data.iana.org/time-zones/data/leap-seconds.list
+    /// <https://data.iana.org/time-zones/data/leap-seconds.list>
     ///
     /// For rows that don't start with # (the data rows) the first column
     /// should be the NTP timestamp, the second column (separated by whitespace)
@@ -297,7 +297,7 @@ impl Dt {
     /// Load directly from a str (e.g. the official IANA `leap-seconds.list`).
     ///
     /// Format should be the same as the file available at:
-    /// https://data.iana.org/time-zones/data/leap-seconds.list
+    /// <https://data.iana.org/time-zones/data/leap-seconds.list>
     ///
     /// For rows that don't start with # (the data rows) the first column
     /// should be the NTP timestamp, the second column (separated by whitespace)

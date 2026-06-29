@@ -22,7 +22,7 @@
 //! which is licensed under the 3-clause BSD license.
 //! ERFA is derived from the IAU SOFA library.
 //! See the full license text in the ERFA repository:
-//! https://github.com/liberfa/erfa/blob/master/LICENSE
+//! <https://github.com/liberfa/erfa/blob/master/LICENSE>
 
 use crate::{Dt, JD_2000_2_451_545F, Real, SEC_PER_DAY_F, cos, sin};
 use core::f64::consts::TAU;

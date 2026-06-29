@@ -64,7 +64,7 @@
 //! - [`AnErr::from_wire_bytes`]
 //!
 //! [`AnErr`]: AnErr
-//! [`an_err!`]: an_err
+//! [`an_err!`]: macro.an_err!.html
 
 use crate::LiteStr;
 use core::fmt;

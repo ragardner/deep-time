@@ -142,7 +142,7 @@ impl Observer {
     ///
     /// - `shapiro_coefficient`: How strong the delay from this body should be.
     ///   It equals `2GM / c³`. Use [`Dt::SHAPIRO_SOLAR`] for the Sun, or
-    ///   [`Dt::shapiro_from_grav_param(gm)`] for any other body.
+    ///   [`Dt::shapiro_from_grav_param`] for any other body.
     /// - `body_position`: Where the center of that body is located at the
     ///   relevant time.
     ///
@@ -381,7 +381,7 @@ impl Observer {
     ///
     /// - `shapiro_coefficient`: How strong the delay from this body should be.
     ///   It equals `2GM / c³`. Use [`Dt::SHAPIRO_SOLAR`] for the Sun, or
-    ///   [`Dt::shapiro_from_grav_param(gm)`] for any other body.
+    ///   [`Dt::shapiro_from_grav_param`] for any other body.
     /// - `body_position`: Where the center of that body is located at the
     ///   relevant time.
     ///

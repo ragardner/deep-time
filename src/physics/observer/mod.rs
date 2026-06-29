@@ -15,7 +15,7 @@ use crate::{C_SQUARED, Dt, Position, Real, Spacetime, Velocity};
 pub struct Observer {
     /// The time of this observer.
     ///
-    /// Any [`Scale`] is accepted. This time is treated as coordinate time.
+    /// Any [`Scale`](crate::Scale) is accepted. This time is treated as coordinate time.
     pub time: Dt,
 
     /// Position of the observer in meters.

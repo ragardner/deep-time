@@ -26,8 +26,10 @@ use crate::{LiteStr, Scale};
 
 /// Intermediate representation of parsed civil date and time.
 ///
-/// After parsing you typically convert the `Parts` to a final type
-/// such as [`Dt`] or one from `chrono`/`jiff`.
+/// After parsing you typically convert the [`Parts`] to a final type
+/// such as
+/// [`Dt`](../struct.Dt.html)
+/// or one from `chrono`/`jiff`.
 ///
 /// ## Examples
 ///

@@ -3,7 +3,7 @@ use crate::{Dt, DtErr, Parts};
 impl Parts {
     /// Formats this [`Parts`] as a **CCSDS C (CUC)** binary time code.
     ///
-    /// - Fully configurable for round-tripping with [`from_ccsds_cuc`].
+    /// - Fully configurable for round-tripping with [`from_ccsds_cuc`](#method.from_ccsds_cuc).
     /// - Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support
     ///   for the extended P-field (second octet) when `n_coarse > 4` or `n_frac > 3`.
     ///
@@ -64,7 +64,8 @@ impl Parts {
     }
 
     /// Convenience method that automatically selects the most appropriate
-    /// CCSDS binary time code based on this `Parts`’s [`Scale`].
+    /// CCSDS binary time code based on this `Parts`’s
+    /// [`Scale`](../enum.Scale.html).
     ///
     /// ## Automatic selection (matches common mission practice)
     ///

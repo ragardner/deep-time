@@ -35,7 +35,7 @@ impl Dt {
     /// ## Returns
     ///
     /// `(buffer, len)` where `buffer` is a fixed-size array of length
-    /// [`CCSDS_C_AND_D_MAX_SIZE`] and `len` is the number of bytes written.
+    /// [`CCSDS_C_AND_D_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_C_AND_D_MAX_SIZE) and `len` is the number of bytes written.
     ///
     /// ## Errors
     ///
@@ -164,7 +164,7 @@ impl Dt {
     /// ## Returns
     ///
     /// `(buffer, len)` where `buffer` is a fixed-size array of length
-    /// [`CCSDS_C_AND_D_MAX_SIZE`] and `len` is the number of bytes written.
+    /// [`CCSDS_C_AND_D_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_C_AND_D_MAX_SIZE) and `len` is the number of bytes written.
     ///
     /// ## Errors
     ///
@@ -288,7 +288,7 @@ impl Dt {
     /// ## Returns
     ///
     /// `(buffer, len)` where `buffer` is a fixed-size array of length
-    /// [`CCSDS_CCS_MAX_SIZE`] and `len` is the number of bytes written.
+    /// [`CCSDS_CCS_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_CCS_MAX_SIZE) and `len` is the number of bytes written.
     ///
     /// ## Errors
     ///

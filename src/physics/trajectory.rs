@@ -7,7 +7,7 @@ impl Dt {
     /// This function accepts samples expressed in terms of directly observable
     /// quantities — coordinate time, velocity, and gravitational potential —
     /// and integrates the proper time (Δτ) along the path. It is a convenience
-    /// wrapper around the core [`proper_time_from_path`] routine.
+    /// wrapper around the core [`Self::proper_time_from_path`] routine.
     ///
     /// The integration is performed using the trapezoidal rule applied to the
     /// instantaneous proper-time rate between consecutive samples. This approach
@@ -50,7 +50,7 @@ impl Dt {
     /// and gravitational time dilation, plus the Planck-scale saturation term when
     /// active). It is **not** a drift or difference relative to coordinate time.
     /// If you need the difference between proper time and coordinate time
-    /// (Δτ − Δt), use [`proper_time_drift_from_states`] instead.
+    /// (Δτ − Δt), use [`Self::proper_time_drift_from_states`] instead.
     ///
     /// `Err(DtErr)` — if the coordinate times are not monotonically non-decreasing.
     pub fn proper_time_from_states<I>(
@@ -86,7 +86,7 @@ impl Dt {
     ///
     /// This is the higher-level function most callers should use when they need
     /// the net drift over a well-defined time interval. It internally calls
-    /// [`proper_time_from_states`] to integrate proper time along the supplied
+    /// [`Self::proper_time_from_states`] to integrate proper time along the supplied
     /// trajectory and then subtracts the requested coordinate time span.
     ///
     /// ## Parameters
@@ -103,7 +103,7 @@ impl Dt {
     ///   first and last state times to `start` and `end` is **not** validated.
     /// - `characteristic_length_scale`: Controls the weak-field vs strong-field
     ///   formulation when constructing local spacetime states (see
-    ///   [`proper_time_from_states`] for full details). Pass `0.0` for all normal
+    ///   [`Self::proper_time_from_states`] for full details). Pass `0.0` for all normal
     ///   weak-field work (GNSS, Earth orbit, solar-system navigation). Supply a
     ///   positive length (in meters) only when strong-field Planck-scale
     ///   saturation effects are required.
@@ -206,7 +206,7 @@ impl Dt {
     /// - a deep-space cruise phase with constant velocity and gravitational potential.
     ///
     /// It is mathematically equivalent to integrating a constant rate using
-    /// the trapezoidal rule in [`proper_time_from_path`], but is more efficient
+    /// the trapezoidal rule in [`Self::proper_time_from_path`], but is more efficient
     /// and makes the caller's intent explicit.
     ///
     /// The method is called on the starting coordinate time (`self`). It

@@ -7,13 +7,14 @@ impl Dt {
     /// - Example: **`"2025-04-17T14:30:45.123456789Z"`**
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
-    /// - Round-trip with [`Dt::from_str_iso`] / [`Parts::from_str_iso`].
+    /// - Round-trip with [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso) /
+    ///   [`Parts::from_str_iso`](../civil_parts/struct.Parts.html#method.from_str_iso).
     #[inline(always)]
     pub fn to_str_ccsds(&self) -> Result<String, DtErr> {
         self.to_str_ccsds_nf(18)
     }
 
-    /// Same as [`to_str_ccsds`] but lets you control the maximum number of fractional digits (0–18).
+    /// Same as [`to_str_ccsds`](../struct.Dt.html#method.to_str_ccsds) but lets you control the maximum number of fractional digits (0–18).
     pub fn to_str_ccsds_nf(&self, max_precision: usize) -> Result<String, DtErr> {
         let prec = max_precision.min(18);
         let fmt = alloc::format!("%Y-%m-%dT%H:%M:%S%.{}~fZ", prec);
@@ -28,7 +29,7 @@ impl Dt {
         self.to_ccsds_doy_str_nf(18)
     }
 
-    /// Same as [`to_ccsds_doy_str`] but with configurable fractional precision.
+    /// Same as [`to_ccsds_doy_str`](../struct.Dt.html#method.to_ccsds_doy_str) but with configurable fractional precision.
     pub fn to_ccsds_doy_str_nf(&self, max_precision: usize) -> Result<String, DtErr> {
         let prec = max_precision.min(18);
         let fmt = alloc::format!("%Y-%jT%H:%M:%S%.{}~fZ", prec);

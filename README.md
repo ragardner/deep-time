@@ -22,7 +22,7 @@ A fully featured and high performance **Rust date and time library** with attose
 - No-alloc [string return type](https://docs.rs/deep-time/latest/deep_time/struct.LiteStr.html)
 - Const fn [libm math](https://docs.rs/deep-time/latest/deep_time/math/index.html) functions
 - Safe, saturating arithmetic throughout
-- **No** `unsafe` in the library itself - [`#![forbid(unsafe_code)]`](https://github.com/ragardner/deep-time/blob/main/src/lib.rs)
+- **No** `unsafe` in the library - [`#![forbid(unsafe_code)]`](https://github.com/ragardner/deep-time/blob/main/src/lib.rs)
 - [Lunar](https://docs.rs/deep-time/latest/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/latest/deep_time/mars/index.html) modules
 - [Sidereal time](https://docs.rs/deep-time/latest/deep_time/sidereal/struct.Sidereal.html) with a const fn implementation of ERFA Equation of the Origins / Equinoxes
 - [UT1 and EOP](https://docs.rs/deep-time/latest/deep_time/eop/index.html)
@@ -169,11 +169,8 @@ fn main() -> Result<(), DtErr> {
 ### Documentation
 
 - [Library's main documentation page](https://docs.rs/deep-time/latest)
-
 - [Changelog](https://github.com/ragardner/deep-time/blob/main/docs/CHANGELOG.md)
-
 - [The main time type](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html)
-
 - [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html)
 
 ### Installation

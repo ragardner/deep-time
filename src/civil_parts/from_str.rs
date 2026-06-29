@@ -19,7 +19,7 @@ impl Parts {
     /// - `fmt_can_end_before_inp`: If `true`, the format may end before the input
     ///   is fully consumed (trailing characters in the input are allowed).
     /// - `allow_partial_date`: If `true`, a missing month/day will be defaulted
-    ///   to `1` instead of returning an [`Incomplete`] error.
+    ///   to `1` instead of returning a [`DtErrKind::Incomplete`](../error/enum.DtErrKind.html#variant.Incomplete) error.
     ///
     /// ## Supported Directives
     ///
@@ -195,7 +195,7 @@ impl Parts {
     ///
     /// This is called automatically by the various parsing paths (`from_str`,
     /// CCSDS parsers, etc.). It ensures the struct is in a consistent state
-    /// before being turned into a full [`Dt`] or passed to other converters.
+    /// before being turned into a full [`Dt`](../struct.Dt.html) or passed to other converters.
     ///
     /// ## Behavior
     ///

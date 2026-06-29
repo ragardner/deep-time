@@ -329,7 +329,8 @@ impl Sidereal {
     /// Returns sidereal time at the body's prime meridian as seconds since
     /// sidereal midnight, wrapped to the range `[0, 86400)`.
     ///
-    /// This is the time equivalent of [`sidereal_angle_mean`].
+    /// This is the time equivalent of
+    /// [`Sidereal::sidereal_angle_mean`].
     ///
     /// ## Parameters
     ///
@@ -378,7 +379,8 @@ impl Sidereal {
     /// Returns local sidereal time at the observer's longitude as seconds since
     /// sidereal midnight, wrapped to the range `[0, 86400)`.
     ///
-    /// This is the time equivalent of [`local_sidereal_angle_mean`].
+    /// This is the time equivalent of
+    /// [`Sidereal::local_sidereal_angle_mean`].
     ///
     /// ## Parameters
     ///
@@ -521,7 +523,8 @@ impl Sidereal {
     /// Returns apparent sidereal time at the body's prime meridian as seconds
     /// since sidereal midnight, wrapped to the range `[0, 86400)`.
     ///
-    /// This is the time equivalent of [`sidereal_angle_apparent`].
+    /// This is the time equivalent of
+    /// [`Sidereal::sidereal_angle_apparent`].
     ///
     /// When the **apparent** Equation of the Origins is supplied, this function
     /// returns **Greenwich Apparent Sidereal Time (GAST)**.
@@ -569,7 +572,8 @@ impl Sidereal {
     /// Returns local apparent sidereal time at the observer's longitude as
     /// seconds since sidereal midnight, wrapped to the range `[0, 86400)`.
     ///
-    /// This is the time equivalent of [`local_sidereal_angle_apparent`].
+    /// This is the time equivalent of
+    /// [`Sidereal::local_sidereal_angle_apparent`].
     ///
     /// When the **apparent** Equation of the Origins is supplied, this function
     /// returns **Local Apparent Sidereal Time (LAST)**.

@@ -93,7 +93,7 @@ impl Dt {
     /// - `fmt_can_end_before_inp`: If `true`, the format may end before the input
     ///   is fully consumed (trailing characters in the input are allowed).
     /// - `allow_partial_date`: If `true`, a missing month/day will be defaulted
-    ///   to `1` instead of returning an [`Incomplete`] error.
+    ///   to `1` instead of returning a [`DtErrKind::Incomplete`](../error/enum.DtErrKind.html#variant.Incomplete) error.
     ///
     /// ## Supported Directives
     ///
@@ -401,7 +401,7 @@ impl Dt {
     /// - Fractional seconds are limited to the first 18 digits (attosecond
     ///   precision); extra digits are truncated.
     /// - Oversized integer parts saturate instead of failing.
-    /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
+    /// - Inputs longer than [`STRTIME_SIZE`](../constants/constant.STRTIME_SIZE.html) are rejected.
     /// - Returns `None` only for completely unparseable input (empty, sign/dot
     ///   only, no digits after skipping, etc.).
     ///

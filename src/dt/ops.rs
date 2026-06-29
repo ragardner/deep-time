@@ -253,9 +253,6 @@ impl Ord for Dt {
 }
 
 impl core::hash::Hash for Dt {
-    /// Hashes the canonical TAI representation so that two `Dt`s that are
-    /// physically equal (after conversion) produce the same hash, regardless of
-    /// the original [`Scale`].
     fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         self.attos.hash(state);
     }

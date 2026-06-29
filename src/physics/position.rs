@@ -71,9 +71,8 @@ impl Position {
     /// Returns a new position that lies a fraction `t` of the way along the straight
     /// line between `self` and `other`.
     ///
-    /// This is known as linear interpolation (lerp). It is most commonly used when
-    /// you need to generate evenly spaced sample points along a path — for example,
-    /// when building the `samples` slice for [`Observer::one_way_relativistic_delay_integrated`].
+    /// This is known as linear interpolation (lerp). It is useful when you need
+    /// an intermediate position along a straight-line segment between two known points.
     ///
     /// ## Parameters
     ///

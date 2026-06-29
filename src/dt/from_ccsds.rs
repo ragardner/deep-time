@@ -66,16 +66,16 @@ impl Dt {
     ///
     /// ## Returns
     ///
-    /// A [`Dt`] with both `scale` and `target` set to [`Scale::TAI`].
+    /// A [`Dt`] with both `scale` and `target` set to [`Scale::TAI`](../enum.Scale.html#variant.TAI).
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Empty`] if `input` is empty.
-    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not `001`.
-    /// - [`DtErrKind::InvalidInput`] if the input is too short to contain the declared
+    /// - [`DtErrKind::Empty`](../error/enum.DtErrKind.html#variant.Empty) if `input` is empty.
+    /// - [`DtErrKind::InvalidCodeId`](../error/enum.DtErrKind.html#variant.InvalidCodeId) if the Code ID is not `001`.
+    /// - [`DtErrKind::InvalidInput`](../error/enum.DtErrKind.html#variant.InvalidInput) if the input is too short to contain the declared
     ///   extended P-field, or if the "further extension" flag (bit 7 of the second
     ///   P-field octet) is set.
-    /// - [`DtErrKind::TFieldTooShort`] if the declared coarse + fractional field lengths
+    /// - [`DtErrKind::TFieldTooShort`](../error/enum.DtErrKind.html#variant.TFieldTooShort) if the declared coarse + fractional field lengths
     ///   make the T-field longer than the remaining input bytes.
     ///
     /// Errors from [`Parts::finish`] and [`Parts::to_dt`] may also propagate.
@@ -128,13 +128,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Empty`] if `input` is empty.
-    /// - [`DtErrKind::PFieldTooShort`] if the P-field indicates an extended second
+    /// - [`DtErrKind::Empty`](../error/enum.DtErrKind.html#variant.Empty) if `input` is empty.
+    /// - [`DtErrKind::PFieldTooShort`](../error/enum.DtErrKind.html#variant.PFieldTooShort) if the P-field indicates an extended second
     ///   octet but the input is too short to contain it.
-    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not `100` or the Epoch bit is
+    /// - [`DtErrKind::InvalidCodeId`](../error/enum.DtErrKind.html#variant.InvalidCodeId) if the Code ID is not `100` or the Epoch bit is
     ///   set (non-Level-1 epoch).
-    /// - [`DtErrKind::InvalidSubmillisecond`] if the sub-millisecond code is `0b11`.
-    /// - [`DtErrKind::InvalidSyntax`] if the declared field lengths make the
+    /// - [`DtErrKind::InvalidSubmillisecond`](../error/enum.DtErrKind.html#variant.InvalidSubmillisecond) if the sub-millisecond code is `0b11`.
+    /// - [`DtErrKind::InvalidSyntax`](../error/enum.DtErrKind.html#variant.InvalidSyntax) if the declared field lengths make the
     ///   T-field longer than the remaining input bytes.
     ///
     /// Errors from [`Parts::finish`] and [`Parts::to_dt`] may also propagate.
@@ -168,8 +168,8 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::Empty`] if `input` is empty.
-    /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not one of the three
+    /// - [`DtErrKind::Empty`](../error/enum.DtErrKind.html#variant.Empty) if `input` is empty.
+    /// - [`DtErrKind::InvalidCodeId`](../error/enum.DtErrKind.html#variant.InvalidCodeId) if the Code ID is not one of the three
     ///   recognized Level 1 values (`001`, `100`, or `101`).
     ///
     /// Any error returned by the dispatched parser is also propagated.

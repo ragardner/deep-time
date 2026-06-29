@@ -8,10 +8,10 @@ use core::str;
 /// `b'\0'` byte (or `N` if the buffer is completely filled without a nul).
 ///
 /// This type performs **no validation during construction**. UTF-8 validity is
-/// only checked when the content is accessed via [`as_str`], [`Debug`], or
+/// only checked when the content is accessed via [`as_str`](#method.as_str), [`Debug`], or
 /// serialization.
 ///
-/// Both [`new`] and [`from_bytes`] silently truncate input that exceeds the
+/// Both [`new`](#method.new) and [`from_bytes`](#method.from_bytes) silently truncate input that exceeds the
 /// capacity `N`. This type is intentionally minimal because each `LiteStr<N>`
 /// is monomorphized independently.
 ///

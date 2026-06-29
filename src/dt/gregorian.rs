@@ -248,7 +248,7 @@ impl Dt {
     }
 
     /// Computes the Julian Day Number (JD) for a proleptic Gregorian calendar date at noon UT.
-    /// This is the inverse of [`jd_to_ymd`].
+    /// This is the inverse of [`jd_to_ymd`](../struct.Dt.html#method.jd_to_ymd).
     ///
     /// ## Arguments
     ///
@@ -487,7 +487,7 @@ impl Dt {
     /// week containing January 4.
     ///
     /// The optional `ymd` argument is a performance optimization. If provided,
-    /// it is used directly; otherwise [`to_gregorian_ymd`](Self::to_gregorian_ymd)
+    /// it is used directly; otherwise [`to_ymd`](../struct.Dt.html#method.to_ymd)
     /// is called internally.
     pub const fn to_iso_wk_date(&self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
         let (yr, mo, day) = if let Some(ymd) = ymd {

@@ -182,14 +182,14 @@ impl StrPTimeFmt {
     /// Formats a [`Dt`] into a string using this pre-validated format and a given
     /// output format.
     ///
-    /// Effectively parses a [`str`] with the contained format, then outputs a
+    /// Effectively parses a [`prim@str`] with the contained format, then outputs a
     /// [`String`](`alloc::string::String`) with a new given format.
     ///
     /// Requires the `alloc` feature.
     ///
     /// ## Parameters
     ///
-    /// - `s`: datetime input [`str`].
+    /// - `s`: datetime input [`prim@str`].
     /// - `output_fmt`: The new format to output the datetime as.
     /// - The remaining three flags are passed through to the internal `to_dt` call.
     ///
@@ -229,12 +229,12 @@ impl StrPTimeFmt {
     /// Formats a [`Dt`] into a [`LiteStr`] using this pre-validated format and a given
     /// output format.
     ///
-    /// Effectively parses a [`str`] with the contained format, then outputs a
+    /// Effectively parses a [`prim@str`] with the contained format, then outputs a
     /// [`LiteStr`] with a new given format.
     ///
     /// ## Parameters
     ///
-    /// - `s`: datetime input [`str`].
+    /// - `s`: datetime input [`prim@str`].
     /// - `output_fmt`: The new format to output the datetime as.
     /// - The remaining three flags are passed through to the internal `to_dt` call.
     ///

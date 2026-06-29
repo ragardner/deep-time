@@ -47,13 +47,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    /// - [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange) if the year of the date is outside the
     ///   `-9999..=9999` range (checked before involving Jiff).
     /// - Specific errors for invalid time components when preparing values for Jiff:
-    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
-    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
-    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   [`DtErrKind::InvalidHour`](../error/enum.DtErrKind.html#variant.InvalidHour), [`DtErrKind::InvalidMinute`](../error/enum.DtErrKind.html#variant.InvalidMinute),
+    ///   [`DtErrKind::InvalidSecond`](../error/enum.DtErrKind.html#variant.InvalidSecond), [`DtErrKind::InvalidMonth`](../error/enum.DtErrKind.html#variant.InvalidMonth), or [`DtErrKind::InvalidDay`](../error/enum.DtErrKind.html#variant.InvalidDay).
+    /// - [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone) if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_yr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
@@ -71,13 +71,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    /// - [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange) if the year of the date is outside the
     ///   `-9999..=9999` range (checked before involving Jiff).
     /// - Specific errors for invalid time components when preparing values for Jiff:
-    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
-    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
-    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   [`DtErrKind::InvalidHour`](../error/enum.DtErrKind.html#variant.InvalidHour), [`DtErrKind::InvalidMinute`](../error/enum.DtErrKind.html#variant.InvalidMinute),
+    ///   [`DtErrKind::InvalidSecond`](../error/enum.DtErrKind.html#variant.InvalidSecond), [`DtErrKind::InvalidMonth`](../error/enum.DtErrKind.html#variant.InvalidMonth), or [`DtErrKind::InvalidDay`](../error/enum.DtErrKind.html#variant.InvalidDay).
+    /// - [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone) if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_mo_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
@@ -95,13 +95,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    /// - [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange) if the year of the date is outside the
     ///   `-9999..=9999` range (checked before involving Jiff).
     /// - Specific errors for invalid time components when preparing values for Jiff:
-    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
-    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
-    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   [`DtErrKind::InvalidHour`](../error/enum.DtErrKind.html#variant.InvalidHour), [`DtErrKind::InvalidMinute`](../error/enum.DtErrKind.html#variant.InvalidMinute),
+    ///   [`DtErrKind::InvalidSecond`](../error/enum.DtErrKind.html#variant.InvalidSecond), [`DtErrKind::InvalidMonth`](../error/enum.DtErrKind.html#variant.InvalidMonth), or [`DtErrKind::InvalidDay`](../error/enum.DtErrKind.html#variant.InvalidDay).
+    /// - [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone) if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
@@ -119,13 +119,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    /// - [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange) if the year of the date is outside the
     ///   `-9999..=9999` range (checked before involving Jiff).
     /// - Specific errors for invalid time components when preparing values for Jiff:
-    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
-    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
-    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   [`DtErrKind::InvalidHour`](../error/enum.DtErrKind.html#variant.InvalidHour), [`DtErrKind::InvalidMinute`](../error/enum.DtErrKind.html#variant.InvalidMinute),
+    ///   [`DtErrKind::InvalidSecond`](../error/enum.DtErrKind.html#variant.InvalidSecond), [`DtErrKind::InvalidMonth`](../error/enum.DtErrKind.html#variant.InvalidMonth), or [`DtErrKind::InvalidDay`](../error/enum.DtErrKind.html#variant.InvalidDay).
+    /// - [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone) if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_days_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
@@ -143,13 +143,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    /// - [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange) if the year of the date is outside the
     ///   `-9999..=9999` range (checked before involving Jiff).
     /// - Specific errors for invalid time components when preparing values for Jiff:
-    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
-    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
-    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   [`DtErrKind::InvalidHour`](../error/enum.DtErrKind.html#variant.InvalidHour), [`DtErrKind::InvalidMinute`](../error/enum.DtErrKind.html#variant.InvalidMinute),
+    ///   [`DtErrKind::InvalidSecond`](../error/enum.DtErrKind.html#variant.InvalidSecond), [`DtErrKind::InvalidMonth`](../error/enum.DtErrKind.html#variant.InvalidMonth), or [`DtErrKind::InvalidDay`](../error/enum.DtErrKind.html#variant.InvalidDay).
+    /// - [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone) if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_hr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
@@ -167,13 +167,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    /// - [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange) if the year of the date is outside the
     ///   `-9999..=9999` range (checked before involving Jiff).
     /// - Specific errors for invalid time components when preparing values for Jiff:
-    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
-    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
-    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   [`DtErrKind::InvalidHour`](../error/enum.DtErrKind.html#variant.InvalidHour), [`DtErrKind::InvalidMinute`](../error/enum.DtErrKind.html#variant.InvalidMinute),
+    ///   [`DtErrKind::InvalidSecond`](../error/enum.DtErrKind.html#variant.InvalidSecond), [`DtErrKind::InvalidMonth`](../error/enum.DtErrKind.html#variant.InvalidMonth), or [`DtErrKind::InvalidDay`](../error/enum.DtErrKind.html#variant.InvalidDay).
+    /// - [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone) if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_min_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
@@ -191,13 +191,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::YearOutOfRange`] if the year of the date is outside the
+    /// - [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange) if the year of the date is outside the
     ///   `-9999..=9999` range (checked before involving Jiff).
     /// - Specific errors for invalid time components when preparing values for Jiff:
-    ///   [`DtErrKind::InvalidHour`], [`DtErrKind::InvalidMinute`],
-    ///   [`DtErrKind::InvalidSecond`], [`DtErrKind::InvalidMonth`], or [`DtErrKind::InvalidDay`].
-    /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
-    /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
+    ///   [`DtErrKind::InvalidHour`](../error/enum.DtErrKind.html#variant.InvalidHour), [`DtErrKind::InvalidMinute`](../error/enum.DtErrKind.html#variant.InvalidMinute),
+    ///   [`DtErrKind::InvalidSecond`](../error/enum.DtErrKind.html#variant.InvalidSecond), [`DtErrKind::InvalidMonth`](../error/enum.DtErrKind.html#variant.InvalidMonth), or [`DtErrKind::InvalidDay`](../error/enum.DtErrKind.html#variant.InvalidDay).
+    /// - [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone) if Jiff cannot find/resolve the IANA timezone name.
+    /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
     pub fn add_sec_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {

@@ -1,5 +1,57 @@
+//! Time zone name helpers.
+//!
+//! This module exposes [`UTC_ALIASES`] and [`tz_names`], used internally by the
+//! parser and formatter to recognize IANA time zone identifiers in input strings
+//! and to enumerate available zones at runtime.
+//!
+//! ## Behavior by feature
+//!
+//! | Configuration | [`tz_names`] yields |
+//! |---------------|---------------------|
+//! | `jiff-tz` or `jiff-tz-bundle` (with `alloc`) | All IANA identifiers from the bundled Jiff TZ database |
+//! | `alloc` without `jiff-tz` | [`UTC_ALIASES`] only |
+//! | `no_alloc` | [`UTC_ALIASES`] only (no heap) |
+//!
+//! Time zone–aware formatting and calendar math ([`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz),
+//! [`Dt::add_hr_tz`](../struct.Dt.html#method.add_hr_tz), etc.) require the `jiff-tz` feature.
+//! [`tz_names`] is independent of those APIs but uses the same database when `jiff-tz` is enabled.
+//!
+//! ## Examples
+//!
+//! Iterate over IANA time zone names when `jiff-tz` is enabled:
+//!
+//! ```rust
+//! # #[cfg(feature = "jiff-tz")]
+//! # {
+//! use deep_time::tz::tz_names;
+//!
+//! let mut found_london = false;
+//! for name in tz_names() {
+//!     if name.as_str() == "Europe/London" {
+//!         found_london = true;
+//!         break;
+//!     }
+//! }
+//! assert!(found_london);
+//! # }
+//! ```
+//!
+//! Without `jiff-tz`, only UTC aliases are returned:
+//!
+//! ```rust
+//! # #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
+//! # {
+//! use deep_time::tz::{tz_names, UTC_ALIASES};
+//!
+//! let count = tz_names().count();
+//! assert_eq!(count, UTC_ALIASES.len());
+//! assert!(tz_names().any(|n| n.as_str() == "UTC"));
+//! # }
+//! ```
+
 use crate::LiteStr;
 
+/// Well-known aliases for UTC accepted in parsed date/time strings.
 pub static UTC_ALIASES: &[&str] = &[
     "Etc/UCT",
     "Etc/UTC",
@@ -11,7 +63,10 @@ pub static UTC_ALIASES: &[&str] = &[
     "Zulu",
 ];
 
-// Main function: always available, returns LiteStr<49>
+/// Returns an iterator over known time zone names as [`LiteStr<49>`](../struct.LiteStr.html).
+///
+/// With `jiff-tz` or `jiff-tz-bundle`, yields every IANA identifier from the Jiff
+/// time zone database. Otherwise yields only [`UTC_ALIASES`].
 pub fn tz_names() -> impl Iterator<Item = LiteStr<49>> {
     #[cfg(feature = "alloc")]
     {

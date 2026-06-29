@@ -114,7 +114,7 @@ impl Dt {
     ///
     /// Source: NASA Goddard Institute for Space Studies (GISS)  
     /// Title:   Mars24 Sunclock — Algorithm and Worked Examples  
-    /// URL:     https://www.giss.nasa.gov/tools/mars24/help/algorithm.html  
+    /// URL:     <https://www.giss.nasa.gov/tools/mars24/help/algorithm.html>
     /// Updated: 2025-01-07
     ///
     /// Works for any input [`Scale`] because it internally converts to TT.

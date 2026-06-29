@@ -15,7 +15,7 @@ impl Dt {
     ///
     /// - Requires the `"parse"` feature (which enables `alloc`).
     /// - The returned [`Dt`] is internally on the TAI time scale. The `attos` field is an [`i128`] attosecond
-    ///   count since TAI 2000-01-01 noon. See [`Scale`] for more information.
+    ///   count since TAI 2000-01-01 noon. See [`Scale`](crate::Scale) for more information.
     /// - The returned [`Dt`] is **not** in local time, if a timezone is parsed then it's used to find the offset
     ///   to return non-local instant.
     ///
@@ -179,7 +179,7 @@ impl Dt {
     /// - [`Order`]
     /// - [`Mode`]
     /// - [`Lang`]
-    /// - [`Dt`]
+    /// - [`Dt`](crate::Dt)
     /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
     pub fn from_str_parse(s: &str, opts: &ParseCfg) -> Result<Dt, DtErr> {
         if s.is_empty() {

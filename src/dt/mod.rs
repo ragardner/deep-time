@@ -64,6 +64,20 @@ use core::fmt;
 /// - A wide range of math is available for this type, including basic calendar aware math and,
 ///   with the `jiff-tz` feature enabled, timezone and DST aware math. **Behavior greatly
 ///   differs between functions.**
+/// - **Comparison** (`==`, `Ord`, and [`Dt::cmp`](../struct.Dt.html#method.cmp)) uses only the
+///   `attos` field. `scale` and `target` are not consulted and no time-scale conversion is
+///   performed. To test whether two values denote the same physical instant, convert both to a
+///   common scale (e.g. with [`Dt::to`](../struct.Dt.html#method.to)) before comparing.
+///
+/// ```rust
+/// use deep_time::{Dt, Scale};
+///
+/// let tai = Dt::ZERO;
+/// let relabeled = tai.with(Scale::TT); // relabels scale only — attos unchanged
+///
+/// assert_eq!(tai, relabeled);
+/// assert_ne!(tai, tai.to(Scale::TT)); // .to() converts attos — no longer equal
+/// ```
 ///
 /// ## Reference epoch and scales
 ///
