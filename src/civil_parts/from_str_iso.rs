@@ -79,8 +79,8 @@ impl Parts {
     /// ## See also
     ///
     /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
-    pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
-        let bytes = input.as_bytes();
+    pub fn from_str_iso(s: &str) -> Result<Self, DtErr> {
+        let bytes = s.as_bytes();
         let len_ = bytes.len();
         if len_ > STRTIME_SIZE {
             return Err(an_err!(DtErrKind::InvalidLen));
@@ -101,7 +101,7 @@ impl Parts {
                 if matches!(b, b'J' | b'j') {
                     let b1 = bytes[start + 1].to_ascii_uppercase();
                     if b1 == b'D'
-                        && let Some(p) = Self::from_str_jd_f(&input[start..], None)
+                        && let Some(p) = Self::from_str_jd_f(&s[start..], None)
                     {
                         return Ok(p);
                     }
@@ -110,7 +110,7 @@ impl Parts {
                     let b2 = bytes[start + 2].to_ascii_uppercase();
                     if b1 == b'J'
                         && b2 == b'D'
-                        && let Some(p) = Self::from_str_mjd_f(&input[start..], None)
+                        && let Some(p) = Self::from_str_mjd_f(&s[start..], None)
                     {
                         return Ok(p);
                     }
@@ -119,7 +119,7 @@ impl Parts {
                     let b2 = bytes[start + 2].to_ascii_uppercase();
                     if b1 == b'E'
                         && b2 == b'C'
-                        && let Some(p) = Self::from_str_sec_f(&input[start..], None)
+                        && let Some(p) = Self::from_str_sec_f(&s[start..], None)
                     {
                         return Ok(p);
                     }
@@ -133,8 +133,8 @@ impl Parts {
             return Err(an_err!(DtErrKind::ExpectedYear));
         }
 
-        let input = &input[start..];
-        let bytes = input.as_bytes();
+        let s = &s[start..];
+        let bytes = s.as_bytes();
         let len_ = bytes.len();
         let mut pos: usize = 0;
         let mut tp = Parts::new_utc();
@@ -241,9 +241,13 @@ impl Parts {
             if !c.is_ascii_digit() && pos + 1 < len_ && !matches!(c, b'+' | b'-') {
                 if bytes[pos + 1].is_ascii_digit() {
                     pos += 1;
-                } else if bytes[pos + 1].is_ascii_whitespace() {
+                } else if bytes[pos + 1].is_ascii_whitespace()
+                    || bytes[pos + 1].is_ascii_punctuation()
+                {
                     pos += 1;
-                    while pos < len_ && bytes[pos].is_ascii_whitespace() {
+                    while pos < len_
+                        && (bytes[pos].is_ascii_whitespace() || bytes[pos].is_ascii_punctuation())
+                    {
                         pos += 1;
                     }
                 }

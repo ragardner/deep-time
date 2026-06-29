@@ -555,6 +555,17 @@ mod from_str_iso_tests {
         assert!(tp.iana_name.is_some());
     }
 
+    #[test]
+    fn test_iso_spice_stuff() {
+        let tp = Parts::from_str_iso("1997-162::12:18:28").unwrap();
+        assert_eq!(tp.yr, Some(1997));
+        assert_eq!(tp.day_of_yr, Some(162));
+        assert_eq!(tp.hr, 12);
+        assert_eq!(tp.min, 18);
+        assert_eq!(tp.sec, 28);
+        assert_eq!(tp.offset, None);
+    }
+
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
     fn test_iso_doy() {

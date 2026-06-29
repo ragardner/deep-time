@@ -382,8 +382,8 @@ impl Dt {
     ///
     /// - [`Parts::from_str_iso`](../struct.Parts.html#method.from_str_iso)
     #[inline(always)]
-    pub fn from_str_iso(input: &str) -> Result<Self, DtErr> {
-        Parts::from_str_iso(input)?.to_dt()
+    pub fn from_str_iso(s: &str) -> Result<Self, DtErr> {
+        Parts::from_str_iso(s)?.to_dt()
     }
 
     /// Parses a decimal seconds string (with optional fractional part) as seconds
