@@ -11,13 +11,13 @@ A fully featured and high performance **Rust date and time library** with attose
 A non-exhaustive list of functionality:
 
 - Auto-parsers for [datetimes](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats, relative dates and multiple languages, requires the `parse` feature
-- No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd).
+- No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd)
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
 - Fast [ISO](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_iso) parser
-- [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb_fairhead1990` can be enabled which provides the ERFA TDB model.
+- [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb_fairhead1990` can be enabled which provides the ERFA TDB model
 - [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str)
 - [Strftime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
-- First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature.
+- First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature
 - To and from all kinds of inputs and outputs, functions mostly prefixed with `to` and `from`, available on the library's types, see the main time types functions: [Dt](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html). Including [JD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jd_f), [MJD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_mjd_f), [Unix](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_unix), [NTP](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ntp), etc.
 - [Calendar aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days) and, with the `jiff-tz` feature, [timezone aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days_tz) math
 - To and from [jiff](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), and [hifitime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_hifitime_epoch) types
@@ -31,7 +31,7 @@ A non-exhaustive list of functionality:
 - [Proper time along trajectories](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.proper_time_from_states), requires the `physics` feature
 - Relativity: [Drift](https://docs.rs/deep-time/latest/deep_time/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/latest/deep_time/struct.Spacetime.html), [Position](https://docs.rs/deep-time/latest/deep_time/struct.Position.html), and [Velocity](https://docs.rs/deep-time/latest/deep_time/struct.Velocity.html) — see [docs/relativity.md](docs/relativity.md) for the underlying model. Requires the `physics` feature.
 - CCSDS [CUC](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cuc), [CDS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cds), and [CCS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_ccs)
-- Binary size is mainly controlled through feature gating.
+- Binary size is mainly controlled through feature gating
 
 ### Examples
 
@@ -208,6 +208,7 @@ deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
 | `euro`               | Enables all European languages                                            |             |
 | `lang`               | Enables all languages                                                     | `euro`      |
 | `panic-handler`      | Provides an optional simple `#[panic_handler]` for `no_std` environments  | `no_std`    |
+| `defmt`              | Enables `defmt::Format` trait implementations the main types. Intended for use with the `defmt` logging framework on embedded systems. | — |
 | `wire`               | Enables wire format (serialization) support                               | —           |
 | `tdb_fairhead1990`   | Replaces the fast TDB and TCB conversions with the full ERFA TDB model    | —           |
 | `physics`            | Enables relativistic physics support (`Drift`, `Spacetime`, `Position`, `Velocity`, `Observer`, light-time, etc.) | —           |

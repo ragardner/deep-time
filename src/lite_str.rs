@@ -142,6 +142,13 @@ impl<'de, const N: usize> serde::Deserialize<'de> for LiteStr<N> {
     }
 }
 
+#[cfg(feature = "defmt")]
+impl<const N: usize> defmt::Format for LiteStr<N> {
+    fn format(&self, f: defmt::Formatter) {
+        defmt::write!(f, "{}", self.as_str());
+    }
+}
+
 #[inline(never)]
 fn find_first_nul(bytes: &[u8]) -> usize {
     bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len())

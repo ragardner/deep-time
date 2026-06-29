@@ -371,3 +371,13 @@ impl StrPTimeFmt {
         }
     }
 }
+
+#[cfg(feature = "defmt")]
+impl defmt::Format for StrPTimeFmt {
+    fn format(&self, f: defmt::Formatter) {
+        match self.as_str() {
+            Ok(fmt) => defmt::write!(f, "{}", fmt),
+            Err(_) => defmt::write!(f, "StrPTimeFmt<invalid utf8>"),
+        }
+    }
+}

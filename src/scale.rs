@@ -49,6 +49,7 @@ use core::fmt;
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Scale {
     /// International Atomic Time (TAI).
     #[default]

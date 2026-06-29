@@ -34,9 +34,10 @@ use jiff::civil;
 ///
 /// assert_eq!(x.day(), 28);
 /// ```
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct YmdHms {
     pub(crate) yr: i64,
     pub(crate) mo: u8,

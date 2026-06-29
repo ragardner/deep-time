@@ -92,7 +92,10 @@ use earth_eo_ee::*;
 /// let lmst = earth.local_sidereal_time_mean(mjd_ut1, eo_mean);
 /// # }
 /// ```
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
+#[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Sidereal {
     /// Mean sidereal rotation rate in **radians per SI second**.
     pub rate_rad_per_sec: Real,

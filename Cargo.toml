@@ -23,6 +23,7 @@ tsify        = { version = "=0.5.6", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
 js-sys       = { version = "0.3", optional = true }
 sys-locale   = { version = "=0.3", optional = true }
+defmt        = { version = "1", optional = true }
 
 [features]
 
@@ -36,8 +37,8 @@ default = []
 # Basic but energy efficient no std, no alloc panic handler
 panic-handler = []
 
-# Library custom serialization for major types
-wire = []
+# defmt is a logging framework commonly used in embedded environments
+defmt = ["dep:defmt"]
 
 # Light time, proper time along trajectory, and physics types such as
 # Spacetime, Observer, Position, and Velocity
@@ -104,6 +105,9 @@ lang = [
 # SERIALIZATION FEATURES
 # ──────────────────────────────────────────────────────────────
 
+# Library custom serialization for major types
+wire = []
+
 serde = [
     "dep:serde",
     "serde?/alloc",
@@ -113,7 +117,7 @@ serde = [
 ]
 
 # ──────────────────────────────────────────────────────────────
-# DATETIME FEATURES
+# INTEROP AND TIMEZONE FEATURES
 # ──────────────────────────────────────────────────────────────
 
 jiff = [

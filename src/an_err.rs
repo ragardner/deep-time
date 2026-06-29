@@ -221,6 +221,20 @@ macro_rules! an_err {
     };
 }
 
+#[cfg(feature = "defmt")]
+impl<K, const REASON_LEN: usize> defmt::Format for AnErr<K, REASON_LEN>
+where
+    K: defmt::Format + Copy + Clone + core::fmt::Debug + PartialEq + Eq,
+{
+    fn format(&self, f: defmt::Formatter) {
+        if self.reason.as_bytes().is_empty() {
+            defmt::write!(f, "{}", self.kind);
+        } else {
+            defmt::write!(f, "{}: {}", self.kind, self.reason.as_str());
+        }
+    }
+}
+
 #[cfg(feature = "wire")]
 impl<K, const REASON_LEN: usize> AnErr<K, REASON_LEN>
 where
