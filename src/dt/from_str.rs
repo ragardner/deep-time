@@ -328,7 +328,7 @@ impl Dt {
     /// #### Format examples:
     ///
     /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
-    /// - **`2024 Apr 18, 14:30:25 [America/New_York]`**. Abbreviated month
+    /// - **`2024 Apr 18, 14:30:25 [America/New_York]`**. Abbreviated or full month
     /// - **`2024-109 14:30:25 [America/New_York]`**. Day of year
     ///
     /// #### Notes:

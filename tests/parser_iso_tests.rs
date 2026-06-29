@@ -507,7 +507,7 @@ mod from_str_iso_tests {
         assert_eq!(p.to_dt().unwrap(), expected);
 
         let expected = Dt::from_jd_f(-1_000.5, Scale::UTC);
-        let d = Dt::from_str_iso("prefix: JD -1000.5 UTC").unwrap();
+        let d = Dt::from_str_iso("prefix: prefix.. JD -1000.5 UTC").unwrap();
         assert_eq!(d, expected);
     }
 
@@ -517,7 +517,8 @@ mod from_str_iso_tests {
         let expected = Dt::from_mjd_f(51_544.5, Scale::TAI);
         let p = Parts::from_str_iso("MJD 51544.5 TAI").unwrap();
         assert_eq!(p.to_dt().unwrap(), expected);
-        let d = Dt::from_str_iso("MJD 51544.5 TAI").unwrap();
+        let d = Dt::from_str_iso("junk MJD 51544.5 TAI").unwrap();
+        eprintln!("{}", d.to_mjd_f_raw());
         assert_eq!(d, expected);
 
         // Positive fractional MJD, implicit scale
@@ -556,7 +557,20 @@ mod from_str_iso_tests {
     }
 
     #[test]
-    fn test_iso_spice_stuff() {
+    fn test_iso_full_month_name() {
+        let tp = Parts::from_str_iso("2024 September 18, 14:30:25 [America/New_York]").unwrap();
+        assert_eq!(tp.yr, Some(2024));
+        assert_eq!(tp.mo, Some(9));
+        assert_eq!(tp.day, Some(18));
+        assert_eq!(tp.hr, 14);
+        assert_eq!(tp.min, 30);
+        assert_eq!(tp.sec, 25);
+        assert_eq!(tp.offset, None);
+        assert!(tp.iana_name.is_some());
+    }
+
+    #[test]
+    fn test_iso_spice() {
         let tp = Parts::from_str_iso("1997-162::12:18:28").unwrap();
         assert_eq!(tp.yr, Some(1997));
         assert_eq!(tp.day_of_yr, Some(162));

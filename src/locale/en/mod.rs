@@ -4,7 +4,7 @@ pub mod en_alloc;
 #[cfg(feature = "parse")]
 pub(crate) use en_alloc::*;
 
-use crate::{DtErr, DtErrKind, FormatNames, an_err};
+use crate::FormatNames;
 
 pub(crate) const EN_WEEKDAYS_FULL: [&[u8]; 7] = byte_arrays![
     "Sunday",
@@ -47,25 +47,25 @@ pub(crate) static EN_NAMES: FormatNames = FormatNames {
 
 /// bytes **must** be len >= 3
 #[inline(always)]
-pub(crate) fn parse_month_name_abbrev(bytes: &[u8]) -> Result<u8, DtErr> {
+pub(crate) fn parse_month_name_abbrev(bytes: &[u8]) -> Option<u8> {
     let candidate = [
         bytes[0].to_ascii_lowercase(),
         bytes[1].to_ascii_lowercase(),
         bytes[2].to_ascii_lowercase(),
     ];
     match &candidate {
-        b"jan" => Ok(1),
-        b"feb" => Ok(2),
-        b"mar" => Ok(3),
-        b"apr" => Ok(4),
-        b"may" => Ok(5),
-        b"jun" => Ok(6),
-        b"jul" => Ok(7),
-        b"aug" => Ok(8),
-        b"sep" => Ok(9),
-        b"oct" => Ok(10),
-        b"nov" => Ok(11),
-        b"dec" => Ok(12),
-        _ => Err(an_err!(DtErrKind::InvalidMonthName)),
+        b"jan" => Some(1),
+        b"feb" => Some(2),
+        b"mar" => Some(3),
+        b"apr" => Some(4),
+        b"may" => Some(5),
+        b"jun" => Some(6),
+        b"jul" => Some(7),
+        b"aug" => Some(8),
+        b"sep" => Some(9),
+        b"oct" => Some(10),
+        b"nov" => Some(11),
+        b"dec" => Some(12),
+        _ => None,
     }
 }

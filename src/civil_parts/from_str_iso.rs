@@ -26,7 +26,7 @@ impl Parts {
     /// #### Format examples:
     ///
     /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
-    /// - **`2024 Apr 18, 14:30:25 [America/New_York]`**. Abbreviated month
+    /// - **`2024 Apr 18, 14:30:25 [America/New_York]`**. Abbreviated or full month
     /// - **`2024-109 14:30:25 [America/New_York]`**. Day of year
     ///
     /// #### Notes:
@@ -97,36 +97,29 @@ impl Parts {
                 break;
             }
 
-            if start + 3 <= len_ {
-                if matches!(b, b'J' | b'j') {
-                    let b1 = bytes[start + 1].to_ascii_uppercase();
-                    if b1 == b'D'
-                        && let Some(p) = Self::from_str_jd_f(&s[start..], None)
-                    {
-                        return Ok(p);
+            if b.is_ascii_alphabetic() {
+                match detect_word(bytes, b, start, len_) {
+                    Word::Jd => {
+                        if let Some(p) = Self::from_str_jd_f(&s[start..], None) {
+                            return Ok(p);
+                        }
                     }
-                } else if matches!(b, b'M' | b'm') {
-                    let b1 = bytes[start + 1].to_ascii_uppercase();
-                    let b2 = bytes[start + 2].to_ascii_uppercase();
-                    if b1 == b'J'
-                        && b2 == b'D'
-                        && let Some(p) = Self::from_str_mjd_f(&s[start..], None)
-                    {
-                        return Ok(p);
+                    Word::Mjd => {
+                        if let Some(p) = Self::from_str_mjd_f(&s[start..], None) {
+                            return Ok(p);
+                        }
                     }
-                } else if matches!(b, b'S' | b's') {
-                    let b1 = bytes[start + 1].to_ascii_uppercase();
-                    let b2 = bytes[start + 2].to_ascii_uppercase();
-                    if b1 == b'E'
-                        && b2 == b'C'
-                        && let Some(p) = Self::from_str_sec_f(&s[start..], None)
-                    {
-                        return Ok(p);
+                    Word::Sec => {
+                        if let Some(p) = Self::from_str_sec_f(&s[start..], None) {
+                            return Ok(p);
+                        }
                     }
+                    _ => {}
                 }
+                start = next_item(bytes, start, len_);
+            } else {
+                start += 1;
             }
-
-            start += 1;
         }
 
         if start == len_ {
@@ -191,7 +184,7 @@ impl Parts {
             }
             tp.day_of_yr = Some(doy);
         } else {
-            // Abbreviated month or 1 or 2 digit month
+            // Abbreviated/full month or 1 or 2 digit month
             let mut mo: u8 = 0;
             if pos < len_ {
                 if bytes[pos].is_ascii_digit() {
@@ -202,7 +195,8 @@ impl Parts {
                         pos += 1;
                     }
                 } else if bytes[pos].is_ascii_alphabetic() && pos + 3 < len_ {
-                    mo = parse_month_name_abbrev(&bytes[pos..])?;
+                    mo = parse_month_name_abbrev(&bytes[pos..])
+                        .ok_or(an_err!(DtErrKind::InvalidMonthName))?;
                 }
             }
             if mo == 0 {
@@ -210,7 +204,7 @@ impl Parts {
             }
             tp.mo = Some(mo);
 
-            // Optional separators after month
+            // Optional chars after month
             while pos < len_ && !bytes[pos].is_ascii_digit() {
                 pos += 1;
             }
@@ -501,4 +495,48 @@ fn is_doy(bytes: &[u8], mut pos: usize, len_: usize) -> bool {
     }
     // index 4 end or non digit
     pos == len_ || !bytes[pos].is_ascii_digit()
+}
+
+enum Word {
+    None,
+    Sec,
+    Jd,
+    Mjd,
+}
+
+#[inline(always)]
+fn detect_word(bytes: &[u8], b: u8, pos: usize, len_: usize) -> Word {
+    if pos + 3 <= len_ {
+        if matches!(b, b'J' | b'j') {
+            let b1 = bytes[pos + 1].to_ascii_uppercase();
+            if b1 == b'D' {
+                return Word::Jd;
+            }
+        } else if matches!(b, b'M' | b'm') {
+            let b1 = bytes[pos + 1].to_ascii_uppercase();
+            let b2 = bytes[pos + 2].to_ascii_uppercase();
+            if b1 == b'J' && b2 == b'D' {
+                return Word::Mjd;
+            }
+        } else if matches!(b, b'S' | b's') {
+            let b1 = bytes[pos + 1].to_ascii_uppercase();
+            let b2 = bytes[pos + 2].to_ascii_uppercase();
+            if b1 == b'E' && b2 == b'C' {
+                return Word::Sec;
+            }
+        }
+    }
+    Word::None
+}
+
+#[inline(always)]
+fn next_item(bytes: &[u8], mut pos: usize, len_: usize) -> usize {
+    while pos < len_ && bytes[pos].is_ascii_alphabetic() {
+        pos += 1;
+    }
+    while pos < len_ && bytes[pos].is_ascii_whitespace() {
+        pos += 1;
+    }
+
+    pos
 }

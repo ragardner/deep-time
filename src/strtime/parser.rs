@@ -546,7 +546,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if self.inp.len() < 3 {
             return Err(an_err!(DtErrKind::InvalidMonthName));
         }
-        self.tm.mo = Some(parse_month_name_abbrev(&self.inp[..3])?);
+        self.tm.mo = Some(
+            parse_month_name_abbrev(&self.inp[..3]).ok_or(an_err!(DtErrKind::InvalidMonthName))?,
+        );
         self.inp = &self.inp[3..];
         self.bump_fmt();
         Ok(())
