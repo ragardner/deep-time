@@ -8,8 +8,6 @@ A fully featured and high performance **Rust date and time library** with attose
 
 ### Overview
 
-A non-exhaustive list of functionality:
-
 - Auto-parsers for [datetimes](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats, relative dates and multiple languages, requires the `parse` feature
 - No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd)
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
@@ -24,6 +22,7 @@ A non-exhaustive list of functionality:
 - No-alloc [string return type](https://docs.rs/deep-time/latest/deep_time/struct.LiteStr.html)
 - Const fn [libm math](https://docs.rs/deep-time/latest/deep_time/math/index.html) functions
 - Safe, saturating arithmetic throughout
+- **No** `unsafe` in the library itself - [`#![forbid(unsafe_code)]`](https://github.com/ragardner/deep-time/blob/main/src/lib.rs)
 - [Lunar](https://docs.rs/deep-time/latest/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/latest/deep_time/mars/index.html) modules
 - [Sidereal time](https://docs.rs/deep-time/latest/deep_time/sidereal/struct.Sidereal.html) with a const fn implementation of ERFA Equation of the Origins / Equinoxes
 - [UT1 and EOP](https://docs.rs/deep-time/latest/deep_time/eop/index.html)

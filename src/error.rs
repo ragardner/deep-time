@@ -6,6 +6,8 @@ use crate::AnErr;
 #[non_exhaustive]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum DtErrKind {
     UnexpectedEnd,

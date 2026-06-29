@@ -45,6 +45,20 @@ impl<const N: usize> LiteStr<N> {
         Self { bytes }
     }
 
+    /// Creates a `LiteStr<N>` from a byte slice.
+    ///
+    /// Copies up to `N` bytes from the input and zero-fills the remainder.
+    /// If `bytes.len() > N`, the input is silently truncated.
+    ///
+    /// No UTF-8 validation is performed.
+    #[inline(always)]
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let mut arr = [0u8; N];
+        let len = bytes.len().min(N);
+        arr[..len].copy_from_slice(&bytes[..len]);
+        Self { bytes: arr }
+    }
+
     /// Returns the longest valid UTF-8 prefix of the content as a `&str`.
     ///
     /// - If the data is valid UTF-8, returns it directly.
@@ -66,25 +80,12 @@ impl<const N: usize> LiteStr<N> {
                 if valid == 0 {
                     "\u{FFFD}" // first bytes are garbage → just show �
                 } else {
-                    // SAFETY: valid_up_to is always a valid UTF-8 boundary
-                    unsafe { str::from_utf8_unchecked(&slice[..valid]) }
+                    // We know this will succeed because `valid_up_to()` returns a
+                    // valid UTF-8 boundary (documented invariant of `Utf8Error`).
+                    str::from_utf8(&slice[..valid]).unwrap()
                 }
             }
         }
-    }
-
-    /// Creates a `LiteStr<N>` from a byte slice.
-    ///
-    /// Copies up to `N` bytes from the input and zero-fills the remainder.
-    /// If `bytes.len() > N`, the input is silently truncated.
-    ///
-    /// No UTF-8 validation is performed.
-    #[inline(always)]
-    pub fn from_bytes(bytes: &[u8]) -> Self {
-        let mut arr = [0u8; N];
-        let len = bytes.len().min(N);
-        arr[..len].copy_from_slice(&bytes[..len]);
-        Self { bytes: arr }
     }
 
     /// Returns the content as a byte slice (up to the first nul byte).

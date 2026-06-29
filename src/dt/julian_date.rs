@@ -186,7 +186,6 @@ impl Dt {
     ///
     /// - [`Dt::to_mjd_f_raw`](../struct.Dt.html#method.to_mjd_f_raw)
     /// - [`Dt::to_mjd`](../struct.Dt.html#method.to_mjd)
-    #[inline(always)]
     pub const fn to_mjd_raw(&self) -> (i64, u128) {
         let (jd_days, frac_attos) = self.to_jd_raw();
 

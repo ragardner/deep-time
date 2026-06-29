@@ -79,6 +79,7 @@ use core::fmt::Write;
 /// The total is silently truncated to `REASON_LEN`
 /// bytes if necessary.
 #[derive(Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[must_use = "this error should be handled or converted to a different type e.g. `pub type DtErr = AnErr<MyKind, 31>;`"]
 pub struct AnErr<K, const REASON_LEN: usize = 31>
 where

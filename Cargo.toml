@@ -209,3 +209,6 @@ all-features = true
 [[example]]
 name = "readme"
 required-features = ["parse", "jiff-tz", "euro"]
+
+[dev-dependencies]
+serde_json = "1.0"

@@ -396,8 +396,7 @@ impl Dt {
     ///
     /// ## Security
     ///
-    /// Safe to call with completely untrusted input. Fixed-size format,
-    /// no allocation, no `unsafe`, and no possibility of code execution.
+    /// Safe to call with completely untrusted input.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;

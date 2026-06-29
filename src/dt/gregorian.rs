@@ -49,10 +49,15 @@ impl Dt {
     ///
     /// ## Leap-second handling
     ///
-    /// If the [`Dt`]'s `target` time scale is one of the scales that use leap seconds
-    /// (`UTC`, `UtcSpice`, or `UtcHist`) **and** the instant falls exactly on a leap
-    /// second, (requires the objects current time scale **not** be UTC) the returned
-    /// `sec` will be `60`. In every other case `sec` is in the range `0..=59`.
+    /// If:
+    ///
+    /// - The [`Dt`]'s `target` time scale is one that uses leap seconds
+    ///   (`UTC`, `UtcSpice`, or `UtcHist`)
+    /// - The instant falls exactly on a leap second
+    /// - The objects current time scale is **not** UTC
+    ///
+    /// Then the returned `sec` will be `60`. In every other case `sec` is in the range
+    /// `0..=59`.
     ///
     /// The implementation converts internally to TAI before checking leap-second status.
     ///
