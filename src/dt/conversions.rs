@@ -133,7 +133,10 @@ impl Dt {
     /// assert_eq!(roundtrip, tai);
     /// ```
     ///
-    /// See [`Dt::to`](../struct.Dt.html#method.to) for more info.
+    /// - See [`Dt::to`](../struct.Dt.html#method.to) for more info.
+    /// - If the objects current `scale` field is `Scale::Custom` then no
+    ///   conversion will occur, but the object's `scale` field will still be
+    ///   set to `TAI`.
     pub const fn to_tai(&self) -> Dt {
         match self.scale {
             // we're going utc -> tai, check if it's
@@ -225,7 +228,7 @@ impl Dt {
                 Self::tt_to_ltc(tt).with(new)
             }
             Scale::TCL => Self::tai_to_tcl(*self).with(new),
-            _ => *self,
+            _ => self.with(new),
         }
     }
 
@@ -249,6 +252,8 @@ impl Dt {
     /// - The internal `attos` field changes to be on the new time scale.
     /// - The [`Dt`]s `target` field is ignored and left unchanged.
     /// - The [`Dt`]s `scale` field is changed to the new [`Scale`].
+    /// - If converting to `Scale::Custom` then no time scale conversion will occur,
+    ///   but the object's `scale` field will still be set to `Custom`.
     ///
     /// ## Returns
     ///

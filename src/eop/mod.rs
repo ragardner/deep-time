@@ -145,7 +145,7 @@ impl EopData {
     /// # {
     /// use deep_time::eop::{EopData, EopFormat, Separator};
     ///
-    /// let path = "finals.all.iau2000.txt";
+    /// let path = "tests/assets/finals.all.iau2000.txt";
     /// let rows = EopData::data_from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace).unwrap();
     /// # }
     /// ```
@@ -177,7 +177,7 @@ impl EopData {
     /// # {
     /// use deep_time::eop::{EopData, EopFormat, Separator};
     ///
-    /// let path = "finals.all.iau2000.txt";
+    /// let path = "tests/assets/finals.all.iau2000.txt";
     /// let provider = EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace).unwrap();
     /// # }
     /// ```
@@ -504,7 +504,8 @@ impl Dt {
                 .ok_or_else(|| an_err!(DtErrKind::MjdOutOfRange, "{mjd}"))?
                 .offset;
 
-            guess = self.sub(Dt::from_sec_f(offset, Scale::TAI)); // TODO: guess or self?
+            // Fixed-point: utc = ut1 − offset(mjd(utc)); evaluate offset at `guess`, subtract from `self` (ut1).
+            guess = self.sub(Dt::from_sec_f(offset, Scale::TAI));
         }
 
         Ok(guess)

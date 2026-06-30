@@ -169,13 +169,13 @@ fn main() -> Result<(), DtErr> {
 ### Documentation
 
 - [Library's main documentation page](https://docs.rs/deep-time/latest)
-- [Changelog](https://github.com/ragardner/deep-time/blob/main/docs/CHANGELOG.md)
+- [Changelog](https://github.com/ragardner/deep-time/blob/main/CHANGELOG.md)
 - [The main time type](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html)
 - [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html)
 
 ### Installation
 
-- This crate has no default features.
+- **This crate has no default features.**
 - Enable `parse` for the auto-parsers and `jiff-tz` for timezone support and DST-aware calendar math.
 
 For example, add this to your `Cargo.toml` in the `dependencies` section:

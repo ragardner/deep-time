@@ -108,7 +108,7 @@ mod sidereal_tests {
     use deep_time::eop::{EopData, EopFormat, Separator};
 
     fn load_finals2000a() -> EopData {
-        let path = "finals.all.iau2000.txt";
+        let path = "tests/assets/finals.all.iau2000.txt";
         EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load EopData")
     }

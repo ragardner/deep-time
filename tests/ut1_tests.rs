@@ -9,7 +9,7 @@ mod tests {
     #[test]
     fn test_ut1_with_finals_all_iau2000_txt() {
         // CHANGE THIS PATH to the actual location of your finals2000A.all (or finals.all) file
-        let path = "finals.all.iau2000.txt";
+        let path = "tests/assets/finals.all.iau2000.txt";
 
         let provider = EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load real EOP file");
@@ -60,7 +60,7 @@ mod tests {
     fn test_ut1_with_finals2000a_all_txt() {
         // Same real EOP file used by the other test (finals2000A.all / finals.all.iau2000.txt)
         // CHANGE THIS PATH if your file lives somewhere else
-        let path = "finals2000A.all.txt";
+        let path = "tests/assets/finals.all.iau2000.txt";
 
         let provider = EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load real EOP file for MJD 60961.00 test");
@@ -111,7 +111,7 @@ mod tests {
 
     #[test]
     fn test_ut1_c04_specific_row_57259() {
-        let path = "EOP_20u24_C04_one_file_1962-now.txt"; // ← change to your C04 file
+        let path = "tests/assets/EOP_20u24_C04_one_file_1962-now.txt";
 
         let provider = EopData::from_text_file(path, EopFormat::C04, Separator::Whitespace)
             .expect("failed to load C04 file");
@@ -151,7 +151,7 @@ mod tests {
     // Helper to load a provider
     // ============================================================
     fn load_finals2000a() -> EopData {
-        let path = "finals.all.iau2000.txt";
+        let path = "tests/assets/finals.all.iau2000.txt";
         EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace)
             .expect("failed to load finals2000A.all / finals.all.iau2000.txt")
     }

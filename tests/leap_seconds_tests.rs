@@ -251,9 +251,21 @@ fn test_leap_second_roundtrip_and_sec() {
 fn test_leap_seconds_file() {
     use deep_time::leap_seconds::LEAP_SECS;
 
-    let leap_seconds_table = Dt::leap_sec_data_from_file("leap-seconds.list.txt").unwrap();
+    let leap_seconds_table =
+        Dt::leap_sec_data_from_file("tests/assets/leap-seconds.list.txt").unwrap();
     assert_eq!(leap_seconds_table[1], LEAP_SECS[1]);
+
     let x = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 0);
     let leap_info = Dt::leap_sec_using(&x, false, &leap_seconds_table).unwrap();
     assert!(leap_info.is_leap_sec == true);
+
+    let dt = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+
+    let utc1 = dt.to(Scale::UTC);
+    let utc2 = dt.to_utc_from_tai_using_leaps(Scale::UTC, &leap_seconds_table);
+    assert_eq!(utc1, utc2);
+
+    let tai1 = utc1.to_tai();
+    let tai2 = utc2.to_tai_from_utc_using_leaps(&leap_seconds_table);
+    assert_eq!(tai1, tai2);
 }

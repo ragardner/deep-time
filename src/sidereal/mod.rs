@@ -72,7 +72,7 @@ use earth_eo_ee::*;
 /// use deep_time::eop::{EopData, EopFormat, Separator};
 ///
 /// let eop = EopData::from_text_file(
-///     "finals.all.iau2000.txt",
+///     "tests/assets/finals.all.iau2000.txt",
 ///     EopFormat::Finals2000A,
 ///     Separator::Whitespace,
 /// ).unwrap();
