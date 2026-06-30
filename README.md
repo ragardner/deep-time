@@ -4,6 +4,8 @@ A fully featured and high performance **Rust date and time library** with attose
 
 [![docs.rs](https://img.shields.io/docsrs/deep-time)](https://docs.rs/deep-time)
 [![Crates.io](https://img.shields.io/crates/v/deep-time)](https://crates.io/crates/deep-time)
+[![Crates.io MSRV](https://img.shields.io/crates/msrv/deep-time)](https://crates.io/crates/deep-time)
+[![Edition](https://img.shields.io/badge/edition-2024-blueviolet)](https://doc.rust-lang.org/edition-guide/editions/)
 [![License](https://img.shields.io/crates/l/deep-time)](https://github.com/ragardner/deep-time/blob/main/LICENSE)
 
 ### Overview
@@ -176,6 +178,8 @@ fn main() -> Result<(), DtErr> {
 ### Installation
 
 - **This crate has no default features.**
+- The minimum Rust version is `1.90` and minimum Rust edition is `2024`. This is mainly due to some
+  `const` functionality that only became stable recently.
 - Enable `parse` for the auto-parsers and `jiff-tz` for timezone support and DST-aware calendar math.
 
 For example, add this to your `Cargo.toml` in the `dependencies` section:

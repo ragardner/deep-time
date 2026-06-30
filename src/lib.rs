@@ -2,7 +2,6 @@
 //!
 //! A fully featured and high performance **Rust date and time library** with attosecond precision that provides **astronomical** and **civil** timekeeping.
 //!
-//! [docs.rs](https://docs.rs/deep-time)
 //! [Crates.io](https://crates.io/crates/deep-time)
 //! [License](https://github.com/ragardner/deep-time/blob/main/LICENSE)
 //!
@@ -175,6 +174,8 @@
 //! ### Installation
 //!
 //! - **This crate has no default features.**
+//! - The minimum Rust version is `1.90` and minimum Rust edition is `2024`. This is mainly due to some
+//!   `const` functionality that only became stable recently.
 //! - Enable `parse` for the auto-parsers and `jiff-tz` for timezone support and DST-aware calendar math.
 //!
 //! For example, add this to your `Cargo.toml` in the `dependencies` section:
