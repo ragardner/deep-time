@@ -274,7 +274,7 @@ impl Dt {
             // we're going utc -> tai, check if it's
             // post start of table using the provided leap seconds table
             Scale::UTC | Scale::UtcHist | Scale::UtcSpice => {
-                match self.utc_to_tai_using_leaps(&data) {
+                match self.utc_to_tai_using_leaps(data) {
                     // leap seconds table returned an offset, so use that
                     Some(dt) => dt.with(Scale::TAI),
                     // leap seconds table returned None so it must be pre 1972
