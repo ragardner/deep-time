@@ -36,7 +36,7 @@ use core::fmt;
 /// | `TCB`       | Barycentric Coordinate Time. Relativistic time scale in the BCRS (solar-system barycenter). |
 /// | `LTC`       | Coordinated Lunar Time. Operational lunar time for cislunar use based on the LTE440 model. |
 /// | `TCL`       | Lunar Coordinate Time. IAU relativistic coordinate time in the LCRS based on the LTE440 model. |
-/// | `Custom`    | Custom time scale. |
+/// | `Custom`    | Custom time scale. Can be useful when a user doesn't want to use TAI but wants similar behavior in conversion functions. |
 ///
 /// ## Lunar Time Scales (LTC / TCL)
 ///
