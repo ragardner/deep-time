@@ -2,7 +2,7 @@
 
 #[cfg(feature = "de")]
 mod tests {
-    use deep_time::{Dt, Lang, ParseCfg, Scale};
+    use deep_time::{Dt, Lang, Order, ParseCfg, Scale};
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let d = ParseCfg::DEFAULT;
@@ -54,6 +54,7 @@ mod tests {
     fn de() -> Option<ParseCfg> {
         Some(ParseCfg {
             lang: Lang::De,
+            order: Order::Day,
             ..Default::default()
         })
     }
