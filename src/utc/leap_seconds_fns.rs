@@ -12,8 +12,8 @@ use std::{fs, io, path::Path};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
-/// Struct returned from many of the leap second
-/// getter functions.
+/// Leap-second details for an instant, returned by [`Dt::leap_sec`](../struct.Dt.html#method.leap_sec)
+/// and related methods.
 ///
 /// ## See also
 ///
@@ -27,15 +27,13 @@ use alloc::vec::Vec;
 /// - [Dt::to_utc_from_tai_using_list](../struct.Dt.html#method.to_utc_from_tai_using_list)
 #[derive(Copy, Clone, Debug)]
 pub struct LeapInfo {
-    /// The returned offset in seconds.
+    /// TAI minus UTC offset, in whole seconds.
     pub offset: i64,
-    /// The number of leap second list rows that come before the instant
-    /// that retrieved this object.
+    /// How many leap-second list entries come at or before the instant
+    /// (`1` on 1972-01-01).
     pub leaps_inserted: i64,
-    /// `true` if the instant that retrieved this object was exactly
-    /// on a leap second insertion.
-    ///
-    /// Determined by seconds, not fractional seconds.
+    /// `true` if the instant was exactly on an inserted leap second
+    /// (whole seconds only; fractional attoseconds are not considered).
     pub is_leap_sec: bool,
 }
 
