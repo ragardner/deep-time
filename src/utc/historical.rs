@@ -6,7 +6,7 @@
 use crate::{Dt, Real};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct TaiUtcPre1972 {
+pub struct UtcHistRow {
     /// Year of the effective UTC date
     pub yr: i32,
     /// Month (1-12) of the effective UTC date
@@ -33,8 +33,8 @@ pub struct TaiUtcPre1972 {
 /// [file](https://maia.usno.navy.mil/ser7/tai-utc.dat).  
 /// These 13 intervals contain the frequency offsets and linear drifts used by the IAU SOFA library
 /// and all other high-precision astronomy/time-conversion software before UTC switched to pure leap-second mode.
-pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
-    TaiUtcPre1972 {
+pub const UTC_HIST_TABLE: &[UtcHistRow] = &[
+    UtcHistRow {
         yr: 1961,
         mo: 1,
         day: 1,
@@ -46,7 +46,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2437300.4999835324,
         // tai_mjd: 37300.0000164678,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1961,
         mo: 8,
         day: 1,
@@ -58,7 +58,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2437512.4999809307,
         // tai_mjd: 37512.0000190691,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1962,
         mo: 1,
         day: 1,
@@ -70,7 +70,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2437665.499978636,
         // tai_mjd: 37665.000021364096,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1963,
         mo: 11,
         day: 1,
@@ -82,7 +82,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2438334.4999687816,
         // tai_mjd: 38334.00003121851,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1964,
         mo: 1,
         day: 1,
@@ -94,7 +94,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2438395.4999679886,
         // tai_mjd: 38395.00003201151,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1964,
         mo: 4,
         day: 1,
@@ -106,7 +106,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2438486.499965466,
         // tai_mjd: 38486.000034533914,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1964,
         mo: 9,
         day: 1,
@@ -118,7 +118,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2438639.4999620137,
         // tai_mjd: 38639.00003798632,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1965,
         mo: 1,
         day: 1,
@@ -130,7 +130,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2438761.4999590265,
         // tai_mjd: 38761.000040973726,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1965,
         mo: 3,
         day: 1,
@@ -142,7 +142,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2438820.499956984,
         // tai_mjd: 38820.00004301613,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1965,
         mo: 7,
         day: 1,
@@ -154,7 +154,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2438942.4999539964,
         // tai_mjd: 38942.000046003544,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1965,
         mo: 9,
         day: 1,
@@ -166,7 +166,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2439004.499951909,
         // tai_mjd: 39004.00004809095,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1966,
         mo: 1,
         day: 1,
@@ -178,7 +178,7 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
         // jd_subbed: 2439126.4999500792,
         // tai_mjd: 39126.00004992095,
     },
-    TaiUtcPre1972 {
+    UtcHistRow {
         yr: 1968,
         mo: 2,
         day: 1,
@@ -192,38 +192,40 @@ pub const TAI_UTC_PRE_1972: &[TaiUtcPre1972] = &[
     },
 ];
 
-/// Returns the SOFA historical TAI−UTC offset (in seconds)
-/// for an **un-adjusted instant**.
-///
-/// - Only for instants that have not already been offset
-///   by a historical UTC offset value.
-/// - Not as accurate as ERFA / Astropy.
-/// - **Do not use this for round tripping.**
-/// - Unlike ERFA it does not support dates between 1960
-///   and 1961.
-pub const fn historical_utc_offset(dt: &Dt) -> Option<Real> {
-    // < 1961-1-1 midnight, or >= 1972-1-1 midnight
-    if dt.to_attos() < -1230724800000000000000000000
+impl Dt {
+    /// Returns the SOFA historical TAI−UTC offset (in seconds)
+    /// for an **un-adjusted instant**.
+    ///
+    /// - Only for instants that have **not** already been offset
+    ///   by a historical UTC offset value.
+    /// - Not as accurate as ERFA / Astropy.
+    /// - **Do not use this for round tripping.**
+    /// - Unlike ERFA it does **not** support dates between 1960
+    ///   and 1961.
+    pub const fn historical_utc_offset(&self) -> Option<Real> {
+        // < 1961-1-1 midnight, or >= 1972-1-1 midnight
+        if self.to_attos() < -1230724800000000000000000000
         // tai attos for 1972 (10 leap seconds added)
-        || dt.to_attos() >= -883655990000000000000000000
-    {
-        return None;
-    }
-    // if dt.to_attos() >= -883656000000000000000000000 {
-    //     return None;
-    // }
-    let jd = dt.to_jd_f_raw();
-    let mjd = dt.to_mjd_f_raw();
-    let len = TAI_UTC_PRE_1972.len();
-    let mut i = len;
-    while i > 0 {
-        i -= 1;
-        let entry = &TAI_UTC_PRE_1972[i];
-        if jd >= entry.jd {
-            let offset = entry.offset + (mjd - entry.mjd_ref) * entry.drift;
-            return Some(offset);
+        || self.to_attos() >= -883655990000000000000000000
+        {
+            return None;
         }
-    }
+        // if self.to_attos() >= -883656000000000000000000000 {
+        //     return None;
+        // }
+        let jd = self.to_jd_f_raw();
+        let mjd = self.to_mjd_f_raw();
+        let len = UTC_HIST_TABLE.len();
+        let mut i = len;
+        while i > 0 {
+            i -= 1;
+            let entry = &UTC_HIST_TABLE[i];
+            if jd >= entry.jd {
+                let offset = entry.offset + (mjd - entry.mjd_ref) * entry.drift;
+                return Some(offset);
+            }
+        }
 
-    None
+        None
+    }
 }

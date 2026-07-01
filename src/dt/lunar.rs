@@ -182,7 +182,7 @@ impl Dt {
     /// This bias is a pure constant (no rate or higher-order terms) and remains
     /// valid across the entire validity range of the LTE440 model.
     ///
-    /// Reference: https://github.com/xlucn/LTE440
+    /// Reference: <https://github.com/xlucn/LTE440>
     /// (README and demo output)
     pub(crate) const TCL_TDB_BIAS_SPAN: Dt = Dt::from_sec_f(0.49334260839797583, Scale::TAI);
 

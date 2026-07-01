@@ -1,4 +1,3 @@
-use crate::leap_seconds::leap_sec;
 use crate::{
     Dt, Epoch, JD_2000_2_451_545, SEC_PER_DAYI64, an_err,
     error::{DtErr, DtErrKind},
@@ -164,7 +163,8 @@ impl Parts {
         } else {
             if self.scale.uses_leap_seconds() {
                 let t = Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale);
-                let is_leap_sec = match leap_sec(total_sec.saturating_add(1), true) {
+                let is_leap_sec = match Dt::leap_sec_using_sec64(total_sec.saturating_add(1), true)
+                {
                     Some(info) => info.is_leap_sec,
                     None => false,
                 };

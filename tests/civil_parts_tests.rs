@@ -3,8 +3,7 @@
 mod tests {
     use deep_time::civil_parts::{Parts, Weekday};
     use deep_time::constants::ATTOS_PER_SEC_I128;
-    use deep_time::error::DtErrKind;
-    use deep_time::{Dt, Scale};
+    use deep_time::{Dt, DtErrKind, Scale};
 
     /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_f()`).
     fn jd_tt(tp: &Dt) -> f64 {

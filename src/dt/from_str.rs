@@ -275,10 +275,16 @@ impl Dt {
     ///
     /// The format is checked once for syntax errors and unsupported directives,
     /// then stored in a compact fixed-size buffer. The resulting `StrPTimeFmt` is
-    /// `Copy`, cheap to clone, and can be used repeatedly with [`StrPTimeFmt::to_dt`]
-    /// and [`StrPTimeFmt::to_str`] without re-validating.
+    /// can be used repeatedly with
+    /// [`StrPTimeFmt::to_dt`](../struct.StrPTimeFmt.html#method.to_dt)
+    /// and
+    /// [`StrPTimeFmt::to_str`](../struct.StrPTimeFmt.html#method.to_str)
+    /// without re-validating.
     ///
-    /// Only ASCII formats up to 256 bytes are accepted.
+    /// - This unfortunately doesn't improve parsing performance.
+    /// - Only ASCII formats up to
+    ///   [`StrPTimeFmt::MAX_FMT_LEN`](../struct.StrPTimeFmt.html#associatedconstant.MAX_FMT_LEN)
+    ///   bytes are accepted.
     ///
     /// ## Parameters
     ///
@@ -288,9 +294,11 @@ impl Dt {
     /// ## Errors
     ///
     /// Returns [`DtErr`] if the format is:
-    /// - Longer than 256 bytes
-    /// - Not valid ASCII
-    /// - Contains unknown, unsupported, or malformed directives
+    /// - Longer than
+    ///   [`StrPTimeFmt::MAX_FMT_LEN`](../struct.StrPTimeFmt.html#associatedconstant.MAX_FMT_LEN)
+    ///   bytes.
+    /// - Not valid ASCII.
+    /// - Contains unknown, unsupported, or malformed directives.
     #[inline(always)]
     pub fn parse_fmt(strptime_fmt: &str) -> Result<StrPTimeFmt, DtErr> {
         StrPTimeFmt::new(strptime_fmt)

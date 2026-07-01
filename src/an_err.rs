@@ -59,9 +59,9 @@
 //!
 //! With the `wire` feature enabled, the following methods become available:
 //!
-//! - [`AnErr::wire_size`]
-//! - [`AnErr::to_wire_bytes`]
-//! - [`AnErr::from_wire_bytes`]
+//! - [`wire_size`](struct.AnErr.html#method.wire_size)
+//! - [`to_wire_bytes`](struct.AnErr.html#method.to_wire_bytes)
+//! - [`from_wire_bytes`](struct.AnErr.html#method.from_wire_bytes)
 //!
 //! [`AnErr`]: AnErr
 //! [`an_err!`]: macro.an_err!.html

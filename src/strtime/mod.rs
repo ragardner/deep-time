@@ -62,17 +62,17 @@ impl FmtFlag {
 ///
 /// ## See also
 ///
-/// - [`StrPTimeFmt::new`]
-/// - [`StrPTimeFmt::to_dt`]
-/// - [`StrPTimeFmt::to_str`]
+/// - [`StrPTimeFmt::new`](../struct.StrPTimeFmt.html#method.new)
+/// - [`StrPTimeFmt::to_dt`](../struct.StrPTimeFmt.html#method.to_dt)
+/// - [`StrPTimeFmt::to_str`](../struct.StrPTimeFmt.html#method.to_str)
 #[derive(Debug, Clone, Copy)]
 pub struct StrPTimeFmt {
-    fmt: [u8; Self::MAX_FORMAT_LEN],
+    fmt: [u8; Self::MAX_FMT_LEN],
     len: usize,
 }
 
 impl StrPTimeFmt {
-    pub const MAX_FORMAT_LEN: usize = 256;
+    pub const MAX_FMT_LEN: usize = 256;
 
     /// Creates a new validated format.
     ///
@@ -116,7 +116,7 @@ impl StrPTimeFmt {
     /// # }
     /// ```
     pub fn new(fmt: &str) -> Result<Self, DtErr> {
-        if fmt.len() > Self::MAX_FORMAT_LEN {
+        if fmt.len() > Self::MAX_FMT_LEN {
             return Err(an_err!(DtErrKind::InvalidLen));
         }
         let fmt = fmt.as_bytes();
@@ -126,7 +126,7 @@ impl StrPTimeFmt {
 
         Self::validate_format(fmt)?;
 
-        let mut buffer = [0u8; Self::MAX_FORMAT_LEN];
+        let mut buffer = [0u8; Self::MAX_FMT_LEN];
         buffer[..fmt.len()].copy_from_slice(fmt);
 
         Ok(Self {

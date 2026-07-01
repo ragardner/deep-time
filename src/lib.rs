@@ -299,17 +299,11 @@ macro_rules! byte_arrays {
 }
 
 // _________________________________________
-// FEATURE MOD
-// _________________________________________
-#[cfg(feature = "parse")]
-mod alloc_parse;
-#[cfg(feature = "physics")]
-mod physics;
-
-// _________________________________________
 // MOD
 // _________________________________________
+mod an_err;
 mod dt;
+mod error;
 mod lite_str;
 mod locale;
 mod scale;
@@ -317,37 +311,26 @@ mod strtime;
 mod time_range;
 mod ymdhms;
 
+#[cfg(feature = "parse")]
+mod alloc_parse;
+
+#[cfg(feature = "physics")]
+mod physics;
+
 // _________________________________________
 // PUB MOD
 // _________________________________________
-pub mod an_err;
 pub mod civil_parts;
 pub mod constants;
-pub mod error;
-pub mod historical_utc;
-pub mod leap_seconds;
 pub mod math;
 pub mod tz;
+pub mod utc;
 
-// _________________________________________
-// FEATURE PUB MOD
-// _________________________________________
 #[cfg(feature = "eop")]
 pub mod eop;
 
 #[cfg(feature = "sidereal")]
 pub mod sidereal;
-
-// _________________________________________
-// FEATURE CRATE USE
-// _________________________________________
-#[cfg(feature = "parse")]
-pub(crate) use alloc_parse::{
-    alloc_constants::*, date::*, date_classification::*, duration::*, helpers::*, parse_date::*,
-    types::*,
-};
-#[cfg(feature = "parse")]
-pub(crate) use locale::{lang_data::*, lang_map::*};
 
 // _________________________________________
 // CRATE USE
@@ -367,25 +350,14 @@ pub(crate) use math::{
 };
 pub(crate) use strtime::*;
 
-// _________________________________________
-// FEATURE PUB USE
-// _________________________________________
-#[cfg(feature = "tdb_fairhead1990")]
-pub use dt::tdb_fairhead1990;
+#[cfg(feature = "parse")]
+pub(crate) use alloc_parse::{
+    alloc_constants::*, date::*, date_classification::*, duration::*, helpers::*, parse_date::*,
+    types::*,
+};
 
 #[cfg(feature = "parse")]
-pub use alloc_parse::types::{Mode, Order, ParseCfg};
-
-#[cfg(feature = "mars")]
-pub use dt::mars;
-
-#[cfg(feature = "sidereal")]
-pub use sidereal::Sidereal;
-
-#[cfg(feature = "physics")]
-pub use physics::{
-    drift::Drift, observer::Observer, position::Position, spacetime::Spacetime, velocity::Velocity,
-};
+pub(crate) use locale::{lang_data::*, lang_map::*};
 
 // _________________________________________
 // PUB USE
@@ -401,3 +373,21 @@ pub use scale::Scale;
 pub use strtime::StrPTimeFmt;
 pub use time_range::{Every, TimeRange};
 pub use ymdhms::YmdHms;
+
+#[cfg(feature = "tdb_fairhead1990")]
+pub use dt::tdb_fairhead1990;
+
+#[cfg(feature = "parse")]
+pub use alloc_parse::types::{Mode, Order, ParseCfg};
+
+#[cfg(feature = "mars")]
+pub use dt::mars;
+
+#[cfg(feature = "sidereal")]
+#[doc(hidden)]
+pub use sidereal::Sidereal;
+
+#[cfg(feature = "physics")]
+pub use physics::{
+    drift::Drift, observer::Observer, position::Position, spacetime::Spacetime, velocity::Velocity,
+};

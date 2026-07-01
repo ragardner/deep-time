@@ -104,8 +104,8 @@ if __name__ == "__main__":
 #[cfg(all(feature = "eop-tests", feature = "sidereal-earth"))]
 mod sidereal_tests {
     use deep_time::Dt;
-    use deep_time::Sidereal;
     use deep_time::eop::{EopData, EopFormat, Separator};
+    use deep_time::sidereal::Sidereal;
 
     fn load_finals2000a() -> EopData {
         let path = "tests/assets/finals.all.iau2000.txt";

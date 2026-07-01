@@ -95,7 +95,7 @@ UTC to TAI:
 
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale, historical_utc::historical_utc_offset};
+use deep_time::{Dt, Scale};
 
 #[test]
 fn test_sofa_historical_offsets() {
@@ -123,13 +123,13 @@ fn test_sofa_historical_offsets() {
     // 1972-01-01 (first day of modern leap-second system)
     let tp = Dt::from_ymd(1972, 1, 1, Scale::UTC, 0, 0, 0, 0);
     assert!(
-        historical_utc_offset(&tp).is_none(),
+        tp.historical_utc_offset().is_none(),
         "1972-01-01 should return None"
     );
 
     // 1961-01-01
     let tp = Dt::from_ymd(1961, 1, 1, Scale::TAI, 0, 0, 0, 0);
-    let offset = historical_utc_offset(&tp).unwrap();
+    let offset = tp.historical_utc_offset().unwrap();
     assert!(
         (offset - 1.422818000000).abs() < 1e-12,
         "1961-01-01 inverse offset was {}, expected 1.422818000000",
@@ -138,7 +138,7 @@ fn test_sofa_historical_offsets() {
 
     // 1966-05-01
     let tp = Dt::from_ymd(1966, 5, 1, Scale::TAI, 0, 0, 0, 0);
-    let offset = historical_utc_offset(&tp).unwrap();
+    let offset = tp.historical_utc_offset().unwrap();
     assert!(
         (offset - 4.624210000000).abs() < 1e-12,
         "1966-05-01 inverse offset was {}, expected 4.624210000000",
@@ -147,7 +147,7 @@ fn test_sofa_historical_offsets() {
 
     // 1971-12-31
     let tp = Dt::from_ymd(1971, 12, 31, Scale::TAI, 0, 0, 0, 0);
-    let offset = historical_utc_offset(&tp).unwrap();
+    let offset = tp.historical_utc_offset().unwrap();
     assert!(
         (offset - 9.889650000000).abs() < 1e-12,
         "1971-12-31 inverse offset was {}, expected 9.889650000000",

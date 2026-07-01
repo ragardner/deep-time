@@ -2,7 +2,7 @@
 
 #[cfg(feature = "hifitime")]
 mod tests {
-    use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128, leap_seconds};
+    use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128};
     use hifitime::{Duration, Epoch, TimeScale};
 
     /// Seconds between hifitime's TAI reference epoch (1900-01-01 00:00:00 TAI)
@@ -266,7 +266,7 @@ mod tests {
             let utc = Epoch::from_gregorian(year, month, day, hour, min, sec, 0, TimeScale::UTC);
 
             let my_utc = Dt::from_ymd(year as i64, month, day, Scale::UTC, 0, 0, 0, 0);
-            let my_offset = leap_seconds::leap_sec(my_utc.to_sec64(), true)
+            let my_offset = Dt::leap_sec_using_sec64(my_utc.to_sec64(), true)
                 .unwrap()
                 .offset as i32;
 

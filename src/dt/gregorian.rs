@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, leap_seconds::leap_sec};
+use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms};
 
 impl Dt {
     pub(crate) const DAYS_IN_GREGORIAN_MONTHS: [u8; 12] =
@@ -194,7 +194,7 @@ impl Dt {
         if sec_is_60 && scale.uses_leap_seconds() {
             let t =
                 Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false);
-            let is_leap = match leap_sec(t.add_sec(1).to_sec64(), false) {
+            let is_leap = match Self::leap_sec_using_sec64(t.add_sec(1).to_sec64(), false) {
                 Some(i) => i.is_leap_sec,
                 None => false,
             };

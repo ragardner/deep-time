@@ -236,7 +236,7 @@ impl Parts {
 
     /// Shared parser for decimal input.
     ///
-    /// Used by both [`Parts::from_str_sec_f`] and [`Dt::from_str_sec_f`].
+    /// Used by both [`Parts::from_str_sec_f`] and [`Dt::from_str_sec_f`](../struct.Dt.html#method.from_str_sec_f).
     /// Returns the raw numeric components + resolved scale; the caller decides
     /// how to materialize the value (full attos for `Dt`, or a Noon2000
     /// [`Timestamp`] for `Parts`).

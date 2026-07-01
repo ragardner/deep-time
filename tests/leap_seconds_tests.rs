@@ -1,11 +1,11 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128, leap_seconds::leap_sec};
+use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128};
 
 #[cfg(feature = "parse")]
 #[test]
 fn leap_seconds_various() {
-    use deep_time::{Dt, ParseCfg, Scale};
+    use deep_time::ParseCfg;
 
     // not a leap second date, don't roll over to next day
     let orig = Dt::from_ymd(2000, 1, 1, Scale::UTC, 23, 59, 60, 0);
@@ -174,7 +174,9 @@ fn to_epoch_leaps_and_tai() {
         leap.to_sec(),
     );
     assert!(
-        leap_sec(leap.to_sec64(), false).unwrap().is_leap_sec,
+        Dt::leap_sec_using_sec64(leap.to_sec64(), false)
+            .unwrap()
+            .is_leap_sec,
         "tai 536500836 should be a leap second",
     );
     let y = Dt::from_ymd(2017, 1, 1, Scale::UTC, 0, 0, 0, 0);
@@ -249,23 +251,24 @@ fn test_leap_second_roundtrip_and_sec() {
 #[cfg(feature = "std")]
 #[test]
 fn test_leap_seconds_file() {
-    use deep_time::leap_seconds::LEAP_SECS;
+    use deep_time::utc::LEAP_SECS;
+    use deep_time::{Dt, Scale};
 
-    let leap_seconds_table =
-        Dt::leap_sec_data_from_file("tests/assets/leap-seconds.list.txt").unwrap();
-    assert_eq!(leap_seconds_table[1], LEAP_SECS[1]);
+    let leap_seconds_list =
+        Dt::leap_sec_list_from_file("tests/assets/leap-seconds.list.txt").unwrap();
+    assert_eq!(leap_seconds_list[1], LEAP_SECS[1]);
 
     let x = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 0);
-    let leap_info = Dt::leap_sec_using(&x, false, &leap_seconds_table).unwrap();
-    assert!(leap_info.is_leap_sec == true);
+    let leap_sec = x.leap_sec_using_list(false, &leap_seconds_list).unwrap();
+    assert!(leap_sec.is_leap_sec == true);
 
     let dt = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
 
     let utc1 = dt.to(Scale::UTC);
-    let utc2 = dt.to_utc_from_tai_using_leaps(Scale::UTC, &leap_seconds_table);
+    let utc2 = dt.to_utc_from_tai_using_list(Scale::UTC, &leap_seconds_list);
     assert_eq!(utc1, utc2);
 
     let tai1 = utc1.to_tai();
-    let tai2 = utc2.to_tai_from_utc_using_leaps(&leap_seconds_table);
+    let tai2 = utc2.to_tai_from_utc_using_list(&leap_seconds_list);
     assert_eq!(tai1, tai2);
 }
