@@ -272,3 +272,24 @@ fn test_leap_seconds_file() {
     let tai2 = utc2.to_tai_from_utc_using_list(&leap_seconds_list);
     assert_eq!(tai1, tai2);
 }
+
+#[cfg(feature = "std")]
+#[test]
+fn test_leap_second_subtracted() {
+    use deep_time::utc::LEAP_SECS;
+    use deep_time::{Dt, Scale};
+
+    let leap_seconds_list =
+        Dt::leap_sec_list_from_file("tests/assets/leap-seconds-custom.list.txt").unwrap();
+    assert_eq!(leap_seconds_list[1], LEAP_SECS[1]);
+
+    let x = Dt::from_ymd(2015, 7, 2, Scale::TAI, 0, 0, 0, 0);
+    let utc1 = x.to(Scale::UTC);
+    let utc2 = x.to_utc_from_tai_using_list(Scale::UTC, &leap_seconds_list);
+
+    assert_eq!(x.to_diff_raw_f(utc1), 36.0);
+    assert_eq!(x.to_diff_raw_f(utc2), 34.0);
+
+    let tai2 = utc2.to_tai_from_utc_using_list(&leap_seconds_list);
+    assert_eq!(x, tai2);
+}

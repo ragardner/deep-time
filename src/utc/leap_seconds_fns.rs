@@ -31,7 +31,7 @@ pub struct LeapInfo {
     pub offset: i64,
     /// How many leap-second list entries come at or before the instant
     /// (`1` on 1972-01-01).
-    pub leaps_inserted: i64,
+    pub n_entries_at_or_before: usize,
     /// `true` if the instant was exactly on an inserted leap second
     /// (whole seconds only; fractional attoseconds are not considered).
     pub is_leap_sec: bool,
@@ -102,7 +102,7 @@ impl Dt {
 
         Some(LeapInfo {
             offset: entry.leap_sec_after,
-            leaps_inserted: low as i64,
+            n_entries_at_or_before: low,
             is_leap_sec: is_leap,
         })
     }
