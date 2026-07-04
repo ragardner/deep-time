@@ -114,11 +114,9 @@ pub(crate) fn classify_date(
                         date_norm.push_str(norm_part);
                     }
                 }
-                Token::Scale => {
-                    if currently.after_date() {
-                        time_tokens.push(Token::Scale);
-                        date_norm.push_str(norm_part);
-                    }
+                Token::Scale if currently.after_date() => {
+                    time_tokens.push(Token::Scale);
+                    date_norm.push_str(norm_part);
                 }
                 _ => {}
             }
@@ -285,11 +283,9 @@ pub(crate) fn classify_date(
                                                         connector = ConnectorType::Space;
                                                     }
                                                 }
-                                                1.. => {
-                                                    if num_date_digits >= 6 && in_digit_run {
-                                                        currently = IndexIn::Time;
-                                                        connector = ConnectorType::Space;
-                                                    }
+                                                1.. if num_date_digits >= 6 && in_digit_run => {
+                                                    currently = IndexIn::Time;
+                                                    connector = ConnectorType::Space;
                                                 }
                                                 _ => {}
                                             }

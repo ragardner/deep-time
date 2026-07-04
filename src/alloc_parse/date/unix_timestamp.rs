@@ -40,7 +40,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
 
     // High-precision path (≥ 19 integer digits)
     if integer_digits >= 19 {
-        let frac_nanos = frac_to_nanos(frac_part).unwrap_or(0) as i128;
+        let frac_nanos = frac_to_nanos(frac_part).unwrap_or(0);
         // FIXED: sign now applies to the whole value (int + frac)
         let total_nanos = (int_val + frac_nanos) * sign;
 

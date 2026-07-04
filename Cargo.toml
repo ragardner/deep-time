@@ -1,3 +1,7 @@
+[workspace]
+members = [".", "crates/deep-time-leap-seconds-gen"]
+default-members = ["."]
+
 [package]
 name = "deep-time"
 version = "0.1.0-beta.20"

@@ -242,27 +242,47 @@ Benchmarks were measured on an AMD Ryzen 7 7800X3D.
 
 #### Parsing and Formatting
 
-| Operation                              | Time          | vs Jiff 0.2.28           |
+| Operation                              | Time          | vs Jiff 0.2.31           |
 |----------------------------------------|---------------|--------------------------|
-| ISO datetime parsing                   | 20.4 ns       | 22.5% faster             |
-| `strptime`                             | 34.3 ns       | 19.4% faster             |
-| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 187 ns        | 9.8% slower              |
-| `strftime`                             | 96.8 ns       | 57.5% slower             |
-| Auto parser (`from_str_parse`)         | 615 ns        | —                        |
+| ISO datetime parsing                   | 19.7 ns       | 28.3% faster             |
+| `strptime`                             | 34.6 ns       | 13.2% faster             |
+| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 185 ns        | 16.2% slower             |
+| `strftime`                             | 98.3 ns       | 58.8% slower             |
+| Auto parser (`from_str_parse`)         | 575 ns        | —                        |
 
 #### Time Scale Conversions
 
 | Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |
 |------------------|---------------|---------------|---------------------------|
-| TAI → UTC        | 9.7 ns        | 44.8 ns       | 4.6× faster               |
-| UTC → TAI        | 13.1 ns       | 45.4 ns       | 3.5× faster               |
-| TAI → TDB        | 136 ns        | 90.4 ns       | 1.5× slower               |
-| TDB → TAI        | 610 ns        | 27.3 ns       | 22.3× slower              |
-| GPS conversion   | 21.1 ns       | 5.4 ns        | 3.9× slower               |
-| GPS week + TOW   | 27.5 ns       | 6.7 ns        | 4.1× slower               |
+| TAI → UTC        | 9.6 ns        | 33.8 ns       | 3.5× faster               |
+| UTC → TAI        | 12.7 ns       | 32.9 ns       | 2.6× faster               |
+| TAI → TDB        | 134 ns        | 90.7 ns       | 1.5× slower               |
+| TDB → TAI        | 598 ns        | 26.8 ns       | 22.3× slower              |
+| GPS conversion   | 20.7 ns       | 6.4 ns        | 3.2× slower               |
+| GPS week + TOW   | 28.2 ns       | 7.0 ns        | 4.0× slower               |
 
 The tests were run with:
 
 ```sh
 cargo test --release --features "parse hifitime std jiff-tz perf-tests" -- --nocapture perf_tests
 ```
+
+### Bundled Files
+
+This library bundles some data relevant to, for example, time scale conversions. While every effort will be made to keep the library up to date, perhaps some users will want to know how to re-generate or update certain files and then re-compile.
+
+#### Leap Seconds
+
+The latest leap seconds table is bundled as a `.rs` file. A runtime file can be parsed and loaded for time scale conversions, e.g.
+
+- [Dt::leap_sec_list_from_file](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.leap_sec_list_from_file)
+- [Dt::to_utc_from_tai_using_list](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_utc_from_tai_using_list)
+- [Dt::to_tai_from_utc_using_list](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_tai_from_utc_using_list)
+
+If for whatever reason you need to update the library's bundled leap seconds file and re-compile, follow these steps:
+
+1. Download the desired leap seconds file, for example from [https://data.iana.org/time-zones/data/leap-seconds.list](https://data.iana.org/time-zones/data/leap-seconds.list)
+2. Place the downloaded file in the library, with the following location and filename: `deep-time/tests/assets/leap-seconds.list.txt`
+3. Then with a terminal open in the library run the command: `cargo gen-leap-seconds`
+4. This should overwrite the file `src/utc/leap_seconds_list.rs` using the data
+5. Re-compile the library

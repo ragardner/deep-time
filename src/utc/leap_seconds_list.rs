@@ -1,6 +1,5 @@
 //! Leap seconds table from the official IANA
 //! [leap-seconds.list](https://data.iana.org/time-zones/data/leap-seconds.list)
-//! Updated through IERS Bulletin C as of April 2026.
 //! Last leap second: 2017-01-01 (TAI-UTC = 37 s)
 //! File expires: 28 December 2026
 

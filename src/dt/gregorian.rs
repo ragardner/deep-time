@@ -102,14 +102,11 @@ impl Dt {
         let hr = (seconds_since_midnight / 3600) as u8;
         let min = ((seconds_since_midnight % 3600) / 60) as u8;
         let mut sec = (seconds_since_midnight % 60) as u8;
-        if self.target.uses_leap_seconds() {
-            match self.to_tai().leap_sec(false) {
-                Some(i) => match i.is_leap_sec {
-                    IsLeapSec::Add => sec += 1,
-                    _ => {}
-                },
-                None => {}
-            }
+        if self.target.uses_leap_seconds()
+            && let Some(i) = self.to_tai().leap_sec(false)
+            && matches!(i.is_leap_sec, IsLeapSec::Add)
+        {
+            sec += 1
         }
 
         YmdHms {

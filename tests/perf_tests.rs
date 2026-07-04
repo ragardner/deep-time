@@ -215,7 +215,7 @@ mod perf_tests {
         // strptime — Parts vs Jiff BrokenDownTime strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
-            const ITERATIONS: usize = 10_000_000;
+            const ITERATIONS: usize = 30_000_000;
             const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
             const INPUT: &str = "2024-03-14T00:00:00";
 
@@ -240,7 +240,7 @@ mod perf_tests {
         // Zoned strptime — Dt vs Jiff Zoned using strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
-            const ITERATIONS: usize = 5_000_000;
+            const ITERATIONS: usize = 10_000_000;
             const INPUT: &str = "2024-03-14T00:00:00[America/New_York]";
             const FORMAT_WITH_Q: &str = "%Y-%m-%dT%H:%M:%S[%Q]";
 
@@ -266,7 +266,7 @@ mod perf_tests {
         // Datetime strptime — Dt::from_str vs Jiff to_datetime strtime
         // ═══════════════════════════════════════════════════════════════════════
         {
-            const ITERATIONS: usize = 5_000_000; // lowered because IANA zone resolution is heavier
+            const ITERATIONS: usize = 10_000_000; // lowered because IANA zone resolution is heavier
             const INPUT: &str = "2024-03-14T00:00:00";
             const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
@@ -293,7 +293,7 @@ mod perf_tests {
         // Datetime parse — Parts::from_str_iso vs Jiff parse::DateTime
         // ═══════════════════════════════════════════════════════════════════════
         {
-            const ITERATIONS: usize = 10_000_000;
+            const ITERATIONS: usize = 20_000_000;
             const INPUT: &str = "2024-03-14T00:00:00.123456789";
 
             // ── Jiff high-level DateTime parse ───────────────────────
@@ -317,7 +317,7 @@ mod perf_tests {
         // strftime — Dt::to_str vs Jiff civil::DateTime::strftime
         // ═══════════════════════════════════════════════════════════════════════
         {
-            const ITERATIONS: usize = 10_000_000;
+            const ITERATIONS: usize = 20_000_000;
             const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
             // ── deep_time ───────────────────────
@@ -378,7 +378,7 @@ mod perf_tests {
         eprintln!("#### Parsing and Formatting");
         eprintln!();
         eprintln!(
-            "| Operation                              | Time          | vs Jiff 0.2.28           |"
+            "| Operation                              | Time          | vs Jiff 0.2.31           |"
         );
         eprintln!(
             "|----------------------------------------|---------------|--------------------------|"

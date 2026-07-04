@@ -231,6 +231,26 @@
 //! - The fast ISO 8601 parser (`from_str_iso`) works **without** the `parse` feature.
 //! - Multi-language **parsing** requires the `parse` feature, but multi-language **formatting** works without it.
 //! - The `.parse()` implementation on `Dt` automatically chooses between the full parser and the ISO parser depending on enabled features.
+//!
+//! ### Bundled Files
+//!
+//! This library bundles some data relevant to, for example, time scale conversions. While every effort will be made to keep the library up to date, perhaps some users will want to know how to re-generate or update certain files and then re-compile.
+//!
+//! #### Leap Seconds
+//!
+//! The latest leap seconds table is bundled as a `.rs` file. A runtime file can be parsed and loaded for time scale conversions, e.g.
+//!
+//! - [Dt::leap_sec_list_from_file](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.leap_sec_list_from_file)
+//! - [Dt::to_utc_from_tai_using_list](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_utc_from_tai_using_list)
+//! - [Dt::to_tai_from_utc_using_list](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_tai_from_utc_using_list)
+//!
+//! If for whatever reason you need to update the library's bundled leap seconds file and re-compile, follow these steps:
+//!
+//! 1. Download the desired leap seconds file, for example from [https://data.iana.org/time-zones/data/leap-seconds.list](https://data.iana.org/time-zones/data/leap-seconds.list)
+//! 2. Place the downloaded file in the library, with the following location and filename: `deep-time/tests/assets/leap-seconds.list.txt`
+//! 3. Then with a terminal open in the library run the command: `cargo gen-leap-seconds`
+//! 4. This should overwrite the file `src/utc/leap_seconds_list.rs` using the data
+//! 5. Re-compile the library
 
 #![forbid(unsafe_code)]
 #![cfg_attr(test, allow(clippy::all))]

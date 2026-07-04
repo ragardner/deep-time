@@ -1,0 +1,2 @@
+[alias]
+gen-leap-seconds = "run -p deep-time-leap-seconds-gen --"

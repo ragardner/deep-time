@@ -166,7 +166,7 @@ impl Dt {
     ///   negative `sec64` values.
     #[inline(always)]
     pub const fn leap_sec_using_sec64(sec64: i64, is_utc: bool) -> Option<LeapInfo> {
-        Self::leap_sec_using_sec64_and_list(sec64, is_utc, &LEAP_SECS)
+        Self::leap_sec_using_sec64_and_list(sec64, is_utc, LEAP_SECS)
     }
 
     /// Get the leap seconds info for this instant.
@@ -174,7 +174,7 @@ impl Dt {
     /// Uses the library's in-built leap seconds list.
     #[inline(always)]
     pub const fn leap_sec(&self, is_utc: bool) -> Option<LeapInfo> {
-        Self::leap_sec_using_sec64_and_list(self.to_sec64(), is_utc, &LEAP_SECS)
+        Self::leap_sec_using_sec64_and_list(self.to_sec64(), is_utc, LEAP_SECS)
     }
 
     /// Get the leap seconds info for this instant with a given list.
