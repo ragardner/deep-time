@@ -12,11 +12,29 @@ use std::{fs, io, path::Path};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
+/// Indicates whether a queried instant falls exactly on a leap second transition.
+///
+/// This is returned by [`LeapInfo::is_leap_sec`] and is only ever set to a
+/// non-`None` value when the queried timestamp is *exactly* at the moment
+/// a leap second is inserted or removed.
+///
+/// - [`IsLeapSec::Add`] is returned for the inserted leap second
+///   (e.g. `23:59:60`).
+/// - [`IsLeapSec::Sub`] is returned for a negative (subtracted) leap second.
+/// - [`IsLeapSec::None`] is returned for all normal seconds.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum IsLeapSec {
+    /// This instant is **not** a leap second.
     #[default]
     None,
+    /// This instant is a positive leap second (a second is being inserted).
+    ///
+    /// Example: `2015-06-30 23:59:60 UTC`.
     Add,
+    /// This instant is a negative leap second (a second is being removed).
+    ///
+    /// Perhaps this would work by having clocks skip the 59th second of a
+    /// minute, e.g. `2015-06-30 23:59:58 UTC` → `2015-07-01 00:00:00 UTC`.
     Sub,
 }
 
@@ -40,6 +58,11 @@ pub struct LeapInfo {
     /// How many leap-second list entries come at or before the instant
     /// (`1` on 1972-01-01).
     pub n_entries_at_or_before: usize,
+    /// Whether the queried instant is exactly at a leap second transition point.
+    ///
+    /// - [`IsLeapSec::Add`] — this is the inserted leap second (`23:59:60`).
+    /// - [`IsLeapSec::Sub`] — this is a negative (removed) leap second.
+    /// - [`IsLeapSec::None`] — normal second (most common).
     pub is_leap_sec: IsLeapSec,
 }
 
@@ -117,10 +140,10 @@ impl Dt {
                 }
             } else if entry.leap_sec_after > 0 {
                 IsLeapSec::Add
-            } else if entry.leap_sec_after == 0 {
-                IsLeapSec::None
-            } else {
+            } else if entry.leap_sec_after < 0 {
                 IsLeapSec::Sub
+            } else {
+                IsLeapSec::None
             }
         };
 
