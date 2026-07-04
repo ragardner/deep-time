@@ -257,7 +257,7 @@ fn test_leap_seconds_file() {
 
     let leap_seconds_list =
         Dt::leap_sec_list_from_file("tests/assets/leap-seconds.list.txt").unwrap();
-    assert_eq!(leap_seconds_list[1], LEAP_SECS[1]);
+    assert_eq!(leap_seconds_list[..leap_seconds_list.len()], LEAP_SECS[..]);
 
     let x = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 0);
     let leap_sec = x.leap_sec_using_list(false, &leap_seconds_list).unwrap();
@@ -282,8 +282,6 @@ fn test_leap_second_subtracted() {
 
     let leap_seconds_list =
         Dt::leap_sec_list_from_file("tests/assets/leap-seconds-custom.list.txt").unwrap();
-    eprintln!("{:?}", leap_seconds_list[0]);
-    eprintln!("{:?}", &LEAP_SECS[0]);
 
     let x = Dt::from_ymd(2015, 7, 2, Scale::TAI, 0, 0, 0, 0);
     let utc1 = x.to(Scale::UTC);
