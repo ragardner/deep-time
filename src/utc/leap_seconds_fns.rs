@@ -12,6 +12,14 @@ use std::{fs, io, path::Path};
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
+pub enum IsLeapSec {
+    #[default]
+    None,
+    Add,
+    Sub,
+}
+
 /// Leap-second details for an instant, returned by [`Dt::leap_sec`](../struct.Dt.html#method.leap_sec)
 /// and related methods.
 ///
@@ -25,16 +33,14 @@ use alloc::vec::Vec;
 /// - [Dt::leap_sec_list_from_file](../struct.Dt.html#method.leap_sec_list_from_file)
 /// - [Dt::to_tai_from_utc_using_list](../struct.Dt.html#method.to_tai_from_utc_using_list)
 /// - [Dt::to_utc_from_tai_using_list](../struct.Dt.html#method.to_utc_from_tai_using_list)
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LeapInfo {
     /// TAI minus UTC offset, in whole seconds.
     pub offset: i64,
     /// How many leap-second list entries come at or before the instant
     /// (`1` on 1972-01-01).
     pub n_entries_at_or_before: usize,
-    /// `true` if the instant was exactly on an inserted leap second
-    /// (whole seconds only; fractional attoseconds are not considered).
-    pub is_leap_sec: bool,
+    pub is_leap_sec: IsLeapSec,
 }
 
 impl Dt {
@@ -97,8 +103,26 @@ impl Dt {
 
         let idx = low - 1;
         let entry = &list[idx];
-        let entry_sec = if is_utc { entry.utc_sec } else { entry.tai_sec };
-        let is_leap = sec64 == entry_sec;
+        let is_leap = {
+            if sec64 != if is_utc { entry.utc_sec } else { entry.tai_sec } {
+                IsLeapSec::None
+            } else if idx != 0 {
+                let prev_leap_sec_after = list[idx - 1].leap_sec_after;
+                if entry.leap_sec_after > prev_leap_sec_after {
+                    IsLeapSec::Add
+                } else if entry.leap_sec_after < prev_leap_sec_after {
+                    IsLeapSec::Sub
+                } else {
+                    IsLeapSec::None
+                }
+            } else if entry.leap_sec_after > 0 {
+                IsLeapSec::Add
+            } else if entry.leap_sec_after == 0 {
+                IsLeapSec::None
+            } else {
+                IsLeapSec::Sub
+            }
+        };
 
         Some(LeapInfo {
             offset: entry.leap_sec_after,
@@ -163,7 +187,7 @@ impl Dt {
     ///
     /// ```rust
     /// # #[cfg(feature = "std")] {
-    /// use deep_time::utc::LEAP_SECS;
+    /// use deep_time::utc::{IsLeapSec, LEAP_SECS};
     /// use deep_time::{Dt, Scale};
     ///
     /// let leap_seconds_list =
@@ -172,7 +196,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 0);
     /// let leap_sec = x.leap_sec_using_list(false, &leap_seconds_list).unwrap();
-    /// assert!(leap_sec.is_leap_sec == true);
+    /// assert!(leap_sec.is_leap_sec == IsLeapSec::Add);
     ///
     /// let dt = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
     ///
@@ -231,7 +255,7 @@ impl Dt {
     ///
     /// ```rust
     /// # #[cfg(feature = "std")] {
-    /// use deep_time::utc::LEAP_SECS;
+    /// use deep_time::utc::{IsLeapSec, LEAP_SECS};
     /// use deep_time::{Dt, Scale};
     ///
     /// let leap_seconds_list =
@@ -240,7 +264,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 0);
     /// let leap_sec = x.leap_sec_using_list(false, &leap_seconds_list).unwrap();
-    /// assert!(leap_sec.is_leap_sec == true);
+    /// assert!(leap_sec.is_leap_sec == IsLeapSec::Add);
     ///
     /// let dt = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
     ///
@@ -314,6 +338,7 @@ impl Dt {
 
         let mut list = Vec::new();
         let mut prev_leap_sec_after: i64 = 0;
+        let mut entries_pushed: usize = 0;
 
         for line in s.lines() {
             let trimmed = line.trim();
@@ -322,25 +347,37 @@ impl Dt {
                 continue;
             }
 
-            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+            let mut parts = trimmed.split_whitespace();
 
-            if parts.len() < 2 {
-                continue;
-            }
-            let Ok(ntp_timestamp) = parts[0].parse::<i64>() else {
+            let ntp_timestamp = if let Some(num) = parts.next() {
+                match num.parse::<i64>() {
+                    Ok(n) => n,
+                    Err(_) => continue,
+                }
+            } else {
                 continue;
             };
-            let Ok(leap_sec_after) = parts[1].parse::<i64>() else {
+            let leap_sec_after = if let Some(num) = parts.next() {
+                match num.parse::<i64>() {
+                    Ok(n) => n,
+                    Err(_) => continue,
+                }
+            } else {
                 continue;
             };
 
             // don't use current: UTC because it would use the internal leap list
             let utc_sec = Dt::from_ntp(Dt::from_sec(ntp_timestamp as i128, Scale::TAI)).to_sec64();
 
-            let tai_sec = if prev_leap_sec_after == 0 {
-                utc_sec + leap_sec_after - 1
+            let tai_sec = if entries_pushed == 0 {
+                if leap_sec_after > 0 {
+                    utc_sec + leap_sec_after - 1
+                } else {
+                    // hypothetical negative first entry
+                    utc_sec + leap_sec_after
+                }
             } else {
-                utc_sec + leap_sec_after - (leap_sec_after - prev_leap_sec_after)
+                utc_sec + prev_leap_sec_after
             };
 
             list.push(LeapSec {
@@ -351,6 +388,7 @@ impl Dt {
             });
 
             prev_leap_sec_after = leap_sec_after;
+            entries_pushed += 1;
         }
 
         list
@@ -382,7 +420,7 @@ impl Dt {
     ///
     /// ```rust
     /// # #[cfg(feature = "std")] {
-    /// use deep_time::utc::LEAP_SECS;
+    /// use deep_time::utc::{IsLeapSec, LEAP_SECS};
     /// use deep_time::{Dt, Scale};
     ///
     /// let leap_seconds_list =
@@ -391,7 +429,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 0);
     /// let leap_sec = x.leap_sec_using_list(false, &leap_seconds_list).unwrap();
-    /// assert!(leap_sec.is_leap_sec == true);
+    /// assert!(leap_sec.is_leap_sec == IsLeapSec::Add);
     ///
     /// let dt = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
     ///

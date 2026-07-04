@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms};
+use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, utc::IsLeapSec};
 
 impl Dt {
     pub(crate) const DAYS_IN_GREGORIAN_MONTHS: [u8; 12] =
@@ -102,16 +102,14 @@ impl Dt {
         let hr = (seconds_since_midnight / 3600) as u8;
         let min = ((seconds_since_midnight % 3600) / 60) as u8;
         let mut sec = (seconds_since_midnight % 60) as u8;
-        let is_leap = if self.target.uses_leap_seconds() {
+        if self.target.uses_leap_seconds() {
             match self.to_tai().leap_sec(false) {
-                Some(i) => i.is_leap_sec,
-                None => false,
+                Some(i) => match i.is_leap_sec {
+                    IsLeapSec::Add => sec += 1,
+                    _ => {}
+                },
+                None => {}
             }
-        } else {
-            false
-        };
-        if is_leap {
-            sec += 1;
         }
 
         YmdHms {
@@ -194,11 +192,13 @@ impl Dt {
         if sec_is_60 && scale.uses_leap_seconds() {
             let t =
                 Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false);
-            let is_leap = match Self::leap_sec_using_sec64(t.add_sec(1).to_sec64(), false) {
-                Some(i) => i.is_leap_sec,
-                None => false,
-            };
-            if is_leap { t.add_sec(1) } else { t }
+            match Self::leap_sec_using_sec64(t.add_sec(1).to_sec64(), false) {
+                Some(i) => match i.is_leap_sec {
+                    IsLeapSec::Add => t.add_sec(1),
+                    _ => t,
+                },
+                None => t,
+            }
         } else {
             Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false)
         }

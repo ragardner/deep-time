@@ -12,5 +12,5 @@ mod leap_seconds_fns;
 mod leap_seconds_list;
 
 pub use historical::{UTC_HIST_TABLE, UtcHistRow};
-pub use leap_seconds_fns::LeapInfo;
+pub use leap_seconds_fns::{IsLeapSec, LeapInfo};
 pub use leap_seconds_list::{LEAP_SECS, LeapSec};

@@ -1,6 +1,7 @@
 use crate::{
     Dt, Epoch, JD_2000_2_451_545, SEC_PER_DAYI64, an_err,
     error::{DtErr, DtErrKind},
+    utc::IsLeapSec,
     {Meridiem, Offset, Parts, Weekday},
 };
 
@@ -100,7 +101,7 @@ impl Parts {
         let mut second = self.sec as i64;
         let sec_is_60 = second == 60;
         if sec_is_60 {
-            second = second.saturating_sub(1)
+            second -= 1;
         }
 
         let days_since_j2000 = jd.saturating_sub(JD_2000_2_451_545);
@@ -160,15 +161,18 @@ impl Parts {
         // ──────────────────────────────────────────────────────────────
         if !sec_is_60 {
             Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
+        // sec is 60
         } else {
             if self.scale.uses_leap_seconds() {
                 let t = Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale);
-                let is_leap_sec = match Dt::leap_sec_using_sec64(total_sec.saturating_add(1), true)
-                {
-                    Some(info) => info.is_leap_sec,
-                    None => false,
-                };
-                if is_leap_sec { Ok(t.add_sec(1)) } else { Ok(t) }
+                match Dt::leap_sec_using_sec64(total_sec.saturating_add(1), true) {
+                    Some(info) => match info.is_leap_sec {
+                        IsLeapSec::Add => Ok(t.add_sec(1)),
+                        // Negative leaps have no civil 23:59:60; treat as ordinary :59.
+                        _ => Ok(t),
+                    },
+                    None => Ok(t),
+                }
             } else {
                 Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
             }

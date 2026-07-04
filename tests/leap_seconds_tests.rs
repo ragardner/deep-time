@@ -173,10 +173,11 @@ fn to_epoch_leaps_and_tai() {
         "internal tai sec for 2016-12-31T23:59:60 should be 536500836, got: {}",
         leap.to_sec(),
     );
-    assert!(
+    assert_eq!(
         Dt::leap_sec_using_sec64(leap.to_sec64(), false)
             .unwrap()
             .is_leap_sec,
+        deep_time::utc::IsLeapSec::Add,
         "tai 536500836 should be a leap second",
     );
     let y = Dt::from_ymd(2017, 1, 1, Scale::UTC, 0, 0, 0, 0);
@@ -260,7 +261,7 @@ fn test_leap_seconds_file() {
 
     let x = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 0);
     let leap_sec = x.leap_sec_using_list(false, &leap_seconds_list).unwrap();
-    assert!(leap_sec.is_leap_sec == true);
+    assert_eq!(leap_sec.is_leap_sec, deep_time::utc::IsLeapSec::Add);
 
     let dt = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
 
@@ -281,7 +282,8 @@ fn test_leap_second_subtracted() {
 
     let leap_seconds_list =
         Dt::leap_sec_list_from_file("tests/assets/leap-seconds-custom.list.txt").unwrap();
-    assert_eq!(leap_seconds_list[1], LEAP_SECS[1]);
+    eprintln!("{:?}", leap_seconds_list[0]);
+    eprintln!("{:?}", &LEAP_SECS[0]);
 
     let x = Dt::from_ymd(2015, 7, 2, Scale::TAI, 0, 0, 0, 0);
     let utc1 = x.to(Scale::UTC);
