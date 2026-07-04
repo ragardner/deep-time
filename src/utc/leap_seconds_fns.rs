@@ -238,7 +238,6 @@ impl Dt {
     /// - [Dt::leap_sec_list_from_str](../struct.Dt.html#method.leap_sec_list_from_str)
     /// - [Dt::leap_sec_list_from_file](../struct.Dt.html#method.leap_sec_list_from_file)
     /// - [Dt::to_utc_from_tai_using_list](../struct.Dt.html#method.to_utc_from_tai_using_list)
-    #[inline(always)]
     pub const fn to_tai_from_utc_using_list(&self, list: &[LeapSec]) -> Dt {
         match self.scale {
             // we're going utc -> tai, check if it's
@@ -306,7 +305,6 @@ impl Dt {
     /// - [Dt::leap_sec_list_from_str](../struct.Dt.html#method.leap_sec_list_from_str)
     /// - [Dt::leap_sec_list_from_file](../struct.Dt.html#method.leap_sec_list_from_file)
     /// - [Dt::to_tai_from_utc_using_list](../struct.Dt.html#method.to_tai_from_utc_using_list)
-    #[inline(always)]
     pub const fn to_utc_from_tai_using_list(&self, new: Scale, list: &[LeapSec]) -> Dt {
         match new {
             Scale::UTC | Scale::UtcHist | Scale::UtcSpice => {
