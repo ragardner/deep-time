@@ -380,8 +380,8 @@ impl Dt {
     /// Size of the canonical wire representation in bytes.
     pub const WIRE_SIZE: usize = 19;
 
-    /// Serializes this `Dt` into a fixed 18-byte little-endian buffer using the
-    /// `attos: i128` + `scale: Scale` representation.
+    /// Serializes this `Dt` into a fixed 19-byte little-endian buffer using the
+    /// `attos: i128` + `scale: Scale` + `target: Scale` representation.
     ///
     /// ## Wire Format
     ///
@@ -393,11 +393,12 @@ impl Dt {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
         buf[1..17].copy_from_slice(&self.attos.to_le_bytes());
-        buf[17] = self.target as u8;
+        buf[17] = self.scale as u8;
+        buf[18] = self.target as u8;
         buf
     }
 
-    /// Deserializes a [`Dt`] from exactly 18 bytes of wire data.
+    /// Deserializes a [`Dt`] from exactly 19 bytes of wire data.
     ///
     /// Returns `None` if the version byte is unknown, the length is wrong,
     /// or the scale byte is not a valid `Scale` variant.

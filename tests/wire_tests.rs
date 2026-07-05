@@ -26,10 +26,28 @@ mod tests {
         assert_eq!(original, &recovered, "Round-trip failed");
     }
 
+    fn assert_dt_wire_roundtrip(original: &Dt) {
+        let bytes = original.to_wire_bytes();
+        let recovered = Dt::from_wire_bytes(&bytes).expect("deserialization failed");
+        assert_eq!(original.attos, recovered.attos, "attos mismatch");
+        assert_eq!(original.scale, recovered.scale, "scale mismatch");
+        assert_eq!(original.target, recovered.target, "target mismatch");
+    }
+
     #[test]
     fn test_dt_roundtrip() {
         let span = Dt::from_sec(123456789, Scale::TAI) + Dt::from_ns(987654321, Scale::TAI);
-        assert_roundtrip(&span, |d| d.to_wire_bytes().to_vec(), Dt::from_wire_bytes);
+        assert_dt_wire_roundtrip(&span);
+    }
+
+    #[test]
+    fn test_dt_wire_preserves_scale_and_target() {
+        let dt = Dt::from_ymd(2024, 6, 15, Scale::UTC, 12, 0, 0, 0)
+            .with(Scale::TT)
+            .target(Scale::GPS);
+        assert_dt_wire_roundtrip(&dt);
+        assert_eq!(dt.scale, Scale::TT);
+        assert_eq!(dt.target, Scale::GPS);
     }
 
     #[test]

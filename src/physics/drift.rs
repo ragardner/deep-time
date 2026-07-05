@@ -342,7 +342,7 @@ impl Drift {
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize = 3 * Dt::WIRE_SIZE; // 3 × 17 = 51
+    pub const WIRE_SIZE: usize = 3 * Dt::WIRE_SIZE;
 
     /// Serializes this [`Drift`] polynomial into a fixed buffer.
     ///

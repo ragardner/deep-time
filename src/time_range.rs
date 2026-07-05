@@ -316,22 +316,23 @@ impl ExactSizeIterator for TimeRange {
 
 #[cfg(feature = "wire")]
 impl Every {
-    /// Size of the canonical wire representation in bytes (33 bytes).
+    /// Size of the canonical wire representation in bytes (`2 × Dt::WIRE_SIZE`).
     pub const WIRE_SIZE: usize = Dt::WIRE_SIZE + Dt::WIRE_SIZE;
 
-    /// Serializes this `Every` builder into a fixed 33-byte buffer.
+    /// Serializes this `Every` builder into a fixed buffer.
     ///
-    /// The layout is simply the concatenation of `start` (17 bytes) and `step` (16 bytes).
+    /// The layout is the concatenation of `start` and `step` wire encodings.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         let start = self.start.to_wire_bytes();
         let step = self.step.to_wire_bytes();
-        buf[0..17].copy_from_slice(&start);
-        buf[17..33].copy_from_slice(&step);
+        let n = Dt::WIRE_SIZE;
+        buf[0..n].copy_from_slice(&start);
+        buf[n..2 * n].copy_from_slice(&step);
         buf
     }
 
-    /// Deserializes an `Every` builder from exactly 33 bytes.
+    /// Deserializes an `Every` builder from exactly `WIRE_SIZE` bytes.
     ///
     /// ## Security
     ///
@@ -341,8 +342,9 @@ impl Every {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
         }
-        let start = Dt::from_wire_bytes(&bytes[0..17])?;
-        let step = Dt::from_wire_bytes(&bytes[17..33])?;
+        let n = Dt::WIRE_SIZE;
+        let start = Dt::from_wire_bytes(&bytes[0..n])?;
+        let step = Dt::from_wire_bytes(&bytes[n..2 * n])?;
         Some(Self { start, step })
     }
 }
