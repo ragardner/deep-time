@@ -293,8 +293,13 @@ tag_exists() {
     git rev-parse "$TAG" >/dev/null 2>&1
 }
 
+# Annotated tags (git tag -a) have their own object SHA; peel to the commit.
+tag_commit() {
+    git rev-parse "${TAG}^{commit}"
+}
+
 tag_points_at_head() {
-    tag_exists && [[ "$(git rev-parse "$TAG")" == "$(git rev-parse HEAD)" ]]
+    tag_exists && [[ "$(tag_commit)" == "$(git rev-parse HEAD)" ]]
 }
 
 print_plan() {
@@ -341,7 +346,7 @@ run_validation() {
     fi
 
     if tag_exists && ! tag_points_at_head; then
-        echo "Git tag ${TAG} already exists on $(git rev-parse --short "${TAG}")" >&2
+        echo "Git tag ${TAG} already exists on $(git rev-parse --short "${TAG}^{commit}")" >&2
         echo "but HEAD is $(git rev-parse --short HEAD)." >&2
         exit 1
     fi
