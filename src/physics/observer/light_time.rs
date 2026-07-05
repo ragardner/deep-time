@@ -1,8 +1,6 @@
 //! Light-time implementations for [`Observer`].
 
-use crate::{
-    C, C_SQUARED, Drift, Dt, Position, Real, Scale, TWO_GM_SUN_OVER_C3, Velocity, log,
-};
+use crate::{C, C_SQUARED, Drift, Dt, Position, Real, Scale, TWO_GM_SUN_OVER_C3, Velocity, log};
 
 use super::Observer;
 

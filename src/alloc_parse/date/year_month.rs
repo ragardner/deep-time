@@ -1,4 +1,4 @@
-use crate::{Dt, MAX_YEAR, MIN_YEAR, Scale, Parts};
+use crate::{Dt, MAX_YEAR, MIN_YEAR, Parts, Scale};
 
 /// 6-digit legacy date: YYMMDD (e.g. "240315")
 #[inline]

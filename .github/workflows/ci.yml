@@ -1,0 +1,95 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  fmt:
+    name: rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
+  clippy:
+    name: clippy (MSRV, all features)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+
+  test:
+    name: test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: no-std
+            args: --no-default-features
+          - name: no-std-extended
+            args: --no-default-features --features "wire mars sidereal physics"
+          - name: parse-std
+            args: --no-default-features --features "parse alloc std"
+          - name: jiff-tz
+            args: --no-default-features --features "parse alloc std jiff-tz lang"
+          - name: full
+            args: >-
+              --no-default-features
+              --features "physics mars parse hifitime chrono std wire eop-tests
+              lang sidereal-earth jiff-tz"
+            release: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo test
+        run: |
+          if [ "${{ matrix.release }}" = "true" ]; then
+            cargo test ${{ matrix.args }} --release --workspace
+          else
+            cargo test ${{ matrix.args }} --workspace
+          fi
+
+  docs:
+    name: docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo doc --no-default-features --no-deps
+      - run: cargo doc --all-features --no-deps
+
+  example:
+    name: readme example
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.90
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo build --example readme --features "parse,jiff-tz,euro"
