@@ -19,7 +19,7 @@ usage() {
 release.sh — validate, tag, push, and publish deep-time
 
 Reads the crate version from Cargo.toml (currently the [package] version at the
-repo root). The git tag is always v{version}, e.g. v0.1.0-beta.21.
+repo root). The git tag matches that version exactly, e.g. 0.1.0-beta.21.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  DEFAULT BEHAVIOR (no flags)
@@ -29,7 +29,7 @@ repo root). The git tag is always v{version}, e.g. v0.1.0-beta.21.
 
   1. Pre-flight     clean tree, branch warning, tag/changelog checks
   2. Validation     fmt, clippy, tests, docs, example, publish --dry-run
-  3. Tag            git tag -a v{version}  (asks for confirmation)
+  3. Tag            git tag -a {version}  (asks for confirmation)
 
   Does NOT push or publish. Stops after creating the local tag.
 
@@ -107,7 +107,7 @@ General
   B) All-in-one
        ./scripts/release.sh --push --publish --yes
 
-  The script is designed to be idempotent for tagging: if v{version} already
+  The script is designed to be idempotent for tagging: if {version} already
   exists at the current commit, tag creation is skipped and later steps
   (--push) can still proceed.
 
@@ -118,7 +118,7 @@ General
   Pre-flight
     • working tree must be clean
     • warn if not on main
-    • tag v{version} must not exist on a different commit
+    • tag {version} must not exist on a different commit
     • changelog warning (or hard fail with --require-changelog)
 
   Toolchain checks (MSRV read from Cargo.toml rust-version field)
@@ -138,7 +138,7 @@ General
  TAG REUSE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  If git tag v{version} already points at HEAD:
+  If git tag {version} already points at HEAD:
     • validation is skipped (assumes a prior successful run)
     • tag creation is skipped
     • --push still pushes branch + tag
@@ -434,7 +434,7 @@ publish_crate() {
 VERSION="$(read_version)"
 MSRV="${MSRV_TOOLCHAIN:-$(read_msrv)}"
 RUSTFMT="${RUSTFMT_TOOLCHAIN:-stable}"
-TAG="v${VERSION}"
+TAG="${VERSION}"
 
 print_plan
 
