@@ -3,14 +3,23 @@
 //! Last leap second: 2017-01-01 (TAI-UTC = 37 s)
 //! File expires: 28 December 2026
 
+/// Holds info about a leap-second transition. Used by [LEAP_SECS](constant.LEAP_SECS.html).
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub struct LeapSec {
+    /// NTP timestamp of the transition (IANA file, column 1)
     pub ntp_timestamp: i64,
+    /// Cumulative TAI-UTC offset in seconds after this transition (IANA column 2)
     pub leap_sec_after: i64,
+    /// Library timestamp of the transition on the UTC scale
     pub utc_sec: i64,
+    /// Library timestamp of the transition on the TAI scale
     pub tai_sec: i64,
 }
 
+/// Embedded leap-seconds list shipped with the library.
+///
+/// Each entry records the instant when the cumulative TAI-UTC offset
+/// changes. Rows are sorted chronologically.
 pub const LEAP_SECS: &[LeapSec] = &[
     LeapSec {
         ntp_timestamp: 2272060800,
