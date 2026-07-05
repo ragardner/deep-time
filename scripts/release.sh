@@ -348,6 +348,11 @@ run_validation() {
     if tag_exists && ! tag_points_at_head; then
         echo "Git tag ${TAG} already exists on $(git rev-parse --short "${TAG}^{commit}")" >&2
         echo "but HEAD is $(git rev-parse --short HEAD)." >&2
+        echo >&2
+        echo "A version tag can only point at one commit. Options:" >&2
+        echo "  • Release the tagged commit: git push origin HEAD && git push origin ${TAG}" >&2
+        echo "  • Move tag to HEAD:            git tag -d ${TAG} && ./scripts/release.sh --push" >&2
+        echo "  • New work after the tag:      bump version in Cargo.toml, commit, run again" >&2
         exit 1
     fi
 
