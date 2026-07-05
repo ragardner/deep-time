@@ -213,7 +213,7 @@ use core::fmt;
 /// ```rust
 /// use deep_time::{Dt, Lang, Scale};
 ///
-/// // Leap seconds were added to the secounds count
+/// // Leap seconds were added to the seconds count
 /// // This Dt has attos that are now on the TAI timescale
 /// let dt = Dt::from_ymd(2025, 1, 1, Scale::UTC, 0, 0, 0, 0);
 ///
@@ -292,7 +292,7 @@ impl Dt {
         Dt::new(self.attos, self.scale, t)
     }
 
-    /// Returns a new [`Dt`] with the `scale` field sr to the given
+    /// Returns a new [`Dt`] with the `scale` field set to the given
     /// `s` arg.
     ///
     /// **Does NOT perform any time scale conversions**.

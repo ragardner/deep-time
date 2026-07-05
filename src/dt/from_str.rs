@@ -38,7 +38,8 @@ impl Dt {
     /// Parses a date/time string.
     ///
     /// - When the `parse` feature is enabled: uses the smart auto-parser.
-    /// - When the `parse` feature is disabled: falls back to CCSDS format.
+    /// - When the `parse` feature is disabled: falls back to the fast ISO 8601 parser
+    ///   ([`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)).
     ///
     /// ## Examples
     ///
