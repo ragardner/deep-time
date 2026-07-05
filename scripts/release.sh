@@ -256,7 +256,16 @@ PY
 ensure_toolchain() {
     local toolchain="$1"
     shift
-    if ! rustup toolchain list --format terse | grep -qx "${toolchain}"; then
+
+    if ! command -v rustup >/dev/null 2>&1; then
+        echo "rustup is required but was not found in PATH." >&2
+        echo "Install from https://rustup.rs or ensure rustup precedes other cargo installs." >&2
+        exit 1
+    fi
+
+    # Use rustup's alias resolution (stable, 1.90, etc.) instead of matching
+    # the full toolchain directory name (stable-x86_64-unknown-linux-gnu).
+    if ! rustup which rustc --toolchain "${toolchain}" >/dev/null 2>&1; then
         echo "Missing Rust toolchain '${toolchain}'." >&2
         if [[ $# -gt 0 ]]; then
             echo "Install with: rustup toolchain install ${toolchain} $*" >&2
@@ -265,7 +274,7 @@ ensure_toolchain() {
         fi
         exit 1
     fi
-    # Verify optional components are present.
+
     while [[ $# -gt 0 ]]; do
         if [[ "$1" == "--component" ]]; then
             shift
