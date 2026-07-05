@@ -1,8 +1,10 @@
 //! Generate `src/utc/leap_seconds_list.rs` from an IANA `leap-seconds.list` file.
 //!
-//! This is a maintainer-only code generator for the `deep-time` workspace. It
-//! reads the official leap-second table, emits a Rust source file containing
-//! `LEAP_SECS`, and is exposed as the Cargo alias `gen-leap-seconds`.
+//! Maintainer-only code generator for the `deep-time` workspace. It reads the
+//! an IANA leap-second table, builds a Rust module (`LeapSec`, `LEAP_SECS`),
+//! formats it with `rustfmt`, and writes the result or verifies it is already current.
+//!
+//! Exposed as the Cargo alias `gen-leap-seconds`.
 //!
 //! # Usage
 //!
@@ -12,29 +14,27 @@
 //! cargo gen-leap-seconds [INPUT] [OUTPUT]
 //! ```
 //!
-//! Paths are resolved relative to the workspace root. Absolute paths and paths
-//! that escape the workspace (including via `..` or symlinks) are rejected.
+//! Default paths:
+//!
+//! - Input:  `tests/assets/leap-seconds.list.txt`
+//! - Output: `src/utc/leap_seconds_list.rs`
+//!
+//! Run from the repository root. `[INPUT]` and `[OUTPUT]` are resolved relative
+//! to the workspace root (from `CARGO_MANIFEST_DIR`), not the shell's current
+//! directory. Absolute paths and paths that escape the workspace are rejected.
 //!
 //! # Check mode (`--check`)
 //!
-//! Without `--check`, the tool overwrites `src/utc/leap_seconds_list.rs` (or a
-//! custom output path) with newly generated code. With `--check`, it does **not**
-//! overwrite anything. Instead it answers one question: *would running the
-//! generator change that file?*
-//!
-//! It reads the leap-seconds input, builds the Rust source, runs `rustfmt`, and
-//! compares that result byte-for-byte to the current contents of
-//! `src/utc/leap_seconds_list.rs`. If they are identical, it prints that the
-//! file is up to date and exits 0. If they differ, it exits 1.
-//!
-//! Typical use: CI runs `cargo gen-leap-seconds --check` to fail the build when
-//! someone updated the input data but forgot to regenerate the Rust file.
+//! Runs the same generation pipeline but does not write anything. Exits successfully
+//! only when the output file already matches the freshly generated, `rustfmt`-formatted
+//! content. Line endings are normalized before comparison so Git `autocrlf` on
+//! Windows does not cause false failures.
 //!
 //! # Requirements
 //!
-//! `rustfmt` must be available on `PATH`. Formatting is performed in memory
-//! via `rustfmt --emit stdout` so no intermediate files are left behind for
-//! that step.
+//! The `rustfmt` component must be installed and available on `PATH` (e.g. via
+//! `rustup component add rustfmt`). Formatting is done in memory through
+//! `rustfmt --emit stdout`; no temporary formatting files are created.
 
 use deep_time::Dt;
 use deep_time::utc::LeapSec;
@@ -44,10 +44,7 @@ use std::io::{self, Write};
 use std::path::{Component, Path, PathBuf};
 use std::process::{Command, Stdio};
 
-/// Default IANA leap-seconds list location within the workspace.
 const DEFAULT_INPUT: &str = "tests/assets/leap-seconds.list.txt";
-
-/// Default generated Rust module written into the main crate.
 const DEFAULT_OUTPUT: &str = "src/utc/leap_seconds_list.rs";
 
 fn main() {
@@ -57,34 +54,27 @@ fn main() {
     }
 }
 
-/// Parses CLI arguments, generates output, and either writes or checks the result.
+/// Main entry point. Parses arguments, generates the output, and either writes
+/// it or performs a check.
 fn run() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
     let check_only = args.iter().any(|a| a == "--check");
-    let positional: Vec<&String> = args
+
+    let positional: Vec<&str> = args
         .iter()
         .skip(1)
         .filter(|a| !a.starts_with('-'))
+        .map(|s| s.as_str())
         .collect();
 
     let root = workspace_root()?;
-    let input = resolve_workspace_path(
-        &root,
-        positional
-            .first()
-            .map(|s| s.as_str())
-            .unwrap_or(DEFAULT_INPUT),
-    )?;
-    let output = resolve_workspace_path(
-        &root,
-        positional
-            .get(1)
-            .map(|s| s.as_str())
-            .unwrap_or(DEFAULT_OUTPUT),
-    )?;
+
+    let input = resolve_path(&root, positional.first().copied().unwrap_or(DEFAULT_INPUT))?;
+    let output = resolve_path(&root, positional.get(1).copied().unwrap_or(DEFAULT_OUTPUT))?;
 
     let source = fs::read_to_string(&input)?;
     let list = Dt::leap_sec_list_from_str(&source);
+
     if list.is_empty() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
@@ -92,27 +82,34 @@ fn run() -> io::Result<()> {
         ));
     }
 
-    // Keep inline comments from the IANA file aligned with parsed rows.
+    // Preserve inline comments from the IANA file so they appear in the generated code.
     let row_comments = row_comments_from_source(&source);
     if row_comments.len() != list.len() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidData,
             format!(
-                "expected {} row comments, found {} in {}",
+                "expected {} row comments, found {}",
                 list.len(),
-                row_comments.len(),
-                input.display()
+                row_comments.len()
             ),
         ));
     }
 
     let expires = file_expires_from_source(&source);
+
+    // Build the entire output in memory first.
     let generated = format_output(&list, &row_comments, expires.as_deref());
     let formatted = format_with_rustfmt(&generated)?;
 
     if check_only {
         let existing = fs::read(&output)?;
-        if existing == formatted {
+
+        // Normalize line endings for comparison. This makes --check reliable on
+        // Windows when Git has converted the file to CRLF due to core.autocrlf=true.
+        let existing_norm = normalize_line_endings(&existing);
+        let formatted_norm = normalize_line_endings(&formatted);
+
+        if existing_norm == formatted_norm {
             println!("{} is up to date", output.display());
             return Ok(());
         }
@@ -122,15 +119,16 @@ fn run() -> io::Result<()> {
         ));
     }
 
-    write_atomically(&output, &formatted)?;
+    // Final write — no temporary files are created.
+    fs::write(&output, &formatted)?;
     println!("wrote {}", output.display());
     Ok(())
 }
 
-/// Returns the canonical path to the `deep-time` workspace root.
+/// Returns the canonical workspace root directory.
 ///
-/// The generator crate lives at `crates/deep-time-leap-seconds-gen/`, so the
-/// workspace root is two levels above `CARGO_MANIFEST_DIR`.
+/// Canonicalizing here keeps containment checks consistent with resolved input
+/// and output paths, which are also canonicalized before comparison.
 fn workspace_root() -> io::Result<PathBuf> {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let root = manifest_dir
@@ -141,9 +139,9 @@ fn workspace_root() -> io::Result<PathBuf> {
                 io::ErrorKind::NotFound,
                 "could not locate workspace root from CARGO_MANIFEST_DIR",
             )
-        })?
-        .to_path_buf();
-    root.canonicalize().map_err(|err| {
+        })?;
+
+    canonicalize_safely(root).map_err(|err| {
         io::Error::new(
             err.kind(),
             format!("workspace root {} is unavailable: {err}", root.display()),
@@ -151,93 +149,109 @@ fn workspace_root() -> io::Result<PathBuf> {
     })
 }
 
-/// Resolves a workspace-relative path and verifies it stays inside the root.
+// -----------------------------------------------------------------------------
+// Path handling
+// -----------------------------------------------------------------------------
+
+/// Resolves a relative path against the workspace root and verifies it does
+/// not escape the workspace.
 ///
-/// Absolute paths, symlink targets, and normalized paths that leave the
-/// workspace are rejected before any file I/O occurs.
-fn resolve_workspace_path(root: &Path, rel: &str) -> io::Result<PathBuf> {
-    let path = Path::new(rel);
-    if path.is_absolute() {
+/// Paths are canonicalized before the containment check. Symlinks are followed
+/// to their target; if the target lies outside the workspace, the path is
+/// rejected.
+fn resolve_path(root: &Path, rel: &str) -> io::Result<PathBuf> {
+    let rel_path = Path::new(rel);
+
+    if rel_path.is_absolute() {
         return Err(io::Error::new(
             io::ErrorKind::InvalidInput,
-            format!("path must be relative to the workspace root: {rel}"),
+            format!("absolute paths are not allowed: {}", rel),
         ));
     }
 
-    let joined = normalize_path(&root.join(path));
-    if joined.is_symlink() {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("refusing to use symlink path: {}", joined.display()),
-        ));
-    }
-    resolve_within_root(root, &joined)
-}
+    reject_unsafe_path_components(rel_path)?;
 
-/// Collapses `.` and `..` components without touching the filesystem.
-fn normalize_path(path: &Path) -> PathBuf {
-    let mut normalized = PathBuf::new();
-    for component in path.components() {
-        match component {
-            Component::CurDir => {}
-            Component::ParentDir => {
-                normalized.pop();
-            }
-            Component::Normal(part) => normalized.push(part),
-            Component::RootDir | Component::Prefix(_) => normalized.push(component.as_os_str()),
-        }
-    }
-    normalized
-}
+    let full_path = root.join(rel_path);
 
-/// Canonicalizes `path` and ensures the result is contained in `root`.
-///
-/// For paths that do not yet exist (typically a new output file), the parent
-/// directory is canonicalized and the final filename is appended afterward so
-/// containment can still be checked without creating the file.
-fn resolve_within_root(root: &Path, path: &Path) -> io::Result<PathBuf> {
-    let resolved = if path.exists() {
-        path.canonicalize()?
+    // Canonicalize for the containment check. For non-existing files (the
+    // common case for output), we canonicalize the parent and re-append the filename.
+    let resolved = if full_path.exists() {
+        canonicalize_safely(&full_path)?
     } else {
-        let parent = path.parent().ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("invalid path: {}", path.display()),
-            )
-        })?;
-        let file_name = path.file_name().ok_or_else(|| {
-            io::Error::new(
-                io::ErrorKind::InvalidInput,
-                format!("invalid path: {}", path.display()),
-            )
-        })?;
+        let parent = full_path
+            .parent()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "invalid output path"))?;
         if !parent.exists() {
             return Err(io::Error::new(
                 io::ErrorKind::NotFound,
                 format!("parent directory does not exist: {}", parent.display()),
             ));
         }
-        parent.canonicalize()?.join(file_name)
+        canonicalize_safely(parent)?.join(full_path.file_name().unwrap())
     };
 
-    if !resolved.starts_with(root) {
+    if !is_path_within(&resolved, root) {
         return Err(io::Error::new(
             io::ErrorKind::PermissionDenied,
-            format!(
-                "path escapes workspace root ({}): {}",
-                root.display(),
-                path.display()
-            ),
+            format!("path escapes workspace root: {}", rel),
         ));
     }
+
     Ok(resolved)
 }
 
-/// Formats Rust source in memory by piping it through `rustfmt`.
-///
-/// Using stdin/stdout avoids writing a temporary formatting file to disk.
-/// The returned bytes are exactly what a write or `--check` comparison should
-/// use.
+/// Rejects paths containing drive letters, UNC prefixes, or absolute root components.
+fn reject_unsafe_path_components(path: &Path) -> io::Result<()> {
+    for component in path.components() {
+        if matches!(component, Component::Prefix(_) | Component::RootDir) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!(
+                    "path must be relative to the workspace root: {}",
+                    path.display()
+                ),
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Canonicalize the path, then strip the Windows \\?\ prefix so containment
+/// checks work reliably across platforms.
+fn canonicalize_safely(path: &Path) -> io::Result<PathBuf> {
+    let canonical = path.canonicalize()?;
+    Ok(strip_verbatim_prefix(canonical))
+}
+
+/// Removes the Windows extended-length path prefix (`\\?\` and `\\?\UNC\`).
+/// This is required because `canonicalize()` returns these prefixes on Windows,
+/// which breaks naive `starts_with` checks.
+fn strip_verbatim_prefix(path: PathBuf) -> PathBuf {
+    #[cfg(windows)]
+    {
+        let rendered = path.as_os_str().to_string_lossy();
+        if let Some(stripped) = rendered.strip_prefix(r"\\?\UNC\") {
+            return PathBuf::from(format!(r"\\{}", stripped));
+        }
+        if let Some(stripped) = rendered.strip_prefix(r"\\?\") {
+            return PathBuf::from(stripped);
+        }
+    }
+    path
+}
+
+/// Checks whether `path` is inside `root` after cleaning any Windows verbatim prefixes.
+fn is_path_within(path: &Path, root: &Path) -> bool {
+    let path = strip_verbatim_prefix(path.to_path_buf());
+    let root = strip_verbatim_prefix(root.to_path_buf());
+    path.starts_with(&root)
+}
+
+// -----------------------------------------------------------------------------
+// Rest of the file
+// -----------------------------------------------------------------------------
+
+/// Runs rustfmt on the generated source in memory.
 fn format_with_rustfmt(source: &str) -> io::Result<Vec<u8>> {
     let mut child = Command::new("rustfmt")
         .args(["--emit", "stdout"])
@@ -245,65 +259,52 @@ fn format_with_rustfmt(source: &str) -> io::Result<Vec<u8>> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|err| io::Error::new(err.kind(), format!("could not run rustfmt: {err}")))?;
+        .map_err(|e| io::Error::new(e.kind(), format!("could not run rustfmt: {e}")))?;
 
-    // Closing stdin signals EOF to rustfmt after the source has been sent.
     if let Some(mut stdin) = child.stdin.take() {
         stdin.write_all(source.as_bytes())?;
     }
 
     let output = child.wait_with_output()?;
     if output.status.success() {
-        return Ok(output.stdout);
+        Ok(output.stdout)
+    } else {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!("rustfmt failed: {stderr}"),
+        ))
     }
-
-    let stderr = String::from_utf8_lossy(&output.stderr);
-    Err(io::Error::new(
-        io::ErrorKind::Other,
-        format!("rustfmt failed: {stderr}"),
-    ))
 }
 
-/// Writes `contents` to `path` atomically via a same-directory temporary file.
+/// Normalizes CRLF line endings to LF.
 ///
-/// The destination is replaced only after the temporary file is fully written
-/// and synced, so an interrupted run cannot leave a truncated output file.
-fn write_atomically(path: &Path, contents: &[u8]) -> io::Result<()> {
-    let parent = path.parent().ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("invalid output path: {}", path.display()),
-        )
-    })?;
-    let file_name = path.file_name().ok_or_else(|| {
-        io::Error::new(
-            io::ErrorKind::InvalidInput,
-            format!("invalid output path: {}", path.display()),
-        )
-    })?;
+/// This is used only during `--check` to make comparisons reliable on Windows
+/// when Git converts files to CRLF due to `core.autocrlf = true`.
+fn normalize_line_endings(bytes: &[u8]) -> Vec<u8> {
+    if !bytes.contains(&b'\r') {
+        return bytes.to_vec();
+    }
 
-    let tmp_path = parent.join(format!(
-        ".{}.{}.tmp",
-        file_name.to_string_lossy(),
-        std::process::id()
-    ));
-    let mut tmp = fs::File::create(&tmp_path)?;
-    tmp.write_all(contents)?;
-    tmp.sync_all()?;
-
-    match fs::rename(&tmp_path, path) {
-        Ok(()) => Ok(()),
-        Err(err) => {
-            let _ = fs::remove_file(&tmp_path);
-            Err(err)
+    let mut result = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'\r' && i + 1 < bytes.len() && bytes[i + 1] == b'\n' {
+            result.push(b'\n');
+            i += 2;
+        } else {
+            result.push(bytes[i]);
+            i += 1;
         }
     }
+    result
 }
 
-/// Extracts trailing inline comments from data rows in the IANA source file.
-///
-/// Each non-comment line with at least two whitespace-separated fields is
-/// treated as a leap-second row; text after `#` becomes the row comment.
+// -----------------------------------------------------------------------------
+// IANA File Parsing
+// -----------------------------------------------------------------------------
+
+/// Extracts trailing `#` comments from data rows in the IANA file.
 fn row_comments_from_source(source: &str) -> Vec<String> {
     let mut comments = Vec::new();
 
@@ -322,13 +323,14 @@ fn row_comments_from_source(source: &str) -> Vec<String> {
             .split_once('#')
             .map(|(_, c)| c.trim().to_string())
             .unwrap_or_default();
+
         comments.push(comment);
     }
 
     comments
 }
 
-/// Reads the `File expires on …` metadata line from the IANA file header.
+/// Extracts the "File expires on ..." line from the IANA header.
 fn file_expires_from_source(source: &str) -> Option<String> {
     for line in source.lines() {
         let trimmed = line.trim_start_matches('#').trim();
@@ -339,7 +341,10 @@ fn file_expires_from_source(source: &str) -> Option<String> {
     None
 }
 
-/// Builds the human-readable label used in the generated module documentation.
+// -----------------------------------------------------------------------------
+// Code Generation
+// -----------------------------------------------------------------------------
+
 fn last_leap_second_label(comment: &str, leap_sec_after: i64) -> String {
     format!(
         "{} (TAI-UTC = {leap_sec_after} s)",
@@ -347,7 +352,6 @@ fn last_leap_second_label(comment: &str, leap_sec_after: i64) -> String {
     )
 }
 
-/// Converts an IANA row comment such as `1 Jan 2017` into `2017-01-01`.
 fn iso_date_from_comment(comment: &str) -> String {
     let mut parts = comment.split_whitespace();
     let day: u8 = parts.next().and_then(|d| d.parse().ok()).unwrap_or(1);
@@ -373,13 +377,16 @@ fn iso_date_from_comment(comment: &str) -> String {
     format!("{year}-{month_num:02}-{day:02}")
 }
 
-/// Renders the generated Rust module source before `rustfmt` is applied.
+/// Renders the complete generated Rust module (including struct definition).
 fn format_output(list: &[LeapSec], row_comments: &[String], expires: Option<&str>) -> String {
-    let last = list.last().expect("non-empty list");
-    let last_comment = row_comments.last().expect("matching comments");
+    let last = list.last().expect("list should be non-empty");
+    let last_comment = row_comments
+        .last()
+        .expect("comments should match list length");
     let last_label = last_leap_second_label(last_comment, last.leap_sec_after);
 
     let mut out = String::new();
+
     out.push_str("//! Leap seconds table from the official IANA\n");
     out.push_str(
         "//! [leap-seconds.list](https://data.iana.org/time-zones/data/leap-seconds.list)\n",
@@ -389,6 +396,8 @@ fn format_output(list: &[LeapSec], row_comments: &[String], expires: Option<&str
         out.push_str(&format!("//! File expires: {expires}\n"));
     }
     out.push('\n');
+
+    // Struct definition (kept for compatibility with how the module is included)
     out.push_str("/// Holds info about a leap-second transition. Used by [LEAP_SECS](constant.LEAP_SECS.html).\n");
     out.push_str("#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\n");
     out.push_str("pub struct LeapSec {\n");
@@ -403,6 +412,7 @@ fn format_output(list: &[LeapSec], row_comments: &[String], expires: Option<&str
     out.push_str("    /// Library timestamp of the transition on the TAI scale\n");
     out.push_str("    pub tai_sec: i64,\n");
     out.push_str("}\n\n");
+
     out.push_str("/// Embedded leap-seconds list shipped with the library.\n");
     out.push_str("///\n");
     out.push_str("/// Each entry records the instant when the cumulative TAI-UTC offset\n");
@@ -421,6 +431,7 @@ fn format_output(list: &[LeapSec], row_comments: &[String], expires: Option<&str
         ));
         out.push_str(&format!("        utc_sec: {},\n", entry.utc_sec));
         out.push_str(&format!("        tai_sec: {},\n", entry.tai_sec));
+
         if comment.is_empty() {
             out.push_str("    },\n");
         } else {
