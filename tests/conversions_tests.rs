@@ -331,6 +331,26 @@ fn is_leap_year_and_valid_date() {
 }
 
 #[test]
+fn unix_days_roundtrip() {
+    use deep_time::constants::ATTOS_PER_HALF_DAYU;
+
+    let epoch = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
+    assert_eq!(epoch.to_unix_days(), (0, 0));
+
+    let noon_2000 = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+    let (days, attos) = noon_2000.to_unix_days();
+    assert_eq!(days, 10_957);
+    assert_eq!(attos, ATTOS_PER_HALF_DAYU);
+
+    let roundtrip = Dt::from_unix_days(days, attos, Scale::UTC);
+    assert_eq!(roundtrip, noon_2000);
+
+    let days_f = noon_2000.to_unix_days_f();
+    let roundtrip_f = Dt::from_unix_days_f(days_f, Scale::UTC);
+    assert_eq!(roundtrip_f.to_unix_days_f(), days_f);
+}
+
+#[test]
 fn ntp_timestamp() {
     // 2698012800
     let dt = Dt::from_ymd(1985, 7, 1, Scale::TAI, 0, 0, 0, 0);

@@ -1,5 +1,6 @@
 use crate::{
-    ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F, Real, SEC_PER_DAYI64, Scale,
+    ATTOS_PER_DAY, ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F, Real, SEC_PER_DAY_F,
+    SEC_PER_DAYI64, Scale,
 };
 
 impl Dt {
@@ -135,6 +136,144 @@ impl Dt {
     #[inline(always)]
     pub const fn from_unix(unix: Dt) -> Dt {
         Self::from_diff_and_scale(unix, Dt::UNIX_EPOCH, true)
+    }
+
+    /// Returns this [`Dt`] as a day count since
+    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH)
+    /// (1970-01-01 00:00:00) on its `target` time scale.
+    ///
+    /// This is the day-granularity counterpart to
+    /// [`Dt::to_unix`](../struct.Dt.html#method.to_unix): elapsed time since the
+    /// Unix epoch is split into whole days plus a sub-day fractional part.
+    ///
+    /// ## Important:
+    ///
+    /// - Uses [`Dt::to_unix`](../struct.Dt.html#method.to_unix) internally: this [`Dt`]
+    ///   and [`UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) are both
+    ///   converted to the `target` time scale before differencing.
+    /// - **You may need to change the [`Dt`]'s `target` field** before calling if you need
+    ///   the count on a particular time scale, e.g. `Scale::UTC`.
+    /// - This function assumes this [`Dt`] is currently from the 2000-01-01 noon epoch,
+    ///   if it's not then the output will be incorrect.
+    ///
+    /// ## Returns
+    ///
+    /// A `(days, attos)` pair where:
+    ///
+    /// - `days` (`i64`): whole days elapsed since
+    ///   [`UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH).
+    ///   1970-01-01 00:00:00 on the `target` scale is day `0`.
+    /// - `attos` (`u128`): fractional part in attoseconds since the start of that day.
+    ///   Always in the range `[0, ATTOS_PER_DAY)`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, constants::ATTOS_PER_HALF_DAYU};
+    ///
+    /// let epoch = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
+    /// assert_eq!(epoch.to_unix_days(), (0, 0));
+    ///
+    /// let noon_2000 = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+    /// let (days, attos) = noon_2000.to_unix_days();
+    /// assert_eq!(days, 10_957);
+    /// assert_eq!(attos, ATTOS_PER_HALF_DAYU);
+    ///
+    /// let roundtrip = Dt::from_unix_days(days, attos, Scale::UTC);
+    /// assert_eq!(roundtrip, noon_2000);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_unix_days`](../struct.Dt.html#method.from_unix_days)
+    /// - [`Dt::to_unix_days_f`](../struct.Dt.html#method.to_unix_days_f)
+    /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
+    #[inline]
+    pub const fn to_unix_days(&self) -> (i64, u128) {
+        let attos = self.to_unix().to_attos();
+        (
+            attos.div_euclid(ATTOS_PER_DAY) as i64,
+            attos.rem_euclid(ATTOS_PER_DAY) as u128,
+        )
+    }
+
+    /// Creates a **TAI** [`Dt`] from a day count since
+    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH).
+    ///
+    /// This is the inverse of [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days).
+    ///
+    /// ## Important:
+    ///
+    /// - `days` and `frac_attos` are interpreted on the `on` time scale — if it is
+    ///   `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
+    ///   included).
+    /// - [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) is converted
+    ///   to that same scale before the sum.
+    ///
+    /// ## Returns
+    ///
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `target` field is set to `on`.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+    /// let (days, attos) = dt.to_unix_days();
+    /// let roundtrip = Dt::from_unix_days(days, attos, Scale::UTC);
+    ///
+    /// assert_eq!(roundtrip, dt);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days)
+    /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
+    /// - [`Dt::from_unix`](../struct.Dt.html#method.from_unix)
+    pub const fn from_unix_days(days: i64, frac_attos: u128, on: Scale) -> Dt {
+        let frac_attos_i128 = if frac_attos > i128::MAX as u128 {
+            i128::MAX
+        } else {
+            frac_attos as i128
+        };
+        let total_attos = (days as i128)
+            .saturating_mul(ATTOS_PER_DAY)
+            .saturating_add(frac_attos_i128);
+
+        Self::from_unix(Dt::new(total_attos, on, on))
+    }
+
+    /// Returns the day count since
+    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) as a floating-point
+    /// `Real`.
+    ///
+    /// This is the lossy counterpart to
+    /// [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days).
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days)
+    /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
+    #[inline]
+    pub const fn to_unix_days_f(&self) -> Real {
+        let (days, attos) = self.to_unix_days();
+        f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
+    }
+
+    /// Creates a **TAI** [`Dt`] from a floating-point day count since
+    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH).
+    ///
+    /// This is the inverse of
+    /// [`Dt::to_unix_days_f`](../struct.Dt.html#method.to_unix_days_f).
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_unix_days_f`](../struct.Dt.html#method.to_unix_days_f)
+    /// - [`Dt::from_unix_days`](../struct.Dt.html#method.from_unix_days)
+    #[inline(always)]
+    pub const fn from_unix_days_f(days: Real, on: Scale) -> Dt {
+        Self::from_unix(Dt::new(Dt::sec_f_to_attos(days * SEC_PER_DAY_F), on, on))
     }
 
     /// Returns this [`Dt`] but as time since the
