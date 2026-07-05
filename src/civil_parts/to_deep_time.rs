@@ -162,20 +162,18 @@ impl Parts {
         if !sec_is_60 {
             Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
         // sec is 60
-        } else {
-            if self.scale.uses_leap_seconds() {
-                let t = Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale);
-                match Dt::leap_sec_using_sec64(total_sec.saturating_add(1), true) {
-                    Some(info) => match info.is_leap_sec {
-                        IsLeapSec::Add => Ok(t.add_sec(1)),
-                        // Negative leaps have no civil 23:59:60; treat as ordinary :59.
-                        _ => Ok(t),
-                    },
-                    None => Ok(t),
-                }
-            } else {
-                Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
+        } else if self.scale.uses_leap_seconds() {
+            let t = Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale);
+            match Dt::leap_sec_using_sec64(total_sec.saturating_add(1), true) {
+                Some(info) => match info.is_leap_sec {
+                    IsLeapSec::Add => Ok(t.add_sec(1)),
+                    // Negative leaps have no civil 23:59:60; treat as ordinary :59.
+                    _ => Ok(t),
+                },
+                None => Ok(t),
             }
+        } else {
+            Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
         }
     }
 }

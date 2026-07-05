@@ -453,14 +453,12 @@ pub(crate) fn classify_date(
                             }
                         }
                     }
-                } else {
-                    if ch == &'-' {
-                        if date_norm.ends_with_minus() {
-                            continue;
-                        }
-                        if idx + 1 < part_len && part_chars[idx + 1].is_numeric() {
-                            date_norm.push('-');
-                        }
+                } else if ch == &'-' {
+                    if date_norm.ends_with_minus() {
+                        continue;
+                    }
+                    if idx + 1 < part_len && part_chars[idx + 1].is_numeric() {
+                        date_norm.push('-');
                     }
                 }
             }

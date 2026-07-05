@@ -270,10 +270,7 @@ fn format_with_rustfmt(source: &str) -> io::Result<Vec<u8>> {
         Ok(output.stdout)
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(io::Error::new(
-            io::ErrorKind::Other,
-            format!("rustfmt failed: {stderr}"),
-        ))
+        Err(io::Error::other(format!("rustfmt failed: {stderr}")))
     }
 }
 

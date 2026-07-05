@@ -551,16 +551,14 @@ impl Dt {
                                 overall_multiplier,
                             );
                             pending_year_count = pending_year_count.saturating_add(years);
+                        } else if direction == Direction::None {
+                            pending_bare_unit = Some(Token::Year);
                         } else {
-                            if direction == Direction::None {
-                                pending_bare_unit = Some(Token::Year);
-                            } else {
-                                match direction {
-                                    Direction::Future => year_offset = 1,
-                                    Direction::Past => year_offset = -1,
-                                    Direction::Present => year_offset = 0,
-                                    _ => {}
-                                }
+                            match direction {
+                                Direction::Future => year_offset = 1,
+                                Direction::Past => year_offset = -1,
+                                Direction::Present => year_offset = 0,
+                                _ => {}
                             }
                         }
                     }
@@ -573,32 +571,28 @@ impl Dt {
                                 overall_multiplier,
                             );
                             pending_month_count = pending_month_count.saturating_add(months);
+                        } else if direction == Direction::None {
+                            pending_bare_unit = Some(Token::Month);
                         } else {
-                            if direction == Direction::None {
-                                pending_bare_unit = Some(Token::Month);
-                            } else {
-                                match direction {
-                                    Direction::Future => month_offset = 1,
-                                    Direction::Past => month_offset = -1,
-                                    Direction::Present => month_offset = 0,
-                                    _ => {}
-                                }
+                            match direction {
+                                Direction::Future => month_offset = 1,
+                                Direction::Past => month_offset = -1,
+                                Direction::Present => month_offset = 0,
+                                _ => {}
                             }
                         }
                     }
                     Token::Week => {
                         if let Some(num) = pending_num.take() {
                             add_to_total(&mut total_attos, num, AS_PER_WEEK, overall_multiplier);
+                        } else if direction == Direction::None {
+                            pending_bare_unit = Some(Token::Week);
                         } else {
-                            if direction == Direction::None {
-                                pending_bare_unit = Some(Token::Week);
-                            } else {
-                                match direction {
-                                    Direction::Future => week_offset = 1,
-                                    Direction::Past => week_offset = -1,
-                                    Direction::Present => week_offset = 0,
-                                    _ => {}
-                                }
+                            match direction {
+                                Direction::Future => week_offset = 1,
+                                Direction::Past => week_offset = -1,
+                                Direction::Present => week_offset = 0,
+                                _ => {}
                             }
                         }
                     }
@@ -827,13 +821,11 @@ impl Dt {
                     target_minute = Some(m);
                     target_second = Some(sec);
                     target_attos = attos;
-                } else {
-                    if let Some(num) = extract_number(part, &mut part_chars, *d) {
-                        if let Some(unit_attos) = pending_unit_attos.take() {
-                            add_to_total(&mut total_attos, num, unit_attos, overall_multiplier);
-                        } else {
-                            pending_num = Some(num);
-                        }
+                } else if let Some(num) = extract_number(part, &mut part_chars, *d) {
+                    if let Some(unit_attos) = pending_unit_attos.take() {
+                        add_to_total(&mut total_attos, num, unit_attos, overall_multiplier);
+                    } else {
+                        pending_num = Some(num);
                     }
                 }
             }
