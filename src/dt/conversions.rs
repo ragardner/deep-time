@@ -45,6 +45,7 @@ impl Dt {
     /// let unix_ms = diff.to_ms();
     /// assert!(unix_ms > 1_700_000_000_000);
     /// ```
+    #[inline]
     pub const fn to_scale_and_diff(&self, epoch: Dt, convert_epoch: bool) -> Dt {
         if convert_epoch {
             self.to(self.target).to_diff_raw(epoch.to(self.target))

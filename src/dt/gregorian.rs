@@ -10,7 +10,7 @@ impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
     /// to a proleptic Gregorian date (year, month, day).
     pub const fn unix_sec_to_ymd(unix_sec: i64) -> (i64, u8, u8) {
-        let days = unix_sec.div_euclid(86400);
+        let days = unix_sec.div_euclid(SEC_PER_DAYI64);
 
         // Shift so we work relative to 0000-03-01 (makes leap year math cleaner)
         let z = days + 719468;
@@ -92,7 +92,7 @@ impl Dt {
     /// the epoch there, we would not get seconds since the GPS epoch; we would get seconds since
     /// something else.
     pub const fn to_ymd(&self) -> YmdHms {
-        let from_unix_epoch = self.to_scale_and_diff(Dt::UNIX_EPOCH, false);
+        let from_unix_epoch = self.to(self.target).to_diff_raw(Dt::UNIX_EPOCH);
 
         let unix_sec = from_unix_epoch.to_sec64();
         let frac = from_unix_epoch.to_sec_ufrac();

@@ -320,7 +320,7 @@ impl Dt {
     }
 
     /// Computes the signed duration between this [`Dt`] and another [`Dt`].
-    #[inline]
+    #[inline(always)]
     pub const fn to_diff_raw(&self, other: Dt) -> Dt {
         Dt::new(
             self.attos.saturating_sub(other.attos),
@@ -330,7 +330,7 @@ impl Dt {
     }
 
     /// Computes the signed duration between this [`Dt`] and another [`Dt`] as a float.
-    #[inline]
+    #[inline(always)]
     pub const fn to_diff_raw_f(&self, other: Dt) -> Real {
         self.to_sec_f() - other.to_sec_f()
     }

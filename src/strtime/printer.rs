@@ -24,8 +24,8 @@ impl YmdHms {
         abbrev: Option<LiteStr<49>>,
         lang: Lang,
     ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
-        let (buf, pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev, lang)?;
-        Ok(LiteStr::from_bytes(&buf[..pos]))
+        let (buf, _pos) = self.format_to_buffer(fmt.as_bytes(), offset, tz, abbrev, lang)?;
+        Ok(LiteStr { bytes: buf })
     }
 
     pub(crate) fn format_to_buffer(
