@@ -630,7 +630,6 @@ impl<'a> Printer<'a> {
         self.write_u32(self.ymd.min as u32, b'0', Some(2), b'0');
     }
 
-    #[inline(always)]
     fn write_u32(&mut self, mut value: u32, flag: u8, width: Option<u8>, default_pad: u8) {
         let w = width.unwrap_or(2) as usize;
 
@@ -678,7 +677,6 @@ impl<'a> Printer<'a> {
         }
     }
 
-    #[inline(always)]
     fn write_i64(&mut self, value: i64, flag: u8, width: Option<u8>, default_pad: u8) {
         let w = width.unwrap_or(4) as usize;
 
