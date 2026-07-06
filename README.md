@@ -244,11 +244,11 @@ Benchmarks were measured on an AMD Ryzen 7 7800X3D.
 
 | Operation                              | Time          | vs Jiff 0.2.31           |
 |----------------------------------------|---------------|--------------------------|
-| ISO datetime parsing                   | 19.7 ns       | 28.3% faster             |
-| `strptime`                             | 34.6 ns       | 13.2% faster             |
-| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 185 ns        | 16.2% slower             |
-| `strftime`                             | 98.3 ns       | 58.8% slower             |
-| Auto parser (`from_str_parse`)         | 575 ns        | —                        |
+| ISO datetime parsing                   | 19.7 ns       | 28.9% faster             |
+| `strptime`                             | 33.4 ns       | 14.8% faster             |
+| TZ `strptime` -> `Dt` vs `jiff:Zoned`  | 183 ns        | 14.3% slower             |
+| `strftime`                             | 77.0 ns       | 26.4% slower             |
+| Auto parser (`from_str_parse`)         | 563 ns        | —                        |
 
 #### Time Scale Conversions
 
