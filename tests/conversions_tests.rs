@@ -207,8 +207,8 @@ fn proper_to_tt_with_drift_roundtrip() {
         Dt::ZERO,
     );
     let onboard_proper = epoch.add(Dt::from_sec(1_000_000, Scale::TAI));
-    let tt = onboard_proper.convert_using_drift(epoch, drift);
-    let back = tt.convert_back_using_drift(epoch, drift);
+    let tt = onboard_proper.convert_using_drift(epoch, &drift);
+    let back = tt.convert_back_using_drift(epoch, &drift);
 
     assert_eq!(back, onboard_proper);
 }

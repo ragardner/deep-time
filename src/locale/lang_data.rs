@@ -2,7 +2,7 @@ use crate::Token;
 use aho_corasick::AhoCorasick;
 use hashbrown::HashMap;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct LangData {
     /// Master lookup table: short/long term → (canonical form, token)
     pub map: &'static HashMap<&'static str, (&'static str, Token)>,

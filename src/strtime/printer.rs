@@ -187,9 +187,9 @@ impl YmdHms {
                 }
                 b'z' => self.write_timezone_offset(offset, &mut buf, &mut pos, colons),
                 b'Q' => {
-                    if let Some(iana) = tz {
+                    if let Some(iana) = &tz {
                         Self::write_bytes(&mut buf, &mut pos, iana.as_bytes());
-                    } else if let Some(ab) = abbrev {
+                    } else if let Some(ab) = &abbrev {
                         Self::write_bytes(&mut buf, &mut pos, ab.as_bytes());
                     } else if offset.unwrap_or_default() == 0 {
                         Self::write_bytes(&mut buf, &mut pos, b"UTC");
@@ -221,7 +221,7 @@ impl YmdHms {
                 b'D' => self.write_us_date_shortcut(&mut buf, &mut pos),
                 b'T' => self.write_time_with_seconds_shortcut(&mut buf, &mut pos),
                 b'R' => self.write_time_without_seconds_shortcut(&mut buf, &mut pos),
-                b'Z' => self.write_timezone_abbrev(abbrev, &mut buf, &mut pos),
+                b'Z' => self.write_timezone_abbrev(&abbrev, &mut buf, &mut pos),
                 b'L' => {
                     if self.dt.target != Scale::UTC {
                         Self::write_bytes(&mut buf, &mut pos, self.dt.target.abbrev().as_bytes());
@@ -780,7 +780,7 @@ impl YmdHms {
     #[inline(always)]
     fn write_timezone_abbrev(
         &self,
-        abbrev: Option<LiteStr<49>>,
+        abbrev: &Option<LiteStr<49>>,
         buf: &mut [u8; STRTIME_SIZE],
         pos: &mut usize,
     ) {

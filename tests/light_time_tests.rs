@@ -43,7 +43,7 @@ mod light_time_tests {
 
         // Sun is at the origin in this test coordinate system
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
-        let correction = tx.shapiro_delay(rx, bodies);
+        let correction = tx.shapiro_delay(&rx, bodies);
         let got_us = correction.to_sec_f() * 1_000_000.0;
 
         assert!(
@@ -152,7 +152,7 @@ mod light_time_tests {
 
         // Static receiver — safe to ignore the time argument
         let (prop_correction, _rx_time, _rx_state) = tx.iterative_one_way_light_time_to(
-            &mut |_t| make_state(0, rx_pos, Velocity::ZERO, -8.87e8, 0.0),
+            &mut |_t| make_state(0, rx_pos.clone(), Velocity::ZERO, -8.87e8, 0.0),
             bodies,
             tolerance,
             20,
@@ -182,7 +182,7 @@ mod light_time_tests {
         let tx_pos = Position::new(1.5e11, 0.0, 0.0);
         let rx_pos = Position::new(2.2e11, 0.4e11, 0.0);
 
-        let tx = make_state(0, tx_pos, Velocity::from_speed(29_780.0), -8.87e8, 0.0);
+        let tx = make_state(0, tx_pos.clone(), Velocity::from_speed(29_780.0), -8.87e8, 0.0);
         let tolerance = Dt::from_ns(1, Scale::TAI);
 
         // Sun is at the origin in this test
@@ -192,11 +192,11 @@ mod light_time_tests {
         let round_trip_corr = tx.round_trip_light_time_correction(
             &mut |t: Dt| {
                 let sec = t.to_sec();
-                make_state(sec, rx_pos, Velocity::from_speed(24_000.0), -1.3e8, 0.0)
+                make_state(sec, rx_pos.clone(), Velocity::from_speed(24_000.0), -1.3e8, 0.0)
             },
             &mut |t: Dt| {
                 let sec = t.to_sec();
-                make_state(sec, tx_pos, Velocity::from_speed(29_780.0), -8.87e8, 0.0)
+                make_state(sec, tx_pos.clone(), Velocity::from_speed(29_780.0), -8.87e8, 0.0)
             },
             bodies,
             tolerance,
@@ -207,7 +207,7 @@ mod light_time_tests {
         let (uplink_corr, _rx_arrival_time, rx_at_arrival) = tx.iterative_one_way_light_time_to(
             &mut |t| {
                 let sec = t.to_sec();
-                make_state(sec, rx_pos, Velocity::from_speed(24_000.0), -1.3e8, 0.0)
+                make_state(sec, rx_pos.clone(), Velocity::from_speed(24_000.0), -1.3e8, 0.0)
             },
             bodies,
             tolerance,
@@ -219,7 +219,7 @@ mod light_time_tests {
             .iterative_one_way_light_time_to(
                 &mut |t| {
                     let sec = t.to_sec();
-                    make_state(sec, tx_pos, Velocity::from_speed(29_780.0), -8.87e8, 0.0)
+                    make_state(sec, tx_pos.clone(), Velocity::from_speed(29_780.0), -8.87e8, 0.0)
                 },
                 bodies,
                 tolerance,
@@ -250,12 +250,12 @@ mod light_time_tests {
 
         // Identical states → zero separation
         let state = make_state(0, pos, Velocity::ZERO, -8.87e8, 0.0);
-        assert_eq!(state.shapiro_delay(state, bodies), Dt::ZERO);
+        assert_eq!(state.shapiro_delay(&state, bodies), Dt::ZERO);
 
         // Both at the origin
         let tx = make_state(0, Position::ZERO, Velocity::ZERO, 0.0, 0.0);
         let rx = make_state(0, Position::ZERO, Velocity::ZERO, 0.0, 0.0);
-        assert_eq!(tx.shapiro_delay(rx, bodies), Dt::ZERO);
+        assert_eq!(tx.shapiro_delay(&rx, bodies), Dt::ZERO);
     }
 
     /// Verifies internal consistency of the iterative one-way light-time solver.
@@ -276,7 +276,7 @@ mod light_time_tests {
     #[test]
     fn iterative_solver_converges_to_sub_nanosecond() {
         let tx_pos = Position::new(1.5e11, 0.0, 0.0);
-        let tx = make_state(0, tx_pos, Velocity::ZERO, -8.87e8, 0.0);
+        let tx = make_state(0, tx_pos.clone(), Velocity::ZERO, -8.87e8, 0.0);
         let rx_pos = Position::new(1.52e11, 0.0, 0.0);
         let tolerance = Dt::from_ns(1, Scale::TAI);
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
@@ -284,14 +284,14 @@ mod light_time_tests {
         let (prop_correction, final_rx_time, _) = tx.iterative_one_way_light_time_to(
             &mut |t| {
                 let sec = t.to_sec();
-                make_state(sec, rx_pos, Velocity::ZERO, -8.80e8, 0.0)
+                make_state(sec, rx_pos.clone(), Velocity::ZERO, -8.80e8, 0.0)
             },
             bodies,
             tolerance,
             20,
         );
 
-        let geometric = tx_pos.distance_to(rx_pos) / C;
+        let geometric = tx_pos.distance_to(&rx_pos) / C;
         let total = final_rx_time.to_diff_raw(tx.time).to_sec_f();
 
         assert!(
@@ -333,14 +333,14 @@ mod light_time_tests {
             0.0,
         );
 
-        let one_way = tx.relativistic_clock_rate_ratio(rx);
+        let one_way = tx.relativistic_clock_rate_ratio(&rx);
 
         // Since we removed the dedicated two-way method, we compute it manually
         let two_way = one_way * one_way;
         assert!((two_way - one_way * one_way).abs() < 1e-14);
 
         let identical = make_state(0, Position::ZERO, Velocity::ZERO, 0.0, 0.0);
-        assert!((identical.relativistic_clock_rate_ratio(identical) - 1.0).abs() < 1e-14);
+        assert!((identical.relativistic_clock_rate_ratio(&identical) - 1.0).abs() < 1e-14);
     }
 
     /// Verifies pure special-relativistic time dilation (velocity effect only).

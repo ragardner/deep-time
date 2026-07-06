@@ -3,7 +3,7 @@ pub const DJC: f64 = 36525.0;
 pub const DAS2R: f64 = 4.848136811095359935899141e-6;
 pub const TURNAS: f64 = 1296000.0;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Term {
     pub nfa: [i32; 8],
     pub s: f64,

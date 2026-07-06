@@ -7,7 +7,7 @@ use crate::{Dt, Real};
 
 /// Holds info about a pre-1972 historical UTC offset interval. Used by
 /// [UTC_HIST_TABLE](constant.UTC_HIST_TABLE.html).
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct UtcHistRow {
     /// Year of the effective UTC date
     pub yr: i32,

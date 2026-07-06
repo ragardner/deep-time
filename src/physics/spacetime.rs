@@ -8,7 +8,7 @@ use crate::{C_SQUARED, Drift, Position, Real, Velocity, sqrt};
 /// This structure holds the gravitational lapse factor, the observer’s local velocity,
 /// and the curvature information needed for the library’s unified proper-time model.
 /// It is the low-level input that `Drift` uses internally.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Spacetime {
@@ -233,17 +233,17 @@ impl Spacetime {
     /// let position = Position::from_au(1.001, 0.001, 0.0); // e.g. spacecraft, asteroid, etc.
     ///
     /// let phi = Spacetime::grav_potential_from_point_masses(
-    ///     position,
-    ///     bodies.iter().copied(),
+    ///     &position,
+    ///     bodies.iter().cloned(),
     /// );
     /// ```
-    pub fn grav_potential_from_point_masses<I>(position: Position, bodies: I) -> Real
+    pub fn grav_potential_from_point_masses<I>(position: &Position, bodies: I) -> Real
     where
         I: IntoIterator<Item = (Position, Real)>, // (body_position, GM in m³/s²)
     {
         let mut phi = 0.0;
         for (body_pos, gm) in bodies {
-            let r = position.distance_to(body_pos);
+            let r = position.distance_to(&body_pos);
             if r > 0.0 {
                 phi -= gm / r;
             }

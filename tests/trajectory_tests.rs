@@ -25,12 +25,12 @@ mod proper_time_tests {
 
         // Single point
         assert_eq!(
-            Dt::proper_time_from_path(std::iter::once((t, flat))),
+            Dt::proper_time_from_path(std::iter::once((t, flat.clone()))),
             Ok(Dt::ZERO)
         );
 
         // Zero-duration path (start == end)
-        let zero_dur = [(t, flat), (t, flat)];
+        let zero_dur = [(t, flat.clone()), (t, flat)];
         assert_eq!(Dt::proper_time_from_path(zero_dur), Ok(Dt::ZERO));
     }
 
@@ -43,7 +43,7 @@ mod proper_time_tests {
         let flat = Spacetime::new(1.0, 0.0, 0.0);
 
         // Build a two-point path
-        let path = [(t0, flat), (t1, flat)];
+        let path = [(t0, flat.clone()), (t1, flat)];
 
         let dtau = Dt::proper_time_from_path(path).expect("path should be valid");
         assert_eq!(dtau, Dt::from_sec(86400, Scale::TAI));
@@ -56,7 +56,7 @@ mod proper_time_tests {
 
         // Constant rate of 0.9 (e.g. gravitational time dilation)
         let slow = Spacetime::new(0.9, 0.0, 0.0);
-        let path = [(t0, slow), (t1, slow)];
+        let path = [(t0, slow.clone()), (t1, slow)];
 
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
         assert_eq!(dtau, Dt::from_sec(900, Scale::TAI));
@@ -69,7 +69,7 @@ mod proper_time_tests {
 
         // Spacetime with velocity β = 0.6 → proper time rate ≈ 0.8
         let moving = Spacetime::new(1.0, 0.6, 0.0);
-        let path = [(t0, moving), (t1, moving)];
+        let path = [(t0, moving.clone()), (t1, moving)];
 
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
         assert_eq!(dtau, Dt::from_sec(400, Scale::TAI));
@@ -115,7 +115,7 @@ mod proper_time_tests {
         let t1 = tai(1000);
 
         let slow = Spacetime::new(0.9, 0.0, 0.0);
-        let path = [(t0, slow), (t1, slow)];
+        let path = [(t0, slow.clone()), (t1, slow)];
 
         let dtau = Dt::proper_time_from_path(path).unwrap();
         let dt = t1.to_diff_raw(t0);
@@ -129,7 +129,7 @@ mod proper_time_tests {
         let t1 = tai(100);
 
         let extreme = Spacetime::new(0.5, 0.0, 1e200);
-        let path = [(t0, extreme), (t1, extreme)];
+        let path = [(t0, extreme.clone()), (t1, extreme)];
 
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
@@ -149,8 +149,8 @@ mod proper_time_tests {
         let no_k = Spacetime::new(alpha, beta, 0.0);
         let with_k = Spacetime::new(alpha, beta, 1e20);
 
-        let path_no_k = [(t0, no_k), (t1, no_k)];
-        let path_with_k = [(t0, with_k), (t1, with_k)];
+        let path_no_k = [(t0, no_k.clone()), (t1, no_k)];
+        let path_with_k = [(t0, with_k.clone()), (t1, with_k)];
 
         let dtau_no_k = Dt::proper_time_from_path(path_no_k).unwrap();
         let dtau_with_k = Dt::proper_time_from_path(path_with_k).unwrap();
@@ -167,13 +167,13 @@ mod proper_time_tests {
     fn proper_time_from_path_handles_empty_or_single_point_path() {
         let empty: &[(Dt, Spacetime)] = &[];
         assert_eq!(
-            Dt::proper_time_from_path(empty.iter().copied()),
+            Dt::proper_time_from_path(empty.iter().cloned()),
             Ok(Dt::ZERO)
         );
 
         let single = &[(tai(0), Spacetime::new(1.0, 0.0, 0.0))];
         assert_eq!(
-            Dt::proper_time_from_path(single.iter().copied()),
+            Dt::proper_time_from_path(single.iter().cloned()),
             Ok(Dt::ZERO)
         );
     }
@@ -184,7 +184,7 @@ mod proper_time_tests {
         let t1 = tai(300);
         let ls = Spacetime::new(0.95, 0.0, 0.0);
 
-        let via_path = Dt::proper_time_from_path([(t0, ls), (t1, ls)]).unwrap();
+        let via_path = Dt::proper_time_from_path([(t0, ls.clone()), (t1, ls)]).unwrap();
 
         // With constant rate, this should equal rate * Δt
         let expected = Dt::from_sec_f(0.95 * 300.0, Scale::TAI);
@@ -260,7 +260,7 @@ mod proper_time_tests {
         }
 
         // === SPACECRAFT proper time (integrated along real trajectory) ===
-        let spacecraft_dtau = Dt::proper_time_from_path(spacecraft_path.iter().copied())
+        let spacecraft_dtau = Dt::proper_time_from_path(spacecraft_path.iter().cloned())
             .expect("spacecraft path should be valid");
 
         // === GROUND CLOCK (constant Earth surface) ===
@@ -300,7 +300,7 @@ mod proper_time_tests {
         // Internal library consistency check
         let mut summed = Dt::ZERO;
         for w in spacecraft_path.windows(2) {
-            let segment = vec![w[0], w[1]];
+            let segment = vec![w[0].clone(), w[1].clone()];
             let seg = Dt::proper_time_from_path(segment).expect("segment should be valid");
             summed = summed.add(seg);
         }

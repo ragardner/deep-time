@@ -1,5 +1,5 @@
 // Planetary nutation terms
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Xpl {
     pub nl: i32,
     pub nf: i32,

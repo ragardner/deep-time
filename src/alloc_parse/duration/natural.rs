@@ -24,7 +24,7 @@ enum Sign {
     Negative,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct ParsedNumber {
     integer: i64,
     decimals: i64,

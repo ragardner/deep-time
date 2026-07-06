@@ -1,4 +1,4 @@
-//! `AnErr<K, const N: usize = 31>` is a `Copy` error type consisting of
+//! `AnErr<K, const N: usize = 31>` is an error type consisting of
 //! an error kind and a bounded human-readable reason string (`N` bytes).
 //! Additional context can be appended to the reason.
 //!
@@ -70,7 +70,7 @@ use crate::LiteStr;
 use core::fmt;
 use core::fmt::Write;
 
-/// A compact, `Copy`, zero-allocation error type consisting of a single
+/// A compact, zero-allocation error type consisting of a single
 /// error kind and a human-readable reason string.
 ///
 /// When context is added via `context`, `context_fmt`, or the `=>` form of
@@ -78,7 +78,7 @@ use core::fmt::Write;
 ///
 /// The total is silently truncated to `REASON_LEN`
 /// bytes if necessary.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[must_use = "this error should be handled or converted to a different type e.g. `pub type DtErr = AnErr<MyKind, 31>;`"]
 pub struct AnErr<K, const REASON_LEN: usize = 31>

@@ -51,7 +51,7 @@ pub enum IsLeapSec {
 /// - [Dt::leap_sec_list_from_file](../struct.Dt.html#method.leap_sec_list_from_file)
 /// - [Dt::to_tai_from_utc_using_list](../struct.Dt.html#method.to_tai_from_utc_using_list)
 /// - [Dt::to_utc_from_tai_using_list](../struct.Dt.html#method.to_utc_from_tai_using_list)
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct LeapInfo {
     /// TAI minus UTC offset, in whole seconds.
     pub offset: i64,

@@ -19,7 +19,7 @@ use core::str;
 ///
 /// - **Byte length**: Use [`as_bytes()`][Self::as_bytes]`.len()`
 /// - **Unicode character count**: Use `as_str().chars().count()`
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct LiteStr<const N: usize> {
     pub bytes: [u8; N],
 }

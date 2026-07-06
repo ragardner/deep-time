@@ -27,7 +27,7 @@ use crate::{
 /// All three coefficients are stored using [`Dt`].
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Drift {
     /// Constant term a₀ expressed in seconds.  
     /// This represents any fixed time offset between the observer’s proper time
@@ -309,7 +309,7 @@ impl Dt {
 
     /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
     /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
-    pub const fn convert_using_drift(self, reference: Dt, drift: Drift) -> Dt {
+    pub const fn convert_using_drift(self, reference: Dt, drift: &Drift) -> Dt {
         let span = self.to_diff_raw(reference);
         let correction = drift.time_diff_after(&span);
         self.add(correction)
@@ -320,7 +320,7 @@ impl Dt {
     ///
     /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
     /// case of a pure constant offset the function returns immediately without iteration.
-    pub const fn convert_back_using_drift(self, reference: Dt, drift: Drift) -> Dt {
+    pub const fn convert_back_using_drift(self, reference: Dt, drift: &Drift) -> Dt {
         if drift.rate.is_zero() && drift.accel.is_zero() {
             return self.sub(drift.constant);
         }

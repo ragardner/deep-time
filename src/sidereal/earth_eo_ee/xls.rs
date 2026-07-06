@@ -1,5 +1,5 @@
 // Luni-solar nutation terms
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Xls {
     pub nl: i32,
     pub nlp: i32,

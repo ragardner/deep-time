@@ -41,7 +41,7 @@ use crate::{LiteStr, Scale};
 /// // now you can convert to whichever type you need
 /// let dt = parts.to_dt().unwrap();
 /// ```
-#[derive(Debug, Clone, Copy, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -85,7 +85,7 @@ pub struct Parts {
 }
 
 /// Raw parsed components from a decimal style number string.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub(crate) struct ParsedReal {
     pub(crate) negative: bool,
     /// Accumulated absolute integer part (u64::MAX on overflow during accumulation).
@@ -126,7 +126,7 @@ pub enum Epoch {
 /// Timestamp seconds relative to a specific epoch.
 ///
 /// Used by the `%s` (Unix epoch) and `%J` (J2000.0 noon 2000-01-01 12:00 TAI) directives.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -245,7 +245,7 @@ impl Weekday {
 }
 
 /// Timezone offset representation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -371,7 +371,12 @@ impl Parts {
         offset += 8;
 
         // offset (5 bytes)
-        let offset_bytes = self.offset.unwrap_or_default().to_wire_bytes();
+        let default_offset = Offset::None;
+        let offset_bytes = self
+            .offset
+            .as_ref()
+            .unwrap_or(&default_offset)
+            .to_wire_bytes();
         buf[offset..offset + 5].copy_from_slice(&offset_bytes);
         offset += 5;
 
@@ -418,7 +423,7 @@ impl Parts {
 
         // timestamp: tag (1 byte) + i128 attos (16 bytes) = 17 bytes total
         // tag: 0 = none, 1 = Unix, 2 = Noon2000
-        let (tag, attos) = match self.timestamp {
+        let (tag, attos) = match &self.timestamp {
             None => (0u8, 0i128),
             Some(ts) => {
                 let t = match ts.epoch {

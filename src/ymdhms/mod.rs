@@ -34,7 +34,7 @@ use jiff::civil;
 ///
 /// assert_eq!(x.day(), 28);
 /// ```
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
@@ -66,6 +66,22 @@ impl YmdHms {
         Dt::from_ymd(yr, mo, day, scale, hr, min, sec, attos).to_ymd()
     }
 
+    /// Returns a copy of the [`YmdHms`] object. Const fn version of
+    /// [`Clone::clone`](core::clone::Clone::clone).
+    #[inline(always)]
+    pub const fn clone_const(&self) -> Self {
+        YmdHms {
+            yr: self.yr,
+            mo: self.mo,
+            day: self.day,
+            hr: self.hr,
+            min: self.min,
+            sec: self.sec,
+            attos: self.attos,
+            dt: self.dt,
+        }
+    }
+
     /// Returns the [`Dt`] that was used to make this [`YmdHms`] object.
     #[inline(always)]
     pub const fn to_dt(&self) -> Dt {
@@ -95,7 +111,7 @@ impl YmdHms {
     /// - Negative values subtract.
     pub const fn add_yr(&self, n: i64) -> Self {
         if n == 0 {
-            return *self;
+            return self.clone_const();
         }
         let new_yr = self.yr.saturating_add(n);
         let max_day = Dt::days_in_month(new_yr, self.mo);
@@ -108,7 +124,7 @@ impl YmdHms {
     /// Adds (or subtracts) calendar months. Negative values subtract.
     pub const fn add_mo(&self, n: i64) -> Self {
         if n == 0 {
-            return *self;
+            return self.clone_const();
         }
 
         let yr = self.yr as i128;
@@ -137,7 +153,7 @@ impl YmdHms {
     /// Adds (or subtracts) calendar days. Negative values subtract.
     pub const fn add_days(&self, n: i64) -> Self {
         if n == 0 {
-            return *self;
+            return self.clone_const();
         }
         let jd = Dt::ymd_to_jd(self.yr, self.mo, self.day);
         let new_jd = jd.saturating_add(n);

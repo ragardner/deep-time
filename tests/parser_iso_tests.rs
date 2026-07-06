@@ -591,8 +591,8 @@ mod from_str_iso_tests {
         assert_eq!(tp.min, 30);
         assert_eq!(tp.sec, 25);
         assert_eq!(tp.offset, None);
-        assert_eq!(tp.iana_name.unwrap().as_str(), "America/New_York");
-        let ymd = tp.to_dt().unwrap().to_ymd();
+        assert_eq!(tp.iana_name.as_ref().unwrap().as_str(), "America/New_York");
+        let ymd = &tp.to_dt().unwrap().to_ymd();
         assert_eq!(ymd.yr(), 2024);
         assert_eq!(ymd.mo(), 4);
         assert_eq!(ymd.day(), 18);

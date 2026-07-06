@@ -396,7 +396,7 @@ fn format_output(list: &[LeapSec], row_comments: &[String], expires: Option<&str
 
     // Struct definition (kept for compatibility with how the module is included)
     out.push_str("/// Holds info about a leap-second transition. Used by [LEAP_SECS](constant.LEAP_SECS.html).\n");
-    out.push_str("#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]\n");
+    out.push_str("#[derive(Debug, Clone, PartialEq, PartialOrd)]\n");
     out.push_str("pub struct LeapSec {\n");
     out.push_str("    /// NTP timestamp of the transition (IANA file, column 1)\n");
     out.push_str("    pub ntp_timestamp: i64,\n");

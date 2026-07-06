@@ -10,7 +10,7 @@ use crate::{Real, hypot};
 /// typically expressed in a heliocentric (Sun-centered) reference frame because
 /// the dominant gravitational light-time correction—the Shapiro delay—is
 /// calculated with respect to the Sun.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Position {
@@ -52,7 +52,7 @@ impl Position {
     /// When the position is Sun-centered, this is the radial distance from the Sun
     /// required for Shapiro-delay calculations.
     #[inline]
-    pub const fn norm(self) -> Real {
+    pub const fn norm(&self) -> Real {
         hypot(hypot(self.x, self.y), self.z)
     }
 
@@ -61,7 +61,7 @@ impl Position {
     ///
     /// Together with the two radial distances from the Sun, this value supplies the
     /// three geometric inputs needed to evaluate the Shapiro delay.
-    pub const fn distance_to(self, other: Self) -> Real {
+    pub const fn distance_to(&self, other: &Self) -> Real {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
         let dz = self.z - other.z;
@@ -88,12 +88,12 @@ impl Position {
     /// let a = Position::new(0.0, 0.0, 0.0);
     /// let b = Position::new(10.0, 20.0, 30.0);
     ///
-    /// let midpoint = a.lerp(b, 0.5);           // (5.0, 10.0, 15.0)
-    /// let quarter   = a.lerp(b, 0.25);         // (2.5, 5.0, 7.5)
-    /// let beyond    = a.lerp(b, 1.5);          // (15.0, 30.0, 45.0)
+    /// let midpoint = a.lerp(&b, 0.5);           // (5.0, 10.0, 15.0)
+    /// let quarter   = a.lerp(&b, 0.25);         // (2.5, 5.0, 7.5)
+    /// let beyond    = a.lerp(&b, 1.5);          // (15.0, 30.0, 45.0)
     /// ```
     #[inline]
-    pub const fn lerp(self, other: Self, t: Real) -> Position {
+    pub const fn lerp(&self, other: &Self, t: Real) -> Position {
         Self::new(
             self.x * (f!(1.0) - t) + other.x * t,
             self.y * (f!(1.0) - t) + other.y * t,

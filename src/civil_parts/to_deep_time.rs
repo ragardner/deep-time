@@ -14,7 +14,7 @@ impl Parts {
         // ──────────────────────────────────────────────────────────────
         // Explicit timestamp (%s or %J)
         // ──────────────────────────────────────────────────────────────
-        if let Some(ts) = self.timestamp {
+        if let Some(ts) = &self.timestamp {
             match ts.epoch {
                 Epoch::Unix => {
                     let unix = Dt::new(ts.attos, self.scale, self.scale);

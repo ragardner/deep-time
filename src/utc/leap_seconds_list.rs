@@ -4,7 +4,7 @@
 //! File expires: 28 December 2026
 
 /// Holds info about a leap-second transition. Used by [LEAP_SECS](constant.LEAP_SECS.html).
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct LeapSec {
     /// NTP timestamp of the transition (IANA file, column 1)
     pub ntp_timestamp: i64,

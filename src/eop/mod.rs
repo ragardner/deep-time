@@ -19,6 +19,19 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::cmp::Ordering;
 
+/// Delimiter used to split columns in EOP data files.
+///
+/// Passed as the `separator` argument to:
+/// - [`EopData::data_from_reader`]
+/// - [`EopData::data_from_text_file`]
+/// - [`EopData::from_text_file`]
+/// - [`EopData::data_from_str`]
+/// - [`EopData::from_str`]
+/// - [`EopData::data_from_bytes`]
+/// - [`EopData::from_bytes`]
+///
+/// It controls how each line is tokenized before the parser extracts
+/// the MJD, offset, and polar-motion values.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Separator {
     #[default]
@@ -40,7 +53,7 @@ pub enum Separator {
 ///   <https://datacenter.iers.org/data/latestVersion/EOP_20u24_C04_one_file_1962-now.txt>
 /// - `Custom` so you can provide your own specific column indices
 ///   using [`CustomEopCols`].
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub enum EopFormat {
     /// finals2000A.all / finals.all.iau2000.txt style files
     #[default]
@@ -55,7 +68,7 @@ pub enum EopFormat {
 ///
 /// Allows you to specify exactly which 0-based column contains each value
 /// when your input file does not match a standard IERS layout.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct CustomEopCols {
     pub mjd: usize,
     pub offset: usize,
@@ -68,7 +81,7 @@ pub struct CustomEopCols {
 /// - `mjd` — Modified Julian Date
 /// - `offset` — UT1 − UTC (or equivalent) in **seconds**
 /// - `pm_x`, `pm_y` — Polar motion in **arcseconds**
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct EopDataRow {
     pub mjd: Real,
     /// e.g. UT1-UTC(s)
@@ -123,7 +136,7 @@ impl EopData {
                 continue;
             }
 
-            if let Some(row) = Self::try_parse_row(trimmed, format, separator) {
+            if let Some(row) = Self::try_parse_row(trimmed, &format, separator) {
                 rows.push(row);
             }
         }
@@ -195,7 +208,11 @@ impl EopData {
     pub const MAX_LINE_LEN: usize = 8192;
 
     // Small helper — parses ONE row (shared by all paths)
-    fn try_parse_row(trimmed: &str, format: EopFormat, separator: Separator) -> Option<EopDataRow> {
+    fn try_parse_row(
+        trimmed: &str,
+        format: &EopFormat,
+        separator: Separator,
+    ) -> Option<EopDataRow> {
         let parts: Vec<&str> = match separator {
             Separator::Whitespace => trimmed.split_whitespace().collect(),
             Separator::Comma => trimmed.split(',').map(|s| s.trim()).collect(),
@@ -326,7 +343,7 @@ impl EopData {
                 continue;
             }
 
-            if let Some(row) = Self::try_parse_row(trimmed, format, separator) {
+            if let Some(row) = Self::try_parse_row(trimmed, &format, separator) {
                 rows.push(row);
             }
         }
@@ -442,7 +459,7 @@ impl EopData {
 ///
 /// Contains everything needed for high-precision sidereal time
 /// and polar-motion corrections.
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct EopOffset {
     /// Value in **seconds** e.g. UT1 − UTC offset
     pub offset: Real,

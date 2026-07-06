@@ -65,7 +65,7 @@ impl FmtFlag {
 /// - [`StrPTimeFmt::new`](../struct.StrPTimeFmt.html#method.new)
 /// - [`StrPTimeFmt::to_dt`](../struct.StrPTimeFmt.html#method.to_dt)
 /// - [`StrPTimeFmt::to_str`](../struct.StrPTimeFmt.html#method.to_str)
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct StrPTimeFmt {
     fmt: [u8; Self::MAX_FMT_LEN],
     len: usize,

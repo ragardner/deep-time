@@ -102,7 +102,7 @@ impl Parts {
         }
 
         // Explicit timestamp
-        if let Some(ts) = self.timestamp {
+        if let Some(ts) = &self.timestamp {
             let unix = {
                 match ts.epoch {
                     Epoch::Unix => {

@@ -71,8 +71,8 @@ impl Dt {
     /// let position = Position::from_au(1.001, 0.001, 0.0); // e.g. spacecraft, asteroid, etc.
     ///
     /// let grav_potential = Spacetime::grav_potential_from_point_masses(
-    ///     position,
-    ///     bodies.iter().copied(),
+    ///     &position,
+    ///     bodies.iter().cloned(),
     /// );
     ///
     /// let t = Dt::span_f(1234.5);
@@ -176,7 +176,7 @@ impl Observer {
     ///
     /// This value should normally be **added** to the Newtonian geometric
     /// light time.
-    pub const fn one_way_relativistic_delay(&self, rx: Observer, bodies: &[(Dt, Position)]) -> Dt {
+    pub const fn one_way_relativistic_delay(&self, rx: &Observer, bodies: &[(Dt, Position)]) -> Dt {
         let prop = self.shapiro_delay(rx, bodies);
         let drift = self.compute_differential_clock_correction(rx);
         prop.add(drift)
@@ -231,7 +231,7 @@ impl Observer {
     {
         // Initial geometric guess
         let initial_rx = rx_provider(self.time);
-        let initial_r_sep = self.position.distance_to(initial_rx.position);
+        let initial_r_sep = self.position.distance_to(&initial_rx.position);
         let initial_geometric = Dt::from_sec_f(initial_r_sep / C, Scale::TAI);
 
         let mut rx_time = self.time.add(initial_geometric);
@@ -240,9 +240,9 @@ impl Observer {
         for _ in 0..max_iter {
             let rx = rx_provider(rx_time);
 
-            prop_correction = self.shapiro_delay(rx, bodies);
+            prop_correction = self.shapiro_delay(&rx, bodies);
 
-            let r_sep = self.position.distance_to(rx.position);
+            let r_sep = self.position.distance_to(&rx.position);
             let geometric = Dt::from_sec_f(r_sep / C, Scale::TAI);
             let full_delay = geometric.add(prop_correction);
 
@@ -413,16 +413,16 @@ impl Observer {
     /// The total one-way Shapiro gravitational propagation delay, in the
     /// same time scale as `self.time`. This value should normally be
     /// **added** to the Newtonian geometric light time.
-    pub const fn shapiro_delay(&self, rx: Observer, bodies: &[(Dt, Position)]) -> Dt {
+    pub const fn shapiro_delay(&self, rx: &Observer, bodies: &[(Dt, Position)]) -> Dt {
         let mut total = Dt::ZERO;
         let mut i = 0;
 
         while i < bodies.len() {
-            let (shapiro_coeff, body_pos) = bodies[i];
+            let (shapiro_coeff, body_pos) = &bodies[i];
             total = total.add(Self::shapiro_one_way_delay(
-                shapiro_coeff,
-                self.position,
-                rx.position,
+                *shapiro_coeff,
+                &self.position,
+                &rx.position,
                 body_pos,
             ));
             i += 1;
@@ -463,9 +463,9 @@ impl Observer {
     /// - Designed for weak-field solar-system / cislunar use (monopole, straight-line approx).
     pub(crate) const fn shapiro_one_way_delay(
         shapiro: Dt,
-        tx_pos: Position,
-        rx_pos: Position,
-        body_pos: Position,
+        tx_pos: &Position,
+        rx_pos: &Position,
+        body_pos: &Position,
     ) -> Dt {
         let shapiro_sec = shapiro.to_sec_f();
 
@@ -522,7 +522,7 @@ impl Observer {
     /// ## Returns
     ///
     /// The differential clock-rate correction (`rx_proper_advance − tx_proper_advance`).
-    pub const fn compute_differential_clock_correction(&self, rx: Observer) -> Dt {
+    pub const fn compute_differential_clock_correction(&self, rx: &Observer) -> Dt {
         let span = rx.time.to_diff_raw(self.time);
 
         let tx_drift = Drift::from_velocity_potential_and_scale(

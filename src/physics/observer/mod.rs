@@ -9,7 +9,7 @@ use crate::{C_SQUARED, Dt, Position, Real, Spacetime, Velocity};
 /// Combines time, position, velocity, and local gravitational
 /// information. It is the main input type used by relativistic light-time
 /// methods in this library.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Observer {
@@ -145,8 +145,8 @@ impl Observer {
     /// let tx_pos = Position::from_au(1.0, 0.0, 0.0);
     /// let rx_pos = Position::from_au(1.00257, 0.0, 0.0);
     ///
-    /// let grav_potential_tx = Spacetime::grav_potential_from_point_masses(tx_pos, bodies.iter().copied());
-    /// let grav_potential_rx = Spacetime::grav_potential_from_point_masses(rx_pos, bodies.iter().copied());
+    /// let grav_potential_tx = Spacetime::grav_potential_from_point_masses(&tx_pos, bodies.iter().cloned());
+    /// let grav_potential_rx = Spacetime::grav_potential_from_point_masses(&rx_pos, bodies.iter().cloned());
     ///
     /// let transmitter = Observer::new(
     ///     Dt::span_f(0.0),
@@ -162,7 +162,7 @@ impl Observer {
     ///     grav_potential_rx,
     /// );
     ///
-    /// let one_way_ratio = transmitter.relativistic_clock_rate_ratio(receiver);
+    /// let one_way_ratio = transmitter.relativistic_clock_rate_ratio(&receiver);
     /// let two_way_ratio = one_way_ratio * one_way_ratio;
     /// ```
     ///
@@ -189,7 +189,7 @@ impl Observer {
     /// - `self` — Transmitter state at the time of transmission.
     /// - `rx`   — Receiver state at the approximate time of reception.
     #[inline]
-    pub const fn relativistic_clock_rate_ratio(&self, rx: Observer) -> Real {
+    pub const fn relativistic_clock_rate_ratio(&self, rx: &Observer) -> Real {
         rx.proper_time_rate() / self.proper_time_rate()
     }
 }

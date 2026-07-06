@@ -14,7 +14,7 @@ pub const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
 /// A_i * sin(2π * (t_J2000_days / T_i) + ϕ_i)  with A_i in µs.
 /// These are the 13 dominant terms (>1 µs) after removing the linear secular drift.
 /// Accuracy: < 0.15 ns (before 2050) when combined with the secular rate.
-#[derive(Copy, Clone)]
+#[derive(Clone, Debug)]
 pub struct LunarPeriodicTerm {
     period_days: Real,  // T_i
     amplitude_us: Real, // A_i
@@ -145,7 +145,7 @@ impl Dt {
 
         let mut i = 0usize;
         while i < LUNAR_PERIODIC_TERMS.len() {
-            let term = LUNAR_PERIODIC_TERMS[i];
+            let term = &LUNAR_PERIODIC_TERMS[i];
             let arg = two_pi * (t_days / term.period_days) + term.phase_rad;
             delta_us += term.amplitude_us * sin(arg);
             i += 1;
