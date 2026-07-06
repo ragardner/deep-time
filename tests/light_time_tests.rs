@@ -182,7 +182,13 @@ mod light_time_tests {
         let tx_pos = Position::new(1.5e11, 0.0, 0.0);
         let rx_pos = Position::new(2.2e11, 0.4e11, 0.0);
 
-        let tx = make_state(0, tx_pos.clone(), Velocity::from_speed(29_780.0), -8.87e8, 0.0);
+        let tx = make_state(
+            0,
+            tx_pos.clone(),
+            Velocity::from_speed(29_780.0),
+            -8.87e8,
+            0.0,
+        );
         let tolerance = Dt::from_ns(1, Scale::TAI);
 
         // Sun is at the origin in this test
@@ -192,11 +198,23 @@ mod light_time_tests {
         let round_trip_corr = tx.round_trip_light_time_correction(
             &mut |t: Dt| {
                 let sec = t.to_sec();
-                make_state(sec, rx_pos.clone(), Velocity::from_speed(24_000.0), -1.3e8, 0.0)
+                make_state(
+                    sec,
+                    rx_pos.clone(),
+                    Velocity::from_speed(24_000.0),
+                    -1.3e8,
+                    0.0,
+                )
             },
             &mut |t: Dt| {
                 let sec = t.to_sec();
-                make_state(sec, tx_pos.clone(), Velocity::from_speed(29_780.0), -8.87e8, 0.0)
+                make_state(
+                    sec,
+                    tx_pos.clone(),
+                    Velocity::from_speed(29_780.0),
+                    -8.87e8,
+                    0.0,
+                )
             },
             bodies,
             tolerance,
@@ -207,7 +225,13 @@ mod light_time_tests {
         let (uplink_corr, _rx_arrival_time, rx_at_arrival) = tx.iterative_one_way_light_time_to(
             &mut |t| {
                 let sec = t.to_sec();
-                make_state(sec, rx_pos.clone(), Velocity::from_speed(24_000.0), -1.3e8, 0.0)
+                make_state(
+                    sec,
+                    rx_pos.clone(),
+                    Velocity::from_speed(24_000.0),
+                    -1.3e8,
+                    0.0,
+                )
             },
             bodies,
             tolerance,
@@ -219,7 +243,13 @@ mod light_time_tests {
             .iterative_one_way_light_time_to(
                 &mut |t| {
                     let sec = t.to_sec();
-                    make_state(sec, tx_pos.clone(), Velocity::from_speed(29_780.0), -8.87e8, 0.0)
+                    make_state(
+                        sec,
+                        tx_pos.clone(),
+                        Velocity::from_speed(29_780.0),
+                        -8.87e8,
+                        0.0,
+                    )
                 },
                 bodies,
                 tolerance,

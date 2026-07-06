@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Full local validation: default tests, release full-feature tests, clippy, and docs.
+#
+# Usage:
+#   ./scripts/full-test.sh
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ROOT"
+
+FULL_FEATURES="physics mars parse hifitime chrono std wire eop-tests lang sidereal-earth jiff-tz"
+
+usage() {
+    cat <<'EOF'
+full-test.sh — run the full deep-time local validation suite
+
+  ./scripts/full-test.sh
+
+Runs, in order:
+
+  1. cargo fmt --all -- --check
+  2. cargo test --workspace
+  3. cargo test --release --no-default-features --features "<full>" --workspace -- --nocapture
+  4. cargo clippy --workspace --all-features --all-targets
+  5. cargo doc --all-features --no-deps    (your crate only; see CI)
+
+Uses your active cargo/rustc toolchain. For MSRV-pinned checks, see scripts/release.sh.
+EOF
+}
+
+log() {
+    printf '\n==> %s\n' "$*"
+}
+
+run() {
+    printf '+ %s\n' "$*"
+    "$@"
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+    usage
+    exit 0
+fi
+
+log "full-test (commit: $(git rev-parse --short HEAD 2>/dev/null || echo unknown))"
+
+log "cargo fmt --check"
+run cargo fmt --all -- --check
+
+log "cargo test (default)"
+run cargo test --workspace
+
+log "cargo test --release (full features, --nocapture)"
+run cargo test --release --no-default-features --features "$FULL_FEATURES" --workspace -- --nocapture
+
+log "cargo clippy (all features, all targets)"
+run cargo clippy --workspace --all-features --all-targets -- \
+    -D warnings -W clippy::collapsible_else_if
+
+log "cargo doc (all features, --no-deps)"
+run cargo doc --all-features --no-deps
+
+log "full-test passed"
