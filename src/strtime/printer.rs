@@ -503,6 +503,7 @@ impl<'a> Printer<'a> {
         self.write_i64(century, b'-', Some(0), b'0');
     }
 
+    #[inline(always)]
     fn write_timezone_offset(&mut self, colons: u8) {
         let offset_sec = self.offset.unwrap_or(0);
         let (negative, hours, minutes) = Dt::sec_as_hhmm(offset_sec);
