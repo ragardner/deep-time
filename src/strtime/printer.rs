@@ -681,16 +681,11 @@ impl<'a> Printer<'a> {
         let w = width.unwrap_or(4) as usize;
 
         let negative = value < 0;
-        let abs_val = if negative {
-            value.wrapping_neg()
-        } else {
-            value
-        };
+        let mut v = value.unsigned_abs();
 
         let mut digits = [0u8; 20];
         let mut i = 0usize;
 
-        let mut v = abs_val;
         if v == 0 {
             digits[0] = b'0';
             i = 1;
