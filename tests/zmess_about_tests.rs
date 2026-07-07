@@ -7,8 +7,5 @@ mod tests {
     use deep_time::{Dt, Lang, ParseCfg, Scale, TimeTraits, YmdHms};
 
     #[test]
-    fn print_stuff() {
-        let dt = Dt::from_ymd(1965, 1, 1, Scale::UtcHist, 0, 0, 0, 0);
-        let x = dt.to(Scale::UtcHist);
-    }
+    fn print_stuff() {}
 }
