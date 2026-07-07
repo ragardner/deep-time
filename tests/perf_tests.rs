@@ -121,7 +121,7 @@ mod perf_tests {
         }
 
         // ═══════════════════════════════════════════════════════════════════════
-        // TAI ↔ TDB PERF — deep_time vs hifitime 4.x
+        // TAI ↔ TDB PERF — deep_time vs hifitime 4.x TDB
         // ═══════════════════════════════════════════════════════════════════════
         {
             use hifitime::{Epoch, TimeScale};
@@ -130,10 +130,10 @@ mod perf_tests {
             const ITERATIONS: usize = 1_000_000;
 
             // Same reference instant: J2000.0 (2000-01-01 12:00:00 TAI)
-            let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
+            let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 0, 0, 0, 0);
             let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
 
-            // ── TAI → TDB ─────────────────────────────────────────────────────
+            // ── TAI → TDB (vs hifitime TDB) ───────────────────────────────────
             let start = Instant::now();
             for _ in 0..ITERATIONS {
                 let _ = black_box(deep_tai).to(black_box(Scale::TDB));
@@ -146,7 +146,7 @@ mod perf_tests {
             }
             tai_tdb_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
-            // ── TDB → TAI ─────────────────────────────────────────────────────
+            // ── TDB → TAI (vs hifitime TDB → TAI) ─────────────────────────────
             let deep_tdb = deep_tai.to(Scale::TDB);
             let hifi_tdb = hifi_tai.to_time_scale(TimeScale::TDB);
 

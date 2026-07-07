@@ -194,8 +194,8 @@ impl Dt {
         numerical_tdb.to_attos()
     }
 
-    pub(crate) const fn tai_to_tcl(tai: Self) -> Dt {
-        let tdb = Self::tai_to_tdb(tai);
+    pub(crate) const fn tai_to_tcl(tai: Dt) -> Dt {
+        let tdb = tai.tai_to_tdb();
 
         let elapsed = Self::to_attos_since_j2000_tdb_epoch(tdb);
         let secular_attos = Self::mul_tl(elapsed);
@@ -212,7 +212,7 @@ impl Dt {
     /// LTE440 plus the periodic lunar corrections. Because the periodic
     /// terms depend on the TDB instant, a short fixed-point iteration is
     /// used. The secular rate is inverted with the exact one-step method.
-    pub(crate) const fn tcl_to_tai(tcl: Self) -> Dt {
+    pub(crate) const fn tcl_to_tai(tcl: Dt) -> Dt {
         let mut tdb = tcl;
         let mut i = 0u32;
         while i < 6 {

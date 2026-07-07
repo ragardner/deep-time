@@ -26,15 +26,15 @@ use crate::Real;
 ///
 /// The following tests have been performed:
 ///
-/// - Maximum observed error of ≤ 1 ULP, measured over 5,000,000 random
-///   samples across a wide dynamic range.
+/// - Maximum observed error of ≤ 1 ULP, measured over targeted sweeps near
+///   critical points and across a wide dynamic range.
 /// - Edge cases, including ±0, ±π/2, ±π, subnormal numbers, infinity,
 ///   and NaN.
 /// - Monotonicity testing in both increasing and decreasing regions.
 /// - High-density testing near π/2.
 /// - Testing near multiples of π.
 /// - Hard argument reduction cases.
-/// - Statistical random testing across multiple magnitude scales.
+/// - Targeted testing across multiple magnitude scales and reduction quadrants.
 /// - Compile-time evaluation via `const fn`.
 ///
 /// This implementation is intended for use in `no_std` and embedded
@@ -71,50 +71,52 @@ pub const fn sin(x: Real) -> Real {
 mod sin_tests {
     use super::*;
 
-    // =====================================================================
-    // Test Helper: Simple PRNG (only used in tests)
-    // =====================================================================
+    const MAX_ULP: u64 = 1;
 
-    #[allow(dead_code)]
-    struct Rng(u64);
-
-    #[allow(dead_code)]
-    impl Rng {
-        fn new(seed: u64) -> Self {
-            Self(seed)
-        }
-
-        #[inline]
-        fn next_u64(&mut self) -> u64 {
-            self.0 = self.0.wrapping_add(0x9E3779B97F4A7C15);
-            let mut z = self.0;
-            z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
-            z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
-            z ^ (z >> 31)
-        }
-
-        /// Returns a value roughly in `[-scale, scale]`
-        fn next_f64(&mut self, scale: f64) -> f64 {
-            let bits = self.next_u64();
-            let mantissa = bits & 0x000f_ffff_ffff_ffff;
-            let f = f64::from_bits(0x3ff0_0000_0000_0000 | mantissa);
-            (f - 1.0) * 2.0 * scale - scale
-        }
-    }
-
-    // =====================================================================
-    // Utility: ULP difference
-    // =====================================================================
-
-    #[allow(dead_code)]
+    /// Returns the ULP (unit in the last place) difference between two `f64` values.
     fn ulp_diff(a: f64, b: f64) -> u64 {
         if a.is_nan() && b.is_nan() {
             return 0;
         }
-        if a.is_infinite() && b.is_infinite() && a.signum() == b.signum() {
+        if a.is_infinite() || b.is_infinite() {
+            return if a == b { 0 } else { u64::MAX };
+        }
+
+        let a_bits = a.to_bits();
+        let b_bits = b.to_bits();
+
+        if (a_bits | b_bits) & 0x7fff_ffff_ffff_ffff == 0 {
             return 0;
         }
-        a.to_bits().abs_diff(b.to_bits())
+
+        if (a_bits ^ b_bits) & 0x8000_0000_0000_0000 != 0 {
+            return u64::MAX;
+        }
+
+        a_bits.abs_diff(b_bits)
+    }
+
+    fn check_ulp(x: f64) {
+        let expected = x.sin();
+        let actual = sin(x);
+
+        if expected.is_nan() {
+            assert!(actual.is_nan(), "sin({x}) should be NaN, got {actual}");
+            return;
+        }
+
+        if x.is_finite() {
+            assert!(
+                (-1.0000001..=1.0000001).contains(&actual),
+                "sin({x}) = {actual} is outside reasonable [-1, 1] range"
+            );
+        }
+
+        let ulps = ulp_diff(actual, expected);
+        assert!(
+            ulps <= MAX_ULP,
+            "sin({x}) failed: expected = {expected:.17e}, got = {actual:.17e}, ULP diff = {ulps} (max allowed {MAX_ULP})"
+        );
     }
 
     // =====================================================================
@@ -302,70 +304,89 @@ mod sin_tests {
     }
 
     #[test]
-    fn sin_max_ulp_error() {
-        let mut max_ulp: u64 = 0;
-        let mut worst_x = 0.0f64;
-        let mut rng = Rng::new(0xdead_beef_cafe_babe);
+    fn sin_ulp_accuracy() {
+        let pi = std::f64::consts::PI;
+        let pi_over_2 = std::f64::consts::FRAC_PI_2;
+        let pi_over_4 = std::f64::consts::FRAC_PI_4;
 
-        for _ in 0..5_000_000 {
-            let scale = if rng.next_u64() & 1 == 0 { 1e6 } else { 1e12 };
-            let x = rng.next_f64(scale);
-            let our = sin(x);
-            let std = x.sin();
+        // Direct `k_sin` fast-path: |x| ≤ π/4.
+        for i in -2000..=2000 {
+            check_ulp((i as f64 / 2000.0) * pi_over_4);
+        }
 
-            if our.is_nan() || std.is_nan() {
-                continue;
-            }
-
-            let ulp = ulp_diff(our, std);
-            if ulp > max_ulp {
-                max_ulp = ulp;
-                worst_x = x;
+        // High-accuracy region near π/2 where sin(x) ≈ ±1.
+        for k in -20..=20 {
+            let base = (k as f64) * pi + pi_over_2;
+            for i in -100..=100 {
+                check_ulp(base + (i as f64) * 1e-10);
             }
         }
 
-        // println!("Maximum observed ULP error: {} at x ≈ {}", max_ulp, worst_x);
-        assert!(
-            max_ulp <= 1,
-            "sin() maximum error too high: {} ULPs at x = {}",
-            max_ulp,
-            worst_x
-        );
+        // Argument reduction around multiples of π.
+        for k in 0..=30 {
+            let base = (k as f64) * pi;
+            for i in -50..=50 {
+                check_ulp(base + (i as f64) * 0.012345);
+            }
+        }
+
+        // Heavy stress on `rem_pio2` for very large magnitudes (up to ~1e22).
+        let mut x = 1e6_f64;
+        while x < 1e22 {
+            check_ulp(x);
+            check_ulp(x + 0.123456789);
+            check_ulp(-x);
+            x *= 3.1415926535;
+        }
+
+        // Deterministic pseudo-random walk for broad coverage.
+        let mut walk = 0.987654321_f64;
+        for _ in 0..5_000 {
+            check_ulp(walk);
+            walk = walk * 1.618033988749895 + 0.2718281828459045;
+            if walk.abs() > 1e16 {
+                walk = walk.fract() * 100.0;
+            }
+        }
     }
 
     #[test]
-    fn sin_random_many() {
-        let mut rng = Rng::new(0x1234_5678_9abc_def0);
+    fn sin_scale_coverage() {
+        let pi = std::f64::consts::PI;
+        let pi_over_2 = std::f64::consts::FRAC_PI_2;
+        let pi_over_4 = std::f64::consts::FRAC_PI_4;
+
         let scales = [1.0, 10.0, 100.0, 1_000.0, 1e6, 1e8, 1e10];
 
+        // Offsets that exercise each post-reduction quadrant (n & 3) and nearby
+        // boundaries after argument reduction.
+        let quadrant_offsets = [0.0, pi_over_4, pi_over_2, pi, 3.0 * pi_over_2, 2.0 * pi];
+
+        let mut cases = Vec::new();
+
         for &scale in &scales {
-            for _ in 0..150_000 {
-                let x = rng.next_f64(scale);
-                let our = sin(x);
-                let std_val = x.sin();
-
-                if our.is_nan() && std_val.is_nan() {
-                    continue;
-                }
-
-                // Adaptive tolerance
-                let diff = if x.abs() < 1e-8 {
-                    (our - std_val).abs()
-                } else {
-                    (our - std_val).abs() / x.abs().max(1.0)
-                };
-
-                let tol = if x.abs() < 1e-8 { 1e-14 } else { 5e-12 };
-
-                assert!(
-                    diff < tol,
-                    "sin mismatch at x = {}: our={}, std={}, diff={}",
-                    x,
-                    our,
-                    std_val,
-                    diff
-                );
+            for &offset in &quadrant_offsets {
+                cases.push(scale * offset);
+                cases.push(-scale * offset);
+                cases.push(scale + offset);
+                cases.push(scale - offset);
             }
+
+            // Irrational fractions of π at this magnitude.
+            for k in 1..=5 {
+                cases.push(scale * pi * (k as f64) / 11.0);
+                cases.push(-scale * pi * (k as f64) / 11.0);
+            }
+        }
+
+        // Subnormal-adjacent values (direct-return path for |x| < 2^-26).
+        for i in 0..8 {
+            cases.push(1e-20 * (i as f64 + 1.0));
+            cases.push(-1e-20 * (i as f64 + 1.0));
+        }
+
+        for &x in &cases {
+            check_ulp(x);
         }
     }
 

@@ -65,7 +65,7 @@ pub enum Scale {
     ///
     /// Uses the official NAIF simplified single-term model for interoperability
     /// with NASA/NAIF SPICE (~30 µs accuracy). For higher-fidelity relativistic
-    /// ephemeris calculations, use [`TDB`](Scale::TDB) instead.
+    /// ephemeris calculations, use [`TDB`](Scale::TDB).
     ET,
 
     /// Barycentric Dynamical Time (TDB).

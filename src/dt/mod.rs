@@ -8,7 +8,6 @@ mod from_ccsds;
 mod from_str;
 mod gregorian;
 mod julian_date;
-
 mod ops;
 mod to_bin_ccsds;
 mod to_str;
@@ -31,10 +30,10 @@ mod jiff;
 #[cfg(feature = "mars")]
 pub mod mars;
 
-#[cfg(feature = "tdb_fairhead1990")]
-pub mod tdb_fairhead1990;
+#[cfg(feature = "tdb_hi")]
+pub mod tdb_hi;
 
-#[cfg(not(feature = "tdb_fairhead1990"))]
+#[cfg(not(feature = "tdb_hi"))]
 mod tdb;
 
 use crate::{ATTOS_PER_SEC, Scale};

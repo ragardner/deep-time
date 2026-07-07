@@ -219,10 +219,10 @@ impl Dt {
                 self.add_attos(-Dt::SEC_19.to_attos()).with(new)
             }
             Scale::BDT => self.add_attos(-Dt::SEC_33.to_attos()).with(new),
-            Scale::TDB => Self::tai_to_tdb(*self).with(new),
-            Scale::ET => Self::tai_to_et(*self).with(new),
-            Scale::TCG => Self::tai_to_tcg(*self).with(new),
-            Scale::TCB => Self::tai_to_tcb(*self).with(new),
+            Scale::TDB => self.tai_to_tdb().with(new),
+            Scale::ET => self.tai_to_et().with(new),
+            Scale::TCG => self.tai_to_tcg().with(new),
+            Scale::TCB => self.tai_to_tcb().with(new),
             Scale::LTC => {
                 let tt = self.add(TT_TAI_OFFSET);
                 Self::tt_to_ltc(tt).with(new)
@@ -321,14 +321,14 @@ impl Dt {
     }
 
     #[inline]
-    pub(crate) const fn tai_to_tcg(tai: Dt) -> Dt {
-        let tt = tai.add(TT_TAI_OFFSET);
+    pub(crate) const fn tai_to_tcg(&self) -> Dt {
+        let tt = self.add(TT_TAI_OFFSET);
         Self::tt_to_tcg(tt)
     }
 
     #[inline]
-    pub(crate) const fn tai_to_tcb(tai: Dt) -> Dt {
-        let tdb = Self::tai_to_tdb(tai);
+    pub(crate) const fn tai_to_tcb(&self) -> Dt {
+        let tdb = self.tai_to_tdb();
         Self::tdb_to_tcb(tdb)
     }
 
@@ -388,8 +388,8 @@ impl Dt {
     }
 
     /// Converts a TAI [`Dt`] to TDB.
-    pub const fn tai_to_tdb(tai: Dt) -> Dt {
-        let tt = tai.add(TT_TAI_OFFSET);
+    pub const fn tai_to_tdb(&self) -> Dt {
+        let tt = self.add(TT_TAI_OFFSET);
         let correction = Self::tdb_minus_tt(tt.to_sec_f());
         tt.add(Dt::from_sec_f(correction, Scale::TAI))
     }

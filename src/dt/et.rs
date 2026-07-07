@@ -1,21 +1,21 @@
 use crate::{Dt, Real, Scale, TT_TAI_OFFSET, sin};
 
+const M0: Real = f!(6.239996);
+const M1: Real = f!(1.99096871e-7);
+const EB: Real = f!(0.01671);
+const K: Real = f!(0.001657);
+
 impl Dt {
     /// NAIF/SPICE simplified ET–TT periodic correction (only the ~1.657 ms term).
     pub const fn et_minus_tt(seconds_since_j2000_tt: Real) -> Real {
-        const M0: Real = f!(6.239996);
-        const M1: Real = f!(1.99096871e-7);
-        const EB: Real = f!(0.01671);
-        const K: Real = f!(0.001657);
-
         let m = M0 + M1 * seconds_since_j2000_tt;
         let e = m + EB * sin(m);
         K * sin(e)
     }
 
     /// Converts a TAI [`Dt`] to ET (NAIF/SPICE simplified model).
-    pub const fn tai_to_et(tai: Dt) -> Dt {
-        let tt = tai.add(TT_TAI_OFFSET);
+    pub const fn tai_to_et(&self) -> Dt {
+        let tt = self.add(TT_TAI_OFFSET);
         let correction = Self::et_minus_tt(tt.to_sec_f());
         tt.add(Dt::from_sec_f(correction, Scale::TAI))
     }

@@ -49,7 +49,7 @@ defmt = ["dep:defmt"]
 physics = []
 
 # Higher accuracy but larger binary size TDB conversion code
-tdb_fairhead1990 = []
+tdb_hi = []
 
 # Mars conversions functions
 mars = []

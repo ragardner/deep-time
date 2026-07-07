@@ -315,10 +315,10 @@ mod astropy_verified_conversions_tests {
         let mut diffs: f64 = 0.0;
         let mut max_diff: f64 = 0.0;
 
-        #[cfg(feature = "tdb_fairhead1990")]
+        #[cfg(feature = "tdb_hi")]
         const TOLERANCE: f64 = 0.0;
 
-        #[cfg(not(feature = "tdb_fairhead1990"))]
+        #[cfg(not(feature = "tdb_hi"))]
         const TOLERANCE: f64 = 2.0e-9;
 
         for yr in [
@@ -378,7 +378,7 @@ mod astropy_verified_conversions_tests {
                 .target(Scale::TCB)
                 .to_jd_f();
 
-            if cfg!(feature = "tdb_fairhead1990") {
+            if cfg!(feature = "tdb_hi") {
                 // ERFA path should match Astropy
                 assert_eq!(jd, expected);
             } else {
@@ -389,7 +389,7 @@ mod astropy_verified_conversions_tests {
                 // eprintln!("TCB our_jd: {} diff: {}", jd, diff);
                 assert!(
                     diff < 2e-9,
-                    "TCB JD diff too large without tdb_fairhead1990 feature: {}",
+                    "TCB JD diff too large without tdb_hi feature: {}",
                     diff
                 );
             }

@@ -11,7 +11,7 @@
 //! - No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd)
 //! - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
 //! - Fast [ISO](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_iso) parser
-//! - [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb_fairhead1990` can be enabled which provides the ERFA TDB model
+//! - [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb_hi` can be enabled which provides the ERFA TDB model
 //! - [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str)
 //! - [Strftime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
 //! - First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature
@@ -206,7 +206,7 @@
 //! | `panic-handler`      | Provides an optional simple `#[panic_handler]` for `no_std` environments  | `no_std`    |
 //! | `defmt`              | Enables `defmt::Format` trait implementations the main types. Intended for use with the `defmt` logging framework on embedded systems. | — |
 //! | `wire`               | Enables wire format (serialization) support                               | —           |
-//! | `tdb_fairhead1990`   | Replaces the fast TDB and TCB conversions with the full ERFA TDB model    | —           |
+//! | `tdb_hi`             | Replaces the fast TDB and TCB conversions with the full ERFA TDB model    | —           |
 //! | `physics`            | Enables relativistic physics support (`Drift`, `Spacetime`, `Position`, `Velocity`, `Observer`, light-time, etc.) | —           |
 //! | `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                  | —           |
 //! | `sidereal`           | Enables sidereal time support                                             | —           |
@@ -394,8 +394,8 @@ pub use strtime::StrPTimeFmt;
 pub use time_range::{Every, TimeRange};
 pub use ymdhms::YmdHms;
 
-#[cfg(feature = "tdb_fairhead1990")]
-pub use dt::tdb_fairhead1990;
+#[cfg(feature = "tdb_hi")]
+pub use dt::tdb_hi;
 
 #[cfg(feature = "parse")]
 pub use alloc_parse::types::{Mode, Order, ParseCfg};
