@@ -4,7 +4,7 @@ A fully featured and high performance **Rust date and time library** with attose
 
 [![Crates.io MSRV](https://img.shields.io/crates/msrv/deep-time)](https://crates.io/crates/deep-time)
 [![Edition](https://img.shields.io/badge/edition-2024-blueviolet)](https://doc.rust-lang.org/edition-guide/editions/)
-[![License](https://img.shields.io/crates/l/deep-time)](https://github.com/ragardner/deep-time/blob/main/LICENSE)
+[![License](https://img.shields.io/crates/l/deep-time)](https://github.com/ragardner/deep-time#license)
 [![docs.rs](https://img.shields.io/docsrs/deep-time)](https://docs.rs/deep-time)
 [![Crates.io](https://img.shields.io/crates/v/deep-time)](https://crates.io/crates/deep-time)
 
@@ -294,3 +294,20 @@ If for whatever reason you need to update the library's bundled leap seconds fil
 3. Then with a terminal open in the library run the command: `cargo gen-leap-seconds`
 4. This should overwrite the file `src/utc/leap_seconds_list.rs` using the data
 5. Re-compile the library
+
+### License
+
+Licensed under either of
+
+ * Apache License, Version 2.0
+   ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+ * MIT license
+   ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.
+
+### Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.

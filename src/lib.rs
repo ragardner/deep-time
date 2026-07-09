@@ -3,7 +3,7 @@
 //! A fully featured and high performance **Rust date and time library** with attosecond precision that provides **astronomical** and **civil** timekeeping.
 //!
 //! [Crates.io](https://crates.io/crates/deep-time)
-//! [License](https://github.com/ragardner/deep-time/blob/main/LICENSE)
+//! [License](https://github.com/ragardner/deep-time#license)
 //!
 //! ### Overview
 //!
