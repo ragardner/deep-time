@@ -738,7 +738,7 @@ impl<'a> Printer<'a> {
 impl YmdHms {
     #[cfg(feature = "alloc")]
     #[inline]
-    pub(crate) fn to_str(
+    pub(crate) fn _to_str(
         &self,
         fmt: &str,
         offset: Option<i32>,
@@ -753,7 +753,7 @@ impl YmdHms {
     }
 
     #[inline]
-    pub(crate) fn to_str_lite(
+    pub(crate) fn _to_str_lite(
         &self,
         fmt: &str,
         offset: Option<i32>,

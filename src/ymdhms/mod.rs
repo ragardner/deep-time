@@ -1,4 +1,5 @@
-use crate::{ATTOS_PER_SEC_I128, Dt, Scale};
+use crate::{ATTOS_PER_SEC_I128, Dt, LiteStr, STRTIME_SIZE, Scale};
+use core::fmt::Write;
 
 #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
 use crate::{DtErr, DtErrKind, an_err};
@@ -303,6 +304,24 @@ impl YmdHms {
     #[inline(always)]
     pub const fn wk_of_yr_mon(&self) -> u8 {
         Dt::_wk_mon(self.yr, self.day_of_yr())
+    }
+
+    /// Formats this value the same way as [`Display`](core::fmt::Display),
+    /// but into a [`LiteStr`](../struct.LiteStr.html).
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let ymd = Dt::from_ymd(2000, 1, 2, Scale::UTC, 3, 4, 5, 0).to_ymd();
+    /// assert_eq!(ymd.to_str_lite().as_str(), "2000-01-02T03:04:05 UTC");
+    /// ```
+    #[inline]
+    pub fn to_str_lite(&self) -> LiteStr<STRTIME_SIZE> {
+        let mut s = LiteStr::<STRTIME_SIZE>::default();
+        let _ = write!(s, "{}", self);
+        s
     }
 }
 

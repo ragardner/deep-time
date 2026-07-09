@@ -134,7 +134,7 @@ impl Dt {
     #[inline(always)]
     pub fn to_str_in_offset(&self, fmt: &str, secs: i32, lang: Lang) -> Result<String, DtErr> {
         self.ymd_with_offset(secs)
-            .to_str(fmt, Some(secs), None, None, lang)
+            ._to_str(fmt, Some(secs), None, None, lang)
     }
 
     /// Formats this [`Dt`] into a string, time adjusted to the given IANA timezone.
@@ -199,7 +199,7 @@ impl Dt {
     #[inline(always)]
     pub fn to_str_in_tz(&self, fmt: &str, tz_name: &str, lang: Lang) -> Result<String, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, true)?;
-        ymd.to_str(
+        ymd._to_str(
             fmt,
             Some(offset),
             Some(LiteStr::new(tz_name)),
@@ -358,7 +358,7 @@ impl Dt {
         offset: i32,
         lang: Lang,
     ) -> Result<String, DtErr> {
-        self.to_ymd().to_str(fmt, Some(offset), None, None, lang)
+        self.to_ymd()._to_str(fmt, Some(offset), None, None, lang)
     }
 
     /// Formats this [`Dt`] into a `String`, attaching a timezone **as a label only**.
@@ -388,7 +388,7 @@ impl Dt {
         lang: Lang,
     ) -> Result<String, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, false)?;
-        ymd.to_str(
+        ymd._to_str(
             fmt,
             Some(offset),
             Some(LiteStr::new(tz_name)),
@@ -428,7 +428,7 @@ impl Dt {
     /// - [`Dt::to_str_lite_in_tz`](../struct.Dt.html#method.to_str_lite_in_tz)
     #[inline(always)]
     pub fn to_str_lite(&self, fmt: &str, lang: Lang) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
-        self.to_ymd().to_str_lite(fmt, None, None, None, lang)
+        self.to_ymd()._to_str_lite(fmt, None, None, None, lang)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, applying a fixed UTC offset.
@@ -472,7 +472,7 @@ impl Dt {
         lang: Lang,
     ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         self.ymd_with_offset(secs)
-            .to_str_lite(fmt, Some(secs), None, None, lang)
+            ._to_str_lite(fmt, Some(secs), None, None, lang)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, time adjusted to the given
@@ -531,7 +531,7 @@ impl Dt {
         lang: Lang,
     ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, true)?;
-        ymd.to_str_lite(
+        ymd._to_str_lite(
             fmt,
             Some(offset),
             Some(LiteStr::new(tz_name)),
@@ -565,7 +565,7 @@ impl Dt {
         lang: Lang,
     ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         self.to_ymd()
-            .to_str_lite(fmt, Some(offset), None, None, lang)
+            ._to_str_lite(fmt, Some(offset), None, None, lang)
     }
 
     /// Formats this [`Dt`] into a `LiteStr`, attaching a timezone **as a label only**.
@@ -595,7 +595,7 @@ impl Dt {
         lang: Lang,
     ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, false)?;
-        ymd.to_str_lite(
+        ymd._to_str_lite(
             fmt,
             Some(offset),
             Some(LiteStr::new(tz_name)),
