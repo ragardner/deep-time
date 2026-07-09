@@ -152,8 +152,14 @@ fn main() -> Result<(), DtErr> {
     // Timezone-aware addition — correctly handles the transition
     let aware = dt.add_hours_tz(1, "Europe/London")?;
 
-    println!("Normal: {}", normal.to_str_rfc9557("Europe/London")?);
-    println!("Aware:  {}", aware.to_str_rfc9557("Europe/London")?);
+    assert_eq!(
+        normal.to_str_rfc9557("Europe/London")?,
+        "2025-03-30T02:30:00+01:00[Europe/London]"
+    );
+    assert_eq!(
+        aware.to_str_rfc9557("Europe/London")?,
+        "2025-03-30T03:30:00+01:00[Europe/London]"
+    );
 
     // ============================================
     // Leap seconds

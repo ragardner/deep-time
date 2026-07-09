@@ -54,8 +54,7 @@ jobs:
           - name: full
             args: >-
               --no-default-features
-              --features "serde physics mars parse hifitime chrono std wire eop-tests
-              lang sidereal-earth jiff-tz"
+              --features "serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz"
             release: true
     steps:
       - uses: actions/checkout@v7
@@ -83,8 +82,8 @@ jobs:
       - run: cargo doc --no-default-features --no-deps
       - run: cargo doc --all-features --no-deps
 
-  example:
-    name: readme example
+  examples:
+    name: examples
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -92,4 +91,5 @@ jobs:
         with:
           toolchain: 1.90
       - uses: Swatinem/rust-cache@v2
-      - run: cargo build --example readme --features "parse,jiff-tz,euro"
+      - run: cargo run --example precision_control
+      - run: cargo run --example readme --features "parse,jiff-tz,euro"

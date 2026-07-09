@@ -28,7 +28,7 @@ repo root). The git tag matches that version exactly, e.g. 0.1.0-beta.21.
   ./scripts/release.sh
 
   1. Pre-flight     clean tree, branch warning, tag/changelog checks
-  2. Validation     fmt, clippy, tests, docs, example, publish --dry-run
+  2. Validation     fmt, clippy, tests, docs, examples, publish --dry-run
   3. Tag            git tag -a {version}  (asks for confirmation)
 
   Does NOT push or publish. Stops after creating the local tag.
@@ -44,7 +44,7 @@ Validation
 
   --skip-tests
       Run everything except the five-feature test matrix.
-      fmt, clippy, docs, example, and publish --dry-run still run.
+      fmt, clippy, docs, examples, and publish --dry-run still run.
 
   --tag-only
       Skip ALL validation. Only create the git tag (if it does not already
@@ -131,7 +131,8 @@ General
     • test matrix: no-std, no-std+wire/mars/sidereal/physics, parse+std,
       parse+std+jiff-tz+lang, full (release)
     • cargo doc (no features + all features)
-    • cargo build --example readme
+    • cargo run --example precision_control
+    • cargo run --example readme --features "parse,jiff-tz,euro"
     • cargo publish --dry-run
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -383,7 +384,7 @@ run_validation() {
         run cargo "+${MSRV}" test --no-default-features --features "parse alloc std" --workspace
         run cargo "+${MSRV}" test --no-default-features --features "parse alloc std jiff-tz lang" --workspace
         run cargo "+${MSRV}" test --release --no-default-features --features \
-            "physics mars parse hifitime chrono std wire eop-tests lang sidereal-earth jiff-tz" --workspace
+            "serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz" --workspace
     else
         log "Skipping test matrix (--skip-tests)"
     fi
@@ -392,8 +393,9 @@ run_validation() {
     run cargo "+${MSRV}" doc --no-default-features --no-deps
     run cargo "+${MSRV}" doc --all-features --no-deps
 
-    log "readme example (MSRV ${MSRV})"
-    run cargo "+${MSRV}" build --example readme --features "parse,jiff-tz,euro"
+    log "examples (MSRV ${MSRV})"
+    run cargo "+${MSRV}" run --example precision_control
+    run cargo "+${MSRV}" run --example readme --features "parse,jiff-tz,euro"
 
     log "cargo publish --dry-run"
     run cargo publish --dry-run

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Full local validation: default tests, release full-feature tests, clippy, and docs.
+# Full local validation: default tests, release full-feature tests, clippy, docs, and examples.
 #
 # Usage:
 #   ./scripts/full-test.sh
@@ -24,6 +24,8 @@ Runs, in order:
   3. cargo test --release --no-default-features --features "<full>" --workspace -- --nocapture
   4. cargo clippy --workspace --all-features --all-targets
   5. cargo doc --all-features --no-deps    (your crate only; see CI)
+  6. cargo run --example precision_control
+  7. cargo run --example readme --features "parse,jiff-tz,euro"
 
 Uses your active cargo/rustc toolchain. For MSRV-pinned checks, see scripts/release.sh.
 EOF
@@ -60,5 +62,9 @@ run cargo clippy --workspace --all-features --all-targets -- \
 
 log "cargo doc (all features, --no-deps)"
 run cargo doc --all-features --no-deps
+
+log "examples"
+run cargo run --example precision_control
+run cargo run --example readme --features "parse,jiff-tz,euro"
 
 log "full-test passed"
