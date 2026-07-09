@@ -13,6 +13,17 @@ impl Dt {
         }
     }
 
+    /// Clamps an `i128` to the representable range of `u64`.
+    pub const fn to_u64(x: i128) -> u64 {
+        if x > u64::MAX as i128 {
+            u64::MAX
+        } else if x < u64::MIN as i128 {
+            u64::MIN
+        } else {
+            x as u64
+        }
+    }
+
     /// Combines a whole unit count and fractional attoseconds within that unit into total attoseconds.
     ///
     /// Computes `whole * unit_attos + frac_attos`. The fractional part is always **added**, even

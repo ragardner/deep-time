@@ -22,6 +22,7 @@ once_cell    = { version = "=1.21", optional = true, default-features = false, f
 jiff         = { version = "0.2", optional = true, default-features = false }
 chrono       = { version = "0.4", optional = true, default-features = false }
 hifitime     = { version = "4.3", optional = true, default-features = false }
+time         = { version = "0.3", optional = true, default-features = false }
 serde        = { version = "1.0", optional = true, default-features = false, features = ["derive", "rc"] }
 tsify        = { version = "=0.5.6", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
@@ -70,6 +71,7 @@ std = [
     "jiff?/std",
     "chrono?/std",
     "hifitime?/std",
+    "time?/std",
     "serde?/std",
 ]
 
@@ -77,6 +79,7 @@ std = [
 alloc = [
     "jiff?/alloc",
     "chrono?/alloc",
+    "time?/alloc",
 ]
 
 # ──────────────────────────────────────────────────────────────
@@ -118,6 +121,7 @@ serde = [
     "jiff?/serde",
     "chrono?/serde",
     "hifitime?/serde",
+    "time?/serde",
 ]
 
 # ──────────────────────────────────────────────────────────────
@@ -128,7 +132,6 @@ jiff = [
     "dep:jiff",
     "alloc",
 ]
-
 jiff-tz = [
     "jiff",
     "std",
@@ -157,6 +160,10 @@ chrono = [
 
 hifitime = [
     "dep:hifitime",
+]
+
+time = [
+    "dep:time",
 ]
 
 # ──────────────────────────────────────────────────────────────
@@ -191,7 +198,7 @@ locale = [
 ]
 
 eop-tests = ["eop", "std"]
-# cargo test --release --features "physics mars parse hifitime chrono std wire eop-tests lang sidereal-earth jiff-tz" -- --nocapture
+# cargo test --release --features "serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz" -- --nocapture
 
 [lints.clippy]
 # cargo clippy --workspace --all-features --all-targets -- -D warnings -W clippy::collapsible_else_if

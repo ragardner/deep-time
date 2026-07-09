@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F, Real, SEC_PER_DAY_F,
-    SEC_PER_DAY_I64, Scale,
+    ATTOS_PER_DAY, ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F,
+    Real, SEC_PER_DAY_F, SEC_PER_DAY_I64, Scale,
 };
 
 impl Dt {
@@ -136,6 +136,18 @@ impl Dt {
     #[inline(always)]
     pub const fn from_unix(unix: Dt) -> Dt {
         Self::from_diff_and_scale(unix, Dt::UNIX_EPOCH, true)
+    }
+
+    /// Interprets a POSIX Unix nanosecond count as UTC elapsed time since the Unix
+    /// epoch.
+    ///
+    /// **Differs** with [`from_unix`](../struct.Dt.html#method.from_unix) in that
+    /// it assumes the nanoseconds are on the UTC time scale and converts from UTC ->
+    /// TAI (adding any leap seconds to the end result).
+    pub const fn from_unix_ns(ns: i128) -> Dt {
+        let attos = ns.saturating_mul(ATTOS_PER_NS_I128);
+        let unix = Dt::new(attos, Scale::UTC, Scale::UTC);
+        Dt::from_unix(unix)
     }
 
     /// Returns this [`Dt`] as a day count since

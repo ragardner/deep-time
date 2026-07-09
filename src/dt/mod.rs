@@ -29,6 +29,9 @@ mod chrono;
 #[cfg(feature = "jiff")]
 mod jiff;
 
+#[cfg(feature = "time")]
+mod time;
+
 #[cfg(feature = "mars")]
 pub mod mars;
 
@@ -138,9 +141,11 @@ use core::fmt;
 /// - [`Dt::to_hifitime_epoch`](../struct.Dt.html#method.to_hifitime_epoch)
 /// - [`Dt::to_jiff_timestamp`](../struct.Dt.html#method.to_jiff_timestamp)
 /// - [`Dt::to_chrono_datetime_utc`](../struct.Dt.html#method.to_chrono_datetime_utc)
+/// - [`Dt::to_time_timestamp`](../struct.Dt.html#method.to_time_timestamp)
 /// - [`Dt::from_hifitime_epoch`](../struct.Dt.html#method.from_hifitime_epoch)
 /// - [`Dt::from_jiff_timestamp`](../struct.Dt.html#method.from_jiff_timestamp)
 /// - [`Dt::from_chrono_datetime_utc`](../struct.Dt.html#method.from_chrono_datetime_utc)
+/// - [`Dt::from_time_timestamp`](../struct.Dt.html#method.from_time_timestamp)
 ///
 /// ## Examples
 ///

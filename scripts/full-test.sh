@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-FULL_FEATURES="physics mars parse hifitime chrono std wire eop-tests lang sidereal-earth jiff-tz"
+FULL_FEATURES="serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz"
 
 usage() {
     cat <<'EOF'

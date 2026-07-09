@@ -20,7 +20,7 @@ A fully featured and high performance **Rust date and time library** with attose
 - First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature
 - To and from all kinds of inputs and outputs, functions mostly prefixed with `to` and `from`, available on the library's types, see the main time types functions: [Dt](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html). Including [JD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jd_f), [MJD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_mjd_f), [Unix](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_unix), [NTP](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ntp), etc.
 - [Calendar aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days) and, with the `jiff-tz` feature, [timezone aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days_tz) math
-- To and from [jiff](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), and [hifitime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_hifitime_epoch) types
+- To and from [jiff](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), [hifitime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_hifitime_epoch), and [time](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_time_timestamp) types
 - No-alloc [string return type](https://docs.rs/deep-time/latest/deep_time/struct.LiteStr.html)
 - Const fn [libm math](https://docs.rs/deep-time/latest/deep_time/math/index.html) functions
 - Safe, saturating arithmetic throughout
@@ -199,6 +199,7 @@ deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
 | `jiff`               | Enables basic Jiff interop                                                | `alloc`     |
 | `chrono`             | Enables Chrono interop                                                    | `alloc`     |
 | `hifitime`           | Enables Hifitime interop                                                  | —           |
+| `time`               | Enables interop with the [`time`](https://docs.rs/time) crate (`Timestamp`, `OffsetDateTime`, `UtcDateTime`, `Duration`) | —           |
 | `serde`              | Enables `Serialize` / `Deserialize` for `Dt` and other types              | `alloc`     |
 | `js`                 | WebAssembly support (includes `serde` and JS bindings)                    | `std`       |
 | `tsify`              | TypeScript definitions via `tsify` (for WASM)                             | `js`        |

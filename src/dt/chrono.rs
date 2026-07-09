@@ -1,18 +1,6 @@
 use crate::{Dt, Scale};
 use chrono::{DateTime, Datelike, Duration, TimeDelta, Timelike, Utc};
 
-/// Clamps an `i128` to the representable range of `u64`.
-#[inline]
-fn clamp_i128_to_u64(x: i128) -> u64 {
-    if x > u64::MAX as i128 {
-        u64::MAX
-    } else if x < u64::MIN as i128 {
-        u64::MIN
-    } else {
-        x as u64
-    }
-}
-
 impl Dt {
     /// Converts this [`Dt`] to a [`chrono::DateTime`].
     ///
@@ -39,16 +27,7 @@ impl Dt {
         let subsec_nanos = dt.nanosecond();
         let attos = Dt::from_ns_floor(subsec_nanos as i128, 0, Scale::TAI).to_attos();
 
-        Dt::from_ymd(
-            yr,
-            mo,
-            day,
-            Scale::UTC,
-            hr,
-            min,
-            sec,
-            clamp_i128_to_u64(attos),
-        )
+        Dt::from_ymd(yr, mo, day, Scale::UTC, hr, min, sec, Dt::to_u64(attos))
     }
 
     /// Creates a [`Dt`] from a [`chrono::Duration`] (nanosecond precision).
