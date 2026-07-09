@@ -284,8 +284,7 @@ impl YmdHms {
     }
 
     /// Returns the **weekday** number according to [`Dt::jd_to_wkday`]
-    /// (typically 0 = Sunday … 6 = Saturday; exact convention is defined
-    /// by the Julian Day helper).
+    /// (0 = Sunday … 6 = Saturday).
     #[inline(always)]
     pub const fn wkday(&self) -> u8 {
         let jd = Dt::ymd_to_jd(self.yr, self.mo, self.day);
