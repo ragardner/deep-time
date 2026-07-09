@@ -22,10 +22,8 @@ impl Dt {
     /// - Sub-nanosecond attoseconds are truncated toward zero.
     /// - Saturates at [`Timestamp::MIN`] / [`Timestamp::MAX`] if out of range
     ///   (jiff's supported range is roughly years −9999…9999).
-    #[inline]
     pub fn to_jiff_timestamp(&self) -> Timestamp {
         let nanos = self.target(Scale::UTC).to_unix().to_ns().0;
-
         match Timestamp::from_nanosecond(nanos) {
             Ok(ts) => ts,
             Err(_) => {
@@ -119,7 +117,6 @@ impl Dt {
     /// [`SignedDuration`] (seconds + nanoseconds only; calendar units must already
     /// be zero or convertible without a relative datetime) and then uses
     /// [`Dt::from_jiff_signed_duration`].
-    #[inline]
     pub fn from_jiff_span(span: Span) -> Result<Self, DtErr> {
         let dur = SignedDuration::try_from(span)
             .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;

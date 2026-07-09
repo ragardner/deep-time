@@ -20,7 +20,6 @@ impl Dt {
     /// - Saturates at [`Timestamp::MIN`] / [`Timestamp::MAX`] if out of range
     ///   (year range depends on the `time` crate's `large-dates` feature; without
     ///   it, roughly ±9999).
-    #[inline]
     pub fn to_time_timestamp(&self) -> Timestamp {
         let nanos = self.target(Scale::UTC).to_unix().to_ns().0;
         match Timestamp::from_nanoseconds(nanos) {
@@ -113,7 +112,6 @@ impl Dt {
     /// - Sub-nanosecond attoseconds are truncated toward zero.
     /// - Saturates at [`Duration::MIN`] / [`Duration::MAX`]
     ///   (roughly ±292 billion years) if out of range.
-    #[inline]
     pub fn to_time_duration(&self) -> Duration {
         let total_nanos = self.to_ns().0;
         let max_ns = Duration::MAX.whole_nanoseconds();
