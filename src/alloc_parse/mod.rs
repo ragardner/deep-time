@@ -1,4 +1,4 @@
-pub mod alloc_constants;
+pub mod alloc_consts;
 pub mod date;
 pub mod date_classification;
 pub mod duration;

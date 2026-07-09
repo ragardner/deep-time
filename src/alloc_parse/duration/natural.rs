@@ -207,7 +207,7 @@ fn extract_number(part: &str, part_chars: &mut Vec<char>, d: char) -> Option<Par
     })
 }
 
-/// Returns the signed integer count for add_yr / add_mo / etc.
+/// Returns the signed integer count for add_years / add_months / etc.
 /// Also routes any fractional part into total_attos.
 fn take_numeric_unit(
     total_attos: &mut i128,
@@ -848,19 +848,19 @@ impl Dt {
         let mut result = ref_date.target(scale);
 
         if pending_year_count != 0 {
-            result = result.add_yr(pending_year_count);
+            result = result.add_years(pending_year_count);
         }
         if pending_month_count != 0 {
-            result = result.add_mo(pending_month_count);
+            result = result.add_months(pending_month_count);
         }
         if year_offset != 0 {
-            result = result.add_yr(year_offset);
+            result = result.add_years(year_offset);
         }
         if month_offset != 0 {
-            result = result.add_mo(month_offset);
+            result = result.add_months(month_offset);
         }
         if week_offset != 0 {
-            result = result.add_wk(week_offset);
+            result = result.add_weeks(week_offset);
         }
         if day_offset != 0 {
             result = result.add_days(day_offset);
@@ -904,7 +904,7 @@ impl Dt {
             };
 
             if month_delta != 0 {
-                result = result.add_mo(month_delta as i64);
+                result = result.add_months(month_delta as i64);
             }
         }
 

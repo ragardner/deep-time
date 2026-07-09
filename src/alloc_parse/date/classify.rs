@@ -10,8 +10,8 @@ fn send_to_relative_parser(
     lang: Lang,
     ref_time: &Option<Dt>,
 ) -> Result<ClassifiedDate, DtErr> {
-    let now: Dt = if let Some(tp) = ref_time {
-        *tp
+    let now: Dt = if let Some(rt) = ref_time {
+        *rt
     } else {
         #[cfg(feature = "std")]
         {

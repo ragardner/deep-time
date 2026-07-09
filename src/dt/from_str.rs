@@ -410,7 +410,7 @@ impl Dt {
     /// - Fractional seconds are limited to the first 18 digits (attosecond
     ///   precision); extra digits are truncated.
     /// - Oversized integer parts saturate instead of failing.
-    /// - Inputs longer than [`STRTIME_SIZE`](../constants/constant.STRTIME_SIZE.html) are rejected.
+    /// - Inputs longer than [`STRTIME_SIZE`](../consts/constant.STRTIME_SIZE.html) are rejected.
     /// - Returns `None` only for completely unparseable input (empty, sign/dot
     ///   only, no digits after skipping, etc.).
     ///
@@ -420,7 +420,7 @@ impl Dt {
     /// use deep_time::{Dt, Scale};
     ///
     /// let d = Dt::from_str_sec_f("1700000000.123456789012345678", Some(Scale::TAI)).unwrap();
-    /// assert_eq!(d.to_sec64(), 1700000000);
+    /// assert_eq!(d.to_sec64_floor(), 1700000000);
     ///
     /// // Leading junk is skipped
     /// let d = Dt::from_str_sec_f("ts= -0.00123 suffix", Some(Scale::TAI)).unwrap();

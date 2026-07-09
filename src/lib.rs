@@ -123,7 +123,7 @@
 //! assert_eq!(unix, 0.0);
 //!
 //! // or to milliseconds
-//! let unix: i128 = dt.add_ms(1000).to_unix().to_ms();
+//! let unix: i128 = dt.add_ms(1000).to_unix().to_ms().0;
 //! assert_eq!(unix, 1000);
 //!
 //! // to and from jd
@@ -138,17 +138,17 @@
 //!
 //! // calendar math and negative year
 //! let dt = Dt::from_ymd(-2000, 1, 31, Scale::TAI, 12, 0, 0, 0);
-//! let ymd = dt.add_mo(1).to_ymd();
+//! let ymd = dt.add_months(1).to_ymd();
 //! assert_eq!(ymd.day(), 29);
 //!
 //! // Timezone-aware calendar math (respects DST transitions, requires jiff-tz feature)
 //! let dt = Dt::from_str_iso("2025-03-30T00:30:00Z").unwrap(); // Just before London DST start
 //!
 //! // Normal (naive) addition — ignores DST rules
-//! let normal = dt.add_hr(1);
+//! let normal = dt.add_hours(1);
 //!
 //! // Timezone-aware addition — correctly handles the transition
-//! let aware = dt.add_hr_tz(1, "Europe/London").unwrap();
+//! let aware = dt.add_hours_tz(1, "Europe/London").unwrap();
 //!
 //! println!("Normal: {}", normal.to_str_rfc9557("Europe/London").unwrap());
 //! println!("Aware:  {}", aware.to_str_rfc9557("Europe/London").unwrap());
@@ -190,7 +190,7 @@
 //! | Feature              | Description                                                                 | Requires     |
 //! |----------------------|-----------------------------------------------------------------------------|--------------|
 //! | `parse`              | Enables the auto-parsers (`from_str_parse`, `from_str_duration`, etc.)      | `alloc`      |
-//! | `jiff-tz`            | Enables timezone-aware calendar math (`add_days_tz`, `add_hr_tz`, etc.) and `to_str_in_tz` | `std`       |
+//! | `jiff-tz`            | Enables timezone-aware calendar math (`add_days_tz`, `add_hours_tz`, etc.) and `to_str_in_tz` | `std`       |
 //! | `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                  | `std`       |
 //! | `jiff`               | Enables basic Jiff interop                                                | `alloc`     |
 //! | `chrono`             | Enables Chrono interop                                                    | `alloc`     |
@@ -341,7 +341,7 @@ mod physics;
 // PUB MOD
 // _________________________________________
 pub mod civil_parts;
-pub mod constants;
+pub mod consts;
 pub mod math;
 pub mod tz;
 pub mod utc;
@@ -356,7 +356,7 @@ pub mod sidereal;
 // CRATE USE
 // _________________________________________
 pub(crate) use civil_parts::*;
-pub(crate) use constants::*;
+pub(crate) use consts::*;
 pub(crate) use locale::*;
 #[allow(unused_imports)]
 pub(crate) use math::{
@@ -372,7 +372,7 @@ pub(crate) use strtime::*;
 
 #[cfg(feature = "parse")]
 pub(crate) use alloc_parse::{
-    alloc_constants::*, date::*, date_classification::*, duration::*, helpers::*, parse_date::*,
+    alloc_consts::*, date::*, date_classification::*, duration::*, helpers::*, parse_date::*,
     types::*,
 };
 

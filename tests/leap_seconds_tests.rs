@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale, constants::ATTOS_PER_SEC_I128};
+use deep_time::{AttosTraits, Dt, Scale, consts::ATTOS_PER_SEC_I128};
 
 #[cfg(feature = "parse")]
 #[test]
@@ -145,11 +145,11 @@ fn leap_seconds_various() {
         59,
         999_999_999_999_999_999,
     );
-    assert_eq!(before.to_sec64(), -852033590);
+    assert_eq!(before.to_sec64_floor(), -852033590);
 
     // During 1972 leap second (fractional attosecond into 23:59:60)
     let during = Dt::from_ymd(1972, 12, 31, Scale::UTC, 23, 59, 60, 1);
-    assert_eq!(during.to_sec64(), -852033589);
+    assert_eq!(during.to_sec64_floor(), -852033589);
 }
 
 #[test]
@@ -174,7 +174,7 @@ fn to_epoch_leaps_and_tai() {
         leap.to_sec(),
     );
     assert_eq!(
-        Dt::leap_sec_using_sec64(leap.to_sec64(), false)
+        Dt::leap_sec_using_sec64(leap.to_sec64_floor(), false)
             .unwrap()
             .is_leap_sec,
         deep_time::utc::IsLeapSec::Add,
@@ -194,13 +194,13 @@ fn to_epoch_leaps_and_tai() {
     let leap = Dt::from_ymd(2016, 12, 31, Scale::UTC, 23, 59, 60, 0);
     let leap_attos = leap.to_unix().to_attos();
 
-    let unix_sec_part = Dt::attos_to_sec(leap_attos);
+    let unix_sec_part = leap_attos.attos_to_sec();
     assert_eq!(unix_sec_part, 1_483_228_799);
 
     let after = Dt::from_ymd(2017, 1, 1, Scale::UTC, 0, 0, 0, 0);
     let after_attos = after.to_unix().to_attos();
 
-    let unix_sec_part = Dt::attos_to_sec(after_attos);
+    let unix_sec_part = after_attos.attos_to_sec();
     assert_eq!(unix_sec_part, 1_483_228_800); // 2017-01-01 00:00:00 UTC
 
     // The fractional part should be zero for this instant

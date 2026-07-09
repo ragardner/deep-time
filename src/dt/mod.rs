@@ -7,8 +7,10 @@ mod et;
 mod from_ccsds;
 mod from_str;
 mod gregorian;
+mod helpers;
 mod julian_date;
 mod ops;
+mod to;
 mod to_bin_ccsds;
 mod to_str;
 
@@ -124,7 +126,7 @@ use core::fmt;
 /// - [`Dt::convert`](../struct.Dt.html#method.convert)
 /// - [`Dt::to_tai`](../struct.Dt.html#method.to_tai)
 /// - [`Dt::from_sec`](../struct.Dt.html#method.from_sec)
-/// - [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64)
+/// - [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor)
 /// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
 /// - [`Dt::convert_internal`](../struct.Dt.html#method.convert_internal)
 /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
@@ -190,7 +192,7 @@ use core::fmt;
 /// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
 ///
 /// // dt is internally TAI but has a UTC tag
-/// let unix_ms = dt.to_unix().to_ms();
+/// let unix_ms = dt.to_unix().to_ms().0;
 ///
 /// // unix timestamp in ms for 2000-01-01 noon UTC
 /// assert_eq!(unix_ms, 946728000000);
@@ -255,7 +257,7 @@ use core::fmt;
 /// use deep_time::{Dt, Scale};
 ///
 /// let x = Dt::from_ymd(2000, 2, 29, Scale::UTC, 0, 0, 0, 0).to_ymd();
-/// let x = x.add_yr(1);
+/// let x = x.add_years(1);
 ///
 /// assert_eq!(x.day(), 28);
 /// ```

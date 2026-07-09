@@ -1,7 +1,7 @@
 use crate::{
-    ATTOS_PER_FS, ATTOS_PER_MS, ATTOS_PER_NS, ATTOS_PER_PS, ATTOS_PER_SEC_I128, ATTOS_PER_US, Dt,
-    Real, SEC_PER_DAYI64, SEC_PER_DAYI128, SEC_PER_WEEK, Scale,
-    TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
+    ATTOS_PER_DAY, ATTOS_PER_FS_I128, ATTOS_PER_HOUR, ATTOS_PER_MIN, ATTOS_PER_MS_I128,
+    ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_US_I128, Dt, Real,
+    SEC_PER_DAY_I64, SEC_PER_WEEK, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
 };
 
 impl Dt {
@@ -106,7 +106,7 @@ impl Dt {
 
     /// One days worth of attoseconds.
     pub const ONE_DAY: Self = Self::new(
-        (SEC_PER_DAYI64 as i128) * ATTOS_PER_SEC_I128,
+        (SEC_PER_DAY_I64 as i128) * ATTOS_PER_SEC_I128,
         Scale::TAI,
         Scale::TAI,
     );
@@ -188,11 +188,35 @@ impl Dt {
         Self::from_sec_f(sec, Scale::TAI)
     }
 
+    /// Low level constructor from total attoseconds since a given epoch.
+    ///
+    /// Simply adds the total attoseconds to the epoch. Does not perform
+    /// any time scale conversions.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // A leap second from the middle of the table (36 leap seconds accumulated)
+    /// let original = Dt::from_ymd(2015, 6, 30, Scale::UTC, 23, 59, 60, 123_456_789_000_000_000);
+    ///
+    /// // Round-trip through canonical attoseconds
+    /// let canon = original.to_diff_raw(Dt::UNIX_EPOCH).to_attos();
+    /// let roundtrip1 = Dt::from_diff_raw(canon, Dt::UNIX_EPOCH);
+    ///
+    /// assert_eq!(original, roundtrip1, "Canonical round-trip failed");
+    /// ```
+    #[inline]
+    pub const fn from_diff_raw(attos: i128, epoch: Dt) -> Dt {
+        epoch.add(Dt::new(attos, epoch.scale, epoch.target))
+    }
+
     /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
     /// the given `scale`.
     ///
     /// - **Requires** a seconds and attoseconds count such that would be returned from the
-    ///   functions [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64) and
+    ///   functions [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
     ///   **[`Dt::to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac)**.
     /// - The returned object's `scale` field is set to TAI and its `target` field is set to
     ///   the given `scale` arg.
@@ -217,19 +241,53 @@ impl Dt {
         }
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] from whole seconds plus a sub-second attoseconds remainder.
     ///
-    /// - **Requires** a seconds and attoseconds count such that would be returned from the
-    ///   functions [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64) and
-    ///   **[`Dt::to_sec_frac`](../struct.Dt.html#method.to_sec_frac)**.
-    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
-    ///   the given `scale` arg.
-    /// - The `sec` should be from the epoch TAI 2000-01-01 12:00:00.
+    /// - `sec` — whole seconds only (no fraction). Use
+    ///   [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64)
+    ///   to obtain this from an existing [`Dt`].
+    /// - `attos` — the signed sub-second remainder in attoseconds, as returned by
+    ///   [`Dt::to_sec_frac`](../struct.Dt.html#method.to_sec_frac).
+    ///   For a total of `1.3` s: `sec = 1`, `attos = 300_000_000_000_000_000`.
+    ///   For `-1.3` s: `sec = -1`, `attos = -300_000_000_000_000_000`.
+    ///   For `-0.5` s: `sec = 0`, `attos = -500_000_000_000_000_000`.
     ///
-    /// This function performs a time scale conversion from the given `scale` to **TAI**,
-    /// if you don't want any time scale conversion to take place then either use
-    /// `Scale::TAI` as an arg or use any of the following constructors:
+    /// This whole/remainder split differs from
+    /// [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor)
+    /// +
+    /// [`Dt::to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
+    /// Use
+    /// [`from_sec_and_ufrac`](../struct.Dt.html#method.from_sec_and_ufrac)
+    /// for that pairing.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// assert_eq!(
+    ///     Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI),
+    ///     dt,
+    /// );
+    ///
+    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// assert_eq!(
+    ///     Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI),
+    ///     dt,
+    /// );
+    ///
+    /// let dt = Dt::span(-500_000_000_000_000_000);
+    /// assert_eq!(
+    ///     Dt::from_sec_and_frac(0, -500_000_000_000_000_000, Scale::TAI),
+    ///     dt,
+    /// );
+    /// ```
+    ///
+    /// The result is stored on TAI and converted from `scale`.
+    /// `sec` is measured from the library epoch: 2000-01-01 12:00:00 TAI.
+    ///
+    /// To avoid scale conversion, pass `Scale::TAI`, or use one of:
     ///
     /// - [`Dt::new`](../struct.Dt.html#method.new)
     /// - [`Dt::new_sec`](../struct.Dt.html#method.new_sec)
@@ -238,9 +296,8 @@ impl Dt {
     /// - [`Dt::span_f`](../struct.Dt.html#method.span_f)
     /// - [`Dt::from_tai_sec`](../struct.Dt.html#method.from_tai_sec)
     #[inline(always)]
-    pub fn from_sec_and_attos(sec: i64, attos: u64, scale: Scale) -> Dt {
-        let attos = Dt::sec_and_attos_to_attos(sec, attos);
-        Dt::from_attos(attos, scale)
+    pub fn from_sec_and_frac(sec: i64, attos: i64, scale: Scale) -> Dt {
+        Dt::from_attos((sec as i128) * ATTOS_PER_SEC_I128 + (attos as i128), scale)
     }
 
     /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
@@ -319,158 +376,109 @@ impl Dt {
         Self::from_attos(sec.saturating_mul(ATTOS_PER_SEC_I128), scale)
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] from whole milliseconds plus a non-negative fractional part in attoseconds.
     ///
-    /// - Requires a total milliseconds value.
-    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
-    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
-    ///   the given `scale` arg.
+    /// Pairs with [`to_ms_floor`](../struct.Dt.html#method.to_ms_floor): the fractional part is
+    /// always **added**, even when `ms` is negative (Euclidean / floor split).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
     #[inline(always)]
-    pub const fn from_ms(ms: i128, scale: Scale) -> Dt {
-        let attos = ms.saturating_mul(ATTOS_PER_MS as i128);
+    pub const fn from_ms_floor(ms: i128, frac_attos: u128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_attos_to_attos(ms, frac_attos, ATTOS_PER_MS_I128);
         Self::from_attos(attos, scale)
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] from whole microseconds plus a non-negative fractional part in attoseconds.
     ///
-    /// - Requires a total microseconds value.
-    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
-    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
-    ///   the given `scale` arg.
+    /// Pairs with [`to_us_floor`](../struct.Dt.html#method.to_us_floor): the fractional part is
+    /// always **added**, even when `us` is negative (Euclidean / floor split).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
     #[inline(always)]
-    pub const fn from_us(us: i128, scale: Scale) -> Dt {
-        let attos = us.saturating_mul(ATTOS_PER_US as i128);
+    pub const fn from_us_floor(us: i128, frac_attos: u128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_attos_to_attos(us, frac_attos, ATTOS_PER_US_I128);
         Self::from_attos(attos, scale)
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] from whole nanoseconds plus a non-negative fractional part in attoseconds.
     ///
-    /// - Requires a total nanoseconds value.
-    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
-    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
-    ///   the given `scale` arg.
+    /// Pairs with [`to_ns_floor`](../struct.Dt.html#method.to_ns_floor): the fractional part is
+    /// always **added**, even when `ns` is negative (Euclidean / floor split).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
     #[inline(always)]
-    pub const fn from_ns(ns: i128, scale: Scale) -> Dt {
-        let attos = ns.saturating_mul(ATTOS_PER_NS as i128);
+    pub const fn from_ns_floor(ns: i128, frac_attos: u128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_attos_to_attos(ns, frac_attos, ATTOS_PER_NS_I128);
         Self::from_attos(attos, scale)
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] from whole picoseconds plus a non-negative fractional part in attoseconds.
     ///
-    /// - Requires a total picoseconds value.
-    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
-    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
-    ///   the given `scale` arg.
+    /// Pairs with [`to_ps_floor`](../struct.Dt.html#method.to_ps_floor): the fractional part is
+    /// always **added**, even when `ps` is negative (Euclidean / floor split).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
     #[inline(always)]
-    pub const fn from_ps(ps: i128, scale: Scale) -> Dt {
-        let attos = ps.saturating_mul(ATTOS_PER_PS as i128);
+    pub const fn from_ps_floor(ps: i128, frac_attos: u128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_attos_to_attos(ps, frac_attos, ATTOS_PER_PS_I128);
         Self::from_attos(attos, scale)
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] from whole femtoseconds plus a non-negative fractional part in attoseconds.
     ///
-    /// - Requires a total femtoseconds value.
-    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
-    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
-    ///   the given `scale` arg.
+    /// Pairs with [`to_fs_floor`](../struct.Dt.html#method.to_fs_floor): the fractional part is
+    /// always **added**, even when `fs` is negative (Euclidean / floor split).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
     #[inline(always)]
-    pub const fn from_fs(fs: i128, scale: Scale) -> Dt {
-        let attos = fs.saturating_mul(ATTOS_PER_FS as i128);
+    pub const fn from_fs_floor(fs: i128, frac_attos: u128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_attos_to_attos(fs, frac_attos, ATTOS_PER_FS_I128);
         Self::from_attos(attos, scale)
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] from whole minutes plus a non-negative fractional part in attoseconds.
     ///
-    /// Convenience wrapper around
-    /// [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
+    /// Pairs with [`to_mins_floor`](../struct.Dt.html#method.to_mins_floor): the fractional part is
+    /// always **added**, even when `m` is negative (Euclidean / floor split).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
     #[inline(always)]
-    pub const fn from_min(m: i64, scale: Scale) -> Dt {
-        Self::from_sec((m as i128) * 60, scale)
-    }
-
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
-    ///
-    /// Convenience wrapper around
-    /// [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
-    #[inline(always)]
-    pub const fn from_hr(h: i64, scale: Scale) -> Dt {
-        Self::from_sec((h as i128) * 3600, scale)
-    }
-
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
-    ///
-    /// - Params are hours, minutes, seconds, milliseconds, microseconds, and nanoseconds.
-    /// - All values are essentially optional (you can use 0 for ones you want to leave out).
-    /// - Negative values are handled.
-    /// - Uses saturating arithmetic.
-    pub const fn from_hms(
-        hr: i64,
-        min: i64,
-        sec: i64,
-        ms: i128,
-        us: i128,
-        ns: i128,
-        scale: Scale,
-    ) -> Dt {
-        // Combine hours/minutes/seconds with saturating arithmetic
-        let total_sec: i128 = (hr as i128)
-            .saturating_mul(3600)
-            .saturating_add((min as i128).saturating_mul(60))
-            .saturating_add(sec as i128);
-
-        // Combine sub-second parts (nanoseconds) with saturating arithmetic
-        let sub_ns: i128 = ms
-            .saturating_mul(1_000_000)
-            .saturating_add(us.saturating_mul(1_000))
-            .saturating_add(ns);
-
-        if sub_ns == 0 {
-            return Self::from_sec(total_sec, scale);
-        }
-
-        // Handle carry/borrow from sub-second component
-        let abs_ns: u128 = sub_ns.unsigned_abs();
-        let extra_sec: i128 = (abs_ns / 1_000_000_000) as i128;
-        let rem_ns: u64 = (abs_ns % 1_000_000_000) as u64;
-        let frac_attos: u128 = (rem_ns as u128) * (ATTOS_PER_NS as u128);
-
-        let attos = if sub_ns >= 0 {
-            total_sec
-                .saturating_add(extra_sec)
-                .saturating_mul(ATTOS_PER_SEC_I128)
-                .saturating_add(frac_attos as i128)
-        } else if frac_attos == 0 {
-            total_sec
-                .saturating_sub(extra_sec)
-                .saturating_mul(ATTOS_PER_SEC_I128)
-        } else {
-            total_sec
-                .saturating_sub(extra_sec)
-                .saturating_sub(1)
-                .saturating_mul(ATTOS_PER_SEC_I128)
-                .saturating_add(ATTOS_PER_SEC_I128 - frac_attos as i128)
-        };
-
+    pub const fn from_mins_floor(n: i128, frac_attos: u128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_attos_to_attos(n, frac_attos, ATTOS_PER_MIN);
         Self::from_attos(attos, scale)
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] from whole hours plus a non-negative fractional part in attoseconds.
     ///
-    /// - Convenience wrapper around
-    ///   [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
-    /// - Uses `86400` seconds per day in the calculation.
+    /// Pairs with [`to_hours_floor`](../struct.Dt.html#method.to_hours_floor): the fractional part is
+    /// always **added**, even when `h` is negative (Euclidean / floor split).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
     #[inline(always)]
-    pub const fn from_days(d: i64, scale: Scale) -> Dt {
-        Self::from_sec((d as i128).saturating_mul(SEC_PER_DAYI128), scale)
+    pub const fn from_hours_floor(n: i128, frac_attos: u128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_attos_to_attos(n, frac_attos, ATTOS_PER_HOUR);
+        Self::from_attos(attos, scale)
+    }
+
+    /// Builds a [`Dt`] from whole days plus a non-negative fractional part in attoseconds.
+    ///
+    /// Pairs with [`to_days_floor`](../struct.Dt.html#method.to_days_floor): the fractional part is
+    /// always **added**, even when `d` is negative (Euclidean / floor split).
+    ///
+    /// - Uses `86400` seconds per day.
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    #[inline(always)]
+    pub const fn from_days_floor(d: i128, frac_attos: u128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_attos_to_attos(d, frac_attos, ATTOS_PER_DAY);
+        Self::from_attos(attos, scale)
     }
 
     /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
@@ -480,8 +488,8 @@ impl Dt {
     ///   [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
     /// - Uses `604800` seconds per week in the calculation.
     #[inline(always)]
-    pub const fn from_wk(wk: i64, scale: Scale) -> Dt {
-        Dt::from_sec((wk as i128).saturating_mul(SEC_PER_WEEK as i128), scale)
+    pub const fn from_weeks(n: i128, scale: Scale) -> Dt {
+        Dt::from_sec(n.saturating_mul(SEC_PER_WEEK as i128), scale)
     }
 
     /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
@@ -491,19 +499,66 @@ impl Dt {
     ///   [`Dt::from_sec`](../struct.Dt.html#method.from_sec).
     /// - Uses `31_557_600` in the calculation.
     #[inline(always)]
-    pub const fn from_yr(yr: i64, scale: Scale) -> Dt {
-        Dt::from_sec((yr as i128).saturating_mul(31_557_600), scale)
+    pub const fn from_years(n: i128, scale: Scale) -> Dt {
+        Dt::from_sec(n.saturating_mul(31_557_600), scale)
     }
 
-    /// Returns a [`Dt`] that is this duration ago from the given scale.
+    /// Returns an instant that is this duration **before** zero attoseconds on `scale`.
+    ///
+    /// Zero attoseconds is the library epoch **2000-01-01 12:00:00** (see
+    /// [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)). This method is `const` and
+    /// does **not** read the system clock.
+    ///
+    /// For wall-clock “N units ago”, use [`Dt::ago`](../struct.Dt.html#method.ago)
+    /// (requires `std`, or WASM with `js`).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, TimeTraits};
+    ///
+    /// let t = 5.sec().before_zero(Scale::TAI);
+    /// assert_eq!(t, Dt::ZERO.sub(5.sec()));
+    /// assert_eq!(t.to_sec(), -5);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::after_zero`](../struct.Dt.html#method.after_zero)
+    /// - [`Dt::ago`](../struct.Dt.html#method.ago)
+    /// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
     #[inline(always)]
-    pub const fn ago(self, scale: Scale) -> Dt {
+    pub const fn before_zero(self, scale: Scale) -> Dt {
         Dt::from_attos(0, scale).sub(self)
     }
 
-    /// Returns a [`Dt`] that is this duration from now in the given scale.
+    /// Returns an instant that is this duration **after** zero attoseconds on `scale`.
+    ///
+    /// Zero attoseconds is the library epoch **2000-01-01 12:00:00** (see
+    /// [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)). This method is `const` and
+    /// does **not** read the system clock.
+    ///
+    /// For wall-clock “N units from now”, use
+    /// [`Dt::from_now`](../struct.Dt.html#method.from_now) (requires `std`, or WASM with
+    /// `js`).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, TimeTraits};
+    ///
+    /// let t = 5.sec().after_zero(Scale::TAI);
+    /// assert_eq!(t, Dt::ZERO.add(5.sec()));
+    /// assert_eq!(t.to_sec(), 5);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::before_zero`](../struct.Dt.html#method.before_zero)
+    /// - [`Dt::from_now`](../struct.Dt.html#method.from_now)
+    /// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
     #[inline(always)]
-    pub const fn from_now(self, scale: Scale) -> Dt {
+    pub const fn after_zero(self, scale: Scale) -> Dt {
         Dt::from_attos(0, scale).add(self)
     }
 
@@ -639,7 +694,7 @@ impl Dt {
             Dt::UNIX_EPOCH,
             false,
         )
-        .add(Dt::from_ns(nanos as i128, Scale::TAI))
+        .add(Dt::from_ns_floor(nanos as i128, 0, Scale::TAI))
     }
 
     /// Returns the current system time as TAI from 2000-01-01 12:00:00.
@@ -654,6 +709,78 @@ impl Dt {
             Dt::UNIX_EPOCH,
             false,
         )
-        .add(Dt::from_ns(nanos as i128, Scale::TAI))
+        .add(Dt::from_ns_floor(nanos as i128, 0, Scale::TAI))
+    }
+
+    /// Returns an instant that is this duration **before** the current system time.
+    ///
+    /// Subtracts `self` from [`Dt::now`](../struct.Dt.html#method.now). Available under
+    /// the same conditions as that method: the `std` feature (non-WASM-js), or WASM with
+    /// the `js` feature.
+    ///
+    /// For a `const` offset from the library epoch (no system clock), use
+    /// [`Dt::before_zero`](../struct.Dt.html#method.before_zero).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "std")]
+    /// # {
+    /// use deep_time::{Dt, TimeTraits};
+    ///
+    /// // ~3 days in the past relative to the system clock
+    /// let past = 3.days().ago();
+    /// assert!(past < Dt::now());
+    /// # }
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_now`](../struct.Dt.html#method.from_now)
+    /// - [`Dt::before_zero`](../struct.Dt.html#method.before_zero)
+    /// - [`Dt::now`](../struct.Dt.html#method.now)
+    #[cfg(any(
+        all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))),
+        all(target_arch = "wasm32", feature = "js"),
+    ))]
+    #[inline]
+    pub fn ago(self) -> Dt {
+        Dt::now().sub(self)
+    }
+
+    /// Returns an instant that is this duration **after** the current system time.
+    ///
+    /// Adds `self` to [`Dt::now`](../struct.Dt.html#method.now). Available under the same
+    /// conditions as that method: the `std` feature (non-WASM-js), or WASM with the `js`
+    /// feature.
+    ///
+    /// For a `const` offset from the library epoch (no system clock), use
+    /// [`Dt::after_zero`](../struct.Dt.html#method.after_zero).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "std")]
+    /// # {
+    /// use deep_time::{Dt, TimeTraits};
+    ///
+    /// // ~3 days in the future relative to the system clock
+    /// let future = 3.days().from_now();
+    /// assert!(future > Dt::now());
+    /// # }
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::ago`](../struct.Dt.html#method.ago)
+    /// - [`Dt::after_zero`](../struct.Dt.html#method.after_zero)
+    /// - [`Dt::now`](../struct.Dt.html#method.now)
+    #[cfg(any(
+        all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))),
+        all(target_arch = "wasm32", feature = "js"),
+    ))]
+    #[inline]
+    pub fn from_now(self) -> Dt {
+        Dt::now().add(self)
     }
 }

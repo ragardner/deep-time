@@ -2,14 +2,14 @@
 
 #[cfg(feature = "parse")]
 mod tests {
-    use deep_time::{Dt, Lang, constants::ATTOS_PER_SEC_I128};
+    use deep_time::{Dt, Lang, consts::ATTOS_PER_SEC_I128};
 
     fn assert_duration(input: &str, expected_millis: i64) {
         let trimmed = input.trim();
         let dur = Dt::from_str_duration(trimmed, Lang::default())
             .unwrap_or_else(|e| panic!("Failed '{}': {}", input, e));
 
-        let actual_millis = dur.to_ms() as i64;
+        let actual_millis = dur.to_ms().0 as i64;
 
         assert_eq!(actual_millis, expected_millis, "Input: '{}'", input);
     }

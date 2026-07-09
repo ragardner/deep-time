@@ -86,7 +86,7 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(unix, 0.0);
 
     // or to milliseconds
-    let unix: i128 = dt.add_ms(1000).to_unix().to_ms();
+    let unix: i128 = dt.add_ms(1000).to_unix().to_ms().0;
     assert_eq!(unix, 1000);
 
     // to and from jd
@@ -101,17 +101,17 @@ fn main() -> Result<(), DtErr> {
 
     // calendar math and negative year
     let dt = Dt::from_ymd(-2000, 1, 31, Scale::TAI, 12, 0, 0, 0);
-    let ymd = dt.add_mo(1).to_ymd();
+    let ymd = dt.add_months(1).to_ymd();
     assert_eq!(ymd.day(), 29);
 
     // Timezone-aware calendar math (respects DST transitions, requires jiff-tz feature)
     let dt = Dt::from_str_iso("2025-03-30T00:30:00Z")?; // Just before London DST start
 
     // Normal (naive) addition — ignores DST rules
-    let normal = dt.add_hr(1);
+    let normal = dt.add_hours(1);
 
     // Timezone-aware addition — correctly handles the transition
-    let aware = dt.add_hr_tz(1, "Europe/London")?;
+    let aware = dt.add_hours_tz(1, "Europe/London")?;
 
     println!("Normal: {}", normal.to_str_rfc9557("Europe/London")?);
     println!("Aware:  {}", aware.to_str_rfc9557("Europe/London")?);

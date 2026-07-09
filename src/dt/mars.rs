@@ -51,16 +51,19 @@ impl Dt {
 
     /// Returns the Mars Sol Date (MSD) as a tuple of integer sols and the fractional part of a sol.
     ///
-    /// - The computation follows the canonical NASA GISS / AM2000 formulation and works for any input
-    ///   [`Scale`].
-    /// - Leap seconds are automatically accounted for when converting from UTC.
-    pub const fn to_msd(&self) -> (i64, u128) {
+    /// - This [`Dt`](struct.Dt.html) is first converted to the TT scale before a result is produced.
+    /// - Follows the canonical NASA GISS / AM2000 formulation.
+    ///
+    /// The fractional part is pushing the total towards the positive, and the whole part is floored.
+    /// For more information on this return value see
+    /// [`Dt::to_sec_and_ufrac`](struct.Dt.html#method.to_sec_and_ufrac).
+    pub const fn to_msd(&self) -> (i128, u128) {
         let tt = self.to(Scale::TT);
         let elapsed = Self::to_attos_since_mars_msd_epoch(tt);
         let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS);
         let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;
 
-        (Dt::i128_to_i64(whole_sols), frac_attos)
+        (whole_sols, frac_attos)
     }
 
     /// Returns Mars Coordinated Time (MTC) as a [`Dt`] representing
@@ -71,17 +74,17 @@ impl Dt {
         Dt::span(frac_attos as i128)
     }
 
-    /// Creates a `Dt` (in TT) from an Mars Sol Date using full library precision.
-    pub const fn from_msd(whole_sols: i64, frac_attos: u128) -> Dt {
-        let elapsed_attos = (whole_sols as i128) * MARS_SOL_ATTOS + frac_attos as i128;
+    /// Creates a [`Dt`] (in TT) from an Mars Sol Date.
+    pub const fn from_msd(whole_sols: i128, frac_attos: u128) -> Dt {
+        let elapsed_attos = whole_sols * MARS_SOL_ATTOS + frac_attos as i128;
         let tt = MARS_REF_TT.add(Dt::span(elapsed_attos));
         tt.convert(Scale::TAI)
     }
 
-    /// Creates a `Dt` (in TT) from a floating-point Mars Sol Date.
+    /// Creates a [`Dt`] (in TT) from a floating-point Mars Sol Date.
     /// Non-exact Real.
     pub const fn from_msd_f(msd: Real) -> Dt {
-        let whole = floor_f(msd) as i64;
+        let whole = floor_f(msd) as i128;
         let frac = msd - f!(whole);
         let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC, Scale::TAI);
         Self::from_msd(whole, frac_span.to_attos() as u128)
@@ -168,7 +171,7 @@ impl Dt {
     }
 
     /// Returns Local Mean Solar Time (LMST) at the given planetocentric east longitude
-    /// as a `Dt` representing seconds into the current Martian sol (range [0, one sol)).
+    /// as a [`Dt`] representing time into the current Martian sol (range [0, one sol)).
     ///
     /// LMST is the uniform mean solar time adjusted for longitude.
     ///

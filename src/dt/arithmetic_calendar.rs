@@ -8,22 +8,22 @@ impl Dt {
     /// - Uses standard last-day-of-month clamping.
     /// - Negative values subtract.
     #[inline(always)]
-    pub const fn add_yr(&self, n: i64) -> Self {
-        self.to_ymd().add_yr(n).to_dt()
+    pub const fn add_years(&self, n: i64) -> Self {
+        self.to_ymd().add_years(n).to_dt()
     }
 
     /// Adds (or subtracts) calendar months.
     /// Negative values subtract.
     #[inline(always)]
-    pub const fn add_mo(&self, n: i64) -> Self {
-        self.to_ymd().add_mo(n).to_dt()
+    pub const fn add_months(&self, n: i64) -> Self {
+        self.to_ymd().add_months(n).to_dt()
     }
 
     /// Adds (or subtracts) calendar weeks.
     /// Negative values subtract.
     #[inline(always)]
-    pub const fn add_wk(&self, n: i64) -> Self {
-        self.to_ymd().add_wk(n).to_dt()
+    pub const fn add_weeks(&self, n: i64) -> Self {
+        self.to_ymd().add_weeks(n).to_dt()
     }
 
     /// Adds (or subtracts) calendar days.
@@ -56,8 +56,8 @@ impl Dt {
     /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
-    pub fn add_yr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
-        Ok(self.to_ymd().add_yr_tz(n, tz)?.to_dt())
+    pub fn add_years_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        Ok(self.to_ymd().add_years_tz(n, tz)?.to_dt())
     }
 
     /// Adds the given number of months in the specified IANA timezone,
@@ -80,8 +80,8 @@ impl Dt {
     /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
-    pub fn add_mo_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
-        Ok(self.to_ymd().add_mo_tz(n, tz)?.to_dt())
+    pub fn add_months_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        Ok(self.to_ymd().add_months_tz(n, tz)?.to_dt())
     }
 
     /// Adds the given number of weeks in the specified IANA timezone,
@@ -104,8 +104,8 @@ impl Dt {
     /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
-    pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
-        Ok(self.to_ymd().add_wk_tz(n, tz)?.to_dt())
+    pub fn add_weeks_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        Ok(self.to_ymd().add_weeks_tz(n, tz)?.to_dt())
     }
 
     /// Adds the given number of calendar days in the specified IANA timezone,
@@ -152,8 +152,8 @@ impl Dt {
     /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
-    pub fn add_hr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
-        Ok(self.to_ymd().add_hr_tz(n, tz)?.to_dt())
+    pub fn add_hours_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        Ok(self.to_ymd().add_hours_tz(n, tz)?.to_dt())
     }
 
     /// Adds the given number of minutes in the specified IANA timezone,
@@ -176,8 +176,8 @@ impl Dt {
     /// - [`DtErrKind::OutOfRange`](../error/enum.DtErrKind.html#variant.OutOfRange) if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
-    pub fn add_min_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
-        Ok(self.to_ymd().add_min_tz(n, tz)?.to_dt())
+    pub fn add_mins_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+        Ok(self.to_ymd().add_mins_tz(n, tz)?.to_dt())
     }
 
     /// Adds the given number of seconds in the specified IANA timezone,

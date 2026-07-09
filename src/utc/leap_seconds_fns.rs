@@ -75,7 +75,7 @@ impl Dt {
     /// - If the timestamp is currently on the TAI time scale then use **`false`** for the `is_utc`
     ///   parameter.
     /// - `sec64` should be such that it was produced using euclid division, see
-    ///   [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64) for more info. This only applies to
+    ///   [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) for more info. This only applies to
     ///   negative `sec64` values.
     ///
     /// ## See also
@@ -162,7 +162,7 @@ impl Dt {
     /// - If the timestamp is currently on the TAI time scale then use **`false`** for the `is_utc`
     ///   parameter.
     /// - `sec64` should be such that it was produced using euclid division, see
-    ///   [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64) for more info. This only applies to
+    ///   [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) for more info. This only applies to
     ///   negative `sec64` values.
     #[inline(always)]
     pub const fn leap_sec_using_sec64(sec64: i64, is_utc: bool) -> Option<LeapInfo> {
@@ -174,13 +174,13 @@ impl Dt {
     /// Uses the library's in-built leap seconds list.
     #[inline(always)]
     pub const fn leap_sec(&self, is_utc: bool) -> Option<LeapInfo> {
-        Self::leap_sec_using_sec64_and_list(self.to_sec64(), is_utc, LEAP_SECS)
+        Self::leap_sec_using_sec64_and_list(self.to_sec64_floor(), is_utc, LEAP_SECS)
     }
 
     /// Get the leap seconds info for this instant with a given list.
     #[inline(always)]
     pub const fn leap_sec_using_list(&self, is_utc: bool, list: &[LeapSec]) -> Option<LeapInfo> {
-        Self::leap_sec_using_sec64_and_list(self.to_sec64(), is_utc, list)
+        Self::leap_sec_using_sec64_and_list(self.to_sec64_floor(), is_utc, list)
     }
 
     #[inline(always)]
@@ -388,7 +388,8 @@ impl Dt {
             };
 
             // don't use current: UTC because it would use the internal leap list
-            let utc_sec = Dt::from_ntp(Dt::from_sec(ntp_timestamp as i128, Scale::TAI)).to_sec64();
+            let utc_sec =
+                Dt::from_ntp(Dt::from_sec(ntp_timestamp as i128, Scale::TAI)).to_sec64_floor();
 
             let tai_sec = if entries_pushed == 0 {
                 if leap_sec_after > 0 {

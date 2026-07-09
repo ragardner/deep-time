@@ -672,7 +672,7 @@ impl Dt {
             let tz =
                 TimeZone::get(tz_name).map_err(|e| an_err!(DtErrKind::InvalidTimeZone, "{}", e))?;
 
-            let unix_sec = self.to_unix().to_sec64();
+            let unix_sec = self.to_unix().to_sec64_floor();
 
             let ts = Timestamp::from_second(unix_sec)
                 .map_err(|e| an_err!(DtErrKind::InvalidTimestamp, "{}", e))?;
@@ -735,7 +735,7 @@ impl Dt {
         }
 
         let negative = self.attos < 0;
-        let total = self.to_sec_rounded().unsigned_abs();
+        let total = self.to_sec_round().unsigned_abs();
 
         if negative {
             buf[pos] = b'-';

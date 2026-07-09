@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch,
-    JD_2000_2_451_545, ParsedReal, Parser, Parts, SEC_PER_DAYI128, STRTIME_SIZE, Scale, Timestamp,
+    JD_2000_2_451_545_I128, ParsedReal, Parser, Parts, SEC_PER_DAY, STRTIME_SIZE, Scale, Timestamp,
     an_err,
 };
 
@@ -364,7 +364,7 @@ impl Parts {
     ///
     /// let p = Parts::from_str_sec_f("1700000000.123456789012345678", Some(Scale::TAI)).unwrap();
     /// let dt = p.to_dt().unwrap();
-    /// assert_eq!(dt.to_sec64(), 1700000000);
+    /// assert_eq!(dt.to_sec64_floor(), 1700000000);
     ///
     /// // Trailing scale is recognized when scale arg is None
     /// let p = Parts::from_str_sec_f("42.75 GPS", None).unwrap();
@@ -446,10 +446,10 @@ impl Parts {
 
         // Convert the signed JD (days + fractional day) to attoseconds since JD epoch 0.
         // 1 fractional day unit in frac_attos corresponds to SEC_PER_DAY seconds.
-        let jd_attos = jd_days * ATTOS_PER_DAY + jd_frac * SEC_PER_DAYI128;
+        let jd_attos = jd_days * ATTOS_PER_DAY + jd_frac * SEC_PER_DAY;
 
         // The library's Noon2000 epoch is exactly JD 2451545.0, so subtract its offset.
-        let epoch_offset = (JD_2000_2_451_545 as i128) * ATTOS_PER_DAY;
+        let epoch_offset = JD_2000_2_451_545_I128 * ATTOS_PER_DAY;
         let total_attos = jd_attos - epoch_offset;
 
         let parts = Parts {
@@ -516,7 +516,7 @@ impl Parts {
         // Convert MJD to JD by adding the 2400000.5 day offset.
         // MJD = JD - 2400000.5   =>   JD = MJD + 2400000.5
         let mut jd_days = mjd_days + 2_400_000;
-        let mut sub_day_attos = mjd_frac * SEC_PER_DAYI128 + ATTOS_PER_HALF_DAY;
+        let mut sub_day_attos = mjd_frac * SEC_PER_DAY + ATTOS_PER_HALF_DAY;
 
         // Normalize sub-day attos (handle carry/borrow when adding the .5 offset)
         if sub_day_attos >= ATTOS_PER_DAY {
@@ -530,7 +530,7 @@ impl Parts {
         let jd_attos = jd_days * ATTOS_PER_DAY + sub_day_attos;
 
         // The library's Noon2000 epoch is exactly JD 2451545.0, so subtract its offset.
-        let epoch_offset = (JD_2000_2_451_545 as i128) * ATTOS_PER_DAY;
+        let epoch_offset = JD_2000_2_451_545_I128 * ATTOS_PER_DAY;
         let total_attos = jd_attos - epoch_offset;
 
         let parts = Parts {

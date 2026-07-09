@@ -13,8 +13,8 @@ use crate::{
 /// If `reference_date` is `None` and the `std` feature is enabled, real system time is used.
 #[inline]
 pub(crate) fn parse_syslog_no_year(input: &str, lang: Lang, ref_time: &Option<Dt>) -> Option<Dt> {
-    let now = if let Some(tp) = ref_time {
-        *tp
+    let now = if let Some(rt) = ref_time {
+        *rt
     } else {
         #[cfg(feature = "std")]
         {

@@ -5,12 +5,12 @@
 // Copyright (C) 2013-2023, NumFOCUS Foundation.
 // See the full license text in the ERFA repository: https://github.com/liberfa/erfa/blob/master/LICENSE
 
-mod constants;
+mod consts;
 mod xls;
 mod xpl;
 
 use crate::{atan2, cos, sin};
-use constants::*;
+use consts::*;
 use core::f64::consts::PI;
 use core::f64::consts::TAU;
 use xls::*;

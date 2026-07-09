@@ -415,7 +415,7 @@ impl<'a> Printer<'a> {
         if dt.to_attos() < 0 {
             self.write_byte(b'-');
         }
-        self.write_i64(dt.to_sec64_trunc().saturating_abs(), b'-', Some(0), b'0');
+        self.write_i64(dt.to_sec64().saturating_abs(), b'-', Some(0), b'0');
         let frac = dt.to_sec_frac().saturating_abs() as u64;
         if frac != 0 {
             self.write_byte(b'.');
@@ -429,7 +429,7 @@ impl<'a> Printer<'a> {
         if dt.to_attos() < 0 {
             self.write_byte(b'-');
         }
-        self.write_i64(dt.to_sec64_trunc().saturating_abs(), b'-', Some(0), b'0');
+        self.write_i64(dt.to_sec64().saturating_abs(), b'-', Some(0), b'0');
         let frac = dt.to_sec_frac().saturating_abs() as u64;
         if frac != 0 {
             self.write_byte(b'.');

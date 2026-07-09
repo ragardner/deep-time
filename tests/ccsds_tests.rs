@@ -1,7 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 use deep_time::civil_parts::Parts;
-use deep_time::constants::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
+use deep_time::consts::{ATTOS_PER_SEC_I128, SEC_PER_DAY_I64};
 use deep_time::{Dt, DtErrKind, Scale};
 
 mod ccsds_tests {

@@ -8,7 +8,8 @@ impl Dt {
     /// the signed difference from the given epoch.
     ///
     /// This is a low-level `const fn` used internally by higher-level conversion
-    /// methods such as [`to_ymd`](Dt::to_ymd).
+    /// methods such as
+    /// [`to_ymd`](../struct.Dt.html#method.to_ymd).
     ///
     /// ## Arguments
     ///
@@ -25,7 +26,10 @@ impl Dt {
     ///
     /// It can be interpreted as a timestamp when `epoch` is something like
     /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) (e.g. for
-    /// generating Unix timestamps via `.to_ms()` or `.to_sec()`).
+    /// generating Unix timestamps via
+    /// [`Dt::to_ms`](../struct.Dt.html#method.to_ms)
+    /// or
+    /// [`Dt::to_sec`](../struct.Dt.html#method.to_sec).
     ///
     /// ## See also
     ///
@@ -42,7 +46,7 @@ impl Dt {
     /// let diff = dt.to_scale_and_diff(Dt::UNIX_EPOCH, true);
     ///
     /// // diff can be used as a Unix timestamp offset
-    /// let unix_ms = diff.to_ms();
+    /// let unix_ms = diff.to_ms().0;
     /// assert!(unix_ms > 1_700_000_000_000);
     /// ```
     #[inline]

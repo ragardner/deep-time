@@ -2,7 +2,7 @@
 
 #[cfg(feature = "physics")]
 mod light_time_tests {
-    use deep_time::{Dt, Observer, Position, Scale, Spacetime, Velocity, constants::C};
+    use deep_time::{Dt, Observer, Position, Scale, Spacetime, Velocity, consts::C};
 
     fn make_state(
         tai_sec: i128,
@@ -147,7 +147,7 @@ mod light_time_tests {
         let rx_pos = Position::new(-au, b, 0.0);
 
         let tx = make_state(0, tx_pos, Velocity::ZERO, -8.87e8, 0.0);
-        let tolerance = Dt::from_ns(1, Scale::TAI);
+        let tolerance = Dt::from_ns_floor(1, 0, Scale::TAI);
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
 
         // Static receiver — safe to ignore the time argument
@@ -189,7 +189,7 @@ mod light_time_tests {
             -8.87e8,
             0.0,
         );
-        let tolerance = Dt::from_ns(1, Scale::TAI);
+        let tolerance = Dt::from_ns_floor(1, 0, Scale::TAI);
 
         // Sun is at the origin in this test
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
@@ -308,7 +308,7 @@ mod light_time_tests {
         let tx_pos = Position::new(1.5e11, 0.0, 0.0);
         let tx = make_state(0, tx_pos.clone(), Velocity::ZERO, -8.87e8, 0.0);
         let rx_pos = Position::new(1.52e11, 0.0, 0.0);
-        let tolerance = Dt::from_ns(1, Scale::TAI);
+        let tolerance = Dt::from_ns_floor(1, 0, Scale::TAI);
         let bodies = &[(Dt::SHAPIRO_SOLAR, Position::ZERO)];
 
         let (prop_correction, final_rx_time, _) = tx.iterative_one_way_light_time_to(

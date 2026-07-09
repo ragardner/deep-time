@@ -30,7 +30,7 @@ use jiff::civil;
 /// use deep_time::{Dt, Scale};
 ///
 /// let x = Dt::from_ymd(2000, 2, 29, Scale::UTC, 0, 0, 0, 0).to_ymd();
-/// let x = x.add_yr(1);
+/// let x = x.add_years(1);
 ///
 /// assert_eq!(x.day(), 28);
 /// ```
@@ -109,7 +109,7 @@ impl YmdHms {
     /// Adds (or subtracts) whole years, preserving month and day-of-month.
     /// - Uses standard last-day-of-month clamping.
     /// - Negative values subtract.
-    pub const fn add_yr(&self, n: i64) -> Self {
+    pub const fn add_years(&self, n: i64) -> Self {
         if n == 0 {
             return self.clone_const();
         }
@@ -122,7 +122,7 @@ impl YmdHms {
     }
 
     /// Adds (or subtracts) calendar months. Negative values subtract.
-    pub const fn add_mo(&self, n: i64) -> Self {
+    pub const fn add_months(&self, n: i64) -> Self {
         if n == 0 {
             return self.clone_const();
         }
@@ -133,7 +133,7 @@ impl YmdHms {
 
         let total_months = yr * 12 + (mo - 1) + delta;
 
-        let new_yr = Dt::i128_to_i64(total_months.div_euclid(12));
+        let new_yr = Dt::to_i64(total_months.div_euclid(12));
         let new_mo = Dt::clamp_u8((total_months.rem_euclid(12) + 1) as u8, 1, 12);
 
         let max_day = Dt::days_in_month(new_yr, new_mo);
@@ -146,7 +146,7 @@ impl YmdHms {
 
     /// Adds (or subtracts) calendar weeks. Negative values subtract.
     #[inline(always)]
-    pub const fn add_wk(&self, n: i64) -> Self {
+    pub const fn add_weeks(&self, n: i64) -> Self {
         self.add_days(n.saturating_mul(7))
     }
 
@@ -195,7 +195,7 @@ impl YmdHms {
 
     /// Adds (or subtracts) whole minutes. Negative values subtract.
     #[inline]
-    pub const fn add_min(&self, n: i64) -> Self {
+    pub const fn add_mins(&self, n: i64) -> Self {
         let delta = (n as i128)
             .saturating_mul(60)
             .saturating_mul(ATTOS_PER_SEC_I128);
@@ -204,7 +204,7 @@ impl YmdHms {
 
     /// Adds (or subtracts) whole hours. Negative values subtract.
     #[inline]
-    pub const fn add_hr(&self, n: i64) -> Self {
+    pub const fn add_hours(&self, n: i64) -> Self {
         let delta = (n as i128)
             .saturating_mul(3600)
             .saturating_mul(ATTOS_PER_SEC_I128);
@@ -322,7 +322,7 @@ impl YmdHms {
     /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
-    pub fn add_yr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+    pub fn add_years_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().years(n))
@@ -343,7 +343,7 @@ impl YmdHms {
     /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
-    pub fn add_mo_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+    pub fn add_months_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().months(n))
@@ -364,7 +364,7 @@ impl YmdHms {
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
     #[inline(always)]
-    pub fn add_wk_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+    pub fn add_weeks_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         self.add_days_tz(n.saturating_mul(7), tz)
     }
 
@@ -401,7 +401,7 @@ impl YmdHms {
     /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
-    pub fn add_hr_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+    pub fn add_hours_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let new_zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().hours(n))
@@ -422,7 +422,7 @@ impl YmdHms {
     /// - [`DtErrKind::InvalidTimeZone`] if Jiff cannot find/resolve the IANA timezone name.
     /// - [`DtErrKind::OutOfRange`] if the result of the calendar arithmetic operation
     ///   would be outside the range supported by Jiff (the checked_add fails).
-    pub fn add_min_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
+    pub fn add_mins_tz(&self, n: i64, tz: &str) -> Result<Self, DtErr> {
         let zoned = self
             .to_jiff_zoned(tz)?
             .checked_add(jiff::Span::new().minutes(n))

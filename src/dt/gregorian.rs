@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAYI64, Scale, Weekday, YmdHms, utc::IsLeapSec};
+use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAY_I64, Scale, Weekday, YmdHms, utc::IsLeapSec};
 
 impl Dt {
     pub(crate) const DAYS_IN_GREGORIAN_MONTHS: [u8; 12] =
@@ -10,7 +10,7 @@ impl Dt {
     /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
     /// to a proleptic Gregorian date (year, month, day).
     pub const fn unix_sec_to_ymd(unix_sec: i64) -> (i64, u8, u8) {
-        let days = unix_sec.div_euclid(SEC_PER_DAYI64);
+        let days = unix_sec.div_euclid(SEC_PER_DAY_I64);
 
         // Shift so we work relative to 0000-03-01 (makes leap year math cleaner)
         let z = days + 719468;
@@ -94,11 +94,11 @@ impl Dt {
     pub const fn to_ymd(&self) -> YmdHms {
         let from_unix_epoch = self.to(self.target).to_diff_raw(Dt::UNIX_EPOCH);
 
-        let unix_sec = from_unix_epoch.to_sec64();
+        let unix_sec = from_unix_epoch.to_sec64_floor();
         let frac = from_unix_epoch.to_sec_ufrac();
         let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
 
-        let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAYI64);
+        let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAY_I64);
         let hr = (seconds_since_midnight / 3600) as u8;
         let min = ((seconds_since_midnight % 3600) / 60) as u8;
         let mut sec = (seconds_since_midnight % 60) as u8;
@@ -136,7 +136,8 @@ impl Dt {
     /// - `hr`   → 0..=23 **0 based**
     /// - `min`  → 0..=59 **0 based**
     /// - `sec`  → 0..=60 **0 based** (permits leap seconds)
-    /// - `attos` → 10¹⁸ **0 based** (clamped to under 1 second)
+    /// - `attos` → 10¹⁸ **0 based** fractional seconds
+    ///   (clamped to under 1 second)
     ///
     /// ## Examples
     ///
@@ -189,7 +190,7 @@ impl Dt {
         if sec_is_60 && scale.uses_leap_seconds() {
             let t =
                 Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false);
-            match Self::leap_sec_using_sec64(t.add_sec(1).to_sec64(), false) {
+            match Self::leap_sec_using_sec64(t.add_sec(1).to_sec64_floor(), false) {
                 Some(i) => match i.is_leap_sec {
                     IsLeapSec::Add => t.add_sec(1),
                     _ => t,
@@ -213,7 +214,7 @@ impl Dt {
         let days_since_1970 = jd.saturating_sub(2440588);
         let time_of_day = (hr as i64) * 3600 + (min as i64) * 60 + (sec as i64);
         days_since_1970
-            .saturating_mul(SEC_PER_DAYI64)
+            .saturating_mul(SEC_PER_DAY_I64)
             .saturating_add(time_of_day)
     }
 
@@ -241,7 +242,7 @@ impl Dt {
         let mo = (m + 3 - 12 * floor_div_pos(m, 10)) as u8;
         let yr = b * 100 + d - 4800 + floor_div_pos(m, 10);
 
-        (Dt::i128_to_i64(yr), mo, day)
+        (Dt::to_i64(yr), mo, day)
     }
 
     /// Computes the Julian Day Number (JD) for a proleptic Gregorian calendar date at noon UT.
@@ -285,7 +286,7 @@ impl Dt {
         let day_mo = d + (153 * m + 2) / 5;
         let yr_part = 365 * y + y4 - y100 + y400 - 32045;
 
-        Dt::i128_to_i64(day_mo as i128 + yr_part)
+        Dt::to_i64(day_mo as i128 + yr_part)
     }
 
     /// Computes the Julian Day Number from a Gregorian year and ordinal day-of-year.

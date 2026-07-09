@@ -4,7 +4,7 @@ use jiff::{SignedDuration, Span, Timestamp};
 impl Dt {
     /// Converts this [`Dt`] to a [`jiff::Timestamp`].
     pub fn to_jiff_timestamp(&self) -> Timestamp {
-        let nanos = self.target(Scale::UTC).to_unix().to_ns();
+        let nanos = self.target(Scale::UTC).to_unix().to_ns().0;
 
         match Timestamp::from_nanosecond(nanos) {
             Ok(ts) => ts,
@@ -24,7 +24,7 @@ impl Dt {
     #[inline]
     pub fn from_jiff_timestamp(ts: Timestamp) -> Dt {
         Dt::from_diff_and_scale(
-            Dt::from_ns(ts.as_nanosecond(), Scale::UTC),
+            Dt::from_ns_floor(ts.as_nanosecond(), 0, Scale::UTC),
             Self::UNIX_EPOCH,
             false,
         )
@@ -32,9 +32,9 @@ impl Dt {
 
     /// Converts this [`Dt`] to a [`jiff::Span`] (seconds + nanoseconds only).
     pub fn to_jiff_span(&self) -> Span {
-        let total_nanos = self.to_ns();
-        let seconds = Dt::i128_to_i64(total_nanos.div_euclid(1_000_000_000));
-        let nanoseconds = Dt::i128_to_i64(total_nanos.rem_euclid(1_000_000_000));
+        let (total_nanos, _) = self.to_ns();
+        let seconds = Dt::to_i64(total_nanos / 1_000_000_000);
+        let nanoseconds = Dt::to_i64(total_nanos % 1_000_000_000);
 
         if let Ok(base) = Span::new().try_seconds(seconds)
             && let Ok(span) = base.try_nanoseconds(nanoseconds)
@@ -59,7 +59,7 @@ impl Dt {
     /// - Supports the **entire** range of `Span` (never saturates).
     #[inline]
     pub fn to_jiff_signed_duration(&self) -> SignedDuration {
-        SignedDuration::from_nanos_i128(self.to_ns())
+        SignedDuration::from_nanos_i128(self.to_ns().0)
     }
 
     /// Creates a [`Dt`] from a `jiff::SignedDuration` (nanosecond precision).
@@ -67,7 +67,7 @@ impl Dt {
     /// This is the inverse of [`Dt::to_jiff_signed_duration`].
     #[inline]
     pub fn from_jiff_signed_duration(dur: SignedDuration) -> Dt {
-        Self::from_ns(dur.as_nanos(), Scale::TAI)
+        Self::from_ns_floor(dur.as_nanos(), 0, Scale::TAI)
     }
 
     /// Creates a [`Dt`] from a `jiff::Dt`.

@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale, constants::ATTOS_PER_HALF_DAYU};
+use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY};
 
 #[test]
 fn j2000_tt_is_jd_2451545() {
@@ -16,7 +16,7 @@ fn j2000_tt_is_jd_2451545() {
     // At J2000.0 (JD 2451545.0) → MJD 51544.5
     assert_eq!(mjd, 51544, "MJD integer part (standard convention)");
     assert_eq!(
-        mjd_frac, ATTOS_PER_HALF_DAYU,
+        mjd_frac, ATTOS_PER_HALF_DAY,
         "MJD fractional part should be 0.5 day"
     );
 }

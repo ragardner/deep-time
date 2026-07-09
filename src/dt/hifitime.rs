@@ -6,7 +6,7 @@ impl Dt {
     ///
     /// Round-trips with [`Dt::from_hifitime_epoch`].
     pub fn to_hifitime_epoch(&self) -> Epoch {
-        let nanos = self.to_ns();
+        let nanos = self.to_ns().0;
 
         let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);
         let j2000 = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
@@ -35,7 +35,7 @@ impl Dt {
             - j1900.to_tai_duration().total_nanoseconds();
 
         let ns_since_zero_tai = ns_since_j1900 - offset_ns;
-        Self::from_ns(ns_since_zero_tai, Scale::TAI)
+        Self::from_ns_floor(ns_since_zero_tai, 0, Scale::TAI)
     }
 
     /// Converts this [`Dt`] to a [`hifitime::Duration`] (nanosecond precision).
@@ -48,7 +48,7 @@ impl Dt {
     ///   (±32,768 centuries).
     #[inline(always)]
     pub fn to_hifitime_duration(&self) -> Duration {
-        Duration::from_total_nanoseconds(self.to_attos() / 1_000_000_000i128)
+        Duration::from_total_nanoseconds(self.to_ns().0)
     }
 
     /// Creates a [`Dt`] from a [`hifitime::Duration`] (nanosecond precision).
@@ -56,6 +56,6 @@ impl Dt {
     /// Inverse of [`Dt::to_hifitime_duration`].
     #[inline(always)]
     pub fn from_hifitime_duration(dur: Duration) -> Dt {
-        Self::from_ns(dur.total_nanoseconds(), Scale::TAI)
+        Self::from_ns_floor(dur.total_nanoseconds(), 0, Scale::TAI)
     }
 }

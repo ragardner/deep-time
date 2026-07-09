@@ -1,7 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 use deep_time::civil_parts::{Offset, Parts};
-use deep_time::constants::{ATTOS_PER_SEC_I128, SEC_PER_DAYI64};
+use deep_time::consts::{ATTOS_PER_SEC_I128, SEC_PER_DAY_I64};
 use deep_time::{Dt, DtErrKind, Scale};
 
 mod from_str_iso_tests {
@@ -443,14 +443,14 @@ mod from_str_iso_tests {
         let p = Parts::from_str_iso("SEC 1234.567").unwrap();
         let dt = p.to_dt().unwrap();
         assert_eq!(dt.target, Scale::TAI);
-        assert_eq!(dt.to_sec64(), 1234);
+        assert_eq!(dt.to_sec64_floor(), 1234);
         assert_eq!(dt.to_sec_ufrac(), 567_000_000_000_000_000);
 
         // lowercase + explicit TAI
         let p = Parts::from_str_iso("sec1234.5 TAI").unwrap();
         let dt = p.to_dt().unwrap();
         assert_eq!(dt.target, Scale::TAI);
-        assert_eq!(dt.to_sec64(), 1234);
+        assert_eq!(dt.to_sec64_floor(), 1234);
         assert_eq!(dt.to_sec_ufrac(), 500_000_000_000_000_000);
 
         // "SEC 0 TDB" must equal the TDB epoch

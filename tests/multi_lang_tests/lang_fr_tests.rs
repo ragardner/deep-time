@@ -140,7 +140,7 @@ mod tests {
             let dur = Dt::from_str_duration(input.trim(), Lang::Fr)
                 .unwrap_or_else(|e| panic!("Failed '{}': {}", input, e));
 
-            assert_eq!(dur.to_ms() as i64, expected_millis, "Input: '{}'", input);
+            assert_eq!(dur.to_ms().0 as i64, expected_millis, "Input: '{}'", input);
         }
 
         let cases: Vec<(&str, i64)> = vec![

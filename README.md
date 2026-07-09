@@ -125,7 +125,7 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(unix, 0.0);
 
     // or to milliseconds
-    let unix: i128 = dt.add_ms(1000).to_unix().to_ms();
+    let unix: i128 = dt.add_ms(1000).to_unix().to_ms().0;
     assert_eq!(unix, 1000);
 
     // to and from jd
@@ -140,17 +140,17 @@ fn main() -> Result<(), DtErr> {
 
     // calendar math and negative year
     let dt = Dt::from_ymd(-2000, 1, 31, Scale::TAI, 12, 0, 0, 0);
-    let ymd = dt.add_mo(1).to_ymd();
+    let ymd = dt.add_months(1).to_ymd();
     assert_eq!(ymd.day(), 29);
 
     // Timezone-aware calendar math (respects DST transitions, requires jiff-tz feature)
     let dt = Dt::from_str_iso("2025-03-30T00:30:00Z")?; // Just before London DST start
 
     // Normal (naive) addition — ignores DST rules
-    let normal = dt.add_hr(1);
+    let normal = dt.add_hours(1);
 
     // Timezone-aware addition — correctly handles the transition
-    let aware = dt.add_hr_tz(1, "Europe/London")?;
+    let aware = dt.add_hours_tz(1, "Europe/London")?;
 
     println!("Normal: {}", normal.to_str_rfc9557("Europe/London")?);
     println!("Aware:  {}", aware.to_str_rfc9557("Europe/London")?);
@@ -194,7 +194,7 @@ deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
 | Feature              | Description                                                                 | Requires     |
 |----------------------|-----------------------------------------------------------------------------|--------------|
 | `parse`              | Enables the auto-parsers (`from_str_parse`, `from_str_duration`, etc.)      | `alloc`      |
-| `jiff-tz`            | Enables timezone-aware calendar math (`add_days_tz`, `add_hr_tz`, etc.) and `to_str_in_tz` | `std`       |
+| `jiff-tz`            | Enables timezone-aware calendar math (`add_days_tz`, `add_hours_tz`, etc.) and `to_str_in_tz` | `std`       |
 | `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                  | `std`       |
 | `jiff`               | Enables basic Jiff interop                                                | `alloc`     |
 | `chrono`             | Enables Chrono interop                                                    | `alloc`     |
@@ -265,7 +265,7 @@ Benchmarks were measured on an AMD Ryzen 7 7800X3D.
 The tests were run with:
 
 ```sh
-cargo test --release --features "parse hifitime std jiff-tz perf-tests" -- --nocapture perf_tests
+cargo bench --bench perf --features "parse hifitime std jiff-tz"
 ```
 
 ### Bundled Files

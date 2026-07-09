@@ -190,7 +190,6 @@ locale = [
     "dep:sys-locale",
 ]
 
-perf-tests = ["parse", "jiff-tz", "hifitime"]
 eop-tests = ["eop", "std"]
 # cargo test --release --features "physics mars parse hifitime chrono std wire eop-tests lang sidereal-earth jiff-tz" -- --nocapture
 
@@ -213,6 +212,11 @@ all-features = true
 [[example]]
 name = "readme"
 required-features = ["parse", "jiff-tz", "euro"]
+
+[[bench]]
+name = "perf"
+harness = false
+required-features = ["parse", "jiff-tz", "hifitime"]
 
 [dev-dependencies]
 serde_json = "1.0"

@@ -60,7 +60,7 @@ fn test_ymd_to_jd() {
         );
     }
 
-    // ── Specific jd_to_ymd known values (corrected) ─────────
+    // ── Specific jd_to_ymd known values ─────────
     assert_eq!(Dt::jd_to_ymd(2460782), (2025, 4, 16));
     assert_eq!(Dt::jd_to_ymd(2451545), (2000, 1, 1));
     assert_eq!(Dt::jd_to_ymd(1721060), (0, 1, 1));
@@ -202,8 +202,8 @@ fn proper_to_tt_with_drift_roundtrip() {
 
     let epoch = Dt::from_sec(0, Scale::TAI);
     let drift = Drift::new(
-        Dt::from_ms(100, Scale::TAI), // exactly 0.1 s
-        Dt::from_ns(1, Scale::TAI),   // exactly 1 ns/s = 1e-9 s/s
+        Dt::from_ms_floor(100, 0, Scale::TAI), // exactly 0.1 s
+        Dt::from_ns_floor(1, 0, Scale::TAI),   // exactly 1 ns/s = 1e-9 s/s
         Dt::ZERO,
     );
     let onboard_proper = epoch.add(Dt::from_sec(1_000_000, Scale::TAI));
@@ -332,7 +332,7 @@ fn is_leap_year_and_valid_date() {
 
 #[test]
 fn unix_days_roundtrip() {
-    use deep_time::constants::ATTOS_PER_HALF_DAYU;
+    use deep_time::consts::ATTOS_PER_HALF_DAY_U128;
 
     let epoch = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
     assert_eq!(epoch.to_unix_days(), (0, 0));
@@ -340,7 +340,7 @@ fn unix_days_roundtrip() {
     let noon_2000 = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
     let (days, attos) = noon_2000.to_unix_days();
     assert_eq!(days, 10_957);
-    assert_eq!(attos, ATTOS_PER_HALF_DAYU);
+    assert_eq!(attos, ATTOS_PER_HALF_DAY_U128);
 
     let roundtrip = Dt::from_unix_days(days, attos, Scale::UTC);
     assert_eq!(roundtrip, noon_2000);
@@ -353,7 +353,7 @@ fn unix_days_roundtrip() {
 #[test]
 fn ntp_timestamp() {
     // 2698012800
-    let dt = Dt::from_ymd(1985, 7, 1, Scale::TAI, 0, 0, 0, 0);
+    let dt = Dt::from_ymd(1985, 7, 1, Scale::UTC, 0, 0, 0, 0);
     let ntp = dt.to_ntp();
     assert_eq!(
         ntp.to_sec(),
@@ -378,4 +378,55 @@ fn ntp_timestamp() {
     assert_eq!(ymd.min(), 0);
     assert_eq!(ymd.sec(), 0);
     assert_eq!(ymd.attos(), 0);
+}
+
+#[test]
+fn unit_split_roundtrip_positive() {
+    let dt = Dt::from_ns_floor(5, 123_456_789, Scale::TAI);
+    let (whole, frac_attos) = dt.to_ns_floor();
+    assert_eq!(whole, 5);
+    assert_eq!(frac_attos, 123_456_789);
+    assert_eq!(Dt::from_ns_floor(whole, frac_attos, Scale::TAI), dt);
+
+    let ms_dt = Dt::span(1_300_000_000_000_000_000);
+    let (whole, frac_attos) = ms_dt.to_ms_floor();
+    assert_eq!(whole, 1300);
+    assert_eq!(frac_attos, 0);
+    assert_eq!(Dt::from_ms_floor(whole, frac_attos, Scale::TAI), ms_dt);
+
+    let fs_dt = Dt::from_fs_floor(42, 0, Scale::TAI);
+    let (_, frac_attos) = fs_dt.to_fs_floor();
+    assert_eq!(frac_attos, 0);
+}
+
+#[test]
+fn unit_split_negative_whole_plus_fraction() {
+    let dt = Dt::span(-1_000_500_000_000_000_000);
+    let (whole, frac_attos) = dt.to_ms_floor();
+    assert_eq!(whole, -1001);
+    assert_eq!(frac_attos, 500_000_000_000_000);
+    assert_eq!(Dt::from_ms_floor(whole, frac_attos, Scale::TAI), dt);
+
+    // Truncation toward zero differs for negative non-whole values
+    let (whole, frac_attos) = dt.to_ms();
+    assert_eq!(whole, -1000);
+    assert_eq!(frac_attos, -500_000_000_000_000);
+}
+
+#[test]
+fn unit_split_trunc_semantics() {
+    let positive = Dt::span(1_300_500_000_000_000_000);
+    let (whole, frac_attos) = positive.to_ms();
+    assert_eq!(whole, 1300);
+    assert_eq!(frac_attos, 500_000_000_000_000);
+
+    let negative_whole = Dt::span(-1_300_000_000_000_000_000);
+    let (whole, frac_attos) = negative_whole.to_ms();
+    assert_eq!(whole, -1300);
+    assert_eq!(frac_attos, 0);
+
+    let small_negative = Dt::span(-500_000_000_000_000);
+    let (whole, frac_attos) = small_negative.to_ms();
+    assert_eq!(whole, 0);
+    assert_eq!(frac_attos, -500_000_000_000_000);
 }

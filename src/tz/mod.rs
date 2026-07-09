@@ -13,7 +13,7 @@
 //! | `no_alloc` | [`UTC_ALIASES`] only (no heap) |
 //!
 //! Time zone–aware formatting and calendar math ([`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz),
-//! [`Dt::add_hr_tz`](../struct.Dt.html#method.add_hr_tz), etc.) require the `jiff-tz` feature.
+//! [`Dt::add_hours_tz`](../struct.Dt.html#method.add_hours_tz), etc.) require the `jiff-tz` feature.
 //! [`tz_names`] is independent of those APIs but uses the same database when `jiff-tz` is enabled.
 //!
 //! ## Examples

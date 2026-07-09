@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, SEC_PER_DAYI64, Scale, an_err};
+use crate::{Dt, DtErr, DtErrKind, SEC_PER_DAY_I64, Scale, an_err};
 
 impl Dt {
     /// Maximum size needed for a CCSDS C & D (CUC) binary packet (with extended P-field).
@@ -64,7 +64,7 @@ impl Dt {
             .to_scale_and_diff(Self::CCSDS_EPOCH, false);
 
         let rem_attos = tai_since_1958.to_sec_ufrac();
-        let total_tai_seconds = tai_since_1958.to_sec64();
+        let total_tai_seconds = tai_since_1958.to_sec64_floor();
 
         if total_tai_seconds < 0 {
             return Err(an_err!(DtErrKind::YearOutOfRange, "<1958"));
@@ -142,7 +142,8 @@ impl Dt {
 
     /// Formats this [`Dt`] as a **CCSDS D (CDS – Day Segmented Time Code)** binary packet.
     ///
-    /// Fully configurable for round-tripping with [`from_ccsds_cds`](Self::from_ccsds_cds).
+    /// Fully configurable for round-tripping with
+    /// [`from_ccsds_cds`](../struct.Dt.html#method.from_ccsds_cds).
     /// Conforms to **CCSDS 301.0-B-4 §3.3 (Level 1)**.
     ///
     /// The time is always encoded on the **UTC** timescale (day count + milliseconds
@@ -193,14 +194,14 @@ impl Dt {
             .to_scale_and_diff(Self::CCSDS_EPOCH, false);
 
         let rem_attos = utc_since_1958.to_sec_ufrac();
-        let total_utc_seconds = utc_since_1958.to_sec64();
+        let total_utc_seconds = utc_since_1958.to_sec64_floor();
 
         if total_utc_seconds < 0 {
             return Err(an_err!(DtErrKind::YearOutOfRange, "<1958"));
         }
 
-        let day_count = (total_utc_seconds / SEC_PER_DAYI64) as u64;
-        let sec_of_day = (total_utc_seconds % SEC_PER_DAYI64) as u64;
+        let day_count = (total_utc_seconds / SEC_PER_DAY_I64) as u64;
+        let sec_of_day = (total_utc_seconds % SEC_PER_DAY_I64) as u64;
 
         // Round to nearest millisecond
         let additional_ms =
@@ -269,7 +270,8 @@ impl Dt {
 
     /// Formats this [`Dt`] as a **CCSDS CCS (Calendar Segmented Time Code)** binary packet.
     ///
-    /// Fully configurable for round-tripping with [`from_ccsds_ccs`](Self::from_ccsds_ccs).
+    /// Fully configurable for round-tripping with
+    /// [`from_ccsds_ccs`](../struct.Dt.html#method.from_ccsds_ccs).
     /// Conforms to **CCSDS 301.0-B-4 §3.4** (Level 1 only).
     ///
     /// Both CCS variants are **UTC-based** and use BCD encoding.

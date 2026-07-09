@@ -2,7 +2,7 @@
 
 mod tests {
     use deep_time::civil_parts::{Parts, Weekday};
-    use deep_time::constants::ATTOS_PER_SEC_I128;
+    use deep_time::consts::ATTOS_PER_SEC_I128;
     use deep_time::{Dt, DtErrKind, Scale};
 
     /// Small helper for readable JD assertions (matches how the rest of the crate uses `to_jd_f()`).
@@ -103,7 +103,7 @@ mod tests {
         let (_, frac_attos) = tp.target(Scale::TT).to_jd();
 
         // Convert attoseconds → seconds
-        let seconds_past_noon = (frac_attos as f64) / (ATTOS_PER_SEC_I128 as f64);
+        let seconds_past_noon = frac_attos as f64 / ATTOS_PER_SEC_I128 as f64;
 
         const EXPECTED: f64 = 43269.307456789;
 

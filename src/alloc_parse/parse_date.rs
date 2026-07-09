@@ -15,7 +15,9 @@ impl Dt {
     ///
     /// - Requires the `"parse"` feature (which enables `alloc`).
     /// - The returned [`Dt`] is internally on the TAI time scale. The `attos` field is an [`i128`] attosecond
-    ///   count since TAI 2000-01-01 noon. See [`Scale`](crate::Scale) for more information.
+    ///   count since TAI 2000-01-01 noon. See
+    ///   [`Scale`](../enum.Scale.html)
+    ///   for more information.
     /// - The returned [`Dt`] is **not** in local time, if a timezone is parsed then it's used to find the offset
     ///   to return non-local instant.
     ///
@@ -179,7 +181,7 @@ impl Dt {
     /// - [`Order`]
     /// - [`Mode`]
     /// - [`Lang`]
-    /// - [`Dt`](crate::Dt)
+    /// - [`Dt`](../struct.Dt.html)
     /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
     pub fn from_str_parse(s: &str, opts: &ParseCfg) -> Result<Dt, DtErr> {
         if s.is_empty() {
@@ -391,7 +393,7 @@ impl Dt {
     /// on any parse error.
     #[inline]
     pub fn str_to_attos(s: &str, opts: &ParseCfg) -> Option<i128> {
-        Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_attos())
+        Dt::from_str_parse(s, opts).ok().map(|dt| dt.to_attos())
     }
 
     /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
@@ -402,7 +404,7 @@ impl Dt {
     /// on any parse error.
     #[inline]
     pub fn str_to_ms(s: &str, opts: &ParseCfg) -> Option<i128> {
-        Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_ms())
+        Dt::from_str_parse(s, opts).ok().map(|dt| dt.to_ms().0)
     }
 
     /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
@@ -413,7 +415,7 @@ impl Dt {
     /// on any parse error.
     #[inline]
     pub fn str_to_ns(s: &str, opts: &ParseCfg) -> Option<i128> {
-        Dt::from_str_parse(s, opts).ok().map(|tp| tp.to_ns())
+        Dt::from_str_parse(s, opts).ok().map(|dt| dt.to_ns().0)
     }
 
     /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
@@ -425,7 +427,7 @@ impl Dt {
     pub fn str_to_unix_ms(s: &str, opts: &ParseCfg) -> Option<i128> {
         Dt::from_str_parse(s, opts)
             .ok()
-            .map(|tp| tp.to_scale_and_diff(Dt::UNIX_EPOCH, false).to_ms())
+            .map(|dt| dt.to_scale_and_diff(Dt::UNIX_EPOCH, false).to_ms().0)
     }
 
     /// Same parsing logic as [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse),
@@ -437,7 +439,7 @@ impl Dt {
     pub fn str_to_unix_ns(s: &str, opts: &ParseCfg) -> Option<i128> {
         Dt::from_str_parse(s, opts)
             .ok()
-            .map(|tp| tp.to_scale_and_diff(Dt::UNIX_EPOCH, false).to_ns())
+            .map(|dt| dt.to_scale_and_diff(Dt::UNIX_EPOCH, false).to_ns().0)
     }
 }
 

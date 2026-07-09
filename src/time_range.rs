@@ -26,7 +26,7 @@ impl Dt {
     ///
     /// let start = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     /// let end = Dt::from_ymd(2000, 1, 2, Scale::UTC, 0, 0, 0, 0);
-    /// let step = Dt::from_hr(1, Scale::TAI);
+    /// let step = Dt::from_hours_floor(1, 0, Scale::TAI);
     ///
     /// for timestamp in start.every(step).to_including(end) {
     ///     println!("{:?}", timestamp.to_ymd());
@@ -53,20 +53,20 @@ impl Dt {
 
     /// Creates a range stepping by whole minutes.
     #[inline]
-    pub const fn every_min(self) -> Every {
-        self.every(Dt::from_min(1, Scale::TAI))
+    pub const fn every_mins(self) -> Every {
+        self.every(Dt::from_mins_floor(1, 0, Scale::TAI))
     }
 
     /// Creates a range stepping by whole hours.
     #[inline]
-    pub const fn every_hr(self) -> Every {
-        self.every(Dt::from_hr(1, Scale::TAI))
+    pub const fn every_hours(self) -> Every {
+        self.every(Dt::from_hours_floor(1, 0, Scale::TAI))
     }
 
     /// Creates a range stepping by whole days.
     #[inline]
     pub const fn every_day(self) -> Every {
-        self.every(Dt::from_hr(24, Scale::TAI))
+        self.every(Dt::from_hours_floor(24, 0, Scale::TAI))
     }
 
     /// Returns the next `n` points **after** `self` (exclusive of `self`)
@@ -121,7 +121,7 @@ impl Every {
 ///
 /// let start = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
 /// let end = Dt::from_ymd(2000, 1, 2, Scale::UTC, 0, 0, 0, 0);
-/// let step = Dt::from_hr(1, Scale::TAI);
+/// let step = Dt::from_hours_floor(1, 0, Scale::TAI);
 ///
 /// for timestamp in start.every(step).to_including(end) {
 ///     println!("{:?}", timestamp.to_ymd());
@@ -372,13 +372,13 @@ impl TimeRange {
         let end = self.end.to_wire_bytes();
         let step = self.step.to_wire_bytes();
 
-        let tp_size = Dt::WIRE_SIZE;
+        let dt_size = Dt::WIRE_SIZE;
         let span_size = Dt::WIRE_SIZE;
 
-        buf[1..1 + tp_size].copy_from_slice(&start);
-        buf[1 + tp_size..1 + 2 * tp_size].copy_from_slice(&end);
-        buf[1 + 2 * tp_size..1 + 2 * tp_size + span_size].copy_from_slice(&step);
-        buf[1 + 2 * tp_size + span_size] = if self.inclusive { 1 } else { 0 };
+        buf[1..1 + dt_size].copy_from_slice(&start);
+        buf[1 + dt_size..1 + 2 * dt_size].copy_from_slice(&end);
+        buf[1 + 2 * dt_size..1 + 2 * dt_size + span_size].copy_from_slice(&step);
+        buf[1 + 2 * dt_size + span_size] = if self.inclusive { 1 } else { 0 };
 
         buf
     }
@@ -403,13 +403,13 @@ impl TimeRange {
             return None;
         }
 
-        let tp_size = Dt::WIRE_SIZE;
+        let dt_size = Dt::WIRE_SIZE;
         let span_size = Dt::WIRE_SIZE;
 
-        let start = Dt::from_wire_bytes(&bytes[1..1 + tp_size])?;
-        let end = Dt::from_wire_bytes(&bytes[1 + tp_size..1 + 2 * tp_size])?;
-        let step = Dt::from_wire_bytes(&bytes[1 + 2 * tp_size..1 + 2 * tp_size + span_size])?;
-        let inclusive = bytes[1 + 2 * tp_size + span_size] != 0;
+        let start = Dt::from_wire_bytes(&bytes[1..1 + dt_size])?;
+        let end = Dt::from_wire_bytes(&bytes[1 + dt_size..1 + 2 * dt_size])?;
+        let step = Dt::from_wire_bytes(&bytes[1 + 2 * dt_size..1 + 2 * dt_size + span_size])?;
+        let inclusive = bytes[1 + 2 * dt_size + span_size] != 0;
 
         Some(Self::new(start, end, step, inclusive))
     }

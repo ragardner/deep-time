@@ -149,7 +149,8 @@ impl Dt {
     /// Convenience wrapper around [`Parts::from_ccsds_bin`].
     ///
     /// Dispatches as follows:
-    /// - Code ID `001` → [`from_ccsds_cuc`](Self::from_ccsds_cuc)
+    /// - Code ID `001` →
+    ///   [`from_ccsds_cuc`](../struct.Dt.html#method.from_ccsds_cuc)
     ///   [`Dt::from_ccsds_cuc`](../struct.Dt.html#method.from_ccsds_cuc) (CUC – Unsegmented)
     /// - Code ID `100` →
     ///   [`Dt::from_ccsds_cds`](../struct.Dt.html#method.from_ccsds_cds) (CDS – Day Segmented)

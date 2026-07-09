@@ -1,5 +1,5 @@
 use crate::{
-    Dt, Epoch, JD_2000_2_451_545, SEC_PER_DAYI64, an_err,
+    Dt, Epoch, JD_2000_2_451_545, SEC_PER_DAY_I64, an_err,
     error::{DtErr, DtErrKind},
     utc::IsLeapSec,
     {Meridiem, Offset, Parts, Weekday},
@@ -7,9 +7,11 @@ use crate::{
 
 impl Parts {
     /// Converts [`Parts`] → [`Dt`].
-    /// - Resulting [`Dt`] is on the TAI timescale.
-    /// - If this [`Parts`] has a timestamp then it is used
-    ///   instead of anything else.
+    /// - Resulting [`Dt`] is on the TAI timescale having been converted from
+    ///   this [`Parts`]'s `scale` field. See [`Scale`](enum.Scale.html).
+    /// - If this [`Parts`] time scale is `TAI` then no conversion is performed.
+    /// - If this [`Parts`] has a timestamp then it is used to create the [`Dt`]
+    ///   and all other fields are ignored.
     pub fn to_dt(&self) -> Result<Dt, DtErr> {
         // ──────────────────────────────────────────────────────────────
         // Explicit timestamp (%s or %J)
@@ -107,7 +109,7 @@ impl Parts {
         let days_since_j2000 = jd.saturating_sub(JD_2000_2_451_545);
         let seconds_from_noon_utc = (hour as i64 - 12) * 3600 + minute * 60 + second;
         let mut total_sec: i64 = days_since_j2000
-            .saturating_mul(SEC_PER_DAYI64)
+            .saturating_mul(SEC_PER_DAY_I64)
             .saturating_add(seconds_from_noon_utc);
 
         // ──────────────────────────────────────────────────────────────

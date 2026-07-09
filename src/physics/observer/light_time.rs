@@ -209,7 +209,7 @@ impl Observer {
     ///   for solar-system work; include additional bodies for higher precision.
     ///   Pass `&[]` to disable Shapiro.
     /// * `tolerance` — Maximum allowed change in receive time per iteration
-    ///   before declaring convergence (e.g. `Dt::from_ns(1, Scale::TAI)`).
+    ///   before declaring convergence (e.g. `Dt::from_ns_floor(1, 0, Scale::TAI)`).
     /// * `max_iter` — Maximum number of iterations. Typical values are 12–20
     ///   for solar-system geometries.
     ///
@@ -313,7 +313,7 @@ impl Observer {
     /// * `bodies` — Slice of `(shapiro_coefficient, body_position)` pairs
     ///   describing the gravitating bodies.
     /// * `tolerance` — Convergence tolerance for each leg’s iterative solver
-    ///   (e.g. `Dt::from_ns(1, Scale::TAI)`).
+    ///   (e.g. `Dt::from_ns_floor(1, 0, Scale::TAI)`).
     /// * `max_iter` — Maximum number of iterations allowed per leg
     ///   (typical values are 12–20).
     ///

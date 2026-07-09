@@ -4,12 +4,16 @@
 //! use deep_time::{Scale, TimeTraits};
 //!
 //! let span = 5.sec() + 250.ms() + 123_456.ns();
-//! let stamp = 3.days().ago(Scale::UTC);
+//! let stamp = 3.days().before_zero(Scale::UTC);
+//!
+//! // Wall-clock relative (requires the `std` feature):
+//! // let past = 3.days().ago();
+//! // let future = 3.days().from_now();
 //! ```
 
 use crate::{
     ATTOS_PER_FS_I128, ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, SEC_PER_DAY, SEC_PER_DAY_F, SEC_PER_DAYI128, Scale,
+    ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, SEC_PER_DAY, SEC_PER_DAY_F, Scale,
 };
 
 /// Trait that adds ergonomic conversions from attoseconds values
@@ -98,13 +102,10 @@ pub trait TimeTraits: Copy + Sized {
     fn ms(self) -> Dt;
     fn sec(self) -> Dt;
     fn mins(self) -> Dt;
-    fn hr(self) -> Dt;
+    fn hours(self) -> Dt;
     fn days(self) -> Dt; // 86400 s (civil day, not leap-second aware)
-    fn wk(self) -> Dt;
-    fn yr(self) -> Dt; // 365.25 days (standard approximation)
-
-    fn ago(self, scale: Scale) -> Dt;
-    fn from_now(self, scale: Scale) -> Dt;
+    fn weeks(self) -> Dt;
+    fn years(self) -> Dt; // 365.25 days (standard approximation)
 }
 
 // Integer implementations (all common signed/unsigned types)
@@ -113,41 +114,31 @@ macro_rules! impl_time_units_int {
         $(
             impl TimeTraits for $ty {
                 #[inline]
-                fn ns(self) -> Dt { Dt::from_ns(self as i128, Scale::TAI) }
+                fn ns(self) -> Dt { Dt::from_ns_floor(self as i128, 0, Scale::TAI) }
 
                 #[inline]
-                fn us(self) -> Dt { Dt::from_us(self as i128, Scale::TAI) }
+                fn us(self) -> Dt { Dt::from_us_floor(self as i128, 0, Scale::TAI) }
 
                 #[inline]
-                fn ms(self) -> Dt { Dt::from_ms(self as i128, Scale::TAI) }
+                fn ms(self) -> Dt { Dt::from_ms_floor(self as i128, 0, Scale::TAI) }
 
                 #[inline]
                 fn sec(self) -> Dt { Dt::from_sec(self as i128, Scale::TAI) }
 
                 #[inline]
-                fn mins(self) -> Dt { Dt::from_min(self as i64, Scale::TAI) }
+                fn mins(self) -> Dt { Dt::from_mins_floor(self as i128, 0, Scale::TAI) }
 
                 #[inline]
-                fn hr(self) -> Dt { Dt::from_hr(self as i64, Scale::TAI) }
+                fn hours(self) -> Dt { Dt::from_hours_floor(self as i128, 0, Scale::TAI) }
 
                 #[inline]
-                fn days(self) -> Dt { Dt::from_sec((self as i128).saturating_mul(SEC_PER_DAYI128), Scale::TAI) }
+                fn days(self) -> Dt { Dt::from_sec((self as i128).saturating_mul(SEC_PER_DAY), Scale::TAI) }
 
                 #[inline]
-                fn wk(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(604_800), Scale::TAI) }
+                fn weeks(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(604_800), Scale::TAI) }
 
                 #[inline]
-                fn yr(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(31_557_600), Scale::TAI) }
-
-                #[inline]
-                fn ago(self, scale: Scale) -> Dt {
-                    Dt::from_attos(0, scale).sub(self.sec())
-                }
-
-                #[inline]
-                fn from_now(self, scale: Scale) -> Dt {
-                    Dt::from_attos(0, scale).add(self.sec())
-                }
+                fn years(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(31_557_600), Scale::TAI) }
             }
         )*
     };
@@ -182,7 +173,7 @@ impl TimeTraits for f64 {
     }
 
     #[inline]
-    fn hr(self) -> Dt {
+    fn hours(self) -> Dt {
         (self * 3600.0).sec()
     }
 
@@ -192,23 +183,13 @@ impl TimeTraits for f64 {
     }
 
     #[inline]
-    fn wk(self) -> Dt {
+    fn weeks(self) -> Dt {
         (self * 604_800.0).sec()
     }
 
     #[inline]
-    fn yr(self) -> Dt {
+    fn years(self) -> Dt {
         (self * 31_557_600.0).sec()
-    }
-
-    #[inline]
-    fn ago(self, scale: Scale) -> Dt {
-        Dt::from_attos(0, scale).sub(self.sec())
-    }
-
-    #[inline]
-    fn from_now(self, scale: Scale) -> Dt {
-        Dt::from_attos(0, scale).add(self.sec())
     }
 }
 
@@ -239,7 +220,7 @@ impl TimeTraits for f32 {
     }
 
     #[inline]
-    fn hr(self) -> Dt {
+    fn hours(self) -> Dt {
         (self * 3600.0f32).sec()
     }
 
@@ -249,22 +230,12 @@ impl TimeTraits for f32 {
     }
 
     #[inline]
-    fn wk(self) -> Dt {
+    fn weeks(self) -> Dt {
         (self * 604_800.0f32).sec()
     }
 
     #[inline]
-    fn yr(self) -> Dt {
+    fn years(self) -> Dt {
         (self * 31_557_600.0f32).sec()
-    }
-
-    #[inline]
-    fn ago(self, scale: Scale) -> Dt {
-        Dt::from_attos(0, scale).sub(self.sec())
-    }
-
-    #[inline]
-    fn from_now(self, scale: Scale) -> Dt {
-        Dt::from_attos(0, scale).add(self.sec())
     }
 }

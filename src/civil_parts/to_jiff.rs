@@ -116,7 +116,7 @@ impl Parts {
                     }
                 }
             };
-            let nanos = unix.to_ns();
+            let nanos = unix.to_ns().0;
             let ts = jiff::Timestamp::from_nanosecond(nanos)
                 .map_err(|e| an_err!(DtErrKind::InvalidTimestamp, "{}", e))?;
             bdt.set_timestamp(Some(ts));

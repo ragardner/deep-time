@@ -38,7 +38,7 @@ impl Dt {
                 return Err(an_err!(DtErrKind::OutOfRange, "{}", s));
             }
             let nanos = (ms * 1_000_000.0).round() as i128;
-            let span = Dt::from_ns(nanos, Scale::TAI);
+            let span = Dt::from_ns_floor(nanos, 0, Scale::TAI);
             return Ok(span);
         }
 

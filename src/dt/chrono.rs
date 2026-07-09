@@ -21,8 +21,8 @@ impl Dt {
     ///   (roughly years 1678–2262) if the instant is out of range.
     #[inline]
     pub fn to_chrono_datetime_utc(&self) -> DateTime<Utc> {
-        DateTime::<Utc>::from_timestamp_nanos(Dt::i128_to_i64(
-            self.target(Scale::UTC).to_unix().to_ns(),
+        DateTime::<Utc>::from_timestamp_nanos(Dt::to_i64(
+            self.target(Scale::UTC).to_unix().to_ns().0,
         ))
     }
 
@@ -37,7 +37,7 @@ impl Dt {
         let min = dt.minute().clamp(0, 59) as u8;
         let sec = dt.second().clamp(0, 60) as u8;
         let subsec_nanos = dt.nanosecond();
-        let attos = Dt::from_ns(subsec_nanos as i128, Scale::TAI).to_attos();
+        let attos = Dt::from_ns_floor(subsec_nanos as i128, 0, Scale::TAI).to_attos();
 
         Dt::from_ymd(
             yr,
@@ -54,14 +54,14 @@ impl Dt {
     /// Creates a [`Dt`] from a [`chrono::Duration`] (nanosecond precision).
     pub fn from_chrono_duration(dur: Duration) -> Dt {
         match dur.num_nanoseconds() {
-            Some(ns) => Self::from_ns(ns as i128, Scale::TAI),
+            Some(ns) => Self::from_ns_floor(ns as i128, 0, Scale::TAI),
             None => {
                 let ns = if dur > Duration::zero() {
                     i64::MAX
                 } else {
                     i64::MIN
                 };
-                Self::from_ns(ns as i128, Scale::TAI)
+                Self::from_ns_floor(ns as i128, 0, Scale::TAI)
             }
         }
     }
@@ -74,6 +74,6 @@ impl Dt {
     ///   (roughly ±292 million years) if the value is out of range.
     #[inline]
     pub fn to_chrono_duration(&self) -> Duration {
-        TimeDelta::nanoseconds(Dt::i128_to_i64(self.to_ns()))
+        TimeDelta::nanoseconds(Dt::to_i64(self.to_ns().0))
     }
 }
