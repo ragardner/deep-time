@@ -54,7 +54,7 @@ jobs:
           - name: full
             args: >-
               --no-default-features
-              --features "physics mars parse hifitime chrono std wire eop-tests
+              --features "serde physics mars parse hifitime chrono std wire eop-tests
               lang sidereal-earth jiff-tz"
             release: true
     steps:
