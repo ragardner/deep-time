@@ -2,11 +2,11 @@
 
 A fully featured and high performance **Rust date and time library** with attosecond precision that provides **astronomical** and **civil** timekeeping.
 
-[![docs.rs](https://img.shields.io/docsrs/deep-time)](https://docs.rs/deep-time)
-[![Crates.io](https://img.shields.io/crates/v/deep-time)](https://crates.io/crates/deep-time)
 [![Crates.io MSRV](https://img.shields.io/crates/msrv/deep-time)](https://crates.io/crates/deep-time)
 [![Edition](https://img.shields.io/badge/edition-2024-blueviolet)](https://doc.rust-lang.org/edition-guide/editions/)
 [![License](https://img.shields.io/crates/l/deep-time)](https://github.com/ragardner/deep-time/blob/main/LICENSE)
+[![docs.rs](https://img.shields.io/docsrs/deep-time)](https://docs.rs/deep-time)
+[![Crates.io](https://img.shields.io/crates/v/deep-time)](https://crates.io/crates/deep-time)
 
 ### Overview
 
