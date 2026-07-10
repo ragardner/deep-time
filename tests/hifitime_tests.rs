@@ -209,26 +209,26 @@ mod tests {
         let hi_utc = Epoch::from_gregorian(2016, 12, 31, 23, 59, 60, 0, TimeScale::UTC);
         let hi_tai = hi_utc.to_time_scale(TimeScale::TAI);
 
-        let our_tai = Dt::from_attos(hifitime_tai_attos(hi_utc), Scale::TAI);
+        let our_tai = Dt::new(hifitime_tai_attos(hi_utc), Scale::TAI, Scale::TAI);
 
         assert_tai_matches_hifitime(our_tai, hi_tai, "UTC leap second 2016-12-31");
     }
 
     #[test]
     fn test_j2000_zero_points() {
-        let our = Dt::from_attos(0, Scale::TAI);
+        let our = Dt::new(0, Scale::TAI, Scale::TAI);
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
         assert_tai_matches_hifitime(our, hi, "J2000 TAI zero");
 
-        let our = Dt::from_attos(0, Scale::TT);
+        let our = Dt::new(0, Scale::TT, Scale::TT).to_tai();
         let hi = Epoch::from_gregorian_tai(2000, 1, 1, 11, 59, 27, 816_000_000);
         assert_tai_matches_hifitime(our, hi, "J2000 TT zero");
 
-        let our = Dt::from_attos(0, Scale::GPS);
+        let our = Dt::new(0, Scale::GPS, Scale::GPS).to_tai();
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::GPST);
         assert_tai_matches_hifitime(our, hi, "J2000 GPST zero");
 
-        let our = Dt::from_attos(0, Scale::BDT);
+        let our = Dt::new(0, Scale::BDT, Scale::BDT).to_tai();
         let hi = Epoch::from_gregorian(2000, 1, 1, 12, 0, 0, 0, TimeScale::BDT);
         assert_tai_matches_hifitime(our, hi, "J2000 BDT zero");
     }
@@ -242,8 +242,9 @@ mod tests {
         ];
 
         for &(tai_sec, label) in cases {
-            let our = Dt::from_attos(
+            let our = Dt::new(
                 (tai_sec as i128) * deep_time::consts::ATTOS_PER_SEC_I128,
+                Scale::TAI,
                 Scale::TAI,
             );
             let hi = Epoch::from_tai_seconds((HIFITIME_TAI_EPOCH_TO_OUR_J2000 + tai_sec) as f64);

@@ -148,7 +148,7 @@ mod tests {
     #[test]
     fn duration_truncates_sub_nanosecond() {
         // 1.5 ns worth of attoseconds → truncates toward zero to 1 ns
-        let span = Dt::from_attos(1_500_000_000, Scale::TAI);
+        let span = Dt::new(1_500_000_000, Scale::TAI, Scale::TAI);
         let dur = span.to_time_duration();
         assert_eq!(dur.whole_nanoseconds(), 1);
     }
@@ -156,10 +156,10 @@ mod tests {
     #[test]
     fn duration_saturates_at_extremes() {
         // Far beyond Duration's i64-second range
-        let huge = Dt::from_attos(i128::MAX / 2, Scale::TAI);
+        let huge = Dt::new(i128::MAX / 2, Scale::TAI, Scale::TAI);
         assert_eq!(huge.to_time_duration(), Duration::MAX);
 
-        let tiny = Dt::from_attos(i128::MIN / 2, Scale::TAI);
+        let tiny = Dt::new(i128::MIN / 2, Scale::TAI, Scale::TAI);
         assert_eq!(tiny.to_time_duration(), Duration::MIN);
     }
 

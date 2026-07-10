@@ -56,7 +56,7 @@ mod tests {
         assert_eq!(via_s.to_dt().unwrap(), via_j.to_dt().unwrap());
 
         let zero_tai = Dt::span_f(-0.5);
-        let zero_tdb = Dt::from_attos(zero_tai.to_attos(), Scale::TDB);
+        let zero_tdb = Dt::new(zero_tai.to_attos(), Scale::TDB, Scale::TDB).to_tai();
 
         let p_tai = Dt::from_str("-0.5 TAI", "%J %L", false, false, false).unwrap();
         let p_tdb = Dt::from_str("-0.5 TDB", "%J %L", false, false, false).unwrap();

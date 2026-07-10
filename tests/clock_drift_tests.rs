@@ -48,7 +48,7 @@ mod tests {
         let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI),
             Dt::from_ns(1, 0, Scale::TAI, Scale::TAI), // exactly 1e-9 s/s
-            Dt::from_attos(1, Scale::TAI),             // exactly 1e-18 s/s²
+            Dt::new(1, Scale::TAI, Scale::TAI),        // exactly 1e-18 s/s²
         );
         let dt = Dt::from_sec(-500_000, Scale::TAI);
 

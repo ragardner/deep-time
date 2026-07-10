@@ -104,7 +104,7 @@ impl Dt {
     /// ```
     pub const fn from_diff_and_scale(diff: Dt, epoch: Dt, convert_epoch: bool) -> Dt {
         if convert_epoch {
-            Self::from_attos_with_target(
+            Dt::new(
                 epoch
                     .to(diff.scale)
                     .to_attos()
@@ -112,12 +112,14 @@ impl Dt {
                 diff.scale,
                 diff.target,
             )
+            .to_tai()
         } else {
-            Self::from_attos_with_target(
+            Dt::new(
                 epoch.to_attos().saturating_add(diff.to_attos()),
                 diff.scale,
                 diff.target,
             )
+            .to_tai()
         }
     }
 

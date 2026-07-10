@@ -187,7 +187,7 @@ mod interop {
     fn timestamp_truncates_sub_nanosecond() {
         // 1.5 ns of attoseconds beyond an exact Unix second → truncate toward 0 on to_jiff
         let base = Dt::from_ymd(2020, 1, 1, Scale::UTC, 0, 0, 0, 0);
-        let with_sub_ns = base.add(Dt::from_attos(1_500_000_000, Scale::TAI)); // 1.5 ns
+        let with_sub_ns = base.add(Dt::new(1_500_000_000, Scale::TAI, Scale::TAI)); // 1.5 ns
         let ts = with_sub_ns.to_jiff_timestamp();
         // Truncation toward zero: +1 ns of the 1.5 ns
         assert_eq!(
@@ -240,7 +240,7 @@ mod interop {
     #[test]
     fn duration_truncates_sub_nanosecond() {
         // 1.5 ns worth of attoseconds → truncates toward zero to 1 ns
-        let span = Dt::from_attos(1_500_000_000, Scale::TAI);
+        let span = Dt::new(1_500_000_000, Scale::TAI, Scale::TAI);
         let dur = span.to_jiff_signed_duration();
         assert_eq!(dur.as_nanos(), 1);
     }

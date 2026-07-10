@@ -364,7 +364,7 @@ impl Dt {
         let attos_from_days = days_since_j2000.saturating_mul(ATTOS_PER_DAY);
         let total_attos = attos_from_days.saturating_add(frac_attos);
 
-        Self::from_attos(total_attos, on)
+        Dt::new(total_attos, on, on).to_tai()
     }
 
     /// Builds a **TAI** [`Dt`] from a Julian Date given as whole days plus attoseconds.
@@ -409,7 +409,7 @@ impl Dt {
         let attos_from_days = days_since_j2000.saturating_mul(ATTOS_PER_DAY);
         let total_attos = attos_from_days.saturating_add(Self::to_i128(frac_attos));
 
-        Self::from_attos(total_attos, on)
+        Dt::new(total_attos, on, on).to_tai()
     }
 
     /// Builds a **TAI** [`Dt`] from a Modified Julian Date given as whole days plus attoseconds.

@@ -50,7 +50,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
         let secs: i64 = secs_i128.try_into().ok()?;
 
         let total_attos = Dt::sec_to_attos(secs as i128) + (rem_nanos * 1_000_000_000) as i128;
-        return Some(Dt::from_attos(total_attos, Scale::UTC));
+        return Some(Dt::new(total_attos, Scale::UTC, Scale::UTC).to_tai());
     }
 
     // Common path (1–18 digits)
@@ -78,5 +78,5 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
     let epoch_offset = (TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128;
     let total_attos = total_attos_since_unix - epoch_offset;
 
-    Some(Dt::from_attos(total_attos, Scale::UTC))
+    Some(Dt::new(total_attos, Scale::UTC, Scale::UTC).to_tai())
 }

@@ -22,7 +22,7 @@ impl Parts {
                     let unix = Dt::new(ts.attos, self.scale, self.scale);
                     return Ok(Dt::from_unix(unix));
                 }
-                Epoch::Noon2000 => return Ok(Dt::from_attos(ts.attos, self.scale)),
+                Epoch::Noon2000 => return Ok(Dt::new(ts.attos, self.scale, self.scale).to_tai()),
             }
         }
 

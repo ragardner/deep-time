@@ -461,14 +461,14 @@ mod from_str_iso_tests {
 
         // Non-zero TDB: build expected using exact raw attos + from_attos (avoids f64)
         let raw = 1234i128 * ATTOS_PER_SEC_I128 + 567_000_000_000_000_000;
-        let expected_tdb = Dt::from_attos(raw, Scale::TDB);
+        let expected_tdb = Dt::new(raw, Scale::TDB, Scale::TDB).to_tai();
         let p = Parts::from_str_iso("SEC 1234.567 TDB").unwrap();
         let parsed = p.to_dt().unwrap();
         assert_eq!(parsed, expected_tdb);
 
         // Same for GPS
         let raw_gps = 42i128 * ATTOS_PER_SEC_I128 + 750_000_000_000_000_000;
-        let expected_gps = Dt::from_attos(raw_gps, Scale::GPS);
+        let expected_gps = Dt::new(raw_gps, Scale::GPS, Scale::GPS).to_tai();
         let p = Parts::from_str_iso("Sec 42.75 GPS").unwrap();
         let parsed = p.to_dt().unwrap();
         assert_eq!(parsed, expected_gps);

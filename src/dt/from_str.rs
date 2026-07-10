@@ -448,7 +448,7 @@ impl Dt {
             int_attos + (parsed.frac_attos as i128)
         };
 
-        Some(Dt::from_attos(signed_attos, parsed.scale))
+        Some(Dt::new(signed_attos, parsed.scale, parsed.scale).to_tai())
     }
 
     /// Parses a decimal Julian Date string (with optional fractional part).
