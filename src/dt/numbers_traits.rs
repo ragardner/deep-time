@@ -194,7 +194,7 @@ macro_rules! impl_time_units_int {
                 fn ms(self) -> Dt { Dt::from_ms(self as i128, 0, Scale::TAI, Scale::TAI) }
 
                 #[inline]
-                fn sec(self) -> Dt { Dt::from_sec(self as i128, Scale::TAI) }
+                fn sec(self) -> Dt { Dt::from_sec(self as i128, Scale::TAI, Scale::TAI) }
 
                 #[inline]
                 fn mins(self) -> Dt { Dt::from_mins(self as i128, 0, Scale::TAI, Scale::TAI) }
@@ -203,13 +203,13 @@ macro_rules! impl_time_units_int {
                 fn hours(self) -> Dt { Dt::from_hours(self as i128, 0, Scale::TAI, Scale::TAI) }
 
                 #[inline]
-                fn days(self) -> Dt { Dt::from_sec((self as i128).saturating_mul(SEC_PER_DAY), Scale::TAI) }
+                fn days(self) -> Dt { Dt::from_sec((self as i128).saturating_mul(SEC_PER_DAY), Scale::TAI, Scale::TAI) }
 
                 #[inline]
-                fn weeks(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(604_800), Scale::TAI) }
+                fn weeks(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(604_800), Scale::TAI, Scale::TAI) }
 
                 #[inline]
-                fn years(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(31_557_600), Scale::TAI) }
+                fn years(self) -> Dt { Dt::from_sec((self  as i128).saturating_mul(31_557_600), Scale::TAI, Scale::TAI) }
             }
         )*
     };
@@ -236,7 +236,7 @@ impl TimeTraits for u128 {
 
     #[inline]
     fn sec(self) -> Dt {
-        Dt::from_sec(Dt::to_i128(self), Scale::TAI)
+        Dt::from_sec(Dt::to_i128(self), Scale::TAI, Scale::TAI)
     }
 
     #[inline]
@@ -251,17 +251,29 @@ impl TimeTraits for u128 {
 
     #[inline]
     fn days(self) -> Dt {
-        Dt::from_sec(Dt::to_i128(self).saturating_mul(SEC_PER_DAY), Scale::TAI)
+        Dt::from_sec(
+            Dt::to_i128(self).saturating_mul(SEC_PER_DAY),
+            Scale::TAI,
+            Scale::TAI,
+        )
     }
 
     #[inline]
     fn weeks(self) -> Dt {
-        Dt::from_sec(Dt::to_i128(self).saturating_mul(604_800), Scale::TAI)
+        Dt::from_sec(
+            Dt::to_i128(self).saturating_mul(604_800),
+            Scale::TAI,
+            Scale::TAI,
+        )
     }
 
     #[inline]
     fn years(self) -> Dt {
-        Dt::from_sec(Dt::to_i128(self).saturating_mul(31_557_600), Scale::TAI)
+        Dt::from_sec(
+            Dt::to_i128(self).saturating_mul(31_557_600),
+            Scale::TAI,
+            Scale::TAI,
+        )
     }
 }
 

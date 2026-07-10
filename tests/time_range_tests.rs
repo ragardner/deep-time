@@ -59,7 +59,7 @@ mod time_range_tests {
     #[test]
     fn zero_step_inclusive_same_point() {
         let t = ymd(2025, 6, 15);
-        let zero = Dt::from_sec(0, Scale::TAI);
+        let zero = Dt::from_sec(0, Scale::TAI, Scale::TAI);
 
         let v: Vec<_> = t.every(zero).to_including(t).collect();
         assert_eq!(v, vec![t]);
@@ -70,7 +70,7 @@ mod time_range_tests {
     fn zero_step_exclusive_and_mismatch() {
         let t = ymd(2025, 6, 15);
         let other = ymd(2025, 6, 16);
-        let zero = Dt::from_sec(0, Scale::TAI);
+        let zero = Dt::from_sec(0, Scale::TAI, Scale::TAI);
 
         assert!(t.every(zero).to_excluding(t).collect::<Vec<_>>().is_empty());
         assert!(

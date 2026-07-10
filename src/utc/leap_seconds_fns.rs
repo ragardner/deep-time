@@ -388,8 +388,8 @@ impl Dt {
             };
 
             // don't use current: UTC because it would use the internal leap list
-            let utc_sec =
-                Dt::from_ntp(Dt::from_sec(ntp_timestamp as i128, Scale::TAI)).to_sec64_floor();
+            let utc_sec = Dt::from_ntp(Dt::from_sec(ntp_timestamp as i128, Scale::TAI, Scale::TAI))
+                .to_sec64_floor();
 
             let tai_sec = if entries_pushed == 0 {
                 if leap_sec_after > 0 {

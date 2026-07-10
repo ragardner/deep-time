@@ -25,10 +25,10 @@ fn j2000_tt_is_jd_2451545() {
 #[test]
 fn jd_tt_exact_roundtrip() {
     let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365, Scale::TAI),
-        Dt::from_sec(1_000_000_000, Scale::TAI),
-        Dt::from_sec(-2_208_945_600, Scale::TAI),
+        Dt::from_sec(0, Scale::TAI, Scale::TAI),
+        Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+        Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
+        Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI),
     ];
 
     for &p in &test_points {
@@ -43,8 +43,8 @@ fn jd_tt_exact_roundtrip() {
 #[test]
 fn mjd_tt_exact_roundtrip() {
     let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365 * 100, Scale::TAI),
+        Dt::from_sec(0, Scale::TAI, Scale::TAI),
+        Dt::from_sec(86_400 * 365 * 100, Scale::TAI, Scale::TAI),
     ];
 
     for &p in &test_points {

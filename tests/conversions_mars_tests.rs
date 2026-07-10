@@ -24,11 +24,11 @@ mod mars_tests {
     #[test]
     fn msd_exact_roundtrip_is_accurate() {
         let test_points = [
-            Dt::from_sec(0, Scale::TAI),
-            Dt::from_sec(86_400 * 365, Scale::TAI),
-            Dt::from_sec(-86_400 * 365 * 10, Scale::TAI),
-            Dt::from_sec(1_000_000_000, Scale::TAI),
-            Dt::from_sec(-2_208_945_600, Scale::TAI),
+            Dt::from_sec(0, Scale::TAI, Scale::TAI),
+            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+            Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI),
+            Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
+            Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI),
         ];
 
         for &p in &test_points {
@@ -48,9 +48,9 @@ mod mars_tests {
     #[test]
     fn msd_float_roundtrip_is_accurate() {
         let test_points = [
-            Dt::from_sec(0, Scale::TAI),
-            Dt::from_sec(86_400 * 365 * 100, Scale::TAI),
-            Dt::from_sec(1_000_000_000, Scale::TAI),
+            Dt::from_sec(0, Scale::TAI, Scale::TAI),
+            Dt::from_sec(86_400 * 365 * 100, Scale::TAI, Scale::TAI),
+            Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
         ];
 
         for &p in &test_points {
@@ -70,9 +70,9 @@ mod mars_tests {
     #[test]
     fn mtc_is_in_valid_range() {
         let test_points = [
-            Dt::from_sec(0, Scale::TAI),
-            Dt::from_sec(86_400 * 365, Scale::TAI),
-            Dt::from_sec(1_000_000_000, Scale::TAI),
+            Dt::from_sec(0, Scale::TAI, Scale::TAI),
+            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+            Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
         ];
 
         for &p in &test_points {

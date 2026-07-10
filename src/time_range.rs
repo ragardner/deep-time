@@ -48,7 +48,7 @@ impl Dt {
     /// Creates a range stepping by whole seconds.
     #[inline]
     pub const fn every_sec(self) -> Every {
-        self.every(Dt::from_sec(1, Scale::TAI))
+        self.every(Dt::from_sec(1, Scale::TAI, Scale::TAI))
     }
 
     /// Creates a range stepping by whole minutes.

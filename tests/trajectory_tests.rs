@@ -5,7 +5,7 @@ mod proper_time_tests {
     use deep_time::{Dt, Scale, Spacetime};
 
     fn tai(sec: i128) -> Dt {
-        Dt::from_sec(sec, Scale::TAI)
+        Dt::from_sec(sec, Scale::TAI, Scale::TAI)
     }
 
     // =====================================================================
@@ -46,7 +46,7 @@ mod proper_time_tests {
         let path = [(t0, flat.clone()), (t1, flat)];
 
         let dtau = Dt::proper_time_from_path(path).expect("path should be valid");
-        assert_eq!(dtau, Dt::from_sec(86400, Scale::TAI));
+        assert_eq!(dtau, Dt::from_sec(86400, Scale::TAI, Scale::TAI));
     }
 
     #[test]
@@ -59,7 +59,7 @@ mod proper_time_tests {
         let path = [(t0, slow.clone()), (t1, slow)];
 
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
-        assert_eq!(dtau, Dt::from_sec(900, Scale::TAI));
+        assert_eq!(dtau, Dt::from_sec(900, Scale::TAI, Scale::TAI));
     }
 
     #[test]
@@ -72,7 +72,7 @@ mod proper_time_tests {
         let path = [(t0, moving.clone()), (t1, moving)];
 
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
-        assert_eq!(dtau, Dt::from_sec(400, Scale::TAI));
+        assert_eq!(dtau, Dt::from_sec(400, Scale::TAI, Scale::TAI));
     }
 
     #[test]
@@ -90,7 +90,7 @@ mod proper_time_tests {
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
         // With piecewise trapezoidal integration, the result is 570 seconds
-        assert_eq!(dtau, Dt::from_sec(570, Scale::TAI));
+        assert_eq!(dtau, Dt::from_sec(570, Scale::TAI, Scale::TAI));
     }
 
     #[test]
@@ -106,7 +106,7 @@ mod proper_time_tests {
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
         // Piecewise trapezoidal result over 3 segments
-        assert_eq!(dtau, Dt::from_sec(846, Scale::TAI));
+        assert_eq!(dtau, Dt::from_sec(846, Scale::TAI, Scale::TAI));
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod proper_time_tests {
         let dtau = Dt::proper_time_from_path(path).unwrap();
         let dt = t1.to_diff_raw(t0);
 
-        assert_eq!(dtau.sub(dt), Dt::from_sec(-100, Scale::TAI));
+        assert_eq!(dtau.sub(dt), Dt::from_sec(-100, Scale::TAI, Scale::TAI));
     }
 
     #[test]

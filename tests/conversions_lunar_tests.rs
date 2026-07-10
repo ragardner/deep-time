@@ -21,11 +21,11 @@ mod ltc_tests {
     #[test]
     fn ltc_tai_roundtrip_is_accurate() {
         let test_points = [
-            Dt::from_sec(0, Scale::TAI),                  // J2000.0 TAI
-            Dt::from_sec(86_400 * 365, Scale::TAI),       // ~1 year after J2000.0
-            Dt::from_sec(-86_400 * 365 * 10, Scale::TAI), // 10 years before J2000.0
-            Dt::from_sec(1_000_000_000, Scale::TAI),      // ~31.7 years after J2000.0
-            Dt::from_sec(-2_208_945_600, Scale::TAI),     // Approximate J1900 epoch
+            Dt::from_sec(0, Scale::TAI, Scale::TAI), // J2000.0 TAI
+            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI), // ~1 year after J2000.0
+            Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI), // 10 years before J2000.0
+            Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI), // ~31.7 years after J2000.0
+            Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI), // Approximate J1900 epoch
         ];
 
         for &p in &test_points {
@@ -76,9 +76,9 @@ mod ltc_tests {
     #[test]
     fn ltc_offset_grows_linearly() {
         let points = [
-            Dt::from_sec(0, Scale::TAI),
-            Dt::from_sec(86_400 * 365, Scale::TAI), // ~1 year
-            Dt::from_sec(86_400 * 365 * 100, Scale::TAI), // ~100 years from J2000.0
+            Dt::from_sec(0, Scale::TAI, Scale::TAI),
+            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI), // ~1 year
+            Dt::from_sec(86_400 * 365 * 100, Scale::TAI, Scale::TAI), // ~100 years from J2000.0
         ];
 
         for &p in &points {

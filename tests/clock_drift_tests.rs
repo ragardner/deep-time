@@ -7,32 +7,32 @@ mod tests {
     #[test]
     fn evaluate_zero_drift() {
         let drift = Drift::ZERO;
-        let dt = Dt::from_sec(1_234_567, Scale::TAI);
+        let dt = Dt::from_sec(1_234_567, Scale::TAI, Scale::TAI);
         assert_eq!(drift.time_diff_after(&dt), Dt::ZERO);
     }
 
     #[test]
     fn evaluate_constant_only() {
         let drift = Drift::from_constant(Dt::span_f(0.5));
-        let dt = Dt::from_sec(1_000, Scale::TAI);
+        let dt = Dt::from_sec(1_000, Scale::TAI, Scale::TAI);
         assert_eq!(drift.time_diff_after(&dt), Dt::span_f(0.5));
     }
 
     #[test]
     fn evaluate_rate_only() {
         let drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::span_f(1e-9)); // 1 ns/s
-        let dt = Dt::from_sec(1_000_000, Scale::TAI); // 1 million seconds
+        let dt = Dt::from_sec(1_000_000, Scale::TAI, Scale::TAI); // 1 million seconds
         assert_eq!(drift.time_diff_after(&dt), Dt::span_f(0.001)); // 1 µs
     }
 
     #[test]
     fn evaluate_full_quadratic() {
         let drift = Drift::new(
-            Dt::from_sec(2, Scale::TAI),
+            Dt::from_sec(2, Scale::TAI, Scale::TAI),
             Dt::from_ns(1, 0, Scale::TAI, Scale::TAI), // exactly 1e-9 s/s
             Dt::span(2),                               // exactly 2e-18 s/s²
         );
-        let dt = Dt::from_sec(1_000_000, Scale::TAI);
+        let dt = Dt::from_sec(1_000_000, Scale::TAI, Scale::TAI);
 
         // Exact mathematical result:
         // 2 + (1e-9 * 1_000_000) + (2e-18 * 1_000_000²) = 2 + 0.001 + 0.000002
@@ -46,14 +46,14 @@ mod tests {
     #[test]
     fn evaluate_negative_dt() {
         let drift = Drift::new(
-            Dt::from_sec(5, Scale::TAI),
+            Dt::from_sec(5, Scale::TAI, Scale::TAI),
             Dt::from_ns(1, 0, Scale::TAI, Scale::TAI), // exactly 1e-9 s/s
             Dt::new(1, Scale::TAI, Scale::TAI),        // exactly 1e-18 s/s²
         );
-        let dt = Dt::from_sec(-500_000, Scale::TAI);
+        let dt = Dt::from_sec(-500_000, Scale::TAI, Scale::TAI);
 
         // Exact mathematical result (no f64 loss)
-        let expected = Dt::from_sec(4, Scale::TAI)
+        let expected = Dt::from_sec(4, Scale::TAI, Scale::TAI)
             .add(Dt::from_ms(999, 0, Scale::TAI, Scale::TAI))
             .add(Dt::from_us(500, 0, Scale::TAI, Scale::TAI))
             .add(Dt::from_ns(250, 0, Scale::TAI, Scale::TAI));
@@ -64,7 +64,7 @@ mod tests {
     #[test]
     fn evaluate_large_dt_exact() {
         let drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::span_f(1e-12));
-        let dt = Dt::from_sec(1_000_000_000, Scale::TAI); // ~31.7 years
+        let dt = Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI); // ~31.7 years
         assert_eq!(drift.time_diff_after(&dt), Dt::span_f(0.001));
     }
 

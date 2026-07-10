@@ -321,27 +321,21 @@ impl Dt {
         )
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] holding the given whole seconds.
     ///
-    /// - Requires a total seconds value.
-    /// - The value should be from the epoch TAI 2000-01-01 12:00:00.
-    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
-    ///   the given `scale` arg.
+    /// Does **not** perform any time scale conversions. The `sec` count is stored
+    /// as-is (converted only from seconds to attoseconds); its meaning depends on
+    /// how you use the value afterward (for example as a library-epoch offset, a
+    /// Unix offset passed to [`from_unix`](Self::from_unix), a duration, etc.).
     ///
-    /// This function performs a time scale conversion from the given `scale` to **TAI**,
-    /// if you don't want any time scale conversion to take place then either use
-    /// `Scale::TAI` as an arg or use any of the following constructors:
+    /// ## Parameters
     ///
-    /// - [`Dt::new`](../struct.Dt.html#method.new)
-    /// - [`Dt::new_sec`](../struct.Dt.html#method.new_sec)
-    /// - [`Dt::new_f`](../struct.Dt.html#method.new_f)
-    /// - [`Dt::span`](../struct.Dt.html#method.span)
-    /// - [`Dt::span_f`](../struct.Dt.html#method.span_f)
-    /// - [`Dt::from_tai_sec`](../struct.Dt.html#method.from_tai_sec)
+    /// - `sec` — whole seconds count to store.
+    /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
+    /// - `target` — value stored in the returned [`Dt`]'s `target` field.
     #[inline(always)]
-    pub const fn from_sec(sec: i128, scale: Scale) -> Dt {
-        Dt::new(sec.saturating_mul(ATTOS_PER_SEC_I128), scale, scale).to_tai()
+    pub const fn from_sec(sec: i128, on: Scale, target: Scale) -> Dt {
+        Dt::new(sec.saturating_mul(ATTOS_PER_SEC_I128), on, target)
     }
 
     /// Builds a [`Dt`] holding the given whole milliseconds and sub-millisecond remainder.

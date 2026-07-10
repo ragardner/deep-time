@@ -368,8 +368,8 @@ mod tests {
 
     #[test]
     fn date_parser_roundtrip() {
-        let tp1 = Dt::from_sec(5, Scale::LTC);
-        let tp2 = Dt::from_sec(5, Scale::GPS);
+        let tp1 = Dt::from_sec(5, Scale::LTC, Scale::LTC).to_tai();
+        let tp2 = Dt::from_sec(5, Scale::GPS, Scale::GPS).to_tai();
         let xp1 = tp1
             .target(Scale::UTC)
             .to_str("%Y-%m-%dT%H:%M:%S%.f", Lang::En)

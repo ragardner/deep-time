@@ -10,7 +10,7 @@
 
 use deep_time::{Dt, DtErr, Lang, Scale};
 
-const MINUTE: Dt = Dt::from_sec(60, Scale::TAI);
+const MINUTE: Dt = Dt::from_sec(60, Scale::TAI, Scale::TAI);
 
 fn to_utc_and_floor(dt: Dt) -> Dt {
     dt.to(Scale::UTC).floor(MINUTE)

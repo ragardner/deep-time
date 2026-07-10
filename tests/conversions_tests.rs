@@ -79,12 +79,12 @@ fn test_ymd_to_jd() {
 #[test]
 fn tdb_tt_difference_matches_spice_approximation() {
     let test_points = [
-        Dt::from_sec(0, Scale::TAI),                   // J2000.0
-        Dt::from_sec(1_000_000_000, Scale::TAI),       // ~31.7 y after J2000
-        Dt::from_sec(-500_000_000, Scale::TAI),        // ~15.85 y before J2000
-        Dt::from_sec(86_400 * 365 * 50, Scale::TAI),   // +50 years
-        Dt::from_sec(-86_400 * 365 * 100, Scale::TAI), // -100 years
-        Dt::from_sec(-2_208_945_600, Scale::TAI),      // ≈ J1900
+        Dt::from_sec(0, Scale::TAI, Scale::TAI), // J2000.0
+        Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI), // ~31.7 y after J2000
+        Dt::from_sec(-500_000_000, Scale::TAI, Scale::TAI), // ~15.85 y before J2000
+        Dt::from_sec(86_400 * 365 * 50, Scale::TAI, Scale::TAI), // +50 years
+        Dt::from_sec(-86_400 * 365 * 100, Scale::TAI, Scale::TAI), // -100 years
+        Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI), // ≈ J1900
     ];
 
     for &tai in &test_points {
@@ -112,7 +112,7 @@ fn tdb_tt_difference_matches_spice_approximation() {
 /// https://naif.jpl.nasa.gov/pub/naif/toolkit_docs/C/req/time.html
 #[test]
 fn et_tai_roundtrip_is_lossless() {
-    let original = Dt::from_sec(987_654_321_098, Scale::TAI);
+    let original = Dt::from_sec(987_654_321_098, Scale::TAI, Scale::TAI);
 
     let et = original.to(Scale::ET);
     let xt = et.to(Scale::TAI);
@@ -124,11 +124,11 @@ fn et_tai_roundtrip_is_lossless() {
 #[test]
 fn tdb_tai_roundtrip_is_accurate() {
     let test_points = [
-        Dt::from_sec(0, Scale::TAI),                  // J2000 TAI
-        Dt::from_sec(86_400 * 365, Scale::TAI),       // ~1 year later
-        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI), // 10 years before
-        Dt::from_sec(1_000_000_000, Scale::TAI),      // ~31.7 years later
-        Dt::from_sec(-2_208_945_600, Scale::TAI),     // J1900 epoch
+        Dt::from_sec(0, Scale::TAI, Scale::TAI), // J2000 TAI
+        Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI), // ~1 year later
+        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI), // 10 years before
+        Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI), // ~31.7 years later
+        Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI), // J1900 epoch
     ];
 
     for &p in &test_points {
@@ -149,11 +149,11 @@ fn tdb_tai_roundtrip_is_accurate() {
 #[test]
 fn et_tai_roundtrip_is_accurate() {
     let test_points = [
-        Dt::from_sec(0, Scale::TAI),                  // J2000 TAI
-        Dt::from_sec(86_400 * 365, Scale::TAI),       // ~1 year later
-        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI), // 10 years before
-        Dt::from_sec(1_000_000_000, Scale::TAI),      // ~31.7 years later
-        Dt::from_sec(-2_208_945_600, Scale::TAI),     // J1900 epoch
+        Dt::from_sec(0, Scale::TAI, Scale::TAI), // J2000 TAI
+        Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI), // ~1 year later
+        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI), // 10 years before
+        Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI), // ~31.7 years later
+        Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI), // J1900 epoch
     ];
 
     for &p in &test_points {
@@ -175,9 +175,9 @@ fn et_tai_roundtrip_is_accurate() {
 #[test]
 fn tdb_correction_stays_within_bounds() {
     let points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365 * 100, Scale::TAI),
-        Dt::from_sec(-86_400 * 365 * 50, Scale::TAI),
+        Dt::from_sec(0, Scale::TAI, Scale::TAI),
+        Dt::from_sec(86_400 * 365 * 100, Scale::TAI, Scale::TAI),
+        Dt::from_sec(-86_400 * 365 * 50, Scale::TAI, Scale::TAI),
     ];
 
     for &p in &points {
@@ -200,13 +200,13 @@ fn tdb_correction_stays_within_bounds() {
 fn proper_to_tt_with_drift_roundtrip() {
     use deep_time::Drift;
 
-    let epoch = Dt::from_sec(0, Scale::TAI);
+    let epoch = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     let drift = Drift::new(
         Dt::from_ms(100, 0, Scale::TAI, Scale::TAI), // exactly 0.1 s
         Dt::from_ns(1, 0, Scale::TAI, Scale::TAI),   // exactly 1 ns/s = 1e-9 s/s
         Dt::ZERO,
     );
-    let onboard_proper = epoch.add(Dt::from_sec(1_000_000, Scale::TAI));
+    let onboard_proper = epoch.add(Dt::from_sec(1_000_000, Scale::TAI, Scale::TAI));
     let tt = onboard_proper.convert_using_drift(epoch, &drift);
     let back = tt.convert_back_using_drift(epoch, &drift);
 
@@ -248,11 +248,11 @@ fn gnss_offsets_are_correct() {
 #[test]
 fn tcg_tai_roundtrip_is_accurate() {
     let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365, Scale::TAI),
-        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI),
-        Dt::from_sec(1_000_000_000, Scale::TAI),
-        Dt::from_sec(-2_208_945_600, Scale::TAI),
+        Dt::from_sec(0, Scale::TAI, Scale::TAI),
+        Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI),
+        Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
+        Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI),
     ];
 
     for &p in &test_points {
@@ -272,11 +272,11 @@ fn tcg_tai_roundtrip_is_accurate() {
 #[test]
 fn tcb_tai_roundtrip_is_accurate() {
     let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365, Scale::TAI),
-        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI),
-        Dt::from_sec(1_000_000_000, Scale::TAI),
-        Dt::from_sec(-2_208_945_600, Scale::TAI),
+        Dt::from_sec(0, Scale::TAI, Scale::TAI),
+        Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI),
+        Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
+        Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI),
     ];
 
     for &p in &test_points {
@@ -296,12 +296,12 @@ fn tcb_tai_roundtrip_is_accurate() {
 #[test]
 fn utc_tai_roundtrip_is_accurate() {
     let test_points = [
-        Dt::from_sec(0, Scale::TAI),
-        Dt::from_sec(86_400 * 365, Scale::TAI),
-        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI),
-        Dt::from_sec(1_000_000_000, Scale::TAI),
-        Dt::from_sec(-2_208_945_600, Scale::TAI),
-        Dt::from_sec(1_485_779_200, Scale::TAI), // around 2017-01-01 leap second
+        Dt::from_sec(0, Scale::TAI, Scale::TAI),
+        Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+        Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI),
+        Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
+        Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI),
+        Dt::from_sec(1_485_779_200, Scale::TAI, Scale::TAI), // around 2017-01-01 leap second
     ];
 
     for &p in &test_points {
