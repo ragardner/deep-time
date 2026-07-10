@@ -162,10 +162,22 @@ impl Parts {
         // Final construction
         // ──────────────────────────────────────────────────────────────
         if !sec_is_60 {
-            Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
+            Ok(Dt::from_sec_and_frac(
+                total_sec as i128,
+                self.attos as i128,
+                self.scale,
+                self.scale,
+            )
+            .to_tai())
         // sec is 60
         } else if self.scale.uses_leap_seconds() {
-            let t = Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale);
+            let t = Dt::from_sec_and_frac(
+                total_sec as i128,
+                self.attos as i128,
+                self.scale,
+                self.scale,
+            )
+            .to_tai();
             match Dt::leap_sec_using_sec64(total_sec.saturating_add(1), true) {
                 Some(info) => match info.is_leap_sec {
                     IsLeapSec::Add => Ok(t.add_sec(1)),
@@ -175,7 +187,13 @@ impl Parts {
                 None => Ok(t),
             }
         } else {
-            Ok(Dt::from_sec_and_ufrac(total_sec, self.attos, self.scale))
+            Ok(Dt::from_sec_and_frac(
+                total_sec as i128,
+                self.attos as i128,
+                self.scale,
+                self.scale,
+            )
+            .to_tai())
         }
     }
 }

@@ -138,33 +138,6 @@ impl Dt {
         }
     }
 
-    /// Creates a new [`Dt`] from a total number of seconds since the librarys
-    /// epoch **2000-01-01 12:00:00 TAI**.
-    ///
-    /// Does **not** perform any time scale conversions.
-    #[inline(always)]
-    pub const fn new_sec(sec: i128, scale: Scale, target: Scale) -> Dt {
-        Self {
-            attos: Dt::sec_to_attos(sec),
-            scale,
-            target,
-        }
-    }
-
-    /// Creates a new [`Dt`] from a total number of seconds as a float
-    /// since the librarys epoch **2000-01-01 12:00:00 TAI**.
-    ///
-    /// - Does **not** perform any time scale conversions.
-    /// - Fractional seconds represented by any decimals.
-    #[inline(always)]
-    pub const fn new_f(sec: Real, scale: Scale, target: Scale) -> Dt {
-        Self {
-            attos: Dt::sec_f_to_attos(sec),
-            scale,
-            target,
-        }
-    }
-
     /// Creates a new [`Dt`] from a total number of attoseconds (signed i128) without
     /// performing any time scale conversions.
     ///
@@ -193,6 +166,8 @@ impl Dt {
     /// Simply adds the total attoseconds to the epoch. Does not perform
     /// any time scale conversions.
     ///
+    /// The returned [`Dt`] copies the epoch's `scale` and `target` fields.
+    ///
     /// ## Examples
     ///
     /// ```rust
@@ -212,58 +187,22 @@ impl Dt {
         epoch.add(Dt::new(attos, epoch.scale, epoch.target))
     }
 
-    /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
-    /// the given `scale`.
+    /// Builds a [`Dt`] holding the given whole seconds and sub-second remainder.
     ///
-    /// - **Requires** a seconds and attoseconds count such that would be returned from the
-    ///   functions [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   **[`Dt::to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac)**.
-    /// - The returned object's `scale` field is set to TAI and its `target` field is set to
-    ///   the given `scale` arg.
-    /// - The `sec` should be from the epoch TAI 2000-01-01 12:00:00.
+    /// The remainder is in **attoseconds**, not seconds. Pairs with
+    /// [`to_sec64`](Self::to_sec64) + [`to_sec_frac`](Self::to_sec_frac).
     ///
-    /// This function performs a time scale conversion from the given `scale` to **TAI**,
-    /// if you don't want any time scale conversion to take place then either use
-    /// `Scale::TAI` as an arg or use any of the following constructors:
+    /// Does **not** perform any time scale conversions.
     ///
-    /// - [`Dt::new`](../struct.Dt.html#method.new)
-    /// - [`Dt::new_sec`](../struct.Dt.html#method.new_sec)
-    /// - [`Dt::new_f`](../struct.Dt.html#method.new_f)
-    /// - [`Dt::span`](../struct.Dt.html#method.span)
-    /// - [`Dt::span_f`](../struct.Dt.html#method.span_f)
-    /// - [`Dt::from_tai_sec`](../struct.Dt.html#method.from_tai_sec)
-    #[inline(always)]
-    pub fn from_sec_and_ufrac(sec: i64, attos: u64, scale: Scale) -> Dt {
-        if attos == 0 {
-            Dt::new((sec as i128) * ATTOS_PER_SEC_I128, scale, scale).to_tai()
-        } else {
-            Dt::new(
-                (sec as i128) * ATTOS_PER_SEC_I128 + (attos as i128),
-                scale,
-                scale,
-            )
-            .to_tai()
-        }
-    }
-
-    /// Builds a [`Dt`] from whole seconds plus a sub-second attoseconds remainder.
+    /// ## Parameters
     ///
-    /// - `sec` — whole seconds only (no fraction). Use
-    ///   [`Dt::to_sec64`](../struct.Dt.html#method.to_sec64)
-    ///   to obtain this from an existing [`Dt`].
-    /// - `attos` — the signed sub-second remainder in attoseconds, as returned by
-    ///   [`Dt::to_sec_frac`](../struct.Dt.html#method.to_sec_frac).
-    ///   For a total of `1.3` s: `sec = 1`, `attos = 300_000_000_000_000_000`.
+    /// - `sec` — whole seconds (truncating / signed-remainder split).
+    /// - `attos` — fractional part of that split, in attoseconds.
+    ///   For `1.3` s: `sec = 1`, `attos = 300_000_000_000_000_000`.
     ///   For `-1.3` s: `sec = -1`, `attos = -300_000_000_000_000_000`.
     ///   For `-0.5` s: `sec = 0`, `attos = -500_000_000_000_000_000`.
-    ///
-    /// This whole/remainder split differs from
-    /// [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor)
-    /// +
-    /// [`Dt::to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
-    /// Use
-    /// [`from_sec_and_ufrac`](../struct.Dt.html#method.from_sec_and_ufrac)
-    /// for that pairing.
+    /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
+    /// - `target` — value stored in the returned [`Dt`]'s `target` field.
     ///
     /// ## Examples
     ///
@@ -272,42 +211,29 @@ impl Dt {
     ///
     /// let dt = Dt::span(1_300_000_000_000_000_000);
     /// assert_eq!(
-    ///     Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI),
+    ///     Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI, Scale::TAI),
     ///     dt,
     /// );
     ///
     /// let dt = Dt::span(-1_300_000_000_000_000_000);
     /// assert_eq!(
-    ///     Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI),
+    ///     Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI, Scale::TAI),
     ///     dt,
     /// );
     ///
     /// let dt = Dt::span(-500_000_000_000_000_000);
     /// assert_eq!(
-    ///     Dt::from_sec_and_frac(0, -500_000_000_000_000_000, Scale::TAI),
+    ///     Dt::from_sec_and_frac(0, -500_000_000_000_000_000, Scale::TAI, Scale::TAI),
     ///     dt,
     /// );
     /// ```
-    ///
-    /// The result is stored on TAI and converted from `scale`.
-    /// `sec` is measured from the library epoch: 2000-01-01 12:00:00 TAI.
-    ///
-    /// To avoid scale conversion, pass `Scale::TAI`, or use one of:
-    ///
-    /// - [`Dt::new`](../struct.Dt.html#method.new)
-    /// - [`Dt::new_sec`](../struct.Dt.html#method.new_sec)
-    /// - [`Dt::new_f`](../struct.Dt.html#method.new_f)
-    /// - [`Dt::span`](../struct.Dt.html#method.span)
-    /// - [`Dt::span_f`](../struct.Dt.html#method.span_f)
-    /// - [`Dt::from_tai_sec`](../struct.Dt.html#method.from_tai_sec)
     #[inline(always)]
-    pub fn from_sec_and_frac(sec: i64, attos: i64, scale: Scale) -> Dt {
+    pub const fn from_sec_and_frac(sec: i128, attos: i128, on: Scale, target: Scale) -> Dt {
         Dt::new(
-            (sec as i128) * ATTOS_PER_SEC_I128 + (attos as i128),
-            scale,
-            scale,
+            sec.saturating_mul(ATTOS_PER_SEC_I128).saturating_add(attos),
+            on,
+            target,
         )
-        .to_tai()
     }
 
     /// Creates a new [`Dt`] from a total number of seconds (signed i128) without

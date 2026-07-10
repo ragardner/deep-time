@@ -4,26 +4,28 @@
 /// sub-second remainder (attoseconds).
 ///
 /// This is sugar for [`Dt::from_sec_and_frac`](crate::Dt::from_sec_and_frac).
-/// When the fraction is omitted it is `0`. When the scale is omitted it is
-/// [`Scale::TAI`](crate::Scale::TAI).
+/// When the fraction is omitted it is `0`. When scale is omitted, both `scale`
+/// and `target` are [`Scale::TAI`](crate::Scale::TAI). With `on scale` only,
+/// `target` matches `scale`. A different `target` is set with a trailing
+/// `; target`.
 ///
 /// ## Forms
 ///
 /// | Form | Equivalent to |
 /// |------|----------------|
-/// | `from_sec!(sec)` | `Dt::from_sec_and_frac(sec, 0, Scale::TAI)` |
-/// | `from_sec!(sec, frac)` | `Dt::from_sec_and_frac(sec, frac, Scale::TAI)` |
-/// | `from_sec!(sec, on scale)` | `Dt::from_sec_and_frac(sec, 0, scale)` |
-/// | `from_sec!(sec, frac, on scale)` | `Dt::from_sec_and_frac(sec, frac, scale)` |
+/// | `from_sec!(sec)` | `Dt::from_sec_and_frac(sec, 0, Scale::TAI, Scale::TAI)` |
+/// | `from_sec!(sec, frac)` | `Dt::from_sec_and_frac(sec, frac, Scale::TAI, Scale::TAI)` |
+/// | `from_sec!(sec, on scale)` | `Dt::from_sec_and_frac(sec, 0, scale, scale)` |
+/// | `from_sec!(sec, frac, on scale)` | `Dt::from_sec_and_frac(sec, frac, scale, scale)` |
+/// | `from_sec!(sec, on scale; target)` | `Dt::from_sec_and_frac(sec, 0, scale, target)` |
+/// | `from_sec!(sec, frac, on scale; target)` | `Dt::from_sec_and_frac(sec, frac, scale, target)` |
 ///
-/// The `on` keyword must be preceded by a comma: `macro_rules!` only allows
-/// `=>`, `,`, or `;` immediately after an `:expr` fragment, so
-/// `from_sec!(sec on scale)` is not expressible.
+/// The `on` keyword must be preceded by a comma. Optional `target` follows a
+/// semicolon after the scale (same rules as `from_ns!`).
 ///
 /// `sec` and `frac` are the signed whole/remainder split (e.g. `-1.3` s is
 /// `sec = -1`, `frac = -300_000_000_000_000_000`). Floor-style pairs with a
-/// non-negative remainder also work, since the underlying math is
-/// `sec × 10¹⁸ + frac`.
+/// non-negative remainder also work. No time-scale conversion is performed.
 ///
 /// ## Examples
 ///
@@ -35,11 +37,13 @@
 /// let b = from_sec!(1, 300_000_000_000_000_000);
 /// let c = from_sec!(-1, -300_000_000_000_000_000, on Scale::TAI);
 /// let d = from_sec!(0, on Scale::UTC);
+/// let e = from_sec!(1, on Scale::TAI; Scale::UTC);
 ///
-/// assert_eq!(a, deep_time::Dt::from_sec_and_frac(1, 0, Scale::TAI));
-/// assert_eq!(b, deep_time::Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI));
-/// assert_eq!(c, deep_time::Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI));
-/// assert_eq!(d, deep_time::Dt::from_sec_and_frac(0, 0, Scale::UTC));
+/// assert_eq!(a, deep_time::Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, deep_time::Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(c, deep_time::Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(d, deep_time::Dt::from_sec_and_frac(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, deep_time::Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::UTC));
 ///
 /// // -1.3 s: signed (decimal) split vs floor split — same instant
 /// let signed = from_sec!(-1, -300_000_000_000_000_000);
@@ -49,17 +53,23 @@
 /// ```
 #[macro_export]
 macro_rules! from_sec {
+    ($sec:expr, $frac:expr, on $scale:expr; $target:expr) => {
+        $crate::Dt::from_sec_and_frac($sec, $frac, $scale, $target)
+    };
+    ($sec:expr, on $scale:expr; $target:expr) => {
+        $crate::Dt::from_sec_and_frac($sec, 0, $scale, $target)
+    };
     ($sec:expr, $frac:expr, on $scale:expr) => {
-        $crate::Dt::from_sec_and_frac($sec, $frac, $scale)
+        $crate::Dt::from_sec_and_frac($sec, $frac, $scale, $scale)
     };
     ($sec:expr, on $scale:expr) => {
-        $crate::Dt::from_sec_and_frac($sec, 0, $scale)
+        $crate::Dt::from_sec_and_frac($sec, 0, $scale, $scale)
     };
     ($sec:expr, $frac:expr) => {
-        $crate::Dt::from_sec_and_frac($sec, $frac, $crate::Scale::TAI)
+        $crate::Dt::from_sec_and_frac($sec, $frac, $crate::Scale::TAI, $crate::Scale::TAI)
     };
     ($sec:expr) => {
-        $crate::Dt::from_sec_and_frac($sec, 0, $crate::Scale::TAI)
+        $crate::Dt::from_sec_and_frac($sec, 0, $crate::Scale::TAI, $crate::Scale::TAI)
     };
 }
 
@@ -171,7 +181,7 @@ macro_rules! from_ns {
 /// ```
 ///
 /// The `on` keyword must be preceded by a comma (same `macro_rules!` limit as
-/// [`from_sec!`]).
+/// [`from_sec!`](macro.from_sec.html)).
 ///
 /// ## Examples
 ///

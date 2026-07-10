@@ -211,7 +211,12 @@ fn test_from_sec_and_frac_round_trip() {
 
     for attos in cases {
         let dt = Dt::span(attos);
-        let rebuilt = Dt::from_sec_and_frac(dt.to_sec64(), dt.to_sec_frac(), Scale::TAI);
+        let rebuilt = Dt::from_sec_and_frac(
+            dt.to_sec(),
+            dt.to_sec_frac() as i128,
+            Scale::TAI,
+            Scale::TAI,
+        );
         assert_eq!(dt, rebuilt, "round-trip failed for {attos} attos");
     }
 }

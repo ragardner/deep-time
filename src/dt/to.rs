@@ -248,9 +248,6 @@ impl Dt {
     /// same sign as the original value when non-zero.
     ///
     /// Pairs with [`from_sec_and_frac`](../struct.Dt.html#method.from_sec_and_frac).
-    /// For the floor/Euclidean split, use
-    /// [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac) and
-    /// [`from_sec_and_ufrac`](../struct.Dt.html#method.from_sec_and_ufrac).
     #[inline(always)]
     pub const fn to_sec_frac(&self) -> i64 {
         (self.attos % ATTOS_PER_SEC_I128) as i64
