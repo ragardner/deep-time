@@ -37,7 +37,7 @@ mod tests {
     #[test]
     fn test_dt_roundtrip() {
         let span =
-            Dt::from_sec(123456789, Scale::TAI) + Dt::from_ns_floor(987654321, 0, Scale::TAI);
+            Dt::from_sec(123456789, Scale::TAI) + Dt::from_ns(987654321, 0, Scale::TAI, Scale::TAI);
         assert_dt_wire_roundtrip(&span);
     }
 
@@ -55,7 +55,7 @@ mod tests {
     fn test_clockdrift_roundtrip() {
         let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI),
-            Dt::from_ns_floor(1, 0, Scale::TAI),
+            Dt::from_ns(1, 0, Scale::TAI, Scale::TAI),
             Dt::span(2),
         );
         assert_roundtrip(
@@ -68,8 +68,8 @@ mod tests {
     #[test]
     fn test_timerange_roundtrip() {
         let start = Dt::from_tai_sec(1000000000);
-        let end = start + Dt::from_hours_floor(24, 0, Scale::TAI);
-        let step = Dt::from_hours_floor(1, 0, Scale::TAI);
+        let end = start + Dt::from_hours(24, 0, Scale::TAI, Scale::TAI);
+        let step = Dt::from_hours(1, 0, Scale::TAI, Scale::TAI);
         let range = start.range(end, step);
 
         assert_roundtrip(

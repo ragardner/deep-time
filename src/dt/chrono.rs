@@ -25,7 +25,7 @@ impl Dt {
         let min = dt.minute().clamp(0, 59) as u8;
         let sec = dt.second().clamp(0, 60) as u8;
         let subsec_nanos = dt.nanosecond();
-        let attos = Dt::from_ns_floor(subsec_nanos as i128, 0, Scale::TAI).to_attos();
+        let attos = Dt::from_ns(subsec_nanos as i128, 0, Scale::TAI, Scale::TAI).to_attos();
 
         Dt::from_ymd(yr, mo, day, Scale::UTC, hr, min, sec, Dt::to_u64(attos))
     }
@@ -33,14 +33,14 @@ impl Dt {
     /// Creates a [`Dt`] from a [`chrono::Duration`] (nanosecond precision).
     pub fn from_chrono_duration(dur: Duration) -> Dt {
         match dur.num_nanoseconds() {
-            Some(ns) => Self::from_ns_floor(ns as i128, 0, Scale::TAI),
+            Some(ns) => Self::from_ns(ns as i128, 0, Scale::TAI, Scale::TAI),
             None => {
                 let ns = if dur > Duration::zero() {
                     i64::MAX
                 } else {
                     i64::MIN
                 };
-                Self::from_ns_floor(ns as i128, 0, Scale::TAI)
+                Self::from_ns(ns as i128, 0, Scale::TAI, Scale::TAI)
             }
         }
     }

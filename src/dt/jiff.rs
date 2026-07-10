@@ -108,7 +108,7 @@ impl Dt {
     /// chrono/`time` duration interop.
     #[inline]
     pub fn from_jiff_signed_duration(dur: SignedDuration) -> Dt {
-        Self::from_ns_floor(dur.as_nanos(), 0, Scale::TAI)
+        Self::from_ns(dur.as_nanos(), 0, Scale::TAI, Scale::TAI)
     }
 
     /// Creates a [`Dt`] from a [`jiff::Span`] (nanosecond precision).

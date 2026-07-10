@@ -132,6 +132,6 @@ impl Dt {
     /// duration interop.
     #[inline]
     pub fn from_time_duration(dur: Duration) -> Dt {
-        Self::from_ns_floor(dur.whole_nanoseconds(), 0, Scale::TAI)
+        Self::from_ns(dur.whole_nanoseconds(), 0, Scale::TAI, Scale::TAI)
     }
 }

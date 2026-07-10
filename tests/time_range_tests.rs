@@ -8,7 +8,7 @@ mod time_range_tests {
 
     #[inline]
     fn hr(n: i128) -> Dt {
-        Dt::from_hours_floor(n, 0, Scale::TAI)
+        Dt::from_hours(n, 0, Scale::TAI, Scale::TAI)
     }
 
     #[test]

@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn duration_roundtrip() {
-        let span = Dt::from_ns_floor(3_600_000_000_000 + 123, 0, Scale::TAI); // 1 hour + 123 ns
+        let span = Dt::from_ns(3_600_000_000_000 + 123, 0, Scale::TAI, Scale::TAI); // 1 hour + 123 ns
         let dur = span.to_time_duration();
         assert_eq!(dur.whole_seconds(), 3_600);
         assert_eq!(dur.subsec_nanoseconds(), 123);
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn duration_negative_roundtrip() {
-        let span = Dt::from_ns_floor(-5_000_000_001, 0, Scale::TAI);
+        let span = Dt::from_ns(-5_000_000_001, 0, Scale::TAI, Scale::TAI);
         let dur = span.to_time_duration();
         assert!(dur.is_negative());
         assert_eq!(dur.whole_nanoseconds(), -5_000_000_001);

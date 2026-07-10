@@ -185,22 +185,22 @@ macro_rules! impl_time_units_int {
         $(
             impl TimeTraits for $ty {
                 #[inline]
-                fn ns(self) -> Dt { Dt::from_ns_floor(self as i128, 0, Scale::TAI) }
+                fn ns(self) -> Dt { Dt::from_ns(self as i128, 0, Scale::TAI, Scale::TAI) }
 
                 #[inline]
-                fn us(self) -> Dt { Dt::from_us_floor(self as i128, 0, Scale::TAI) }
+                fn us(self) -> Dt { Dt::from_us(self as i128, 0, Scale::TAI, Scale::TAI) }
 
                 #[inline]
-                fn ms(self) -> Dt { Dt::from_ms_floor(self as i128, 0, Scale::TAI) }
+                fn ms(self) -> Dt { Dt::from_ms(self as i128, 0, Scale::TAI, Scale::TAI) }
 
                 #[inline]
                 fn sec(self) -> Dt { Dt::from_sec(self as i128, Scale::TAI) }
 
                 #[inline]
-                fn mins(self) -> Dt { Dt::from_mins_floor(self as i128, 0, Scale::TAI) }
+                fn mins(self) -> Dt { Dt::from_mins(self as i128, 0, Scale::TAI, Scale::TAI) }
 
                 #[inline]
-                fn hours(self) -> Dt { Dt::from_hours_floor(self as i128, 0, Scale::TAI) }
+                fn hours(self) -> Dt { Dt::from_hours(self as i128, 0, Scale::TAI, Scale::TAI) }
 
                 #[inline]
                 fn days(self) -> Dt { Dt::from_sec((self as i128).saturating_mul(SEC_PER_DAY), Scale::TAI) }
@@ -221,17 +221,17 @@ impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64);
 impl TimeTraits for u128 {
     #[inline]
     fn ns(self) -> Dt {
-        Dt::from_ns_floor(Dt::to_i128(self), 0, Scale::TAI)
+        Dt::from_ns(Dt::to_i128(self), 0, Scale::TAI, Scale::TAI)
     }
 
     #[inline]
     fn us(self) -> Dt {
-        Dt::from_us_floor(Dt::to_i128(self), 0, Scale::TAI)
+        Dt::from_us(Dt::to_i128(self), 0, Scale::TAI, Scale::TAI)
     }
 
     #[inline]
     fn ms(self) -> Dt {
-        Dt::from_ms_floor(Dt::to_i128(self), 0, Scale::TAI)
+        Dt::from_ms(Dt::to_i128(self), 0, Scale::TAI, Scale::TAI)
     }
 
     #[inline]
@@ -241,12 +241,12 @@ impl TimeTraits for u128 {
 
     #[inline]
     fn mins(self) -> Dt {
-        Dt::from_mins_floor(Dt::to_i128(self), 0, Scale::TAI)
+        Dt::from_mins(Dt::to_i128(self), 0, Scale::TAI, Scale::TAI)
     }
 
     #[inline]
     fn hours(self) -> Dt {
-        Dt::from_hours_floor(Dt::to_i128(self), 0, Scale::TAI)
+        Dt::from_hours(Dt::to_i128(self), 0, Scale::TAI, Scale::TAI)
     }
 
     #[inline]

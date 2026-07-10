@@ -35,7 +35,7 @@ impl Dt {
             - j1900.to_tai_duration().total_nanoseconds();
 
         let ns_since_zero_tai = ns_since_j1900 - offset_ns;
-        Self::from_ns_floor(ns_since_zero_tai, 0, Scale::TAI)
+        Self::from_ns(ns_since_zero_tai, 0, Scale::TAI, Scale::TAI)
     }
 
     /// Converts this [`Dt`] to a [`hifitime::Duration`] (nanosecond precision).
@@ -56,6 +56,6 @@ impl Dt {
     /// Inverse of [`Dt::to_hifitime_duration`].
     #[inline(always)]
     pub fn from_hifitime_duration(dur: Duration) -> Dt {
-        Self::from_ns_floor(dur.total_nanoseconds(), 0, Scale::TAI)
+        Self::from_ns(dur.total_nanoseconds(), 0, Scale::TAI, Scale::TAI)
     }
 }

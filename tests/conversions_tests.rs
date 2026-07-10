@@ -202,8 +202,8 @@ fn proper_to_tt_with_drift_roundtrip() {
 
     let epoch = Dt::from_sec(0, Scale::TAI);
     let drift = Drift::new(
-        Dt::from_ms_floor(100, 0, Scale::TAI), // exactly 0.1 s
-        Dt::from_ns_floor(1, 0, Scale::TAI),   // exactly 1 ns/s = 1e-9 s/s
+        Dt::from_ms(100, 0, Scale::TAI, Scale::TAI), // exactly 0.1 s
+        Dt::from_ns(1, 0, Scale::TAI, Scale::TAI),   // exactly 1 ns/s = 1e-9 s/s
         Dt::ZERO,
     );
     let onboard_proper = epoch.add(Dt::from_sec(1_000_000, Scale::TAI));
@@ -382,19 +382,25 @@ fn ntp_timestamp() {
 
 #[test]
 fn unit_split_roundtrip_positive() {
-    let dt = Dt::from_ns_floor(5, 123_456_789, Scale::TAI);
+    let dt = Dt::from_ns(5, 123_456_789, Scale::TAI, Scale::TAI);
     let (whole, frac_attos) = dt.to_ns_floor();
     assert_eq!(whole, 5);
     assert_eq!(frac_attos, 123_456_789);
-    assert_eq!(Dt::from_ns_floor(whole, frac_attos, Scale::TAI), dt);
+    assert_eq!(
+        Dt::from_ns(whole, frac_attos as i128, Scale::TAI, Scale::TAI),
+        dt
+    );
 
     let ms_dt = Dt::span(1_300_000_000_000_000_000);
     let (whole, frac_attos) = ms_dt.to_ms_floor();
     assert_eq!(whole, 1300);
     assert_eq!(frac_attos, 0);
-    assert_eq!(Dt::from_ms_floor(whole, frac_attos, Scale::TAI), ms_dt);
+    assert_eq!(
+        Dt::from_ms(whole, frac_attos as i128, Scale::TAI, Scale::TAI),
+        ms_dt
+    );
 
-    let fs_dt = Dt::from_fs_floor(42, 0, Scale::TAI);
+    let fs_dt = Dt::from_fs(42, 0, Scale::TAI, Scale::TAI);
     let (_, frac_attos) = fs_dt.to_fs_floor();
     assert_eq!(frac_attos, 0);
 }
@@ -405,13 +411,16 @@ fn unit_split_negative_whole_plus_fraction() {
     let (whole, frac_attos) = dt.to_ms_floor();
     assert_eq!(whole, -1001);
     assert_eq!(frac_attos, 500_000_000_000_000);
-    assert_eq!(Dt::from_ms_floor(whole, frac_attos, Scale::TAI), dt);
+    assert_eq!(
+        Dt::from_ms(whole, frac_attos as i128, Scale::TAI, Scale::TAI),
+        dt
+    );
 
     // Truncation toward zero differs for negative non-whole values
     let (whole, frac_attos) = dt.to_ms();
     assert_eq!(whole, -1000);
     assert_eq!(frac_attos, -500_000_000_000_000);
-    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI), dt);
+    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI, Scale::TAI), dt);
 }
 
 #[test]
@@ -420,19 +429,28 @@ fn unit_split_trunc_semantics() {
     let (whole, frac_attos) = positive.to_ms();
     assert_eq!(whole, 1300);
     assert_eq!(frac_attos, 500_000_000_000_000);
-    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI), positive);
+    assert_eq!(
+        Dt::from_ms(whole, frac_attos, Scale::TAI, Scale::TAI),
+        positive
+    );
 
     let negative_whole = Dt::span(-1_300_000_000_000_000_000);
     let (whole, frac_attos) = negative_whole.to_ms();
     assert_eq!(whole, -1300);
     assert_eq!(frac_attos, 0);
-    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI), negative_whole);
+    assert_eq!(
+        Dt::from_ms(whole, frac_attos, Scale::TAI, Scale::TAI),
+        negative_whole
+    );
 
     let small_negative = Dt::span(-500_000_000_000_000);
     let (whole, frac_attos) = small_negative.to_ms();
     assert_eq!(whole, 0);
     assert_eq!(frac_attos, -500_000_000_000_000);
-    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI), small_negative);
+    assert_eq!(
+        Dt::from_ms(whole, frac_attos, Scale::TAI, Scale::TAI),
+        small_negative
+    );
 }
 
 #[test]
@@ -442,27 +460,27 @@ fn unit_split_trunc_roundtrip_all_units() {
     let dt = Dt::span(-1_000_500_000_000_000_000);
 
     let (whole, frac) = dt.to_ms();
-    assert_eq!(Dt::from_ms(whole, frac, Scale::TAI), dt);
+    assert_eq!(Dt::from_ms(whole, frac, Scale::TAI, Scale::TAI), dt);
 
     let (whole, frac) = dt.to_us();
-    assert_eq!(Dt::from_us(whole, frac, Scale::TAI), dt);
+    assert_eq!(Dt::from_us(whole, frac, Scale::TAI, Scale::TAI), dt);
 
     let (whole, frac) = dt.to_ns();
-    assert_eq!(Dt::from_ns(whole, frac, Scale::TAI), dt);
+    assert_eq!(Dt::from_ns(whole, frac, Scale::TAI, Scale::TAI), dt);
 
     let (whole, frac) = dt.to_ps();
-    assert_eq!(Dt::from_ps(whole, frac, Scale::TAI), dt);
+    assert_eq!(Dt::from_ps(whole, frac, Scale::TAI, Scale::TAI), dt);
 
     let (whole, frac) = dt.to_fs();
-    assert_eq!(Dt::from_fs(whole, frac, Scale::TAI), dt);
+    assert_eq!(Dt::from_fs(whole, frac, Scale::TAI, Scale::TAI), dt);
 
     // mins / hours / days: construct from whole + signed attos fraction
-    let mins = Dt::from_mins(-1, -30 * ATTOS_PER_SEC_I128, Scale::TAI);
+    let mins = Dt::from_mins(-1, -30 * ATTOS_PER_SEC_I128, Scale::TAI, Scale::TAI);
     assert_eq!(mins.to_attos(), -90 * ATTOS_PER_SEC_I128);
 
-    let hours = Dt::from_hours(-2, -1800 * ATTOS_PER_SEC_I128, Scale::TAI);
+    let hours = Dt::from_hours(-2, -1800 * ATTOS_PER_SEC_I128, Scale::TAI, Scale::TAI);
     assert_eq!(hours.to_attos(), -9000 * ATTOS_PER_SEC_I128);
 
-    let days = Dt::from_days(-1, -ATTOS_PER_DAY / 4, Scale::TAI);
+    let days = Dt::from_days(-1, -ATTOS_PER_DAY / 4, Scale::TAI, Scale::TAI);
     assert_eq!(days.to_attos(), -5 * ATTOS_PER_DAY / 4);
 }

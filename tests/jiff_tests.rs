@@ -221,7 +221,7 @@ mod interop {
 
     #[test]
     fn duration_roundtrip() {
-        let span = Dt::from_ns_floor(3_600_000_000_000 + 123, 0, Scale::TAI); // 1 hour + 123 ns
+        let span = Dt::from_ns(3_600_000_000_000 + 123, 0, Scale::TAI, Scale::TAI); // 1 hour + 123 ns
         let dur = span.to_jiff_signed_duration();
         assert_eq!(dur.as_secs(), 3_600);
         assert_eq!(dur.subsec_nanos(), 123);
@@ -230,7 +230,7 @@ mod interop {
 
     #[test]
     fn duration_negative_roundtrip() {
-        let span = Dt::from_ns_floor(-5_000_000_001, 0, Scale::TAI);
+        let span = Dt::from_ns(-5_000_000_001, 0, Scale::TAI, Scale::TAI);
         let dur = span.to_jiff_signed_duration();
         assert!(dur.is_negative());
         assert_eq!(dur.as_nanos(), -5_000_000_001);
@@ -247,7 +247,7 @@ mod interop {
 
     #[test]
     fn span_roundtrip() {
-        let dt = Dt::from_ns_floor(3_600_000_000_000 + 123, 0, Scale::TAI);
+        let dt = Dt::from_ns(3_600_000_000_000 + 123, 0, Scale::TAI, Scale::TAI);
         let jiff_span = dt.to_jiff_span();
         let back = Dt::from_jiff_span(jiff_span).unwrap();
         assert_ns_eq(back, dt, "span");
@@ -255,7 +255,7 @@ mod interop {
 
     #[test]
     fn span_negative_roundtrip() {
-        let dt = Dt::from_ns_floor(-90_000_000_001, 0, Scale::TAI);
+        let dt = Dt::from_ns(-90_000_000_001, 0, Scale::TAI, Scale::TAI);
         let jiff_span = dt.to_jiff_span();
         let back = Dt::from_jiff_span(jiff_span).unwrap();
         assert_ns_eq(back, dt, "neg span");
@@ -263,7 +263,7 @@ mod interop {
 
     #[test]
     fn span_zero() {
-        let dt = Dt::from_ns_floor(0, 0, Scale::TAI);
+        let dt = Dt::from_ns(0, 0, Scale::TAI, Scale::TAI);
         let jiff_span = dt.to_jiff_span();
         assert_eq!(jiff_span.fieldwise(), Span::new().fieldwise());
         assert_ns_eq(Dt::from_jiff_span(jiff_span).unwrap(), dt, "zero span");
@@ -271,7 +271,7 @@ mod interop {
 
     #[test]
     fn span_and_duration_agree() {
-        let dt = Dt::from_ns_floor(12_345_678_901, 0, Scale::TAI);
+        let dt = Dt::from_ns(12_345_678_901, 0, Scale::TAI, Scale::TAI);
         let from_span = Dt::from_jiff_span(dt.to_jiff_span()).unwrap();
         let from_dur = Dt::from_jiff_signed_duration(dt.to_jiff_signed_duration());
         assert_ns_eq(from_span, from_dur, "span vs duration");

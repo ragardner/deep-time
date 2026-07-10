@@ -40,20 +40,18 @@ impl Dt {
         }
     }
 
-    /// Combines a whole unit count and fractional attoseconds within that unit into total attoseconds.
+    /// Combines a whole unit count and fractional attoseconds within that unit into total
+    /// attoseconds.
     ///
     /// Computes `whole * unit_attos + frac_attos`. The fractional part is always **added**, even
     /// when `whole` is negative — the Euclidean / floor split used by
     /// [`to_ms_floor`](../struct.Dt.html#method.to_ms_floor),
-    /// [`to_ns_floor`](../struct.Dt.html#method.to_ns_floor), and related methods, and by
-    /// constructors such as
-    /// [`from_ms_floor`](../struct.Dt.html#method.from_ms_floor) and
-    /// [`from_ns_floor`](../struct.Dt.html#method.from_ns_floor).
+    /// [`to_ns_floor`](../struct.Dt.html#method.to_ns_floor).
     ///
     /// This is **not** the same as pairing with truncating extractors like
-    /// [`to_ms`](../struct.Dt.html#method.to_ms) (signed remainder). Unlike
-    /// [`from_sec_and_frac`](../struct.Dt.html#method.from_sec_and_frac), the fraction is never
-    /// subtracted when `whole` is negative.
+    /// [`to_ms`](../struct.Dt.html#method.to_ms) (signed remainder).
+    ///
+    /// The fraction is never subtracted even when `whole` is negative.
     ///
     /// For the truncating / signed-remainder split, use
     /// [`unit_and_signed_attos_to_attos`](../struct.Dt.html#method.unit_and_signed_attos_to_attos).

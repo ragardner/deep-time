@@ -67,23 +67,28 @@ macro_rules! from_sec {
 /// fractional remainder in attoseconds.
 ///
 /// This is sugar for [`Dt::from_ns`](crate::Dt::from_ns). When the fraction is
-/// omitted it is `0`. When the scale is omitted it is
-/// [`Scale::TAI`](crate::Scale::TAI).
+/// omitted it is `0`. When scale is omitted, both `scale` and `target` are
+/// [`Scale::TAI`](crate::Scale::TAI). With `on scale` only, `target` matches
+/// `scale`. A different `target` is set with a trailing `; target`.
 ///
 /// ## Forms
 ///
 /// | Form | Equivalent to |
 /// |------|----------------|
-/// | `from_ns!(ns)` | `Dt::from_ns(ns, 0, Scale::TAI)` |
-/// | `from_ns!(ns, frac_attos)` | `Dt::from_ns(ns, frac_attos, Scale::TAI)` |
-/// | `from_ns!(ns, on scale)` | `Dt::from_ns(ns, 0, scale)` |
-/// | `from_ns!(ns, frac_attos, on scale)` | `Dt::from_ns(ns, frac_attos, scale)` |
+/// | `from_ns!(ns)` | `Dt::from_ns(ns, 0, Scale::TAI, Scale::TAI)` |
+/// | `from_ns!(ns, frac_attos)` | `Dt::from_ns(ns, frac_attos, Scale::TAI, Scale::TAI)` |
+/// | `from_ns!(ns, on scale)` | `Dt::from_ns(ns, 0, scale, scale)` |
+/// | `from_ns!(ns, frac_attos, on scale)` | `Dt::from_ns(ns, frac_attos, scale, scale)` |
+/// | `from_ns!(ns, on scale; target)` | `Dt::from_ns(ns, 0, scale, target)` |
+/// | `from_ns!(ns, frac_attos, on scale; target)` | `Dt::from_ns(ns, frac_attos, scale, target)` |
 ///
-/// The `on` keyword must be preceded by a comma (same limit as [`from_sec!`]).
+/// The `on` keyword must be preceded by a comma. Optional `target` follows a
+/// semicolon after the scale (`;` is allowed after an `:expr` fragment).
 ///
 /// `ns` and `frac_attos` are the signed whole/remainder split (e.g. `-1.3` ns is
 /// `ns = -1`, `frac_attos` negative for 0.3 ns in attoseconds). Floor-style
-/// pairs with a non-negative remainder also work.
+/// pairs with a non-negative remainder also work. No time-scale conversion is
+/// performed.
 ///
 /// ## Examples
 ///
@@ -96,31 +101,39 @@ macro_rules! from_sec {
 /// let b = from_ns!(1, 300_000_000);
 /// let c = from_ns!(-1, -300_000_000, on Scale::TAI);
 /// let d = from_ns!(0, on Scale::UTC);
+/// let e = from_ns!(1, on Scale::TAI; Scale::UTC);
 ///
-/// assert_eq!(a, deep_time::Dt::from_ns(1, 0, Scale::TAI));
-/// assert_eq!(b, deep_time::Dt::from_ns(1, 300_000_000, Scale::TAI));
-/// assert_eq!(c, deep_time::Dt::from_ns(-1, -300_000_000, Scale::TAI));
-/// assert_eq!(d, deep_time::Dt::from_ns(0, 0, Scale::UTC));
+/// assert_eq!(a, deep_time::Dt::from_ns(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, deep_time::Dt::from_ns(1, 300_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(c, deep_time::Dt::from_ns(-1, -300_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(d, deep_time::Dt::from_ns(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, deep_time::Dt::from_ns(1, 0, Scale::TAI, Scale::UTC));
 ///
 /// // -1.3 ns: signed split vs floor split — same instant
 /// let signed = from_ns!(-1, -300_000_000);
 /// let floor = from_ns!(-2, 700_000_000);
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, deep_time::Dt::from_ns(-1, -300_000_000, Scale::TAI));
+/// assert_eq!(signed, deep_time::Dt::from_ns(-1, -300_000_000, Scale::TAI, Scale::TAI));
 /// ```
 #[macro_export]
 macro_rules! from_ns {
+    ($ns:expr, $frac:expr, on $scale:expr; $target:expr) => {
+        $crate::Dt::from_ns($ns, $frac, $scale, $target)
+    };
+    ($ns:expr, on $scale:expr; $target:expr) => {
+        $crate::Dt::from_ns($ns, 0, $scale, $target)
+    };
     ($ns:expr, $frac:expr, on $scale:expr) => {
-        $crate::Dt::from_ns($ns, $frac, $scale)
+        $crate::Dt::from_ns($ns, $frac, $scale, $scale)
     };
     ($ns:expr, on $scale:expr) => {
-        $crate::Dt::from_ns($ns, 0, $scale)
+        $crate::Dt::from_ns($ns, 0, $scale, $scale)
     };
     ($ns:expr, $frac:expr) => {
-        $crate::Dt::from_ns($ns, $frac, $crate::Scale::TAI)
+        $crate::Dt::from_ns($ns, $frac, $crate::Scale::TAI, $crate::Scale::TAI)
     };
     ($ns:expr) => {
-        $crate::Dt::from_ns($ns, 0, $crate::Scale::TAI)
+        $crate::Dt::from_ns($ns, 0, $crate::Scale::TAI, $crate::Scale::TAI)
     };
 }
 

@@ -29,8 +29,8 @@ mod tests {
     fn evaluate_full_quadratic() {
         let drift = Drift::new(
             Dt::from_sec(2, Scale::TAI),
-            Dt::from_ns_floor(1, 0, Scale::TAI), // exactly 1e-9 s/s
-            Dt::span(2),                         // exactly 2e-18 s/s²
+            Dt::from_ns(1, 0, Scale::TAI, Scale::TAI), // exactly 1e-9 s/s
+            Dt::span(2),                               // exactly 2e-18 s/s²
         );
         let dt = Dt::from_sec(1_000_000, Scale::TAI);
 
@@ -47,16 +47,16 @@ mod tests {
     fn evaluate_negative_dt() {
         let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI),
-            Dt::from_ns_floor(1, 0, Scale::TAI), // exactly 1e-9 s/s
-            Dt::from_attos(1, Scale::TAI),       // exactly 1e-18 s/s²
+            Dt::from_ns(1, 0, Scale::TAI, Scale::TAI), // exactly 1e-9 s/s
+            Dt::from_attos(1, Scale::TAI),             // exactly 1e-18 s/s²
         );
         let dt = Dt::from_sec(-500_000, Scale::TAI);
 
         // Exact mathematical result (no f64 loss)
         let expected = Dt::from_sec(4, Scale::TAI)
-            .add(Dt::from_ms_floor(999, 0, Scale::TAI))
-            .add(Dt::from_us_floor(500, 0, Scale::TAI))
-            .add(Dt::from_ns_floor(250, 0, Scale::TAI));
+            .add(Dt::from_ms(999, 0, Scale::TAI, Scale::TAI))
+            .add(Dt::from_us(500, 0, Scale::TAI, Scale::TAI))
+            .add(Dt::from_ns(250, 0, Scale::TAI, Scale::TAI));
 
         assert_eq!(drift.time_diff_after(&dt), expected);
     }

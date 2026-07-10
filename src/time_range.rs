@@ -26,7 +26,7 @@ impl Dt {
     ///
     /// let start = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     /// let end = Dt::from_ymd(2000, 1, 2, Scale::UTC, 0, 0, 0, 0);
-    /// let step = Dt::from_hours_floor(1, 0, Scale::TAI);
+    /// let step = Dt::from_hours(1, 0, Scale::TAI, Scale::TAI);
     ///
     /// for timestamp in start.every(step).to_including(end) {
     ///     println!("{:?}", timestamp.to_ymd());
@@ -54,19 +54,19 @@ impl Dt {
     /// Creates a range stepping by whole minutes.
     #[inline]
     pub const fn every_mins(self) -> Every {
-        self.every(Dt::from_mins_floor(1, 0, Scale::TAI))
+        self.every(Dt::from_mins(1, 0, Scale::TAI, Scale::TAI))
     }
 
     /// Creates a range stepping by whole hours.
     #[inline]
     pub const fn every_hours(self) -> Every {
-        self.every(Dt::from_hours_floor(1, 0, Scale::TAI))
+        self.every(Dt::from_hours(1, 0, Scale::TAI, Scale::TAI))
     }
 
     /// Creates a range stepping by whole days.
     #[inline]
     pub const fn every_day(self) -> Every {
-        self.every(Dt::from_hours_floor(24, 0, Scale::TAI))
+        self.every(Dt::from_hours(24, 0, Scale::TAI, Scale::TAI))
     }
 
     /// Returns the next `n` points **after** `self` (exclusive of `self`)
@@ -121,7 +121,7 @@ impl Every {
 ///
 /// let start = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
 /// let end = Dt::from_ymd(2000, 1, 2, Scale::UTC, 0, 0, 0, 0);
-/// let step = Dt::from_hours_floor(1, 0, Scale::TAI);
+/// let step = Dt::from_hours(1, 0, Scale::TAI, Scale::TAI);
 ///
 /// for timestamp in start.every(step).to_including(end) {
 ///     println!("{:?}", timestamp.to_ymd());
