@@ -406,13 +406,8 @@ impl Dt {
     /// - [`Dt::to_jd_floor`](../struct.Dt.html#method.to_jd_floor)
     pub const fn from_jd_floor(jd_days: i128, frac_attos: u128, on: Scale) -> Dt {
         let days_since_j2000 = jd_days.saturating_sub(JD_2000_2_451_545_I128);
-        let frac_attos_i128 = if frac_attos > i128::MAX as u128 {
-            i128::MAX
-        } else {
-            frac_attos as i128
-        };
         let attos_from_days = days_since_j2000.saturating_mul(ATTOS_PER_DAY);
-        let total_attos = attos_from_days.saturating_add(frac_attos_i128);
+        let total_attos = attos_from_days.saturating_add(Self::to_i128(frac_attos));
 
         Self::from_attos(total_attos, on)
     }

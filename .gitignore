@@ -11,6 +11,9 @@ tzdata/
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
+# Accidental one-off rustc/cargo output left in the repo root
+/rust_out
+
 # library stuff
 Cargo.lock
 *.py

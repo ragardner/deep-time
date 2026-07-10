@@ -24,6 +24,19 @@ impl Dt {
         }
     }
 
+    /// Converts a `u128` to `i128`, saturating at [`i128::MAX`] when the value would wrap.
+    ///
+    /// A bare `x as i128` is wrapping: values above `i128::MAX` become negative
+    /// (e.g. `u128::MAX as i128 == -1`). Prefer this helper whenever a non-negative
+    /// attosecond (or other) magnitude stored as `u128` is fed into signed `i128` arithmetic.
+    pub const fn to_i128(x: u128) -> i128 {
+        if x > i128::MAX as u128 {
+            i128::MAX
+        } else {
+            x as i128
+        }
+    }
+
     /// Combines a whole unit count and fractional attoseconds within that unit into total attoseconds.
     ///
     /// Computes `whole * unit_attos + frac_attos`. The fractional part is always **added**, even
@@ -45,7 +58,7 @@ impl Dt {
     pub const fn unit_and_attos_to_attos(whole: i128, frac_attos: u128, unit_attos: i128) -> i128 {
         whole
             .saturating_mul(unit_attos)
-            .saturating_add(frac_attos as i128)
+            .saturating_add(Self::to_i128(frac_attos))
     }
 
     /// Combines a whole unit count and a signed fractional remainder into total attoseconds.

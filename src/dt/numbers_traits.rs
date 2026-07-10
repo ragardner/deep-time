@@ -144,7 +144,55 @@ macro_rules! impl_time_units_int {
     };
 }
 
-impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
+impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64);
+
+// `u128` alone among the integer impls can exceed `i128::MAX`; saturate instead of wrapping.
+impl TimeTraits for u128 {
+    #[inline]
+    fn ns(self) -> Dt {
+        Dt::from_ns_floor(Dt::to_i128(self), 0, Scale::TAI)
+    }
+
+    #[inline]
+    fn us(self) -> Dt {
+        Dt::from_us_floor(Dt::to_i128(self), 0, Scale::TAI)
+    }
+
+    #[inline]
+    fn ms(self) -> Dt {
+        Dt::from_ms_floor(Dt::to_i128(self), 0, Scale::TAI)
+    }
+
+    #[inline]
+    fn sec(self) -> Dt {
+        Dt::from_sec(Dt::to_i128(self), Scale::TAI)
+    }
+
+    #[inline]
+    fn mins(self) -> Dt {
+        Dt::from_mins_floor(Dt::to_i128(self), 0, Scale::TAI)
+    }
+
+    #[inline]
+    fn hours(self) -> Dt {
+        Dt::from_hours_floor(Dt::to_i128(self), 0, Scale::TAI)
+    }
+
+    #[inline]
+    fn days(self) -> Dt {
+        Dt::from_sec(Dt::to_i128(self).saturating_mul(SEC_PER_DAY), Scale::TAI)
+    }
+
+    #[inline]
+    fn weeks(self) -> Dt {
+        Dt::from_sec(Dt::to_i128(self).saturating_mul(604_800), Scale::TAI)
+    }
+
+    #[inline]
+    fn years(self) -> Dt {
+        Dt::from_sec(Dt::to_i128(self).saturating_mul(31_557_600), Scale::TAI)
+    }
+}
 
 impl TimeTraits for f64 {
     #[inline]

@@ -342,6 +342,7 @@ mod physics;
 // _________________________________________
 pub mod civil_parts;
 pub mod consts;
+pub mod macros;
 pub mod math;
 pub mod tz;
 pub mod utc;

@@ -243,14 +243,9 @@ impl Dt {
     /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
     /// - [`Dt::from_unix`](../struct.Dt.html#method.from_unix)
     pub const fn from_unix_days(days: i128, frac_attos: u128, on: Scale) -> Dt {
-        let frac_attos_i128 = if frac_attos > i128::MAX as u128 {
-            i128::MAX
-        } else {
-            frac_attos as i128
-        };
         let total_attos = days
             .saturating_mul(ATTOS_PER_DAY)
-            .saturating_add(frac_attos_i128);
+            .saturating_add(Self::to_i128(frac_attos));
 
         Self::from_unix(Dt::new(total_attos, on, on))
     }

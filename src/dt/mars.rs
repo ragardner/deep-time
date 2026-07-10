@@ -71,12 +71,14 @@ impl Dt {
     #[inline]
     pub const fn to_mtc(&self) -> Dt {
         let (_, frac_attos) = self.to_msd();
-        Dt::span(frac_attos as i128)
+        Dt::span(Self::to_i128(frac_attos))
     }
 
     /// Creates a [`Dt`] (in TT) from an Mars Sol Date.
     pub const fn from_msd(whole_sols: i128, frac_attos: u128) -> Dt {
-        let elapsed_attos = whole_sols * MARS_SOL_ATTOS + frac_attos as i128;
+        let elapsed_attos = whole_sols
+            .saturating_mul(MARS_SOL_ATTOS)
+            .saturating_add(Self::to_i128(frac_attos));
         let tt = MARS_REF_TT.add(Dt::span(elapsed_attos));
         tt.convert(Scale::TAI)
     }
