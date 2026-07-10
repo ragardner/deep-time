@@ -38,11 +38,34 @@ impl Dt {
     /// [`to_ms`](../struct.Dt.html#method.to_ms) (signed remainder). Unlike
     /// [`from_sec_and_frac`](../struct.Dt.html#method.from_sec_and_frac), the fraction is never
     /// subtracted when `whole` is negative.
+    ///
+    /// For the truncating / signed-remainder split, use
+    /// [`unit_and_signed_attos_to_attos`](../struct.Dt.html#method.unit_and_signed_attos_to_attos).
     #[inline(always)]
     pub const fn unit_and_attos_to_attos(whole: i128, frac_attos: u128, unit_attos: i128) -> i128 {
         whole
             .saturating_mul(unit_attos)
             .saturating_add(frac_attos as i128)
+    }
+
+    /// Combines a whole unit count and a signed fractional remainder into total attoseconds.
+    ///
+    /// The two parts are the left and right sides of a decimal: e.g. `-1.3` units is
+    /// `whole = -1` and a negative `frac_attos` for the `0.3` **(expressed in attoseconds, not
+    /// in the unit itself)**.
+    ///
+    /// Used by constructors such as
+    /// [`from_ms`](../struct.Dt.html#method.from_ms).
+    ///
+    /// For the floor form (fraction always non-negative and always added), use
+    /// [`unit_and_attos_to_attos`](../struct.Dt.html#method.unit_and_attos_to_attos).
+    #[inline(always)]
+    pub const fn unit_and_signed_attos_to_attos(
+        whole: i128,
+        frac_attos: i128,
+        unit_attos: i128,
+    ) -> i128 {
+        whole.saturating_mul(unit_attos).saturating_add(frac_attos)
     }
 
     /// Converts seconds i128 → total attoseconds i128

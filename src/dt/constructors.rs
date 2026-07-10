@@ -481,6 +481,139 @@ impl Dt {
         Self::from_attos(attos, scale)
     }
 
+    /// Builds a [`Dt`] from milliseconds given as two parts of a decimal: whole milliseconds
+    /// and the fractional part expressed in **attoseconds** (not in milliseconds).
+    ///
+    /// For `1.3` ms: `ms = 1`, `frac_attos` = 0.3 ms in attoseconds.
+    /// For `-1.3` ms: `ms = -1`, `frac_attos` negative. Pairs with
+    /// [`to_ms`](../struct.Dt.html#method.to_ms).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    ///
+    /// See also [`from_ms_floor`](../struct.Dt.html#method.from_ms_floor).
+    #[inline(always)]
+    pub const fn from_ms(ms: i128, frac_attos: i128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_signed_attos_to_attos(ms, frac_attos, ATTOS_PER_MS_I128);
+        Self::from_attos(attos, scale)
+    }
+
+    /// Builds a [`Dt`] from microseconds given as two parts of a decimal: whole microseconds
+    /// and the fractional part expressed in **attoseconds** (not in microseconds).
+    ///
+    /// For `1.3` µs: `us = 1`, `frac_attos` = 0.3 µs in attoseconds.
+    /// For `-1.3` µs: `us = -1`, `frac_attos` negative. Pairs with
+    /// [`to_us`](../struct.Dt.html#method.to_us).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    ///
+    /// See also [`from_us_floor`](../struct.Dt.html#method.from_us_floor).
+    #[inline(always)]
+    pub const fn from_us(us: i128, frac_attos: i128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_signed_attos_to_attos(us, frac_attos, ATTOS_PER_US_I128);
+        Self::from_attos(attos, scale)
+    }
+
+    /// Builds a [`Dt`] from nanoseconds given as two parts of a decimal: whole nanoseconds
+    /// and the fractional part expressed in **attoseconds** (not in nanoseconds).
+    ///
+    /// For `1.3` ns: `ns = 1`, `frac_attos` = 0.3 ns in attoseconds.
+    /// For `-1.3` ns: `ns = -1`, `frac_attos` negative. Pairs with
+    /// [`to_ns`](../struct.Dt.html#method.to_ns).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    ///
+    /// See also [`from_ns_floor`](../struct.Dt.html#method.from_ns_floor).
+    #[inline(always)]
+    pub const fn from_ns(ns: i128, frac_attos: i128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_signed_attos_to_attos(ns, frac_attos, ATTOS_PER_NS_I128);
+        Self::from_attos(attos, scale)
+    }
+
+    /// Builds a [`Dt`] from picoseconds given as two parts of a decimal: whole picoseconds
+    /// and the fractional part expressed in **attoseconds** (not in picoseconds).
+    ///
+    /// For `1.3` ps: `ps = 1`, `frac_attos` = 0.3 ps in attoseconds.
+    /// For `-1.3` ps: `ps = -1`, `frac_attos` negative. Pairs with
+    /// [`to_ps`](../struct.Dt.html#method.to_ps).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    ///
+    /// See also [`from_ps_floor`](../struct.Dt.html#method.from_ps_floor).
+    #[inline(always)]
+    pub const fn from_ps(ps: i128, frac_attos: i128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_signed_attos_to_attos(ps, frac_attos, ATTOS_PER_PS_I128);
+        Self::from_attos(attos, scale)
+    }
+
+    /// Builds a [`Dt`] from femtoseconds given as two parts of a decimal: whole femtoseconds
+    /// and the fractional part expressed in **attoseconds** (not in femtoseconds).
+    ///
+    /// For `1.3` fs: `fs = 1`, `frac_attos` = 0.3 fs in attoseconds.
+    /// For `-1.3` fs: `fs = -1`, `frac_attos` negative. Pairs with
+    /// [`to_fs`](../struct.Dt.html#method.to_fs).
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    ///
+    /// See also [`from_fs_floor`](../struct.Dt.html#method.from_fs_floor).
+    #[inline(always)]
+    pub const fn from_fs(fs: i128, frac_attos: i128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_signed_attos_to_attos(fs, frac_attos, ATTOS_PER_FS_I128);
+        Self::from_attos(attos, scale)
+    }
+
+    /// Builds a [`Dt`] from minutes given as two parts of a decimal: whole minutes
+    /// and the fractional part expressed in **attoseconds** (not in minutes).
+    ///
+    /// For `1.5` min: `n = 1`, `frac_attos` = 0.5 min in attoseconds.
+    /// For `-1.5` min: `n = -1`, `frac_attos` negative.
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    ///
+    /// See also [`from_mins_floor`](../struct.Dt.html#method.from_mins_floor).
+    #[inline(always)]
+    pub const fn from_mins(n: i128, frac_attos: i128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_signed_attos_to_attos(n, frac_attos, ATTOS_PER_MIN);
+        Self::from_attos(attos, scale)
+    }
+
+    /// Builds a [`Dt`] from hours given as two parts of a decimal: whole hours
+    /// and the fractional part expressed in **attoseconds** (not in hours).
+    ///
+    /// For `1.5` h: `n = 1`, `frac_attos` = 0.5 h in attoseconds.
+    /// For `-1.5` h: `n = -1`, `frac_attos` negative.
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    ///
+    /// See also [`from_hours_floor`](../struct.Dt.html#method.from_hours_floor).
+    #[inline(always)]
+    pub const fn from_hours(n: i128, frac_attos: i128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_signed_attos_to_attos(n, frac_attos, ATTOS_PER_HOUR);
+        Self::from_attos(attos, scale)
+    }
+
+    /// Builds a [`Dt`] from days given as two parts of a decimal: whole days
+    /// and the fractional part expressed in **attoseconds** (not in days).
+    ///
+    /// For `1.25` d: `d = 1`, `frac_attos` = 0.25 d in attoseconds.
+    /// For `-1.25` d: `d = -1`, `frac_attos` negative. Uses `86400` seconds per day.
+    ///
+    /// - Values are measured from the epoch TAI 2000-01-01 12:00:00.
+    /// - The result is stored on TAI after conversion from `scale`.
+    ///
+    /// See also [`from_days_floor`](../struct.Dt.html#method.from_days_floor).
+    #[inline(always)]
+    pub const fn from_days(d: i128, frac_attos: i128, scale: Scale) -> Dt {
+        let attos = Dt::unit_and_signed_attos_to_attos(d, frac_attos, ATTOS_PER_DAY);
+        Self::from_attos(attos, scale)
+    }
+
     /// Returns a [`Dt`] on the TAI time scale, after having been **converted** to TAI from
     /// the given `scale`.
     ///

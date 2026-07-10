@@ -411,6 +411,7 @@ fn unit_split_negative_whole_plus_fraction() {
     let (whole, frac_attos) = dt.to_ms();
     assert_eq!(whole, -1000);
     assert_eq!(frac_attos, -500_000_000_000_000);
+    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI), dt);
 }
 
 #[test]
@@ -419,14 +420,49 @@ fn unit_split_trunc_semantics() {
     let (whole, frac_attos) = positive.to_ms();
     assert_eq!(whole, 1300);
     assert_eq!(frac_attos, 500_000_000_000_000);
+    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI), positive);
 
     let negative_whole = Dt::span(-1_300_000_000_000_000_000);
     let (whole, frac_attos) = negative_whole.to_ms();
     assert_eq!(whole, -1300);
     assert_eq!(frac_attos, 0);
+    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI), negative_whole);
 
     let small_negative = Dt::span(-500_000_000_000_000);
     let (whole, frac_attos) = small_negative.to_ms();
     assert_eq!(whole, 0);
     assert_eq!(frac_attos, -500_000_000_000_000);
+    assert_eq!(Dt::from_ms(whole, frac_attos, Scale::TAI), small_negative);
+}
+
+#[test]
+fn unit_split_trunc_roundtrip_all_units() {
+    use deep_time::consts::{ATTOS_PER_DAY, ATTOS_PER_SEC_I128};
+
+    let dt = Dt::span(-1_000_500_000_000_000_000);
+
+    let (whole, frac) = dt.to_ms();
+    assert_eq!(Dt::from_ms(whole, frac, Scale::TAI), dt);
+
+    let (whole, frac) = dt.to_us();
+    assert_eq!(Dt::from_us(whole, frac, Scale::TAI), dt);
+
+    let (whole, frac) = dt.to_ns();
+    assert_eq!(Dt::from_ns(whole, frac, Scale::TAI), dt);
+
+    let (whole, frac) = dt.to_ps();
+    assert_eq!(Dt::from_ps(whole, frac, Scale::TAI), dt);
+
+    let (whole, frac) = dt.to_fs();
+    assert_eq!(Dt::from_fs(whole, frac, Scale::TAI), dt);
+
+    // mins / hours / days: construct from whole + signed attos fraction
+    let mins = Dt::from_mins(-1, -30 * ATTOS_PER_SEC_I128, Scale::TAI);
+    assert_eq!(mins.to_attos(), -90 * ATTOS_PER_SEC_I128);
+
+    let hours = Dt::from_hours(-2, -1800 * ATTOS_PER_SEC_I128, Scale::TAI);
+    assert_eq!(hours.to_attos(), -9000 * ATTOS_PER_SEC_I128);
+
+    let days = Dt::from_days(-1, -ATTOS_PER_DAY / 4, Scale::TAI);
+    assert_eq!(days.to_attos(), -5 * ATTOS_PER_DAY / 4);
 }
