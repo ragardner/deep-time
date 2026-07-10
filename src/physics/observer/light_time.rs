@@ -209,7 +209,7 @@ impl Observer {
     ///   for solar-system work; include additional bodies for higher precision.
     ///   Pass `&[]` to disable Shapiro.
     /// * `tolerance` — Maximum allowed change in receive time per iteration
-    ///   before declaring convergence (e.g. `Dt::from_ns_floor(1, 0, Scale::TAI)`).
+    ///   before declaring convergence.
     /// * `max_iter` — Maximum number of iterations. Typical values are 12–20
     ///   for solar-system geometries.
     ///
