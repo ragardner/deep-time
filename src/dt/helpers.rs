@@ -1,4 +1,7 @@
-use crate::{ATTOS_PER_SEC_I128, ATTOS_PER_SECF, Dt, Real};
+use crate::{
+    ATTOS_PER_FS_I128, ATTOS_PER_HOUR, ATTOS_PER_MIN, ATTOS_PER_MS_I128, ATTOS_PER_NS_I128,
+    ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, Real,
+};
 
 impl Dt {
     /// Clamps an `i128` to the representable range of `i64`.
@@ -81,10 +84,52 @@ impl Dt {
         whole.saturating_mul(unit_attos).saturating_add(frac_attos)
     }
 
-    /// Converts seconds i128 → total attoseconds i128
+    /// Converts whole femtoseconds → total attoseconds (`× 10³`).
+    #[inline(always)]
+    pub const fn fs_to_attos(fs: i128) -> i128 {
+        fs.saturating_mul(ATTOS_PER_FS_I128)
+    }
+
+    /// Converts whole picoseconds → total attoseconds (`× 10⁶`).
+    #[inline(always)]
+    pub const fn ps_to_attos(ps: i128) -> i128 {
+        ps.saturating_mul(ATTOS_PER_PS_I128)
+    }
+
+    /// Converts whole nanoseconds → total attoseconds (`× 10⁹`).
+    #[inline(always)]
+    pub const fn ns_to_attos(ns: i128) -> i128 {
+        ns.saturating_mul(ATTOS_PER_NS_I128)
+    }
+
+    /// Converts whole microseconds → total attoseconds (`× 10¹²`).
+    #[inline(always)]
+    pub const fn us_to_attos(us: i128) -> i128 {
+        us.saturating_mul(ATTOS_PER_US_I128)
+    }
+
+    /// Converts whole milliseconds → total attoseconds (`× 10¹⁵`).
+    #[inline(always)]
+    pub const fn ms_to_attos(ms: i128) -> i128 {
+        ms.saturating_mul(ATTOS_PER_MS_I128)
+    }
+
+    /// Converts whole seconds → total attoseconds (`× 10¹⁸`).
     #[inline(always)]
     pub const fn sec_to_attos(sec: i128) -> i128 {
         sec.saturating_mul(ATTOS_PER_SEC_I128)
+    }
+
+    /// Converts whole minutes → total attoseconds (`× 60 × 10¹⁸`).
+    #[inline(always)]
+    pub const fn mins_to_attos(mins: i128) -> i128 {
+        mins.saturating_mul(ATTOS_PER_MIN)
+    }
+
+    /// Converts whole hours → total attoseconds (`× 3600 × 10¹⁸`).
+    #[inline(always)]
+    pub const fn hours_to_attos(hours: i128) -> i128 {
+        hours.saturating_mul(ATTOS_PER_HOUR)
     }
 
     /// Converts total attoseconds → whole seconds as i64

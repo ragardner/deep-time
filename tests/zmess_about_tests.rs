@@ -14,10 +14,10 @@ mod tests {
     #[test]
     fn print_stuff() {
         use deep_time::{Dt, Scale, TimeTraits};
+        use deep_time::{from_sec, from_ymd};
 
-        let dt = 100.years().ago().add_mins(-60).add_ms(-500);
-        let (whole_sols, frac_attos) = dt.to_msd();
-
-        eprintln!("{}. {} sols", whole_sols, frac_attos);
+        let x = from_sec!(0, on Scale::TAI);
+        let y = from_ymd!(1970);
+        assert_eq!(y, Dt::UNIX_EPOCH);
     }
 }

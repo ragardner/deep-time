@@ -16,16 +16,23 @@ use crate::{
     ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, SEC_PER_DAY, SEC_PER_DAY_F, Scale,
 };
 
-/// Trait that adds ergonomic conversions from attoseconds values
-/// for i64, i128, and f64.
+/// Trait that adds ergonomic attosecond conversions on integer values.
+///
+/// Covers both directions:
+/// - `attos_to_*` — total attoseconds → whole units (truncating division)
+/// - `*_to_attos` — whole units → total attoseconds (saturating multiply)
 ///
 /// ## Examples
 ///
 /// ```rust
 /// use deep_time::AttosTraits;
 ///
-/// let attos: i128 = 5;
+/// let attos: i128 = -5_600_000_000_000_000_000;
 /// let seconds = attos.attos_to_sec();
+/// assert_eq!(seconds, -5);
+///
+/// assert_eq!(5_i128.ns_to_attos(), 5_000_000_000);
+/// assert_eq!(1_i128.ms_to_attos().attos_to_ms(), 1);
 /// ```
 pub trait AttosTraits: Copy + Sized {
     /// attoseconds → seconds (s)
@@ -48,6 +55,30 @@ pub trait AttosTraits: Copy + Sized {
 
     /// attoseconds → float seconds (s)
     fn attos_to_sec_f(self) -> f64;
+
+    /// femtoseconds → attoseconds (`× 10³`)
+    fn fs_to_attos(self) -> i128;
+
+    /// picoseconds → attoseconds (`× 10⁶`)
+    fn ps_to_attos(self) -> i128;
+
+    /// nanoseconds → attoseconds (`× 10⁹`)
+    fn ns_to_attos(self) -> i128;
+
+    /// microseconds → attoseconds (`× 10¹²`)
+    fn us_to_attos(self) -> i128;
+
+    /// milliseconds → attoseconds (`× 10¹⁵`)
+    fn ms_to_attos(self) -> i128;
+
+    /// seconds → attoseconds (`× 10¹⁸`)
+    fn sec_to_attos(self) -> i128;
+
+    /// minutes → attoseconds (`× 60 × 10¹⁸`)
+    fn mins_to_attos(self) -> i128;
+
+    /// hours → attoseconds (`× 3600 × 10¹⁸`)
+    fn hours_to_attos(self) -> i128;
 }
 
 impl AttosTraits for i128 {
@@ -84,6 +115,46 @@ impl AttosTraits for i128 {
     #[inline]
     fn attos_to_fs(self) -> i128 {
         self / ATTOS_PER_FS_I128
+    }
+
+    #[inline]
+    fn fs_to_attos(self) -> i128 {
+        Dt::fs_to_attos(self)
+    }
+
+    #[inline]
+    fn ps_to_attos(self) -> i128 {
+        Dt::ps_to_attos(self)
+    }
+
+    #[inline]
+    fn ns_to_attos(self) -> i128 {
+        Dt::ns_to_attos(self)
+    }
+
+    #[inline]
+    fn us_to_attos(self) -> i128 {
+        Dt::us_to_attos(self)
+    }
+
+    #[inline]
+    fn ms_to_attos(self) -> i128 {
+        Dt::ms_to_attos(self)
+    }
+
+    #[inline]
+    fn sec_to_attos(self) -> i128 {
+        Dt::sec_to_attos(self)
+    }
+
+    #[inline]
+    fn mins_to_attos(self) -> i128 {
+        Dt::mins_to_attos(self)
+    }
+
+    #[inline]
+    fn hours_to_attos(self) -> i128 {
+        Dt::hours_to_attos(self)
     }
 }
 

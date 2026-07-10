@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F,
-    Real, SEC_PER_DAY_F, SEC_PER_DAY_I64, Scale,
+    ATTOS_PER_DAY, ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F, Real, SEC_PER_DAY_F,
+    SEC_PER_DAY_I64, Scale,
 };
 
 impl Dt {
@@ -144,10 +144,20 @@ impl Dt {
     /// **Differs** with [`from_unix`](../struct.Dt.html#method.from_unix) in that
     /// it assumes the nanoseconds are on the UTC time scale and converts from UTC ->
     /// TAI (adding any leap seconds to the end result).
+    #[inline(always)]
     pub const fn from_unix_ns(ns: i128) -> Dt {
-        let attos = ns.saturating_mul(ATTOS_PER_NS_I128);
-        let unix = Dt::new(attos, Scale::UTC, Scale::UTC);
-        Dt::from_unix(unix)
+        Dt::from_unix(Dt::new(Dt::ns_to_attos(ns), Scale::UTC, Scale::UTC))
+    }
+
+    /// Interprets a POSIX Unix millisecond count as UTC elapsed time since the Unix
+    /// epoch.
+    ///
+    /// **Differs** with [`from_unix`](../struct.Dt.html#method.from_unix) in that
+    /// it assumes the milliseconds are on the UTC time scale and converts from UTC ->
+    /// TAI (adding any leap seconds to the end result).
+    #[inline(always)]
+    pub const fn from_unix_ms(ms: i128) -> Dt {
+        Dt::from_unix(Dt::new(Dt::ms_to_attos(ms), Scale::UTC, Scale::UTC))
     }
 
     /// Returns this [`Dt`] as a day count since
