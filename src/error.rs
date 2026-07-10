@@ -3,6 +3,32 @@
 
 use crate::AnErr;
 
+/// The kind of error returned by deep-time.
+///
+/// Almost every function in this crate that can fail returns a
+/// [`DtErr`](type.DtErr.html). That error is made of two parts:
+///
+/// 1. A **kind** — one of the variants of this enum (what went wrong).
+/// 2. A short **reason** string — optional extra detail (up to 15 bytes).
+///
+/// Those two pieces live inside [`AnErr`](struct.AnErr.html). [`DtErr`](type.DtErr.html)
+/// is simply `AnErr<DtErrKind, 15>` — the whole error is 16 bytes.
+///
+/// Create one with the [`an_err!`](macro.an_err!.html) macro, and read the kind
+/// back with [`.kind()`](struct.AnErr.html#method.kind):
+///
+/// ```
+/// use deep_time::{DtErr, DtErrKind, an_err};
+///
+/// let err: DtErr = an_err!(DtErrKind::YearOutOfRange, "year={}", 10_000);
+/// assert_eq!(err.kind(), DtErrKind::YearOutOfRange);
+/// ```
+///
+/// When printed, an error looks like `YearOutOfRange` or
+/// `YearOutOfRange: year=10000`.
+///
+/// This enum is marked `#[non_exhaustive]`, so new variants may be added in
+/// later releases. Always keep a catch-all arm (`_ => ...`) when matching.
 #[non_exhaustive]
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

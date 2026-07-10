@@ -4,11 +4,11 @@ mod light_time;
 
 use crate::{C_SQUARED, Dt, Position, Real, Spacetime, Velocity};
 
-/// An observer at a specific instant.
+/// Snapshot of one observer’s state at a single instant: time, position,
+/// velocity, and local gravity.
 ///
-/// Combines time, position, velocity, and local gravitational
-/// information. It is the main input type used by relativistic light-time
-/// methods in this library.
+/// This is the main input type used by relativistic light-time methods
+/// in this library.
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]

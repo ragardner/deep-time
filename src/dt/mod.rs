@@ -131,7 +131,7 @@ use core::fmt;
 /// - [`Dt::from_sec`](../struct.Dt.html#method.from_sec)
 /// - [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor)
 /// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
-/// - [`Dt::convert_internal`](../struct.Dt.html#method.convert_internal)
+/// - [`Dt::convert`](../struct.Dt.html#method.convert)
 /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
 /// - [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp)
 /// - [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
