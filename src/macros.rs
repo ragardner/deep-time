@@ -1,21 +1,41 @@
-//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ymd!`, …).
+//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ms!`, `from_ymd!`, …).
+//!
+//! Optional scale labels use Python-style keyword arguments on **count** macros
+//! (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ms!`, …):
+//!
+//! - `on=<scale>` — stored as the [`Dt`](struct.Dt.html)'s `scale` field (and as
+//!   `target` when `target=` is omitted).
+//! - `target=<scale>` — stored as the `target` field; `on` defaults to
+//!   [`Scale::TAI`](enum.Scale.html#variant.TAI).
+//!
+//! Either keyword may appear alone or together, in either order.
+//!
+//! [`from_ymd!`](macro.from_ymd.html) only takes a single civil `on=` scale (see
+//! that macro); use [`.target(…)`](struct.Dt.html#method.target) afterward if the
+//! `target` field should differ.
 
-/// Builds a [`Dt`](crate::Dt) from total attoseconds with optional scale labels.
+/// Builds a [`Dt`](struct.Dt.html) from total attoseconds with optional scale labels.
 ///
-/// This is sugar for [`Dt::new`](crate::Dt::new). When scale is omitted, both
-/// `scale` and `target` are [`Scale::TAI`](crate::Scale::TAI). With `on scale`
-/// only, `target` matches `scale`. A different `target` is set with a trailing
-/// `; target`.
+/// Sugar for [`Dt::new`](struct.Dt.html#method.new). Does **not** perform time-scale
+/// conversion.
 ///
-/// Does **not** perform any time scale conversions.
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
 ///
 /// ## Forms
 ///
-/// | Form | Equivalent to |
-/// |------|----------------|
-/// | `dt!(attos)` | `Dt::new(attos, Scale::TAI, Scale::TAI)` |
-/// | `dt!(attos, on scale)` | `Dt::new(attos, scale, scale)` |
-/// | `dt!(attos, on scale; target)` | `Dt::new(attos, scale, target)` |
+/// | Form | Meaning |
+/// |------|---------|
+/// | `dt!(attos)` | both scales TAI |
+/// | `dt!(attos, on=s)` | scale and target `s` |
+/// | `dt!(attos, target=t)` | scale TAI, target `t` |
+/// | `dt!(attos, on=s, target=t)` | either order |
+/// | `dt!(attos, target=t, on=s)` | either order |
 ///
 /// ## Examples
 ///
@@ -24,90 +44,116 @@
 /// use deep_time::dt;
 ///
 /// let a = dt!(1_000_000_000_000_000_000);
-/// let b = dt!(0, on Scale::UTC);
-/// let c = dt!(0, on Scale::TAI; Scale::UTC);
+/// let b = dt!(0, on=Scale::UTC);
+/// let c = dt!(0, on=Scale::TAI, target=Scale::UTC);
+/// let d = dt!(0, target=Scale::UTC, on=Scale::TAI);
+/// let e = dt!(0, target=Scale::UTC);
 ///
 /// assert_eq!(a, deep_time::Dt::new(1_000_000_000_000_000_000, Scale::TAI, Scale::TAI));
 /// assert_eq!(b, deep_time::Dt::new(0, Scale::UTC, Scale::UTC));
 /// assert_eq!(c, deep_time::Dt::new(0, Scale::TAI, Scale::UTC));
+/// assert_eq!(d, c);
+/// assert_eq!(e, deep_time::Dt::new(0, Scale::TAI, Scale::UTC));
 /// ```
 #[macro_export]
 macro_rules! dt {
-    ($attos:expr, on $scale:expr; $target:expr) => {
+    ($attos:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::new($attos, $scale, $target)
     };
-    ($attos:expr, on $scale:expr) => {
+    ($attos:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::new($attos, $scale, $target)
+    };
+    ($attos:expr, on=$scale:expr) => {
         $crate::Dt::new($attos, $scale, $scale)
+    };
+    ($attos:expr, target=$target:expr) => {
+        $crate::Dt::new($attos, $crate::Scale::TAI, $target)
     };
     ($attos:expr) => {
         $crate::Dt::new($attos, $crate::Scale::TAI, $crate::Scale::TAI)
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from whole seconds and an optional signed
+/// Builds a [`Dt`](struct.Dt.html) from whole seconds and an optional signed
 /// sub-second remainder (attoseconds).
 ///
-/// This is sugar for [`Dt::from_sec_and_frac`](crate::Dt::from_sec_and_frac).
-/// When the fraction is omitted it is `0`. When scale is omitted, both `scale`
-/// and `target` are [`Scale::TAI`](crate::Scale::TAI). With `on scale` only,
-/// `target` matches `scale`. A different `target` is set with a trailing
-/// `; target`.
+/// Sugar for [`Dt::from_sec_and_frac`](struct.Dt.html#method.from_sec_and_frac). Does
+/// **not** perform time-scale conversion.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | fraction | `0` |
+/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
 ///
 /// ## Forms
 ///
-/// | Form | Equivalent to |
-/// |------|----------------|
-/// | `from_sec!(sec)` | `Dt::from_sec_and_frac(sec, 0, Scale::TAI, Scale::TAI)` |
-/// | `from_sec!(sec, frac)` | `Dt::from_sec_and_frac(sec, frac, Scale::TAI, Scale::TAI)` |
-/// | `from_sec!(sec, on scale)` | `Dt::from_sec_and_frac(sec, 0, scale, scale)` |
-/// | `from_sec!(sec, frac, on scale)` | `Dt::from_sec_and_frac(sec, frac, scale, scale)` |
-/// | `from_sec!(sec, on scale; target)` | `Dt::from_sec_and_frac(sec, 0, scale, target)` |
-/// | `from_sec!(sec, frac, on scale; target)` | `Dt::from_sec_and_frac(sec, frac, scale, target)` |
-///
-/// The `on` keyword must be preceded by a comma. Optional `target` follows a
-/// semicolon after the scale (same rules as `from_ns!`).
-///
-/// `sec` and `frac` are the signed whole/remainder split (e.g. `-1.3` s is
-/// `sec = -1`, `frac = -300_000_000_000_000_000`). Floor-style pairs with a
-/// non-negative remainder also work. No time-scale conversion is performed.
+/// ```text
+/// from_sec!(sec)
+/// from_sec!(sec, frac)
+/// from_sec!(sec, on=s)
+/// from_sec!(sec, target=t)
+/// from_sec!(sec, on=s, target=t)
+/// from_sec!(sec, target=t, on=s)
+/// from_sec!(sec, frac, on=s)
+/// from_sec!(sec, frac, target=t)
+/// from_sec!(sec, frac, on=s, target=t)
+/// from_sec!(sec, frac, target=t, on=s)
+/// ```
 ///
 /// ## Examples
 ///
 /// ```
 /// use deep_time::Scale;
-/// use deep_time::from_sec;
+/// use deep_time::{dt, from_sec};
 ///
 /// let a = from_sec!(1);
 /// let b = from_sec!(1, 300_000_000_000_000_000);
-/// let c = from_sec!(-1, -300_000_000_000_000_000, on Scale::TAI);
-/// let d = from_sec!(0, on Scale::UTC);
-/// let e = from_sec!(1, on Scale::TAI; Scale::UTC);
+/// let c = from_sec!(-1, -300_000_000_000_000_000, on=Scale::TAI);
+/// let d = from_sec!(0, on=Scale::UTC);
+/// let e = from_sec!(1, on=Scale::TAI, target=Scale::UTC);
+/// let f = from_sec!(1, target=Scale::UTC, on=Scale::TAI);
 ///
 /// assert_eq!(a, deep_time::Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::TAI));
 /// assert_eq!(b, deep_time::Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI, Scale::TAI));
 /// assert_eq!(c, deep_time::Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI, Scale::TAI));
 /// assert_eq!(d, deep_time::Dt::from_sec_and_frac(0, 0, Scale::UTC, Scale::UTC));
 /// assert_eq!(e, deep_time::Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(f, e);
 ///
-/// // -1.3 s: signed (decimal) split vs floor split — same instant
 /// let signed = from_sec!(-1, -300_000_000_000_000_000);
 /// let floor = from_sec!(-2, 700_000_000_000_000_000);
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, deep_time::dt!(-1_300_000_000_000_000_000));
+/// assert_eq!(signed, dt!(-1_300_000_000_000_000_000));
 /// ```
 #[macro_export]
 macro_rules! from_sec {
-    ($sec:expr, $frac:expr, on $scale:expr; $target:expr) => {
+    ($sec:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_sec_and_frac($sec, $frac, $scale, $target)
     };
-    ($sec:expr, on $scale:expr; $target:expr) => {
+    ($sec:expr, $frac:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_sec_and_frac($sec, $frac, $scale, $target)
+    };
+    ($sec:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_sec_and_frac($sec, 0, $scale, $target)
     };
-    ($sec:expr, $frac:expr, on $scale:expr) => {
+    ($sec:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_sec_and_frac($sec, 0, $scale, $target)
+    };
+    ($sec:expr, $frac:expr, on=$scale:expr) => {
         $crate::Dt::from_sec_and_frac($sec, $frac, $scale, $scale)
     };
-    ($sec:expr, on $scale:expr) => {
+    ($sec:expr, $frac:expr, target=$target:expr) => {
+        $crate::Dt::from_sec_and_frac($sec, $frac, $crate::Scale::TAI, $target)
+    };
+    ($sec:expr, on=$scale:expr) => {
         $crate::Dt::from_sec_and_frac($sec, 0, $scale, $scale)
+    };
+    ($sec:expr, target=$target:expr) => {
+        $crate::Dt::from_sec_and_frac($sec, 0, $crate::Scale::TAI, $target)
     };
     ($sec:expr, $frac:expr) => {
         $crate::Dt::from_sec_and_frac($sec, $frac, $crate::Scale::TAI, $crate::Scale::TAI)
@@ -117,23 +163,29 @@ macro_rules! from_sec {
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from a floating-point seconds count with optional
+/// Builds a [`Dt`](struct.Dt.html) from a floating-point seconds count with optional
 /// scale labels.
 ///
-/// This is sugar for [`Dt::from_sec_f`](crate::Dt::from_sec_f). When scale is
-/// omitted, both `scale` and `target` are [`Scale::TAI`](crate::Scale::TAI).
-/// With `on scale` only, `target` matches `scale`. A different `target` is set
-/// with a trailing `; target`.
+/// Sugar for [`Dt::from_sec_f`](struct.Dt.html#method.from_sec_f). Does **not** perform
+/// time-scale conversion.
 ///
-/// Does **not** perform any time scale conversions.
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
 ///
 /// ## Forms
 ///
-/// | Form | Equivalent to |
-/// |------|----------------|
-/// | `from_sec_f!(sec)` | `Dt::from_sec_f(sec, Scale::TAI, Scale::TAI)` |
-/// | `from_sec_f!(sec, on scale)` | `Dt::from_sec_f(sec, scale, scale)` |
-/// | `from_sec_f!(sec, on scale; target)` | `Dt::from_sec_f(sec, scale, target)` |
+/// | Form | Meaning |
+/// |------|---------|
+/// | `from_sec_f!(sec)` | both scales TAI |
+/// | `from_sec_f!(sec, on=s)` | scale and target `s` |
+/// | `from_sec_f!(sec, target=t)` | scale TAI, target `t` |
+/// | `from_sec_f!(sec, on=s, target=t)` | either order |
+/// | `from_sec_f!(sec, target=t, on=s)` | either order |
 ///
 /// ## Examples
 ///
@@ -142,52 +194,63 @@ macro_rules! from_sec {
 /// use deep_time::from_sec_f;
 ///
 /// let a = from_sec_f!(5.5);
-/// let b = from_sec_f!(0.0, on Scale::UTC);
-/// let c = from_sec_f!(1.0, on Scale::TAI; Scale::UTC);
+/// let b = from_sec_f!(0.0, on=Scale::UTC);
+/// let c = from_sec_f!(1.0, on=Scale::TAI, target=Scale::UTC);
+/// let d = from_sec_f!(1.0, target=Scale::UTC, on=Scale::TAI);
 ///
 /// assert_eq!(a, deep_time::Dt::from_sec_f(5.5, Scale::TAI, Scale::TAI));
 /// assert_eq!(b, deep_time::Dt::from_sec_f(0.0, Scale::UTC, Scale::UTC));
 /// assert_eq!(c, deep_time::Dt::from_sec_f(1.0, Scale::TAI, Scale::UTC));
+/// assert_eq!(d, c);
 /// ```
 #[macro_export]
 macro_rules! from_sec_f {
-    ($sec:expr, on $scale:expr; $target:expr) => {
+    ($sec:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_sec_f($sec, $scale, $target)
     };
-    ($sec:expr, on $scale:expr) => {
+    ($sec:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_sec_f($sec, $scale, $target)
+    };
+    ($sec:expr, on=$scale:expr) => {
         $crate::Dt::from_sec_f($sec, $scale, $scale)
+    };
+    ($sec:expr, target=$target:expr) => {
+        $crate::Dt::from_sec_f($sec, $crate::Scale::TAI, $target)
     };
     ($sec:expr) => {
         $crate::Dt::from_sec_f($sec, $crate::Scale::TAI, $crate::Scale::TAI)
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from whole nanoseconds and an optional signed
+/// Builds a [`Dt`](struct.Dt.html) from whole nanoseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// This is sugar for [`Dt::from_ns`](crate::Dt::from_ns). When the fraction is
-/// omitted it is `0`. When scale is omitted, both `scale` and `target` are
-/// [`Scale::TAI`](crate::Scale::TAI). With `on scale` only, `target` matches
-/// `scale`. A different `target` is set with a trailing `; target`.
+/// Sugar for [`Dt::from_ns`](struct.Dt.html#method.from_ns). Does **not** perform
+/// time-scale conversion.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | fraction | `0` |
+/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
 ///
 /// ## Forms
 ///
-/// | Form | Equivalent to |
-/// |------|----------------|
-/// | `from_ns!(ns)` | `Dt::from_ns(ns, 0, Scale::TAI, Scale::TAI)` |
-/// | `from_ns!(ns, frac_attos)` | `Dt::from_ns(ns, frac_attos, Scale::TAI, Scale::TAI)` |
-/// | `from_ns!(ns, on scale)` | `Dt::from_ns(ns, 0, scale, scale)` |
-/// | `from_ns!(ns, frac_attos, on scale)` | `Dt::from_ns(ns, frac_attos, scale, scale)` |
-/// | `from_ns!(ns, on scale; target)` | `Dt::from_ns(ns, 0, scale, target)` |
-/// | `from_ns!(ns, frac_attos, on scale; target)` | `Dt::from_ns(ns, frac_attos, scale, target)` |
-///
-/// The `on` keyword must be preceded by a comma. Optional `target` follows a
-/// semicolon after the scale (`;` is allowed after an `:expr` fragment).
-///
-/// `ns` and `frac_attos` are the signed whole/remainder split (e.g. `-1.3` ns is
-/// `ns = -1`, `frac_attos` negative for 0.3 ns in attoseconds). Floor-style
-/// pairs with a non-negative remainder also work. No time-scale conversion is
-/// performed.
+/// ```text
+/// from_ns!(ns)
+/// from_ns!(ns, frac)
+/// from_ns!(ns, on=s)
+/// from_ns!(ns, target=t)
+/// from_ns!(ns, on=s, target=t)
+/// from_ns!(ns, target=t, on=s)
+/// from_ns!(ns, frac, on=s)
+/// from_ns!(ns, frac, target=t)
+/// from_ns!(ns, frac, on=s, target=t)
+/// from_ns!(ns, frac, target=t, on=s)
+/// ```
 ///
 /// ## Examples
 ///
@@ -198,17 +261,18 @@ macro_rules! from_sec_f {
 /// // 1 ns = 10⁹ attoseconds; 0.3 ns = 300_000_000 attoseconds
 /// let a = from_ns!(1);
 /// let b = from_ns!(1, 300_000_000);
-/// let c = from_ns!(-1, -300_000_000, on Scale::TAI);
-/// let d = from_ns!(0, on Scale::UTC);
-/// let e = from_ns!(1, on Scale::TAI; Scale::UTC);
+/// let c = from_ns!(-1, -300_000_000, on=Scale::TAI);
+/// let d = from_ns!(0, on=Scale::UTC);
+/// let e = from_ns!(1, on=Scale::TAI, target=Scale::UTC);
+/// let f = from_ns!(1, target=Scale::UTC);
 ///
 /// assert_eq!(a, deep_time::Dt::from_ns(1, 0, Scale::TAI, Scale::TAI));
 /// assert_eq!(b, deep_time::Dt::from_ns(1, 300_000_000, Scale::TAI, Scale::TAI));
 /// assert_eq!(c, deep_time::Dt::from_ns(-1, -300_000_000, Scale::TAI, Scale::TAI));
 /// assert_eq!(d, deep_time::Dt::from_ns(0, 0, Scale::UTC, Scale::UTC));
 /// assert_eq!(e, deep_time::Dt::from_ns(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(f, e);
 ///
-/// // -1.3 ns: signed split vs floor split — same instant
 /// let signed = from_ns!(-1, -300_000_000);
 /// let floor = from_ns!(-2, 700_000_000);
 /// assert_eq!(signed, floor);
@@ -216,17 +280,29 @@ macro_rules! from_sec_f {
 /// ```
 #[macro_export]
 macro_rules! from_ns {
-    ($ns:expr, $frac:expr, on $scale:expr; $target:expr) => {
+    ($ns:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_ns($ns, $frac, $scale, $target)
     };
-    ($ns:expr, on $scale:expr; $target:expr) => {
+    ($ns:expr, $frac:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_ns($ns, $frac, $scale, $target)
+    };
+    ($ns:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_ns($ns, 0, $scale, $target)
     };
-    ($ns:expr, $frac:expr, on $scale:expr) => {
+    ($ns:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_ns($ns, 0, $scale, $target)
+    };
+    ($ns:expr, $frac:expr, on=$scale:expr) => {
         $crate::Dt::from_ns($ns, $frac, $scale, $scale)
     };
-    ($ns:expr, on $scale:expr) => {
+    ($ns:expr, $frac:expr, target=$target:expr) => {
+        $crate::Dt::from_ns($ns, $frac, $crate::Scale::TAI, $target)
+    };
+    ($ns:expr, on=$scale:expr) => {
         $crate::Dt::from_ns($ns, 0, $scale, $scale)
+    };
+    ($ns:expr, target=$target:expr) => {
+        $crate::Dt::from_ns($ns, 0, $crate::Scale::TAI, $target)
     };
     ($ns:expr, $frac:expr) => {
         $crate::Dt::from_ns($ns, $frac, $crate::Scale::TAI, $crate::Scale::TAI)
@@ -236,41 +312,131 @@ macro_rules! from_ns {
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from a Gregorian calendar date and optional time.
+/// Builds a [`Dt`](struct.Dt.html) from whole milliseconds and an optional signed
+/// fractional remainder in attoseconds.
 ///
-/// This is sugar for [`Dt::from_ymd`](crate::Dt::from_ymd). Arguments are
-/// **in order** and may be stopped at any point; omitted fields use the
-/// defaults below. Scale is always last and marked with `on`.
+/// Sugar for [`Dt::from_ms`](struct.Dt.html#method.from_ms). Does **not** perform
+/// time-scale conversion.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | fraction | `0` |
+/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
+///
+/// ## Forms
+///
+/// ```text
+/// from_ms!(ms)
+/// from_ms!(ms, frac)
+/// from_ms!(ms, on=s)
+/// from_ms!(ms, target=t)
+/// from_ms!(ms, on=s, target=t)
+/// from_ms!(ms, target=t, on=s)
+/// from_ms!(ms, frac, on=s)
+/// from_ms!(ms, frac, target=t)
+/// from_ms!(ms, frac, on=s, target=t)
+/// from_ms!(ms, frac, target=t, on=s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::Scale;
+/// use deep_time::from_ms;
+///
+/// // 1 ms = 10¹⁵ attoseconds; 0.3 ms = 300_000_000_000_000 attoseconds
+/// let a = from_ms!(1);
+/// let b = from_ms!(1, 300_000_000_000_000);
+/// let c = from_ms!(-1, -300_000_000_000_000, on=Scale::TAI);
+/// let d = from_ms!(0, on=Scale::UTC);
+/// let e = from_ms!(1, on=Scale::TAI, target=Scale::UTC);
+/// let f = from_ms!(1, target=Scale::UTC);
+///
+/// assert_eq!(a, deep_time::Dt::from_ms(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, deep_time::Dt::from_ms(1, 300_000_000_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(c, deep_time::Dt::from_ms(-1, -300_000_000_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(d, deep_time::Dt::from_ms(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, deep_time::Dt::from_ms(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(f, e);
+///
+/// let signed = from_ms!(-1, -300_000_000_000_000);
+/// let floor = from_ms!(-2, 700_000_000_000_000);
+/// assert_eq!(signed, floor);
+/// assert_eq!(signed, deep_time::Dt::from_ms(-1, -300_000_000_000_000, Scale::TAI, Scale::TAI));
+/// ```
+#[macro_export]
+macro_rules! from_ms {
+    ($ms:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_ms($ms, $frac, $scale, $target)
+    };
+    ($ms:expr, $frac:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_ms($ms, $frac, $scale, $target)
+    };
+    ($ms:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_ms($ms, 0, $scale, $target)
+    };
+    ($ms:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_ms($ms, 0, $scale, $target)
+    };
+    ($ms:expr, $frac:expr, on=$scale:expr) => {
+        $crate::Dt::from_ms($ms, $frac, $scale, $scale)
+    };
+    ($ms:expr, $frac:expr, target=$target:expr) => {
+        $crate::Dt::from_ms($ms, $frac, $crate::Scale::TAI, $target)
+    };
+    ($ms:expr, on=$scale:expr) => {
+        $crate::Dt::from_ms($ms, 0, $scale, $scale)
+    };
+    ($ms:expr, target=$target:expr) => {
+        $crate::Dt::from_ms($ms, 0, $crate::Scale::TAI, $target)
+    };
+    ($ms:expr, $frac:expr) => {
+        $crate::Dt::from_ms($ms, $frac, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+    ($ms:expr) => {
+        $crate::Dt::from_ms($ms, 0, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a [`Dt`](struct.Dt.html) from a Gregorian calendar date and optional time.
+///
+/// Sugar for [`Dt::from_ymd`](struct.Dt.html#method.from_ymd).
+///
+/// Date fields are positional (`y`, `m`, `d`). Time is optional: put a
+/// **semicolon after the day**, then hour (required if `;` is present), then
+/// optional minute, second, and attoseconds. An optional `on=` civil scale may
+/// follow.
 ///
 /// | Omitted field | Default |
 /// |---------------|---------|
 /// | month | `1` |
 /// | day | `1` |
-/// | hour, minute, second | `0` |
-/// | attoseconds | `0` |
-/// | scale | [`Scale::UTC`](crate::Scale::UTC) |
+/// | time (no `;`) | `0, 0, 0, 0` |
+/// | minute / second / attos after `; h` | `0` |
+/// | `on` | [`Scale::UTC`](enum.Scale.html#variant.UTC) |
+///
+/// The resulting [`Dt`](struct.Dt.html)'s `target` field is set from that civil
+/// scale (the `on=` value, or UTC when omitted), as
+/// [`from_ymd`](struct.Dt.html#method.from_ymd) does. There is no `target=` on
+/// this macro — chain [`.target(…)`](struct.Dt.html#method.target) if needed.
 ///
 /// ## Forms
 ///
 /// ```text
 /// from_ymd!(y)
-/// from_ymd!(y, on scale)
 /// from_ymd!(y, m)
-/// from_ymd!(y, m, on scale)
 /// from_ymd!(y, m, d)
-/// from_ymd!(y, m, d, on scale)
-/// from_ymd!(y, m, d, h)
-/// from_ymd!(y, m, d, h, on scale)
-/// from_ymd!(y, m, d, h, min)
-/// from_ymd!(y, m, d, h, min, on scale)
-/// from_ymd!(y, m, d, h, min, s)
-/// from_ymd!(y, m, d, h, min, s, on scale)
-/// from_ymd!(y, m, d, h, min, s, attos)
-/// from_ymd!(y, m, d, h, min, s, attos, on scale)
+/// from_ymd!(y, m, d, on=Scale::TAI)
+/// from_ymd!(y, m, d; h)
+/// from_ymd!(y, m, d; h, min)
+/// from_ymd!(y, m, d; h, min, sec)
+/// from_ymd!(y, m, d; h, min, sec, attos)
+/// from_ymd!(y, m, d; h, min, sec, attos, on=Scale::UTC)
 /// ```
-///
-/// The `on` keyword must be preceded by a comma (same `macro_rules!` limit as
-/// [`from_sec!`](macro.from_sec.html)).
 ///
 /// ## Examples
 ///
@@ -287,54 +453,60 @@ macro_rules! from_ns {
 ///     deep_time::Dt::from_ymd(2026, 6, 16, Scale::UTC, 0, 0, 0, 0),
 /// );
 /// assert_eq!(
-///     from_ymd!(2000, 1, 1, 12, on Scale::TAI),
+///     from_ymd!(2000, 1, 1; 12, on=Scale::TAI),
 ///     deep_time::Dt::ZERO,
 /// );
 /// assert_eq!(
-///     from_ymd!(2000, 1, 1, 12, 0, 0, 123_456_789, on Scale::UTC),
+///     from_ymd!(2000, 1, 1; 12, 0, 0, 123_456_789, on=Scale::UTC),
 ///     deep_time::Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 123_456_789),
 /// );
+///
+/// // different target field after construction
+/// let _ = from_ymd!(2020, 1, 1, on=Scale::UTC).target(Scale::TAI);
 /// ```
 #[macro_export]
 macro_rules! from_ymd {
-    ($y:expr, $m:expr, $d:expr, $h:expr, $min:expr, $s:expr, $attos:expr, on $scale:expr) => {
+    // Time section: `d; h …` — `on=` arms before bare so `on=…` is not an `:expr`.
+    ($y:expr, $m:expr, $d:expr; $h:expr, $min:expr, $s:expr, $attos:expr, on=$scale:expr) => {
         $crate::Dt::from_ymd($y, $m, $d, $scale, $h, $min, $s, $attos)
     };
-    ($y:expr, $m:expr, $d:expr, $h:expr, $min:expr, $s:expr, $attos:expr) => {
-        $crate::Dt::from_ymd($y, $m, $d, $crate::Scale::UTC, $h, $min, $s, $attos)
-    };
-    ($y:expr, $m:expr, $d:expr, $h:expr, $min:expr, $s:expr, on $scale:expr) => {
+    ($y:expr, $m:expr, $d:expr; $h:expr, $min:expr, $s:expr, on=$scale:expr) => {
         $crate::Dt::from_ymd($y, $m, $d, $scale, $h, $min, $s, 0)
     };
-    ($y:expr, $m:expr, $d:expr, $h:expr, $min:expr, $s:expr) => {
-        $crate::Dt::from_ymd($y, $m, $d, $crate::Scale::UTC, $h, $min, $s, 0)
-    };
-    ($y:expr, $m:expr, $d:expr, $h:expr, $min:expr, on $scale:expr) => {
+    ($y:expr, $m:expr, $d:expr; $h:expr, $min:expr, on=$scale:expr) => {
         $crate::Dt::from_ymd($y, $m, $d, $scale, $h, $min, 0, 0)
     };
-    ($y:expr, $m:expr, $d:expr, $h:expr, $min:expr) => {
-        $crate::Dt::from_ymd($y, $m, $d, $crate::Scale::UTC, $h, $min, 0, 0)
-    };
-    ($y:expr, $m:expr, $d:expr, $h:expr, on $scale:expr) => {
+    ($y:expr, $m:expr, $d:expr; $h:expr, on=$scale:expr) => {
         $crate::Dt::from_ymd($y, $m, $d, $scale, $h, 0, 0, 0)
     };
-    ($y:expr, $m:expr, $d:expr, $h:expr) => {
+    ($y:expr, $m:expr, $d:expr; $h:expr, $min:expr, $s:expr, $attos:expr) => {
+        $crate::Dt::from_ymd($y, $m, $d, $crate::Scale::UTC, $h, $min, $s, $attos)
+    };
+    ($y:expr, $m:expr, $d:expr; $h:expr, $min:expr, $s:expr) => {
+        $crate::Dt::from_ymd($y, $m, $d, $crate::Scale::UTC, $h, $min, $s, 0)
+    };
+    ($y:expr, $m:expr, $d:expr; $h:expr, $min:expr) => {
+        $crate::Dt::from_ymd($y, $m, $d, $crate::Scale::UTC, $h, $min, 0, 0)
+    };
+    ($y:expr, $m:expr, $d:expr; $h:expr) => {
         $crate::Dt::from_ymd($y, $m, $d, $crate::Scale::UTC, $h, 0, 0, 0)
     };
-    ($y:expr, $m:expr, $d:expr, on $scale:expr) => {
+
+    // Date only (+ optional on=)
+    ($y:expr, $m:expr, $d:expr, on=$scale:expr) => {
         $crate::Dt::from_ymd($y, $m, $d, $scale, 0, 0, 0, 0)
+    };
+    ($y:expr, $m:expr, on=$scale:expr) => {
+        $crate::Dt::from_ymd($y, $m, 1, $scale, 0, 0, 0, 0)
+    };
+    ($y:expr, on=$scale:expr) => {
+        $crate::Dt::from_ymd($y, 1, 1, $scale, 0, 0, 0, 0)
     };
     ($y:expr, $m:expr, $d:expr) => {
         $crate::Dt::from_ymd($y, $m, $d, $crate::Scale::UTC, 0, 0, 0, 0)
     };
-    ($y:expr, $m:expr, on $scale:expr) => {
-        $crate::Dt::from_ymd($y, $m, 1, $scale, 0, 0, 0, 0)
-    };
     ($y:expr, $m:expr) => {
         $crate::Dt::from_ymd($y, $m, 1, $crate::Scale::UTC, 0, 0, 0, 0)
-    };
-    ($y:expr, on $scale:expr) => {
-        $crate::Dt::from_ymd($y, 1, 1, $scale, 0, 0, 0, 0)
     };
     ($y:expr) => {
         $crate::Dt::from_ymd($y, 1, 1, $crate::Scale::UTC, 0, 0, 0, 0)

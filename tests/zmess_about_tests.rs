@@ -16,7 +16,8 @@ mod tests {
         use deep_time::{Dt, Scale, TimeTraits};
         use deep_time::{from_sec, from_ymd};
 
-        let x = from_sec!(0, on Scale::TAI);
+        let x = from_sec!(0);
+        assert_eq!(x, Dt::ZERO);
         let y = from_ymd!(1970);
         assert_eq!(y, Dt::UNIX_EPOCH);
     }

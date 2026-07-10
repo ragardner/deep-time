@@ -37,7 +37,7 @@ A fully featured and high performance **Rust date and time library** with attose
 ### Examples
 
 ```rust
-use deep_time::{Dt, DtErr, Lang, LiteStr, ParseCfg, Scale, YmdHms};
+use deep_time::{Dt, DtErr, Lang, LiteStr, ParseCfg, Scale, YmdHms, from_ns, from_ymd};
 
 fn main() -> Result<(), DtErr> {
     // ============================================
@@ -58,17 +58,18 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(Dt::ZERO, dt);
 
     // Relative dates are also supported
-    let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
+    let ref_time = from_ymd!(2026, 6, 16; 12, on=Scale::UTC);
     let en_cfg = ParseCfg {
         ref_time: Some(ref_time),
         ..Default::default()
     };
 
+    // from_ymd! macro defaults to Scale::UTC
     let dt = Dt::from_str_parse("2 days from now at 9am", &en_cfg)?;
-    assert_eq!(dt, Dt::from_ymd(2026, 6, 18, Scale::UTC, 9, 0, 0, 0));
+    assert_eq!(dt, from_ymd!(2026, 6, 18; 9));
 
     let dt = Dt::from_str_parse("next Monday at 14:00", &en_cfg)?;
-    assert_eq!(dt, Dt::from_ymd(2026, 6, 22, Scale::UTC, 14, 0, 0, 0));
+    assert_eq!(dt, from_ymd!(2026, 6, 22; 14));
 
     // Relative dates use Dt::now if the `std` feature is enabled and no
     // ref_time is provided in the ParseCfg
@@ -120,9 +121,12 @@ fn main() -> Result<(), DtErr> {
     // ============================================
 
     // unix
-    let dt = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
+    let dt = from_ymd!(1970);
     let unix = dt.to_unix().to_sec_f();
     assert_eq!(unix, 0.0);
+
+    let dt = Dt::from_unix(from_ns!(0, on = Scale::UTC));
+    assert_eq!(dt, Dt::UNIX_EPOCH);
 
     // or to milliseconds
     let unix: i128 = dt.add_ms(1000).to_unix().to_ms().0;
@@ -139,7 +143,7 @@ fn main() -> Result<(), DtErr> {
     // ============================================
 
     // calendar math and negative year
-    let dt = Dt::from_ymd(-2000, 1, 31, Scale::TAI, 12, 0, 0, 0);
+    let dt = from_ymd!(-2000, 1, 31; 12, on=Scale::TAI);
     let ymd = dt.add_months(1).to_ymd();
     assert_eq!(ymd.day(), 29);
 
