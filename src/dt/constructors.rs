@@ -138,17 +138,6 @@ impl Dt {
         }
     }
 
-    /// Creates a new [`Dt`] from a total number of attoseconds (signed i128) without
-    /// performing any time scale conversions.
-    ///
-    /// - This is an easy way to create a duration.
-    /// - The returned [`Dt`] has its `scale` and `target` fields set to
-    ///   `Scale::TAI`.
-    #[inline(always)]
-    pub const fn span(attos: i128) -> Dt {
-        Dt::new(attos, Scale::TAI, Scale::TAI)
-    }
-
     /// Creates a [`Dt`] from a floating-point number of seconds without performing
     /// any time scale conversions.
     ///
@@ -207,21 +196,21 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Scale, dt};
     ///
-    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// let dt = dt!(1_300_000_000_000_000_000);
     /// assert_eq!(
     ///     Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI, Scale::TAI),
     ///     dt,
     /// );
     ///
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     /// assert_eq!(
     ///     Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI, Scale::TAI),
     ///     dt,
     /// );
     ///
-    /// let dt = Dt::span(-500_000_000_000_000_000);
+    /// let dt = dt!(-500_000_000_000_000_000);
     /// assert_eq!(
     ///     Dt::from_sec_and_frac(0, -500_000_000_000_000_000, Scale::TAI, Scale::TAI),
     ///     dt,

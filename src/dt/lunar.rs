@@ -100,7 +100,7 @@ impl Dt {
         let secular_attos = Self::mul_lm(elapsed);
         let periodic = Self::ltc_periodic_correction(tt);
 
-        tt.add(Dt::span(secular_attos)).add(periodic)
+        tt.add(crate::dt!(secular_attos)).add(periodic)
     }
 
     /// Converts from the Lunar Time Coordinate (LTC) to Terrestrial Time (TT).
@@ -124,7 +124,7 @@ impl Dt {
             let elapsed_eff = Self::to_attos_since_tcg_tcb_epoch(eff);
             let sec_inv_attos = Self::mul_rate(elapsed_eff, LM_NUM, LM_DEN + LM_NUM);
 
-            tt = eff.sub(Dt::span(sec_inv_attos));
+            tt = eff.sub(crate::dt!(sec_inv_attos));
             i += 1;
         }
         tt
@@ -201,7 +201,7 @@ impl Dt {
         let secular_attos = Self::mul_tl(elapsed);
         let periodic = Self::ltc_periodic_correction(tdb);
 
-        tdb.add(Dt::span(secular_attos))
+        tdb.add(crate::dt!(secular_attos))
             .add(periodic)
             .add(Self::TCL_TDB_BIAS_SPAN)
     }
@@ -225,7 +225,7 @@ impl Dt {
             let elapsed_eff = Self::to_attos_since_j2000_tdb_epoch(eff);
             let sec_inv_attos = Self::mul_rate(elapsed_eff, TL_NUM, TL_DEN + TL_NUM);
 
-            tdb = eff.sub(Dt::span(sec_inv_attos));
+            tdb = eff.sub(crate::dt!(sec_inv_attos));
             i += 1;
         }
         Self::tdb_to_tai(tdb)

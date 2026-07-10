@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale};
+use deep_time::{Dt, Scale, dt};
 
 #[test]
 fn test_ymd_to_jd() {
@@ -391,7 +391,7 @@ fn unit_split_roundtrip_positive() {
         dt
     );
 
-    let ms_dt = Dt::span(1_300_000_000_000_000_000);
+    let ms_dt = dt!(1_300_000_000_000_000_000);
     let (whole, frac_attos) = ms_dt.to_ms_floor();
     assert_eq!(whole, 1300);
     assert_eq!(frac_attos, 0);
@@ -407,7 +407,7 @@ fn unit_split_roundtrip_positive() {
 
 #[test]
 fn unit_split_negative_whole_plus_fraction() {
-    let dt = Dt::span(-1_000_500_000_000_000_000);
+    let dt = dt!(-1_000_500_000_000_000_000);
     let (whole, frac_attos) = dt.to_ms_floor();
     assert_eq!(whole, -1001);
     assert_eq!(frac_attos, 500_000_000_000_000);
@@ -425,7 +425,7 @@ fn unit_split_negative_whole_plus_fraction() {
 
 #[test]
 fn unit_split_trunc_semantics() {
-    let positive = Dt::span(1_300_500_000_000_000_000);
+    let positive = dt!(1_300_500_000_000_000_000);
     let (whole, frac_attos) = positive.to_ms();
     assert_eq!(whole, 1300);
     assert_eq!(frac_attos, 500_000_000_000_000);
@@ -434,7 +434,7 @@ fn unit_split_trunc_semantics() {
         positive
     );
 
-    let negative_whole = Dt::span(-1_300_000_000_000_000_000);
+    let negative_whole = dt!(-1_300_000_000_000_000_000);
     let (whole, frac_attos) = negative_whole.to_ms();
     assert_eq!(whole, -1300);
     assert_eq!(frac_attos, 0);
@@ -443,7 +443,7 @@ fn unit_split_trunc_semantics() {
         negative_whole
     );
 
-    let small_negative = Dt::span(-500_000_000_000_000);
+    let small_negative = dt!(-500_000_000_000_000);
     let (whole, frac_attos) = small_negative.to_ms();
     assert_eq!(whole, 0);
     assert_eq!(frac_attos, -500_000_000_000_000);
@@ -457,7 +457,7 @@ fn unit_split_trunc_semantics() {
 fn unit_split_trunc_roundtrip_all_units() {
     use deep_time::consts::{ATTOS_PER_DAY, ATTOS_PER_SEC_I128};
 
-    let dt = Dt::span(-1_000_500_000_000_000_000);
+    let dt = dt!(-1_000_500_000_000_000_000);
 
     let (whole, frac) = dt.to_ms();
     assert_eq!(Dt::from_ms(whole, frac, Scale::TAI, Scale::TAI), dt);

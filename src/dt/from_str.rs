@@ -628,7 +628,7 @@ impl Dt {
 
         // Convert accumulated nanoseconds to attoseconds and build Dt
         let total_attos = total_nanos * 1_000_000_000i128;
-        Ok(Dt::span(total_attos))
+        Ok(crate::dt!(total_attos))
     }
 
     /// Parses a single component (number + optional fraction + unit) from the slice,
@@ -892,6 +892,6 @@ impl Dt {
         let total_secs = if negative { -total_secs } else { total_secs };
         let attos = total_secs.saturating_mul(ATTOS_PER_SEC_I128);
 
-        Ok(Dt::span(attos))
+        Ok(crate::dt!(attos))
     }
 }

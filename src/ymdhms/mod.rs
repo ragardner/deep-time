@@ -177,7 +177,7 @@ impl YmdHms {
             self.sec,
             self.attos,
         );
-        let mut ymd = tai.add(Dt::span(attos_delta)).to_ymd();
+        let mut ymd = tai.add(crate::dt!(attos_delta)).to_ymd();
         ymd.dt.scale = self.dt.scale;
         ymd
     }

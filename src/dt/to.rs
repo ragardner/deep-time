@@ -22,23 +22,23 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::Dt;
+    /// use deep_time::{Dt, dt};
     ///
     /// // -0.3 seconds → truncates to 0
-    /// let dt = Dt::span(-300_000_000_000_000_000);
+    /// let dt = dt!(-300_000_000_000_000_000);
     /// assert_eq!(dt.to_sec(), 0);
     ///
     /// // -0.8 seconds → truncates to 0
-    /// let dt = Dt::span(-800_000_000_000_000_000);
+    /// let dt = dt!(-800_000_000_000_000_000);
     /// assert_eq!(dt.to_sec(), 0);
     ///
     /// // -1.3 seconds → truncates to -1 (while to_sec_floor gives -2)
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     /// assert_eq!(dt.to_sec(), -1);
     /// assert_eq!(dt.to_sec_floor(), -2);
     ///
     /// // Positive values behave the same as `to_sec_floor`
-    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// let dt = dt!(1_300_000_000_000_000_000);
     /// assert_eq!(dt.to_sec(), 1);
     /// assert_eq!(dt.to_sec_floor(), 1);
     /// ```
@@ -61,12 +61,12 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::Dt;
+    /// use deep_time::{Dt, dt};
     ///
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     /// assert_eq!(dt.to_sec64(), -1);
     ///
-    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// let dt = dt!(1_300_000_000_000_000_000);
     /// assert_eq!(dt.to_sec64_floor(), 1);
     /// ```
     #[inline(always)]
@@ -85,10 +85,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Scale, dt};
     ///
     /// // negative 1.3 seconds
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     ///
     /// // becomes positive 700ms
     /// let frac = dt.to_sec_ufrac();
@@ -98,14 +98,14 @@ impl Dt {
     /// let sec = dt.to_sec_floor();
     /// assert_eq!(sec, -2);
     ///
-    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// let dt = dt!(1_300_000_000_000_000_000);
     ///
     /// assert_eq!(dt.to_sec_floor(), 1);
     /// assert_eq!(dt.to_sec_ufrac(), 300_000_000_000_000_000);
     ///
     /// // if you just want rounded seconds
     /// // use to_sec_round() instead
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     /// let sec = dt.to_sec_round();
     /// assert_eq!(sec, -1);
     /// ```
@@ -125,10 +125,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Scale, dt};
     ///
     /// // negative 1.3 seconds
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     ///
     /// // becomes positive 700ms
     /// let frac = dt.to_sec_ufrac();
@@ -138,14 +138,14 @@ impl Dt {
     /// let sec = dt.to_sec64_floor();
     /// assert_eq!(sec, -2);
     ///
-    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// let dt = dt!(1_300_000_000_000_000_000);
     ///
     /// assert_eq!(dt.to_sec64_floor(), 1);
     /// assert_eq!(dt.to_sec_ufrac(), 300_000_000_000_000_000);
     ///
     /// // if you just want rounded seconds
     /// // use to_sec_round() instead
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     /// let sec = dt.to_sec_round();
     /// assert_eq!(sec, -1);
     /// ```
@@ -164,20 +164,20 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::Dt;
+    /// use deep_time::{Dt, dt};
     ///
     /// // 1.3 seconds → rounds to 1
-    /// assert_eq!(Dt::span(1_300_000_000_000_000_000).to_sec_round(), 1);
+    /// assert_eq!(dt!(1_300_000_000_000_000_000).to_sec_round(), 1);
     ///
     /// // -1.3 seconds → rounds to -1
-    /// assert_eq!(Dt::span(-1_300_000_000_000_000_000).to_sec_round(), -1);
+    /// assert_eq!(dt!(-1_300_000_000_000_000_000).to_sec_round(), -1);
     ///
     /// // 1.6 seconds → rounds to 2
-    /// assert_eq!(Dt::span(1_600_000_000_000_000_000).to_sec_round(), 2);
+    /// assert_eq!(dt!(1_600_000_000_000_000_000).to_sec_round(), 2);
     ///
     /// // Halfway cases
-    /// assert_eq!(Dt::span(500_000_000_000_000_000).to_sec_round(), 1);
-    /// assert_eq!(Dt::span(-500_000_000_000_000_000).to_sec_round(), -1);
+    /// assert_eq!(dt!(500_000_000_000_000_000).to_sec_round(), 1);
+    /// assert_eq!(dt!(-500_000_000_000_000_000).to_sec_round(), -1);
     /// ```
     #[inline(always)]
     pub const fn to_sec_round(&self) -> i128 {
@@ -196,12 +196,12 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::Dt;
+    /// use deep_time::{Dt, dt};
     ///
-    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// let dt = dt!(1_300_000_000_000_000_000);
     /// assert_eq!(dt.to_sec64_round(), 1);
     ///
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     /// assert_eq!(dt.to_sec64_round(), -1);
     /// ```
     #[inline(always)]
@@ -262,10 +262,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Scale, dt};
     ///
     /// // negative 1.3 seconds
-    /// let dt = Dt::span(-1_300_000_000_000_000_000);
+    /// let dt = dt!(-1_300_000_000_000_000_000);
     ///
     /// // becomes positive 700ms
     /// let frac = dt.to_sec_ufrac();
@@ -275,7 +275,7 @@ impl Dt {
     /// let sec = dt.to_sec64_floor();
     /// assert_eq!(sec, -2);
     ///
-    /// let dt = Dt::span(1_300_000_000_000_000_000);
+    /// let dt = dt!(1_300_000_000_000_000_000);
     ///
     /// assert_eq!(dt.to_sec64_floor(), 1);
     /// assert_eq!(dt.to_sec_ufrac(), 300_000_000_000_000_000);
@@ -288,7 +288,7 @@ impl Dt {
     /// Returns a new [`Dt`] rounded to the nearest second.
     #[inline(always)]
     pub const fn round_to_sec(&self) -> Dt {
-        self.round(Dt::span(ATTOS_PER_SEC_I128))
+        self.round(crate::dt!(ATTOS_PER_SEC_I128))
     }
 
     /// Returns the total time in attoseconds.
@@ -410,7 +410,7 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Scale, dt};
     /// use deep_time::consts::ATTOS_PER_HALF_DAY_U128;
     ///
     /// // library epoch is 2000-01-01 12:00:00 TAI

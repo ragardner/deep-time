@@ -118,7 +118,7 @@ impl Drift {
             total_attos = total_attos.saturating_add(accel_term);
         }
 
-        Dt::span(total_attos)
+        crate::dt!(total_attos)
     }
 
     /// Evaluates the deterministic relativistic/polynomial correction **and**

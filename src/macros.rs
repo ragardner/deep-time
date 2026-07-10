@@ -1,4 +1,48 @@
-//! Crate-root convenience macros (`from_sec!`, `from_ns!`, `from_ymd!`, …).
+//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_ns!`, `from_ymd!`, …).
+
+/// Builds a [`Dt`](crate::Dt) from total attoseconds with optional scale labels.
+///
+/// This is sugar for [`Dt::new`](crate::Dt::new). When scale is omitted, both
+/// `scale` and `target` are [`Scale::TAI`](crate::Scale::TAI). With `on scale`
+/// only, `target` matches `scale`. A different `target` is set with a trailing
+/// `; target`.
+///
+/// Does **not** perform any time scale conversions.
+///
+/// ## Forms
+///
+/// | Form | Equivalent to |
+/// |------|----------------|
+/// | `dt!(attos)` | `Dt::new(attos, Scale::TAI, Scale::TAI)` |
+/// | `dt!(attos, on scale)` | `Dt::new(attos, scale, scale)` |
+/// | `dt!(attos, on scale; target)` | `Dt::new(attos, scale, target)` |
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::Scale;
+/// use deep_time::dt;
+///
+/// let a = dt!(1_000_000_000_000_000_000);
+/// let b = dt!(0, on Scale::UTC);
+/// let c = dt!(0, on Scale::TAI; Scale::UTC);
+///
+/// assert_eq!(a, deep_time::Dt::new(1_000_000_000_000_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, deep_time::Dt::new(0, Scale::UTC, Scale::UTC));
+/// assert_eq!(c, deep_time::Dt::new(0, Scale::TAI, Scale::UTC));
+/// ```
+#[macro_export]
+macro_rules! dt {
+    ($attos:expr, on $scale:expr; $target:expr) => {
+        $crate::Dt::new($attos, $scale, $target)
+    };
+    ($attos:expr, on $scale:expr) => {
+        $crate::Dt::new($attos, $scale, $scale)
+    };
+    ($attos:expr) => {
+        $crate::Dt::new($attos, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+}
 
 /// Builds a [`Dt`](crate::Dt) from whole seconds and an optional signed
 /// sub-second remainder (attoseconds).
@@ -49,7 +93,7 @@
 /// let signed = from_sec!(-1, -300_000_000_000_000_000);
 /// let floor = from_sec!(-2, 700_000_000_000_000_000);
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, deep_time::Dt::span(-1_300_000_000_000_000_000));
+/// assert_eq!(signed, deep_time::dt!(-1_300_000_000_000_000_000));
 /// ```
 #[macro_export]
 macro_rules! from_sec {

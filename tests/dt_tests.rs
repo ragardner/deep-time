@@ -45,9 +45,9 @@ fn test_from_sec_f() {
 
 #[test]
 fn test_mul_by_f() {
-    let three_sec = Dt::span(3 * APS);
-    let neg_three_sec = Dt::span(-(3 * APS));
-    let two_sec = Dt::span(2 * APS);
+    let three_sec = deep_time::dt!(3 * APS);
+    let neg_three_sec = deep_time::dt!(-(3 * APS));
+    let two_sec = deep_time::dt!(2 * APS);
 
     // Integer and fractional products (exact i128 path for the whole part)
     assert_eq!(three_sec.mul_by_f(2.0).to_attos(), 6 * APS);
@@ -70,7 +70,10 @@ fn test_mul_by_f() {
     assert_eq!(Dt::MIN.mul_by_f(2.0), Dt::MIN);
 
     // div_by_f delegates here
-    assert_eq!(Dt::span(10 * APS).div_by_f(4.0).to_attos(), (10 * APS) / 4);
+    assert_eq!(
+        deep_time::dt!(10 * APS).div_by_f(4.0).to_attos(),
+        (10 * APS) / 4
+    );
 }
 
 #[test]
@@ -210,7 +213,7 @@ fn test_from_sec_and_frac_round_trip() {
     ];
 
     for attos in cases {
-        let dt = Dt::span(attos);
+        let dt = deep_time::dt!(attos);
         let rebuilt = Dt::from_sec_and_frac(
             dt.to_sec(),
             dt.to_sec_frac() as i128,

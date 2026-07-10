@@ -952,12 +952,12 @@ impl Dt {
             };
 
             if day_delta != 0 {
-                result = result.add(Dt::span(day_delta as i128 * AS_PER_DAY));
+                result = result.add(crate::dt!(day_delta as i128 * AS_PER_DAY));
             }
         }
 
         if total_attos != 0 {
-            result = result.add(Dt::span(total_attos));
+            result = result.add(crate::dt!(total_attos));
         }
 
         // Time of day
@@ -1038,12 +1038,12 @@ impl Dt {
                     }
                     Token::Tomorrow => {
                         if !has_duration {
-                            return Ok(Dt::span(AS_PER_DAY));
+                            return Ok(crate::dt!(AS_PER_DAY));
                         }
                     }
                     Token::Yesterday => {
                         if !has_duration {
-                            return Ok(Dt::span(-AS_PER_DAY));
+                            return Ok(crate::dt!(-AS_PER_DAY));
                         }
                     }
                     Token::Ago => {
@@ -1299,7 +1299,7 @@ impl Dt {
             return Err(an_err!(DtErrKind::InvalidInput));
         }
 
-        Ok(Dt::span(total_attos))
+        Ok(crate::dt!(total_attos))
     }
 }
 

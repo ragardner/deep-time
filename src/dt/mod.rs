@@ -2,7 +2,6 @@ mod arithmetic;
 mod arithmetic_calendar;
 mod constructors;
 mod conveniences;
-mod conversions;
 mod et;
 mod from_ccsds;
 mod from_str;
@@ -12,6 +11,7 @@ mod julian_date;
 mod ops;
 mod to;
 mod to_bin_ccsds;
+mod to_scale;
 mod to_str;
 
 pub mod lunar;

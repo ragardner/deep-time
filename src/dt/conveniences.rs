@@ -112,11 +112,8 @@ impl Dt {
     /// // 2012-08-08 15:30:00 → 1344439800.000000 s
     /// let unix = 1344439800_i128;
     ///
-    /// // use Dt::new to avoid time scale conversions on the
-    /// // seconds count, other functions can do the same thing
-    /// // but this way lets us easily set the time scale fields
-    /// // in one go
-    /// let unix_dt = Dt::new_sec(unix, Scale::UTC, Scale::UTC);
+    /// // no scale conversion — only labels the count as UTC seconds
+    /// let unix_dt = Dt::from_sec(unix, Scale::UTC, Scale::UTC);
     ///
     /// let dt = Dt::from_unix(unix_dt);
     ///

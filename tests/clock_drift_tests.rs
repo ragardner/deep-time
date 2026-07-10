@@ -30,7 +30,7 @@ mod tests {
         let drift = Drift::new(
             Dt::from_sec(2, Scale::TAI, Scale::TAI),
             Dt::from_ns(1, 0, Scale::TAI, Scale::TAI), // exactly 1e-9 s/s
-            Dt::span(2),                               // exactly 2e-18 s/s²
+            deep_time::dt!(2),                         // exactly 2e-18 s/s²
         );
         let dt = Dt::from_sec(1_000_000, Scale::TAI, Scale::TAI);
 
@@ -39,7 +39,7 @@ mod tests {
         // = 2.001002 s = 2 s + 1_002_000_000_000_000 attoseconds
         assert_eq!(
             drift.time_diff_after(&dt),
-            Dt::span(2_001_002_000_000_000_000i128)
+            deep_time::dt!(2_001_002_000_000_000_000i128)
         );
     }
 
