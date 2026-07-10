@@ -10,7 +10,7 @@ impl Dt {
     /// Recommended value for the Sun when building the `bodies` slice passed to
     /// [`Observer::shapiro_delay`], [`Observer::shapiro_delay`],
     /// and related methods.
-    pub const SHAPIRO_SOLAR: Self = Self::from_sec_f(TWO_GM_SUN_OVER_C3, Scale::TAI);
+    pub const SHAPIRO_SOLAR: Self = Self::from_sec_f(TWO_GM_SUN_OVER_C3, Scale::TAI, Scale::TAI);
 
     /// Creates the Shapiro delay scale for an arbitrary central body
     /// from its standard gravitational parameter `GM` (μ) in m³ s⁻².
@@ -25,7 +25,7 @@ impl Dt {
     #[inline]
     pub const fn shapiro_from_grav_param(gm: Real) -> Dt {
         let secs = 2.0 * gm / (C * C_SQUARED);
-        Self::from_sec_f(secs, Scale::TAI)
+        Self::from_sec_f(secs, Scale::TAI, Scale::TAI)
     }
 
     /// Creates an [`Observer`] using this time value along with the
@@ -60,7 +60,7 @@ impl Dt {
     /// ## Examples
     ///
     /// ```
-    /// use deep_time::{Dt, Position, Spacetime, Velocity};
+    /// use deep_time::{Dt, Position, Spacetime, Velocity, from_sec_f};
     ///
     /// let bodies = [
     ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20),     // Sun
@@ -75,7 +75,7 @@ impl Dt {
     ///     bodies.iter().cloned(),
     /// );
     ///
-    /// let t = Dt::span_f(1234.5);
+    /// let t = from_sec_f!(1234.5);
     ///
     /// let state = t.to_observer(
     ///     Position::ZERO,
@@ -232,7 +232,7 @@ impl Observer {
         // Initial geometric guess
         let initial_rx = rx_provider(self.time);
         let initial_r_sep = self.position.distance_to(&initial_rx.position);
-        let initial_geometric = Dt::from_sec_f(initial_r_sep / C, Scale::TAI);
+        let initial_geometric = Dt::from_sec_f(initial_r_sep / C, Scale::TAI, Scale::TAI);
 
         let mut rx_time = self.time.add(initial_geometric);
         let mut prop_correction = Dt::ZERO;
@@ -243,7 +243,7 @@ impl Observer {
             prop_correction = self.shapiro_delay(&rx, bodies);
 
             let r_sep = self.position.distance_to(&rx.position);
-            let geometric = Dt::from_sec_f(r_sep / C, Scale::TAI);
+            let geometric = Dt::from_sec_f(r_sep / C, Scale::TAI, Scale::TAI);
             let full_delay = geometric.add(prop_correction);
 
             let new_rx_time = self.time.add(full_delay);
@@ -501,7 +501,7 @@ impl Observer {
         }
 
         let delay_sec = shapiro_sec * log(arg);
-        Dt::from_sec_f(delay_sec, Scale::TAI)
+        Dt::from_sec_f(delay_sec, Scale::TAI, Scale::TAI)
     }
 
     /// Computes the differential proper-time correction between `self`

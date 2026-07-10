@@ -1,4 +1,4 @@
-//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_ns!`, `from_ymd!`, …).
+//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ymd!`, …).
 
 /// Builds a [`Dt`](crate::Dt) from total attoseconds with optional scale labels.
 ///
@@ -114,6 +114,51 @@ macro_rules! from_sec {
     };
     ($sec:expr) => {
         $crate::Dt::from_sec_and_frac($sec, 0, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a [`Dt`](crate::Dt) from a floating-point seconds count with optional
+/// scale labels.
+///
+/// This is sugar for [`Dt::from_sec_f`](crate::Dt::from_sec_f). When scale is
+/// omitted, both `scale` and `target` are [`Scale::TAI`](crate::Scale::TAI).
+/// With `on scale` only, `target` matches `scale`. A different `target` is set
+/// with a trailing `; target`.
+///
+/// Does **not** perform any time scale conversions.
+///
+/// ## Forms
+///
+/// | Form | Equivalent to |
+/// |------|----------------|
+/// | `from_sec_f!(sec)` | `Dt::from_sec_f(sec, Scale::TAI, Scale::TAI)` |
+/// | `from_sec_f!(sec, on scale)` | `Dt::from_sec_f(sec, scale, scale)` |
+/// | `from_sec_f!(sec, on scale; target)` | `Dt::from_sec_f(sec, scale, target)` |
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::Scale;
+/// use deep_time::from_sec_f;
+///
+/// let a = from_sec_f!(5.5);
+/// let b = from_sec_f!(0.0, on Scale::UTC);
+/// let c = from_sec_f!(1.0, on Scale::TAI; Scale::UTC);
+///
+/// assert_eq!(a, deep_time::Dt::from_sec_f(5.5, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, deep_time::Dt::from_sec_f(0.0, Scale::UTC, Scale::UTC));
+/// assert_eq!(c, deep_time::Dt::from_sec_f(1.0, Scale::TAI, Scale::UTC));
+/// ```
+#[macro_export]
+macro_rules! from_sec_f {
+    ($sec:expr, on $scale:expr; $target:expr) => {
+        $crate::Dt::from_sec_f($sec, $scale, $target)
+    };
+    ($sec:expr, on $scale:expr) => {
+        $crate::Dt::from_sec_f($sec, $scale, $scale)
+    };
+    ($sec:expr) => {
+        $crate::Dt::from_sec_f($sec, $crate::Scale::TAI, $crate::Scale::TAI)
     };
 }
 

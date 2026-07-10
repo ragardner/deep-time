@@ -280,22 +280,22 @@ impl TimeTraits for u128 {
 impl TimeTraits for f64 {
     #[inline]
     fn ns(self) -> Dt {
-        Dt::span_f(self * 1e-9)
+        crate::from_sec_f!(self * 1e-9)
     }
 
     #[inline]
     fn us(self) -> Dt {
-        Dt::span_f(self * 1e-6)
+        crate::from_sec_f!(self * 1e-6)
     }
 
     #[inline]
     fn ms(self) -> Dt {
-        Dt::span_f(self * 1e-3)
+        crate::from_sec_f!(self * 1e-3)
     }
 
     #[inline]
     fn sec(self) -> Dt {
-        Dt::span_f(self)
+        crate::from_sec_f!(self)
     }
 
     #[inline]
@@ -327,22 +327,22 @@ impl TimeTraits for f64 {
 impl TimeTraits for f32 {
     #[inline]
     fn ns(self) -> Dt {
-        Dt::span_f(self as f64 * 1e-9)
+        crate::from_sec_f!(self as f64 * 1e-9)
     }
 
     #[inline]
     fn us(self) -> Dt {
-        Dt::span_f(self as f64 * 1e-6)
+        crate::from_sec_f!(self as f64 * 1e-6)
     }
 
     #[inline]
     fn ms(self) -> Dt {
-        Dt::span_f(self as f64 * 1e-3)
+        crate::from_sec_f!(self as f64 * 1e-3)
     }
 
     #[inline]
     fn sec(self) -> Dt {
-        Dt::span_f(self as f64)
+        crate::from_sec_f!(self as f64)
     }
 
     #[inline]

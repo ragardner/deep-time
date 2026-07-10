@@ -3,7 +3,7 @@
 #[cfg(feature = "lang")]
 mod tests {
     use deep_time::civil_parts::Parts;
-    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
+    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale, from_sec};
 
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
@@ -386,7 +386,7 @@ mod tests {
 
     #[test]
     fn round_trip_fixed_offsets() {
-        for tp in [Dt::from_tai_sec(5), Dt::from_tai_sec(-5)] {
+        for tp in [from_sec!(5), from_sec!(-5)] {
             let xp1 = tp
                 .target(Scale::UTC)
                 .to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f %:z", 3600, Lang::En)
@@ -1062,7 +1062,7 @@ mod tests {
     fn relative_duration_parser_comprehensive() {
         let cases = generate_relative_duration_test_cases();
         let opts = ParseCfg {
-            ref_time: Some(Dt::from_tai_sec(5_000_000)),
+            ref_time: Some(from_sec!(5_000_000)),
             ..Default::default()
         };
 

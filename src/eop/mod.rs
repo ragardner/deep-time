@@ -500,6 +500,7 @@ impl Dt {
         Ok(self.add(Dt::from_sec_f(
             Self::mjd_to_eop_offset_f(self.to_mjd_f_raw(), op_data)?,
             Scale::TAI,
+            Scale::TAI,
         )))
     }
 
@@ -522,7 +523,7 @@ impl Dt {
                 .offset;
 
             // Fixed-point: utc = ut1 − offset(mjd(utc)); evaluate offset at `guess`, subtract from `self` (ut1).
-            guess = self.sub(Dt::from_sec_f(offset, Scale::TAI));
+            guess = self.sub(Dt::from_sec_f(offset, Scale::TAI, Scale::TAI));
         }
 
         Ok(guess)

@@ -61,7 +61,7 @@ mod tests {
     /// `to_eop` must shift the instant by exactly `from_sec_f(dut1)` attos,
     /// and that shift must read back as the same f64 seconds.
     fn assert_to_eop_applies_dut1(before: Dt, after: Dt, dut1: f64, label: &str) {
-        let expected_attos = Dt::from_sec_f(dut1, Scale::TAI).attos;
+        let expected_attos = Dt::from_sec_f(dut1, Scale::TAI, Scale::TAI).attos;
         assert_eq!(
             after.attos - before.attos,
             expected_attos,
@@ -166,7 +166,7 @@ mod tests {
             .saturating_add(frac_utc);
         assert_eq!(
             total_ut1 - total_utc,
-            Dt::from_sec_f(dut1_expected, Scale::TAI).attos,
+            Dt::from_sec_f(dut1_expected, Scale::TAI, Scale::TAI).attos,
             "integer JD attos shift should equal DUT1 attos"
         );
 

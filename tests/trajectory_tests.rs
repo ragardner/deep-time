@@ -134,7 +134,7 @@ mod proper_time_tests {
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
         // K_eff saturates at ≈ 0.9013878188659973
-        let expected = Dt::from_sec_f(90.13878188659973, Scale::TAI);
+        let expected = Dt::from_sec_f(90.13878188659973, Scale::TAI, Scale::TAI);
         assert_eq!(dtau, expected);
     }
 
@@ -187,7 +187,7 @@ mod proper_time_tests {
         let via_path = Dt::proper_time_from_path([(t0, ls.clone()), (t1, ls)]).unwrap();
 
         // With constant rate, this should equal rate * Δt
-        let expected = Dt::from_sec_f(0.95 * 300.0, Scale::TAI);
+        let expected = Dt::from_sec_f(0.95 * 300.0, Scale::TAI, Scale::TAI);
         assert_eq!(via_path, expected);
     }
 

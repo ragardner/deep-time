@@ -88,7 +88,7 @@ impl Dt {
     pub const fn from_msd_f(msd: Real) -> Dt {
         let whole = floor_f(msd) as i128;
         let frac = msd - f!(whole);
-        let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC, Scale::TAI);
+        let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC, Scale::TAI, Scale::TAI);
         Self::from_msd(whole, frac_span.to_attos() as u128)
     }
 
@@ -198,7 +198,7 @@ impl Dt {
 
         // Convert hours → seconds into the sol and return as Dt (consistent with to_mtc)
         let seconds_into_sol = lmst_hours * f!(3600.0);
-        Dt::from_sec_f(seconds_into_sol, Scale::TAI)
+        Dt::from_sec_f(seconds_into_sol, Scale::TAI, Scale::TAI)
     }
 
     /// Returns Local True Solar Time (LTST) at the given planetocentric east longitude
@@ -235,7 +235,7 @@ impl Dt {
         let eot_seconds = eot_deg * f!(240.0);
 
         // LTST = LMST + EOT (as duration)
-        lmst.add(Dt::from_sec_f(eot_seconds, Scale::TAI))
+        lmst.add(Dt::from_sec_f(eot_seconds, Scale::TAI, Scale::TAI))
     }
 
     /// Returns the integer Mars Year (MY) for this instant.

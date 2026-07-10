@@ -1,6 +1,6 @@
 use crate::{
     Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS,
-    TT_TAI_OFFSET,
+    TT_TAI_OFFSET, from_sec_f,
 };
 
 impl Dt {
@@ -92,9 +92,9 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Scale, from_sec};
     ///
-    /// let diff = Dt::from_tai_sec(1_718_467_200); // ~2024-06-15
+    /// let diff = from_sec!(1_718_467_200); // ~2024-06-15
     /// let dt = Dt::from_diff_and_scale(diff, Dt::UNIX_EPOCH, true);
     ///
     /// let ymd = dt.to_ymd();
@@ -153,7 +153,7 @@ impl Dt {
                 // leap seconds table returned None so it must be pre 1972
                 None => match self.scale {
                     Scale::UtcHist => match self.historical_utc_offset() {
-                        Some(offset) => self.add(Dt::span_f(offset)).with(Scale::TAI),
+                        Some(offset) => self.add(from_sec_f!(offset)).with(Scale::TAI),
                         None => self.with(Scale::TAI),
                     },
                     Scale::UtcSpice => self.add_sec(9).with(Scale::TAI),
@@ -213,7 +213,7 @@ impl Dt {
                 // leap seconds table returned None so it must be pre 1972
                 None => match new {
                     Scale::UtcHist => match self.historical_utc_offset() {
-                        Some(offset) => self.sub(Dt::span_f(offset)).with(new),
+                        Some(offset) => self.sub(from_sec_f!(offset)).with(new),
                         None => self.with(new),
                     },
                     Scale::UtcSpice => self.add_sec(-9).with(new),
@@ -397,7 +397,7 @@ impl Dt {
     pub const fn tai_to_tdb(&self) -> Dt {
         let tt = self.add(TT_TAI_OFFSET);
         let correction = Self::tdb_minus_tt(tt.to_sec_f());
-        tt.add(Dt::from_sec_f(correction, Scale::TAI))
+        tt.add(Dt::from_sec_f(correction, Scale::TAI, Scale::TAI))
     }
 
     /// Converts a TDB [`Dt`] to TAI.
@@ -411,7 +411,7 @@ impl Dt {
         let mut i = 0u8;
         while i < 8 {
             let p = Self::tdb_minus_tt(tt.to_sec_f());
-            let new_tt = tdb.sub(Dt::span_f(p));
+            let new_tt = tdb.sub(from_sec_f!(p));
 
             // Early exit when change is smaller than ~1 atto-second
             let delta = new_tt.to_diff_raw(tt);

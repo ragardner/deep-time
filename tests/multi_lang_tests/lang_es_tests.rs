@@ -4,7 +4,7 @@
 
 #[cfg(all(feature = "es", feature = "parse"))]
 mod tests {
-    use deep_time::{Dt, Lang, Order, ParseCfg, Scale, YmdHms};
+    use deep_time::{Dt, Lang, Order, ParseCfg, Scale, YmdHms, from_sec};
 
     fn assert_date(input: &str, expected_rfc3339: &str, opts: Option<ParseCfg>) {
         let d = ParseCfg::DEFAULT;
@@ -126,7 +126,7 @@ mod tests {
         let cases = generate_relative_date_test_cases_es();
         let opts = ParseCfg {
             lang: Lang::Es,
-            ref_time: Some(Dt::from_tai_sec(5_000_000)),
+            ref_time: Some(from_sec!(5_000_000)),
             ..Default::default()
         };
 

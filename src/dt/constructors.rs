@@ -131,23 +131,11 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn new(attos: i128, scale: Scale, target: Scale) -> Dt {
-        Self {
+        Dt {
             attos,
             scale,
             target,
         }
-    }
-
-    /// Creates a [`Dt`] from a floating-point number of seconds without performing
-    /// any time scale conversions.
-    ///
-    /// - This is an easy way to create a duration or a seconds count that doesn't
-    ///   include any time scale conversions, just holds the seconds count as is.
-    /// - The returned [`Dt`] has its `scale` and `target` fields set to
-    ///   `Scale::TAI`.
-    #[inline(always)]
-    pub const fn span_f(sec: Real) -> Dt {
-        Self::from_sec_f(sec, Scale::TAI)
     }
 
     /// Low level constructor from total attoseconds since a given epoch.
@@ -222,17 +210,6 @@ impl Dt {
             sec.saturating_mul(ATTOS_PER_SEC_I128).saturating_add(attos),
             on,
             target,
-        )
-    }
-
-    /// Creates a new [`Dt`] from a total number of seconds (signed i128) without
-    /// performing any time scale conversions.
-    #[inline(always)]
-    pub const fn from_tai_sec(sec: i128) -> Dt {
-        Dt::new(
-            sec.saturating_mul(ATTOS_PER_SEC_I128),
-            Scale::TAI,
-            Scale::TAI,
         )
     }
 
@@ -497,13 +474,18 @@ impl Dt {
         Dt::new(self.attos.saturating_abs(), self.scale, self.target)
     }
 
-    /// Creates a [`Dt`] from a floating-point number of seconds.
+    /// Builds a [`Dt`] holding the given floating-point seconds count.
     ///
-    /// - Assumes the value is on the given scale.
-    /// - Converts the value to TAI from the given `scale`.
-    /// - The returned [`Dt`] is on the TAI time scale - its `scale`
-    ///   field is `TAI` and its `target` field is the provided time
-    ///   scale argument.
+    /// Does **not** perform any time scale conversions. The `sec` value is
+    /// stored as attoseconds only; its meaning depends on how you use the
+    /// result afterward.
+    ///
+    /// ## Parameters
+    ///
+    /// - `sec` — seconds count to store (`NaN` → zero attoseconds;
+    ///   `±∞` → [`i128::MAX`] / [`i128::MIN`]).
+    /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
+    /// - `target` — value stored in the returned [`Dt`]'s `target` field.
     ///
     /// ## Examples
     ///
@@ -511,24 +493,22 @@ impl Dt {
     /// use deep_time::{Dt, Scale};
     ///
     /// let seconds = 5.5;
-    ///
-    /// // use TAI for no conversions
-    /// let duration = Dt::from_sec_f(seconds, Scale::TAI);
+    /// let duration = Dt::from_sec_f(seconds, Scale::TAI, Scale::TAI);
     ///
     /// assert_eq!(duration.to_sec_f(), seconds);
     /// ```
     #[inline]
-    pub const fn from_sec_f(sec: Real, scale: Scale) -> Dt {
+    pub const fn from_sec_f(sec: Real, on: Scale, target: Scale) -> Dt {
         if sec.is_nan() {
-            return Self::ZERO;
+            return Self::new(0, on, target);
         } else if sec.is_infinite() {
             return if sec.is_sign_positive() {
-                Self::MAX
+                Self::new(i128::MAX, on, target)
             } else {
-                Self::MIN
+                Self::new(i128::MIN, on, target)
             };
         }
-        Dt::new(Self::sec_f_to_attos(sec), scale, scale).to_tai()
+        Dt::new(Self::sec_f_to_attos(sec), on, target)
     }
 
     /// High-precision conversion from [`Real`] seconds to total attoseconds (i128).

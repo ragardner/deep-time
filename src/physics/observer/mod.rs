@@ -135,7 +135,7 @@ impl Observer {
     /// For round-trip (two-way) measurements, square the one-way ratio:
     ///
     /// ```rust
-    /// use deep_time::{Dt, Observer, Position, Spacetime, Velocity};
+    /// use deep_time::{Dt, Observer, Position, Spacetime, Velocity, from_sec_f};
     ///
     /// let bodies = [
     ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20), // Sun
@@ -149,14 +149,14 @@ impl Observer {
     /// let grav_potential_rx = Spacetime::grav_potential_from_point_masses(&rx_pos, bodies.iter().cloned());
     ///
     /// let transmitter = Observer::new(
-    ///     Dt::span_f(0.0),
+    ///     from_sec_f!(0.0),
     ///     tx_pos,
     ///     Velocity::ZERO,
     ///     grav_potential_tx,
     /// );
     ///
     /// let receiver = Observer::new(
-    ///     Dt::span_f(0.0),
+    ///     from_sec_f!(0.0),
     ///     rx_pos,
     ///     Velocity::from_speed(800.0),
     ///     grav_potential_rx,

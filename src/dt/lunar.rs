@@ -152,7 +152,7 @@ impl Dt {
         }
 
         // Convert µs → Dt (positive = lunar time runs ahead)
-        Dt::from_sec_f(delta_us * 1e-6, Scale::TAI)
+        Dt::from_sec_f(delta_us * 1e-6, Scale::TAI, Scale::TAI)
     }
 
     /// Zero-point calibration constant for TCL so that our implementation
@@ -184,7 +184,8 @@ impl Dt {
     ///
     /// Reference: <https://github.com/xlucn/LTE440>
     /// (README and demo output)
-    pub(crate) const TCL_TDB_BIAS_SPAN: Dt = Dt::from_sec_f(0.49334260839797583, Scale::TAI);
+    pub(crate) const TCL_TDB_BIAS_SPAN: Dt =
+        Dt::from_sec_f(0.49334260839797583, Scale::TAI, Scale::TAI);
 
     /// Integer helper: elapsed attoseconds since J2000.0 TDB.
     /// Used exclusively for the TCL pathway to match LTE440

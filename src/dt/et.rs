@@ -17,7 +17,7 @@ impl Dt {
     pub const fn tai_to_et(&self) -> Dt {
         let tt = self.add(TT_TAI_OFFSET);
         let correction = Self::et_minus_tt(tt.to_sec_f());
-        tt.add(Dt::from_sec_f(correction, Scale::TAI))
+        tt.add(Dt::from_sec_f(correction, Scale::TAI, Scale::TAI))
     }
 
     /// Converts an ET [`Dt`] to TAI (NAIF/SPICE simplified model).
@@ -29,7 +29,7 @@ impl Dt {
         let mut i = 0u8;
         while i < 8 {
             let p = Self::et_minus_tt(tt.to_sec_f());
-            let new_tt = et.sub(Dt::from_sec_f(p, Scale::TAI));
+            let new_tt = et.sub(Dt::from_sec_f(p, Scale::TAI, Scale::TAI));
 
             // Early exit when change is smaller than ~1 attosecond
             let delta = new_tt.to_diff_raw(tt);

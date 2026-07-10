@@ -10,7 +10,7 @@
 /// authoritative published reference value. All tolerances are set to be
 /// substantially tighter than any operational requirement for cislunar PNT.
 mod ltc_tests {
-    use deep_time::{Dt, Scale, consts::ATTOS_PER_SEC_I128};
+    use deep_time::{Dt, Scale, consts::ATTOS_PER_SEC_I128, from_sec};
 
     /// Verifies round-trip conversion accuracy between TAI and LTC.
     ///
@@ -201,8 +201,7 @@ mod ltc_tests {
         // (Unix timestamp 2_145_916_800 on the TAI scale)
         let unix_tai_sec = 2_145_916_800i128;
 
-        let tai_2038 =
-            Dt::from_diff_and_scale(Dt::from_tai_sec(unix_tai_sec), Dt::UNIX_EPOCH, false);
+        let tai_2038 = Dt::from_diff_and_scale(from_sec!(unix_tai_sec), Dt::UNIX_EPOCH, false);
 
         let tcl_span = tai_2038.to(Scale::TCL); // Dt on TCL scale
         let tdb_span = tai_2038.to(Scale::TDB); // Dt on TDB scale

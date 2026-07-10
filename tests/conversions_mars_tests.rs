@@ -2,13 +2,13 @@
 
 #[cfg(feature = "mars")]
 mod mars_tests {
-    use deep_time::{Dt, Real, Scale, f, mars::MARS_SOL_LENGTH_SEC};
+    use deep_time::{Dt, Real, Scale, f, from_sec, mars::MARS_SOL_LENGTH_SEC};
 
     #[test]
     fn utc_leap_seconds_are_handled_in_mars_time() {
         // One second before vs after a leap second insertion
-        let utc_pre = Dt::from_tai_sec(1_485_779_199);
-        let utc_post = Dt::from_tai_sec(1_485_779_200);
+        let utc_pre = from_sec!(1_485_779_199);
+        let utc_post = from_sec!(1_485_779_200);
 
         let msd_pre = utc_pre.to_msd_f();
         let msd_post = utc_post.to_msd_f();

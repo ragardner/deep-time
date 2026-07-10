@@ -10,6 +10,7 @@ mod tests {
     use deep_time::{
         Drift, Dt, Scale, TimeRange, YmdHms,
         civil_parts::{Meridiem, Offset, Parts, Weekday},
+        from_sec,
     };
 
     /// Helper function to test round-trip serialization/deserialization.
@@ -67,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_timerange_roundtrip() {
-        let start = Dt::from_tai_sec(1000000000);
+        let start = from_sec!(1000000000);
         let end = start + Dt::from_hours(24, 0, Scale::TAI, Scale::TAI);
         let step = Dt::from_hours(1, 0, Scale::TAI, Scale::TAI);
         let range = start.range(end, step);

@@ -4,7 +4,7 @@
 //! [`LeapInfo`] is returned by [`Dt::leap_sec`](../struct.Dt.html#method.leap_sec) and related methods.
 
 use crate::utc::leap_seconds_list::{LEAP_SECS, LeapSec};
-use crate::{Dt, Scale};
+use crate::{Dt, Scale, from_sec_f};
 
 #[cfg(feature = "std")]
 use std::{fs, io, path::Path};
@@ -249,7 +249,7 @@ impl Dt {
                     // leap seconds list returned None so it must be pre 1972
                     None => match self.scale {
                         Scale::UtcHist => match self.historical_utc_offset() {
-                            Some(offset) => self.add(Dt::span_f(offset)).with(Scale::TAI),
+                            Some(offset) => self.add(from_sec_f!(offset)).with(Scale::TAI),
                             None => self.with(Scale::TAI),
                         },
                         Scale::UtcSpice => self.add_sec(9).with(Scale::TAI),
@@ -314,7 +314,7 @@ impl Dt {
                     // leap seconds list returned None so it must be pre 1972
                     None => match new {
                         Scale::UtcHist => match self.historical_utc_offset() {
-                            Some(offset) => self.sub(Dt::span_f(offset)).with(new),
+                            Some(offset) => self.sub(from_sec_f!(offset)).with(new),
                             None => self.with(new),
                         },
                         Scale::UtcSpice => self.add_sec(-9).with(new),
