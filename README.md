@@ -247,6 +247,13 @@ You only need this if you are building a binary crate in a `no_std` environment 
 - Multi-language **parsing** requires the `parse` feature, but multi-language **formatting** works without it.
 - The `.parse()` implementation on `Dt` automatically chooses between the full parser and the ISO parser depending on enabled features.
 
+### Additional Examples
+
+| Example | What it shows | Run |
+|---------|----------------|-----|
+| [`precision_control`](examples/precision_control.rs) | Floor, compare, and format times at a chosen resolution (here: one minute) | `cargo run --example precision_control` |
+| [`sidereal_time`](examples/sidereal_time.rs) | Astropy-style GMST/GAST/LMST/LAST with UT1 from IERS finals, plus hour angle | `cargo run --example sidereal_time --features "sidereal-earth eop std"` |
+
 ### Performance
 
 Benchmarks were measured on an AMD Ryzen 7 7800X3D.

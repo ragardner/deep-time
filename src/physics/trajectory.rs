@@ -231,7 +231,7 @@ impl Dt {
     #[inline]
     pub const fn proper_time_between_constant_rate(self, end: Dt, dtau_dt: Real) -> Dt {
         let dt_sec = end.to_diff_raw(self).to_sec_f();
-        crate::from_sec_f!(dtau_dt * dt_sec)
+        from_sec_f!(dtau_dt * dt_sec)
     }
 
     /// Returns the instantaneous proper-time rate (dτ/dt) from a local
