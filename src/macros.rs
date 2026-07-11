@@ -1,6 +1,6 @@
 //! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`,
 //! `from_ms!`, `from_jd!`, `from_jd_f!`, `from_mjd!`, `from_mjd_f!`, `from_ymd!`,
-//! `from_str!`, …).
+//!  …).
 //!
 //! Optional scale labels use Python-style keyword arguments on **count** macros
 //! (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ms!`, …):
@@ -784,40 +784,5 @@ macro_rules! from_ymd {
     };
     ($y:expr) => {
         $crate::Dt::from_ymd($y, 1, 1, $crate::Scale::UTC, 0, 0, 0, 0)
-    };
-}
-
-/// Parses a date/time string into a [`Dt`](crate::Dt).
-///
-/// Sugar for [`Dt::parse`](crate::Dt::parse) — equivalent to
-/// `"…".parse::<Dt>()` and [`FromStr`](core::str::FromStr) on [`Dt`](crate::Dt).
-///
-/// - With the `parse` feature: uses the smart auto-parser with
-///   [`ParseCfg::DEFAULT`](crate::ParseCfg::DEFAULT).
-/// - Without `parse`: falls back to the fast ISO 8601 parser
-///   ([`Dt::from_str_iso`](crate::Dt::from_str_iso)).
-///
-/// Returns `Result<Dt, DtErr>`. For custom parse settings (language, reference
-/// time, etc.), use [`Dt::from_str_parse`](crate::Dt::from_str_parse) instead.
-///
-/// ## Forms
-///
-/// ```text
-/// from_str!(s)
-/// ```
-///
-/// ## Examples
-///
-/// ```
-/// use deep_time::{Dt, from_str};
-///
-/// let dt = from_str!("2000-01-01T12:00:00 TAI").unwrap();
-/// assert_eq!(dt, Dt::parse("2000-01-01T12:00:00 TAI").unwrap());
-/// assert_eq!(dt, Dt::ZERO);
-/// ```
-#[macro_export]
-macro_rules! from_str {
-    ($s:expr) => {
-        $crate::Dt::parse($s)
     };
 }
