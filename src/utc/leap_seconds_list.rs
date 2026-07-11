@@ -3,7 +3,7 @@
 //! Last leap second: 2017-01-01 (TAI-UTC = 37 s)
 //! File expires: 28 December 2026
 
-/// Holds info about a leap-second transition. Used by [LEAP_SECS](constant.LEAP_SECS.html).
+/// Holds info about a leap-second transition. Used by [`LEAP_SECS`].
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct LeapSec {
     /// NTP timestamp of the transition (IANA file, column 1)

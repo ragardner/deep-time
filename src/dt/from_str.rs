@@ -389,7 +389,7 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Parts::from_str_iso`](../struct.Parts.html#method.from_str_iso)
+    /// - [`Parts::from_str_iso`](../civil_parts/struct.Parts.html#method.from_str_iso)
     #[inline(always)]
     pub fn from_str_iso(s: &str) -> Result<Self, DtErr> {
         Parts::from_str_iso(s)?.to_dt()

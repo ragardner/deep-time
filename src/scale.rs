@@ -2,8 +2,8 @@ use core::fmt;
 
 /// Time scales supported by the library.
 ///
-/// This `#[non_exhaustive]` enum defines all time scales that [`Dt`](struct.Dt.html) can represent.
-/// Each [`Dt`](struct.Dt.html) instance stores its internal time value on the scale indicated by
+/// This `#[non_exhaustive]` enum defines all time scales that [`Dt`](crate::Dt) can represent.
+/// Each [`Dt`](crate::Dt) instance stores its internal time value on the scale indicated by
 /// its `scale` field.
 ///
 /// The reference epoch used for conversions between scales is **2000-01-01 12:00:00 TAI**.
@@ -264,7 +264,7 @@ impl Scale {
     /// Returns the wire representation of this `Scale` as a single byte.
     ///
     /// The returned byte is the `repr(u8)` discriminant of the enum.
-    /// This is the canonical on-wire form used by [`Dt`](struct.Dt.html).
+    /// This is the canonical on-wire form used by [`Dt`](crate::Dt).
     #[inline(always)]
     pub const fn to_u8(self) -> u8 {
         self as u8

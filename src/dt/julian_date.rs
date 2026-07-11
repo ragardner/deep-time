@@ -359,7 +359,7 @@ impl Dt {
     /// ## Returns
     ///
     /// A [`Dt`] counting attoseconds since the library epoch
-    /// [`Dt::ZERO`](../constant.ZERO.html) with its `scale` field set to
+    /// [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO) with its `scale` field set to
     /// `TAI` and its `target` field set to the `on` arg.
     ///
     /// ## Examples
@@ -417,7 +417,7 @@ impl Dt {
     /// ## Returns
     ///
     /// A [`Dt`] counting attoseconds since the library epoch
-    /// [`Dt::ZERO`](../constant.ZERO.html) with its `scale` field set to
+    /// [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO) with its `scale` field set to
     /// `TAI` and its `target` field set to the `on` arg.
     ///
     /// ## Examples
@@ -542,7 +542,7 @@ impl Dt {
     /// ## Returns
     ///
     /// A [`Dt`] counting attoseconds since the library epoch
-    /// [`Dt::ZERO`](../constant.ZERO.html) with its `scale` field set to
+    /// [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO) with its `scale` field set to
     /// `TAI` and its `target` field set to the `on` arg.
     ///
     /// ## Examples

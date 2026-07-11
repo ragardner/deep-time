@@ -3,19 +3,20 @@
 
 use crate::AnErr;
 
-/// The kind of error returned by deep-time.
+/// Failure category inside [`DtErr`](crate::DtErr) — parse errors, out-of-range
+/// values, missing features, and similar cases.
 ///
 /// Almost every function in this crate that can fail returns a
-/// [`DtErr`](type.DtErr.html). That error is made of two parts:
+/// [`DtErr`](crate::DtErr). That error is made of two parts:
 ///
 /// 1. A **kind** — one of the variants of this enum (what went wrong).
 /// 2. A short **reason** string — optional extra detail (up to 15 bytes).
 ///
-/// Those two pieces live inside [`AnErr`](struct.AnErr.html). [`DtErr`](type.DtErr.html)
+/// Those two pieces live inside [`AnErr`](crate::AnErr). [`DtErr`](crate::DtErr)
 /// is simply `AnErr<DtErrKind, 15>` — the whole error is 16 bytes.
 ///
-/// Create one with the [`an_err!`](macro.an_err!.html) macro, and read the kind
-/// back with [`.kind()`](struct.AnErr.html#method.kind):
+/// Create one with the [`an_err!`](crate::an_err) macro, and read the kind
+/// back with [`.kind()`](crate::AnErr::kind):
 ///
 /// ```
 /// use deep_time::{DtErr, DtErrKind, an_err};

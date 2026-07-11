@@ -4,28 +4,28 @@
 //! Optional scale labels use Python-style keyword arguments on **count** macros
 //! (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ms!`, …):
 //!
-//! - `on=<scale>` — stored as the [`Dt`](struct.Dt.html)'s `scale` field (and as
+//! - `on=<scale>` — stored as the [`Dt`](crate::Dt)'s `scale` field (and as
 //!   `target` when `target=` is omitted).
 //! - `target=<scale>` — stored as the `target` field; `on` defaults to
-//!   [`Scale::TAI`](enum.Scale.html#variant.TAI).
+//!   [`Scale::TAI`](crate::Scale::TAI).
 //!
 //! Either keyword may appear alone or together, in either order.
 //!
-//! [`from_jd!`](macro.from_jd.html), [`from_mjd!`](macro.from_mjd.html), and
-//! [`from_ymd!`](macro.from_ymd.html) only take a single `on=` scale (see each
-//! macro); use [`.target(…)`](struct.Dt.html#method.target) afterward if the
+//! [`from_jd!`](crate::from_jd), [`from_mjd!`](crate::from_mjd), and
+//! [`from_ymd!`](crate::from_ymd) only take a single `on=` scale (see each
+//! macro); use [`.target(…)`](crate::Dt::target) afterward if the
 //! `target` field should differ.
 
-/// Builds a [`Dt`](struct.Dt.html) from total attoseconds with optional scale labels.
+/// Builds a [`Dt`](crate::Dt) from total attoseconds with optional scale labels.
 ///
-/// Sugar for [`Dt::new`](struct.Dt.html#method.new). Does **not** perform time-scale
+/// Sugar for [`Dt::new`](crate::Dt::new). Does **not** perform time-scale
 /// conversion.
 ///
 /// ## Defaults
 ///
 /// | Omitted | Default |
 /// |---------|---------|
-/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
 /// | only `on=s` | `target=s` |
 /// | only `target=t` | `on=TAI` |
 ///
@@ -75,14 +75,14 @@ macro_rules! dt {
     };
 }
 
-/// Builds a [`Dt`](struct.Dt.html) from whole seconds and an optional signed
+/// Builds a [`Dt`](crate::Dt) from whole seconds and an optional signed
 /// sub-second remainder (attoseconds).
 ///
-/// Sugar for [`Dt::from_sec_and_frac`](struct.Dt.html#method.from_sec_and_frac). Does
+/// Sugar for [`Dt::from_sec_and_frac`](crate::Dt::from_sec_and_frac). Does
 /// **not** perform time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`Dt::ms_to_attos`](struct.Dt.html#method.ms_to_attos) (or another `*_to_attos`
+/// [`Dt::ms_to_attos`](crate::Dt::ms_to_attos) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -90,7 +90,7 @@ macro_rules! dt {
 /// | Omitted | Default |
 /// |---------|---------|
 /// | fraction | `0` |
-/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
 /// | only `on=s` | `target=s` |
 /// | only `target=t` | `on=TAI` |
 ///
@@ -168,17 +168,17 @@ macro_rules! from_sec {
     };
 }
 
-/// Builds a [`Dt`](struct.Dt.html) from a floating-point seconds count with optional
+/// Builds a [`Dt`](crate::Dt) from a floating-point seconds count with optional
 /// scale labels.
 ///
-/// Sugar for [`Dt::from_sec_f`](struct.Dt.html#method.from_sec_f). Does **not** perform
+/// Sugar for [`Dt::from_sec_f`](crate::Dt::from_sec_f). Does **not** perform
 /// time-scale conversion.
 ///
 /// ## Defaults
 ///
 /// | Omitted | Default |
 /// |---------|---------|
-/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
 /// | only `on=s` | `target=s` |
 /// | only `target=t` | `on=TAI` |
 ///
@@ -227,14 +227,14 @@ macro_rules! from_sec_f {
     };
 }
 
-/// Builds a [`Dt`](struct.Dt.html) from whole nanoseconds and an optional signed
+/// Builds a [`Dt`](crate::Dt) from whole nanoseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_ns`](struct.Dt.html#method.from_ns). Does **not** perform
+/// Sugar for [`Dt::from_ns`](crate::Dt::from_ns). Does **not** perform
 /// time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`Dt::ps_to_attos`](struct.Dt.html#method.ps_to_attos) (or another `*_to_attos`
+/// [`Dt::ps_to_attos`](crate::Dt::ps_to_attos) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -242,7 +242,7 @@ macro_rules! from_sec_f {
 /// | Omitted | Default |
 /// |---------|---------|
 /// | fraction | `0` |
-/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
 /// | only `on=s` | `target=s` |
 /// | only `target=t` | `on=TAI` |
 ///
@@ -320,14 +320,14 @@ macro_rules! from_ns {
     };
 }
 
-/// Builds a [`Dt`](struct.Dt.html) from whole milliseconds and an optional signed
+/// Builds a [`Dt`](crate::Dt) from whole milliseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_ms`](struct.Dt.html#method.from_ms). Does **not** perform
+/// Sugar for [`Dt::from_ms`](crate::Dt::from_ms). Does **not** perform
 /// time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`Dt::us_to_attos`](struct.Dt.html#method.us_to_attos) (or another `*_to_attos`
+/// [`Dt::us_to_attos`](crate::Dt::us_to_attos) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -335,7 +335,7 @@ macro_rules! from_ns {
 /// | Omitted | Default |
 /// |---------|---------|
 /// | fraction | `0` |
-/// | `on` and `target` | both [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
 /// | only `on=s` | `target=s` |
 /// | only `target=t` | `on=TAI` |
 ///
@@ -413,21 +413,21 @@ macro_rules! from_ms {
     };
 }
 
-/// Builds a **TAI** [`Dt`](struct.Dt.html) from a Julian Date (whole days plus
+/// Builds a **TAI** [`Dt`](crate::Dt) from a Julian Date (whole days plus
 /// optional attosecond remainder).
 ///
-/// Sugar for [`Dt::from_jd`](struct.Dt.html#method.from_jd).
+/// Sugar for [`Dt::from_jd`](crate::Dt::from_jd).
 ///
 /// Converts from the `on` scale to `TAI` (e.g. `on=Scale::UTC` applies leap
 /// seconds). Use `on=Scale::TAI` (the default) to skip a scale conversion.
 ///
-/// There is no `target=` on this macro — the returned [`Dt`](struct.Dt.html)'s
+/// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
 /// `target` is set from `on` (or TAI when omitted), as
-/// [`from_jd`](struct.Dt.html#method.from_jd) does. Chain
-/// [`.target(…)`](struct.Dt.html#method.target) if needed.
+/// [`from_jd`](crate::Dt::from_jd) does. Chain
+/// [`.target(…)`](crate::Dt::target) if needed.
 ///
 /// The fractional remainder is in **attoseconds** — use a `*_to_attos` helper
-/// (e.g. a day fraction built from [`ATTOS_PER_DAY`](consts/constant.ATTOS_PER_DAY.html))
+/// (e.g. a day fraction built from [`ATTOS_PER_DAY`](crate::consts::ATTOS_PER_DAY))
 /// instead of hand-counting zeros when convenient.
 ///
 /// ## Defaults
@@ -435,7 +435,7 @@ macro_rules! from_ms {
 /// | Omitted | Default |
 /// |---------|---------|
 /// | fraction | `0` |
-/// | `on` | [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | `on` | [`Scale::TAI`](crate::Scale::TAI) |
 ///
 /// ## Forms
 ///
@@ -484,23 +484,23 @@ macro_rules! from_jd {
     };
 }
 
-/// Builds a **TAI** [`Dt`](struct.Dt.html) from a Modified Julian Date (whole days
+/// Builds a **TAI** [`Dt`](crate::Dt) from a Modified Julian Date (whole days
 /// plus optional attosecond remainder).
 ///
-/// Sugar for [`Dt::from_mjd`](struct.Dt.html#method.from_mjd).
+/// Sugar for [`Dt::from_mjd`](crate::Dt::from_mjd).
 ///
 /// Converts from the `on` scale to `TAI` (e.g. `on=Scale::UTC` applies leap
 /// seconds). Use `on=Scale::TAI` (the default) to skip a scale conversion.
 ///
-/// There is no `target=` on this macro — the returned [`Dt`](struct.Dt.html)'s
+/// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
 /// `target` is set from `on` (or TAI when omitted), as
-/// [`from_mjd`](struct.Dt.html#method.from_mjd) does. Chain
-/// [`.target(…)`](struct.Dt.html#method.target) if needed.
+/// [`from_mjd`](crate::Dt::from_mjd) does. Chain
+/// [`.target(…)`](crate::Dt::target) if needed.
 ///
 /// MJD and JD relate by `JD = MJD + 2_400_000.5`.
 ///
 /// The fractional remainder is in **attoseconds** — use a `*_to_attos` helper
-/// (e.g. a day fraction built from [`ATTOS_PER_DAY`](consts/constant.ATTOS_PER_DAY.html))
+/// (e.g. a day fraction built from [`ATTOS_PER_DAY`](crate::consts::ATTOS_PER_DAY))
 /// instead of hand-counting zeros when convenient.
 ///
 /// ## Defaults
@@ -508,7 +508,7 @@ macro_rules! from_jd {
 /// | Omitted | Default |
 /// |---------|---------|
 /// | fraction | `0` |
-/// | `on` | [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+/// | `on` | [`Scale::TAI`](crate::Scale::TAI) |
 ///
 /// ## Forms
 ///
@@ -557,9 +557,9 @@ macro_rules! from_mjd {
     };
 }
 
-/// Builds a [`Dt`](struct.Dt.html) from a Gregorian calendar date and optional time.
+/// Builds a [`Dt`](crate::Dt) from a Gregorian calendar date and optional time.
 ///
-/// Sugar for [`Dt::from_ymd`](struct.Dt.html#method.from_ymd).
+/// Sugar for [`Dt::from_ymd`](crate::Dt::from_ymd).
 ///
 /// Date fields are positional (`y`, `m`, `d`). Time is optional: put a
 /// **semicolon after the day**, then hour (required if `;` is present), then
@@ -572,12 +572,12 @@ macro_rules! from_mjd {
 /// | day | `1` |
 /// | time (no `;`) | `0, 0, 0, 0` |
 /// | minute / second / attos after `; h` | `0` |
-/// | `on` | [`Scale::UTC`](enum.Scale.html#variant.UTC) |
+/// | `on` | [`Scale::UTC`](crate::Scale::UTC) |
 ///
-/// The resulting [`Dt`](struct.Dt.html)'s `target` field is set from that civil
+/// The resulting [`Dt`](crate::Dt)'s `target` field is set from that civil
 /// scale (the `on=` value, or UTC when omitted), as
-/// [`from_ymd`](struct.Dt.html#method.from_ymd) does. There is no `target=` on
-/// this macro — chain [`.target(…)`](struct.Dt.html#method.target) if needed.
+/// [`from_ymd`](crate::Dt::from_ymd) does. There is no `target=` on
+/// this macro — chain [`.target(…)`](crate::Dt::target) if needed.
 ///
 /// ## Forms
 ///

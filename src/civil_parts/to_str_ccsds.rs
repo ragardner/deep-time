@@ -15,7 +15,7 @@ impl Parts {
     }
 
     /// Same as
-    /// [`Parts::to_str_ccsds`](../struct.Parts.html#method.to_str_ccsds)
+    /// [`Parts::to_str_ccsds`](#method.to_str_ccsds)
     /// but lets you control the maximum number of fractional digits (0–18).
     pub fn to_str_ccsds_nf(&self, max_precision: usize) -> Result<String, DtErr> {
         self.to_dt()?.to_str_ccsds_nf(max_precision)
@@ -30,7 +30,7 @@ impl Parts {
     }
 
     /// Same as
-    /// [`Parts::to_ccsds_doy_str`](../struct.Parts.html#method.to_ccsds_doy_str)
+    /// [`Parts::to_ccsds_doy_str`](#method.to_ccsds_doy_str)
     /// but with configurable fractional precision.
     pub fn to_ccsds_doy_str_nf(&self, max_precision: usize) -> Result<String, DtErr> {
         self.to_dt()?.to_ccsds_doy_str_nf(max_precision)

@@ -165,7 +165,7 @@ impl EopData {
     ///
     /// ## See also
     ///
-    /// - [`EopData::from_text_file`](../eop/struct.EopData.html#method.from_text_file)
+    /// - [`EopData::from_text_file`](#method.from_text_file)
     pub fn data_from_text_file<P: AsRef<std::path::Path>>(
         path: P,
         format: EopFormat,

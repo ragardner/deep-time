@@ -132,6 +132,7 @@ General
       parse+std+jiff-tz+lang, full (release)
     • cargo doc (no features + all features)
     • cargo run --example precision_control
+    • cargo run --example sidereal_time --features "sidereal-earth,eop,std"
     • cargo run --example readme --features "parse,jiff-tz,euro"
     • cargo publish --dry-run
 
@@ -395,6 +396,7 @@ run_validation() {
 
     log "examples (MSRV ${MSRV})"
     run cargo "+${MSRV}" run --example precision_control
+    run cargo "+${MSRV}" run --example sidereal_time --features "sidereal-earth,eop,std"
     run cargo "+${MSRV}" run --example readme --features "parse,jiff-tz,euro"
 
     log "cargo publish --dry-run"

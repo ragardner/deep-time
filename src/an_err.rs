@@ -20,7 +20,7 @@
 //!
 //! ## Construction and context
 //!
-//! Use the [`an_err!`] macro to create errors and add context:
+//! Use the [`an_err!`](crate::an_err) macro to create errors and add context:
 //!
 //! ```rust
 //! use deep_time::{AnErr, an_err};
@@ -53,18 +53,18 @@
 //!
 //! ## Display
 //!
-//! `AnErr` implements `Display` in the form `KindName` or `KindName: reason text`.
+//! [`Display`] writes the kind's [`Debug`] output (`{kind:?}`), then `: ` and the
+//! reason when it is non-empty — e.g. `YearOutOfRange` or `YearOutOfRange: year=10000`.
 //!
 //! ## Wire format (`wire` feature)
 //!
 //! With the `wire` feature enabled, the following methods become available:
 //!
-//! - [`wire_size`](struct.AnErr.html#method.wire_size)
-//! - [`to_wire_bytes`](struct.AnErr.html#method.to_wire_bytes)
-//! - [`from_wire_bytes`](struct.AnErr.html#method.from_wire_bytes)
+//! - [`wire_size`](crate::AnErr::wire_size)
+//! - [`to_wire_bytes`](crate::AnErr::to_wire_bytes)
+//! - [`from_wire_bytes`](crate::AnErr::from_wire_bytes)
 //!
 //! [`AnErr`]: AnErr
-//! [`an_err!`]: macro.an_err!.html
 
 use crate::LiteStr;
 use core::fmt;
