@@ -1,5 +1,6 @@
 //! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`,
-//! `from_ms!`, `from_jd!`, `from_mjd!`, `from_ymd!`, …).
+//! `from_ms!`, `from_jd!`, `from_jd_f!`, `from_mjd!`, `from_mjd_f!`, `from_ymd!`,
+//! `from_str!`, …).
 //!
 //! Optional scale labels use Python-style keyword arguments on **count** macros
 //! (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ms!`, …):
@@ -11,8 +12,10 @@
 //!
 //! Either keyword may appear alone or together, in either order.
 //!
-//! [`from_jd!`](crate::from_jd), [`from_mjd!`](crate::from_mjd), and
-//! [`from_ymd!`](crate::from_ymd) only take a single `on=` scale (see each
+//! [`from_jd!`](crate::from_jd), [`from_jd_f!`](crate::from_jd_f),
+//! [`from_mjd!`](crate::from_mjd), [`from_mjd_f!`](crate::from_mjd_f), and
+//! [`from_ymd!`](crate::from_ymd) only take
+//! a single `on=` scale (see each
 //! macro); use [`.target(…)`](crate::Dt::target) afterward if the
 //! `target` field should differ.
 
@@ -418,8 +421,9 @@ macro_rules! from_ms {
 ///
 /// Sugar for [`Dt::from_jd`](crate::Dt::from_jd).
 ///
-/// Converts from the `on` scale to `TAI` (e.g. `on=Scale::UTC` applies leap
-/// seconds). Use `on=Scale::TAI` (the default) to skip a scale conversion.
+/// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
+/// `on=Scale::UTC` applies leap seconds). `on` defaults to
+/// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
 ///
 /// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
 /// `target` is set from `on` (or TAI when omitted), as
@@ -484,13 +488,70 @@ macro_rules! from_jd {
     };
 }
 
+/// Builds a **TAI** [`Dt`](crate::Dt) from a floating-point Julian Date.
+///
+/// Sugar for [`Dt::from_jd_f`](crate::Dt::from_jd_f).
+///
+/// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
+/// `on=Scale::UTC` applies leap seconds). `on` defaults to
+/// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
+///
+/// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
+/// `target` is set from `on` (or TAI when omitted), as
+/// [`from_jd_f`](crate::Dt::from_jd_f) does. Chain
+/// [`.target(…)`](crate::Dt::target) if needed.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | `on` | [`Scale::TAI`](crate::Scale::TAI) |
+///
+/// ## Forms
+///
+/// ```text
+/// from_jd_f!(jd)
+/// from_jd_f!(jd, on=s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY, from_jd_f};
+///
+/// // 2_460_782.25
+/// let a = from_jd_f!(2_460_782.25);
+/// let b = from_jd_f!(2_460_782.25, on=Scale::TAI);
+/// let c = from_jd_f!(2_460_782.0, on=Scale::UTC);
+///
+/// assert_eq!(a, Dt::from_jd_f(2_460_782.25, Scale::TAI));
+/// assert_eq!(b, a);
+/// assert_eq!(c, Dt::from_jd_f(2_460_782.0, Scale::UTC));
+/// assert_eq!(a.to_jd(), (2_460_782, ATTOS_PER_DAY / 4));
+///
+/// // -1_000.25 (signed remainder)
+/// let neg = from_jd_f!(-1_000.25);
+/// assert_eq!(neg, Dt::from_jd_f(-1_000.25, Scale::TAI));
+/// assert_eq!(neg.to_jd(), (-1_000, -ATTOS_PER_DAY / 4));
+/// ```
+#[macro_export]
+macro_rules! from_jd_f {
+    ($jd:expr, on=$scale:expr) => {
+        $crate::Dt::from_jd_f($jd, $scale)
+    };
+    ($jd:expr) => {
+        $crate::Dt::from_jd_f($jd, $crate::Scale::TAI)
+    };
+}
+
 /// Builds a **TAI** [`Dt`](crate::Dt) from a Modified Julian Date (whole days
 /// plus optional attosecond remainder).
 ///
 /// Sugar for [`Dt::from_mjd`](crate::Dt::from_mjd).
 ///
-/// Converts from the `on` scale to `TAI` (e.g. `on=Scale::UTC` applies leap
-/// seconds). Use `on=Scale::TAI` (the default) to skip a scale conversion.
+/// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
+/// `on=Scale::UTC` applies leap seconds). `on` defaults to
+/// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
 ///
 /// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
 /// `target` is set from `on` (or TAI when omitted), as
@@ -554,6 +615,64 @@ macro_rules! from_mjd {
     };
     ($mjd_days:expr) => {
         $crate::Dt::from_mjd($mjd_days, 0, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a **TAI** [`Dt`](crate::Dt) from a floating-point Modified Julian Date.
+///
+/// Sugar for [`Dt::from_mjd_f`](crate::Dt::from_mjd_f).
+///
+/// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
+/// `on=Scale::UTC` applies leap seconds). `on` defaults to
+/// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
+///
+/// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
+/// `target` is set from `on` (or TAI when omitted), as
+/// [`from_mjd_f`](crate::Dt::from_mjd_f) does. Chain
+/// [`.target(…)`](crate::Dt::target) if needed.
+///
+/// MJD and JD relate by `JD = MJD + 2_400_000.5`.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | `on` | [`Scale::TAI`](crate::Scale::TAI) |
+///
+/// ## Forms
+///
+/// ```text
+/// from_mjd_f!(mjd)
+/// from_mjd_f!(mjd, on=s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY, from_mjd_f};
+///
+/// // 60_961.25
+/// let a = from_mjd_f!(60_961.25);
+/// let b = from_mjd_f!(60_961.25, on=Scale::TAI);
+/// let c = from_mjd_f!(60_961.0, on=Scale::UTC);
+///
+/// assert_eq!(a, Dt::from_mjd_f(60_961.25, Scale::TAI));
+/// assert_eq!(b, a);
+/// assert_eq!(c, Dt::from_mjd_f(60_961.0, Scale::UTC));
+/// assert_eq!(a.to_mjd(), (60_961, ATTOS_PER_DAY / 4));
+///
+/// // -1_000.25 as -1_001 + 0.75 day
+/// let neg = from_mjd_f!(-1_000.25);
+/// assert_eq!(neg, Dt::from_mjd_f(-1_000.25, Scale::TAI));
+/// assert_eq!(neg.to_mjd(), (-1_001, 3 * ATTOS_PER_DAY / 4));
+/// ```
+#[macro_export]
+macro_rules! from_mjd_f {
+    ($mjd:expr, on=$scale:expr) => {
+        $crate::Dt::from_mjd_f($mjd, $scale)
+    };
+    ($mjd:expr) => {
+        $crate::Dt::from_mjd_f($mjd, $crate::Scale::TAI)
     };
 }
 
@@ -665,5 +784,40 @@ macro_rules! from_ymd {
     };
     ($y:expr) => {
         $crate::Dt::from_ymd($y, 1, 1, $crate::Scale::UTC, 0, 0, 0, 0)
+    };
+}
+
+/// Parses a date/time string into a [`Dt`](crate::Dt).
+///
+/// Sugar for [`Dt::parse`](crate::Dt::parse) — equivalent to
+/// `"…".parse::<Dt>()` and [`FromStr`](core::str::FromStr) on [`Dt`](crate::Dt).
+///
+/// - With the `parse` feature: uses the smart auto-parser with
+///   [`ParseCfg::DEFAULT`](crate::ParseCfg::DEFAULT).
+/// - Without `parse`: falls back to the fast ISO 8601 parser
+///   ([`Dt::from_str_iso`](crate::Dt::from_str_iso)).
+///
+/// Returns `Result<Dt, DtErr>`. For custom parse settings (language, reference
+/// time, etc.), use [`Dt::from_str_parse`](crate::Dt::from_str_parse) instead.
+///
+/// ## Forms
+///
+/// ```text
+/// from_str!(s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::{Dt, from_str};
+///
+/// let dt = from_str!("2000-01-01T12:00:00 TAI").unwrap();
+/// assert_eq!(dt, Dt::parse("2000-01-01T12:00:00 TAI").unwrap());
+/// assert_eq!(dt, Dt::ZERO);
+/// ```
+#[macro_export]
+macro_rules! from_str {
+    ($s:expr) => {
+        $crate::Dt::parse($s)
     };
 }

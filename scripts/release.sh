@@ -128,8 +128,8 @@ General
   Same commands as CI, plus publish --dry-run:
     • cargo fmt --all -- --check
     • cargo clippy --workspace --all-features --all-targets
-    • test matrix: no-std, no-std+wire/mars/sidereal/physics, parse+std,
-      parse+std+jiff-tz+lang, full (release)
+    • test matrix: no-std, no-std+wire/mars/sidereal/physics/tdb_hi, parse+std,
+      parse+std+jiff-tz+lang, full (release), tdb_hi+hifitime (release, scoped)
     • cargo doc (no features + all features)
     • cargo run --example precision_control
     • cargo run --example sidereal_time --features "sidereal-earth,eop,std"
@@ -381,11 +381,13 @@ run_validation() {
     if [[ "$SKIP_TESTS" -eq 0 ]]; then
         log "test matrix (MSRV ${MSRV})"
         run cargo "+${MSRV}" test --no-default-features --workspace
-        run cargo "+${MSRV}" test --no-default-features --features "wire mars sidereal physics" --workspace
+        run cargo "+${MSRV}" test --no-default-features --features "wire mars sidereal physics tdb_hi" --workspace
         run cargo "+${MSRV}" test --no-default-features --features "parse alloc std" --workspace
         run cargo "+${MSRV}" test --no-default-features --features "parse alloc std jiff-tz lang" --workspace
         run cargo "+${MSRV}" test --release --no-default-features --features \
             "serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz" --workspace
+        run cargo "+${MSRV}" test --release --no-default-features --features "tdb_hi hifitime" \
+            --test astropy_conversions_tests --test conversions_tests --test hifitime_tests
     else
         log "Skipping test matrix (--skip-tests)"
     fi

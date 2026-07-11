@@ -216,14 +216,15 @@ impl StrPTimeFmt {
         allow_partial_date: bool,
         lang: Lang,
     ) -> Result<alloc::string::String, DtErr> {
-        let parts = Parts::from_str(
+        Parts::from_str(
             self.as_str()?,
             s,
             inp_can_end_before_fmt,
             fmt_can_end_before_inp,
             allow_partial_date,
-        )?;
-        parts.to_dt()?.to_str(output_fmt, lang)
+        )?
+        .to_dt()?
+        .to_str(output_fmt, lang)
     }
 
     /// Formats a [`Dt`] into a [`LiteStr`] using this pre-validated format and a given
@@ -257,14 +258,15 @@ impl StrPTimeFmt {
         allow_partial_date: bool,
         lang: Lang,
     ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
-        let parts = Parts::from_str(
+        Parts::from_str(
             self.as_str()?,
             s,
             inp_can_end_before_fmt,
             fmt_can_end_before_inp,
             allow_partial_date,
-        )?;
-        parts.to_dt()?.to_str_lite(output_fmt, lang)
+        )?
+        .to_dt()?
+        .to_str_lite(output_fmt, lang)
     }
 
     fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {
