@@ -468,4 +468,137 @@ mod proper_time_tests {
         .unwrap();
         assert_eq!(drift, Dt::ZERO);
     }
+
+    // =====================================================================
+    // proper_time_from_*_between
+    // =====================================================================
+
+    #[test]
+    fn between_matches_full_span_when_endpoints_align() {
+        let t0 = tai(0);
+        let t1 = tai(1000);
+        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let path = [(t0, slow.clone()), (t1, slow)];
+
+        let full = Dt::proper_time_from_path(path.clone()).unwrap();
+        let between = Dt::proper_time_from_path_between(t0, t1, path).unwrap();
+        assert_eq!(between, full);
+        assert_eq!(between, Dt::from_sec(900, Scale::TAI, Scale::TAI));
+    }
+
+    #[test]
+    fn between_windows_absolute_proper_time() {
+        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let path = [(tai(0), slow.clone()), (tai(1000), slow)];
+
+        // Δτ on [100, 900] = 0.9 * 800 = 720
+        let dtau = Dt::proper_time_from_path_between(tai(100), tai(900), path).unwrap();
+        assert_eq!(dtau, Dt::from_sec(720, Scale::TAI, Scale::TAI));
+    }
+
+    #[test]
+    fn drift_equals_between_minus_coordinate_span() {
+        let phi = phi_for_alpha(0.9);
+        let states = [
+            (tai(0), Velocity::ZERO, phi),
+            (tai(1000), Velocity::ZERO, phi),
+        ];
+
+        let start = tai(100);
+        let end = tai(900);
+        let dtau =
+            Dt::proper_time_from_states_between(start, end, states, 0.0).unwrap();
+        let drift = Dt::proper_time_drift_from_states(start, end, states, 0.0).unwrap();
+        assert_eq!(drift, dtau.sub(end.to_diff_raw(start)));
+        assert_eq!(dtau, Dt::from_sec(720, Scale::TAI, Scale::TAI));
+        assert_eq!(drift, Dt::from_sec(-80, Scale::TAI, Scale::TAI));
+    }
+
+    #[test]
+    fn between_rejects_incomplete_and_inverted() {
+        let ls = Spacetime::new(1.0, 0.0, 0.0);
+
+        let err = Dt::proper_time_from_path_between(
+            tai(100),
+            tai(0),
+            [(tai(0), ls.clone()), (tai(100), ls.clone())],
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::OutOfRange);
+
+        let err = Dt::proper_time_from_path_between(
+            tai(0),
+            tai(100),
+            [(tai(0), ls.clone()), (tai(50), ls)],
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::Incomplete);
+    }
+
+    // =====================================================================
+    // differential helpers
+    // =====================================================================
+
+    #[test]
+    fn differential_from_paths_self_is_zero() {
+        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let path = [(tai(0), slow.clone()), (tai(1000), slow)];
+        let diff = Dt::proper_time_differential_from_paths(
+            tai(0),
+            tai(1000),
+            path.clone(),
+            path,
+        )
+        .unwrap();
+        assert_eq!(diff, Dt::ZERO);
+    }
+
+    #[test]
+    fn differential_from_paths_compares_two_rates() {
+        let a = Spacetime::new(0.95, 0.0, 0.0);
+        let b = Spacetime::new(0.90, 0.0, 0.0);
+        let path_a = [(tai(0), a.clone()), (tai(1000), a)];
+        let path_b = [(tai(0), b.clone()), (tai(1000), b)];
+
+        // Δτ_a = 950, Δτ_b = 900 → differential = +50
+        let diff =
+            Dt::proper_time_differential_from_paths(tai(0), tai(1000), path_a, path_b).unwrap();
+        assert_eq!(diff, Dt::from_sec(50, Scale::TAI, Scale::TAI));
+    }
+
+    #[test]
+    fn differential_vs_rate_matches_manual() {
+        let sc = Spacetime::new(0.999_999_999_9997, 0.0, 0.0);
+        let ground_rate = Spacetime::new(0.999_999_999_305, 0.0, 0.0).proper_time_rate();
+        let path = [(tai(0), sc.clone()), (tai(100_000), sc)];
+
+        let start = tai(0);
+        let end = tai(100_000);
+        let via_api =
+            Dt::proper_time_differential_vs_rate(start, end, path.clone(), ground_rate).unwrap();
+
+        let dtau_sc = Dt::proper_time_from_path_between(start, end, path).unwrap();
+        let dtau_g = start.proper_time_between_constant_rate(end, ground_rate);
+        assert_eq!(via_api, dtau_sc.sub(dtau_g));
+        assert!(via_api.to_sec_f() > 0.0);
+    }
+
+    #[test]
+    fn differential_vs_rate_flat_reference_equals_drift() {
+        let phi = phi_for_alpha(0.9);
+        let states = [
+            (tai(0), Velocity::ZERO, phi),
+            (tai(1000), Velocity::ZERO, phi),
+        ];
+        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let path = [(tai(0), slow.clone()), (tai(1000), slow)];
+
+        // ref_rate = 1.0 → differential = Δτ − Δt = drift
+        let start = tai(0);
+        let end = tai(1000);
+        let diff = Dt::proper_time_differential_vs_rate(start, end, path, 1.0).unwrap();
+        let drift = Dt::proper_time_drift_from_states(start, end, states, 0.0).unwrap();
+        assert_eq!(diff, drift);
+        assert_eq!(diff, Dt::from_sec(-100, Scale::TAI, Scale::TAI));
+    }
 }

@@ -100,11 +100,8 @@ impl Spacetime {
         sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
     }
 
-    /// Kretschmann scalar from total relativity
     /// Computes the Kretschmann scalar \(\mathcal{K}\) from the total gravitational
     /// relativity experienced by a local observer at the observer’s spacetime point.
-    ///
-    /// This is the canonical, physics-true convenience function for the master Lagrangian.
     ///
     /// Information on the master Lagrangian can be found
     /// [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
@@ -117,16 +114,17 @@ impl Spacetime {
     /// - `characteristic_length_scale` — the typical length scale (in meters) over which
     ///   the gravitational field varies at the observer’s location.
     ///
-    /// **For existing weak-field users** (Earth orbit, GNSS, solar-system navigation):
-    /// Supply your existing `phi` value and set `characteristic_length_scale = 0.0`.
-    /// The function safely returns 0.0 (the value in double precision).
+    /// **For weak-fields** (Earth orbit, GNSS, solar-system navigation):
     ///
-    /// **For strong-field / future users** (black-hole flybys, neutron stars, direct
+    /// - Supply your existing `phi` value and set `characteristic_length_scale = 0.0`.
+    ///
+    /// **For strong-fields** (black-hole flybys, neutron stars, direct
     /// gravimeters, or full metric evaluation):
-    /// Supply the measured or computed \(\phi\) (typically negative) and the real local
-    /// length scale (or the value from your metric). The function returns a non-zero
-    /// curvature estimate \( \mathcal{K} \approx 48\,\phi^2 / L^4 \), matching the
-    /// Schwarzschild weak-field limit when \(L = r\) and \( |\phi| = GM/(c^2 r) \).
+    ///
+    /// - Supply the measured or computed \(\phi\) (typically negative) and the real local
+    ///   length scale (or the value from your metric). The function returns a non-zero
+    ///   curvature estimate \( \mathcal{K} \approx 48\,\phi^2 / L^4 \), matching the
+    ///   Schwarzschild weak-field limit when \(L = r\) and \( |\phi| = GM/(c^2 r) \).
     pub const fn kretschmann_from_potential_and_scale(
         grav_potential_over_c2: Real,
         characteristic_length_scale: Real,
