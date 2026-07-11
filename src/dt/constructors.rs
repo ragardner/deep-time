@@ -175,33 +175,37 @@ impl Dt {
     ///
     /// - `sec` — whole seconds (truncating / signed-remainder split).
     /// - `attos` — fractional part of that split, in attoseconds.
-    ///   For `1.3` s: `sec = 1`, `attos = 300_000_000_000_000_000`.
-    ///   For `-1.3` s: `sec = -1`, `attos = -300_000_000_000_000_000`.
-    ///   For `-0.5` s: `sec = 0`, `attos = -500_000_000_000_000_000`.
+    ///   Prefer helpers such as [`ms_to_attos`](Self::ms_to_attos) /
+    ///   [`ns_to_attos`](Self::ns_to_attos) (or [`AttosTraits`](crate::AttosTraits))
+    ///   instead of hand-counting zeros:
+    ///   - `1.3` s → `sec = 1`, `attos = Dt::ms_to_attos(300)`
+    ///   - `-1.3` s → `sec = -1`, `attos = Dt::ms_to_attos(-300)`
+    ///   - `-0.5` s → `sec = 0`, `attos = Dt::ms_to_attos(-500)`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, dt};
+    /// use deep_time::{AttosTraits, Dt, Scale, dt};
     ///
-    /// let dt = dt!(1_300_000_000_000_000_000);
+    /// // 1.3 s — convert 300 ms of remainder to attoseconds
+    /// let a = Dt::from_sec_and_frac(1, Dt::ms_to_attos(300), Scale::TAI, Scale::TAI);
+    /// // same via AttosTraits on the integer
+    /// let b = Dt::from_sec_and_frac(1, 300_i128.ms_to_attos(), Scale::TAI, Scale::TAI);
+    /// assert_eq!(a, b);
+    /// assert_eq!(a, dt!(1_300_000_000_000_000_000));
+    ///
+    /// // -1.3 s (signed remainder)
     /// assert_eq!(
-    ///     Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI, Scale::TAI),
-    ///     dt,
+    ///     Dt::from_sec_and_frac(-1, Dt::ms_to_attos(-300), Scale::TAI, Scale::TAI),
+    ///     dt!(-1_300_000_000_000_000_000),
     /// );
     ///
-    /// let dt = dt!(-1_300_000_000_000_000_000);
+    /// // -0.5 s
     /// assert_eq!(
-    ///     Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI, Scale::TAI),
-    ///     dt,
-    /// );
-    ///
-    /// let dt = dt!(-500_000_000_000_000_000);
-    /// assert_eq!(
-    ///     Dt::from_sec_and_frac(0, -500_000_000_000_000_000, Scale::TAI, Scale::TAI),
-    ///     dt,
+    ///     Dt::from_sec_and_frac(0, Dt::ms_to_attos(-500), Scale::TAI, Scale::TAI),
+    ///     dt!(-500_000_000_000_000_000),
     /// );
     /// ```
     #[inline(always)]
@@ -241,10 +245,27 @@ impl Dt {
     ///
     /// - `ms` — whole milliseconds (truncating / signed-remainder split).
     /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   For `1.3` ms: `ms = 1`, `frac_attos` = 0.3 ms in attoseconds.
-    ///   For `-1.3` ms: `ms = -1`, `frac_attos` negative.
+    ///   Use a smaller-unit converter rather than counting zeros by hand:
+    ///   - `1.3` ms → `ms = 1`, `frac_attos = Dt::us_to_attos(300)` (0.3 ms = 300 µs)
+    ///   - `-1.3` ms → `ms = -1`, `frac_attos = Dt::us_to_attos(-300)`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{AttosTraits, Dt, Scale};
+    ///
+    /// // 1.3 ms
+    /// let a = Dt::from_ms(1, Dt::us_to_attos(300), Scale::TAI, Scale::TAI);
+    /// let b = Dt::from_ms(1, 300_i128.us_to_attos(), Scale::TAI, Scale::TAI);
+    /// assert_eq!(a, b);
+    /// assert_eq!(a.to_attos(), 1_300_000_000_000_000);
+    ///
+    /// // -1.3 ms
+    /// let neg = Dt::from_ms(-1, Dt::us_to_attos(-300), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_attos(), -1_300_000_000_000_000);
+    /// ```
     #[inline(always)]
     pub const fn from_ms(ms: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_and_signed_attos_to_attos(ms, frac_attos, ATTOS_PER_MS_I128);
@@ -262,10 +283,27 @@ impl Dt {
     ///
     /// - `us` — whole microseconds (truncating / signed-remainder split).
     /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   For `1.3` µs: `us = 1`, `frac_attos` = 0.3 µs in attoseconds.
-    ///   For `-1.3` µs: `us = -1`, `frac_attos` negative.
+    ///   Use a smaller-unit converter rather than counting zeros by hand:
+    ///   - `1.3` µs → `us = 1`, `frac_attos = Dt::ns_to_attos(300)` (0.3 µs = 300 ns)
+    ///   - `-1.3` µs → `us = -1`, `frac_attos = Dt::ns_to_attos(-300)`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{AttosTraits, Dt, Scale};
+    ///
+    /// // 1.3 µs
+    /// let a = Dt::from_us(1, Dt::ns_to_attos(300), Scale::TAI, Scale::TAI);
+    /// let b = Dt::from_us(1, 300_i128.ns_to_attos(), Scale::TAI, Scale::TAI);
+    /// assert_eq!(a, b);
+    /// assert_eq!(a.to_attos(), 1_300_000_000_000);
+    ///
+    /// // -1.3 µs
+    /// let neg = Dt::from_us(-1, Dt::ns_to_attos(-300), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_attos(), -1_300_000_000_000);
+    /// ```
     #[inline(always)]
     pub const fn from_us(us: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_and_signed_attos_to_attos(us, frac_attos, ATTOS_PER_US_I128);
@@ -283,10 +321,27 @@ impl Dt {
     ///
     /// - `ns` — whole nanoseconds (truncating / signed-remainder split).
     /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   For `1.3` ns: `ns = 1`, `frac_attos` = 0.3 ns in attoseconds.
-    ///   For `-1.3` ns: `ns = -1`, `frac_attos` negative.
+    ///   Use a smaller-unit converter rather than counting zeros by hand:
+    ///   - `1.3` ns → `ns = 1`, `frac_attos = Dt::ps_to_attos(300)` (0.3 ns = 300 ps)
+    ///   - `-1.3` ns → `ns = -1`, `frac_attos = Dt::ps_to_attos(-300)`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{AttosTraits, Dt, Scale};
+    ///
+    /// // 1.3 ns → whole nanoseconds + 300 ps remainder
+    /// let a = Dt::from_ns(1, Dt::ps_to_attos(300), Scale::TAI, Scale::TAI);
+    /// let b = Dt::from_ns(1, 300_i128.ps_to_attos(), Scale::TAI, Scale::TAI);
+    /// assert_eq!(a, b);
+    /// assert_eq!(a.to_attos(), 1_300_000_000);
+    ///
+    /// // -1.3 ns
+    /// let neg = Dt::from_ns(-1, Dt::ps_to_attos(-300), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_attos(), -1_300_000_000);
+    /// ```
     #[inline(always)]
     pub const fn from_ns(ns: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_and_signed_attos_to_attos(ns, frac_attos, ATTOS_PER_NS_I128);
@@ -304,10 +359,27 @@ impl Dt {
     ///
     /// - `ps` — whole picoseconds (truncating / signed-remainder split).
     /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   For `1.3` ps: `ps = 1`, `frac_attos` = 0.3 ps in attoseconds.
-    ///   For `-1.3` ps: `ps = -1`, `frac_attos` negative.
+    ///   Use a smaller-unit converter rather than counting zeros by hand:
+    ///   - `1.3` ps → `ps = 1`, `frac_attos = Dt::fs_to_attos(300)` (0.3 ps = 300 fs)
+    ///   - `-1.3` ps → `ps = -1`, `frac_attos = Dt::fs_to_attos(-300)`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{AttosTraits, Dt, Scale};
+    ///
+    /// // 1.3 ps
+    /// let a = Dt::from_ps(1, Dt::fs_to_attos(300), Scale::TAI, Scale::TAI);
+    /// let b = Dt::from_ps(1, 300_i128.fs_to_attos(), Scale::TAI, Scale::TAI);
+    /// assert_eq!(a, b);
+    /// assert_eq!(a.to_attos(), 1_300_000);
+    ///
+    /// // -1.3 ps
+    /// let neg = Dt::from_ps(-1, Dt::fs_to_attos(-300), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_attos(), -1_300_000);
+    /// ```
     #[inline(always)]
     pub const fn from_ps(ps: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_and_signed_attos_to_attos(ps, frac_attos, ATTOS_PER_PS_I128);
@@ -325,10 +397,29 @@ impl Dt {
     ///
     /// - `fs` — whole femtoseconds (truncating / signed-remainder split).
     /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   For `1.3` fs: `fs = 1`, `frac_attos` = 0.3 fs in attoseconds.
-    ///   For `-1.3` fs: `fs = -1`, `frac_attos` negative.
+    ///   One femtosecond is 1000 attoseconds, so a fractional remainder is already
+    ///   a small integer: `1.3` fs → `fs = 1`, `frac_attos = 300`.
+    ///   For `-1.3` fs: `fs = -1`, `frac_attos = -300`.
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // 1.3 fs — sub-fs remainder is already in attoseconds (×10³)
+    /// let a = Dt::from_fs(1, 300, Scale::TAI, Scale::TAI);
+    /// assert_eq!(a.to_attos(), 1_300);
+    ///
+    /// // whole fs only — still fine to use the converter for the whole part
+    /// // if you are building total attos by hand:
+    /// assert_eq!(Dt::fs_to_attos(1), 1_000);
+    ///
+    /// // -1.3 fs
+    /// let neg = Dt::from_fs(-1, -300, Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_attos(), -1_300);
+    /// ```
     #[inline(always)]
     pub const fn from_fs(fs: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_and_signed_attos_to_attos(fs, frac_attos, ATTOS_PER_FS_I128);
@@ -345,10 +436,27 @@ impl Dt {
     ///
     /// - `n` — whole minutes (truncating / signed-remainder split).
     /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   For `1.5` min: `n = 1`, `frac_attos` = 0.5 min in attoseconds.
-    ///   For `-1.5` min: `n = -1`, `frac_attos` negative.
+    ///   Use a time-unit converter rather than counting zeros by hand:
+    ///   - `1.5` min → `n = 1`, `frac_attos = Dt::sec_to_attos(30)` (0.5 min = 30 s)
+    ///   - `-1.5` min → `n = -1`, `frac_attos = Dt::sec_to_attos(-30)`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{AttosTraits, Dt, Scale};
+    ///
+    /// // 1.5 min
+    /// let a = Dt::from_mins(1, Dt::sec_to_attos(30), Scale::TAI, Scale::TAI);
+    /// let b = Dt::from_mins(1, 30_i128.sec_to_attos(), Scale::TAI, Scale::TAI);
+    /// assert_eq!(a, b);
+    /// assert_eq!(a.to_sec(), 90);
+    ///
+    /// // -1.5 min
+    /// let neg = Dt::from_mins(-1, Dt::sec_to_attos(-30), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_sec(), -90);
+    /// ```
     #[inline(always)]
     pub const fn from_mins(n: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_and_signed_attos_to_attos(n, frac_attos, ATTOS_PER_MIN);
@@ -365,10 +473,27 @@ impl Dt {
     ///
     /// - `n` — whole hours (truncating / signed-remainder split).
     /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   For `1.5` h: `n = 1`, `frac_attos` = 0.5 h in attoseconds.
-    ///   For `-1.5` h: `n = -1`, `frac_attos` negative.
+    ///   Use a time-unit converter rather than counting zeros by hand:
+    ///   - `1.5` h → `n = 1`, `frac_attos = Dt::mins_to_attos(30)` (0.5 h = 30 min)
+    ///   - `-1.5` h → `n = -1`, `frac_attos = Dt::mins_to_attos(-30)`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{AttosTraits, Dt, Scale};
+    ///
+    /// // 1.5 h
+    /// let a = Dt::from_hours(1, Dt::mins_to_attos(30), Scale::TAI, Scale::TAI);
+    /// let b = Dt::from_hours(1, 30_i128.mins_to_attos(), Scale::TAI, Scale::TAI);
+    /// assert_eq!(a, b);
+    /// assert_eq!(a.to_sec(), 5400);
+    ///
+    /// // -1.5 h
+    /// let neg = Dt::from_hours(-1, Dt::mins_to_attos(-30), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_sec(), -5400);
+    /// ```
     #[inline(always)]
     pub const fn from_hours(n: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_and_signed_attos_to_attos(n, frac_attos, ATTOS_PER_HOUR);
@@ -385,10 +510,27 @@ impl Dt {
     ///
     /// - `d` — whole days (truncating / signed-remainder split).
     /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   For `1.25` d: `d = 1`, `frac_attos` = 0.25 d in attoseconds.
-    ///   For `-1.25` d: `d = -1`, `frac_attos` negative.
+    ///   Use a time-unit converter rather than counting zeros by hand:
+    ///   - `1.25` d → `d = 1`, `frac_attos = Dt::hours_to_attos(6)` (0.25 d = 6 h)
+    ///   - `-1.25` d → `d = -1`, `frac_attos = Dt::hours_to_attos(-6)`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{AttosTraits, Dt, Scale};
+    ///
+    /// // 1.25 d
+    /// let a = Dt::from_days(1, Dt::hours_to_attos(6), Scale::TAI, Scale::TAI);
+    /// let b = Dt::from_days(1, 6_i128.hours_to_attos(), Scale::TAI, Scale::TAI);
+    /// assert_eq!(a, b);
+    /// assert_eq!(a.to_sec(), 108_000); // 1.25 * 86400
+    ///
+    /// // -1.25 d
+    /// let neg = Dt::from_days(-1, Dt::hours_to_attos(-6), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_sec(), -108_000);
+    /// ```
     #[inline(always)]
     pub const fn from_days(d: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_and_signed_attos_to_attos(d, frac_attos, ATTOS_PER_DAY);

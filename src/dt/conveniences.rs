@@ -361,7 +361,7 @@ impl Dt {
     /// - `ntp` must be a [`Dt`] whose `attos` is how many attoseconds have elapsed since
     ///   [`NTP_EPOCH`](../struct.Dt.html#associatedconstant.NTP_EPOCH) — typically the
     ///   return value of [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp)
-    ///   The input's `scale` field says which time scale that count is on — if it
+    /// - The input's `scale` field says which time scale that count is on — if it
     ///   is `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
     ///   included).
     /// - [`Dt::NTP_EPOCH`](../struct.Dt.html#associatedconstant.NTP_EPOCH) is converted

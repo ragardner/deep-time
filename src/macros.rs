@@ -39,21 +39,20 @@
 ///
 /// ## Examples
 ///
-/// ```
-/// use deep_time::Scale;
-/// use deep_time::dt;
+/// ```rust
+/// use deep_time::{Dt, Scale, dt};
 ///
-/// let a = dt!(1_000_000_000_000_000_000);
+/// let a = dt!(Dt::sec_to_attos(1));
 /// let b = dt!(0, on=Scale::UTC);
 /// let c = dt!(0, on=Scale::TAI, target=Scale::UTC);
 /// let d = dt!(0, target=Scale::UTC, on=Scale::TAI);
 /// let e = dt!(0, target=Scale::UTC);
 ///
-/// assert_eq!(a, deep_time::Dt::new(1_000_000_000_000_000_000, Scale::TAI, Scale::TAI));
-/// assert_eq!(b, deep_time::Dt::new(0, Scale::UTC, Scale::UTC));
-/// assert_eq!(c, deep_time::Dt::new(0, Scale::TAI, Scale::UTC));
+/// assert_eq!(a, Dt::new(Dt::sec_to_attos(1), Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::new(0, Scale::UTC, Scale::UTC));
+/// assert_eq!(c, Dt::new(0, Scale::TAI, Scale::UTC));
 /// assert_eq!(d, c);
-/// assert_eq!(e, deep_time::Dt::new(0, Scale::TAI, Scale::UTC));
+/// assert_eq!(e, Dt::new(0, Scale::TAI, Scale::UTC));
 /// ```
 #[macro_export]
 macro_rules! dt {
@@ -79,6 +78,10 @@ macro_rules! dt {
 ///
 /// Sugar for [`Dt::from_sec_and_frac`](struct.Dt.html#method.from_sec_and_frac). Does
 /// **not** perform time-scale conversion.
+///
+/// The fractional remainder is in **attoseconds** — use
+/// [`Dt::ms_to_attos`](struct.Dt.html#method.ms_to_attos) (or another `*_to_attos`
+/// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
 ///
@@ -107,27 +110,27 @@ macro_rules! dt {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::Scale;
-/// use deep_time::{dt, from_sec};
+/// use deep_time::{Dt, Scale, from_sec};
 ///
+/// // 1.3 s → whole seconds + 300 ms remainder
 /// let a = from_sec!(1);
-/// let b = from_sec!(1, 300_000_000_000_000_000);
-/// let c = from_sec!(-1, -300_000_000_000_000_000, on=Scale::TAI);
+/// let b = from_sec!(1, Dt::ms_to_attos(300));
+/// let c = from_sec!(-1, Dt::ms_to_attos(-300), on=Scale::TAI);
 /// let d = from_sec!(0, on=Scale::UTC);
 /// let e = from_sec!(1, on=Scale::TAI, target=Scale::UTC);
 /// let f = from_sec!(1, target=Scale::UTC, on=Scale::TAI);
 ///
-/// assert_eq!(a, deep_time::Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::TAI));
-/// assert_eq!(b, deep_time::Dt::from_sec_and_frac(1, 300_000_000_000_000_000, Scale::TAI, Scale::TAI));
-/// assert_eq!(c, deep_time::Dt::from_sec_and_frac(-1, -300_000_000_000_000_000, Scale::TAI, Scale::TAI));
-/// assert_eq!(d, deep_time::Dt::from_sec_and_frac(0, 0, Scale::UTC, Scale::UTC));
-/// assert_eq!(e, deep_time::Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(a, Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_sec_and_frac(1, Dt::ms_to_attos(300), Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_sec_and_frac(-1, Dt::ms_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(d, Dt::from_sec_and_frac(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::UTC));
 /// assert_eq!(f, e);
 ///
-/// let signed = from_sec!(-1, -300_000_000_000_000_000);
-/// let floor = from_sec!(-2, 700_000_000_000_000_000);
+/// let signed = from_sec!(-1, Dt::ms_to_attos(-300));
+/// let floor = from_sec!(-2, Dt::ms_to_attos(700));
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, dt!(-1_300_000_000_000_000_000));
+/// assert_eq!(signed, Dt::from_sec_and_frac(-1, Dt::ms_to_attos(-300), Scale::TAI, Scale::TAI));
 /// ```
 #[macro_export]
 macro_rules! from_sec {
@@ -228,6 +231,10 @@ macro_rules! from_sec_f {
 /// Sugar for [`Dt::from_ns`](struct.Dt.html#method.from_ns). Does **not** perform
 /// time-scale conversion.
 ///
+/// The fractional remainder is in **attoseconds** — use
+/// [`Dt::ps_to_attos`](struct.Dt.html#method.ps_to_attos) (or another `*_to_attos`
+/// helper) instead of writing the attosecond literal by hand.
+///
 /// ## Defaults
 ///
 /// | Omitted | Default |
@@ -255,28 +262,27 @@ macro_rules! from_sec_f {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::Scale;
-/// use deep_time::from_ns;
+/// use deep_time::{Dt, Scale, from_ns};
 ///
-/// // 1 ns = 10⁹ attoseconds; 0.3 ns = 300_000_000 attoseconds
+/// // 1.3 ns → whole nanoseconds + 300 ps remainder
 /// let a = from_ns!(1);
-/// let b = from_ns!(1, 300_000_000);
-/// let c = from_ns!(-1, -300_000_000, on=Scale::TAI);
+/// let b = from_ns!(1, Dt::ps_to_attos(300));
+/// let c = from_ns!(-1, Dt::ps_to_attos(-300), on=Scale::TAI);
 /// let d = from_ns!(0, on=Scale::UTC);
 /// let e = from_ns!(1, on=Scale::TAI, target=Scale::UTC);
 /// let f = from_ns!(1, target=Scale::UTC);
 ///
-/// assert_eq!(a, deep_time::Dt::from_ns(1, 0, Scale::TAI, Scale::TAI));
-/// assert_eq!(b, deep_time::Dt::from_ns(1, 300_000_000, Scale::TAI, Scale::TAI));
-/// assert_eq!(c, deep_time::Dt::from_ns(-1, -300_000_000, Scale::TAI, Scale::TAI));
-/// assert_eq!(d, deep_time::Dt::from_ns(0, 0, Scale::UTC, Scale::UTC));
-/// assert_eq!(e, deep_time::Dt::from_ns(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(a, Dt::from_ns(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_ns(1, Dt::ps_to_attos(300), Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_ns(-1, Dt::ps_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(d, Dt::from_ns(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, Dt::from_ns(1, 0, Scale::TAI, Scale::UTC));
 /// assert_eq!(f, e);
 ///
-/// let signed = from_ns!(-1, -300_000_000);
-/// let floor = from_ns!(-2, 700_000_000);
+/// let signed = from_ns!(-1, Dt::ps_to_attos(-300));
+/// let floor = from_ns!(-2, Dt::ps_to_attos(700));
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, deep_time::Dt::from_ns(-1, -300_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(signed, Dt::from_ns(-1, Dt::ps_to_attos(-300), Scale::TAI, Scale::TAI));
 /// ```
 #[macro_export]
 macro_rules! from_ns {
@@ -318,6 +324,10 @@ macro_rules! from_ns {
 /// Sugar for [`Dt::from_ms`](struct.Dt.html#method.from_ms). Does **not** perform
 /// time-scale conversion.
 ///
+/// The fractional remainder is in **attoseconds** — use
+/// [`Dt::us_to_attos`](struct.Dt.html#method.us_to_attos) (or another `*_to_attos`
+/// helper) instead of writing the attosecond literal by hand.
+///
 /// ## Defaults
 ///
 /// | Omitted | Default |
@@ -345,28 +355,27 @@ macro_rules! from_ns {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::Scale;
-/// use deep_time::from_ms;
+/// use deep_time::{Dt, Scale, from_ms};
 ///
-/// // 1 ms = 10¹⁵ attoseconds; 0.3 ms = 300_000_000_000_000 attoseconds
+/// // 1.3 ms → whole milliseconds + 300 µs remainder
 /// let a = from_ms!(1);
-/// let b = from_ms!(1, 300_000_000_000_000);
-/// let c = from_ms!(-1, -300_000_000_000_000, on=Scale::TAI);
+/// let b = from_ms!(1, Dt::us_to_attos(300));
+/// let c = from_ms!(-1, Dt::us_to_attos(-300), on=Scale::TAI);
 /// let d = from_ms!(0, on=Scale::UTC);
 /// let e = from_ms!(1, on=Scale::TAI, target=Scale::UTC);
 /// let f = from_ms!(1, target=Scale::UTC);
 ///
-/// assert_eq!(a, deep_time::Dt::from_ms(1, 0, Scale::TAI, Scale::TAI));
-/// assert_eq!(b, deep_time::Dt::from_ms(1, 300_000_000_000_000, Scale::TAI, Scale::TAI));
-/// assert_eq!(c, deep_time::Dt::from_ms(-1, -300_000_000_000_000, Scale::TAI, Scale::TAI));
-/// assert_eq!(d, deep_time::Dt::from_ms(0, 0, Scale::UTC, Scale::UTC));
-/// assert_eq!(e, deep_time::Dt::from_ms(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(a, Dt::from_ms(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_ms(1, Dt::us_to_attos(300), Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_ms(-1, Dt::us_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(d, Dt::from_ms(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, Dt::from_ms(1, 0, Scale::TAI, Scale::UTC));
 /// assert_eq!(f, e);
 ///
-/// let signed = from_ms!(-1, -300_000_000_000_000);
-/// let floor = from_ms!(-2, 700_000_000_000_000);
+/// let signed = from_ms!(-1, Dt::us_to_attos(-300));
+/// let floor = from_ms!(-2, Dt::us_to_attos(700));
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, deep_time::Dt::from_ms(-1, -300_000_000_000_000, Scale::TAI, Scale::TAI));
+/// assert_eq!(signed, Dt::from_ms(-1, Dt::us_to_attos(-300), Scale::TAI, Scale::TAI));
 /// ```
 #[macro_export]
 macro_rules! from_ms {
