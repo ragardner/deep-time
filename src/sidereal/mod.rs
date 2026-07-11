@@ -233,7 +233,7 @@ impl Sidereal {
     ///   Earth Rotation Angle (ERA).  
     ///   - Pass `0.0` to get the pure CIO-based rotation angle (ERA).
     ///   - Pass the **mean** Equation of the Origins (e.g. from
-    ///     [`earth_eo_mean`](Self::earth_eo_mean)) to obtain GMST.
+    ///     [`Sidereal::earth_eo_mean`](#method.earth_eo_mean)) to obtain GMST.
     ///
     /// ## Details
     ///
@@ -281,7 +281,7 @@ impl Sidereal {
     ///   Earth Rotation Angle (ERA).  
     ///   - Pass `0.0` to get the pure local Earth Rotation Angle (CIO-based).
     ///   - Pass the **mean** Equation of the Origins (e.g. from
-    ///     [`earth_eo_mean`](Self::earth_eo_mean)) to obtain Local Mean
+    ///     [`Sidereal::earth_eo_mean`](#method.earth_eo_mean)) to obtain Local Mean
     ///     Sidereal Time (LMST).
     ///
     /// ## Details
@@ -337,7 +337,7 @@ impl Sidereal {
     /// - `eo_rad`: The Equation of the Origins value to use.  
     ///   - Pass `0.0` to get the time equivalent of the pure Earth Rotation Angle (ERA).  
     ///   - Pass the **mean** Equation of the Origins (e.g. from
-    ///     [`earth_eo_mean`](Self::earth_eo_mean)) to obtain Greenwich Mean
+    ///     [`Sidereal::earth_eo_mean`](#method.earth_eo_mean)) to obtain Greenwich Mean
     ///     Sidereal Time (GMST).
     ///
     /// ## Details
@@ -387,7 +387,7 @@ impl Sidereal {
     /// - `eo_rad`: The Equation of the Origins value to use.  
     ///   - Pass `0.0` to get the time equivalent of the local Earth Rotation Angle (CIO-based).  
     ///   - Pass the **mean** Equation of the Origins (e.g. from
-    ///     [`earth_eo_mean`](Self::earth_eo_mean)) to obtain **Local Mean Sidereal Time (LMST)**.
+    ///     [`Sidereal::earth_eo_mean`](#method.earth_eo_mean)) to obtain **Local Mean Sidereal Time (LMST)**.
     ///
     /// ## Details
     ///
@@ -437,7 +437,7 @@ impl Sidereal {
     /// ## Parameters
     ///
     /// - `eo_rad`: The **apparent** Equation of the Origins
-    ///   (e.g. from [`earth_eo_apparent`](Self::earth_eo_apparent)).
+    ///   (e.g. from [`Sidereal::earth_eo_apparent`](#method.earth_eo_apparent)).
     ///   When supplied, the result is Greenwich Apparent Sidereal Time (GAST)
     ///   referred to the true equinox.
     ///
@@ -482,7 +482,7 @@ impl Sidereal {
     /// ## Parameters
     ///
     /// - `eo_rad`: The **apparent** Equation of the Origins
-    ///   (e.g. from [`earth_eo_apparent`](Self::earth_eo_apparent)).
+    ///   (e.g. from [`Sidereal::earth_eo_apparent`](#method.earth_eo_apparent)).
     ///   When supplied, the result is Local Apparent Sidereal Time (LAST)
     ///   at the observer’s longitude, referred to the true equinox.
     ///
@@ -532,7 +532,7 @@ impl Sidereal {
     /// ## Parameters
     ///
     /// - `eo_rad`: The **apparent** Equation of the Origins
-    ///   (e.g. from [`earth_eo_apparent`](Self::earth_eo_apparent)).
+    ///   (e.g. from [`Sidereal::earth_eo_apparent`](#method.earth_eo_apparent)).
     ///   When supplied, the result is Greenwich Apparent Sidereal Time (GAST)
     ///   in seconds since sidereal midnight.
     ///
@@ -581,7 +581,7 @@ impl Sidereal {
     /// ## Parameters
     ///
     /// - `eo_rad`: The **apparent** Equation of the Origins
-    ///   (e.g. from [`earth_eo_apparent`](Self::earth_eo_apparent)).
+    ///   (e.g. from [`Sidereal::earth_eo_apparent`](#method.earth_eo_apparent)).
     ///   When supplied, the result is Local Apparent Sidereal Time (LAST)
     ///   at the observer’s longitude, in seconds since sidereal midnight.
     ///

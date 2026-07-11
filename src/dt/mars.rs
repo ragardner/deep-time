@@ -51,12 +51,12 @@ impl Dt {
 
     /// Returns the Mars Sol Date (MSD) as a tuple of integer sols and the fractional part of a sol.
     ///
-    /// - This [`Dt`](struct.Dt.html) is first converted to the TT scale before a result is produced.
+    /// - This [`Dt`](../struct.Dt.html) is first converted to the TT scale before a result is produced.
     /// - Follows the canonical NASA GISS / AM2000 formulation.
     ///
     /// The fractional part is pushing the total towards the positive, and the whole part is floored.
     /// For more information on this return value see
-    /// [`Dt::to_sec_and_ufrac`](struct.Dt.html#method.to_sec_and_ufrac).
+    /// [`Dt::to_sec_and_ufrac`](#method.to_sec_and_ufrac).
     pub const fn to_msd(&self) -> (i128, u128) {
         let tt = self.to(Scale::TT);
         let elapsed = Self::to_attos_since_mars_msd_epoch(tt);

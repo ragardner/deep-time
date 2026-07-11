@@ -17,7 +17,7 @@ use core::str;
 ///
 /// ## .len()
 ///
-/// - **Byte length**: Use [`as_bytes()`][Self::as_bytes]`.len()`
+/// - **Byte length**: [`LiteStr::as_bytes`](#method.as_bytes) (then `.len()`)
 /// - **Unicode character count**: Use `as_str().chars().count()`
 #[derive(Clone, PartialEq, Eq)]
 pub struct LiteStr<const N: usize> {

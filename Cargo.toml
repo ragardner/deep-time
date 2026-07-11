@@ -220,6 +220,10 @@ all-features = true
 name = "readme"
 required-features = ["parse", "jiff-tz", "euro"]
 
+[[example]]
+name = "sidereal_time"
+required-features = ["sidereal-earth", "eop", "std"]
+
 [[bench]]
 name = "perf"
 harness = false

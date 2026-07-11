@@ -1,39 +1,44 @@
-//! Local spacetime state (α, β, curvature).
+//! Local spacetime state (α, β, curvature) for proper-time rates.
 
 use crate::{C_SQUARED, Drift, Position, Real, Velocity, sqrt};
 
-/// The three local spacetime quantities that fully determine how fast an observer’s
-/// proper time advances relative to coordinate time.
+/// Snapshot of the local quantities that set a clock’s rate \(d\tau/dt\).
 ///
-/// This structure holds the gravitational lapse factor, the observer’s local velocity,
-/// and the curvature information needed for the library’s unified proper-time model.
-/// It is the low-level input that `Drift` uses internally.
+/// Think of this as “how gravity and motion look right here, right now” for a
+/// clock:
+///
+/// - **α** — gravitational redshift factor (deeper in a well → smaller α →
+///   slower clocks).
+/// - **β** — speed as a fraction of light speed (\(v/c\)).
+/// - **kretschmann** — a curvature measure; leave at `0.0` for almost all
+///   Earth/solar-system work.
+///
+/// Trajectory APIs either take [`Spacetime`] samples directly, or build them
+/// from velocity and potential via
+/// [`Spacetime::from_potential_velocity_and_scale`].
+///
+/// Instantaneous rate: [`Spacetime::proper_time_rate`].
 #[derive(Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Spacetime {
-    /// Gravitational lapse (redshift) factor α.  
-    /// This is the factor by which clocks run slower in a gravitational potential.
+    /// Gravitational lapse (redshift) factor α.
+    ///
+    /// Clocks run slower where gravity is stronger: α &lt; 1 in a potential well.
+    /// In the weak field, α ≈ √(1 + 2Φ/c²) with Φ &lt; 0.
     pub alpha: Real,
 
-    /// Local three-velocity β = v/c measured in the coordinate rest frame.
+    /// Local three-velocity β = v/c in the coordinate rest frame used for the analysis.
     pub beta: Real,
 
-    /// Kretschmann scalar (a scalar measure of spacetime curvature).  
-    /// In the weak-field regime — where |Φ|/c² ≪ 1 and the gravitational field varies
-    /// over macroscopic distances — this value is effectively zero and can safely be
-    /// left at its default. It only becomes numerically relevant in strong-field
-    /// environments such as:
+    /// Kretschmann scalar (curvature invariant), in geometric units of the model.
     ///
-    /// - the surface or immediate vicinity of neutron stars (where |Φ|/c² ≈ 0.15–0.25);
-    /// - regions near a black-hole event horizon (e.g. the photon rings imaged by the
-    ///   Event Horizon Telescope around M87* or Sgr A*);
-    /// - the final inspiral and merger phases of binary neutron-star or black-hole
-    ///   systems (as observed by LIGO/Virgo in events such as GW170817 or GW150914).
-    ///
-    /// In these regimes a realistic non-zero value (estimated from the local potential
-    /// and a characteristic length scale) activates the library’s intrinsic Planck-scale
-    /// saturation term.
+    /// For solar-system, GNSS, and similar work leave this **0.0** — the
+    /// curvature correction is negligible. Non-zero values matter only in
+    /// extreme gravity (near compact objects), where you may estimate K from
+    /// potential and a length scale (see
+    /// [`Spacetime::kretschmann_from_potential_and_scale`]) or supply K from a
+    /// metric.
     pub kretschmann: Real,
 }
 
@@ -47,16 +52,21 @@ impl Spacetime {
         }
     }
 
-    /// Returns the instantaneous proper-time rate `dτ/dt` from this snapshot.
+    /// Instantaneous proper-time rate \(d\tau/dt\) for this snapshot.
     ///
-    /// Convenience method that internally uses the same unified calculation as
-    /// `Drift::proper_time_rate`.
+    /// Dimensionless: `1.0` means the clock tracks coordinate time; values a
+    /// little below `1.0` are typical when moving or sitting in a gravitational
+    /// well. Same calculation as [`Drift::proper_time_rate`] after
+    /// [`Drift::from_spacetime`].
     #[inline]
     pub const fn proper_time_rate(&self) -> Real {
         Drift::from_spacetime(self).proper_time_rate()
     }
 
-    /// Convenience for direct gravimeter / sensor paths.
+    /// Build from lapse α, a velocity vector, and Kretschmann K.
+    ///
+    /// Sets β from [`Velocity::beta`]. Pass `kretschmann = 0.0` for ordinary
+    /// weak-field work.
     #[inline]
     pub const fn from_gravitic_and_velocity(
         alpha: Real,
@@ -66,65 +76,44 @@ impl Spacetime {
         Self::new(alpha, velocity.beta(), kretschmann)
     }
 
-    /// Converts the Newtonian gravitational potential Φ/c² (where Φ < 0 for bound orbits)
-    /// into the relativistic lapse factor α = √(1 + 2Φ/c²).
+    /// Weak-field lapse from dimensionless potential: α = √(1 + 2Φ/c²).
     ///
-    /// This function implements the standard weak-field approximation used in general
-    /// relativity. It is valid when the dimensionless gravitational potential satisfies
-    /// |Φ|/c² ≪ 1. In this regime spacetime is nearly flat, gravitational time dilation
-    /// is a small perturbation, and higher-order curvature effects can safely be neglected.
-    /// The resulting α gives the factor by which clocks tick more slowly in a gravitational
-    /// well relative to a distant reference clock.
+    /// Given how deep you are in a gravity well (as Φ/c²), return the factor by
+    /// which clocks run slow. Φ is **negative** for bound gravity, so α &lt; 1.
     ///
-    /// This approximation is excellent for solar-system navigation, GNSS satellites,
-    /// most spacecraft operations, and any environment where |Φ|/c² remains much smaller
-    /// than ~0.01. It is exported from `deep_time::alpha_from_weak_field_potential`
-    /// and is the recommended way to obtain the lapse factor when you have the local
-    /// Newtonian potential.
+    /// ## Validity
     ///
-    /// The weak-field regime breaks down in strong-gravity environments where
-    /// |Φ|/c² approaches or exceeds ~0.1. Such conditions occur near:
+    /// Good when |Φ|/c² ≪ 1 (Earth, solar system, most spacecraft). Not
+    /// sufficient alone near neutron stars or black holes (|Φ|/c² ≳ 0.1); then
+    /// you need a strong-field metric treatment and usually a non-zero
+    /// Kretschmann on [`Spacetime`].
     ///
-    /// - the surface or immediate vicinity of neutron stars (where |Φ|/c² ≈ 0.15–0.25);
-    /// - regions near a black-hole event horizon (e.g. the photon rings imaged by the
-    ///   Event Horizon Telescope around M87* or Sgr A*);
-    /// - the final inspiral and merger phases of binary neutron-star or black-hole
-    ///   systems (as observed by LIGO/Virgo in events such as GW170817 or GW150914).
+    /// ## Note on units
     ///
-    /// In those extreme regimes this function alone is no longer sufficient; a full
-    /// strong-field treatment (including curvature information passed to `Spacetime`)
-    /// is required.
+    /// Argument is **Φ/c²** (dimensionless), not Φ in m²/s². Trajectory
+    /// `*_from_states` APIs take SI Φ and divide by \(c^2\) for you.
     #[inline]
     pub const fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
-        // gravitational_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
+        // grav_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
         sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
     }
 
-    /// Computes the Kretschmann scalar \(\mathcal{K}\) from the total gravitational
-    /// relativity experienced by a local observer at the observer’s spacetime point.
+    /// Estimate Kretschmann scalar \(\mathcal{K} \approx 48\,\phi^2 / L^4\).
     ///
-    /// Information on the master Lagrangian can be found
-    /// [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
+    /// Optional helper to guess curvature from potential strength and a length
+    /// scale. For normal flight timing you do **not** need this: pass
+    /// `characteristic_length_scale = 0.0` and get K = 0.
     ///
-    /// It uses:
-    /// - `phi` = Φ/c² — the total local gravitational potential (redshift/gravity effect)
-    ///   felt by the observer from all masses. For attractive (Newtonian) gravity this
-    ///   value is **negative**; the estimate depends on \(\phi^2\) and is therefore
-    ///   independent of the sign of \(\phi\).
-    /// - `characteristic_length_scale` — the typical length scale (in meters) over which
-    ///   the gravitational field varies at the observer’s location.
+    /// ## Parameters
     ///
-    /// **For weak-fields** (Earth orbit, GNSS, solar-system navigation):
+    /// - `grav_potential_over_c2` — Φ/c² (typically **negative**). The estimate
+    ///   uses φ², so the sign of φ does not matter for K.
+    /// - `characteristic_length_scale` — meters. Use **`0.0`** to disable
+    ///   (recommended default). A positive L is a curvature scale; for a single
+    ///   spherical mass the Schwarzschild match is L = r with
+    ///   |φ| = GM/(c² r). L cannot be recovered from φ alone in general.
     ///
-    /// - Supply your existing `phi` value and set `characteristic_length_scale = 0.0`.
-    ///
-    /// **For strong-fields** (black-hole flybys, neutron stars, direct
-    /// gravimeters, or full metric evaluation):
-    ///
-    /// - Supply the measured or computed \(\phi\) (typically negative) and the real local
-    ///   length scale (or the value from your metric). The function returns a non-zero
-    ///   curvature estimate \( \mathcal{K} \approx 48\,\phi^2 / L^4 \), matching the
-    ///   Schwarzschild weak-field limit when \(L = r\) and \( |\phi| = GM/(c^2 r) \).
+    /// Background: [relativity model](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
     pub const fn kretschmann_from_potential_and_scale(
         grav_potential_over_c2: Real,
         characteristic_length_scale: Real,
@@ -142,46 +131,23 @@ impl Spacetime {
         f!(12.0) * (curvature_scale * curvature_scale)
     }
 
-    /// Computes both the gravitational lapse factor `α` and an estimate of the
-    /// Kretschmann scalar from the dimensionless gravitational potential Φ/c²
-    /// and a characteristic length scale.
+    /// Build [`Spacetime`] from dimensionless potential Φ/c², velocity, and length scale.
     ///
-    /// The lapse factor α is computed using `alpha_from_weak_field_potential`,
-    /// which is the standard weak-field expression α = √(1 + 2Φ/c²). It is valid
-    /// when the dimensionless gravitational potential satisfies |Φ|/c² ≪ 1. In
-    /// this regime spacetime is nearly flat, gravitational time dilation is a
-    /// small perturbation, and higher-order curvature effects can safely be
-    /// neglected. The resulting α gives the factor by which clocks tick more
-    /// slowly in a gravitational well relative to a distant reference clock.
+    /// Turn “how deep in the well” and “how fast I’m moving” into the α, β, K
+    /// snapshot used for clock rates.
     ///
-    /// This approximation is excellent for solar-system navigation, GNSS
-    /// satellites, most spacecraft operations, and any environment where
-    /// |Φ|/c² remains much smaller than ~0.01. It is exported from
-    /// `deep_time::alpha_from_weak_field_potential` and is the recommended
-    /// way to obtain the lapse factor when you have the local Newtonian potential.
+    /// ## Parameters
     ///
-    /// The weak-field regime breaks down in strong-gravity environments where
-    /// |Φ|/c² approaches or exceeds ~0.1. Such conditions occur near:
+    /// - `grav_potential_over_c2` — **Φ/c²** (dimensionless), not SI Φ.
+    /// - `velocity` — m/s; only speed enters (via β).
+    /// - `characteristic_length_scale` — pass **`0.0`** for solar-system / GNSS
+    ///   work (K = 0). Positive L only if you want the optional K estimate.
     ///
-    /// - the surface or immediate vicinity of neutron stars (where |Φ|/c² ≈ 0.15–0.25);
-    /// - regions near a black-hole event horizon (e.g. the photon rings imaged by the
-    ///   Event Horizon Telescope around M87* or Sgr A*);
-    /// - the final inspiral and merger phases of binary neutron-star or black-hole
-    ///   systems (as observed by LIGO/Virgo in events such as GW170817 or GW150914).
+    /// For SI potential (m²/s²), divide by \(c^2\) first, or use trajectory
+    /// `proper_time_*_from_states` which does that conversion.
     ///
-    /// In those extreme regimes this function alone is no longer sufficient; a full
-    /// strong-field treatment (including curvature information passed to `Spacetime`)
-    /// is required.
-    ///
-    /// For the `characteristic_length_scale` parameter:
-    /// - In weak-field conditions, pass `0.0`. This returns exactly the same clock
-    ///   rate as the classic relativistic formulation and sets the Kretschmann scalar
-    ///   to zero (its default value for all ordinary navigation, GNSS, or solar-system
-    ///   work).
-    /// - In strong-field conditions, supply the typical length scale (in meters) over
-    ///   which the gravitational field varies significantly at the observer’s location.
-    ///   This allows the library to estimate the Kretschmann scalar and activate the
-    ///   intrinsic Planck-scale saturation term when curvature becomes extreme.
+    /// Weak-field α is valid for |Φ|/c² ≪ 1. Strong gravity needs more than
+    /// this constructor alone.
     pub const fn from_potential_velocity_and_scale(
         grav_potential_over_c2: Real, // Φ/c² (total local potential)
         velocity: Velocity,
@@ -210,37 +176,38 @@ impl Spacetime {
         (alpha_sq - f!(1.0)) / f!(2.0) * C_SQUARED
     }
 
-    /// Computes the total Newtonian gravitational potential Φ at a given position
-    /// from an arbitrary collection of point-mass bodies (Sun, Earth, Moon,
-    /// planets, asteroids, etc.).
+    /// Newtonian point-mass potential Φ = −Σ GMᵢ / rᵢ at a position (m²/s²).
     ///
-    /// This is the standard method used by real mission planners (Apollo,
-    /// Artemis, Mars orbiters, lunar landers) and in open-source astrodynamics
-    /// libraries (SPICE/NAIF, Orekit, GMAT, poliastro). It evaluates
+    /// Sums “how much gravity well” you feel from a list of bodies treated as
+    /// point masses. The result is **negative** near masses. Use it to build
+    /// samples for trajectory proper-time APIs, or convert to α via
+    /// Φ/c² and [`Spacetime::alpha_from_weak_field_potential`].
     ///
-    /// \[
-    /// \Phi = -\sum_i \frac{GM_i}{r_i}
-    /// \]
+    /// ## Limits
     ///
-    /// ## Examples
+    /// Point masses only — no Earth \(J_2\), no tides, no extended bodies. Fine
+    /// for rough multi-body Φ or cislunar order-of-magnitude work; LEO-grade
+    /// timing usually needs multipoles from a full gravity model.
     ///
-    /// Realistic cislunar trajectory
+    /// Body positions and the evaluation point must share the same coordinate
+    /// frame.
+    ///
+    /// ## Example
     ///
     /// ```rust
     /// use deep_time::{Position, Spacetime};
     ///
     /// let bodies = [
-    ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20),     // Sun
-    ///     (Position::from_au(1.0, 0.0, 0.0), 3.9860044e14),     // Earth
-    ///     (Position::from_au(1.00257, 0.0, 0.0), 4.9048695e12), // Moon
+    ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20),     // Sun GM
+    ///     (Position::from_au(1.0, 0.0, 0.0), 3.9860044e14),     // Earth GM
+    ///     (Position::from_au(1.00257, 0.0, 0.0), 4.9048695e12), // Moon GM
     /// ];
-    ///
-    /// let position = Position::from_au(1.001, 0.001, 0.0); // e.g. spacecraft, asteroid, etc.
-    ///
+    /// let position = Position::from_au(1.001, 0.001, 0.0);
     /// let phi = Spacetime::grav_potential_from_point_masses(
     ///     &position,
     ///     bodies.iter().cloned(),
     /// );
+    /// assert!(phi < 0.0);
     /// ```
     pub fn grav_potential_from_point_masses<I>(position: &Position, bodies: I) -> Real
     where

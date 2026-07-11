@@ -1,56 +1,71 @@
+//! Proper-time integration methods on [`Dt`] (see the public method docs).
+//!
+//! Overview and which-function guide:
+//! [docs/trajectory.md](https://github.com/ragardner/deep-time/blob/main/docs/trajectory.md).
+
 use crate::{
     C_SQUARED, Drift, Dt, DtErr, DtErrKind, Real, Spacetime, Velocity, an_err, from_sec_f,
 };
 
 impl Dt {
-    /// Computes the accumulated proper time along a trajectory given a sequence
-    /// of physical states.
+    /// Integrate proper time along samples of time, velocity, and gravitational potential.
     ///
-    /// Accepts samples as `(coordinate_time, velocity, gravitational_potential)`
-    /// and integrates proper time (Δτ) along the path. This is a convenience
-    /// wrapper around [`Self::proper_time_from_path`].
+    /// Walks a list of vehicle states and estimates how much time a clock on that
+    /// path would accumulate over the **full** sample span (first time to last).
+    /// For a named arc inside a longer file, use
+    /// [`Dt::proper_time_from_states_between`](#method.proper_time_from_states_between).
     ///
-    /// Integration uses the trapezoidal rule on the instantaneous proper-time
-    /// rate between consecutive samples.
+    /// Guide: [docs/trajectory.md](https://github.com/ragardner/deep-time/blob/main/docs/trajectory.md).
     ///
-    /// A single sample, or multiple samples at identical times, produces a result
-    /// of zero (no time has elapsed). An empty iterator also returns zero.
+    /// ## When to use it
     ///
-    /// For a named coordinate interval `[start, end]`, use
-    /// [`Self::proper_time_from_states_between`] instead.
+    /// - Δτ over **exactly the samples you pass** (first sample to last).
+    /// - Not a sub-interval of a longer arc (use
+    ///   [`Dt::proper_time_from_states_between`](#method.proper_time_from_states_between)).
     ///
-    /// ## Parameters
+    /// ## Inputs
     ///
-    /// - `samples`: Iterator yielding `(coordinate_time, velocity, gravitational_potential)`
-    ///   triples. Potential is in SI units (m²/s²). Coordinate times must be
-    ///   monotonically non-decreasing. This function does not check that the
-    ///   first or last sample matches any particular start or end time.
-    /// - `characteristic_length_scale`: Selects the weak-field vs strong-field
-    ///   construction of the local spacetime state.
+    /// Each sample is `(coordinate_time, velocity, gravitational_potential)`:
     ///
-    ///   Pass `0.0` for ordinary weak-field work (Earth orbit, solar-system
-    ///   navigation, and similar). The Kretschmann scalar is then set to zero,
-    ///   and the rate reduces to the first-order weak-field form built from the
-    ///   supplied potential and velocity. Accuracy depends on how complete that
-    ///   potential is (multipoles, external bodies, etc. are the caller’s job).
+    /// - **time** — mission / ephemeris epoch as a [`Dt`]
+    /// - **velocity** — m/s in the same frame convention you used for potential
+    /// - **potential Φ** — SI units **m²/s²** (typically negative near a planet).
+    ///   Do **not** pass Φ/c² here; this API divides by \(c^2\) internally.
     ///
-    ///   Pass a positive length in meters only when estimating curvature for the
-    ///   library’s optional strong-field term. Use a length scale over which the
-    ///   field varies at the observer; this is relevant near compact objects, not
-    ///   for typical solar-system work.
+    /// Times must be non-decreasing. Empty or single-point paths yield zero.
+    /// Non-monotonic times yield [`DtErrKind::NonMonotonic`].
     ///
-    /// ## Returns
+    /// ## `characteristic_length_scale`
     ///
-    /// `Ok(total_proper_time)` — accumulated proper time (Δτ) for an observer
-    /// following the supplied samples, as a [`Dt`].
+    /// Pass **`0.0`** for Earth orbit, GNSS, cislunar, and similar work. That sets
+    /// curvature to zero and uses the usual weak-field clock rate from Φ and \(v\).
     ///
-    /// This is proper time along the path from the model’s rate at each sample
-    /// (velocity and gravitational dilation from those inputs, plus the optional
-    /// curvature term when active). It is **not** a drift relative to coordinate
-    /// time. For Δτ − Δt over a named interval, use
-    /// [`Self::proper_time_drift_from_states`].
+    /// Pass a positive length in meters only if you intentionally want the
+    /// library’s optional curvature estimate (see
+    /// [`Spacetime::kretschmann_from_potential_and_scale`]).
     ///
-    /// `Err(DtErr)` — if the coordinate times are not monotonically non-decreasing.
+    /// ## Example
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, Velocity};
+    ///
+    /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
+    /// let t1 = Dt::from_sec(3600, Scale::TAI, Scale::TAI);
+    /// // Example Earth-surface-scale |Φ| (m²/s²); use your model in production
+    /// let phi = -6.25e7;
+    /// let samples = [
+    ///     (t0, Velocity::ZERO, phi),
+    ///     (t1, Velocity::from_speed(0.0), phi),
+    /// ];
+    /// let dtau = Dt::proper_time_from_states(samples, 0.0).expect("monotonic");
+    /// assert!(dtau.to_sec_f() > 0.0 && dtau.to_sec_f() < 3600.0);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::proper_time_from_states_between`](#method.proper_time_from_states_between) — named interval `[start, end]`
+    /// - [`Dt::proper_time_drift_from_states`](#method.proper_time_drift_from_states) — gain/loss vs coordinate time
+    /// - [`Dt::proper_time_from_path`](#method.proper_time_from_path) — same integral if you already have [`Spacetime`]
     pub fn proper_time_from_states<I>(
         samples: I,
         characteristic_length_scale: Real,
@@ -61,29 +76,48 @@ impl Dt {
         Self::proper_time_from_path(Self::states_to_path(samples, characteristic_length_scale))
     }
 
-    /// Accumulated proper time (Δτ) over the coordinate interval `[start, end]`.
+    /// Proper time Δτ on a named mission arc `[start, end]`.
     ///
-    /// Same physics as [`Self::proper_time_from_states`], but only the portion of
-    /// the path that falls in `[start, end]` is integrated. Samples outside that
-    /// window are ignored except as bracketing points for linear rate
-    /// interpolation at the endpoints.
+    /// Same idea as [`Dt::proper_time_from_states`](#method.proper_time_from_states), but only the window
+    /// `[start, end]` is integrated. Extra samples outside that window are
+    /// ignored except as neighbors for interpolation at the endpoints.
     ///
-    /// ## Parameters
+    /// Example question: how much proper time has the onboard clock accumulated
+    /// between two GET epochs when the trajectory file is longer than that arc.
     ///
-    /// - `start` / `end`: Interval bounds (`start` ≤ `end`).
-    /// - `states`: `(coordinate_time, velocity, gravitational_potential)` samples
-    ///   (potential in m²/s²). Must cover `[start, end]` (see errors below).
-    /// - `characteristic_length_scale`: See [`Self::proper_time_from_states`].
+    /// ## Coverage and errors
     ///
-    /// ## Returns
+    /// Samples must **cover** `[start, end]`:
+    /// - at least one sample at or before `start`, and
+    /// - the path must reach at least as far as `end`.
     ///
-    /// `Ok(Δτ)` over `[start, end]`.
+    /// - [`DtErrKind::Incomplete`] — empty path (when `start ≠ end`) or incomplete coverage
+    /// - [`DtErrKind::OutOfRange`] — `end < start`
+    /// - [`DtErrKind::NonMonotonic`] — a later sample has an earlier time
     ///
-    /// `Ok(ZERO)` if `start == end`.
+    /// ## Example
     ///
-    /// `Err(DtErr)` — [`DtErrKind::OutOfRange`] if `end < start`;
-    /// [`DtErrKind::NonMonotonic`] if times decrease;
-    /// [`DtErrKind::Incomplete`] if samples do not cover the interval.
+    /// ```rust
+    /// use deep_time::{Dt, Scale, Velocity};
+    ///
+    /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
+    /// let t1 = Dt::from_sec(10_000, Scale::TAI, Scale::TAI);
+    /// // Flat spacetime via Φ = 0 → rate = 1
+    /// let samples = [
+    ///     (t0, Velocity::ZERO, 0.0),
+    ///     (t1, Velocity::ZERO, 0.0),
+    /// ];
+    /// let start = Dt::from_sec(1000, Scale::TAI, Scale::TAI);
+    /// let end = Dt::from_sec(4600, Scale::TAI, Scale::TAI);
+    /// let dtau = Dt::proper_time_from_states_between(start, end, samples, 0.0)
+    ///     .expect("samples cover the arc");
+    /// assert_eq!(dtau, Dt::from_sec(3600, Scale::TAI, Scale::TAI));
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::proper_time_drift_from_states`](#method.proper_time_drift_from_states) — same window, but Δτ − Δt
+    /// - [`Dt::proper_time_from_path_between`](#method.proper_time_from_path_between) — if samples are already [`Spacetime`]
     pub fn proper_time_from_states_between<I>(
         start: Dt,
         end: Dt,
@@ -100,49 +134,50 @@ impl Dt {
         )
     }
 
-    /// Computes the relativistic clock drift (proper time minus coordinate time)
-    /// over a specific interval `[start, end]`.
+    /// Clock drift vs coordinate time on `[start, end]`: Δτ − (end − start).
     ///
-    /// This is \(\int_{start}^{end}(r-1)\,dt = \Delta\tau - (end - start)\), where
-    /// \(r = d\tau/dt\).
+    /// Did the vehicle clock run fast or slow compared to the mission timeline
+    /// over a chosen interval?
     ///
-    /// - A positive result means the onboard clock ran **fast** (it accumulated
-    ///   more proper time than the coordinate interval).
-    /// - A negative result means the onboard clock ran **slow** (it accumulated
-    ///   less proper time than the coordinate interval).
+    /// - **Positive** — clock accumulated more time than the coordinate interval
+    ///   (ran fast).
+    /// - **Negative** — clock accumulated less (ran slow).
     ///
-    /// Implemented as
-    /// [`Self::proper_time_from_states_between`]`(start, end, …)` minus
-    /// `(end − start)`.
+    /// Algebraically \(\int_{start}^{end}(r - 1)\,dt\). Implemented as
+    /// [`Dt::proper_time_from_states_between`](#method.proper_time_from_states_between) minus `(end − start)`.
     ///
-    /// ## Parameters
+    /// ## When to use it
     ///
-    /// - `start`: Starting coordinate time of the interval (must be ≤ `end`).
-    /// - `end`: Ending coordinate time of the interval.
-    /// - `states`: Iterator of physical states in the form
-    ///   `(coordinate_time, velocity, gravitational_potential)`.
-    ///   Coordinate times must be monotonically **non-decreasing**.
-    ///   The samples must **cover** `[start, end]`: at least one sample at or
-    ///   before `start`, and the path must reach at least as far as `end`
-    ///   (a sample at or after `end`, possibly after interpolating across a
-    ///   bracketing segment).
-    /// - `characteristic_length_scale`: Weak-field vs strong-field construction
-    ///   of local spacetime states (see [`Self::proper_time_from_states`]).
-    ///   Pass `0.0` for ordinary weak-field work; a positive length (meters) only
-    ///   when the optional curvature term is needed.
+    /// - Relativistic clock offset over an analysis arc
+    /// - Comparing an integrated model to a coordinate-time reference
+    /// - Not spacecraft-minus-ground (use
+    ///   [`Dt::proper_time_differential_vs_rate`](#method.proper_time_differential_vs_rate) or
+    ///   [`Dt::proper_time_differential_from_paths`](#method.proper_time_differential_from_paths))
     ///
-    /// ## Returns
+    /// ## Inputs and errors
     ///
-    /// `Ok(drift)` — the accumulated drift (`Δτ − Δt`) over `[start, end]` as a [`Dt`].
+    /// Same sample layout as [`Dt::proper_time_from_states`](#method.proper_time_from_states):
+    /// `(time, velocity m/s, Φ m²/s²)`. Pass `characteristic_length_scale = 0.0`
+    /// for ordinary weak-field work. Coverage and error kinds match
+    /// [`Dt::proper_time_from_states_between`](#method.proper_time_from_states_between). `start == end` returns zero
+    /// without reading samples.
     ///
-    /// `Ok(ZERO)` — if `start == end` (no elapsed coordinate time), regardless
-    /// of `states`.
+    /// ## Example
     ///
-    /// `Err(DtErr)` — on any of:
-    /// - [`DtErrKind::OutOfRange`] if `end < start`
-    /// - [`DtErrKind::NonMonotonic`] if coordinate times decrease
-    /// - [`DtErrKind::Incomplete`] if `states` is empty (when `start != end`) or
-    ///   does not cover `[start, end]`
+    /// ```rust
+    /// use deep_time::{Dt, Scale, Velocity};
+    ///
+    /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
+    /// let t1 = Dt::from_sec(86_400, Scale::TAI, Scale::TAI);
+    /// let phi = -6.25e7_f64;
+    /// let samples = [
+    ///     (t0, Velocity::ZERO, phi),
+    ///     (t1, Velocity::ZERO, phi),
+    /// ];
+    /// let drift = Dt::proper_time_drift_from_states(t0, t1, samples, 0.0).unwrap();
+    /// // Stationary in a potential well → clock runs slow vs coordinate time
+    /// assert!(drift.to_sec_f() < 0.0);
+    /// ```
     pub fn proper_time_drift_from_states<I>(
         start: Dt,
         end: Dt,
@@ -160,29 +195,34 @@ impl Dt {
         Ok(dtau.sub(end.to_diff_raw(start)))
     }
 
-    /// Computes accumulated proper time along an arbitrary trajectory.
+    /// Integrate proper time along a path of [`Spacetime`] snapshots.
     ///
-    /// Core path integrator: walks the supplied samples segment by segment and
-    /// applies the trapezoidal rule to the instantaneous proper-time rate.
+    /// Same as [`Dt::proper_time_from_states`](#method.proper_time_from_states), but each sample is already a
+    /// full local state `(α, β, curvature)` instead of `(v, Φ)`.
     ///
-    /// Coordinate times must be monotonically non-decreasing (equal times are
-    /// allowed). The walk is a single pass with no heap allocation.
+    /// ## When to use it
     ///
-    /// For a named coordinate interval, use [`Self::proper_time_from_path_between`].
+    /// - You already built [`Spacetime`] values (tests, precomputed rates, custom α/β).
+    /// - Prefer [`Dt::proper_time_from_states`](#method.proper_time_from_states) if you have velocity and potential.
     ///
-    /// ## Parameters
+    /// Integrates over the **full** sample span. For a named arc, use
+    /// [`Dt::proper_time_from_path_between`](#method.proper_time_from_path_between).
     ///
-    /// - `path`: An iterator of `(coordinate_time, Spacetime)` pairs.
-    ///   Coordinate times must be monotonically non-decreasing.
+    /// Empty path or a single point → [`Dt::ZERO`]. Non-monotonic times →
+    /// [`DtErrKind::NonMonotonic`].
     ///
-    /// ## Returns
+    /// ## Example
     ///
-    /// `Ok(total_proper_time)` — the accumulated proper time (Δτ) as a [`Dt`].
-    ///   Returns `ZERO` if the iterator is empty (no time elapsed).
+    /// ```rust
+    /// use deep_time::{Dt, Scale, Spacetime};
     ///
-    /// `Err(DtErr)` — if the path contains any decrease in coordinate time
-    ///   (i.e., a later sample has a strictly earlier coordinate time than a
-    ///   previous sample).
+    /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
+    /// let t1 = Dt::from_sec(1000, Scale::TAI, Scale::TAI);
+    /// // α = 0.9, at rest → rate 0.9, Δτ = 900 s
+    /// let slow = Spacetime::new(0.9, 0.0, 0.0);
+    /// let dtau = Dt::proper_time_from_path([(t0, slow.clone()), (t1, slow)]).unwrap();
+    /// assert_eq!(dtau, Dt::from_sec(900, Scale::TAI, Scale::TAI));
+    /// ```
     pub fn proper_time_from_path<I>(path: I) -> Result<Self, DtErr>
     where
         I: IntoIterator<Item = (Self, Spacetime)>,
@@ -211,27 +251,31 @@ impl Dt {
         Ok(accumulated)
     }
 
-    /// Accumulated proper time (Δτ) over the coordinate interval `[start, end]`.
+    /// Proper time Δτ on `[start, end]` for a path of [`Spacetime`] samples.
     ///
-    /// Same trapezoidal model as [`Self::proper_time_from_path`], restricted to
-    /// `[start, end]`. The proper-time rate is treated as piecewise linear
-    /// between samples; when `start` or `end` falls between samples, the rate at
-    /// that boundary is linearly interpolated.
+    /// Like [`Dt::proper_time_from_path`](#method.proper_time_from_path), but only over a chosen time window.
+    /// Between samples the clock rate is treated as linear (trapezoidal rule);
+    /// if `start` or `end` falls between samples, the rate is interpolated.
     ///
-    /// ## Parameters
+    /// Use this when your pipeline already stores α, β, and curvature instead of
+    /// raw Φ and \(v\). Coverage and error kinds match
+    /// [`Dt::proper_time_from_states_between`](#method.proper_time_from_states_between).
     ///
-    /// - `start` / `end`: Interval bounds (`start` ≤ `end`).
-    /// - `path`: `(coordinate_time, Spacetime)` samples covering `[start, end]`.
+    /// ## Example
     ///
-    /// ## Returns
+    /// ```rust
+    /// use deep_time::{Dt, Scale, Spacetime};
     ///
-    /// `Ok(Δτ)` over `[start, end]`.
-    ///
-    /// `Ok(ZERO)` if `start == end`.
-    ///
-    /// `Err(DtErr)` — [`DtErrKind::OutOfRange`] if `end < start`;
-    /// [`DtErrKind::NonMonotonic`] if times decrease;
-    /// [`DtErrKind::Incomplete`] if the path does not cover the interval.
+    /// let path = [
+    ///     (Dt::from_sec(0, Scale::TAI, Scale::TAI), Spacetime::new(0.9, 0.0, 0.0)),
+    ///     (Dt::from_sec(1000, Scale::TAI, Scale::TAI), Spacetime::new(0.9, 0.0, 0.0)),
+    /// ];
+    /// let start = Dt::from_sec(100, Scale::TAI, Scale::TAI);
+    /// let end = Dt::from_sec(900, Scale::TAI, Scale::TAI);
+    /// // 0.9 × 800 s = 720 s
+    /// let dtau = Dt::proper_time_from_path_between(start, end, path).unwrap();
+    /// assert_eq!(dtau, Dt::from_sec(720, Scale::TAI, Scale::TAI));
+    /// ```
     pub fn proper_time_from_path_between<I>(start: Dt, end: Dt, path: I) -> Result<Dt, DtErr>
     where
         I: IntoIterator<Item = (Self, Spacetime)>,
@@ -242,14 +286,43 @@ impl Dt {
         Self::integrate_rates_between(start, end, rates)
     }
 
-    /// Differential proper time between two paths over `[start, end]`.
+    /// Difference in proper time between two paths over the same interval.
     ///
-    /// Returns \(\Delta\tau_A - \Delta\tau_B\): how much more (or less) proper
-    /// time path A accumulates than path B over the same coordinate interval.
-    /// Positive means A’s clock ran ahead of B’s.
+    /// How much more (or less) time did clock A accumulate than clock B over
+    /// `[start, end]`?
     ///
-    /// Both paths must cover `[start, end]` (same coverage rules as
-    /// [`Self::proper_time_from_path_between`]).
+    /// Returns \(\Delta\tau_A - \Delta\tau_B\). Positive means A’s clock ran
+    /// ahead of B’s over that coordinate interval.
+    ///
+    /// ## When to use it
+    ///
+    /// - Two vehicles or two reconstructed trajectories
+    /// - Spacecraft path vs a **sampled** ground path (both as [`Spacetime`] series)
+    ///
+    /// For spacecraft vs a **fixed** ground rate (single number), prefer
+    /// [`Dt::proper_time_differential_vs_rate`](#method.proper_time_differential_vs_rate).
+    ///
+    /// ## Errors
+    ///
+    /// Both paths must cover `[start, end]`. Same error kinds as
+    /// [`Dt::proper_time_from_path_between`](#method.proper_time_from_path_between) (`Incomplete`, `OutOfRange`,
+    /// `NonMonotonic`). `start == end` returns zero.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, Spacetime};
+    ///
+    /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
+    /// let t1 = Dt::from_sec(1000, Scale::TAI, Scale::TAI);
+    /// let high = Spacetime::new(0.95, 0.0, 0.0); // less redshifted
+    /// let low = Spacetime::new(0.90, 0.0, 0.0);
+    /// let path_a = [(t0, high.clone()), (t1, high)];
+    /// let path_b = [(t0, low.clone()), (t1, low)];
+    /// let diff = Dt::proper_time_differential_from_paths(t0, t1, path_a, path_b).unwrap();
+    /// // 950 − 900 = +50 s
+    /// assert_eq!(diff, Dt::from_sec(50, Scale::TAI, Scale::TAI));
+    /// ```
     pub fn proper_time_differential_from_paths<Ia, Ib>(
         start: Dt,
         end: Dt,
@@ -268,14 +341,49 @@ impl Dt {
         Ok(dtau_a.sub(dtau_b))
     }
 
-    /// Differential proper time of a path relative to a constant reference rate.
+    /// Proper time of a path minus a constant reference clock rate over `[start, end]`.
     ///
-    /// Returns \(\Delta\tau_{\mathrm{path}} - r_{\mathrm{ref}}\,(end - start)\)
-    /// over `[start, end]`. Typical use: spacecraft samples versus a fixed ground
-    /// or geoid rate from [`Spacetime::proper_time_rate`] or a precomputed constant.
+    /// How much did the spacecraft clock pull ahead of (or fall behind) a steady
+    /// ground or reference clock?
     ///
+    /// Returns \(\Delta\tau_{\mathrm{path}} - r_{\mathrm{ref}}\,(end - start)\).
     /// Positive means the path clock accumulated more proper time than the
     /// reference over the interval.
+    ///
+    /// ## When to use it
+    ///
+    /// - Onboard vs Earth-surface rate (mission clock differentials)
+    /// - Satellite vs a fixed geoid rate
+    /// - Any reference well modeled as **constant** \(r_{\mathrm{ref}}\)
+    ///
+    /// Get \(r_{\mathrm{ref}}\) from [`Spacetime::proper_time_rate`] for a
+    /// stationary ground [`Spacetime`], or from a documented conventional value.
+    ///
+    /// ## Errors
+    ///
+    /// Path must cover `[start, end]`. Same error kinds as
+    /// [`Dt::proper_time_from_path_between`](#method.proper_time_from_path_between). `start == end` returns zero.
+    ///
+    /// ## Example
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, Spacetime};
+    ///
+    /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
+    /// let t1 = Dt::from_sec(100_000, Scale::TAI, Scale::TAI);
+    /// // Slightly higher rate than a deeper potential well
+    /// let sc = Spacetime::new(0.999_999_999_9, 0.0, 0.0);
+    /// let ground = Spacetime::new(0.999_999_999_3, 0.0, 0.0);
+    /// let path = [(t0, sc.clone()), (t1, sc)];
+    /// let diff = Dt::proper_time_differential_vs_rate(
+    ///     t0,
+    ///     t1,
+    ///     path,
+    ///     ground.proper_time_rate(),
+    /// )
+    /// .unwrap();
+    /// assert!(diff.to_sec_f() > 0.0);
+    /// ```
     pub fn proper_time_differential_vs_rate<I>(
         start: Dt,
         end: Dt,
@@ -293,37 +401,33 @@ impl Dt {
         Ok(dtau.sub(ref_dtau))
     }
 
-    /// Computes proper time advance over an interval when the proper-time rate
-    /// is constant.
+    /// Proper time when the rate \(d\tau/dt\) is constant over an interval.
     ///
-    /// This method is intended for trajectory segments where the physical
-    /// conditions remain unchanged, such as:
+    /// If conditions do not change (same speed, same gravity), proper time is
+    /// just **rate × elapsed coordinate time**. No sample list needed.
     ///
-    /// - a fixed ground station,
-    /// - a circular orbit, or
-    /// - a deep-space cruise phase with constant velocity and gravitational potential.
+    /// ## When to use it
     ///
-    /// It is mathematically equivalent to integrating a constant rate using
-    /// the trapezoidal rule in [`Self::proper_time_from_path`], but is more efficient
-    /// and makes the caller's intent explicit.
+    /// - Fixed ground station
+    /// - Circular orbit approximated as constant rate
+    /// - Deep-space cruise with nearly constant \(v\) and Φ
+    /// - Building the reference leg for
+    ///   [`Dt::proper_time_differential_vs_rate`](#method.proper_time_differential_vs_rate)
     ///
-    /// The method is called on the starting coordinate time (`self`). It
-    /// calculates the coordinate time interval to `end` and multiplies it by
-    /// the supplied constant rate `dtau_dt`.
+    /// Called on the **start** time: `start.proper_time_between_constant_rate(end, rate)`.
+    /// If `end` is before `self`, the result is negative.
     ///
-    /// ## Parameters
+    /// ## Example
     ///
-    /// - `end`: Ending coordinate time of the interval.
-    /// - `dtau_dt`: Constant proper-time rate (dimensionless). In relativistic
-    ///   contexts this value is typically slightly less than `1.0`. The caller
-    ///   is responsible for providing an appropriate rate (for example, from
-    ///   `Drift::proper_time_rate` or a precomputed constant).
+    /// ```rust
+    /// use deep_time::{Dt, Scale, Spacetime};
     ///
-    /// ## Returns
-    ///
-    /// The accumulated proper time advance (Δτ) over the interval as a [`Dt`].
-    ///
-    /// If `end` occurs before `self`, the result will be negative.
+    /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
+    /// let t1 = Dt::from_sec(86_400, Scale::TAI, Scale::TAI);
+    /// let ground = Spacetime::new(0.999_999_999_3, 0.0, 0.0);
+    /// let dtau = t0.proper_time_between_constant_rate(t1, ground.proper_time_rate());
+    /// assert!(dtau.to_sec_f() > 0.0 && dtau.to_sec_f() < 86_400.0);
+    /// ```
     #[inline]
     pub const fn proper_time_between_constant_rate(self, end: Dt, dtau_dt: Real) -> Dt {
         let dt_sec = end.to_diff_raw(self).to_sec_f();
@@ -408,9 +512,8 @@ impl Dt {
                 };
 
                 if t.lt(&end) {
-                    accumulated = accumulated.add(Self::proper_time_segment(
-                        start, rate_start, t, rate,
-                    ));
+                    accumulated =
+                        accumulated.add(Self::proper_time_segment(start, rate_start, t, rate));
                     active = true;
                     prev_t = t;
                     prev_rate = rate;
@@ -489,8 +592,6 @@ impl Dt {
 
     /// Returns the instantaneous proper-time rate (dτ/dt) from a local
     /// spacetime state.
-    ///
-    /// This is a private helper used by the integration routines.
     #[inline]
     const fn rate_from_local(spacetime: &Spacetime) -> Real {
         let drift = Drift::from_spacetime(spacetime);

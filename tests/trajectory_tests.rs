@@ -304,10 +304,7 @@ mod proper_time_tests {
         let t0 = tai(0);
         let t1 = tai(1000);
         let phi = phi_for_alpha(0.9);
-        let states = [
-            (t0, Velocity::ZERO, phi),
-            (t1, Velocity::ZERO, phi),
-        ];
+        let states = [(t0, Velocity::ZERO, phi), (t1, Velocity::ZERO, phi)];
 
         let drift = Dt::proper_time_drift_from_states(t0, t1, states, 0.0).unwrap();
         // dτ = 0.9 * 1000, Δt = 1000 → drift = −100
@@ -326,8 +323,7 @@ mod proper_time_tests {
             (tai(1000), Velocity::ZERO, phi),
         ];
 
-        let drift =
-            Dt::proper_time_drift_from_states(tai(100), tai(900), states, 0.0).unwrap();
+        let drift = Dt::proper_time_drift_from_states(tai(100), tai(900), states, 0.0).unwrap();
         // Window Δt = 800; dτ = 0.9 * 800 → drift = −80
         assert_eq!(drift, Dt::from_sec(-80, Scale::TAI, Scale::TAI));
     }
@@ -342,8 +338,7 @@ mod proper_time_tests {
             (tai(1000), Velocity::ZERO, phi),
         ];
 
-        let windowed =
-            Dt::proper_time_drift_from_states(tai(100), tai(900), states, 0.0).unwrap();
+        let windowed = Dt::proper_time_drift_from_states(tai(100), tai(900), states, 0.0).unwrap();
         let exact = Dt::proper_time_drift_from_states(
             tai(100),
             tai(900),
@@ -369,12 +364,7 @@ mod proper_time_tests {
             Ok(Dt::ZERO)
         );
         assert_eq!(
-            Dt::proper_time_drift_from_states(
-                t,
-                t,
-                [(t, Velocity::ZERO, phi)],
-                0.0
-            ),
+            Dt::proper_time_drift_from_states(t, t, [(t, Velocity::ZERO, phi)], 0.0),
             Ok(Dt::ZERO)
         );
     }
@@ -400,13 +390,8 @@ mod proper_time_tests {
         let phi = phi_for_alpha(0.9);
 
         // Empty
-        let err = Dt::proper_time_drift_from_states(
-            tai(0),
-            tai(100),
-            std::iter::empty(),
-            0.0,
-        )
-        .unwrap_err();
+        let err = Dt::proper_time_drift_from_states(tai(0), tai(100), std::iter::empty(), 0.0)
+            .unwrap_err();
         assert_eq!(err.kind(), DtErrKind::Incomplete);
 
         // First sample after start
@@ -506,8 +491,7 @@ mod proper_time_tests {
 
         let start = tai(100);
         let end = tai(900);
-        let dtau =
-            Dt::proper_time_from_states_between(start, end, states, 0.0).unwrap();
+        let dtau = Dt::proper_time_from_states_between(start, end, states, 0.0).unwrap();
         let drift = Dt::proper_time_drift_from_states(start, end, states, 0.0).unwrap();
         assert_eq!(drift, dtau.sub(end.to_diff_raw(start)));
         assert_eq!(dtau, Dt::from_sec(720, Scale::TAI, Scale::TAI));
@@ -543,13 +527,8 @@ mod proper_time_tests {
     fn differential_from_paths_self_is_zero() {
         let slow = Spacetime::new(0.9, 0.0, 0.0);
         let path = [(tai(0), slow.clone()), (tai(1000), slow)];
-        let diff = Dt::proper_time_differential_from_paths(
-            tai(0),
-            tai(1000),
-            path.clone(),
-            path,
-        )
-        .unwrap();
+        let diff =
+            Dt::proper_time_differential_from_paths(tai(0), tai(1000), path.clone(), path).unwrap();
         assert_eq!(diff, Dt::ZERO);
     }
 

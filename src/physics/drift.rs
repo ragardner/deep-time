@@ -141,25 +141,19 @@ impl Drift {
         ))
     }
 
-    /// Creates a `Drift` directly from an observer’s velocity and total
-    /// local gravitational potential using the library’s unified master-Lagrangian
-    /// proper-time rate.  
+    /// Build a linear-rate [`Drift`] from speed (m/s) and SI potential Φ (m²/s²).
     ///
-    /// It automatically computes the relativistic clock rate that includes both
-    /// special-relativistic velocity effects and gravitational time dilation,
-    /// then returns a [`Drift`] that can be evaluated at any future time.
+    /// Given how fast you move and how deep you sit in gravity, return a
+    /// [`Drift`] whose rate term matches the library’s proper-time model
+    /// (special-relativistic and gravitational effects). Useful when you want
+    /// the rate as a polynomial coefficient rather than integrating a path.
     ///
-    /// The `characteristic_length_scale` parameter controls whether the
-    /// weak-field or strong-field formulation is used:
+    /// ## `characteristic_length_scale`
     ///
-    /// - In the weak-field regime (where |Φ|/c² ≪ 1), simply pass
-    ///   `characteristic_length_scale = 0.0`. This returns the same
-    ///   relativistic clock rate used by JPL, ESA, GNSS systems, and all modern
-    ///   solar-system navigation pipelines.
-    /// - In strong-field conditions, supply a non-zero length scale (in meters)
-    ///   over which the gravitational potential changes at the observer’s
-    ///   location. This activates the library’s intrinsic Planck-scale saturation
-    ///   term when spacetime curvature becomes extreme.
+    /// Pass **`0.0`** for ordinary weak-field work (Earth orbit, solar system):
+    /// Kretschmann is zero and the rate is the first-order weak-field form.
+    /// Pass a positive length (meters) only if you want the optional curvature
+    /// estimate (see [`Spacetime::kretschmann_from_potential_and_scale`]).
     pub const fn from_velocity_potential_and_scale(
         velocity_m_s: Real,
         grav_potential_m2_s2: Real,
@@ -373,7 +367,7 @@ impl Drift {
     /// ## Security
     ///
     /// Composes the safety guarantees of
-    /// [`from_wire_bytes`](docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_wire_bytes).
+    /// [`Dt::from_wire_bytes`](../struct.Dt.html#method.from_wire_bytes).
     ///
     /// Fixed size and layered validation make it safe for untrusted input.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {

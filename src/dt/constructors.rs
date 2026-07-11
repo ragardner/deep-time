@@ -16,7 +16,7 @@ impl Dt {
     /// UNIX epoch.
     ///
     /// - 1970-01-01 00:00:00 TAI.
-    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -946_728_000_000_000_000_000_000_000 attoseconds
     /// - Does not take into account historical UTC offsets from the "rubber time" era.
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
@@ -29,7 +29,7 @@ impl Dt {
     /// NTP epoch.
     ///
     /// - 1900-01-01 00:00:00 UTC.
-    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -3_155_716_800_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const NTP_EPOCH: Self =
@@ -38,7 +38,7 @@ impl Dt {
     /// TT/TCG/TCB/TDB epoch.
     ///
     /// - 1977-01-01 00:00:00 TAI.
-    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -725_803_200_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const TAI_1977_EPOCH: Self =
@@ -47,7 +47,7 @@ impl Dt {
     /// Chandra X-ray Center (CXC) Time epoch.
     ///
     /// - 1998-01-01 00:00:00 TT.
-    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -63_115_232_184_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const CXC_EPOCH: Self = Self::new(-63115232184000000000000000i128, Scale::TAI, Scale::TT);
@@ -55,7 +55,7 @@ impl Dt {
     /// GPS/Galileo Experiment (GALEX) Time epoch.
     ///
     /// - 1980-01-06 00:00:00 UTC.
-    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -630_763_181_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const GPS_EPOCH: Self = Self::new(-630763181000000000000000000i128, Scale::TAI, Scale::GPS);
@@ -63,7 +63,7 @@ impl Dt {
     /// Galileo System Time (GST) epoch.
     ///
     /// - 1999-08-22 00:00:00 GST.
-    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -11_447_981_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const GALILEO_EPOCH: Self =
@@ -72,7 +72,7 @@ impl Dt {
     /// BeiDou Time (BDT) epoch.
     ///
     /// - 2006-01-01 00:00:00 UTC.
-    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - 189_345_633_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const BDT_EPOCH: Self = Self::new(189345633000000000000000000i128, Scale::TAI, Scale::BDT);
@@ -80,7 +80,7 @@ impl Dt {
     /// CCSDS epoch (used in CCSDS time codes such as CUC).
     ///
     /// - 1958-01-01 00:00:00 TAI.
-    /// - Stored here on the **TAI** timescale as an offset from [`Self::ZERO`].
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -1_325_419_200_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const CCSDS_EPOCH: Self = Self::new(
@@ -167,7 +167,7 @@ impl Dt {
     /// Builds a [`Dt`] holding the given whole seconds and sub-second remainder.
     ///
     /// The remainder is in **attoseconds**, not seconds. Pairs with
-    /// [`to_sec64`](Self::to_sec64) + [`to_sec_frac`](Self::to_sec_frac).
+    /// [`Dt::to_sec64`](#method.to_sec64) + [`Dt::to_sec_frac`](#method.to_sec_frac).
     ///
     /// Does **not** perform any time scale conversions.
     ///
@@ -175,8 +175,9 @@ impl Dt {
     ///
     /// - `sec` — whole seconds (truncating / signed-remainder split).
     /// - `attos` — fractional part of that split, in attoseconds.
-    ///   Prefer helpers such as [`ms_to_attos`](Self::ms_to_attos) /
-    ///   [`ns_to_attos`](Self::ns_to_attos) (or [`AttosTraits`](crate::AttosTraits))
+    ///   Prefer helpers such as [`Dt::ms_to_attos`](#method.ms_to_attos) /
+    ///   [`Dt::ns_to_attos`](#method.ns_to_attos) (or
+    ///   [`AttosTraits`](../trait.AttosTraits.html))
     ///   instead of hand-counting zeros:
     ///   - `1.3` s → `sec = 1`, `attos = Dt::ms_to_attos(300)`
     ///   - `-1.3` s → `sec = -1`, `attos = Dt::ms_to_attos(-300)`
@@ -222,7 +223,7 @@ impl Dt {
     /// Does **not** perform any time scale conversions. The `sec` count is stored
     /// as-is (converted only from seconds to attoseconds); its meaning depends on
     /// how you use the value afterward (for example as a library-epoch offset, a
-    /// Unix offset passed to [`from_unix`](Self::from_unix), a duration, etc.).
+    /// Unix offset passed to [`Dt::from_unix`](#method.from_unix), a duration, etc.).
     ///
     /// ## Parameters
     ///

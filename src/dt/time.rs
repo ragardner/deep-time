@@ -9,7 +9,7 @@ impl Dt {
     /// [`time::Timestamp`] is a **Unix / POSIX** instant: nanoseconds since
     /// 1970-01-01 00:00:00 UTC. Like `chrono` and `jiff`, it does **not** count
     /// leap seconds in the numeric value. Conversion therefore goes through
-    /// [`Scale::UTC`](crate::Scale::UTC) and the Unix epoch so deep-time's leap-second
+    /// [`Scale::UTC`](../enum.Scale.html#variant.UTC) and the Unix epoch so deep-time's leap-second
     /// tables are applied on the way in and out of TAI storage.
     ///
     /// This is **not** a TAI timestamp.

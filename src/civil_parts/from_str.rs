@@ -8,7 +8,7 @@ impl Parts {
     /// Parser equivalent to `strptime` with a provided format string.
     ///
     /// The parser populates a [`Parts`] struct. After successful parsing,
-    /// [`Self::finish`] is called automatically to apply defaults and validation.
+    /// [`Parts::finish`](#method.finish) is called automatically to apply defaults and validation.
     ///
     /// ## Parameters
     ///

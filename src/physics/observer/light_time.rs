@@ -8,7 +8,8 @@ impl Dt {
     /// Shapiro gravitational time scale for the Sun (`2 G M_☉ / c³`).
     ///
     /// Recommended value for the Sun when building the `bodies` slice passed to
-    /// [`Observer::shapiro_delay`], [`Observer::shapiro_delay`],
+    /// [`Observer::shapiro_delay`](../../struct.Observer.html#method.shapiro_delay),
+    /// [`Observer::one_way_relativistic_delay`](../../struct.Observer.html#method.one_way_relativistic_delay),
     /// and related methods.
     pub const SHAPIRO_SOLAR: Self = Self::from_sec_f(TWO_GM_SUN_OVER_C3, Scale::TAI, Scale::TAI);
 
@@ -20,8 +21,9 @@ impl Dt {
     /// planets, stars, or other massive bodies.
     ///
     /// The returned value is intended to be used for the `bodies` parameter
-    /// when calling [`Observer::shapiro_delay`] or
-    /// [`Observer::shapiro_delay`].
+    /// when calling
+    /// [`Observer::shapiro_delay`](../../struct.Observer.html#method.shapiro_delay) or
+    /// [`Observer::one_way_relativistic_delay`](../../struct.Observer.html#method.one_way_relativistic_delay).
     #[inline]
     pub const fn shapiro_from_grav_param(gm: Real) -> Dt {
         let secs = 2.0 * gm / (C * C_SQUARED);
@@ -123,7 +125,8 @@ impl Observer {
     /// get the full one-way relativistic correction quickly. If you need
     /// strict separation of the two effects (for example, to apply them at
     /// different stages of your calculation), call
-    /// [`Self::shapiro_delay`] and [`Self::compute_differential_clock_correction`]
+    /// [`Observer::shapiro_delay`](#method.shapiro_delay) and
+    /// [`Observer::compute_differential_clock_correction`](#method.compute_differential_clock_correction)
     /// individually and add the results yourself.
     ///
     /// ## When to use this method
@@ -139,8 +142,11 @@ impl Observer {
     /// Pass a slice of `(shapiro_coefficient, body_position)` pairs:
     ///
     /// - `shapiro_coefficient`: How strong the delay from this body should be.
-    ///   It equals `2GM / c³`. Use [`Dt::SHAPIRO_SOLAR`] for the Sun, or
-    ///   [`Dt::shapiro_from_grav_param`] for any other body.
+    ///   It equals `2GM / c³`. Use
+    ///   [`Dt::SHAPIRO_SOLAR`](../../struct.Dt.html#associatedconstant.SHAPIRO_SOLAR)
+    ///   for the Sun, or
+    ///   [`Dt::shapiro_from_grav_param`](../../struct.Dt.html#method.shapiro_from_grav_param)
+    ///   for any other body.
     /// - `body_position`: Where the center of that body is located at the
     ///   relevant time.
     ///
@@ -192,10 +198,10 @@ impl Observer {
     /// ```
     ///
     /// It performs fixed-point iteration using the propagation delay returned by
-    /// [`Self::shapiro_delay`]. Clock-rate and proper-time effects
-    /// are **not** included in the iteration; they should be applied separately
-    /// when converting between coordinate time and proper time or when forming
-    /// observables.
+    /// [`Observer::shapiro_delay`](#method.shapiro_delay).
+    /// Clock-rate and proper-time effects are **not** included in the iteration;
+    /// they should be applied separately when converting between coordinate time
+    /// and proper time or when forming observables.
     ///
     /// The solver is suitable for high-precision one-way light-time calculations
     /// and works with any ephemeris source via the provided closure.
@@ -282,8 +288,10 @@ impl Observer {
     /// - Transponded signals from spacecraft
     /// - Any high-precision two-way light-time calculation
     ///
-    /// For one-way signals, use [`Self::shapiro_delay`] or
-    /// [`Self::one_way_relativistic_delay`] instead.
+    /// For one-way signals, use
+    /// [`Observer::shapiro_delay`](#method.shapiro_delay) or
+    /// [`Observer::one_way_relativistic_delay`](#method.one_way_relativistic_delay)
+    /// instead.
     ///
     /// ## How the calculation works
     ///
@@ -296,8 +304,9 @@ impl Observer {
     /// ## The `bodies` parameter – which masses to include
     ///
     /// Pass a slice of `(shapiro_coefficient, body_position)` pairs (the
-    /// same slice is used for both legs). See [`Self::shapiro_delay`] for
-    /// details on how to build this slice.
+    /// same slice is used for both legs). See
+    /// [`Observer::shapiro_delay`](#method.shapiro_delay)
+    /// for details on how to build this slice.
     ///
     /// **Important: All states returned by the providers must be consistent**
     /// with the same reference frame (same origin and same coordinate axes).
@@ -364,8 +373,9 @@ impl Observer {
     /// propagation delay. It does **not** include clock-rate differences
     /// between the transmitter and receiver caused by velocity or gravity.
     /// Those effects are available separately through
-    /// [`Self::compute_differential_clock_correction`],
-    /// [`Self::proper_time_rate`], and [`Self::relativistic_clock_rate_ratio`].
+    /// [`Observer::compute_differential_clock_correction`](#method.compute_differential_clock_correction),
+    /// [`Observer::proper_time_rate`](#method.proper_time_rate), and
+    /// [`Observer::relativistic_clock_rate_ratio`](#method.relativistic_clock_rate_ratio).
     ///
     /// ## When to use this method
     ///
@@ -378,8 +388,11 @@ impl Observer {
     /// Pass a slice of `(shapiro_coefficient, body_position)` pairs:
     ///
     /// - `shapiro_coefficient`: How strong the delay from this body should be.
-    ///   It equals `2GM / c³`. Use [`Dt::SHAPIRO_SOLAR`] for the Sun, or
-    ///   [`Dt::shapiro_from_grav_param`] for any other body.
+    ///   It equals `2GM / c³`. Use
+    ///   [`Dt::SHAPIRO_SOLAR`](../../struct.Dt.html#associatedconstant.SHAPIRO_SOLAR)
+    ///   for the Sun, or
+    ///   [`Dt::shapiro_from_grav_param`](../../struct.Dt.html#method.shapiro_from_grav_param)
+    ///   for any other body.
     /// - `body_position`: Where the center of that body is located at the
     ///   relevant time.
     ///
@@ -457,7 +470,7 @@ impl Observer {
     ///
     /// ## Safety / Guards
     ///
-    /// - Returns [`Dt::ZERO`](../struct.Dt.html#associatedconstant.ZERO)
+    /// - Returns [`Dt::ZERO`](../../struct.Dt.html#associatedconstant.ZERO)
     ///   for any non-positive distance or zero Shapiro coefficient.
     /// - Protects against invalid logarithm argument (`arg <= 1.0`).
     /// - Designed for weak-field solar-system / cislunar use (monopole, straight-line approx).
@@ -511,9 +524,12 @@ impl Observer {
     /// This returns the difference in proper time advance between the two
     /// observers. It does **not** include Shapiro propagation delay.
     ///
-    /// The result can be added to the output of [`Self::shapiro_delay`]
-    /// or [`Self::iterative_one_way_light_time_to`] when a combined
-    /// relativistic correction (propagation + clock rate) is required.
+    /// The result can be added to the output of
+    /// [`Observer::shapiro_delay`](#method.shapiro_delay)
+    /// or
+    /// [`Observer::iterative_one_way_light_time_to`](#method.iterative_one_way_light_time_to)
+    /// when a combined relativistic correction (propagation + clock rate) is
+    /// required.
     ///
     /// ## Parameters
     ///

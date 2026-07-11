@@ -10,7 +10,7 @@ impl Dt {
     /// `1970-01-01 00:00:00Z`. Jiff documents this as “the Unix timescale with a
     /// UTC offset of zero” and **does not support leap seconds** (it behaves as if
     /// they do not exist in the numeric count). Conversion therefore goes through
-    /// [`Scale::UTC`](crate::Scale::UTC) and the Unix epoch so deep-time's
+    /// [`Scale::UTC`](../enum.Scale.html#variant.UTC) and the Unix epoch so deep-time's
     /// leap-second tables are applied on the way out of TAI storage.
     ///
     /// This is **not** a TAI timestamp. A [`Dt`] stored on TAI (or any other scale)

@@ -26,6 +26,7 @@ Functionality that makes use of this model includes:
 
 Usage examples and information:
 
+- [Proper time along trajectories](trajectory.md) — which `Dt` methods to call, units, coverage rules
 - [Physics module](https://github.com/ragardner/deep-time/tree/main/src/physics)
 - [Drift tests](https://github.com/ragardner/deep-time/blob/main/tests/clock_drift_tests.rs)
 - [Light time tests](https://github.com/ragardner/deep-time/blob/main/tests/light_time_tests.rs)

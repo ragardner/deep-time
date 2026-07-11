@@ -110,17 +110,19 @@ mod unified_vs_gr_tests {
 
         // Physical (negative) potential + positive scale → non-zero K
         let k = Spacetime::kretschmann_from_potential_and_scale(phi_over_c2, length_m);
-        let expected = 48.0 * (phi_over_c2 * phi_over_c2)
-            / (length_m * length_m * length_m * length_m);
-        assert!(k > 0.0, "K must be positive for attractive gravity, got {k}");
+        let expected =
+            48.0 * (phi_over_c2 * phi_over_c2) / (length_m * length_m * length_m * length_m);
+        assert!(
+            k > 0.0,
+            "K must be positive for attractive gravity, got {k}"
+        );
         assert!(
             (k - expected).abs() / expected < 1e-12,
             "K = {k}, expected {expected}"
         );
 
         // Sign of φ must not matter (estimate is quadratic in φ)
-        let k_pos =
-            Spacetime::kretschmann_from_potential_and_scale(-phi_over_c2, length_m);
+        let k_pos = Spacetime::kretschmann_from_potential_and_scale(-phi_over_c2, length_m);
         assert_eq!(k, k_pos);
 
         // from_potential_velocity_and_scale must propagate the non-zero K

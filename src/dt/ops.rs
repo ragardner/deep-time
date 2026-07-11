@@ -165,7 +165,7 @@ impl Dt {
     }
 
     /// Returns the smaller of two `Dt`s according to the total physical-time order
-    /// defined by [`Self::cmp`].
+    /// defined by [`Dt::cmp`](#method.cmp).
     ///
     /// This is a `const fn` and can be used in const contexts.
     #[inline]
@@ -177,9 +177,9 @@ impl Dt {
     }
 
     /// Returns the larger of two `Dt`s according to the total physical-time order
-    /// defined by [`Self::cmp`].
+    /// defined by [`Dt::cmp`](#method.cmp).
     ///
-    /// See [`Self::min`] for more details.
+    /// See [`Dt::min`](#method.min) for more details.
     #[inline]
     pub const fn max(self, other: Self) -> Self {
         match self.cmp(&other) {

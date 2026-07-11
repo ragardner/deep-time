@@ -461,9 +461,9 @@ impl Parts {
     /// based on the Code ID in the first P-field byte.
     ///
     /// Examines the Code ID and dispatches to the appropriate parser:
-    /// - `001` → [`from_ccsds_cuc`](Self::from_ccsds_cuc) (CUC – Unsegmented Time Code)
-    /// - `100` → [`from_ccsds_cds`](Self::from_ccsds_cds) (CDS – Day Segmented Time Code)
-    /// - `101` → [`from_ccsds_ccs`](Self::from_ccsds_ccs) (CCS – Calendar Segmented Time Code)
+    /// - `001` → [`Parts::from_ccsds_cuc`](#method.from_ccsds_cuc) (CUC – Unsegmented Time Code)
+    /// - `100` → [`Parts::from_ccsds_cds`](#method.from_ccsds_cds) (CDS – Day Segmented Time Code)
+    /// - `101` → [`Parts::from_ccsds_ccs`](#method.from_ccsds_ccs) (CCS – Calendar Segmented Time Code)
     ///
     /// This is a convenience wrapper. For stricter control or when the format
     /// is known in advance, prefer calling the specific `from_ccsds_*` function directly.

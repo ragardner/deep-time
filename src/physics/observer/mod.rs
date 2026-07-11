@@ -15,7 +15,7 @@ use crate::{C_SQUARED, Dt, Position, Real, Spacetime, Velocity};
 pub struct Observer {
     /// The time of this observer.
     ///
-    /// Any [`Scale`](../enum.Scale.html) is accepted. This time is treated as coordinate time.
+    /// Any [`Scale`](crate::Scale) is accepted. This time is treated as coordinate time.
     pub time: Dt,
 
     /// Position of the observer in meters.
@@ -169,7 +169,7 @@ impl Observer {
     /// **Note:** Squaring the one-way ratio is a common first-order approximation.
     /// For higher precision (especially during flybys or when uplink and downlink
     /// geometries differ significantly), consider using
-    /// [`round_trip_light_time_correction`](Self::round_trip_light_time_correction)
+    /// [`Observer::round_trip_light_time_correction`](#method.round_trip_light_time_correction)
     /// instead.
     ///
     /// This pattern is commonly used when correcting two-way Doppler (range-rate)

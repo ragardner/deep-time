@@ -6,7 +6,7 @@
 //!
 //! Exposed as the Cargo alias `gen-leap-seconds`.
 //!
-//! # Usage
+//! ## Usage
 //!
 //! ```text
 //! cargo gen-leap-seconds
@@ -23,14 +23,14 @@
 //! to the workspace root (from `CARGO_MANIFEST_DIR`), not the shell's current
 //! directory. Absolute paths and paths that escape the workspace are rejected.
 //!
-//! # Check mode (`--check`)
+//! ## Check mode (`--check`)
 //!
 //! Runs the same generation pipeline but does not write anything. Exits successfully
 //! only when the output file already matches the freshly generated, `rustfmt`-formatted
 //! content. Line endings are normalized before comparison so Git `autocrlf` on
 //! Windows does not cause false failures.
 //!
-//! # Requirements
+//! ## Requirements
 //!
 //! The `rustfmt` component must be installed and available on `PATH` (e.g. via
 //! `rustup component add rustfmt`). Formatting is done in memory through

@@ -81,14 +81,14 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
+    /// - [`Dt::from_ymd`](#method.from_ymd)
     ///
     /// ## Implementation
     ///
     /// `convert_epoch` is `false`. If we converted the epoch too, the difference would cancel
     /// out — we would not find the same instant on a different scale.
     ///
-    /// [`Dt::to_gps`](../struct.Dt.html#method.to_gps) etc. do the opposite: if we did not convert
+    /// [`Dt::to_gps`](#method.to_gps) etc. do the opposite: if we did not convert
     /// the epoch there, we would not get seconds since the GPS epoch; we would get seconds since
     /// something else.
     pub const fn to_ymd(&self) -> YmdHms {
@@ -128,7 +128,7 @@ impl Dt {
     ///   when using `Scale::UTC` leap seconds are potentially added to the returned [`Dt`].
     /// - The returned [`Dt`] will have its `scale` field set to `TAI` and its `target` field
     ///   set to the provided time scale argument from this fn. This makes functions such as
-    ///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) more ergonomic.
+    ///   [`Dt::to_ymd`](#method.to_ymd) more ergonomic.
     ///
     /// All input components are clamped to their valid ranges:
     /// - `mo`   → 1..=12 **1 based**
@@ -162,11 +162,11 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
+    /// - [`Dt::to_ymd`](#method.to_ymd)
     ///
     /// ## Implementation
     ///
-    /// Same as [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) — `convert_epoch` is `false`. See
+    /// Same as [`Dt::to_ymd`](#method.to_ymd) — `convert_epoch` is `false`. See
     /// that function's Implementation section.
     pub const fn from_ymd(
         yr: i64,
@@ -222,7 +222,7 @@ impl Dt {
     ///
     /// - Returns `(year, month, day)` where `month` ∈ [1, 12] and `day` ∈ [1, 31]
     ///   (standard 1-based Gregorian values).
-    /// - This is the inverse of [`Dt::ymd_to_jd`](../struct.Dt.html#method.ymd_to_jd).
+    /// - This is the inverse of [`Dt::ymd_to_jd`](#method.ymd_to_jd).
     /// - Supports the full `i64` range, including negative years and year zero.
     pub const fn jd_to_ymd(jd: i64) -> (i64, u8, u8) {
         let j = jd as i128;
@@ -246,7 +246,7 @@ impl Dt {
     }
 
     /// Computes the Julian Day Number (JD) for a proleptic Gregorian calendar date at noon UT.
-    /// This is the inverse of [`jd_to_ymd`](../struct.Dt.html#method.jd_to_ymd).
+    /// This is the inverse of [`jd_to_ymd`](#method.jd_to_ymd).
     ///
     /// ## Arguments
     ///
@@ -264,7 +264,7 @@ impl Dt {
     ///   value clamping.
     /// - Does not deal with bad inputs like February with 30 days, does not do any clamping. If you
     ///   need to sanitize a year, month, day input use
-    ///   [`Dt::clamp_mdhms`](../struct.Dt.html#method.clamp_mdhms) first.
+    ///   [`Dt::clamp_mdhms`](#method.clamp_mdhms) first.
     /// - The result is the integer JD corresponding to **noon** on the given date.
     #[inline]
     pub const fn ymd_to_jd(yr: i64, mo: u8, day: u8) -> i64 {
@@ -485,7 +485,7 @@ impl Dt {
     /// week containing January 4.
     ///
     /// The optional `ymd` argument is a performance optimization. If provided,
-    /// it is used directly; otherwise [`to_ymd`](../struct.Dt.html#method.to_ymd)
+    /// it is used directly; otherwise [`to_ymd`](#method.to_ymd)
     /// is called internally.
     pub const fn to_iso_wk_date(&self, ymd: Option<(i64, u8, u8)>) -> (i64, u8, Weekday) {
         let (yr, mo, day) = if let Some(ymd) = ymd {

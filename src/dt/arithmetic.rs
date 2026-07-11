@@ -487,7 +487,7 @@ impl Dt {
     ///
     /// This is the floating-point equivalent of `self.to_sec_f() / rhs.to_sec_f()`.
     ///
-    /// # Special cases (chosen for safety and usability in time arithmetic)
+    /// ## Special cases (chosen for safety and usability in time arithmetic)
     /// - `non-zero / ZERO` returns `±Real::INFINITY` (sign matches `self`)
     /// - `ZERO / non-zero` returns `0.0`
     /// - `ZERO / ZERO` returns `1.0` (the two durations are identical)
