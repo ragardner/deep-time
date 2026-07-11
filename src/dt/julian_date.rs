@@ -69,6 +69,8 @@ impl Dt {
     /// - The remainder is always zero or positive and less than one day. e.g. a jd of
     ///   `-1000.25` will return the whole part as `-1001` and the remainder as
     ///   `0.75 * ATTOS_PER_DAY` as a `u128`.
+    /// - Round-trip with [`from_jd`](../struct.Dt.html#method.from_jd) by casting the
+    ///   remainder through [`to_i128`](../struct.Dt.html#method.to_i128).
     ///
     /// ## Examples
     ///
@@ -82,13 +84,18 @@ impl Dt {
     /// let dt = Dt::from_jd_f(-1_000.25, Scale::TAI);
     /// // -1_001 and effectively 0.75 days in attoseconds
     /// assert_eq!(dt.to_jd_floor(), (-1_001, 3 * ATTOS_PER_HALF_DAY_U128 / 2));
+    ///
+    /// let (days, frac) = dt.to_jd_floor();
+    /// let back = Dt::from_jd(days, Dt::to_i128(frac), Scale::TAI);
+    /// assert_eq!(back, dt);
     /// ```
     ///
     /// ## See also
     ///
     /// - [`Dt::to_jd`](../struct.Dt.html#method.to_jd)
     /// - [`Dt::to_jd_f`](../struct.Dt.html#method.to_jd_f)
-    /// - [`Dt::from_jd_floor`](../struct.Dt.html#method.from_jd_floor)
+    /// - [`Dt::from_jd`](../struct.Dt.html#method.from_jd)
+    /// - [`Dt::to_i128`](../struct.Dt.html#method.to_i128)
     #[inline(always)]
     pub const fn to_jd_floor(&self) -> (i128, u128) {
         self.to(self.target).to_jd_floor_raw()
@@ -230,6 +237,8 @@ impl Dt {
     /// - The remainder is always zero or positive and less than one day. e.g. an mjd of
     ///   `-1000.25` will return the whole part as `-1001` and the remainder as
     ///   `0.75 * ATTOS_PER_DAY` as a `u128`.
+    /// - Round-trip with [`from_mjd`](../struct.Dt.html#method.from_mjd) by casting the
+    ///   remainder through [`to_i128`](../struct.Dt.html#method.to_i128).
     ///
     /// ## Examples
     ///
@@ -243,13 +252,18 @@ impl Dt {
     /// let dt = Dt::from_mjd_f(-1_000.25, Scale::TAI);
     /// // -1_001 and effectively 0.75 days in attoseconds
     /// assert_eq!(dt.to_mjd_floor(), (-1_001, 3 * ATTOS_PER_HALF_DAY_U128 / 2));
+    ///
+    /// let (days, frac) = dt.to_mjd_floor();
+    /// let back = Dt::from_mjd(days, Dt::to_i128(frac), Scale::TAI);
+    /// assert_eq!(back, dt);
     /// ```
     ///
     /// ## See also
     ///
     /// - [`Dt::to_mjd`](../struct.Dt.html#method.to_mjd)
     /// - [`Dt::to_mjd_f`](../struct.Dt.html#method.to_mjd_f)
-    /// - [`Dt::from_mjd_floor`](../struct.Dt.html#method.from_mjd_floor)
+    /// - [`Dt::from_mjd`](../struct.Dt.html#method.from_mjd)
+    /// - [`Dt::to_i128`](../struct.Dt.html#method.to_i128)
     #[inline(always)]
     pub const fn to_mjd_floor(&self) -> (i128, u128) {
         self.to(self.target).to_mjd_floor_raw()
@@ -333,6 +347,15 @@ impl Dt {
     ///
     /// To avoid a time scale conversion use `Scale::TAI` for the `on` argument.
     ///
+    /// `frac_attos` is in **attoseconds**. Either split style works:
+    ///
+    /// - Truncating / signed remainder (as from [`to_jd`](../struct.Dt.html#method.to_jd)):
+    ///   e.g. `-1000.25` as `jd_days = -1000`, `frac_attos = -0.25 * ATTOS_PER_DAY`.
+    /// - Floor / non-negative remainder (as from
+    ///   [`to_jd_floor`](../struct.Dt.html#method.to_jd_floor)): e.g. `-1000.25` as
+    ///   `jd_days = -1001`, `frac_attos = 0.75 * ATTOS_PER_DAY`. Cast a `u128` remainder
+    ///   with [`to_i128`](../struct.Dt.html#method.to_i128).
+    ///
     /// ## Returns
     ///
     /// A [`Dt`] counting attoseconds since the library epoch
@@ -348,66 +371,30 @@ impl Dt {
     /// let dt = Dt::from_jd(2_460_782, ATTOS_PER_DAY / 4, Scale::TAI);
     /// assert_eq!(dt.to_jd(), (2_460_782, ATTOS_PER_DAY / 4));
     ///
-    /// // -1_000.25 as whole days plus -0.25 days in attoseconds
+    /// // -1_000.25 as whole days plus -0.25 days in attoseconds (signed)
     /// let dt = Dt::from_jd(-1_000, -ATTOS_PER_DAY / 4, Scale::TAI);
     /// assert_eq!(dt.to_jd(), (-1_000, -ATTOS_PER_DAY / 4));
+    ///
+    /// // same instant as floor split: -1_001 + 0.75 day
+    /// let floor = Dt::from_jd(-1_001, 3 * ATTOS_PER_DAY / 4, Scale::TAI);
+    /// assert_eq!(dt, floor);
+    ///
+    /// // round-trip a `to_jd_floor` pair
+    /// let (days, frac) = dt.to_jd_floor();
+    /// assert_eq!(Dt::from_jd(days, Dt::to_i128(frac), Scale::TAI), dt);
     /// ```
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_jd_floor`](../struct.Dt.html#method.from_jd_floor)
     /// - [`Dt::from_jd_f`](../struct.Dt.html#method.from_jd_f)
     /// - [`Dt::to_jd`](../struct.Dt.html#method.to_jd)
+    /// - [`Dt::to_jd_floor`](../struct.Dt.html#method.to_jd_floor)
+    /// - [`Dt::to_i128`](../struct.Dt.html#method.to_i128)
     /// - [`Dt::from_mjd`](../struct.Dt.html#method.from_mjd)
     pub const fn from_jd(jd_days: i128, frac_attos: i128, on: Scale) -> Dt {
         let days_since_j2000 = jd_days.saturating_sub(JD_2000_2_451_545_I128);
         let attos_from_days = days_since_j2000.saturating_mul(ATTOS_PER_DAY);
         let total_attos = attos_from_days.saturating_add(frac_attos);
-
-        Dt::new(total_attos, on, on).to_tai()
-    }
-
-    /// Builds a **TAI** [`Dt`] from a Julian Date given as whole days plus attoseconds.
-    ///
-    /// ## Important
-    ///
-    /// This converts from the `on` time scale to `TAI` so for example, an
-    /// `on` scale of `Scale::UTC` will add leap seconds to the end result.
-    ///
-    /// To avoid a time scale conversion use `Scale::TAI` for the `on` argument.
-    ///
-    /// `frac_attos` must be zero or positive and less than one day. e.g. whole `-1001`
-    /// and remainder `0.75 * ATTOS_PER_DAY` builds jd `-1000.25`.
-    ///
-    /// ## Returns
-    ///
-    /// A [`Dt`] counting attoseconds since the library epoch
-    /// [`Dt::ZERO`](../constant.ZERO.html) with its `scale` field set to
-    /// `TAI` and its `target` field set to the `on` arg.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY_U128};
-    ///
-    /// // 2_460_782.25 as whole days plus 0.25 days in attoseconds
-    /// let dt = Dt::from_jd_floor(2_460_782, ATTOS_PER_HALF_DAY_U128 / 2, Scale::TAI);
-    /// assert_eq!(dt.to_jd_floor(), (2_460_782, ATTOS_PER_HALF_DAY_U128 / 2));
-    ///
-    /// // -1_000.25 as -1_001 plus 0.75 days in attoseconds
-    /// let dt = Dt::from_jd_floor(-1_001, 3 * ATTOS_PER_HALF_DAY_U128 / 2, Scale::TAI);
-    /// assert_eq!(dt.to_jd_floor(), (-1_001, 3 * ATTOS_PER_HALF_DAY_U128 / 2));
-    /// ```
-    ///
-    /// ## See also
-    ///
-    /// - [`Dt::from_jd`](../struct.Dt.html#method.from_jd)
-    /// - [`Dt::from_jd_f`](../struct.Dt.html#method.from_jd_f)
-    /// - [`Dt::to_jd_floor`](../struct.Dt.html#method.to_jd_floor)
-    pub const fn from_jd_floor(jd_days: i128, frac_attos: u128, on: Scale) -> Dt {
-        let days_since_j2000 = jd_days.saturating_sub(JD_2000_2_451_545_I128);
-        let attos_from_days = days_since_j2000.saturating_mul(ATTOS_PER_DAY);
-        let total_attos = attos_from_days.saturating_add(Self::to_i128(frac_attos));
 
         Dt::new(total_attos, on, on).to_tai()
     }
@@ -420,6 +407,12 @@ impl Dt {
     /// `on` scale of `Scale::UTC` will add leap seconds to the end result.
     ///
     /// To avoid a time scale conversion use `Scale::TAI` for the `on` argument.
+    ///
+    /// MJD and JD relate by `JD = MJD + 2_400_000.5`.
+    ///
+    /// `frac_attos` is in **attoseconds**. Round-trip a
+    /// [`to_mjd_floor`](../struct.Dt.html#method.to_mjd_floor) pair by casting the
+    /// `u128` remainder with [`to_i128`](../struct.Dt.html#method.to_i128).
     ///
     /// ## Returns
     ///
@@ -439,13 +432,18 @@ impl Dt {
     /// // -1_000.25 as -1_001 plus 0.75 days in attoseconds
     /// let dt = Dt::from_mjd(-1_001, 3 * ATTOS_PER_DAY / 4, Scale::TAI);
     /// assert_eq!(dt.to_mjd(), (-1_001, 3 * ATTOS_PER_DAY / 4));
+    ///
+    /// // round-trip a `to_mjd_floor` pair
+    /// let (days, frac) = dt.to_mjd_floor();
+    /// assert_eq!(Dt::from_mjd(days, Dt::to_i128(frac), Scale::TAI), dt);
     /// ```
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_mjd_floor`](../struct.Dt.html#method.from_mjd_floor)
     /// - [`Dt::from_mjd_f`](../struct.Dt.html#method.from_mjd_f)
     /// - [`Dt::to_mjd`](../struct.Dt.html#method.to_mjd)
+    /// - [`Dt::to_mjd_floor`](../struct.Dt.html#method.to_mjd_floor)
+    /// - [`Dt::to_i128`](../struct.Dt.html#method.to_i128)
     /// - [`Dt::from_jd`](../struct.Dt.html#method.from_jd)
     pub const fn from_mjd(mjd_days: i128, frac_attos: i128, on: Scale) -> Dt {
         // Inverse of `to_mjd_raw`: that subtracts 2_400_001 from the JD integer part and
@@ -467,60 +465,6 @@ impl Dt {
             )
         } else {
             Self::from_jd(jd_days, jd_attos, on)
-        }
-    }
-
-    /// Builds a **TAI** [`Dt`] from a Modified Julian Date given as whole days plus attoseconds.
-    ///
-    /// ## Important
-    ///
-    /// This converts from the `on` time scale to `TAI` so for example, an
-    /// `on` scale of `Scale::UTC` will add leap seconds to the end result.
-    ///
-    /// To avoid a time scale conversion use `Scale::TAI` for the `on` argument.
-    ///
-    /// MJD and JD relate by `JD = MJD + 2_400_000.5`.
-    ///
-    /// `frac_attos` must be zero or positive and less than one day. e.g. whole `-1001`
-    /// and remainder `0.75 * ATTOS_PER_DAY` builds mjd `-1000.25`.
-    ///
-    /// ## Returns
-    ///
-    /// A [`Dt`] counting attoseconds since the library epoch
-    /// [`Dt::ZERO`](../constant.ZERO.html) with its `scale` field set to
-    /// `TAI` and its `target` field set to the `on` arg.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY_U128};
-    ///
-    /// // 60_961.25 as whole days plus 0.25 days in attoseconds
-    /// let dt = Dt::from_mjd_floor(60_961, ATTOS_PER_HALF_DAY_U128 / 2, Scale::TAI);
-    /// assert_eq!(dt.to_mjd_floor(), (60_961, ATTOS_PER_HALF_DAY_U128 / 2));
-    ///
-    /// // -1_000.25 as -1_001 plus 0.75 days in attoseconds
-    /// let dt = Dt::from_mjd_floor(-1_001, 3 * ATTOS_PER_HALF_DAY_U128 / 2, Scale::TAI);
-    /// assert_eq!(dt.to_mjd_floor(), (-1_001, 3 * ATTOS_PER_HALF_DAY_U128 / 2));
-    /// ```
-    ///
-    /// ## See also
-    ///
-    /// - [`Dt::from_mjd`](../struct.Dt.html#method.from_mjd)
-    /// - [`Dt::from_mjd_f`](../struct.Dt.html#method.from_mjd_f)
-    /// - [`Dt::to_mjd_floor`](../struct.Dt.html#method.to_mjd_floor)
-    pub const fn from_mjd_floor(mjd_days: i128, frac_attos: u128, on: Scale) -> Dt {
-        let jd_days = mjd_days.saturating_add(2_400_000);
-        let jd_attos = frac_attos.saturating_add(ATTOS_PER_HALF_DAY as u128);
-
-        if jd_attos >= ATTOS_PER_DAY as u128 {
-            Self::from_jd_floor(
-                jd_days.saturating_add(1),
-                jd_attos.saturating_sub(ATTOS_PER_DAY as u128),
-                on,
-            )
-        } else {
-            Self::from_jd_floor(jd_days, jd_attos, on)
         }
     }
 
@@ -547,7 +491,6 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_jd`](../struct.Dt.html#method.from_jd)
-    /// - [`Dt::from_jd_floor`](../struct.Dt.html#method.from_jd_floor)
     /// - [`Dt::to_jd_f`](../struct.Dt.html#method.to_jd_f)
     /// - [`Dt::from_mjd_f`](../struct.Dt.html#method.from_mjd_f)
     pub const fn from_jd_f(jd: Real, on: Scale) -> Dt {
@@ -582,9 +525,9 @@ impl Dt {
         }
 
         let final_jd_days = jd_days.saturating_add(extra_days);
-        let frac_attos = total_attos as u128;
 
-        Self::from_jd_floor(final_jd_days, frac_attos, on)
+        // Floor-style fraction: non-negative and less than one day.
+        Self::from_jd(final_jd_days, total_attos, on)
     }
 
     /// Builds a **TAI** [`Dt`] from a floating-point Modified Julian Date.
@@ -619,7 +562,6 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_mjd`](../struct.Dt.html#method.from_mjd)
-    /// - [`Dt::from_mjd_floor`](../struct.Dt.html#method.from_mjd_floor)
     /// - [`Dt::from_jd_f`](../struct.Dt.html#method.from_jd_f)
     /// - [`Dt::to_mjd_f`](../struct.Dt.html#method.to_mjd_f)
     #[inline]

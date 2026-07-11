@@ -1,4 +1,5 @@
-//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ms!`, `from_ymd!`, …).
+//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`,
+//! `from_ms!`, `from_jd!`, `from_mjd!`, `from_ymd!`, …).
 //!
 //! Optional scale labels use Python-style keyword arguments on **count** macros
 //! (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ms!`, …):
@@ -10,8 +11,9 @@
 //!
 //! Either keyword may appear alone or together, in either order.
 //!
-//! [`from_ymd!`](macro.from_ymd.html) only takes a single civil `on=` scale (see
-//! that macro); use [`.target(…)`](struct.Dt.html#method.target) afterward if the
+//! [`from_jd!`](macro.from_jd.html), [`from_mjd!`](macro.from_mjd.html), and
+//! [`from_ymd!`](macro.from_ymd.html) only take a single `on=` scale (see each
+//! macro); use [`.target(…)`](struct.Dt.html#method.target) afterward if the
 //! `target` field should differ.
 
 /// Builds a [`Dt`](struct.Dt.html) from total attoseconds with optional scale labels.
@@ -408,6 +410,150 @@ macro_rules! from_ms {
     };
     ($ms:expr) => {
         $crate::Dt::from_ms($ms, 0, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a **TAI** [`Dt`](struct.Dt.html) from a Julian Date (whole days plus
+/// optional attosecond remainder).
+///
+/// Sugar for [`Dt::from_jd`](struct.Dt.html#method.from_jd).
+///
+/// Converts from the `on` scale to `TAI` (e.g. `on=Scale::UTC` applies leap
+/// seconds). Use `on=Scale::TAI` (the default) to skip a scale conversion.
+///
+/// There is no `target=` on this macro — the returned [`Dt`](struct.Dt.html)'s
+/// `target` is set from `on` (or TAI when omitted), as
+/// [`from_jd`](struct.Dt.html#method.from_jd) does. Chain
+/// [`.target(…)`](struct.Dt.html#method.target) if needed.
+///
+/// The fractional remainder is in **attoseconds** — use a `*_to_attos` helper
+/// (e.g. a day fraction built from [`ATTOS_PER_DAY`](consts/constant.ATTOS_PER_DAY.html))
+/// instead of hand-counting zeros when convenient.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | fraction | `0` |
+/// | `on` | [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+///
+/// ## Forms
+///
+/// ```text
+/// from_jd!(jd_days)
+/// from_jd!(jd_days, frac)
+/// from_jd!(jd_days, on=s)
+/// from_jd!(jd_days, frac, on=s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY, from_jd};
+///
+/// // 2_460_782.25
+/// let a = from_jd!(2_460_782);
+/// let b = from_jd!(2_460_782, ATTOS_PER_DAY / 4);
+/// let c = from_jd!(2_460_782, ATTOS_PER_DAY / 4, on=Scale::TAI);
+/// let d = from_jd!(2_460_782, on=Scale::UTC);
+///
+/// assert_eq!(a, Dt::from_jd(2_460_782, 0, Scale::TAI));
+/// assert_eq!(b, Dt::from_jd(2_460_782, ATTOS_PER_DAY / 4, Scale::TAI));
+/// assert_eq!(c, b);
+/// assert_eq!(d, Dt::from_jd(2_460_782, 0, Scale::UTC));
+///
+/// // -1_000.25 (signed remainder)
+/// let neg = from_jd!(-1_000, -ATTOS_PER_DAY / 4);
+/// assert_eq!(neg, Dt::from_jd(-1_000, -ATTOS_PER_DAY / 4, Scale::TAI));
+/// assert_eq!(neg.to_jd(), (-1_000, -ATTOS_PER_DAY / 4));
+/// ```
+#[macro_export]
+macro_rules! from_jd {
+    // `on=` arms before bare `$frac:expr` so `on=…` is not taken as an expr.
+    ($jd_days:expr, $frac:expr, on=$scale:expr) => {
+        $crate::Dt::from_jd($jd_days, $frac, $scale)
+    };
+    ($jd_days:expr, on=$scale:expr) => {
+        $crate::Dt::from_jd($jd_days, 0, $scale)
+    };
+    ($jd_days:expr, $frac:expr) => {
+        $crate::Dt::from_jd($jd_days, $frac, $crate::Scale::TAI)
+    };
+    ($jd_days:expr) => {
+        $crate::Dt::from_jd($jd_days, 0, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a **TAI** [`Dt`](struct.Dt.html) from a Modified Julian Date (whole days
+/// plus optional attosecond remainder).
+///
+/// Sugar for [`Dt::from_mjd`](struct.Dt.html#method.from_mjd).
+///
+/// Converts from the `on` scale to `TAI` (e.g. `on=Scale::UTC` applies leap
+/// seconds). Use `on=Scale::TAI` (the default) to skip a scale conversion.
+///
+/// There is no `target=` on this macro — the returned [`Dt`](struct.Dt.html)'s
+/// `target` is set from `on` (or TAI when omitted), as
+/// [`from_mjd`](struct.Dt.html#method.from_mjd) does. Chain
+/// [`.target(…)`](struct.Dt.html#method.target) if needed.
+///
+/// MJD and JD relate by `JD = MJD + 2_400_000.5`.
+///
+/// The fractional remainder is in **attoseconds** — use a `*_to_attos` helper
+/// (e.g. a day fraction built from [`ATTOS_PER_DAY`](consts/constant.ATTOS_PER_DAY.html))
+/// instead of hand-counting zeros when convenient.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | fraction | `0` |
+/// | `on` | [`Scale::TAI`](enum.Scale.html#variant.TAI) |
+///
+/// ## Forms
+///
+/// ```text
+/// from_mjd!(mjd_days)
+/// from_mjd!(mjd_days, frac)
+/// from_mjd!(mjd_days, on=s)
+/// from_mjd!(mjd_days, frac, on=s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY, from_mjd};
+///
+/// // 60_961.25
+/// let a = from_mjd!(60_961);
+/// let b = from_mjd!(60_961, ATTOS_PER_DAY / 4);
+/// let c = from_mjd!(60_961, ATTOS_PER_DAY / 4, on=Scale::TAI);
+/// let d = from_mjd!(60_961, on=Scale::UTC);
+///
+/// assert_eq!(a, Dt::from_mjd(60_961, 0, Scale::TAI));
+/// assert_eq!(b, Dt::from_mjd(60_961, ATTOS_PER_DAY / 4, Scale::TAI));
+/// assert_eq!(c, b);
+/// assert_eq!(d, Dt::from_mjd(60_961, 0, Scale::UTC));
+///
+/// // -1_000.25 as -1_001 + 0.75 day
+/// let neg = from_mjd!(-1_001, 3 * ATTOS_PER_DAY / 4);
+/// assert_eq!(neg, Dt::from_mjd(-1_001, 3 * ATTOS_PER_DAY / 4, Scale::TAI));
+/// assert_eq!(neg.to_mjd(), (-1_001, 3 * ATTOS_PER_DAY / 4));
+/// ```
+#[macro_export]
+macro_rules! from_mjd {
+    // `on=` arms before bare `$frac:expr` so `on=…` is not taken as an expr.
+    ($mjd_days:expr, $frac:expr, on=$scale:expr) => {
+        $crate::Dt::from_mjd($mjd_days, $frac, $scale)
+    };
+    ($mjd_days:expr, on=$scale:expr) => {
+        $crate::Dt::from_mjd($mjd_days, 0, $scale)
+    };
+    ($mjd_days:expr, $frac:expr) => {
+        $crate::Dt::from_mjd($mjd_days, $frac, $crate::Scale::TAI)
+    };
+    ($mjd_days:expr) => {
+        $crate::Dt::from_mjd($mjd_days, 0, $crate::Scale::TAI)
     };
 }
 
