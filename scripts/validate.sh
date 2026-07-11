@@ -53,6 +53,7 @@ EOF
 
 run_clippy() {
     script_log validate "clippy (MSRV ${MSRV_TOOLCHAIN:-auto})"
+    ensure_msrv_toolchain_installed clippy
     script_run cargo_msrv clippy --workspace --all-features --all-targets -- \
         -D warnings -W clippy::collapsible_else_if
 }

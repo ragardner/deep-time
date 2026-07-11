@@ -35,7 +35,7 @@ ensure_msrv_toolchain_installed() {
 
     if ! rustup which rustc --toolchain "${MSRV_TOOLCHAIN}" >/dev/null 2>&1; then
         echo "Missing Rust toolchain '${MSRV_TOOLCHAIN}' (Cargo.toml MSRV)." >&2
-        echo "Install with: rustup toolchain install ${MSRV_TOOLCHAIN} --component clippy" >&2
+        echo "Install with: rustup toolchain install ${MSRV_TOOLCHAIN}" >&2
         exit 1
     fi
 
@@ -50,7 +50,7 @@ ensure_msrv_toolchain_installed() {
 }
 
 cargo_msrv() {
-    ensure_msrv_toolchain_installed clippy
+    ensure_msrv_toolchain_installed
     cargo "+${MSRV_TOOLCHAIN}" "$@"
 }
 
