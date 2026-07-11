@@ -2,14 +2,19 @@
 
 #[cfg(feature = "physics")]
 mod proper_time_tests {
-    use deep_time::{Dt, Scale, Spacetime};
+    use deep_time::{Dt, DtErrKind, Scale, Spacetime, Velocity};
 
     fn tai(sec: i128) -> Dt {
         Dt::from_sec(sec, Scale::TAI, Scale::TAI)
     }
 
+    /// SI potential Φ (m²/s²) that yields the given weak-field lapse α.
+    fn phi_for_alpha(alpha: f64) -> f64 {
+        Spacetime::grav_potential_from_alpha(alpha)
+    }
+
     // =====================================================================
-    // proper_time_between
+    // proper_time_from_path
     // =====================================================================
 
     #[test]
@@ -159,10 +164,6 @@ mod proper_time_tests {
         assert!(diff_attos < 10);
     }
 
-    // =====================================================================
-    // proper_time_from_path
-    // =====================================================================
-
     #[test]
     fn proper_time_from_path_handles_empty_or_single_point_path() {
         let empty: &[(Dt, Spacetime)] = &[];
@@ -191,46 +192,46 @@ mod proper_time_tests {
         assert_eq!(via_path, expected);
     }
 
+    /// Smoke test at Apollo 12 mission duration: a synthetic path with GET times
+    /// taken from Lavery TN D-6681 Table 1 should produce a spacecraft–ground
+    /// differential of the same order as the published splashdown figure
+    /// (+570.345 μs). Alphas/betas are approximate and partly tuned — this is
+    /// not a reconstruction from positions and potentials.
+    ///
+    /// Source: https://ntrs.nasa.gov/api/citations/19720022040/downloads/19720022040.pdf
     #[test]
-    fn apollo_12_spacecraft_vs_ground_clock_differential() {
-        // === APOLLO 12 RELATIVISTIC CLOCK DIFFERENTIAL (HIGH-FIDELITY) ===
-        // 100% based on real NASA data from Lavery TN D-6681 (1972) Table 1
-        // Primary source: https://ntrs.nasa.gov/api/citations/19720022040/downloads/19720022040.pdf
-        //
-        // Table 1 (Apollo 12 Command Module) gives the exact sampled points NASA used:
-        // GET (s)     | Event                  | Cumulative Δ (μs)
-        // 10 380.0    | Begin TLC              | 0.0
-        // 247 080.0   | TLC                    | 153.797
-        // 425 580.0   | In lunar orbit         | 271.328
-        // 514 380.0   | In lunar orbit         | 329.228
-        // 671 280.0   | TEC                    | 434.334
-        // 879 769.6   | Reentry                | 570.430
-        // 880 557.6   | Splashdown             | **570.345**  ← target
+    fn apollo_12_scale_clock_differential() {
+        // Lavery Table 1 cumulative times (GET, s) and published Δ at splashdown.
+        // GET (s)     | Event           | Cumulative Δ (μs)
+        // 10 380.0    | Begin TLC       | 0.0
+        // 247 080.0   | TLC             | 153.797
+        // 425 580.0   | Lunar orbit     | 271.328
+        // 514 380.0   | Lunar orbit     | 329.228
+        // 671 280.0   | TEC             | 434.334
+        // 879 769.6   | Reentry         | 570.430
+        // 880 557.6   | Splashdown      | 570.345
 
-        // Additional timeline sources:
-        // - NASA Apollo 12 Mission Overview: https://www.lpi.usra.edu/lunar/missions/apollo/apollo_12/overview/
-        // - Post-flight reconstruction (MSC-01855 Supplement 1)
+        let total_duration: i64 = 880_558; // splashdown GET ≈ 880557.6 s
+        let num_samples: usize = 2_500;
 
-        let total_duration: i64 = 880_558; // NASA splashdown GET 880557.6 s
-        let num_samples: usize = 2_500; // dense sampling for accurate integration
-
-        // Real NASA milestones (exact GET times from Lavery Table 1)
+        // Synthetic (α, β) milestones; GET times include Table 1 events plus
+        // rough pre-TLC points. Not NASA trajectory-tape samples.
         let milestones = [
-            (0, 0.999_999_999_326, 2.60e-5), // Launch / LEO (pre-Table 1)
+            (0, 0.999_999_999_326, 2.60e-5),
             (4_000, 0.999_999_999_42, 1.80e-5),
-            (10_380, 0.999_999_999_65, 1.05e-5),      // Begin TLC
-            (247_080, 0.999_999_999_9997, 1.40e-6),   // TLC
-            (425_580, 0.999_999_999_9997, 4.10e-6),   // Lunar orbit
-            (514_380, 0.999_999_999_9997, 4.10e-6),   // Lunar orbit
-            (671_280, 0.999_999_999_9997, 1.55e-6),   // TEC
-            (879_770, 0.999_999_999_74, 2.30e-5),     // Reentry
-            (total_duration, 0.999_999_999_305, 0.0), // Splashdown
+            (10_380, 0.999_999_999_65, 1.05e-5),
+            (247_080, 0.999_999_999_9997, 1.40e-6),
+            (425_580, 0.999_999_999_9997, 4.10e-6),
+            (514_380, 0.999_999_999_9997, 4.10e-6),
+            (671_280, 0.999_999_999_9997, 1.55e-6),
+            (879_770, 0.999_999_999_74, 2.30e-5),
+            (total_duration, 0.999_999_999_305, 0.0),
         ];
 
         let mut spacecraft_path: Vec<(Dt, Spacetime)> = Vec::with_capacity(num_samples);
 
-        // Physics-derived coast alpha (tuned from Lavery's Newtonian potentials + velocity)
-        // This reproduces the published NASA result within the accuracy of our milestone-based path.
+        // Constant coast α chosen so the integrated differential falls near
+        // the published 570.345 μs figure (order-of-magnitude check only).
         let coast_alpha = 0.999_999_999_9969685_f64;
 
         for i in 0..num_samples {
@@ -250,7 +251,6 @@ mod proper_time_tests {
                 }
             }
 
-            // Dominant long-coast phases (translunar + trans-Earth) use real-physics alpha
             if (30_000.0..879_000.0).contains(&t) {
                 alpha = coast_alpha;
             }
@@ -259,45 +259,30 @@ mod proper_time_tests {
             spacecraft_path.push((tai(t as i128), ls));
         }
 
-        // === SPACECRAFT proper time (integrated along real trajectory) ===
         let spacecraft_dtau = Dt::proper_time_from_path(spacecraft_path.iter().cloned())
             .expect("spacecraft path should be valid");
 
-        // === GROUND CLOCK (constant Earth surface) ===
         let t0 = spacecraft_path[0].0;
         let t1 = spacecraft_path.last().unwrap().0;
         let ground_ls = Spacetime::new(0.999_999_999_305, 0.0, 0.0);
 
         let ground_dtau = t0.proper_time_between_constant_rate(t1, ground_ls.proper_time_rate());
 
-        // === DIFFERENTIAL (sc - ground) – exactly NASA’s reported quantity ===
         let differential = spacecraft_dtau.sub(ground_dtau);
         let differential_us = differential.to_sec_f() * 1e6_f64;
 
-        // println!("\n=== APOLLO 12 LAVERY TABLE 1 HIGH-FIDELITY TEST ===");
-        // println!(
-        //     "Spacecraft Δτ          = {:.6} s",
-        //     spacecraft_dtau.to_sec_f()
-        // );
-        // println!("Ground clock Δτ        = {:.6} s", ground_dtau.to_sec_f());
-        // println!("Differential (sc - ground) = {:.3} μs", differential_us);
-        // println!("NASA Lavery Table 1    = +570.345 μs (splashdown)");
-
         assert!(
             differential.to_sec_f() > 0.0,
-            "Spacecraft clock must gain time (gravitational blueshift dominates)"
+            "expected spacecraft proper time ahead of ground over this path"
         );
 
-        // Tolerance accounts for linear interpolation between only 9 real milestones
-        // (NASA used thousands of points from trajectory tapes). The ~2 μs residual
-        // is negligible and well within the spirit of a high-fidelity unit test.
+        // Loose band around Lavery's +570.345 μs splashdown figure.
         assert!(
             (568.0..573.0).contains(&differential_us),
-            "Differential was {:.3} μs — matches NASA's +570.345 μs within expected approximation",
+            "differential was {:.3} μs (expected roughly +570 μs)",
             differential_us
         );
 
-        // Internal library consistency check
         let mut summed = Dt::ZERO;
         for w in spacecraft_path.windows(2) {
             let segment = vec![w[0].clone(), w[1].clone()];
@@ -308,5 +293,179 @@ mod proper_time_tests {
             spacecraft_dtau, summed,
             "proper_time_from_path must equal manual segment sum"
         );
+    }
+
+    // =====================================================================
+    // proper_time_drift_from_states
+    // =====================================================================
+
+    #[test]
+    fn drift_from_states_matches_full_path_when_endpoints_align() {
+        let t0 = tai(0);
+        let t1 = tai(1000);
+        let phi = phi_for_alpha(0.9);
+        let states = [
+            (t0, Velocity::ZERO, phi),
+            (t1, Velocity::ZERO, phi),
+        ];
+
+        let drift = Dt::proper_time_drift_from_states(t0, t1, states, 0.0).unwrap();
+        // dτ = 0.9 * 1000, Δt = 1000 → drift = −100
+        assert_eq!(drift, Dt::from_sec(-100, Scale::TAI, Scale::TAI));
+
+        let dtau = Dt::proper_time_from_states(states, 0.0).unwrap();
+        assert_eq!(drift, dtau.sub(t1.to_diff_raw(t0)));
+    }
+
+    #[test]
+    fn drift_from_states_windows_to_requested_interval() {
+        let phi = phi_for_alpha(0.9);
+        // Samples span [0, 1000]; request only [100, 900]
+        let states = [
+            (tai(0), Velocity::ZERO, phi),
+            (tai(1000), Velocity::ZERO, phi),
+        ];
+
+        let drift =
+            Dt::proper_time_drift_from_states(tai(100), tai(900), states, 0.0).unwrap();
+        // Window Δt = 800; dτ = 0.9 * 800 → drift = −80
+        assert_eq!(drift, Dt::from_sec(-80, Scale::TAI, Scale::TAI));
+    }
+
+    #[test]
+    fn drift_from_states_ignores_samples_outside_window() {
+        let phi = phi_for_alpha(0.9);
+        let states = [
+            (tai(0), Velocity::ZERO, phi),
+            (tai(100), Velocity::ZERO, phi),
+            (tai(900), Velocity::ZERO, phi),
+            (tai(1000), Velocity::ZERO, phi),
+        ];
+
+        let windowed =
+            Dt::proper_time_drift_from_states(tai(100), tai(900), states, 0.0).unwrap();
+        let exact = Dt::proper_time_drift_from_states(
+            tai(100),
+            tai(900),
+            [
+                (tai(100), Velocity::ZERO, phi),
+                (tai(900), Velocity::ZERO, phi),
+            ],
+            0.0,
+        )
+        .unwrap();
+
+        assert_eq!(windowed, exact);
+        assert_eq!(windowed, Dt::from_sec(-80, Scale::TAI, Scale::TAI));
+    }
+
+    #[test]
+    fn drift_from_states_zero_interval_returns_zero() {
+        let t = tai(42);
+        let phi = phi_for_alpha(0.9);
+        // Even with empty states, start == end is zero drift.
+        assert_eq!(
+            Dt::proper_time_drift_from_states(t, t, std::iter::empty(), 0.0),
+            Ok(Dt::ZERO)
+        );
+        assert_eq!(
+            Dt::proper_time_drift_from_states(
+                t,
+                t,
+                [(t, Velocity::ZERO, phi)],
+                0.0
+            ),
+            Ok(Dt::ZERO)
+        );
+    }
+
+    #[test]
+    fn drift_from_states_rejects_inverted_interval() {
+        let phi = phi_for_alpha(1.0);
+        let err = Dt::proper_time_drift_from_states(
+            tai(100),
+            tai(0),
+            [
+                (tai(0), Velocity::ZERO, phi),
+                (tai(100), Velocity::ZERO, phi),
+            ],
+            0.0,
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::OutOfRange);
+    }
+
+    #[test]
+    fn drift_from_states_rejects_incomplete_coverage() {
+        let phi = phi_for_alpha(0.9);
+
+        // Empty
+        let err = Dt::proper_time_drift_from_states(
+            tai(0),
+            tai(100),
+            std::iter::empty(),
+            0.0,
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::Incomplete);
+
+        // First sample after start
+        let err = Dt::proper_time_drift_from_states(
+            tai(0),
+            tai(100),
+            [
+                (tai(10), Velocity::ZERO, phi),
+                (tai(100), Velocity::ZERO, phi),
+            ],
+            0.0,
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::Incomplete);
+
+        // Path ends before `end`
+        let err = Dt::proper_time_drift_from_states(
+            tai(0),
+            tai(100),
+            [
+                (tai(0), Velocity::ZERO, phi),
+                (tai(50), Velocity::ZERO, phi),
+            ],
+            0.0,
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::Incomplete);
+    }
+
+    #[test]
+    fn drift_from_states_rejects_non_monotonic() {
+        let phi = phi_for_alpha(0.9);
+        let err = Dt::proper_time_drift_from_states(
+            tai(0),
+            tai(100),
+            [
+                (tai(0), Velocity::ZERO, phi),
+                (tai(80), Velocity::ZERO, phi),
+                (tai(40), Velocity::ZERO, phi),
+            ],
+            0.0,
+        )
+        .unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::NonMonotonic);
+    }
+
+    #[test]
+    fn drift_from_states_flat_spacetime_is_zero() {
+        let phi = phi_for_alpha(1.0);
+        let drift = Dt::proper_time_drift_from_states(
+            tai(0),
+            tai(86400),
+            [
+                (tai(0), Velocity::ZERO, phi),
+                (tai(86400), Velocity::ZERO, phi),
+            ],
+            0.0,
+        )
+        .unwrap();
+        assert_eq!(drift, Dt::ZERO);
     }
 }

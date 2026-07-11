@@ -6,15 +6,12 @@ impl Dt {
     /// Computes the accumulated proper time along a trajectory given a sequence
     /// of physical states.
     ///
-    /// This function accepts samples expressed in terms of directly observable
-    /// quantities — coordinate time, velocity, and gravitational potential —
-    /// and integrates the proper time (Δτ) along the path. It is a convenience
-    /// wrapper around the core [`Self::proper_time_from_path`] routine.
+    /// Accepts samples as `(coordinate_time, velocity, gravitational_potential)`
+    /// and integrates proper time (Δτ) along the path. This is a convenience
+    /// wrapper around [`Self::proper_time_from_path`].
     ///
-    /// The integration is performed using the trapezoidal rule applied to the
-    /// instantaneous proper-time rate between consecutive samples. This approach
-    /// is standard for high-precision clock modeling in astrodynamics and
-    /// relativistic timing applications.
+    /// Integration uses the trapezoidal rule on the instantaneous proper-time
+    /// rate between consecutive samples.
     ///
     /// A single sample, or multiple samples at identical times, produces a result
     /// of zero (no time has elapsed). An empty iterator also returns zero.
@@ -22,37 +19,33 @@ impl Dt {
     /// ## Parameters
     ///
     /// - `samples`: Iterator yielding `(coordinate_time, velocity, gravitational_potential)`
-    ///   triples. The coordinate times must be monotonically non-decreasing.
-    ///   **It is the caller’s responsibility** to supply samples that cover the
-    ///   desired time interval. The function does not validate that the first or
-    ///   last sample exactly matches any particular start or end time.
-    /// - `characteristic_length_scale`: Controls whether the weak-field or
-    ///   strong-field formulation is used when constructing the local spacetime
-    ///   state.
+    ///   triples. Potential is in SI units (m²/s²). Coordinate times must be
+    ///   monotonically non-decreasing. This function does not check that the
+    ///   first or last sample matches any particular start or end time.
+    /// - `characteristic_length_scale`: Selects the weak-field vs strong-field
+    ///   construction of the local spacetime state.
     ///
-    ///   Pass `0.0` (the normal choice) for all conventional weak-field work
-    ///   (Earth orbit, GNSS, solar-system navigation, most spacecraft). This
-    ///   produces exactly the classic relativistic clock rate used by JPL, ESA,
-    ///   and GNSS systems, with the Kretschmann scalar set to zero.
+    ///   Pass `0.0` for ordinary weak-field work (Earth orbit, solar-system
+    ///   navigation, and similar). The Kretschmann scalar is then set to zero,
+    ///   and the rate reduces to the first-order weak-field form built from the
+    ///   supplied potential and velocity. Accuracy depends on how complete that
+    ///   potential is (multipoles, external bodies, etc. are the caller’s job).
     ///
-    ///   Supply a positive value (in meters) only when you need the library’s
-    ///   intrinsic Planck-scale saturation term. The value should represent the
-    ///   characteristic length scale over which the gravitational field varies
-    ///   significantly at the observer’s location. This is intended for strong-field
-    ///   regimes such as the vicinity of neutron stars or black-hole event horizons.
+    ///   Pass a positive length in meters only when estimating curvature for the
+    ///   library’s optional strong-field term. Use a length scale over which the
+    ///   field varies at the observer; this is relevant near compact objects, not
+    ///   for typical solar-system work.
     ///
     /// ## Returns
     ///
-    /// `Ok(total_proper_time)` — the total proper time (Δτ) that has accumulated
-    /// for an observer following the trajectory defined by the supplied samples,
-    /// returned as a [`Dt`].
+    /// `Ok(total_proper_time)` — accumulated proper time (Δτ) for an observer
+    /// following the supplied samples, as a [`Dt`].
     ///
-    /// This value represents the actual time that would have elapsed on a physical
-    /// clock moving along the path, including all relativistic effects (velocity
-    /// and gravitational time dilation, plus the Planck-scale saturation term when
-    /// active). It is **not** a drift or difference relative to coordinate time.
-    /// If you need the difference between proper time and coordinate time
-    /// (Δτ − Δt), use [`Self::proper_time_drift_from_states`] instead.
+    /// This is proper time along the path from the model’s rate at each sample
+    /// (velocity and gravitational dilation from those inputs, plus the optional
+    /// curvature term when active). It is **not** a drift relative to coordinate
+    /// time. For Δτ − Δt over a named interval, use
+    /// [`Self::proper_time_drift_from_states`].
     ///
     /// `Err(DtErr)` — if the coordinate times are not monotonically non-decreasing.
     pub fn proper_time_from_states<I>(
@@ -76,7 +69,7 @@ impl Dt {
     }
 
     /// Computes the relativistic clock drift (proper time minus coordinate time)
-    /// over a specific interval.
+    /// over a specific interval `[start, end]`.
     ///
     /// This returns how much a physical clock has gained or lost time compared
     /// with coordinate time between `start` and `end`.
@@ -86,36 +79,46 @@ impl Dt {
     /// - A negative result means the onboard clock ran **slow** (it accumulated
     ///   less proper time than the coordinate interval).
     ///
-    /// This is the higher-level function most callers should use when they need
-    /// the net drift over a well-defined time interval. It internally calls
-    /// [`Self::proper_time_from_states`] to integrate proper time along the supplied
-    /// trajectory and then subtracts the requested coordinate time span.
+    /// Integration is performed **only** over the closed coordinate interval
+    /// `[start, end]`. Samples outside that window are ignored (except as
+    /// bracketing points for linear rate interpolation at the endpoints). The
+    /// coordinate span subtracted is always `end − start`, so Δτ and Δt refer
+    /// to the same interval.
+    ///
+    /// The instantaneous proper-time rate is assumed piecewise linear between
+    /// consecutive samples (the same model as the trapezoidal rule in
+    /// [`Self::proper_time_from_path`]). When `start` or `end` falls strictly
+    /// between two samples, the rate at that boundary is obtained by linear
+    /// interpolation in coordinate time.
     ///
     /// ## Parameters
     ///
-    /// - `start`: Starting coordinate time of the interval.
+    /// - `start`: Starting coordinate time of the interval (must be ≤ `end`).
     /// - `end`: Ending coordinate time of the interval.
     /// - `states`: Iterator of physical states in the form
     ///   `(coordinate_time, velocity, gravitational_potential)`.
     ///   Coordinate times must be monotonically **non-decreasing**.
-    ///   **It is the caller’s responsibility** to ensure the provided states
-    ///   cover the time range from `start` to `end`. The function integrates
-    ///   proper time over whatever samples are supplied and subtracts the
-    ///   requested coordinate interval (`end - start`). Exact matching of the
-    ///   first and last state times to `start` and `end` is **not** validated.
-    /// - `characteristic_length_scale`: Controls the weak-field vs strong-field
-    ///   formulation when constructing local spacetime states (see
-    ///   [`Self::proper_time_from_states`] for full details). Pass `0.0` for all normal
-    ///   weak-field work (GNSS, Earth orbit, solar-system navigation). Supply a
-    ///   positive length (in meters) only when strong-field Planck-scale
-    ///   saturation effects are required.
+    ///   The samples must **cover** `[start, end]`: at least one sample at or
+    ///   before `start`, and the path must reach at least as far as `end`
+    ///   (a sample at or after `end`, possibly after interpolating across a
+    ///   bracketing segment).
+    /// - `characteristic_length_scale`: Weak-field vs strong-field construction
+    ///   of local spacetime states (see [`Self::proper_time_from_states`]).
+    ///   Pass `0.0` for ordinary weak-field work; a positive length (meters) only
+    ///   when the optional curvature term is needed.
     ///
     /// ## Returns
     ///
-    /// `Ok(drift)` — the accumulated drift (`Δτ − Δt`) as a [`Dt`].
+    /// `Ok(drift)` — the accumulated drift (`Δτ − Δt`) over `[start, end]` as a [`Dt`].
     ///
-    /// `Err(DtErr)` — if the coordinate times in `states` are not monotonically
-    /// non-decreasing.
+    /// `Ok(ZERO)` — if `start == end` (no elapsed coordinate time), regardless
+    /// of `states`.
+    ///
+    /// `Err(DtErr)` — on any of:
+    /// - [`DtErrKind::OutOfRange`] if `end < start`
+    /// - [`DtErrKind::NonMonotonic`] if coordinate times decrease
+    /// - [`DtErrKind::Incomplete`] if `states` is empty (when `start != end`) or
+    ///   does not cover `[start, end]`
     pub fn proper_time_drift_from_states<I>(
         start: Dt,
         end: Dt,
@@ -128,22 +131,108 @@ impl Dt {
         if start.eq(&end) {
             return Ok(Dt::ZERO);
         }
-        let dtau = Self::proper_time_from_states(states, characteristic_length_scale)?;
-        Ok(dtau.sub(end.to_diff_raw(start)))
+        if end.lt(&start) {
+            return Err(an_err!(DtErrKind::OutOfRange));
+        }
+
+        let mut iter = states.into_iter().map(|(t, vel, phi)| {
+            let phi_over_c2 = phi / C_SQUARED;
+            let ls = Spacetime::from_potential_velocity_and_scale(
+                phi_over_c2,
+                vel,
+                characteristic_length_scale,
+            );
+            (t, Self::rate_from_local(&ls))
+        });
+
+        let Some((mut prev_t, mut prev_rate)) = iter.next() else {
+            return Err(an_err!(DtErrKind::Incomplete));
+        };
+
+        // Need a sample at or before `start` to evaluate the rate on the window.
+        if prev_t.gt(&start) {
+            return Err(an_err!(DtErrKind::Incomplete));
+        }
+
+        let mut accumulated = Self::ZERO;
+        // Once true, `(prev_t, prev_rate)` is the left endpoint of an open
+        // segment still inside the window (`start <= prev_t < end`).
+        let mut active = false;
+
+        for (t, rate) in iter {
+            if t.lt(&prev_t) {
+                return Err(an_err!(DtErrKind::NonMonotonic));
+            }
+
+            if !active {
+                if t.lt(&start) {
+                    // Entirely before the window; slide forward.
+                    prev_t = t;
+                    prev_rate = rate;
+                    continue;
+                }
+
+                // prev_t <= start <= t
+                let rate_start = if prev_t.eq(&start) {
+                    prev_rate
+                } else if t.eq(&start) {
+                    rate
+                } else {
+                    Self::lerp_rate(prev_t, prev_rate, t, rate, start)
+                };
+
+                if t.lt(&end) {
+                    accumulated = accumulated.add(Self::proper_time_segment(
+                        start, rate_start, t, rate,
+                    ));
+                    active = true;
+                    prev_t = t;
+                    prev_rate = rate;
+                    continue;
+                }
+
+                // t >= end: the whole window lies inside this bracketing segment.
+                let rate_end = if t.eq(&end) {
+                    rate
+                } else {
+                    Self::lerp_rate(prev_t, prev_rate, t, rate, end)
+                };
+                accumulated =
+                    accumulated.add(Self::proper_time_segment(start, rate_start, end, rate_end));
+                return Ok(accumulated.sub(end.to_diff_raw(start)));
+            }
+
+            // active: integrate from prev toward end
+            if t.lt(&end) {
+                accumulated =
+                    accumulated.add(Self::proper_time_segment(prev_t, prev_rate, t, rate));
+                prev_t = t;
+                prev_rate = rate;
+                continue;
+            }
+
+            // t >= end
+            let rate_end = if t.eq(&end) {
+                rate
+            } else {
+                Self::lerp_rate(prev_t, prev_rate, t, rate, end)
+            };
+            accumulated =
+                accumulated.add(Self::proper_time_segment(prev_t, prev_rate, end, rate_end));
+            return Ok(accumulated.sub(end.to_diff_raw(start)));
+        }
+
+        // Exhausted samples without reaching `end`.
+        Err(an_err!(DtErrKind::Incomplete))
     }
 
     /// Computes accumulated proper time along an arbitrary trajectory.
     ///
-    /// This is the core integration function of the library. It walks the
-    /// supplied path segment by segment and applies the trapezoidal rule
-    /// to the instantaneous proper-time rate at each step.
+    /// Core path integrator: walks the supplied samples segment by segment and
+    /// applies the trapezoidal rule to the instantaneous proper-time rate.
     ///
-    /// This approach is commonly used when integrating clock rates along
-    /// sampled trajectories in astrodynamics and high-precision timing work.
-    ///
-    /// The function enforces that coordinate times are monotonically
-    /// non-decreasing (equal times are allowed). It performs a single pass
-    /// with no heap allocation.
+    /// Coordinate times must be monotonically non-decreasing (equal times are
+    /// allowed). The walk is a single pass with no heap allocation.
     ///
     /// ## Parameters
     ///
@@ -175,20 +264,9 @@ impl Dt {
                 return Err(an_err!(DtErrKind::NonMonotonic));
             }
 
-            let dt = t.to_diff_raw(prev_t);
-            if !dt.is_zero() {
-                let sign = if dt.to_attos() < 0 { f!(-1.0) } else { f!(1.0) };
-                let dt_pos = if sign < f!(0.0) { dt.neg() } else { dt };
-                let dt_sec = dt_pos.to_sec_f();
-
-                let rate0 = Self::rate_from_local(&prev_ls);
-                let rate1 = Self::rate_from_local(&ls);
-
-                let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt_sec;
-                let dtau_segment = from_sec_f!(sign * (dt_sec + integral));
-
-                accumulated = accumulated.add(dtau_segment);
-            }
+            let rate0 = Self::rate_from_local(&prev_ls);
+            let rate1 = Self::rate_from_local(&ls);
+            accumulated = accumulated.add(Self::proper_time_segment(prev_t, rate0, t, rate1));
 
             prev_t = t;
             prev_ls = ls;
@@ -232,6 +310,41 @@ impl Dt {
     pub const fn proper_time_between_constant_rate(self, end: Dt, dtau_dt: Real) -> Dt {
         let dt_sec = end.to_diff_raw(self).to_sec_f();
         from_sec_f!(dtau_dt * dt_sec)
+    }
+
+    /// Trapezoidal proper-time advance over one coordinate segment.
+    ///
+    /// Uses the compensated form
+    /// \(\Delta\tau = \Delta t + \tfrac12(r_0 + r_1 - 2)\,\Delta t\)
+    /// so that the large \(\approx 1\) part of the rate does not cancel against
+    /// \(\Delta t\) in floating point. Supports a negative segment
+    /// (`t1 < t0`) for symmetry; callers that enforce monotonic times only see
+    /// non-negative \(\Delta t\).
+    #[inline]
+    const fn proper_time_segment(t0: Dt, rate0: Real, t1: Dt, rate1: Real) -> Dt {
+        let dt = t1.to_diff_raw(t0);
+        if dt.is_zero() {
+            return Self::ZERO;
+        }
+
+        let sign = if dt.to_attos() < 0 { f!(-1.0) } else { f!(1.0) };
+        let dt_pos = if sign < f!(0.0) { dt.neg() } else { dt };
+        let dt_sec = dt_pos.to_sec_f();
+
+        let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt_sec;
+        from_sec_f!(sign * (dt_sec + integral))
+    }
+
+    /// Linearly interpolates the proper-time rate at coordinate time `t`,
+    /// assuming a piecewise-linear rate between `(t0, rate0)` and `(t1, rate1)`.
+    ///
+    /// Caller must ensure `t0 < t1` (non-zero span) and typically
+    /// `t0 < t < t1`.
+    #[inline]
+    const fn lerp_rate(t0: Dt, rate0: Real, t1: Dt, rate1: Real, t: Dt) -> Real {
+        let span = t1.to_diff_raw(t0).to_sec_f();
+        let frac = t.to_diff_raw(t0).to_sec_f() / span;
+        rate0 + frac * (rate1 - rate0)
     }
 
     /// Returns the instantaneous proper-time rate (dτ/dt) from a local

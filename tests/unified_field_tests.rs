@@ -88,4 +88,47 @@ mod unified_vs_gr_tests {
 
         assert!((unified - classic).abs() < 1e-300);
     }
+
+    /// Bound-system potentials are negative (Φ < 0). The Kretschmann estimate
+    /// must still be non-zero when a positive length scale is supplied, and must
+    /// match K ≈ 48 φ² / L⁴ (Schwarzschild weak-field limit for L = r).
+    #[test]
+    fn kretschmann_from_negative_potential_and_positive_scale() {
+        // Earth-surface-like |Φ|/c² with L = R_E
+        let phi_over_c2 = -6.961_274_586_591_855e-10_f64;
+        let length_m = 6_371_000.0_f64;
+
+        // Zero / non-positive scale → always disabled
+        assert_eq!(
+            Spacetime::kretschmann_from_potential_and_scale(phi_over_c2, 0.0),
+            0.0
+        );
+        assert_eq!(
+            Spacetime::kretschmann_from_potential_and_scale(phi_over_c2, -1.0),
+            0.0
+        );
+
+        // Physical (negative) potential + positive scale → non-zero K
+        let k = Spacetime::kretschmann_from_potential_and_scale(phi_over_c2, length_m);
+        let expected = 48.0 * (phi_over_c2 * phi_over_c2)
+            / (length_m * length_m * length_m * length_m);
+        assert!(k > 0.0, "K must be positive for attractive gravity, got {k}");
+        assert!(
+            (k - expected).abs() / expected < 1e-12,
+            "K = {k}, expected {expected}"
+        );
+
+        // Sign of φ must not matter (estimate is quadratic in φ)
+        let k_pos =
+            Spacetime::kretschmann_from_potential_and_scale(-phi_over_c2, length_m);
+        assert_eq!(k, k_pos);
+
+        // from_potential_velocity_and_scale must propagate the non-zero K
+        let ls = Spacetime::from_potential_velocity_and_scale(
+            phi_over_c2,
+            deep_time::Velocity::ZERO,
+            length_m,
+        );
+        assert_eq!(ls.kretschmann, k);
+    }
 }

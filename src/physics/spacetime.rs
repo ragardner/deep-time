@@ -111,7 +111,9 @@ impl Spacetime {
     ///
     /// It uses:
     /// - `phi` = Φ/c² — the total local gravitational potential (redshift/gravity effect)
-    ///   felt by the observer from all masses.
+    ///   felt by the observer from all masses. For attractive (Newtonian) gravity this
+    ///   value is **negative**; the estimate depends on \(\phi^2\) and is therefore
+    ///   independent of the sign of \(\phi\).
     /// - `characteristic_length_scale` — the typical length scale (in meters) over which
     ///   the gravitational field varies at the observer’s location.
     ///
@@ -121,17 +123,22 @@ impl Spacetime {
     ///
     /// **For strong-field / future users** (black-hole flybys, neutron stars, direct
     /// gravimeters, or full metric evaluation):
-    /// Supply the measured or computed \(\phi\) and the real local length scale (or
-    /// the value from your metric). The function returns a physically accurate non-zero
-    /// curvature.
+    /// Supply the measured or computed \(\phi\) (typically negative) and the real local
+    /// length scale (or the value from your metric). The function returns a non-zero
+    /// curvature estimate \( \mathcal{K} \approx 48\,\phi^2 / L^4 \), matching the
+    /// Schwarzschild weak-field limit when \(L = r\) and \( |\phi| = GM/(c^2 r) \).
     pub const fn kretschmann_from_potential_and_scale(
         grav_potential_over_c2: Real,
         characteristic_length_scale: Real,
     ) -> Real {
-        if characteristic_length_scale <= f!(0.0) || grav_potential_over_c2 <= f!(0.0) {
+        // Weak-field default: no length scale → curvature term disabled.
+        // Do **not** reject negative φ: bound-system potentials are negative, and the
+        // estimate uses φ² (see below).
+        if characteristic_length_scale <= f!(0.0) {
             return f!(0.0);
         }
-        // Exact weak-field limit: K ≈ 48 φ² / L⁴
+        // Weak-field limit: K ≈ 48 φ² / L⁴
+        // (curvature_scale = 2φ/L² ⇒ 12 · (curvature_scale)² = 48 φ²/L⁴)
         let curvature_scale = f!(2.0) * grav_potential_over_c2
             / (characteristic_length_scale * characteristic_length_scale);
         f!(12.0) * (curvature_scale * curvature_scale)
