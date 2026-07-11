@@ -236,8 +236,8 @@
 //!
 //! | Example | What it shows | Run |
 //! |---------|----------------|-----|
-//! | [`precision_control`](examples/precision_control.rs) | Compare, and format times at a chosen resolution (here: one minute) | `cargo run --example precision_control` |
-//! | [`sidereal_time`](examples/sidereal_time.rs) | Astropy-style GMST/GAST/LMST/LAST with UT1 from IERS finals, plus hour angle | `cargo run --example sidereal_time --features "sidereal-earth eop std"` |
+//! | [`precision_control`](https://github.com/ragardner/deep-time/blob/main/examples/precision_control.rs) | Compare, and format times at a chosen resolution (here: one minute) | `cargo run --example precision_control` |
+//! | [`sidereal_time`](https://github.com/ragardner/deep-time/blob/main/examples/sidereal_time.rs) | Astropy-style GMST/GAST/LMST/LAST with UT1 from IERS finals, plus hour angle | `cargo run --example sidereal_time --features "sidereal-earth eop std"` |
 //!
 //! ### Bundled Files
 //!
