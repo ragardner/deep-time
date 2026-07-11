@@ -14,7 +14,7 @@ A fully featured and high performance **Rust date and time library** with attose
 - No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd)
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
 - Fast [ISO](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_iso) parser
-- [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb_hi` can be enabled which provides the ERFA TDB model
+- [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb-hi` can be enabled which provides the ERFA TDB model
 - [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str)
 - [Strftime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
 - First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature
@@ -221,7 +221,7 @@ deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
 | `panic-handler`      | Provides an optional simple `#[panic_handler]` for `no_std` environments  | `no_std`    |
 | `defmt`              | Enables `defmt::Format` trait implementations the main types. Intended for use with the `defmt` logging framework on embedded systems. | — |
 | `wire`               | Enables wire format (serialization) support                               | —           |
-| `tdb_hi`             | Replaces the fast TDB and TCB conversions with the full ERFA TDB model    | —           |
+| `tdb-hi`             | Replaces the fast TDB and TCB conversions with the full ERFA TDB model    | —           |
 | `physics`            | Enables relativistic physics support (`Drift`, `Spacetime`, `Position`, `Velocity`, `Observer`, light-time, etc.) | —           |
 | `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                  | —           |
 | `sidereal`           | Enables sidereal time support                                             | —           |
@@ -256,7 +256,11 @@ You only need this if you are building a binary crate in a `no_std` environment 
 
 ### Performance
 
-Benchmarks were measured on an AMD Ryzen 7 7800X3D.
+Benchmarks were measured on an AMD Ryzen 7 7800X3D using:
+
+```sh
+cargo bench --bench perf --features "parse hifitime std jiff-tz"
+```
 
 #### Parsing and Formatting
 
@@ -279,12 +283,6 @@ Benchmarks were measured on an AMD Ryzen 7 7800X3D.
 | TDB → TAI        | 598 ns        | 26.8 ns       | 22.3× slower              |
 | GPS conversion   | 20.7 ns       | 6.4 ns        | 3.2× slower               |
 | GPS week + TOW   | 28.2 ns       | 7.0 ns        | 4.0× slower               |
-
-The tests were run with:
-
-```sh
-cargo bench --bench perf --features "parse hifitime std jiff-tz"
-```
 
 ### Bundled Files
 

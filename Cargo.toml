@@ -50,7 +50,7 @@ defmt = ["dep:defmt"]
 physics = []
 
 # Higher accuracy but larger binary size TDB conversion code
-tdb_hi = []
+tdb-hi = []
 
 # Mars conversions functions
 mars = []

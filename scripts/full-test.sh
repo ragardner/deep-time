@@ -1,37 +1,53 @@
 #!/usr/bin/env bash
-# Full local validation: default tests, release full-feature tests, clippy, docs, and examples.
+# Run everything CI runs, locally. See --help for when to use this vs the
+# individual scripts (test-matrix.sh, validate.sh, release.sh).
 #
 # Usage:
 #   ./scripts/full-test.sh
+#   ./scripts/full-test.sh --help
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-FULL_FEATURES="serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz"
-TDB_HI_FEATURES="tdb_hi hifitime"
-TDB_HI_TESTS="--test astropy_conversions_tests --test conversions_tests --test hifitime_tests"
-
 usage() {
     cat <<'EOF'
-full-test.sh — run the full deep-time local validation suite
+full-test.sh — run everything CI runs, locally
 
-  ./scripts/full-test.sh
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ WHEN TO USE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Runs, in order:
+  Before you push or open a PR:
+    ./scripts/full-test.sh
 
-  1. cargo fmt --all
-  2. cargo test --workspace
-  3. cargo test --release --no-default-features --features "<full>" --workspace -- --nocapture
-  4. cargo test --release --no-default-features --features "tdb_hi hifitime" <tdb-hi tests> -- --nocapture
-  5. cargo clippy --workspace --all-features --all-targets
-  6. cargo doc --all-features --no-deps    (your crate only; see CI)
-  7. cargo run --example precision_control
-  8. cargo run --example sidereal_time --features "sidereal-earth,eop,std"
-  9. cargo run --example readme --features "parse,jiff-tz,euro"
+  If this passes, CI should pass.
 
-Uses your active cargo/rustc toolchain. For MSRV-pinned checks, see scripts/release.sh.
+  While coding, run one piece instead (faster):
+    ./scripts/test-matrix.sh no-std       # tests only
+    ./scripts/validate.sh clippy            # clippy only
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ WHAT IT RUNS (in order)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  1. cargo fmt --all                     fixes formatting (CI only checks)
+  2. ./scripts/test-matrix.sh            all 4 test feature sets
+  3. ./scripts/validate.sh               clippy + docs + examples
+
+  Same commands as GitHub Actions and release.sh (except release uses fmt --check).
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ FIRST-TIME SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Install the MSRV toolchain once (version from Cargo.toml rust-version):
+    rustup toolchain install 1.90 --component clippy
+
+  More detail: ./scripts/test-matrix.sh --help
+                ./scripts/validate.sh --help
+                ./scripts/release.sh --help
 EOF
 }
 
@@ -54,26 +70,10 @@ log "full-test (commit: $(git rev-parse --short HEAD 2>/dev/null || echo unknown
 log "cargo fmt"
 run cargo fmt --all
 
-log "cargo test (default)"
-run cargo test --workspace
+log "test matrix (scripts/test-matrix.sh)"
+TEST_NOCAPTURE=1 run "${ROOT}/scripts/test-matrix.sh"
 
-log "cargo test --release (full features, --nocapture)"
-run cargo test --release --no-default-features --features "$FULL_FEATURES" --workspace -- --nocapture
-
-log "cargo test --release (tdb_hi + hifitime, scoped tests, --nocapture)"
-run cargo test --release --no-default-features --features "$TDB_HI_FEATURES" \
-    $TDB_HI_TESTS -- --nocapture
-
-log "cargo clippy (all features, all targets)"
-run cargo clippy --workspace --all-features --all-targets -- \
-    -D warnings -W clippy::collapsible_else_if
-
-log "cargo doc (all features, --no-deps)"
-run cargo doc --all-features --no-deps
-
-log "examples"
-run cargo run --example precision_control
-run cargo run --example sidereal_time --features "sidereal-earth,eop,std"
-run cargo run --example readme --features "parse,jiff-tz,euro"
+log "clippy, docs, examples (scripts/validate.sh)"
+run "${ROOT}/scripts/validate.sh"
 
 log "full-test passed"

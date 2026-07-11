@@ -34,7 +34,7 @@ jobs:
           toolchain: 1.90
           components: clippy
       - uses: Swatinem/rust-cache@v2
-      - run: cargo clippy --workspace --all-features --all-targets -- -D warnings
+      - run: ./scripts/validate.sh clippy
 
   test:
     name: test (${{ matrix.name }})
@@ -42,41 +42,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - name: no-std
-            args: --no-default-features
-          - name: no-std-extended
-            args: --no-default-features --features "wire mars sidereal physics tdb_hi"
-          - name: parse-std
-            args: --no-default-features --features "parse alloc std"
-          - name: jiff-tz
-            args: --no-default-features --features "parse alloc std jiff-tz lang"
-          - name: full
-            args: >-
-              --no-default-features
-              --features "serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz"
-            release: true
-          - name: tdb-hi
-            args: >-
-              --no-default-features
-              --features "tdb_hi hifitime"
-              --test astropy_conversions_tests
-              --test conversions_tests
-              --test hifitime_tests
-            release: true
+        name:
+          - no-std
+          - no-std-extended
+          - full
+          - tdb-hi
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.90
       - uses: Swatinem/rust-cache@v2
-      - name: cargo test
-        run: |
-          if [ "${{ matrix.release }}" = "true" ]; then
-            cargo test ${{ matrix.args }} --release --workspace
-          else
-            cargo test ${{ matrix.args }} --workspace
-          fi
+      - run: ./scripts/test-matrix.sh ${{ matrix.name }}
 
   docs:
     name: docs
@@ -87,8 +64,7 @@ jobs:
         with:
           toolchain: 1.90
       - uses: Swatinem/rust-cache@v2
-      - run: cargo doc --no-default-features --no-deps
-      - run: cargo doc --all-features --no-deps
+      - run: ./scripts/validate.sh docs
 
   examples:
     name: examples
@@ -99,6 +75,4 @@ jobs:
         with:
           toolchain: 1.90
       - uses: Swatinem/rust-cache@v2
-      - run: cargo run --example precision_control
-      - run: cargo run --example sidereal_time --features "sidereal-earth,eop,std"
-      - run: cargo run --example readme --features "parse,jiff-tz,euro"
+      - run: ./scripts/validate.sh examples

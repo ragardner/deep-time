@@ -43,7 +43,7 @@ Validation
       Use this as a pre-release dry run while you are still editing.
 
   --skip-tests
-      Run everything except the five-feature test matrix.
+      Run everything except the test matrix (scripts/test-matrix.sh).
       fmt, clippy, docs, examples, and publish --dry-run still run.
 
   --tag-only
@@ -123,17 +123,12 @@ General
 
   Toolchain checks (MSRV read from Cargo.toml rust-version field)
     • rustfmt  (stable by default)
-    • clippy   (MSRV, with -W clippy::collapsible_else_if)
 
   Same commands as CI, plus publish --dry-run:
     • cargo fmt --all -- --check
-    • cargo clippy --workspace --all-features --all-targets
-    • test matrix: no-std, no-std+wire/mars/sidereal/physics/tdb_hi, parse+std,
-      parse+std+jiff-tz+lang, full (release), tdb_hi+hifitime (release, scoped)
-    • cargo doc (no features + all features)
-    • cargo run --example precision_control
-    • cargo run --example sidereal_time --features "sidereal-earth,eop,std"
-    • cargo run --example readme --features "parse,jiff-tz,euro"
+    • ./scripts/test-matrix.sh (no-std, no-std-extended, full, tdb-hi —
+      same as CI and full-test.sh)
+    • ./scripts/validate.sh (clippy + docs + examples — same as CI / full-test.sh)
     • cargo publish --dry-run
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -374,32 +369,15 @@ run_validation() {
     log "rustfmt (${RUSTFMT})"
     run cargo "+${RUSTFMT}" fmt --all -- --check
 
-    log "clippy (MSRV ${MSRV}, all features, -W clippy::collapsible_else_if)"
-    run cargo "+${MSRV}" clippy --workspace --all-features --all-targets -- \
-        -D warnings -W clippy::collapsible_else_if
-
     if [[ "$SKIP_TESTS" -eq 0 ]]; then
-        log "test matrix (MSRV ${MSRV})"
-        run cargo "+${MSRV}" test --no-default-features --workspace
-        run cargo "+${MSRV}" test --no-default-features --features "wire mars sidereal physics tdb_hi" --workspace
-        run cargo "+${MSRV}" test --no-default-features --features "parse alloc std" --workspace
-        run cargo "+${MSRV}" test --no-default-features --features "parse alloc std jiff-tz lang" --workspace
-        run cargo "+${MSRV}" test --release --no-default-features --features \
-            "serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz" --workspace
-        run cargo "+${MSRV}" test --release --no-default-features --features "tdb_hi hifitime" \
-            --test astropy_conversions_tests --test conversions_tests --test hifitime_tests
+        log "test matrix (MSRV ${MSRV}, scripts/test-matrix.sh)"
+        MSRV_TOOLCHAIN="${MSRV}" run "${ROOT}/scripts/test-matrix.sh"
     else
         log "Skipping test matrix (--skip-tests)"
     fi
 
-    log "docs (MSRV ${MSRV})"
-    run cargo "+${MSRV}" doc --no-default-features --no-deps
-    run cargo "+${MSRV}" doc --all-features --no-deps
-
-    log "examples (MSRV ${MSRV})"
-    run cargo "+${MSRV}" run --example precision_control
-    run cargo "+${MSRV}" run --example sidereal_time --features "sidereal-earth,eop,std"
-    run cargo "+${MSRV}" run --example readme --features "parse,jiff-tz,euro"
+    log "clippy, docs, examples (MSRV ${MSRV}, scripts/validate.sh)"
+    MSRV_TOOLCHAIN="${MSRV}" run "${ROOT}/scripts/validate.sh"
 
     log "cargo publish --dry-run"
     run cargo publish --dry-run

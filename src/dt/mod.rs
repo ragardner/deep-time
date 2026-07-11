@@ -35,10 +35,10 @@ mod time;
 #[cfg(feature = "mars")]
 pub mod mars;
 
-#[cfg(feature = "tdb_hi")]
+#[cfg(feature = "tdb-hi")]
 pub mod tdb_hi;
 
-#[cfg(not(feature = "tdb_hi"))]
+#[cfg(not(feature = "tdb-hi"))]
 mod tdb;
 
 use crate::{ATTOS_PER_SEC, Scale};
