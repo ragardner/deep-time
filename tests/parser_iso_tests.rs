@@ -88,6 +88,23 @@ mod from_str_iso_tests {
     }
 
     #[test]
+    fn test_iso_negative_year() {
+        let tp = Parts::from_str_iso("-4714-11-24 12:00:00").unwrap();
+        assert_eq!(tp.yr, Some(-4714));
+        assert_eq!(tp.mo, Some(11));
+        assert_eq!(tp.day, Some(24));
+        assert_eq!(tp.hr, 12);
+        assert_eq!(tp.min, 0);
+        assert_eq!(tp.sec, 0);
+
+        // Explicit positive year sign still works
+        let tp = Parts::from_str_iso("+0042-01-02T03:04:05").unwrap();
+        assert_eq!(tp.yr, Some(42));
+        assert_eq!(tp.mo, Some(1));
+        assert_eq!(tp.day, Some(2));
+    }
+
+    #[test]
     fn test_iso_whitespace_variations() {
         let tp =
             Parts::from_str_iso("2024-04-18  14:30:25   +02:00   [Europe/Berlin]   TAI").unwrap();

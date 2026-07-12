@@ -43,7 +43,8 @@ assert_eq!(dt, Dt::ZERO);
 ```
 use deep_time::{Dt, Lang};
 
-let dt = Dt::from_str_iso("292000000000-1-1").unwrap().add_days(4);
+let mut dt = Dt::from_str_iso("292000000000-1-1").unwrap();
+dt = dt.add_days(4);
 let s = dt.to_str_lite("%Y-%m-%dT%H:%M:%S %L", Lang::En).unwrap();
 
 assert_eq!(s.as_str(), "292000000000-01-05T00:00:00 UTC");
@@ -62,9 +63,10 @@ let utc = dt.to(Scale::UTC);
 assert_eq!(utc.to_sec_f(), -32.0);
 ```
 
-**This crate has no default features.**
+This crate has no default features.
 
 The minimum Rust version is `1.90` and minimum Rust edition is `2024`.
+
 This is mainly due to some `const` functionality that only became stable
 recently.
 

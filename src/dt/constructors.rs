@@ -89,6 +89,30 @@ impl Dt {
         Scale::TAI,
     );
 
+    /// JD epoch (JD 0.0).
+    ///
+    /// - -4713-11-24 12:00:00
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
+    /// - -211_813_488_000_000_000_000_000_000 attoseconds
+    /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
+    pub const JD_EPOCH: Self = Self::new(
+        -211_813_488_000_000_000_000_000_000_000i128,
+        Scale::TAI,
+        Scale::TAI,
+    );
+
+    /// MJD epoch (MJD 0.0)
+    ///
+    /// - 1858-11-17 00:00:00
+    /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
+    /// - -4_453_444_800_000_000_000_000_000_000 attoseconds
+    /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
+    pub const MJD_EPOCH: Self = Self::new(
+        -4_453_444_800_000_000_000_000_000_000,
+        Scale::TAI,
+        Scale::TAI,
+    );
+
     /// Maximum representable duration.
     pub const MAX: Self = Self::new(i128::MAX, Scale::TAI, Scale::TAI);
 

@@ -135,8 +135,9 @@ impl Parts {
         // Year (manual accumulation, optional sign)
         let mut year: i64 = 0;
         let negative_year = if pos < len_ && matches!(bytes[pos], b'+' | b'-') {
+            let neg = bytes[pos] == b'-';
             pos += 1;
-            bytes[pos] == b'-'
+            neg
         } else {
             false
         };

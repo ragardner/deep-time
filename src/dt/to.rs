@@ -1,7 +1,7 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_FS_I128, ATTOS_PER_HOUR, ATTOS_PER_MIN, ATTOS_PER_MS_I128,
     ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_SECF, ATTOS_PER_US_I128,
-    Dt, Real,
+    Dt, Real, dt,
 };
 
 impl Dt {
@@ -209,37 +209,27 @@ impl Dt {
         Self::to_i64(self.round_to_sec().to_sec())
     }
 
-    /// Converts this [`Dt`] to an f64 number of seconds since the reference
-    /// epoch of its associated scale.
-    ///
-    /// - The conversion is lossy, as [`f64`] provides approximately 15.95 decimal
-    ///   digits of precision.
+    /// Converts this [`Dt`] to an f64 number of seconds.
     #[inline(always)]
     pub const fn to_f64(&self) -> f64 {
         self.to_sec_f()
     }
 
-    /// Converts this [`Dt`] to a floating-point number of seconds since the reference
-    /// epoch of its associated scale.
-    ///
-    /// - The conversion is lossy, as [`f64`] provides approximately 15.95 decimal
-    ///   digits of precision.
+    /// Converts this [`Dt`] to a float number of seconds.
     pub const fn to_sec_f(&self) -> Real {
-        let attos = self.attos;
-
-        if attos == 0 {
+        if self.attos == 0 {
             return 0.0;
         }
-        let sec = attos.div_euclid(ATTOS_PER_SEC_I128);
-        let rem = attos.rem_euclid(ATTOS_PER_SEC_I128); // always in [0, aps)
+        let sec = self.attos.div_euclid(ATTOS_PER_SEC_I128);
+        let rem = self.attos.rem_euclid(ATTOS_PER_SEC_I128); // always in [0, aps)
 
         if sec < 0 && rem > ATTOS_PER_SEC_I128 / 2 {
             // original cancellation-avoidance path
             let small = ATTOS_PER_SEC_I128 - rem;
             let small_f = f!(small as u64) / ATTOS_PER_SECF;
-            (sec as f64) + 1.0 - small_f
+            f!(sec) + 1.0 - small_f
         } else {
-            (sec as f64) + f!(rem as u64) / ATTOS_PER_SECF
+            f!(sec) + f!(rem as u64) / ATTOS_PER_SECF
         }
     }
 
@@ -288,7 +278,7 @@ impl Dt {
     /// Returns a new [`Dt`] rounded to the nearest second.
     #[inline(always)]
     pub const fn round_to_sec(&self) -> Dt {
-        self.round(crate::dt!(ATTOS_PER_SEC_I128))
+        self.round(dt!(ATTOS_PER_SEC_I128))
     }
 
     /// Returns the total time in attoseconds.
@@ -386,6 +376,37 @@ impl Dt {
         )
     }
 
+    /// Converts this [`Dt`] to a float number of minutes.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, from_sec};
+    ///
+    /// assert_eq!(Dt::ZERO.to_mins_f(), 0.0);
+    ///
+    /// let dt = from_sec!(90);
+    /// assert_eq!(dt.to_mins_f(), 1.5);
+    ///
+    /// let dt = from_sec!(-90);
+    /// assert_eq!(dt.to_mins_f(), -1.5);
+    /// ```
+    pub const fn to_mins_f(&self) -> Real {
+        if self.attos == 0 {
+            return 0.0;
+        }
+        let mins = self.attos.div_euclid(ATTOS_PER_MIN);
+        let rem = self.attos.rem_euclid(ATTOS_PER_MIN);
+
+        if mins < 0 && rem > ATTOS_PER_MIN / 2 {
+            let small = ATTOS_PER_MIN - rem;
+            let small_f = f!(small as u128) / f!(ATTOS_PER_MIN);
+            f!(mins) + 1.0 - small_f
+        } else {
+            f!(mins) + f!(rem as u128) / f!(ATTOS_PER_MIN)
+        }
+    }
+
     /// Converts this [`Dt`] into whole hours and a fractional part within one hour.
     ///
     /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
@@ -398,6 +419,34 @@ impl Dt {
             self.attos.div_euclid(ATTOS_PER_HOUR),
             self.attos.rem_euclid(ATTOS_PER_HOUR) as u128,
         )
+    }
+
+    /// Converts this [`Dt`] to a float number of hours.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, dt, consts::ATTOS_PER_SEC_I128};
+    ///
+    /// assert_eq!(Dt::ZERO.to_hours_f(), 0.0);
+    ///
+    /// let dt = Dt::from_str_iso("2000-01-01 10:30:00 TAI").unwrap();
+    /// assert_eq!(dt.to_hours_f(), -1.5);
+    /// ```
+    pub const fn to_hours_f(&self) -> Real {
+        if self.attos == 0 {
+            return 0.0;
+        }
+        let hours = self.attos.div_euclid(ATTOS_PER_HOUR);
+        let rem = self.attos.rem_euclid(ATTOS_PER_HOUR);
+
+        if hours < 0 && rem > ATTOS_PER_HOUR / 2 {
+            let small = ATTOS_PER_HOUR - rem;
+            let small_f = f!(small as u128) / f!(ATTOS_PER_HOUR);
+            f!(hours) + 1.0 - small_f
+        } else {
+            f!(hours) + f!(rem as u128) / f!(ATTOS_PER_HOUR)
+        }
     }
 
     /// Converts this [`Dt`] into whole days and a fractional part within one day.
@@ -427,6 +476,36 @@ impl Dt {
             self.attos.div_euclid(ATTOS_PER_DAY),
             self.attos.rem_euclid(ATTOS_PER_DAY) as u128,
         )
+    }
+
+    /// Converts this [`Dt`] to a float number of days.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY_U128};
+    ///
+    /// assert_eq!(Dt::ZERO.to_days_f(), 0.0);
+    ///
+    /// // library epoch is 2000-01-01 12:00:00 TAI
+    /// // so -1.5 days
+    /// let dt = Dt::from_ymd(1999, 12, 31, Scale::TAI, 0, 0, 0, 0);
+    /// assert_eq!(dt.to_days_f(), -1.5);
+    /// ```
+    pub const fn to_days_f(&self) -> Real {
+        if self.attos == 0 {
+            return 0.0;
+        }
+        let days = self.attos.div_euclid(ATTOS_PER_DAY);
+        let rem = self.attos.rem_euclid(ATTOS_PER_DAY);
+
+        if days < 0 && rem > ATTOS_PER_DAY / 2 {
+            let small = ATTOS_PER_DAY - rem;
+            let small_f = f!(small as u128) / f!(ATTOS_PER_DAY);
+            f!(days) + 1.0 - small_f
+        } else {
+            f!(days) + f!(rem as u128) / f!(ATTOS_PER_DAY)
+        }
     }
 
     /// Converts this [`Dt`] into whole milliseconds and a fractional part within one millisecond,
