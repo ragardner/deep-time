@@ -264,7 +264,7 @@ impl Dt {
 
     /// Returns the day count since
     /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) as a floating-point
-    /// `Real`.
+    /// [`Real`].
     ///
     /// This is the lossy counterpart to
     /// [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days).
