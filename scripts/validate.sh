@@ -59,6 +59,7 @@ run_clippy() {
 }
 
 run_docs() {
+    export RUSTDOCFLAGS="-D warnings"
     script_log validate "docs — no-default-features (MSRV ${MSRV_TOOLCHAIN:-auto})"
     script_run cargo_msrv doc --no-default-features --no-deps
     script_log validate "docs — all-features (MSRV ${MSRV_TOOLCHAIN:-auto})"
