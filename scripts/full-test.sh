@@ -33,7 +33,7 @@ full-test.sh — run everything CI runs, locally
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   1. cargo fmt --all                     fixes formatting (CI only checks)
-  2. ./scripts/test-matrix.sh            all 4 test feature sets
+  2. ./scripts/test-matrix.sh            all 3 test feature sets
   3. ./scripts/validate.sh               clippy + docs + examples
 
   Same commands as GitHub Actions and release.sh (except release uses fmt --check).

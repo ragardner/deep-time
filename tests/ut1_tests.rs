@@ -18,7 +18,7 @@
 //! tolerances. A residual tolerance is only needed where f64 arithmetic is
 //! inherently lossy (e.g. reconstructing a total Julian Date as `days + frac`).
 
-#[cfg(feature = "eop-tests")]
+#[cfg(all(feature = "eop", feature = "std"))]
 mod tests {
     use deep_time::consts::{ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, SEC_PER_DAY_F};
     use deep_time::eop::{EopData, EopFormat, Separator};

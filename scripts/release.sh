@@ -126,7 +126,7 @@ General
 
   Same commands as CI, plus publish --dry-run:
     • cargo fmt --all -- --check
-    • ./scripts/test-matrix.sh (no-std, no-std-extended, full, tdb-hi —
+    • ./scripts/test-matrix.sh (no-std, no-std-extended, full —
       same as CI and full-test.sh)
     • ./scripts/validate.sh (clippy + docs + examples — same as CI / full-test.sh)
     • cargo publish --dry-run

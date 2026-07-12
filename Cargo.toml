@@ -197,9 +197,6 @@ locale = [
     "dep:sys-locale",
 ]
 
-eop-tests = ["eop", "std"]
-# cargo test --release --features "serde physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz" -- --nocapture
-
 [lints.clippy]
 # cargo clippy --workspace --all-features --all-targets -- -D warnings -W clippy::collapsible_else_if
 non_canonical_partial_ord_impl = "allow"

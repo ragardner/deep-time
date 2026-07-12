@@ -38,7 +38,8 @@ let dt = Dt::from_str_iso("2000-01-01 12:00 TAI").unwrap();
 assert_eq!(dt, Dt::ZERO);
 ```
 
-[`Dt`] is capable of holding massive datetimes, and formatting them:
+[`Dt`] is capable of holding massive datetimes with full attosecond
+resolution, and formatting them:
 
 ```
 use deep_time::{Dt, Lang};

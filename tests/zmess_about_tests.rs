@@ -7,9 +7,10 @@
     feature = "jiff-tz-bundle"
 ))]
 mod tests {
-    use deep_time::{AnErr, DtErr, DtErrKind, an_err};
+    use deep_time::{
+        AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TimeTraits, YmdHms, an_err, from_ymd,
+    };
     // use deep_time::Sidereal;  // needs "sidereal" feature
-    use deep_time::{Dt, Lang, ParseCfg, Scale, TimeTraits, YmdHms};
 
     #[test]
     fn print_stuff() {}

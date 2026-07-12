@@ -154,7 +154,7 @@ impl EopData {
     /// ## Examples
     ///
     /// ```rust
-    /// # #[cfg(feature = "eop-tests")]
+    /// # #[cfg(all(feature = "eop", feature = "std"))]
     /// # {
     /// use deep_time::eop::{EopData, EopFormat, Separator};
     ///
@@ -186,7 +186,7 @@ impl EopData {
     /// ## Examples
     ///
     /// ```rust
-    /// # #[cfg(feature = "eop-tests")]
+    /// # #[cfg(all(feature = "eop", feature = "std"))]
     /// # {
     /// use deep_time::eop::{EopData, EopFormat, Separator};
     ///

@@ -18,14 +18,12 @@ cd "$ROOT"
 # shellcheck source=common.sh
 source "${ROOT}/scripts/common.sh"
 
-FULL_FEATURES="serde defmt physics mars parse hifitime chrono time std wire eop-tests lang sidereal-earth jiff-tz-bundle"
-TDB_HI_FEATURES="tdb-hi hifitime"
+FULL_FEATURES="serde defmt physics mars parse hifitime chrono time std wire eop lang sidereal-earth jiff-tz-bundle"
 
 MATRIX_NAMES=(
     no-std
     no-std-extended
     full
-    tdb-hi
 )
 
 usage() {
@@ -49,9 +47,8 @@ test-matrix.sh — run tests for a feature set
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   no-std            bare minimum, no features
-  no-std-extended   wire, mars, sidereal, physics, tdb-hi
+  no-std-extended   wire, mars, sidereal, physics, hifitime, tdb-hi
   full              all release features incl. parse, jiff-tz-bundle, lang
-  tdb-hi            high-precision TDB tests only (release, 3 test files)
 
   ./scripts/test-matrix.sh --list    print names only
 
@@ -83,7 +80,7 @@ run_no_std() {
 
 run_no_std_extended() {
     script_log test-matrix "no-std-extended"
-    local args=(test --no-default-features --features "wire mars sidereal physics tdb-hi" --workspace)
+    local args=(test --no-default-features --features "defmt mars physics sidereal sidereal-earth wire hifitime" --workspace)
     append_nocapture args
     script_run cargo_msrv "${args[@]}"
 }
@@ -95,22 +92,11 @@ run_full() {
     script_run cargo_msrv "${args[@]}"
 }
 
-run_tdb-hi() {
-    script_log test-matrix "tdb-hi (release, scoped)"
-    local args=(
-        test --release --no-default-features --features "$TDB_HI_FEATURES"
-        --test astropy_conversions_tests --test conversions_tests --test hifitime_tests
-    )
-    append_nocapture args
-    script_run cargo_msrv "${args[@]}"
-}
-
 run_entry() {
     case "$1" in
         no-std) run_no_std ;;
         no-std-extended) run_no_std_extended ;;
         full) run_full ;;
-        tdb-hi) run_tdb-hi ;;
         *)
             echo "Unknown test-matrix entry: $1" >&2
             echo "Valid entries: ${MATRIX_NAMES[*]}" >&2

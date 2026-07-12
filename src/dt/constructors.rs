@@ -293,7 +293,7 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_ms(ms: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_and_signed_attos_to_attos(ms, frac_attos, ATTOS_PER_MS_I128);
+        let attos = Dt::unit_to_total_attos(ms, frac_attos, ATTOS_PER_MS_I128);
         Dt::new(attos, on, target)
     }
 
@@ -331,7 +331,7 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_us(us: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_and_signed_attos_to_attos(us, frac_attos, ATTOS_PER_US_I128);
+        let attos = Dt::unit_to_total_attos(us, frac_attos, ATTOS_PER_US_I128);
         Dt::new(attos, on, target)
     }
 
@@ -369,7 +369,7 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_ns(ns: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_and_signed_attos_to_attos(ns, frac_attos, ATTOS_PER_NS_I128);
+        let attos = Dt::unit_to_total_attos(ns, frac_attos, ATTOS_PER_NS_I128);
         Dt::new(attos, on, target)
     }
 
@@ -407,7 +407,7 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_ps(ps: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_and_signed_attos_to_attos(ps, frac_attos, ATTOS_PER_PS_I128);
+        let attos = Dt::unit_to_total_attos(ps, frac_attos, ATTOS_PER_PS_I128);
         Dt::new(attos, on, target)
     }
 
@@ -447,7 +447,7 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_fs(fs: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_and_signed_attos_to_attos(fs, frac_attos, ATTOS_PER_FS_I128);
+        let attos = Dt::unit_to_total_attos(fs, frac_attos, ATTOS_PER_FS_I128);
         Dt::new(attos, on, target)
     }
 
@@ -484,7 +484,7 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_mins(n: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_and_signed_attos_to_attos(n, frac_attos, ATTOS_PER_MIN);
+        let attos = Dt::unit_to_total_attos(n, frac_attos, ATTOS_PER_MIN);
         Dt::new(attos, on, target)
     }
 
@@ -521,7 +521,7 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_hours(n: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_and_signed_attos_to_attos(n, frac_attos, ATTOS_PER_HOUR);
+        let attos = Dt::unit_to_total_attos(n, frac_attos, ATTOS_PER_HOUR);
         Dt::new(attos, on, target)
     }
 
@@ -558,7 +558,7 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_days(d: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_and_signed_attos_to_attos(d, frac_attos, ATTOS_PER_DAY);
+        let attos = Dt::unit_to_total_attos(d, frac_attos, ATTOS_PER_DAY);
         Dt::new(attos, on, target)
     }
 

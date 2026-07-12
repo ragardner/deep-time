@@ -40,45 +40,13 @@ impl Dt {
         }
     }
 
-    /// Combines a whole unit count and fractional attoseconds within that unit into total
-    /// attoseconds.
-    ///
-    /// Computes `whole * unit_attos + frac_attos`. The fractional part is always **added**, even
-    /// when `whole` is negative — the Euclidean / floor split used by
-    /// [`to_ms_floor`](../struct.Dt.html#method.to_ms_floor),
-    /// [`to_ns_floor`](../struct.Dt.html#method.to_ns_floor).
-    ///
-    /// This is **not** the same as pairing with truncating extractors like
-    /// [`to_ms`](../struct.Dt.html#method.to_ms) (signed remainder).
-    ///
-    /// The fraction is never subtracted even when `whole` is negative.
-    ///
-    /// For the truncating / signed-remainder split, use
-    /// [`unit_and_signed_attos_to_attos`](../struct.Dt.html#method.unit_and_signed_attos_to_attos).
-    #[inline(always)]
-    pub const fn unit_and_attos_to_attos(whole: i128, frac_attos: u128, unit_attos: i128) -> i128 {
-        whole
-            .saturating_mul(unit_attos)
-            .saturating_add(Self::to_i128(frac_attos))
-    }
-
-    /// Combines a whole unit count and a signed fractional remainder into total attoseconds.
-    ///
-    /// The two parts are the left and right sides of a decimal: e.g. `-1.3` units is
-    /// `whole = -1` and a negative `frac_attos` for the `0.3` **(expressed in attoseconds, not
-    /// in the unit itself)**.
+    /// Combines a whole unit count and an **attoseconds** remainder
+    /// into total attoseconds.
     ///
     /// Used by constructors such as
     /// [`from_ms`](../struct.Dt.html#method.from_ms).
-    ///
-    /// For the floor form (fraction always non-negative and always added), use
-    /// [`unit_and_attos_to_attos`](../struct.Dt.html#method.unit_and_attos_to_attos).
     #[inline(always)]
-    pub const fn unit_and_signed_attos_to_attos(
-        whole: i128,
-        frac_attos: i128,
-        unit_attos: i128,
-    ) -> i128 {
+    pub const fn unit_to_total_attos(whole: i128, frac_attos: i128, unit_attos: i128) -> i128 {
         whole.saturating_mul(unit_attos).saturating_add(frac_attos)
     }
 

@@ -46,7 +46,6 @@ jobs:
           - no-std
           - no-std-extended
           - full
-          - tdb-hi
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@master
