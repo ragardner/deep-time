@@ -1,6 +1,4 @@
-use crate::{
-    Dt, DtErr, DtErrKind, FormatNames, Lang, LiteStr, STRTIME_SIZE, Scale, YmdHms, an_err,
-};
+use crate::{Dt, DtErr, DtErrKind, FormatNames, Lang, LiteStr, STRTIME_SIZE, YmdHms, an_err};
 
 struct Printer<'a> {
     ymd: &'a YmdHms,
@@ -223,11 +221,7 @@ impl<'a> Printer<'a> {
                 b'T' => self.write_time_with_seconds_shortcut(),
                 b'R' => self.write_time_without_seconds_shortcut(),
                 b'Z' => self.write_timezone_abbrev(),
-                b'L' => {
-                    if self.ymd.dt.target != Scale::UTC {
-                        self.write_bytes(self.ymd.dt.target.abbrev().as_bytes());
-                    }
-                }
+                b'L' => self.write_bytes(self.ymd.dt.target.abbrev().as_bytes()),
                 b'*' => self.write_unbounded_year(flag, width),
                 b'c' | b'X' | b'x' => {}
                 _ => return Err(an_err!(DtErrKind::UnknownItem, "{}", char::from(directive))),

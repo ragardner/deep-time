@@ -313,7 +313,7 @@ impl Parts {
                 pos += 1;
 
                 // Second (2 digits, if present)
-                if pos + 2 > len_ {
+                if pos + 2 > len_ || !bytes[pos].is_ascii_digit() {
                     break 'time;
                 }
                 let mut sec: u8 = 0;

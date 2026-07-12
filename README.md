@@ -188,15 +188,12 @@ fn main() -> Result<(), DtErr> {
 ### Installation
 
 - **This crate has no default features.**
-- The minimum Rust version is `1.90` and minimum Rust edition is `2024`. This is mainly due to some
-  `const` functionality that only became stable recently.
-- Enable `parse` for the auto-parsers and `jiff-tz` for timezone support and DST-aware calendar math.
+- The minimum Rust version is `1.90` and minimum Rust edition is `2024`. This is mainly due to some `const` functionality that only became stable recently.
 
-For example, add this to your `Cargo.toml` in the `dependencies` section:
+To add deep-time to your Rust project with the parse and timezone features, go to your project folder and run this terminal command:
 
-```toml
-[dependencies]
-deep-time = { version = "0.1", features = ["parse", "jiff-tz"] }
+```text
+cargo add deep-time --features "parse,jiff-tz"
 ```
 
 ### Feature Flags
