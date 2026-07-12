@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F, Real, SEC_PER_DAY_F,
+    ATTOS_PER_DAY, ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F, Real,
     SEC_PER_DAY_I64, Scale,
 };
 
@@ -177,21 +177,23 @@ impl Dt {
     ///
     /// ## Returns
     ///
-    /// A (days, frac attos) pair where:
+    /// A `(days, frac)` pair where:
     ///
-    /// - days (`i128`): whole days elapsed since
+    /// - `days` (`i128`): whole days elapsed since
     ///   [`UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH)
-    ///   on the `target` scale.
-    /// - `frac` ([`Dt`]): sub-day fractional part in attoseconds since the start of
-    ///   that day. `frac.attos` is always in `[0, ATTOS_PER_DAY)`.
-    /// - `frac.scale` and `frac.target` match the
-    ///   [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
-    ///   result.
+    ///   on the `target` scale (truncating toward zero).
+    /// - `frac` ([`Dt`]): fractional part in attoseconds. When the count is negative
+    ///   and has a fractional part, `frac.attos` is negative too — e.g. `-0.5` days is
+    ///   `(0, -ATTOS_PER_DAY / 2)`.
+    /// - `frac.scale` and `frac.target` match [`to_unix`](../struct.Dt.html#method.to_unix).
+    ///
+    /// For a non-negative fractional part, use
+    /// [`to_unix_days_floor`](../struct.Dt.html#method.to_unix_days_floor).
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY_U128};
+    /// use deep_time::{Dt, Scale};
     ///
     /// let epoch = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
     /// let (days, frac) = epoch.to_unix_days();
@@ -200,8 +202,8 @@ impl Dt {
     ///
     /// let neg = Dt::from_ymd(1969, 12, 31, Scale::UTC, 12, 0, 0, 0);
     /// let (days, frac) = neg.to_unix_days();
-    /// assert_eq!(days, -1);
-    /// assert_eq!(frac.to_days_f(), 0.5);
+    /// assert_eq!(days, 0);
+    /// assert_eq!(frac.to_days_f(), -0.5);
     ///
     /// let roundtrip = Dt::from_unix_days(days, frac);
     /// assert_eq!(roundtrip, neg);
@@ -210,10 +212,42 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_unix_days`](../struct.Dt.html#method.from_unix_days)
+    /// - [`Dt::to_unix_days_floor`](../struct.Dt.html#method.to_unix_days_floor)
     /// - [`Dt::to_unix_days_f`](../struct.Dt.html#method.to_unix_days_f)
     /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
     #[inline(always)]
     pub const fn to_unix_days(&self) -> (i128, Dt) {
+        let unix = self.to_unix();
+        let (days, attos) = unix.to_days();
+        (days, Dt::new(attos, unix.scale, unix.target))
+    }
+
+    /// Like [`to_unix_days`](../struct.Dt.html#method.to_unix_days), but the fractional
+    /// part is always non-negative and less than one day.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, from_ymd};
+    ///
+    /// // floor example with negative number with remainder
+    /// let dt = from_ymd!(1969, 12, 30; 12);
+    /// let (days, frac) = dt.to_unix_days_floor();
+    /// assert_eq!(days, -2);
+    /// assert_eq!(frac.to_days_f(), 0.5);
+    ///
+    /// // non-floor comparison
+    /// let dt = from_ymd!(1969, 12, 30; 12);
+    /// let (days, frac) = dt.to_unix_days();
+    /// assert_eq!(days, -1);
+    /// assert_eq!(frac.to_days_f(), -0.5);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days)
+    #[inline(always)]
+    pub const fn to_unix_days_floor(&self) -> (i128, Dt) {
         let unix = self.to_unix();
         let (days, attos) = unix.to_days_floor();
         (days, Dt::new(Self::to_i128(attos), unix.scale, unix.target))
@@ -228,7 +262,7 @@ impl Dt {
     ///
     /// - `days` and `frac.attos` are interpreted on `frac.scale` — if it is
     ///   `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
-    ///   included).
+    ///   included). `frac.attos` is negative when the fractional part is negative.
     /// - [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) is converted
     ///   to that same scale before the sum.
     ///
@@ -263,7 +297,7 @@ impl Dt {
     }
 
     /// Returns the day count since
-    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) as a floating-point
+    /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) as a
     /// [`Real`].
     ///
     /// This is the lossy counterpart to
@@ -291,7 +325,7 @@ impl Dt {
     /// - [`Dt::from_unix_days`](../struct.Dt.html#method.from_unix_days)
     #[inline(always)]
     pub const fn from_unix_days_f(days: Real, on: Scale) -> Dt {
-        Self::from_unix(Dt::new(Dt::sec_f_to_attos(days * SEC_PER_DAY_F), on, on))
+        Self::from_unix(Dt::from_days_f(days, on, on))
     }
 
     /// Returns this [`Dt`] but as time since the

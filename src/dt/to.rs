@@ -449,6 +449,36 @@ impl Dt {
         }
     }
 
+    /// Converts this [`Dt`] into whole days and a fractional part within one day,
+    /// truncating toward zero.
+    ///
+    /// Returns `(whole, frac_attos)`. When the value is negative and has a fractional
+    /// part, `frac_attos` is negative too — e.g. `-1.25` days is
+    /// `(-1, -ATTOS_PER_DAY / 4)`.
+    ///
+    /// For a non-negative fractional part, use [`to_days_floor`](#method.to_days_floor).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY};
+    ///
+    /// let dt = Dt::from_days_f(1.25, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_days(), (1, ATTOS_PER_DAY / 4));
+    ///
+    /// let dt = Dt::from_days_f(-1.25, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_days(), (-1, -ATTOS_PER_DAY / 4));
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_days_floor`](#method.to_days_floor)
+    /// - [`Dt::from_days`](../struct.Dt.html#method.from_days)
+    #[inline(always)]
+    pub const fn to_days(&self) -> (i128, i128) {
+        (self.attos / ATTOS_PER_DAY, self.attos % ATTOS_PER_DAY)
+    }
+
     /// Converts this [`Dt`] into whole days and a fractional part within one day.
     ///
     /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
@@ -470,6 +500,10 @@ impl Dt {
     /// assert_eq!(days, -2);
     /// assert_eq!(attos, ATTOS_PER_HALF_DAY_U128);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_days`](#method.to_days)
     #[inline(always)]
     pub const fn to_days_floor(&self) -> (i128, u128) {
         (
@@ -492,6 +526,10 @@ impl Dt {
     /// let dt = Dt::from_ymd(1999, 12, 31, Scale::TAI, 0, 0, 0, 0);
     /// assert_eq!(dt.to_days_f(), -1.5);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_days_f`](../struct.Dt.html#method.from_days_f)
     pub const fn to_days_f(&self) -> Real {
         if self.attos == 0 {
             return 0.0;

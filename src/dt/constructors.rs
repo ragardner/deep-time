@@ -1,7 +1,7 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_FS_I128, ATTOS_PER_HOUR, ATTOS_PER_MIN, ATTOS_PER_MS_I128,
     ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_US_I128, Dt, Real,
-    SEC_PER_DAY_I64, SEC_PER_WEEK, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
+    SEC_PER_DAY_F, SEC_PER_DAY_I64, SEC_PER_WEEK, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
 };
 
 impl Dt {
@@ -534,32 +534,65 @@ impl Dt {
     /// ## Parameters
     ///
     /// - `d` — whole days (truncating / signed-remainder split).
-    /// - `frac_attos` — fractional part of that split, in attoseconds.
-    ///   Use a time-unit converter rather than counting zeros by hand:
-    ///   - `1.25` d → `d = 1`, `frac_attos = Dt::hours_to_attos(6)` (0.25 d = 6 h)
-    ///   - `-1.25` d → `d = -1`, `frac_attos = Dt::hours_to_attos(-6)`
+    /// - `frac` — fractional part in attoseconds (`frac.attos` only).
+    ///   - `1.25` d → `d = 1`, `frac = dt!(Dt::hours_to_attos(6))` (0.25 d = 6 h)
+    ///   - `-1.25` d → `d = -1`, `frac = dt!(Dt::hours_to_attos(-6))`
     /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
     /// - `target` — value stored in the returned [`Dt`]'s `target` field.
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{AttosTraits, Dt, Scale};
+    /// use deep_time::{AttosTraits, Dt, Scale, dt};
     ///
     /// // 1.25 d
-    /// let a = Dt::from_days(1, Dt::hours_to_attos(6), Scale::TAI, Scale::TAI);
-    /// let b = Dt::from_days(1, 6_i128.hours_to_attos(), Scale::TAI, Scale::TAI);
+    /// let a = Dt::from_days(1, dt!(Dt::hours_to_attos(6)), Scale::TAI, Scale::TAI);
+    /// let b = Dt::from_days(1, dt!(6_i128.hours_to_attos()), Scale::TAI, Scale::TAI);
     /// assert_eq!(a, b);
     /// assert_eq!(a.to_sec(), 108_000); // 1.25 * 86400
     ///
     /// // -1.25 d
-    /// let neg = Dt::from_days(-1, Dt::hours_to_attos(-6), Scale::TAI, Scale::TAI);
+    /// let neg = Dt::from_days(-1, dt!(Dt::hours_to_attos(-6)), Scale::TAI, Scale::TAI);
     /// assert_eq!(neg.to_sec(), -108_000);
     /// ```
     #[inline(always)]
-    pub const fn from_days(d: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_to_total_attos(d, frac_attos, ATTOS_PER_DAY);
+    pub const fn from_days(d: i128, frac: Dt, on: Scale, target: Scale) -> Dt {
+        let attos = Dt::unit_to_total_attos(d, frac.attos, ATTOS_PER_DAY);
         Dt::new(attos, on, target)
+    }
+
+    /// Builds a [`Dt`] from a floating-point day count since the library epoch
+    /// (2000-01-01 12:00:00 TAI).
+    ///
+    /// This is the inverse of [`Dt::to_days_f`](../struct.Dt.html#method.to_days_f).
+    ///
+    /// Does **not** perform any time scale conversions.
+    ///
+    /// ## Parameters
+    ///
+    /// - `days` — day count to store (converted to attoseconds).
+    /// - `on` — value stored in the returned [`Dt`]'s `scale` field.
+    /// - `target` — value stored in the returned [`Dt`]'s `target` field.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let dt = Dt::from_days_f(1.25, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_days_f(), 1.25);
+    ///
+    /// let neg = Dt::from_days_f(-1.25, Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_days_f(), -1.25);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_days`](../struct.Dt.html#method.from_days)
+    /// - [`Dt::to_days_f`](../struct.Dt.html#method.to_days_f)
+    #[inline]
+    pub const fn from_days_f(days: Real, on: Scale, target: Scale) -> Dt {
+        Self::from_sec_f(days * SEC_PER_DAY_F, on, target)
     }
 
     /// Builds a [`Dt`] holding the given number of weeks (`604800` seconds each).

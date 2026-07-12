@@ -1,5 +1,5 @@
-//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`,
-//! `from_ms!`, `from_jd!`, `from_jd_f!`, `from_mjd!`, `from_mjd_f!`, `from_ymd!`,
+//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_days_f!`,
+//! `from_ns!`, `from_ms!`, `from_jd!`, `from_jd_f!`, `from_mjd!`, `from_mjd_f!`, `from_ymd!`,
 //!  …).
 //!
 //! Optional scale labels use Python-style keyword arguments on **count** macros
@@ -227,6 +227,63 @@ macro_rules! from_sec_f {
     };
     ($sec:expr) => {
         $crate::Dt::from_sec_f($sec, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a [`Dt`](crate::Dt) from a floating-point day count with optional
+/// scale labels.
+///
+/// Sugar for [`Dt::from_days_f`](crate::Dt::from_days_f). Does **not** perform
+/// time-scale conversion.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
+///
+/// ## Forms
+///
+/// | Form | Meaning |
+/// |------|---------|
+/// | `from_days_f!(days)` | both scales TAI |
+/// | `from_days_f!(days, on=s)` | scale and target `s` |
+/// | `from_days_f!(days, target=t)` | scale TAI, target `t` |
+/// | `from_days_f!(days, on=s, target=t)` | either order |
+/// | `from_days_f!(days, target=t, on=s)` | either order |
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::Scale;
+/// use deep_time::from_days_f;
+///
+/// let a = from_days_f!(1.25);
+/// let b = from_days_f!(0.0, on=Scale::UTC);
+/// let c = from_days_f!(1.0, on=Scale::TAI, target=Scale::UTC);
+///
+/// assert_eq!(a, deep_time::Dt::from_days_f(1.25, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, deep_time::Dt::from_days_f(0.0, Scale::UTC, Scale::UTC));
+/// assert_eq!(c, deep_time::Dt::from_days_f(1.0, Scale::TAI, Scale::UTC));
+/// ```
+#[macro_export]
+macro_rules! from_days_f {
+    ($days:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_days_f($days, $scale, $target)
+    };
+    ($days:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_days_f($days, $scale, $target)
+    };
+    ($days:expr, on=$scale:expr) => {
+        $crate::Dt::from_days_f($days, $scale, $scale)
+    };
+    ($days:expr, target=$target:expr) => {
+        $crate::Dt::from_days_f($days, $crate::Scale::TAI, $target)
+    };
+    ($days:expr) => {
+        $crate::Dt::from_days_f($days, $crate::Scale::TAI, $crate::Scale::TAI)
     };
 }
 
