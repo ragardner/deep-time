@@ -177,13 +177,16 @@ impl Dt {
     ///
     /// ## Returns
     ///
-    /// A `(days, attos)` pair where:
+    /// A (days, frac attos) pair where:
     ///
-    /// - `days` (`i64`): whole days elapsed since
-    ///   [`UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH).
-    ///   1970-01-01 00:00:00 on the `target` scale is day `0`.
-    /// - `attos` (`u128`): fractional part in attoseconds since the start of that day.
-    ///   Always in the range `[0, ATTOS_PER_DAY)`.
+    /// - days (`i128`): whole days elapsed since
+    ///   [`UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH)
+    ///   on the `target` scale.
+    /// - `frac` ([`Dt`]): sub-day fractional part in attoseconds since the start of
+    ///   that day. `frac.attos` is always in `[0, ATTOS_PER_DAY)`.
+    /// - `frac.scale` and `frac.target` match the
+    ///   [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
+    ///   result.
     ///
     /// ## Examples
     ///
@@ -191,18 +194,17 @@ impl Dt {
     /// use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY_U128};
     ///
     /// let epoch = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
-    /// assert_eq!(epoch.to_unix_days(), (0, 0));
+    /// let (days, frac) = epoch.to_unix_days();
+    /// assert_eq!(days, 0);
+    /// assert_eq!(frac.to_attos(), 0);
     ///
     /// let neg = Dt::from_ymd(1969, 12, 31, Scale::UTC, 12, 0, 0, 0);
-    /// assert_eq!(neg.to_unix_days(), (-1, ATTOS_PER_HALF_DAY_U128));
+    /// let (days, frac) = neg.to_unix_days();
+    /// assert_eq!(days, -1);
+    /// assert_eq!(frac.to_days_f(), 0.5);
     ///
-    /// let noon_2000 = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
-    /// let (days, attos) = noon_2000.to_unix_days();
-    /// assert_eq!(days, 10_957);
-    /// assert_eq!(attos, ATTOS_PER_HALF_DAY_U128);
-    ///
-    /// let roundtrip = Dt::from_unix_days(days, attos, Scale::UTC);
-    /// assert_eq!(roundtrip, noon_2000);
+    /// let roundtrip = Dt::from_unix_days(days, frac);
+    /// assert_eq!(roundtrip, neg);
     /// ```
     ///
     /// ## See also
@@ -211,8 +213,10 @@ impl Dt {
     /// - [`Dt::to_unix_days_f`](../struct.Dt.html#method.to_unix_days_f)
     /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
     #[inline(always)]
-    pub const fn to_unix_days(&self) -> (i128, u128) {
-        self.to_unix().to_days_floor()
+    pub const fn to_unix_days(&self) -> (i128, Dt) {
+        let unix = self.to_unix();
+        let (days, attos) = unix.to_days_floor();
+        (days, Dt::new(Self::to_i128(attos), unix.scale, unix.target))
     }
 
     /// Creates a **TAI** [`Dt`] from a day count since
@@ -222,7 +226,7 @@ impl Dt {
     ///
     /// ## Important:
     ///
-    /// - `days` and `frac_attos` are interpreted on the `on` time scale — if it is
+    /// - `days` and `frac.attos` are interpreted on `frac.scale` — if it is
     ///   `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
     ///   included).
     /// - [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) is converted
@@ -230,16 +234,17 @@ impl Dt {
     ///
     /// ## Returns
     ///
-    /// A **TAI** [`Dt`] for the reconstructed instant. Its `target` field is set to `on`.
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `target` field is taken from
+    /// `frac.target`.
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Scale, from_ymd};
     ///
-    /// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
-    /// let (days, attos) = dt.to_unix_days();
-    /// let roundtrip = Dt::from_unix_days(days, attos, Scale::UTC);
+    /// let dt = from_ymd!(2000, 1, 1; 12);
+    /// let (days, frac) = dt.to_unix_days();
+    /// let roundtrip = Dt::from_unix_days(days, frac);
     ///
     /// assert_eq!(roundtrip, dt);
     /// ```
@@ -249,12 +254,12 @@ impl Dt {
     /// - [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days)
     /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
     /// - [`Dt::from_unix`](../struct.Dt.html#method.from_unix)
-    pub const fn from_unix_days(days: i128, frac_attos: u128, on: Scale) -> Dt {
+    pub const fn from_unix_days(days: i128, frac: Dt) -> Dt {
         let total_attos = days
             .saturating_mul(ATTOS_PER_DAY)
-            .saturating_add(Self::to_i128(frac_attos));
+            .saturating_add(frac.attos);
 
-        Self::from_unix(Dt::new(total_attos, on, on))
+        Self::from_unix(Dt::new(total_attos, frac.scale, frac.target))
     }
 
     /// Returns the day count since
@@ -270,8 +275,8 @@ impl Dt {
     /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
     #[inline]
     pub const fn to_unix_days_f(&self) -> Real {
-        let (days, attos) = self.to_unix_days();
-        f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
+        let (days, frac) = self.to_unix_days();
+        f!(days) + f!(frac.attos) / f!(ATTOS_PER_DAY)
     }
 
     /// Creates a **TAI** [`Dt`] from a floating-point day count since

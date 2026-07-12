@@ -50,9 +50,8 @@ impl Dt {
     /// - [`Dt::to_jd_f_raw`](../struct.Dt.html#method.to_jd_f_raw)
     #[inline(always)]
     pub const fn to_jd_raw(&self) -> (i128, i128) {
-        let attos = self.to_attos();
-        let days_since_j2000 = attos / ATTOS_PER_DAY;
-        let remaining_attos = attos % ATTOS_PER_DAY;
+        let days_since_j2000 = self.attos / ATTOS_PER_DAY;
+        let remaining_attos = self.attos % ATTOS_PER_DAY;
 
         let jd_int = JD_2000_2_451_545_I128.saturating_add(days_since_j2000);
 
@@ -108,18 +107,16 @@ impl Dt {
     ///
     /// - [`Dt::to_jd_floor`](../struct.Dt.html#method.to_jd_floor)
     /// - [`Dt::to_jd_raw`](../struct.Dt.html#method.to_jd_raw)
-    #[inline(always)]
     pub const fn to_jd_floor_raw(&self) -> (i128, u128) {
-        let attos = self.to_attos();
-        let days_since_j2000 = attos.div_euclid(ATTOS_PER_DAY);
-        let remaining_attos = attos.rem_euclid(ATTOS_PER_DAY);
+        let days_since_j2000 = self.attos.div_euclid(ATTOS_PER_DAY);
+        let remaining_attos = self.attos.rem_euclid(ATTOS_PER_DAY);
 
         let jd_int = JD_2000_2_451_545_I128.saturating_add(days_since_j2000);
 
         (jd_int, remaining_attos as u128)
     }
 
-    /// Returns this instant's Julian Date as an `f64`.
+    /// Returns this instant's Julian Date as a [`Real`].
     ///
     /// ## Important
     ///
@@ -127,7 +124,7 @@ impl Dt {
     ///   JD on a particular scale (e.g. `Scale::TT` or `Scale::TDB`).
     /// - Assumes this [`Dt`] is on the 2000-01-01 noon epoch.
     /// - Same value as [`Dt::to_jd`](../struct.Dt.html#method.to_jd), expressed as a single
-    ///   `f64` instead of a `(days, frac_attos)` pair.
+    ///   [`Real`] instead of a `(days, frac_attos)` pair.
     ///
     /// ## Examples
     ///
@@ -292,7 +289,7 @@ impl Dt {
         }
     }
 
-    /// Returns this instant's Modified Julian Date as an `f64`.
+    /// Returns this instant's Modified Julian Date as an [`Real`].
     ///
     /// ## Important
     ///
@@ -300,7 +297,7 @@ impl Dt {
     ///   MJD on a particular scale.
     /// - Assumes this [`Dt`] is on the 2000-01-01 noon epoch.
     /// - Same value as [`Dt::to_mjd`](../struct.Dt.html#method.to_mjd), expressed as a single
-    ///   `f64` instead of a `(days, frac_attos)` pair.
+    ///   [`Real`] instead of a `(days, frac_attos)` pair.
     ///
     /// ## Examples
     ///
