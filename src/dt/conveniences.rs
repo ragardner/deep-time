@@ -635,9 +635,9 @@ impl Dt {
     /// independent of the Gregorian calendar or civil time.
     pub const fn to_gps_day_of_wk(&self) -> u8 {
         let (_, tow) = self.to_gps_wk_and_tow();
-        let secs = tow.to_attos() / ATTOS_PER_SEC_I128;
+        let sec = tow.to_attos() / ATTOS_PER_SEC_I128;
 
-        (secs / SEC_PER_DAY_I64 as i128) as u8
+        (sec / SEC_PER_DAY_I64 as i128) as u8
     }
 
     /// Returns this [`Dt`] but as time since the

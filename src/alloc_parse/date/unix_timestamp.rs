@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_SEC_I128, Dt, NS_PER_SEC, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos,
+    ATTOS_PER_SEC_I128, Dt, NS_PER_SEC, Scale, TAI_SEC_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos,
 };
 
 /// Pure-numeric Unix timestamp fallback with automatic unit detection.
@@ -12,7 +12,7 @@ use crate::{
 /// `div_euclid`/`rem_euclid` everywhere for negative-timestamp handling.
 ///
 /// It's purely numeric so the scale is assumed to be UTC so the use of
-/// TAI_SECS_1970_MIDNIGHT_TO_2000_NOON seems to be ok here
+/// TAI_SEC_1970_MIDNIGHT_TO_2000_NOON seems to be ok here
 pub(crate) fn parse_pure_numeric_unix_timestamp(
     trimmed: &str,
     integer_digits: usize,
@@ -44,12 +44,12 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
         // FIXED: sign now applies to the whole value (int + frac)
         let total_nanos = (int_val + frac_nanos) * sign;
 
-        let unix_secs_i128 = total_nanos.div_euclid(NS_PER_SEC);
-        let secs_i128 = unix_secs_i128 - (TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128);
+        let unix_sec_i128 = total_nanos.div_euclid(NS_PER_SEC);
+        let sec_i128 = unix_sec_i128 - (TAI_SEC_1970_MIDNIGHT_TO_2000_NOON as i128);
         let rem_nanos = total_nanos.rem_euclid(NS_PER_SEC) as u64;
-        let secs: i64 = secs_i128.try_into().ok()?;
+        let sec: i64 = sec_i128.try_into().ok()?;
 
-        let total_attos = Dt::sec_to_attos(secs as i128) + (rem_nanos * 1_000_000_000) as i128;
+        let total_attos = Dt::sec_to_attos(sec as i128) + (rem_nanos * 1_000_000_000) as i128;
         return Some(Dt::new(total_attos, Scale::UTC, Scale::UTC).to_tai());
     }
 
@@ -75,7 +75,7 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
     };
 
     let total_attos_since_unix = (int_val * attos_per_unit + frac_attos) * sign;
-    let epoch_offset = (TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128;
+    let epoch_offset = (TAI_SEC_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128;
     let total_attos = total_attos_since_unix - epoch_offset;
 
     Some(Dt::new(total_attos, Scale::UTC, Scale::UTC).to_tai())

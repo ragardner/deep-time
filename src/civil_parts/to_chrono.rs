@@ -116,8 +116,8 @@ impl Parts {
     /// Helper: resolve fixed offset / UTC only.
     fn to_chrono_offset(&self) -> Result<FixedOffset, DtErr> {
         match self.offset {
-            Some(Offset::Fixed(secs)) => FixedOffset::east_opt(secs)
-                .ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "{}", secs)),
+            Some(Offset::Fixed(sec)) => FixedOffset::east_opt(sec)
+                .ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "{}", sec)),
             Some(Offset::None) | None => {
                 FixedOffset::east_opt(0).ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "0"))
             }
@@ -190,9 +190,9 @@ impl Parts {
                         .ok_or_else(|| an_err!(DtErrKind::InvalidTime))?,
                     );
 
-                    let offset_secs = zoned.offset().seconds();
-                    let offset = FixedOffset::east_opt(offset_secs)
-                        .ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "{}", offset_secs))?;
+                    let offset_sec = zoned.offset().seconds();
+                    let offset = FixedOffset::east_opt(offset_sec)
+                        .ok_or_else(|| an_err!(DtErrKind::InvalidOffset, "{}", offset_sec))?;
 
                     return offset
                         .from_local_datetime(&resolved_naive)

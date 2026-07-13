@@ -26,8 +26,8 @@ impl Dt {
     /// [`Observer::one_way_relativistic_delay`](../../struct.Observer.html#method.one_way_relativistic_delay).
     #[inline]
     pub const fn shapiro_from_grav_param(gm: Real) -> Dt {
-        let secs = 2.0 * gm / (C * C_SQUARED);
-        Self::from_sec_f(secs, Scale::TAI, Scale::TAI)
+        let sec = 2.0 * gm / (C * C_SQUARED);
+        Self::from_sec_f(sec, Scale::TAI, Scale::TAI)
     }
 
     /// Creates an [`Observer`] using this time value along with the

@@ -101,7 +101,7 @@ impl Dt {
     /// Formats this [`Dt`] into a String, applying a fixed offset. Requires the
     /// `"alloc"` feature.
     ///
-    /// - A copy of the [`Dt`] is adjusted by the given `secs` offset **before**
+    /// - A copy of the [`Dt`] is adjusted by the given `sec` offset **before**
     ///   formatting, and the offset is stored so that `%z` / `%:z` format directives
     ///   will reflect it.
     /// - No IANA timezone name or abbreviation is set.
@@ -132,9 +132,9 @@ impl Dt {
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz)
     #[inline(always)]
-    pub fn to_str_in_offset(&self, fmt: &str, secs: i32, lang: Lang) -> Result<String, DtErr> {
-        self.ymd_with_offset(secs)
-            ._to_str(fmt, Some(secs), None, None, lang)
+    pub fn to_str_in_offset(&self, fmt: &str, sec: i32, lang: Lang) -> Result<String, DtErr> {
+        self.ymd_with_offset(sec)
+            ._to_str(fmt, Some(sec), None, None, lang)
     }
 
     /// Formats this [`Dt`] into a string, time adjusted to the given IANA timezone.
@@ -433,7 +433,7 @@ impl Dt {
 
     /// Formats this [`Dt`] into a fixed-size binary string, applying a fixed UTC offset.
     ///
-    /// - A copy of the [`Dt`] is adjusted by the given `secs` offset **before**
+    /// - A copy of the [`Dt`] is adjusted by the given `sec` offset **before**
     ///   formatting, and the offset is stored so that `%z` / `%:z` format directives
     ///   will reflect it.
     /// - No IANA timezone name or abbreviation is set.
@@ -468,11 +468,11 @@ impl Dt {
     pub fn to_str_lite_in_offset(
         &self,
         fmt: &str,
-        secs: i32,
+        sec: i32,
         lang: Lang,
     ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
-        self.ymd_with_offset(secs)
-            ._to_str_lite(fmt, Some(secs), None, None, lang)
+        self.ymd_with_offset(sec)
+            ._to_str_lite(fmt, Some(sec), None, None, lang)
     }
 
     /// Formats this [`Dt`] into a fixed-size binary string, time adjusted to the given
@@ -652,9 +652,9 @@ impl Dt {
     }
 
     #[inline(always)]
-    pub(crate) fn ymd_with_offset(&self, secs: i32) -> YmdHms {
-        if secs != 0 {
-            self.add_sec(secs as i128).to_ymd()
+    pub(crate) fn ymd_with_offset(&self, sec: i32) -> YmdHms {
+        if sec != 0 {
+            self.add_sec(sec as i128).to_ymd()
         } else {
             self.to_ymd()
         }
@@ -666,7 +666,7 @@ impl Dt {
         apply_offset: bool,
     ) -> Result<(YmdHms, i32, LiteStr<49>), DtErr> {
         #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
-        let (offset_secs, abbrev): (i32, LiteStr<49>) = {
+        let (offset_sec, abbrev): (i32, LiteStr<49>) = {
             use jiff::{Timestamp, tz::TimeZone};
 
             let tz =
@@ -678,14 +678,14 @@ impl Dt {
                 .map_err(|e| an_err!(DtErrKind::InvalidTimestamp, "{}", e))?;
 
             let info = tz.to_offset_info(ts);
-            let offset_secs = info.offset().seconds();
+            let offset_sec = info.offset().seconds();
             let abbrev: LiteStr<49> = LiteStr::new(info.abbreviation());
 
-            (offset_secs, abbrev)
+            (offset_sec, abbrev)
         };
 
         #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
-        let (offset_secs, abbrev): (i32, LiteStr<49>) = {
+        let (offset_sec, abbrev): (i32, LiteStr<49>) = {
             if !UTC_ALIASES.contains(&tz_name) {
                 return Err(an_err!(DtErrKind::MissingFeature));
             }
@@ -694,13 +694,13 @@ impl Dt {
             (0i32, abbrev)
         };
 
-        let ymd = if offset_secs != 0 && apply_offset {
-            self.add_sec(offset_secs as i128).to_ymd()
+        let ymd = if offset_sec != 0 && apply_offset {
+            self.add_sec(offset_sec as i128).to_ymd()
         } else {
             self.to_ymd()
         };
 
-        Ok((ymd, offset_secs, abbrev))
+        Ok((ymd, offset_sec, abbrev))
     }
 }
 
@@ -747,7 +747,7 @@ impl Dt {
         let hours = rem / 3600;
         let rem = rem % 3600;
         let mins = rem / 60;
-        let secs = rem % 60;
+        let sec = rem % 60;
 
         if days > 0 {
             pos += write_u128(&mut buf[pos..], days);
@@ -759,7 +759,7 @@ impl Dt {
             pos += write_u128_padded(&mut buf[pos..], mins);
             buf[pos] = b':';
             pos += 1;
-            pos += write_u128_padded(&mut buf[pos..], secs);
+            pos += write_u128_padded(&mut buf[pos..], sec);
         } else if hours > 0 {
             pos += write_u128(&mut buf[pos..], hours);
             buf[pos] = b':';
@@ -767,12 +767,12 @@ impl Dt {
             pos += write_u128_padded(&mut buf[pos..], mins);
             buf[pos] = b':';
             pos += 1;
-            pos += write_u128_padded(&mut buf[pos..], secs);
+            pos += write_u128_padded(&mut buf[pos..], sec);
         } else {
             pos += write_u128(&mut buf[pos..], mins);
             buf[pos] = b':';
             pos += 1;
-            pos += write_u128_padded(&mut buf[pos..], secs);
+            pos += write_u128_padded(&mut buf[pos..], sec);
         }
 
         (buf, pos)

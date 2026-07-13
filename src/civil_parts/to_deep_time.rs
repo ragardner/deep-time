@@ -121,14 +121,14 @@ impl Parts {
             if !name_str.is_empty() {
                 #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
                 {
-                    use crate::TAI_SECS_1970_MIDNIGHT_TO_2000_NOON;
+                    use crate::TAI_SEC_1970_MIDNIGHT_TO_2000_NOON;
                     use jiff::{Timestamp, tz::TimeZone};
 
                     let tz =
                         TimeZone::get(name_str).map_err(|_| an_err!(DtErrKind::InvalidTimeZone))?;
 
                     let provisional_unix =
-                        total_sec.saturating_add(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
+                        total_sec.saturating_add(TAI_SEC_1970_MIDNIGHT_TO_2000_NOON);
 
                     let civil = Timestamp::from_second(provisional_unix)
                         .map_err(|_| an_err!(DtErrKind::InvalidTimestamp))?
@@ -142,7 +142,7 @@ impl Parts {
                     total_sec = zoned
                         .timestamp()
                         .as_second()
-                        .saturating_sub(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON);
+                        .saturating_sub(TAI_SEC_1970_MIDNIGHT_TO_2000_NOON);
                 }
                 #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
                 {

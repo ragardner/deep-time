@@ -727,28 +727,28 @@ impl Dt {
         while let Some(comp) = Self::parse_next_component(chars, &mut i, sign, has_fraction)? {
             let contrib_nanos = match (is_date, comp.unit) {
                 (true, b'Y' | b'y') => {
-                    let total_secs = (comp.signed_int as i128)
+                    let total_sec = (comp.signed_int as i128)
                         .checked_mul(SEC_PER_YEAR)
                         .ok_or_else(|| an_err!(DtErrKind::YearOutOfRange))?;
-                    total_secs * 1_000_000_000i128
+                    total_sec * 1_000_000_000i128
                 }
                 (true, b'M' | b'm') => {
-                    let total_secs = (comp.signed_int as i128)
+                    let total_sec = (comp.signed_int as i128)
                         .checked_mul(SEC_PER_MONTH)
                         .ok_or_else(|| an_err!(DtErrKind::MonthOutOfRange))?;
-                    total_secs * 1_000_000_000i128
+                    total_sec * 1_000_000_000i128
                 }
                 (true, b'W' | b'w') => {
-                    let total_secs = (comp.signed_int as i128)
+                    let total_sec = (comp.signed_int as i128)
                         .checked_mul(SEC_PER_WEEK as i128)
                         .ok_or_else(|| an_err!(DtErrKind::WeekOutOfRange))?;
-                    total_secs * 1_000_000_000i128
+                    total_sec * 1_000_000_000i128
                 }
                 (true, b'D' | b'd') => {
-                    let total_secs = (comp.signed_int as i128)
+                    let total_sec = (comp.signed_int as i128)
                         .checked_mul(SEC_PER_DAY)
                         .ok_or_else(|| an_err!(DtErrKind::DayOutOfRange))?;
-                    total_secs * 1_000_000_000i128
+                    total_sec * 1_000_000_000i128
                 }
                 (false, b'H' | b'h') => (comp.signed_int as i128) * 3_600_000_000_000i128,
                 (false, b'M' | b'm') => (comp.signed_int as i128) * 60_000_000_000i128,
@@ -882,15 +882,15 @@ impl Dt {
         }
 
         // Convert to total seconds
-        let total_secs: i128 = match count {
+        let total_sec: i128 = match count {
             2 => components[0] * 60 + components[1], // M:SS
             3 => components[0] * 3600 + components[1] * 60 + components[2], // H:MM:SS
             4 => components[0] * 86400 + components[1] * 3600 + components[2] * 60 + components[3], // D:H:MM:SS
             _ => unreachable!(),
         };
 
-        let total_secs = if negative { -total_secs } else { total_secs };
-        let attos = total_secs.saturating_mul(ATTOS_PER_SEC_I128);
+        let total_sec = if negative { -total_sec } else { total_sec };
+        let attos = total_sec.saturating_mul(ATTOS_PER_SEC_I128);
 
         Ok(crate::dt!(attos))
     }

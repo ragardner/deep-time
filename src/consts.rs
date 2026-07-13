@@ -106,7 +106,7 @@ pub const MJD_1970: i64 = 40_587;
 pub const TAI_ATTOS_AT_1972: i128 = -883_655_990_000_000_000_000_000_000;
 
 /// TAI seconds from 1970-01-01 midnight to 2000-01-01 noon.
-pub const TAI_SECS_1970_MIDNIGHT_TO_2000_NOON: i64 = 946_728_000;
+pub const TAI_SEC_1970_MIDNIGHT_TO_2000_NOON: i64 = 946_728_000;
 
 /// Numerator of L_G = 6.969290134 × 10^{-10} (IAU) as a fixed-point fraction.
 pub(crate) const LG_NUM: i128 = 6_969_290_134;

@@ -1,7 +1,7 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_FS_I128, ATTOS_PER_HOUR, ATTOS_PER_MIN, ATTOS_PER_MS_I128,
     ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_US_I128, Dt, Real,
-    SEC_PER_DAY_F, SEC_PER_DAY_I64, SEC_PER_WEEK, Scale, TAI_SECS_1970_MIDNIGHT_TO_2000_NOON,
+    SEC_PER_DAY_F, SEC_PER_DAY_I64, SEC_PER_WEEK, Scale, TAI_SEC_1970_MIDNIGHT_TO_2000_NOON,
 };
 
 impl Dt {
@@ -21,7 +21,7 @@ impl Dt {
     /// - Does not take into account historical UTC offsets from the "rubber time" era.
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const UNIX_EPOCH: Self = Self::new(
-        -(TAI_SECS_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128,
+        -(TAI_SEC_1970_MIDNIGHT_TO_2000_NOON as i128) * ATTOS_PER_SEC_I128,
         Scale::TAI,
         Scale::UTC,
     );
@@ -831,7 +831,7 @@ impl Dt {
     pub fn now() -> Dt {
         let now = std::time::SystemTime::now();
 
-        let (secs, nanos): (i64, i64) = match now.duration_since(std::time::UNIX_EPOCH) {
+        let (sec, nanos): (i64, i64) = match now.duration_since(std::time::UNIX_EPOCH) {
             Ok(dur) => (dur.as_secs() as i64, dur.subsec_nanos() as i64),
             Err(e) => {
                 let dur = e.duration();
@@ -840,7 +840,7 @@ impl Dt {
         };
 
         Dt::from_diff_and_scale(
-            Dt::new(Dt::sec_to_attos(secs as i128), Scale::TAI, Scale::UTC),
+            Dt::new(Dt::sec_to_attos(sec as i128), Scale::TAI, Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )
@@ -852,10 +852,10 @@ impl Dt {
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
     pub fn now() -> Dt {
         let ms: f64 = js_sys::Date::now();
-        let secs = (ms / 1000.0).floor() as i128;
+        let sec = (ms / 1000.0).floor() as i128;
         let nanos = ((ms % 1000.0) * 1_000_000.0) as i128;
         Dt::from_diff_and_scale(
-            Dt::new(Dt::sec_to_attos(secs), Scale::TAI, Scale::UTC),
+            Dt::new(Dt::sec_to_attos(sec), Scale::TAI, Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )

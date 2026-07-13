@@ -128,11 +128,11 @@ impl Parts {
             if !name_str.is_empty() {
                 bdt.set_iana_time_zone(Some(String::from(name_str)));
             }
-        } else if let Some(Offset::Fixed(secs)) = self.offset {
-            if let Ok(jiff_offset) = JiffOffset::from_seconds(secs) {
+        } else if let Some(Offset::Fixed(sec)) = self.offset {
+            if let Ok(jiff_offset) = JiffOffset::from_seconds(sec) {
                 bdt.set_offset(Some(jiff_offset));
             } else {
-                return Err(an_err!(DtErrKind::InvalidOffset, "{}", secs));
+                return Err(an_err!(DtErrKind::InvalidOffset, "{}", sec));
             }
         } else {
             // Utc / None → treat as UTC
