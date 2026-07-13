@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{AttosTraits, Dt, Scale, consts::ATTOS_PER_SEC_I128};
+use deep_time::{Dt, Scale, TraitsAttos, consts::ATTOS_PER_SEC_I128};
 
 #[cfg(feature = "parse")]
 #[test]

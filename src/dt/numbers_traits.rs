@@ -1,7 +1,7 @@
 //! Ergonomic time-unit constructors (optional import).
 //!
 //! ```
-//! use deep_time::{Scale, TimeTraits};
+//! use deep_time::{Scale, TraitsTime};
 //!
 //! let span = 5.sec() + 250.ms() + 123_456.ns();
 //! let stamp = 3.days().before_zero(Scale::UTC);
@@ -22,7 +22,7 @@ use crate::{Dt, SEC_PER_DAY, SEC_PER_DAY_F, Scale};
 /// ## Examples
 ///
 /// ```rust
-/// use deep_time::AttosTraits;
+/// use deep_time::TraitsAttos;
 ///
 /// let attos: i128 = -5_600_000_000_000_000_000;
 /// let seconds = attos.attos_to_sec();
@@ -31,7 +31,7 @@ use crate::{Dt, SEC_PER_DAY, SEC_PER_DAY_F, Scale};
 /// assert_eq!(5_i128.ns_to_attos(), 5_000_000_000);
 /// assert_eq!(1_i128.ms_to_attos().attos_to_ms(), 1);
 /// ```
-pub trait AttosTraits: Copy + Sized {
+pub trait TraitsAttos: Copy + Sized {
     /// attoseconds → seconds (s)
     fn attos_to_sec(self) -> i128;
 
@@ -78,7 +78,7 @@ pub trait AttosTraits: Copy + Sized {
     fn hours_to_attos(self) -> i128;
 }
 
-impl AttosTraits for i128 {
+impl TraitsAttos for i128 {
     #[inline]
     fn attos_to_sec_f(self) -> f64 {
         Dt::attos_to_sec_f(self)
@@ -160,11 +160,19 @@ impl AttosTraits for i128 {
 /// ## Examples
 ///
 /// ```rust
-/// use deep_time::TimeTraits;
+/// use deep_time::TraitsTime;
 ///
+/// let dt = 500.ns();
+/// let dt = 500.us();
+/// let dt = 500.ms();
+/// let dt = 30.sec();
+/// let dt = 30.mins();
+/// let dt = 2.hours();
 /// let dt = 5.days();
+/// let dt = 4.weeks();
+/// let dt = 10.years();
 /// ```
-pub trait TimeTraits: Copy + Sized {
+pub trait TraitsTime: Copy + Sized {
     fn ns(self) -> Dt;
     fn us(self) -> Dt;
     fn ms(self) -> Dt;
@@ -180,7 +188,7 @@ pub trait TimeTraits: Copy + Sized {
 macro_rules! impl_time_units_int {
     ($($ty:ty),* $(,)?) => {
         $(
-            impl TimeTraits for $ty {
+            impl TraitsTime for $ty {
                 #[inline]
                 fn ns(self) -> Dt { Dt::from_ns(self as i128, 0, Scale::TAI, Scale::TAI) }
 
@@ -215,7 +223,7 @@ macro_rules! impl_time_units_int {
 impl_time_units_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64);
 
 // `u128` alone among the integer impls can exceed `i128::MAX`; saturate instead of wrapping.
-impl TimeTraits for u128 {
+impl TraitsTime for u128 {
     #[inline]
     fn ns(self) -> Dt {
         Dt::from_ns(Dt::to_i128(self), 0, Scale::TAI, Scale::TAI)
@@ -274,7 +282,7 @@ impl TimeTraits for u128 {
     }
 }
 
-impl TimeTraits for f64 {
+impl TraitsTime for f64 {
     #[inline]
     fn ns(self) -> Dt {
         crate::from_sec_f!(self * 1e-9)
@@ -321,7 +329,7 @@ impl TimeTraits for f64 {
     }
 }
 
-impl TimeTraits for f32 {
+impl TraitsTime for f32 {
     #[inline]
     fn ns(self) -> Dt {
         crate::from_sec_f!(self as f64 * 1e-9)

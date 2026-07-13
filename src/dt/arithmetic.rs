@@ -263,7 +263,7 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, TimeTraits};
+    /// use deep_time::{Dt, TraitsTime};
     ///
     /// // Round to nearest second
     /// let dt = 1.3.sec();
