@@ -170,12 +170,12 @@ macro_rules! mins {
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, hours};
+/// use deep_time::{Dt, hrs};
 ///
-/// assert_eq!(hours!(1), Dt::hours_to_attos(1));
+/// assert_eq!(hrs!(1), Dt::hours_to_attos(1));
 /// ```
 #[macro_export]
-macro_rules! hours {
+macro_rules! hrs {
     ($x:expr) => {
         $crate::Dt::hours_to_attos($x)
     };
@@ -232,14 +232,230 @@ macro_rules! days_f {
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, weeks};
+/// use deep_time::{Dt, wks};
 ///
-/// assert_eq!(weeks!(1), Dt::weeks_to_attos(1));
+/// assert_eq!(wks!(1), Dt::weeks_to_attos(1));
 /// ```
 #[macro_export]
-macro_rules! weeks {
+macro_rules! wks {
     ($x:expr) => {
         $crate::Dt::weeks_to_attos($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole femtoseconds (`i128`).
+///
+/// Sugar for [`Dt::attos_to_fs`](../struct.Dt.html#method.attos_to_fs). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_fs};
+///
+/// assert_eq!(as_fs!(Dt::fs_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_fs {
+    ($x:expr) => {
+        $crate::Dt::attos_to_fs($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole picoseconds (`i128`).
+///
+/// Sugar for [`Dt::attos_to_ps`](../struct.Dt.html#method.attos_to_ps). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_ps};
+///
+/// assert_eq!(as_ps!(Dt::ps_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_ps {
+    ($x:expr) => {
+        $crate::Dt::attos_to_ps($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole nanoseconds (`i128`).
+///
+/// Sugar for [`Dt::attos_to_ns`](../struct.Dt.html#method.attos_to_ns). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_ns};
+///
+/// assert_eq!(as_ns!(Dt::ns_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_ns {
+    ($x:expr) => {
+        $crate::Dt::attos_to_ns($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole microseconds (`i128`).
+///
+/// Sugar for [`Dt::attos_to_us`](../struct.Dt.html#method.attos_to_us). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_us};
+///
+/// assert_eq!(as_us!(Dt::us_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_us {
+    ($x:expr) => {
+        $crate::Dt::attos_to_us($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole milliseconds (`i128`).
+///
+/// Sugar for [`Dt::attos_to_ms`](../struct.Dt.html#method.attos_to_ms). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_ms};
+///
+/// assert_eq!(as_ms!(Dt::ms_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_ms {
+    ($x:expr) => {
+        $crate::Dt::attos_to_ms($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole seconds (`i128`).
+///
+/// Sugar for [`Dt::attos_to_sec`](../struct.Dt.html#method.attos_to_sec). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_sec};
+///
+/// assert_eq!(as_sec!(Dt::sec_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_sec {
+    ($x:expr) => {
+        $crate::Dt::attos_to_sec($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → float seconds ([`Real`](crate::Real)).
+///
+/// Sugar for [`Dt::attos_to_sec_f`](../struct.Dt.html#method.attos_to_sec_f). Lossy.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_sec_f};
+///
+/// assert_eq!(as_sec_f!(Dt::sec_to_attos(3)), 3.0);
+/// ```
+#[macro_export]
+macro_rules! as_sec_f {
+    ($x:expr) => {
+        $crate::Dt::attos_to_sec_f($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole minutes (`i128`).
+///
+/// Sugar for [`Dt::attos_to_mins`](../struct.Dt.html#method.attos_to_mins). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_mins};
+///
+/// assert_eq!(as_mins!(Dt::mins_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_mins {
+    ($x:expr) => {
+        $crate::Dt::attos_to_mins($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole hours (`i128`).
+///
+/// Sugar for [`Dt::attos_to_hours`](../struct.Dt.html#method.attos_to_hours). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_hrs};
+///
+/// assert_eq!(as_hrs!(Dt::hours_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_hrs {
+    ($x:expr) => {
+        $crate::Dt::attos_to_hours($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole days (`i128`).
+///
+/// Sugar for [`Dt::attos_to_days`](../struct.Dt.html#method.attos_to_days). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_days};
+///
+/// assert_eq!(as_days!(Dt::days_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_days {
+    ($x:expr) => {
+        $crate::Dt::attos_to_days($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → floating-point days ([`Real`](crate::Real)).
+///
+/// Sugar for [`Dt::attos_to_days_f`](../struct.Dt.html#method.attos_to_days_f). Lossy.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_days_f};
+///
+/// assert_eq!(as_days_f!(Dt::days_to_attos(3)), 3.0);
+/// ```
+#[macro_export]
+macro_rules! as_days_f {
+    ($x:expr) => {
+        $crate::Dt::attos_to_days_f($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → whole weeks (`i128`).
+///
+/// Sugar for [`Dt::attos_to_weeks`](../struct.Dt.html#method.attos_to_weeks). Truncating division.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, as_wks};
+///
+/// assert_eq!(as_wks!(Dt::weeks_to_attos(3)), 3);
+/// ```
+#[macro_export]
+macro_rules! as_wks {
+    ($x:expr) => {
+        $crate::Dt::attos_to_weeks($x)
     };
 }
 
@@ -980,9 +1196,9 @@ macro_rules! from_fs {
 ///
 /// Sugar for [`Dt::from_jd`](../struct.Dt.html#method.from_jd).
 ///
-/// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
-/// `on=Scale::UTC` applies leap seconds). `on` defaults to
-/// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
+/// When an `on` arg is provided and it's not [`Scale::TAI`](crate::Scale::TAI)
+/// then a time scale conversion is performed equivalent to `on` ->
+/// [`Scale::TAI`](crate::Scale::TAI).
 ///
 /// There is no `target=` on this macro — the returned [`Dt`](../struct.Dt.html)'s
 /// `target` is set from `on` (or TAI when omitted), as
@@ -1054,9 +1270,9 @@ macro_rules! from_jd {
 ///
 /// Sugar for [`Dt::from_jd_f`](../struct.Dt.html#method.from_jd_f).
 ///
-/// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
-/// `on=Scale::UTC` applies leap seconds). `on` defaults to
-/// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
+/// When an `on` arg is provided and it's not [`Scale::TAI`](crate::Scale::TAI)
+/// then a time scale conversion is performed equivalent to `on` ->
+/// [`Scale::TAI`](crate::Scale::TAI).
 ///
 /// There is no `target=` on this macro — the returned [`Dt`](../struct.Dt.html)'s
 /// `target` is set from `on` (or TAI when omitted), as
@@ -1111,9 +1327,9 @@ macro_rules! from_jd_f {
 ///
 /// Sugar for [`Dt::from_mjd`](../struct.Dt.html#method.from_mjd).
 ///
-/// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
-/// `on=Scale::UTC` applies leap seconds). `on` defaults to
-/// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
+/// When an `on` arg is provided and it's not [`Scale::TAI`](crate::Scale::TAI)
+/// then a time scale conversion is performed equivalent to `on` ->
+/// [`Scale::TAI`](crate::Scale::TAI).
 ///
 /// There is no `target=` on this macro — the returned [`Dt`](../struct.Dt.html)'s
 /// `target` is set from `on` (or TAI when omitted), as
@@ -1185,9 +1401,9 @@ macro_rules! from_mjd {
 ///
 /// Sugar for [`Dt::from_mjd_f`](../struct.Dt.html#method.from_mjd_f).
 ///
-/// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
-/// `on=Scale::UTC` applies leap seconds). `on` defaults to
-/// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
+/// When an `on` arg is provided and it's not [`Scale::TAI`](crate::Scale::TAI)
+/// then a time scale conversion is performed equivalent to `on` ->
+/// [`Scale::TAI`](crate::Scale::TAI).
 ///
 /// There is no `target=` on this macro — the returned [`Dt`](../struct.Dt.html)'s
 /// `target` is set from `on` (or TAI when omitted), as
@@ -1247,6 +1463,12 @@ macro_rules! from_mjd_f {
 /// **semicolon after the day**, then hour (required if `;` is present), then
 /// optional minute, second, and attoseconds. An optional `on=` civil scale may
 /// follow.
+///
+/// A time scale conversion is performed from the `on` arg ->
+/// [`Scale::TAI`](crate::Scale::TAI).
+///
+/// When no `on` arg is used the time scale is assumed to be
+/// [`Scale::UTC`](crate::Scale::UTC).
 ///
 /// | Omitted field | Default |
 /// |---------------|---------|

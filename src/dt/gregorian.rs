@@ -82,6 +82,7 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_ymd`](#method.from_ymd)
+    /// - [`from_ymd!`](../macro.from_ymd.html)
     ///
     /// ## Implementation
     ///
@@ -163,6 +164,7 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::to_ymd`](#method.to_ymd)
+    /// - [`from_ymd!`](../macro.from_ymd.html)
     ///
     /// ## Implementation
     ///
