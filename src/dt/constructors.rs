@@ -32,8 +32,11 @@ impl Dt {
     /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -3_155_716_800_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
-    pub const NTP_EPOCH: Self =
-        Self::new(-3155716800000000000000000000i128, Scale::TAI, Scale::TAI);
+    pub const NTP_EPOCH: Self = Self::new(
+        -3_155_716_800_000_000_000_000_000_000i128,
+        Scale::TAI,
+        Scale::TAI,
+    );
 
     /// TT/TCG/TCB/TDB epoch.
     ///
@@ -41,8 +44,11 @@ impl Dt {
     /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -725_803_200_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
-    pub const TAI_1977_EPOCH: Self =
-        Self::new(-725803200000000000000000000i128, Scale::TAI, Scale::TAI);
+    pub const TAI_1977_EPOCH: Self = Self::new(
+        -725_803_200_000_000_000_000_000_000i128,
+        Scale::TAI,
+        Scale::TAI,
+    );
 
     /// Chandra X-ray Center (CXC) Time epoch.
     ///
@@ -50,7 +56,11 @@ impl Dt {
     /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -63_115_232_184_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
-    pub const CXC_EPOCH: Self = Self::new(-63115232184000000000000000i128, Scale::TAI, Scale::TT);
+    pub const CXC_EPOCH: Self = Self::new(
+        -63_115_232_184_000_000_000_000_000i128,
+        Scale::TAI,
+        Scale::TT,
+    );
 
     /// GPS/Galileo Experiment (GALEX) Time epoch.
     ///
@@ -58,7 +68,11 @@ impl Dt {
     /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -630_763_181_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
-    pub const GPS_EPOCH: Self = Self::new(-630763181000000000000000000i128, Scale::TAI, Scale::GPS);
+    pub const GPS_EPOCH: Self = Self::new(
+        -630_763_181_000_000_000_000_000_000i128,
+        Scale::TAI,
+        Scale::GPS,
+    );
 
     /// Galileo System Time (GST) epoch.
     ///
@@ -66,8 +80,11 @@ impl Dt {
     /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - -11_447_981_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
-    pub const GALILEO_EPOCH: Self =
-        Self::new(-11447981000000000000000000i128, Scale::TAI, Scale::GST);
+    pub const GALILEO_EPOCH: Self = Self::new(
+        -11_447_981_000_000_000_000_000_000i128,
+        Scale::TAI,
+        Scale::GST,
+    );
 
     /// BeiDou Time (BDT) epoch.
     ///
@@ -75,7 +92,11 @@ impl Dt {
     /// - Stored here on the **TAI** timescale as an offset from [`Dt::ZERO`](#associatedconstant.ZERO).
     /// - 189_345_633_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
-    pub const BDT_EPOCH: Self = Self::new(189345633000000000000000000i128, Scale::TAI, Scale::BDT);
+    pub const BDT_EPOCH: Self = Self::new(
+        189_345_633_000_000_000_000_000_000i128,
+        Scale::TAI,
+        Scale::BDT,
+    );
 
     /// CCSDS epoch (used in CCSDS time codes such as CUC).
     ///
@@ -108,7 +129,7 @@ impl Dt {
     /// - -4_453_444_800_000_000_000_000_000_000 attoseconds
     /// - The library's epoch for time scales during conversions is 2000-01-01 12:00:00.
     pub const MJD_EPOCH: Self = Self::new(
-        -4_453_444_800_000_000_000_000_000_000,
+        -4_453_444_800_000_000_000_000_000_000i128,
         Scale::TAI,
         Scale::TAI,
     );
@@ -153,6 +174,11 @@ impl Dt {
     ///
     /// assert_eq!(a, b);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`dt!`](../macro.dt.html)
+    /// - [`ns!`](../macro.ns.html)
     #[inline(always)]
     pub const fn new(attos: i128, scale: Scale, target: Scale) -> Dt {
         Dt {
@@ -183,7 +209,12 @@ impl Dt {
     ///
     /// assert_eq!(original, roundtrip1, "Canonical round-trip failed");
     /// ```
-    #[inline]
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_diff_raw`](../struct.Dt.html#method.to_diff_raw)
+    /// - [`Dt::to_diff_raw_f`](../struct.Dt.html#method.to_diff_raw_f)
+    #[inline(always)]
     pub const fn from_diff_raw(attos: i128, epoch: Dt) -> Dt {
         epoch.add(Dt::new(attos, epoch.scale, epoch.target))
     }
@@ -279,21 +310,30 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{AttosTraits, Dt, Scale};
+    /// use deep_time::{AttosTraits, Dt, Scale, us};
     ///
     /// // 1.3 ms
-    /// let a = Dt::from_ms(1, Dt::us_to_attos(300), Scale::TAI, Scale::TAI);
+    /// let a = Dt::from_ms(1, us!(300), Scale::TAI, Scale::TAI);
     /// let b = Dt::from_ms(1, 300_i128.us_to_attos(), Scale::TAI, Scale::TAI);
     /// assert_eq!(a, b);
     /// assert_eq!(a.to_attos(), 1_300_000_000_000_000);
     ///
     /// // -1.3 ms
-    /// let neg = Dt::from_ms(-1, Dt::us_to_attos(-300), Scale::TAI, Scale::TAI);
+    /// let neg = Dt::from_ms(-1, us!(-300), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_attos(), -1_300_000_000_000_000);
+    ///
+    /// // or as floored -1.3 ms
+    /// let neg = Dt::from_ms(-2, us!(700), Scale::TAI, Scale::TAI);
     /// assert_eq!(neg.to_attos(), -1_300_000_000_000_000);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`from_ms!`](../macro.from_ms.html)
+    /// - [`us!`](../macro.us.html)
     #[inline(always)]
-    pub const fn from_ms(ms: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_to_total_attos(ms, frac_attos, ATTOS_PER_MS_I128);
+    pub const fn from_ms(ms: i128, attos: i128, on: Scale, target: Scale) -> Dt {
+        let attos = Dt::unit_to_total_attos(ms, attos, ATTOS_PER_MS_I128);
         Dt::new(attos, on, target)
     }
 
@@ -317,21 +357,30 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{AttosTraits, Dt, Scale};
+    /// use deep_time::{AttosTraits, Dt, Scale, ns};
     ///
     /// // 1.3 µs
-    /// let a = Dt::from_us(1, Dt::ns_to_attos(300), Scale::TAI, Scale::TAI);
+    /// let a = Dt::from_us(1, ns!(300), Scale::TAI, Scale::TAI);
     /// let b = Dt::from_us(1, 300_i128.ns_to_attos(), Scale::TAI, Scale::TAI);
     /// assert_eq!(a, b);
     /// assert_eq!(a.to_attos(), 1_300_000_000_000);
     ///
     /// // -1.3 µs
-    /// let neg = Dt::from_us(-1, Dt::ns_to_attos(-300), Scale::TAI, Scale::TAI);
+    /// let neg = Dt::from_us(-1, ns!(-300), Scale::TAI, Scale::TAI);
+    /// assert_eq!(neg.to_attos(), -1_300_000_000_000);
+    ///
+    /// // or as floored -1.3 µs
+    /// let neg = Dt::from_us(-2, ns!(700), Scale::TAI, Scale::TAI);
     /// assert_eq!(neg.to_attos(), -1_300_000_000_000);
     /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`from_us!`](../macro.from_us.html)
+    /// - [`ns!`](../macro.ns.html)
     #[inline(always)]
-    pub const fn from_us(us: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_to_total_attos(us, frac_attos, ATTOS_PER_US_I128);
+    pub const fn from_us(us: i128, attos: i128, on: Scale, target: Scale) -> Dt {
+        let attos = Dt::unit_to_total_attos(us, attos, ATTOS_PER_US_I128);
         Dt::new(attos, on, target)
     }
 
@@ -368,8 +417,8 @@ impl Dt {
     /// assert_eq!(neg.to_attos(), -1_300_000_000);
     /// ```
     #[inline(always)]
-    pub const fn from_ns(ns: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_to_total_attos(ns, frac_attos, ATTOS_PER_NS_I128);
+    pub const fn from_ns(ns: i128, attos: i128, on: Scale, target: Scale) -> Dt {
+        let attos = Dt::unit_to_total_attos(ns, attos, ATTOS_PER_NS_I128);
         Dt::new(attos, on, target)
     }
 
@@ -406,8 +455,8 @@ impl Dt {
     /// assert_eq!(neg.to_attos(), -1_300_000);
     /// ```
     #[inline(always)]
-    pub const fn from_ps(ps: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_to_total_attos(ps, frac_attos, ATTOS_PER_PS_I128);
+    pub const fn from_ps(ps: i128, attos: i128, on: Scale, target: Scale) -> Dt {
+        let attos = Dt::unit_to_total_attos(ps, attos, ATTOS_PER_PS_I128);
         Dt::new(attos, on, target)
     }
 
@@ -446,8 +495,8 @@ impl Dt {
     /// assert_eq!(neg.to_attos(), -1_300);
     /// ```
     #[inline(always)]
-    pub const fn from_fs(fs: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_to_total_attos(fs, frac_attos, ATTOS_PER_FS_I128);
+    pub const fn from_fs(fs: i128, attos: i128, on: Scale, target: Scale) -> Dt {
+        let attos = Dt::unit_to_total_attos(fs, attos, ATTOS_PER_FS_I128);
         Dt::new(attos, on, target)
     }
 
@@ -483,8 +532,8 @@ impl Dt {
     /// assert_eq!(neg.to_sec(), -90);
     /// ```
     #[inline(always)]
-    pub const fn from_mins(n: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_to_total_attos(n, frac_attos, ATTOS_PER_MIN);
+    pub const fn from_mins(n: i128, attos: i128, on: Scale, target: Scale) -> Dt {
+        let attos = Dt::unit_to_total_attos(n, attos, ATTOS_PER_MIN);
         Dt::new(attos, on, target)
     }
 
@@ -520,8 +569,8 @@ impl Dt {
     /// assert_eq!(neg.to_sec(), -5400);
     /// ```
     #[inline(always)]
-    pub const fn from_hours(n: i128, frac_attos: i128, on: Scale, target: Scale) -> Dt {
-        let attos = Dt::unit_to_total_attos(n, frac_attos, ATTOS_PER_HOUR);
+    pub const fn from_hours(n: i128, attos: i128, on: Scale, target: Scale) -> Dt {
+        let attos = Dt::unit_to_total_attos(n, attos, ATTOS_PER_HOUR);
         Dt::new(attos, on, target)
     }
 
@@ -655,7 +704,6 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::after_zero`](../struct.Dt.html#method.after_zero)
     /// - [`Dt::ago`](../struct.Dt.html#method.ago)
     #[inline(always)]
     pub const fn before_zero(self, scale: Scale) -> Dt {
@@ -697,7 +745,6 @@ impl Dt {
     ///
     /// assert_eq!(duration.to_sec_f(), seconds);
     /// ```
-    #[inline]
     pub const fn from_sec_f(sec: Real, on: Scale, target: Scale) -> Dt {
         if sec.is_nan() {
             return Self::new(0, on, target);
@@ -846,7 +893,7 @@ impl Dt {
         all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))),
         all(target_arch = "wasm32", feature = "js"),
     ))]
-    #[inline]
+    #[inline(always)]
     pub fn ago(self) -> Dt {
         Dt::now().sub(self)
     }
@@ -856,9 +903,6 @@ impl Dt {
     /// Adds `self` to [`Dt::now`](../struct.Dt.html#method.now). Available under the same
     /// conditions as that method: the `std` feature (non-WASM-js), or WASM with the `js`
     /// feature.
-    ///
-    /// For a `const` offset from the library epoch (no system clock), use
-    /// [`Dt::after_zero`](../struct.Dt.html#method.after_zero).
     ///
     /// ## Examples
     ///
@@ -876,13 +920,12 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::ago`](../struct.Dt.html#method.ago)
-    /// - [`Dt::after_zero`](../struct.Dt.html#method.after_zero)
     /// - [`Dt::now`](../struct.Dt.html#method.now)
     #[cfg(any(
         all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))),
         all(target_arch = "wasm32", feature = "js"),
     ))]
-    #[inline]
+    #[inline(always)]
     pub fn from_now(self) -> Dt {
         Dt::now().add(self)
     }

@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_SEC_I128, ATTOS_PER_WEEK, Dt, JD_2000_2_451_545F, Real,
-    SEC_PER_DAY_I64, Scale,
+    SEC_PER_DAY_I64, Scale, dt,
 };
 
 impl Dt {
@@ -193,19 +193,19 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::{Dt, Scale, dt};
     ///
     /// let epoch = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
     /// let (days, frac) = epoch.to_unix_days();
     /// assert_eq!(days, 0);
-    /// assert_eq!(frac.to_attos(), 0);
+    /// assert_eq!(frac, 0);
     ///
     /// let neg = Dt::from_ymd(1969, 12, 31, Scale::UTC, 12, 0, 0, 0);
     /// let (days, frac) = neg.to_unix_days();
     /// assert_eq!(days, 0);
-    /// assert_eq!(frac.to_days_f(), -0.5);
+    /// assert_eq!(dt!(frac).to_days_f(), -0.5);
     ///
-    /// let roundtrip = Dt::from_unix_days(days, frac);
+    /// let roundtrip = Dt::from_unix_days(days, frac, Scale::UTC);
     /// assert_eq!(roundtrip, neg);
     /// ```
     ///
@@ -216,10 +216,8 @@ impl Dt {
     /// - [`Dt::to_unix_days_f`](../struct.Dt.html#method.to_unix_days_f)
     /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
     #[inline(always)]
-    pub const fn to_unix_days(&self) -> (i128, Dt) {
-        let unix = self.to_unix();
-        let (days, attos) = unix.to_days();
-        (days, Dt::new(attos, unix.scale, unix.target))
+    pub const fn to_unix_days(&self) -> (i128, i128) {
+        self.to_unix().to_days()
     }
 
     /// Like [`to_unix_days`](../struct.Dt.html#method.to_unix_days), but the fractional
@@ -228,29 +226,27 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, from_ymd};
+    /// use deep_time::{Dt, Scale, dt, from_ymd};
     ///
     /// // floor example with negative number with remainder
     /// let dt = from_ymd!(1969, 12, 30; 12);
     /// let (days, frac) = dt.to_unix_days_floor();
     /// assert_eq!(days, -2);
-    /// assert_eq!(frac.to_days_f(), 0.5);
+    /// assert_eq!(dt!(frac).to_days_f(), 0.5);
     ///
     /// // non-floor comparison
     /// let dt = from_ymd!(1969, 12, 30; 12);
     /// let (days, frac) = dt.to_unix_days();
     /// assert_eq!(days, -1);
-    /// assert_eq!(frac.to_days_f(), -0.5);
+    /// assert_eq!(dt!(frac).to_days_f(), -0.5);
     /// ```
     ///
     /// ## See also
     ///
     /// - [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days)
     #[inline(always)]
-    pub const fn to_unix_days_floor(&self) -> (i128, Dt) {
-        let unix = self.to_unix();
-        let (days, attos) = unix.to_days_floor();
-        (days, Dt::new(Self::to_i128(attos), unix.scale, unix.target))
+    pub const fn to_unix_days_floor(&self) -> (i128, i128) {
+        self.to_unix().to_days_floor()
     }
 
     /// Creates a **TAI** [`Dt`] from a day count since
@@ -260,25 +256,24 @@ impl Dt {
     ///
     /// ## Important:
     ///
-    /// - `days` and `frac.attos` are interpreted on `frac.scale` — if it is
+    /// - `days` and `frac_attos` are interpreted on the `on` time scale — if it is
     ///   `Scale::UTC`, the count is treated as UTC and converted to TAI (leap seconds
-    ///   included). `frac.attos` is negative when the fractional part is negative.
+    ///   included).
     /// - [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH) is converted
     ///   to that same scale before the sum.
     ///
     /// ## Returns
     ///
-    /// A **TAI** [`Dt`] for the reconstructed instant. Its `target` field is taken from
-    /// `frac.target`.
+    /// A **TAI** [`Dt`] for the reconstructed instant. Its `target` field is set to `on`.
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, from_ymd};
+    /// use deep_time::{Dt, Scale};
     ///
-    /// let dt = from_ymd!(2000, 1, 1; 12);
-    /// let (days, frac) = dt.to_unix_days();
-    /// let roundtrip = Dt::from_unix_days(days, frac);
+    /// let dt = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+    /// let (days, attos) = dt.to_unix_days();
+    /// let roundtrip = Dt::from_unix_days(days, attos, Scale::UTC);
     ///
     /// assert_eq!(roundtrip, dt);
     /// ```
@@ -288,12 +283,13 @@ impl Dt {
     /// - [`Dt::to_unix_days`](../struct.Dt.html#method.to_unix_days)
     /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
     /// - [`Dt::from_unix`](../struct.Dt.html#method.from_unix)
-    pub const fn from_unix_days(days: i128, frac: Dt) -> Dt {
-        let total_attos = days
-            .saturating_mul(ATTOS_PER_DAY)
-            .saturating_add(frac.attos);
-
-        Self::from_unix(Dt::new(total_attos, frac.scale, frac.target))
+    #[inline]
+    pub const fn from_unix_days(days: i128, attos: i128, on: Scale) -> Dt {
+        let unix = dt!(
+            days.saturating_mul(ATTOS_PER_DAY).saturating_add(attos),
+            on = on
+        );
+        Self::from_unix(unix)
     }
 
     /// Returns the day count since
@@ -309,8 +305,8 @@ impl Dt {
     /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
     #[inline]
     pub const fn to_unix_days_f(&self) -> Real {
-        let (days, frac) = self.to_unix_days();
-        f!(days) + f!(frac.attos) / f!(ATTOS_PER_DAY)
+        let (days, attos) = self.to_unix_days();
+        f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
 
     /// Creates a **TAI** [`Dt`] from a floating-point day count since
@@ -570,9 +566,9 @@ impl Dt {
     ///
     /// - [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow)
     /// - [`Dt::to_gps`](../struct.Dt.html#method.to_gps)
-    pub const fn to_gps_wk_and_tow(&self) -> (i64, Dt) {
+    pub const fn to_gps_wk_and_tow(&self) -> (i128, Dt) {
         let total_attos = self.to_gps().to_attos();
-        let wk = total_attos.div_euclid(ATTOS_PER_WEEK) as i64;
+        let wk = total_attos.div_euclid(ATTOS_PER_WEEK);
         let tow_attos = total_attos.rem_euclid(ATTOS_PER_WEEK);
         // was converted to target scale, scale is now target
         (wk, Dt::new(tow_attos, self.target, self.target))
@@ -625,8 +621,8 @@ impl Dt {
     ///
     /// - [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
     /// - [`Dt::from_gps`](../struct.Dt.html#method.from_gps)
-    pub const fn from_gps_wk_and_tow(wk: i64, tow: Dt) -> Dt {
-        let total_attos = (wk as i128)
+    pub const fn from_gps_wk_and_tow(wk: i128, tow: Dt) -> Dt {
+        let total_attos = wk
             .saturating_mul(ATTOS_PER_WEEK)
             .saturating_add(tow.to_attos());
 

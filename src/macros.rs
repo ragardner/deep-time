@@ -1,27 +1,251 @@
-//! Crate-root convenience macros (`dt!`, `from_sec!`, `from_sec_f!`, `from_days_f!`,
-//! `from_ns!`, `from_ms!`, `from_jd!`, `from_jd_f!`, `from_mjd!`, `from_mjd_f!`, `from_ymd!`,
-//!  …).
-//!
-//! Optional scale labels use Python-style keyword arguments on **count** macros
-//! (`dt!`, `from_sec!`, `from_sec_f!`, `from_ns!`, `from_ms!`, …):
-//!
-//! - `on=<scale>` — stored as the [`Dt`](crate::Dt)'s `scale` field (and as
-//!   `target` when `target=` is omitted).
-//! - `target=<scale>` — stored as the `target` field; `on` defaults to
-//!   [`Scale::TAI`](crate::Scale::TAI).
-//!
-//! Either keyword may appear alone or together, in either order.
-//!
-//! [`from_jd!`](crate::from_jd), [`from_jd_f!`](crate::from_jd_f),
-//! [`from_mjd!`](crate::from_mjd), [`from_mjd_f!`](crate::from_mjd_f), and
-//! [`from_ymd!`](crate::from_ymd) only take
-//! a single `on=` scale (see each
-//! macro); use [`.target(…)`](crate::Dt::target) afterward if the
-//! `target` field should differ.
+//! Convenience macros
 
-/// Builds a [`Dt`](crate::Dt) from total attoseconds with optional scale labels.
+/// Converts whole femtoseconds (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::new`](crate::Dt::new). Does **not** perform time-scale
+/// Sugar for [`Dt::fs_to_attos`](../struct.Dt.html#method.fs_to_attos). Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
+/// constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, fs};
+///
+/// assert_eq!(fs!(1), Dt::fs_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! fs {
+    ($x:expr) => {
+        $crate::Dt::fs_to_attos($x)
+    };
+}
+
+/// Converts whole picoseconds (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::ps_to_attos`](../struct.Dt.html#method.ps_to_attos). Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
+/// constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, ps};
+///
+/// assert_eq!(ps!(1), Dt::ps_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! ps {
+    ($x:expr) => {
+        $crate::Dt::ps_to_attos($x)
+    };
+}
+
+/// Converts whole nanoseconds (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::ns_to_attos`](../struct.Dt.html#method.ns_to_attos). Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
+/// constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, ns};
+///
+/// assert_eq!(ns!(1), Dt::ns_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! ns {
+    ($x:expr) => {
+        $crate::Dt::ns_to_attos($x)
+    };
+}
+
+/// Converts whole microseconds (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::us_to_attos`](../struct.Dt.html#method.us_to_attos). Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
+/// constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, us};
+///
+/// assert_eq!(us!(1), Dt::us_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! us {
+    ($x:expr) => {
+        $crate::Dt::us_to_attos($x)
+    };
+}
+
+/// Converts whole milliseconds (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::ms_to_attos`](../struct.Dt.html#method.ms_to_attos). Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
+/// constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, ms};
+///
+/// assert_eq!(ms!(1), Dt::ms_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! ms {
+    ($x:expr) => {
+        $crate::Dt::ms_to_attos($x)
+    };
+}
+
+/// Converts whole seconds (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::sec_to_attos`](../struct.Dt.html#method.sec_to_attos). Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
+/// constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, sec};
+///
+/// assert_eq!(sec!(1), Dt::sec_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! sec {
+    ($x:expr) => {
+        $crate::Dt::sec_to_attos($x)
+    };
+}
+
+/// Converts a floating-point second count ([`Real`](crate::Real)) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::sec_f_to_attos`](../struct.Dt.html#method.sec_f_to_attos). Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only converts the second count to attoseconds via the
+/// high-precision IEEE 754 path.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, sec_f};
+///
+/// assert_eq!(sec_f!(1.5), Dt::sec_f_to_attos(1.5));
+/// ```
+#[macro_export]
+macro_rules! sec_f {
+    ($x:expr) => {
+        $crate::Dt::sec_f_to_attos($x)
+    };
+}
+
+/// Converts whole minutes (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::mins_to_attos`](../struct.Dt.html#method.mins_to_attos). Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
+/// constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, mins};
+///
+/// assert_eq!(mins!(1), Dt::mins_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! mins {
+    ($x:expr) => {
+        $crate::Dt::mins_to_attos($x)
+    };
+}
+
+/// Converts whole hours (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::hours_to_attos`](../struct.Dt.html#method.hours_to_attos).
+/// Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the
+/// attoseconds-per-unit constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, hours};
+///
+/// assert_eq!(hours!(1), Dt::hours_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! hours {
+    ($x:expr) => {
+        $crate::Dt::hours_to_attos($x)
+    };
+}
+
+/// Converts whole days (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::days_to_attos`](../struct.Dt.html#method.days_to_attos). Does **not**
+/// build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
+/// constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, days};
+///
+/// assert_eq!(days!(1), Dt::days_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! days {
+    ($x:expr) => {
+        $crate::Dt::days_to_attos($x)
+    };
+}
+
+/// Converts a floating-point day count ([`Real`](crate::Real)) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::days_f_to_attos`](../struct.Dt.html#method.days_f_to_attos). Does **not**
+/// build a
+/// [`Dt`](../struct.Dt.html) — only converts the day count to attoseconds.
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, days_f};
+///
+/// assert_eq!(days_f!(0.25), Dt::days_f_to_attos(0.25));
+/// ```
+#[macro_export]
+macro_rules! days_f {
+    ($x:expr) => {
+        $crate::Dt::days_f_to_attos($x)
+    };
+}
+
+/// Converts whole weeks (`i128`) to total attoseconds (`i128`).
+///
+/// Sugar for [`Dt::weeks_to_attos`](../struct.Dt.html#method.weeks_to_attos).
+/// Does **not** build a
+/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the
+/// attoseconds-per-unit constant (saturating).
+///
+/// ## Example
+///
+/// ```rust
+/// use deep_time::{Dt, weeks};
+///
+/// assert_eq!(weeks!(1), Dt::weeks_to_attos(1));
+/// ```
+#[macro_export]
+macro_rules! weeks {
+    ($x:expr) => {
+        $crate::Dt::weeks_to_attos($x)
+    };
+}
+
+/// Builds a [`Dt`](../struct.Dt.html) from total attoseconds with optional scale labels.
+///
+/// Sugar for [`Dt::new`](../struct.Dt.html#method.new). Does **not** perform time-scale
 /// conversion.
 ///
 /// ## Defaults
@@ -78,14 +302,14 @@ macro_rules! dt {
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from whole seconds and an optional signed
+/// Builds a [`Dt`](../struct.Dt.html) from whole seconds and an optional signed
 /// sub-second remainder (attoseconds).
 ///
-/// Sugar for [`Dt::from_sec_and_frac`](crate::Dt::from_sec_and_frac). Does
-/// **not** perform time-scale conversion.
+/// Sugar for [`Dt::from_sec_and_frac`](../struct.Dt.html#method.from_sec_and_frac).
+/// Does **not** perform time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`Dt::ms_to_attos`](crate::Dt::ms_to_attos) (or another `*_to_attos`
+/// [`ms!`](../macro.ms.html) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -115,27 +339,27 @@ macro_rules! dt {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_sec};
+/// use deep_time::{Dt, Scale, from_sec, ms};
 ///
 /// // 1.3 s → whole seconds + 300 ms remainder
 /// let a = from_sec!(1);
-/// let b = from_sec!(1, Dt::ms_to_attos(300));
-/// let c = from_sec!(-1, Dt::ms_to_attos(-300), on=Scale::TAI);
+/// let b = from_sec!(1, ms!(300));
+/// let c = from_sec!(-1, ms!(-300), on=Scale::TAI);
 /// let d = from_sec!(0, on=Scale::UTC);
 /// let e = from_sec!(1, on=Scale::TAI, target=Scale::UTC);
 /// let f = from_sec!(1, target=Scale::UTC, on=Scale::TAI);
 ///
 /// assert_eq!(a, Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::TAI));
-/// assert_eq!(b, Dt::from_sec_and_frac(1, Dt::ms_to_attos(300), Scale::TAI, Scale::TAI));
-/// assert_eq!(c, Dt::from_sec_and_frac(-1, Dt::ms_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_sec_and_frac(1, ms!(300), Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_sec_and_frac(-1, ms!(-300), Scale::TAI, Scale::TAI));
 /// assert_eq!(d, Dt::from_sec_and_frac(0, 0, Scale::UTC, Scale::UTC));
 /// assert_eq!(e, Dt::from_sec_and_frac(1, 0, Scale::TAI, Scale::UTC));
 /// assert_eq!(f, e);
 ///
-/// let signed = from_sec!(-1, Dt::ms_to_attos(-300));
-/// let floor = from_sec!(-2, Dt::ms_to_attos(700));
+/// let signed = from_sec!(-1, ms!(-300));
+/// let floor = from_sec!(-2, ms!(700));
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, Dt::from_sec_and_frac(-1, Dt::ms_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(signed, Dt::from_sec_and_frac(-1, ms!(-300), Scale::TAI, Scale::TAI));
 /// ```
 #[macro_export]
 macro_rules! from_sec {
@@ -171,10 +395,10 @@ macro_rules! from_sec {
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from a floating-point seconds count with optional
+/// Builds a [`Dt`](../struct.Dt.html) from a floating-point seconds count with optional
 /// scale labels.
 ///
-/// Sugar for [`Dt::from_sec_f`](crate::Dt::from_sec_f). Does **not** perform
+/// Sugar for [`Dt::from_sec_f`](../struct.Dt.html#method.from_sec_f). Does **not** perform
 /// time-scale conversion.
 ///
 /// ## Defaults
@@ -230,11 +454,11 @@ macro_rules! from_sec_f {
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from a floating-point day count with optional
+/// Builds a [`Dt`](../struct.Dt.html) from a floating-point day count with optional
 /// scale labels.
 ///
-/// Sugar for [`Dt::from_days_f`](crate::Dt::from_days_f). Does **not** perform
-/// time-scale conversion.
+/// Sugar for [`Dt::from_days_f`](../struct.Dt.html#method.from_days_f). Does **not**
+/// perform time-scale conversion.
 ///
 /// ## Defaults
 ///
@@ -287,14 +511,14 @@ macro_rules! from_days_f {
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from whole nanoseconds and an optional signed
+/// Builds a [`Dt`](../struct.Dt.html) from whole nanoseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_ns`](crate::Dt::from_ns). Does **not** perform
+/// Sugar for [`Dt::from_ns`](../struct.Dt.html#method.from_ns). Does **not** perform
 /// time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`Dt::ps_to_attos`](crate::Dt::ps_to_attos) (or another `*_to_attos`
+/// [`ps!`](../macro.ps.html) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -324,27 +548,27 @@ macro_rules! from_days_f {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_ns};
+/// use deep_time::{Dt, Scale, from_ns, ps};
 ///
 /// // 1.3 ns → whole nanoseconds + 300 ps remainder
 /// let a = from_ns!(1);
-/// let b = from_ns!(1, Dt::ps_to_attos(300));
-/// let c = from_ns!(-1, Dt::ps_to_attos(-300), on=Scale::TAI);
+/// let b = from_ns!(1, ps!(300));
+/// let c = from_ns!(-1, ps!(-300), on=Scale::TAI);
 /// let d = from_ns!(0, on=Scale::UTC);
 /// let e = from_ns!(1, on=Scale::TAI, target=Scale::UTC);
 /// let f = from_ns!(1, target=Scale::UTC);
 ///
 /// assert_eq!(a, Dt::from_ns(1, 0, Scale::TAI, Scale::TAI));
-/// assert_eq!(b, Dt::from_ns(1, Dt::ps_to_attos(300), Scale::TAI, Scale::TAI));
-/// assert_eq!(c, Dt::from_ns(-1, Dt::ps_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_ns(1, ps!(300), Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_ns(-1, ps!(-300), Scale::TAI, Scale::TAI));
 /// assert_eq!(d, Dt::from_ns(0, 0, Scale::UTC, Scale::UTC));
 /// assert_eq!(e, Dt::from_ns(1, 0, Scale::TAI, Scale::UTC));
 /// assert_eq!(f, e);
 ///
-/// let signed = from_ns!(-1, Dt::ps_to_attos(-300));
-/// let floor = from_ns!(-2, Dt::ps_to_attos(700));
+/// let signed = from_ns!(-1, ps!(-300));
+/// let floor = from_ns!(-2, ps!(700));
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, Dt::from_ns(-1, Dt::ps_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(signed, Dt::from_ns(-1, ps!(-300), Scale::TAI, Scale::TAI));
 /// ```
 #[macro_export]
 macro_rules! from_ns {
@@ -380,14 +604,14 @@ macro_rules! from_ns {
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from whole milliseconds and an optional signed
+/// Builds a [`Dt`](../struct.Dt.html) from whole milliseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_ms`](crate::Dt::from_ms). Does **not** perform
+/// Sugar for [`Dt::from_ms`](../struct.Dt.html#method.from_ms). Does **not** perform
 /// time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`Dt::us_to_attos`](crate::Dt::us_to_attos) (or another `*_to_attos`
+/// [`us!`](../macro.us.html) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -417,27 +641,27 @@ macro_rules! from_ns {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_ms};
+/// use deep_time::{Dt, Scale, from_ms, us};
 ///
 /// // 1.3 ms → whole milliseconds + 300 µs remainder
 /// let a = from_ms!(1);
-/// let b = from_ms!(1, Dt::us_to_attos(300));
-/// let c = from_ms!(-1, Dt::us_to_attos(-300), on=Scale::TAI);
+/// let b = from_ms!(1, us!(300));
+/// let c = from_ms!(-1, us!(-300), on=Scale::TAI);
 /// let d = from_ms!(0, on=Scale::UTC);
 /// let e = from_ms!(1, on=Scale::TAI, target=Scale::UTC);
 /// let f = from_ms!(1, target=Scale::UTC);
 ///
 /// assert_eq!(a, Dt::from_ms(1, 0, Scale::TAI, Scale::TAI));
-/// assert_eq!(b, Dt::from_ms(1, Dt::us_to_attos(300), Scale::TAI, Scale::TAI));
-/// assert_eq!(c, Dt::from_ms(-1, Dt::us_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_ms(1, us!(300), Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_ms(-1, us!(-300), Scale::TAI, Scale::TAI));
 /// assert_eq!(d, Dt::from_ms(0, 0, Scale::UTC, Scale::UTC));
 /// assert_eq!(e, Dt::from_ms(1, 0, Scale::TAI, Scale::UTC));
 /// assert_eq!(f, e);
 ///
-/// let signed = from_ms!(-1, Dt::us_to_attos(-300));
-/// let floor = from_ms!(-2, Dt::us_to_attos(700));
+/// let signed = from_ms!(-1, us!(-300));
+/// let floor = from_ms!(-2, us!(700));
 /// assert_eq!(signed, floor);
-/// assert_eq!(signed, Dt::from_ms(-1, Dt::us_to_attos(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(signed, Dt::from_ms(-1, us!(-300), Scale::TAI, Scale::TAI));
 /// ```
 #[macro_export]
 macro_rules! from_ms {
@@ -473,22 +697,300 @@ macro_rules! from_ms {
     };
 }
 
-/// Builds a **TAI** [`Dt`](crate::Dt) from a Julian Date (whole days plus
+/// Builds a [`Dt`](../struct.Dt.html) from whole microseconds and an optional signed
+/// fractional remainder in attoseconds.
+///
+/// Sugar for [`Dt::from_us`](../struct.Dt.html#method.from_us). Does **not** perform
+/// time-scale conversion.
+///
+/// The fractional remainder is in **attoseconds** — use
+/// [`ns!`](../macro.ns.html) (or another `*_to_attos`
+/// helper) instead of writing the attosecond literal by hand.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | fraction | `0` |
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
+///
+/// ## Forms
+///
+/// ```text
+/// from_us!(us)
+/// from_us!(us, frac)
+/// from_us!(us, on=s)
+/// from_us!(us, target=t)
+/// from_us!(us, on=s, target=t)
+/// from_us!(us, target=t, on=s)
+/// from_us!(us, frac, on=s)
+/// from_us!(us, frac, target=t)
+/// from_us!(us, frac, on=s, target=t)
+/// from_us!(us, frac, target=t, on=s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::{Dt, Scale, from_us, ns};
+///
+/// // 1.3 µs → whole microseconds + 300 ns remainder
+/// let a = from_us!(1);
+/// let b = from_us!(1, ns!(300));
+/// let c = from_us!(-1, ns!(-300), on=Scale::TAI);
+/// let d = from_us!(0, on=Scale::UTC);
+/// let e = from_us!(1, on=Scale::TAI, target=Scale::UTC);
+/// let f = from_us!(1, target=Scale::UTC);
+///
+/// assert_eq!(a, Dt::from_us(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_us(1, ns!(300), Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_us(-1, ns!(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(d, Dt::from_us(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, Dt::from_us(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(f, e);
+///
+/// let signed = from_us!(-1, ns!(-300));
+/// let floor = from_us!(-2, ns!(700));
+/// assert_eq!(signed, floor);
+/// assert_eq!(signed, Dt::from_us(-1, ns!(-300), Scale::TAI, Scale::TAI));
+/// ```
+#[macro_export]
+macro_rules! from_us {
+    ($us:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_us($us, $frac, $scale, $target)
+    };
+    ($us:expr, $frac:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_us($us, $frac, $scale, $target)
+    };
+    ($us:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_us($us, 0, $scale, $target)
+    };
+    ($us:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_us($us, 0, $scale, $target)
+    };
+    ($us:expr, $frac:expr, on=$scale:expr) => {
+        $crate::Dt::from_us($us, $frac, $scale, $scale)
+    };
+    ($us:expr, $frac:expr, target=$target:expr) => {
+        $crate::Dt::from_us($us, $frac, $crate::Scale::TAI, $target)
+    };
+    ($us:expr, on=$scale:expr) => {
+        $crate::Dt::from_us($us, 0, $scale, $scale)
+    };
+    ($us:expr, target=$target:expr) => {
+        $crate::Dt::from_us($us, 0, $crate::Scale::TAI, $target)
+    };
+    ($us:expr, $frac:expr) => {
+        $crate::Dt::from_us($us, $frac, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+    ($us:expr) => {
+        $crate::Dt::from_us($us, 0, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a [`Dt`](../struct.Dt.html) from whole picoseconds and an optional signed
+/// fractional remainder in attoseconds.
+///
+/// Sugar for [`Dt::from_ps`](../struct.Dt.html#method.from_ps). Does **not** perform
+/// time-scale conversion.
+///
+/// The fractional remainder is in **attoseconds** — use
+/// [`fs!`](../macro.fs.html) (or another `*_to_attos`
+/// helper) instead of writing the attosecond literal by hand.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | fraction | `0` |
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
+///
+/// ## Forms
+///
+/// ```text
+/// from_ps!(ps)
+/// from_ps!(ps, frac)
+/// from_ps!(ps, on=s)
+/// from_ps!(ps, target=t)
+/// from_ps!(ps, on=s, target=t)
+/// from_ps!(ps, target=t, on=s)
+/// from_ps!(ps, frac, on=s)
+/// from_ps!(ps, frac, target=t)
+/// from_ps!(ps, frac, on=s, target=t)
+/// from_ps!(ps, frac, target=t, on=s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::{Dt, Scale, from_ps, fs};
+///
+/// // 1.3 ps → whole picoseconds + 300 fs remainder
+/// let a = from_ps!(1);
+/// let b = from_ps!(1, fs!(300));
+/// let c = from_ps!(-1, fs!(-300), on=Scale::TAI);
+/// let d = from_ps!(0, on=Scale::UTC);
+/// let e = from_ps!(1, on=Scale::TAI, target=Scale::UTC);
+/// let f = from_ps!(1, target=Scale::UTC);
+///
+/// assert_eq!(a, Dt::from_ps(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_ps(1, fs!(300), Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_ps(-1, fs!(-300), Scale::TAI, Scale::TAI));
+/// assert_eq!(d, Dt::from_ps(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, Dt::from_ps(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(f, e);
+///
+/// let signed = from_ps!(-1, fs!(-300));
+/// let floor = from_ps!(-2, fs!(700));
+/// assert_eq!(signed, floor);
+/// assert_eq!(signed, Dt::from_ps(-1, fs!(-300), Scale::TAI, Scale::TAI));
+/// ```
+#[macro_export]
+macro_rules! from_ps {
+    ($ps:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_ps($ps, $frac, $scale, $target)
+    };
+    ($ps:expr, $frac:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_ps($ps, $frac, $scale, $target)
+    };
+    ($ps:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_ps($ps, 0, $scale, $target)
+    };
+    ($ps:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_ps($ps, 0, $scale, $target)
+    };
+    ($ps:expr, $frac:expr, on=$scale:expr) => {
+        $crate::Dt::from_ps($ps, $frac, $scale, $scale)
+    };
+    ($ps:expr, $frac:expr, target=$target:expr) => {
+        $crate::Dt::from_ps($ps, $frac, $crate::Scale::TAI, $target)
+    };
+    ($ps:expr, on=$scale:expr) => {
+        $crate::Dt::from_ps($ps, 0, $scale, $scale)
+    };
+    ($ps:expr, target=$target:expr) => {
+        $crate::Dt::from_ps($ps, 0, $crate::Scale::TAI, $target)
+    };
+    ($ps:expr, $frac:expr) => {
+        $crate::Dt::from_ps($ps, $frac, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+    ($ps:expr) => {
+        $crate::Dt::from_ps($ps, 0, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a [`Dt`](../struct.Dt.html) from whole femtoseconds and an optional signed
+/// fractional remainder in attoseconds.
+///
+/// Sugar for [`Dt::from_fs`](../struct.Dt.html#method.from_fs). Does **not** perform
+/// time-scale conversion.
+///
+/// The fractional remainder is already in **attoseconds** (one femtosecond is
+/// 1000 attoseconds) — there is no smaller named unit macro.
+///
+/// ## Defaults
+///
+/// | Omitted | Default |
+/// |---------|---------|
+/// | fraction | `0` |
+/// | `on` and `target` | both [`Scale::TAI`](crate::Scale::TAI) |
+/// | only `on=s` | `target=s` |
+/// | only `target=t` | `on=TAI` |
+///
+/// ## Forms
+///
+/// ```text
+/// from_fs!(fs)
+/// from_fs!(fs, frac)
+/// from_fs!(fs, on=s)
+/// from_fs!(fs, target=t)
+/// from_fs!(fs, on=s, target=t)
+/// from_fs!(fs, target=t, on=s)
+/// from_fs!(fs, frac, on=s)
+/// from_fs!(fs, frac, target=t)
+/// from_fs!(fs, frac, on=s, target=t)
+/// from_fs!(fs, frac, target=t, on=s)
+/// ```
+///
+/// ## Examples
+///
+/// ```
+/// use deep_time::{Dt, Scale, from_fs};
+///
+/// // 1.3 fs → whole femtoseconds + 300 attoseconds remainder
+/// let a = from_fs!(1);
+/// let b = from_fs!(1, 300);
+/// let c = from_fs!(-1, -300, on=Scale::TAI);
+/// let d = from_fs!(0, on=Scale::UTC);
+/// let e = from_fs!(1, on=Scale::TAI, target=Scale::UTC);
+/// let f = from_fs!(1, target=Scale::UTC);
+///
+/// assert_eq!(a, Dt::from_fs(1, 0, Scale::TAI, Scale::TAI));
+/// assert_eq!(b, Dt::from_fs(1, 300, Scale::TAI, Scale::TAI));
+/// assert_eq!(c, Dt::from_fs(-1, -300, Scale::TAI, Scale::TAI));
+/// assert_eq!(d, Dt::from_fs(0, 0, Scale::UTC, Scale::UTC));
+/// assert_eq!(e, Dt::from_fs(1, 0, Scale::TAI, Scale::UTC));
+/// assert_eq!(f, e);
+///
+/// let signed = from_fs!(-1, -300);
+/// let floor = from_fs!(-2, 700);
+/// assert_eq!(signed, floor);
+/// assert_eq!(signed, Dt::from_fs(-1, -300, Scale::TAI, Scale::TAI));
+/// ```
+#[macro_export]
+macro_rules! from_fs {
+    ($fs:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_fs($fs, $frac, $scale, $target)
+    };
+    ($fs:expr, $frac:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_fs($fs, $frac, $scale, $target)
+    };
+    ($fs:expr, on=$scale:expr, target=$target:expr) => {
+        $crate::Dt::from_fs($fs, 0, $scale, $target)
+    };
+    ($fs:expr, target=$target:expr, on=$scale:expr) => {
+        $crate::Dt::from_fs($fs, 0, $scale, $target)
+    };
+    ($fs:expr, $frac:expr, on=$scale:expr) => {
+        $crate::Dt::from_fs($fs, $frac, $scale, $scale)
+    };
+    ($fs:expr, $frac:expr, target=$target:expr) => {
+        $crate::Dt::from_fs($fs, $frac, $crate::Scale::TAI, $target)
+    };
+    ($fs:expr, on=$scale:expr) => {
+        $crate::Dt::from_fs($fs, 0, $scale, $scale)
+    };
+    ($fs:expr, target=$target:expr) => {
+        $crate::Dt::from_fs($fs, 0, $crate::Scale::TAI, $target)
+    };
+    ($fs:expr, $frac:expr) => {
+        $crate::Dt::from_fs($fs, $frac, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+    ($fs:expr) => {
+        $crate::Dt::from_fs($fs, 0, $crate::Scale::TAI, $crate::Scale::TAI)
+    };
+}
+
+/// Builds a **TAI** [`Dt`](../struct.Dt.html) from a Julian Date (whole days plus
 /// optional attosecond remainder).
 ///
-/// Sugar for [`Dt::from_jd`](crate::Dt::from_jd).
+/// Sugar for [`Dt::from_jd`](../struct.Dt.html#method.from_jd).
 ///
 /// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
 /// `on=Scale::UTC` applies leap seconds). `on` defaults to
 /// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
 ///
-/// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
+/// There is no `target=` on this macro — the returned [`Dt`](../struct.Dt.html)'s
 /// `target` is set from `on` (or TAI when omitted), as
-/// [`from_jd`](crate::Dt::from_jd) does. Chain
-/// [`.target(…)`](crate::Dt::target) if needed.
+/// [`from_jd`](../struct.Dt.html#method.from_jd) does. Chain
+/// [`.target(…)`](../struct.Dt.html#method.target) if needed.
 ///
 /// The fractional remainder is in **attoseconds** — use a `*_to_attos` helper
-/// (e.g. a day fraction built from [`ATTOS_PER_DAY`](crate::consts::ATTOS_PER_DAY))
+/// (e.g. a day fraction built from [`days_f!`](../macro.days_f.html))
 /// instead of hand-counting zeros when convenient.
 ///
 /// ## Defaults
@@ -510,23 +1012,26 @@ macro_rules! from_ms {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY, from_jd};
+/// use deep_time::{Dt, Scale, days_f, from_jd};
 ///
 /// // 2_460_782.25
 /// let a = from_jd!(2_460_782);
-/// let b = from_jd!(2_460_782, ATTOS_PER_DAY / 4);
-/// let c = from_jd!(2_460_782, ATTOS_PER_DAY / 4, on=Scale::TAI);
+/// let b = from_jd!(2_460_782, days_f!(0.25));
+/// let c = from_jd!(2_460_782, days_f!(0.25), on=Scale::TAI);
 /// let d = from_jd!(2_460_782, on=Scale::UTC);
 ///
 /// assert_eq!(a, Dt::from_jd(2_460_782, 0, Scale::TAI));
-/// assert_eq!(b, Dt::from_jd(2_460_782, ATTOS_PER_DAY / 4, Scale::TAI));
+/// assert_eq!(b, Dt::from_jd(2_460_782, days_f!(0.25), Scale::TAI));
 /// assert_eq!(c, b);
 /// assert_eq!(d, Dt::from_jd(2_460_782, 0, Scale::UTC));
 ///
 /// // -1_000.25 (signed remainder)
-/// let neg = from_jd!(-1_000, -ATTOS_PER_DAY / 4);
-/// assert_eq!(neg, Dt::from_jd(-1_000, -ATTOS_PER_DAY / 4, Scale::TAI));
-/// assert_eq!(neg.to_jd(), (-1_000, -ATTOS_PER_DAY / 4));
+/// let neg = from_jd!(-1_000, -days_f!(0.25));
+/// assert_eq!(neg, Dt::from_jd(-1_000, -days_f!(0.25), Scale::TAI));
+/// assert_eq!(neg.to_jd(), (-1_000, -days_f!(0.25)));
+///
+/// // or with floor style
+/// assert_eq!(neg, from_jd!(-1_001, days_f!(0.75)));
 /// ```
 #[macro_export]
 macro_rules! from_jd {
@@ -545,18 +1050,18 @@ macro_rules! from_jd {
     };
 }
 
-/// Builds a **TAI** [`Dt`](crate::Dt) from a floating-point Julian Date.
+/// Builds a **TAI** [`Dt`](../struct.Dt.html) from a floating-point Julian Date.
 ///
-/// Sugar for [`Dt::from_jd_f`](crate::Dt::from_jd_f).
+/// Sugar for [`Dt::from_jd_f`](../struct.Dt.html#method.from_jd_f).
 ///
 /// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
 /// `on=Scale::UTC` applies leap seconds). `on` defaults to
 /// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
 ///
-/// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
+/// There is no `target=` on this macro — the returned [`Dt`](../struct.Dt.html)'s
 /// `target` is set from `on` (or TAI when omitted), as
-/// [`from_jd_f`](crate::Dt::from_jd_f) does. Chain
-/// [`.target(…)`](crate::Dt::target) if needed.
+/// [`from_jd_f`](../struct.Dt.html#method.from_jd_f) does. Chain
+/// [`.target(…)`](../struct.Dt.html#method.target) if needed.
 ///
 /// ## Defaults
 ///
@@ -574,7 +1079,7 @@ macro_rules! from_jd {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY, from_jd_f};
+/// use deep_time::{Dt, Scale, days_f, from_jd_f};
 ///
 /// // 2_460_782.25
 /// let a = from_jd_f!(2_460_782.25);
@@ -584,12 +1089,12 @@ macro_rules! from_jd {
 /// assert_eq!(a, Dt::from_jd_f(2_460_782.25, Scale::TAI));
 /// assert_eq!(b, a);
 /// assert_eq!(c, Dt::from_jd_f(2_460_782.0, Scale::UTC));
-/// assert_eq!(a.to_jd(), (2_460_782, ATTOS_PER_DAY / 4));
+/// assert_eq!(a.to_jd(), (2_460_782, days_f!(0.25)));
 ///
 /// // -1_000.25 (signed remainder)
 /// let neg = from_jd_f!(-1_000.25);
 /// assert_eq!(neg, Dt::from_jd_f(-1_000.25, Scale::TAI));
-/// assert_eq!(neg.to_jd(), (-1_000, -ATTOS_PER_DAY / 4));
+/// assert_eq!(neg.to_jd(), (-1_000, -days_f!(0.25)));
 /// ```
 #[macro_export]
 macro_rules! from_jd_f {
@@ -601,24 +1106,24 @@ macro_rules! from_jd_f {
     };
 }
 
-/// Builds a **TAI** [`Dt`](crate::Dt) from a Modified Julian Date (whole days
+/// Builds a **TAI** [`Dt`](../struct.Dt.html) from a Modified Julian Date (whole days
 /// plus optional attosecond remainder).
 ///
-/// Sugar for [`Dt::from_mjd`](crate::Dt::from_mjd).
+/// Sugar for [`Dt::from_mjd`](../struct.Dt.html#method.from_mjd).
 ///
 /// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
 /// `on=Scale::UTC` applies leap seconds). `on` defaults to
 /// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
 ///
-/// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
+/// There is no `target=` on this macro — the returned [`Dt`](../struct.Dt.html)'s
 /// `target` is set from `on` (or TAI when omitted), as
-/// [`from_mjd`](crate::Dt::from_mjd) does. Chain
-/// [`.target(…)`](crate::Dt::target) if needed.
+/// [`from_mjd`](../struct.Dt.html#method.from_mjd) does. Chain
+/// [`.target(…)`](../struct.Dt.html#method.target) if needed.
 ///
 /// MJD and JD relate by `JD = MJD + 2_400_000.5`.
 ///
 /// The fractional remainder is in **attoseconds** — use a `*_to_attos` helper
-/// (e.g. a day fraction built from [`ATTOS_PER_DAY`](crate::consts::ATTOS_PER_DAY))
+/// (e.g. a day fraction built from [`days_f!`](../macro.days_f.html))
 /// instead of hand-counting zeros when convenient.
 ///
 /// ## Defaults
@@ -640,23 +1145,24 @@ macro_rules! from_jd_f {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY, from_mjd};
+/// use deep_time::{Dt, Scale, days_f, from_mjd};
 ///
-/// // 60_961.25
-/// let a = from_mjd!(60_961);
-/// let b = from_mjd!(60_961, ATTOS_PER_DAY / 4);
-/// let c = from_mjd!(60_961, ATTOS_PER_DAY / 4, on=Scale::TAI);
-/// let d = from_mjd!(60_961, on=Scale::UTC);
+/// // J2000.0 → MJD 51_544.5
+/// let a = from_mjd!(51_544);
+/// let b = from_mjd!(51_544, days_f!(0.5));
+/// let c = from_mjd!(51_544, days_f!(0.5), on=Scale::TAI);
+/// let d = from_mjd!(51_544, on=Scale::UTC);
 ///
-/// assert_eq!(a, Dt::from_mjd(60_961, 0, Scale::TAI));
-/// assert_eq!(b, Dt::from_mjd(60_961, ATTOS_PER_DAY / 4, Scale::TAI));
+/// assert_eq!(a, Dt::from_mjd(51_544, 0, Scale::TAI));
+/// assert_eq!(b, Dt::from_mjd(51_544, days_f!(0.5), Scale::TAI));
 /// assert_eq!(c, b);
-/// assert_eq!(d, Dt::from_mjd(60_961, 0, Scale::UTC));
+/// assert_eq!(d, Dt::from_mjd(51_544, 0, Scale::UTC));
+/// assert_eq!(b.to_mjd(), (51_544, days_f!(0.5)));
 ///
-/// // -1_000.25 as -1_001 + 0.75 day
-/// let neg = from_mjd!(-1_001, 3 * ATTOS_PER_DAY / 4);
-/// assert_eq!(neg, Dt::from_mjd(-1_001, 3 * ATTOS_PER_DAY / 4, Scale::TAI));
-/// assert_eq!(neg.to_mjd(), (-1_001, 3 * ATTOS_PER_DAY / 4));
+/// // -1_000.25 (signed truncating remainder)
+/// let neg = from_mjd!(-1_000, -days_f!(0.25));
+/// assert_eq!(neg, Dt::from_mjd(-1_000, -days_f!(0.25), Scale::TAI));
+/// assert_eq!(neg.to_mjd(), (-1_000, -days_f!(0.25)));
 /// ```
 #[macro_export]
 macro_rules! from_mjd {
@@ -675,18 +1181,18 @@ macro_rules! from_mjd {
     };
 }
 
-/// Builds a **TAI** [`Dt`](crate::Dt) from a floating-point Modified Julian Date.
+/// Builds a **TAI** [`Dt`](../struct.Dt.html) from a floating-point Modified Julian Date.
 ///
-/// Sugar for [`Dt::from_mjd_f`](crate::Dt::from_mjd_f).
+/// Sugar for [`Dt::from_mjd_f`](../struct.Dt.html#method.from_mjd_f).
 ///
 /// Converts from the `on` scale to `TAI` when `on` is not TAI (e.g.
 /// `on=Scale::UTC` applies leap seconds). `on` defaults to
 /// [`Scale::TAI`](crate::Scale::TAI), omit it to skip conversion.
 ///
-/// There is no `target=` on this macro — the returned [`Dt`](crate::Dt)'s
+/// There is no `target=` on this macro — the returned [`Dt`](../struct.Dt.html)'s
 /// `target` is set from `on` (or TAI when omitted), as
-/// [`from_mjd_f`](crate::Dt::from_mjd_f) does. Chain
-/// [`.target(…)`](crate::Dt::target) if needed.
+/// [`from_mjd_f`](../struct.Dt.html#method.from_mjd_f) does. Chain
+/// [`.target(…)`](../struct.Dt.html#method.target) if needed.
 ///
 /// MJD and JD relate by `JD = MJD + 2_400_000.5`.
 ///
@@ -706,7 +1212,7 @@ macro_rules! from_mjd {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY, from_mjd_f};
+/// use deep_time::{Dt, Scale, days_f, from_mjd_f};
 ///
 /// // 60_961.25
 /// let a = from_mjd_f!(60_961.25);
@@ -716,12 +1222,12 @@ macro_rules! from_mjd {
 /// assert_eq!(a, Dt::from_mjd_f(60_961.25, Scale::TAI));
 /// assert_eq!(b, a);
 /// assert_eq!(c, Dt::from_mjd_f(60_961.0, Scale::UTC));
-/// assert_eq!(a.to_mjd(), (60_961, ATTOS_PER_DAY / 4));
+/// assert_eq!(a.to_mjd_floor(), (60_961, days_f!(0.25)));
 ///
 /// // -1_000.25 as -1_001 + 0.75 day
 /// let neg = from_mjd_f!(-1_000.25);
 /// assert_eq!(neg, Dt::from_mjd_f(-1_000.25, Scale::TAI));
-/// assert_eq!(neg.to_mjd(), (-1_001, 3 * ATTOS_PER_DAY / 4));
+/// assert_eq!(neg.to_mjd_floor(), (-1_001, days_f!(0.75)));
 /// ```
 #[macro_export]
 macro_rules! from_mjd_f {
@@ -733,9 +1239,9 @@ macro_rules! from_mjd_f {
     };
 }
 
-/// Builds a [`Dt`](crate::Dt) from a Gregorian calendar date and optional time.
+/// Builds a [`Dt`](../struct.Dt.html) from a Gregorian calendar date and optional time.
 ///
-/// Sugar for [`Dt::from_ymd`](crate::Dt::from_ymd).
+/// Sugar for [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd).
 ///
 /// Date fields are positional (`y`, `m`, `d`). Time is optional: put a
 /// **semicolon after the day**, then hour (required if `;` is present), then
@@ -750,10 +1256,10 @@ macro_rules! from_mjd_f {
 /// | minute / second / attos after `; h` | `0` |
 /// | `on` | [`Scale::UTC`](crate::Scale::UTC) |
 ///
-/// The resulting [`Dt`](crate::Dt)'s `target` field is set from that civil
+/// The resulting [`Dt`](../struct.Dt.html)'s `target` field is set from that civil
 /// scale (the `on=` value, or UTC when omitted), as
-/// [`from_ymd`](crate::Dt::from_ymd) does. There is no `target=` on
-/// this macro — chain [`.target(…)`](crate::Dt::target) if needed.
+/// [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd) does. There is no `target=` on
+/// this macro — chain [`.target(…)`](../struct.Dt.html#method.target) if needed.
 ///
 /// ## Forms
 ///

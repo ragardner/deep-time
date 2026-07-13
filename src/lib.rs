@@ -38,17 +38,24 @@ let dt = Dt::from_str_iso("2000-01-01 12:00 TAI").unwrap();
 assert_eq!(dt, Dt::ZERO);
 ```
 
-[`Dt`] is capable of holding massive datetimes with full attosecond
-resolution, and formatting them:
+[`Dt`] handles massive datetimes and always with attosecond
+resolution:
 
 ```
-use deep_time::{Dt, Lang};
+use deep_time::{Dt, Lang, from_ymd};
 
 let mut dt = Dt::from_str_iso("292000000000-1-1").unwrap();
 dt = dt.add_days(4);
 let s = dt.to_str_lite("%Y-%m-%dT%H:%M:%S %L", Lang::En).unwrap();
 
 assert_eq!(s.as_str(), "292000000000-01-05T00:00:00 UTC");
+
+// negatives too
+let dt = from_ymd!(-5000, 1, 1; 18, on=Scale::TAI);
+assert_eq!(dt, Dt::parse("-5000-01-01T18:00:00 TAI").unwrap());
+
+assert_eq!(dt.to_jd_f(), -105151.75);
+assert_eq!(dt.to_mjd_f(), -2505152.25);
 ```
 
 Once you have a [`Dt`] you can change its time scale:

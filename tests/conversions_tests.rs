@@ -335,27 +335,14 @@ fn unix_days_roundtrip() {
     use deep_time::consts::{ATTOS_PER_DAY, ATTOS_PER_HALF_DAY_U128};
 
     let epoch = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
-    let (days, frac) = epoch.to_unix_days();
-    assert_eq!(days, 0);
-    assert_eq!(frac.to_attos(), 0);
-
-    let neg = Dt::from_ymd(1969, 12, 31, Scale::UTC, 12, 0, 0, 0);
-    let (days, frac) = neg.to_unix_days();
-    assert_eq!(days, 0);
-    assert_eq!(frac.to_attos(), -(ATTOS_PER_DAY as i128) / 2);
-    assert_eq!(Dt::from_unix_days(days, frac), neg);
-
-    let (days_floor, frac_floor) = neg.to_unix_days_floor();
-    assert_eq!(days_floor, -1);
-    assert_eq!(frac_floor.to_attos() as u128, ATTOS_PER_HALF_DAY_U128);
-    assert_eq!(Dt::from_unix_days(days_floor, frac_floor), neg);
+    assert_eq!(epoch.to_unix_days(), (0, 0));
 
     let noon_2000 = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
-    let (days, frac) = noon_2000.to_unix_days();
+    let (days, attos) = noon_2000.to_unix_days();
     assert_eq!(days, 10_957);
-    assert_eq!(frac.to_attos() as u128, ATTOS_PER_HALF_DAY_U128);
+    assert_eq!(attos, ATTOS_PER_DAY / 2);
 
-    let roundtrip = Dt::from_unix_days(days, frac);
+    let roundtrip = Dt::from_unix_days(days, attos, Scale::UTC);
     assert_eq!(roundtrip, noon_2000);
 
     let days_f = noon_2000.to_unix_days_f();

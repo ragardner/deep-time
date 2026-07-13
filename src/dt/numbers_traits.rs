@@ -11,10 +11,7 @@
 //! // let future = 3.days().from_now();
 //! ```
 
-use crate::{
-    ATTOS_PER_FS_I128, ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128,
-    ATTOS_PER_SECF, ATTOS_PER_US_I128, Dt, SEC_PER_DAY, SEC_PER_DAY_F, Scale,
-};
+use crate::{Dt, SEC_PER_DAY, SEC_PER_DAY_F, Scale};
 
 /// Trait that adds ergonomic attosecond conversions on integer values.
 ///
@@ -84,37 +81,37 @@ pub trait AttosTraits: Copy + Sized {
 impl AttosTraits for i128 {
     #[inline]
     fn attos_to_sec_f(self) -> f64 {
-        self as f64 / ATTOS_PER_SECF
+        Dt::attos_to_sec_f(self)
     }
 
     #[inline]
     fn attos_to_sec(self) -> i128 {
-        self / ATTOS_PER_SEC_I128
+        Dt::attos_to_sec(self)
     }
 
     #[inline]
     fn attos_to_ms(self) -> i128 {
-        self / ATTOS_PER_MS_I128
+        Dt::attos_to_ms(self)
     }
 
     #[inline]
     fn attos_to_us(self) -> i128 {
-        self / ATTOS_PER_US_I128
+        Dt::attos_to_us(self)
     }
 
     #[inline]
     fn attos_to_ns(self) -> i128 {
-        self / ATTOS_PER_NS_I128
+        Dt::attos_to_ns(self)
     }
 
     #[inline]
     fn attos_to_ps(self) -> i128 {
-        self / ATTOS_PER_PS_I128
+        Dt::attos_to_ps(self)
     }
 
     #[inline]
     fn attos_to_fs(self) -> i128 {
-        self / ATTOS_PER_FS_I128
+        Dt::attos_to_fs(self)
     }
 
     #[inline]

@@ -1,6 +1,6 @@
 //! Mars time-scale constants and conversion methods (MSD, MTC, Ls, LMST, LTST, Mars Year).
 
-use crate::{Dt, Real, Scale, cos, floor_f, rem_euclid_f, sin};
+use crate::{Dt, Real, Scale, cos, dt, floor_f, rem_euclid_f, sin};
 
 /// mean length of one Martian sol in Earth seconds.
 /// Current NASA GISS Mars24 value (updated 2025-01-07): 1.0274912517 Earth days.
@@ -57,11 +57,11 @@ impl Dt {
     /// The fractional part is pushing the total towards the positive, and the whole part is floored.
     /// For more information on this return value see
     /// [`Dt::to_sec_and_ufrac`](#method.to_sec_and_ufrac).
-    pub const fn to_msd(&self) -> (i128, u128) {
+    pub const fn to_msd(&self) -> (i128, i128) {
         let tt = self.to(Scale::TT);
         let elapsed = Self::to_attos_since_mars_msd_epoch(tt);
         let whole_sols = elapsed.div_euclid(MARS_SOL_ATTOS);
-        let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS) as u128;
+        let frac_attos = elapsed.rem_euclid(MARS_SOL_ATTOS);
 
         (whole_sols, frac_attos)
     }
@@ -71,15 +71,15 @@ impl Dt {
     #[inline]
     pub const fn to_mtc(&self) -> Dt {
         let (_, frac_attos) = self.to_msd();
-        crate::dt!(Self::to_i128(frac_attos))
+        dt!(frac_attos)
     }
 
     /// Creates a [`Dt`] (in TT) from an Mars Sol Date.
-    pub const fn from_msd(whole_sols: i128, frac_attos: u128) -> Dt {
+    pub const fn from_msd(whole_sols: i128, frac_attos: i128) -> Dt {
         let elapsed_attos = whole_sols
             .saturating_mul(MARS_SOL_ATTOS)
-            .saturating_add(Self::to_i128(frac_attos));
-        let tt = MARS_REF_TT.add(crate::dt!(elapsed_attos));
+            .saturating_add(frac_attos);
+        let tt = MARS_REF_TT.add(dt!(elapsed_attos));
         tt.convert(Scale::TAI)
     }
 
@@ -89,7 +89,7 @@ impl Dt {
         let whole = floor_f(msd) as i128;
         let frac = msd - f!(whole);
         let frac_span = Dt::from_sec_f(frac * MARS_SOL_LENGTH_SEC, Scale::TAI, Scale::TAI);
-        Self::from_msd(whole, frac_span.to_attos() as u128)
+        Self::from_msd(whole, frac_span.to_attos())
     }
 
     /// Returns the Mars Sol Date (MSD) as a floating-point value (matches NASA Mars24 output).

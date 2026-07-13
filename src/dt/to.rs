@@ -295,10 +295,10 @@ impl Dt {
     ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     /// - For truncation toward zero, use [`to_fs`](../struct.Dt.html#method.to_fs).
     #[inline(always)]
-    pub const fn to_fs_floor(&self) -> (i128, u128) {
+    pub const fn to_fs_floor(&self) -> (i128, i128) {
         (
             self.attos.div_euclid(ATTOS_PER_FS_I128),
-            self.attos.rem_euclid(ATTOS_PER_FS_I128) as u128,
+            self.attos.rem_euclid(ATTOS_PER_FS_I128),
         )
     }
 
@@ -310,10 +310,10 @@ impl Dt {
     ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     /// - For truncation toward zero, use [`to_ps`](../struct.Dt.html#method.to_ps).
     #[inline(always)]
-    pub const fn to_ps_floor(&self) -> (i128, u128) {
+    pub const fn to_ps_floor(&self) -> (i128, i128) {
         (
             self.attos.div_euclid(ATTOS_PER_PS_I128),
-            self.attos.rem_euclid(ATTOS_PER_PS_I128) as u128,
+            self.attos.rem_euclid(ATTOS_PER_PS_I128),
         )
     }
 
@@ -325,10 +325,10 @@ impl Dt {
     ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     /// - For truncation toward zero, use [`to_ns`](../struct.Dt.html#method.to_ns).
     #[inline(always)]
-    pub const fn to_ns_floor(&self) -> (i128, u128) {
+    pub const fn to_ns_floor(&self) -> (i128, i128) {
         (
             self.attos.div_euclid(ATTOS_PER_NS_I128),
-            self.attos.rem_euclid(ATTOS_PER_NS_I128) as u128,
+            self.attos.rem_euclid(ATTOS_PER_NS_I128),
         )
     }
 
@@ -340,10 +340,10 @@ impl Dt {
     ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     /// - For truncation toward zero, use [`to_us`](../struct.Dt.html#method.to_us).
     #[inline(always)]
-    pub const fn to_us_floor(&self) -> (i128, u128) {
+    pub const fn to_us_floor(&self) -> (i128, i128) {
         (
             self.attos.div_euclid(ATTOS_PER_US_I128),
-            self.attos.rem_euclid(ATTOS_PER_US_I128) as u128,
+            self.attos.rem_euclid(ATTOS_PER_US_I128),
         )
     }
 
@@ -355,10 +355,10 @@ impl Dt {
     ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     /// - For truncation toward zero, use [`to_ms`](../struct.Dt.html#method.to_ms).
     #[inline(always)]
-    pub const fn to_ms_floor(&self) -> (i128, u128) {
+    pub const fn to_ms_floor(&self) -> (i128, i128) {
         (
             self.attos.div_euclid(ATTOS_PER_MS_I128),
-            self.attos.rem_euclid(ATTOS_PER_MS_I128) as u128,
+            self.attos.rem_euclid(ATTOS_PER_MS_I128),
         )
     }
 
@@ -369,10 +369,10 @@ impl Dt {
     ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
     ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     #[inline(always)]
-    pub const fn to_mins_floor(&self) -> (i128, u128) {
+    pub const fn to_mins_floor(&self) -> (i128, i128) {
         (
             self.attos.div_euclid(ATTOS_PER_MIN),
-            self.attos.rem_euclid(ATTOS_PER_MIN) as u128,
+            self.attos.rem_euclid(ATTOS_PER_MIN),
         )
     }
 
@@ -414,10 +414,10 @@ impl Dt {
     ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
     ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     #[inline(always)]
-    pub const fn to_hours_floor(&self) -> (i128, u128) {
+    pub const fn to_hours_floor(&self) -> (i128, i128) {
         (
             self.attos.div_euclid(ATTOS_PER_HOUR),
-            self.attos.rem_euclid(ATTOS_PER_HOUR) as u128,
+            self.attos.rem_euclid(ATTOS_PER_HOUR),
         )
     }
 
@@ -490,7 +490,7 @@ impl Dt {
     ///
     /// ```rust
     /// use deep_time::{Dt, Scale, dt};
-    /// use deep_time::consts::ATTOS_PER_HALF_DAY_U128;
+    /// use deep_time::consts::ATTOS_PER_HALF_DAY;
     ///
     /// // library epoch is 2000-01-01 12:00:00 TAI
     /// // so result will be negative 2 + half a day
@@ -498,17 +498,17 @@ impl Dt {
     /// let dt = Dt::from_ymd(1999, 12, 31, Scale::TAI, 0, 0, 0, 0);
     /// let (days, attos) = dt.to_days_floor();
     /// assert_eq!(days, -2);
-    /// assert_eq!(attos, ATTOS_PER_HALF_DAY_U128);
+    /// assert_eq!(attos, ATTOS_PER_HALF_DAY);
     /// ```
     ///
     /// ## See also
     ///
     /// - [`Dt::to_days`](#method.to_days)
     #[inline(always)]
-    pub const fn to_days_floor(&self) -> (i128, u128) {
+    pub const fn to_days_floor(&self) -> (i128, i128) {
         (
             self.attos.div_euclid(ATTOS_PER_DAY),
-            self.attos.rem_euclid(ATTOS_PER_DAY) as u128,
+            self.attos.rem_euclid(ATTOS_PER_DAY),
         )
     }
 

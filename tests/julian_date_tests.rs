@@ -1,6 +1,56 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY};
+use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY, days_f};
+
+#[test]
+fn mjd_truncating_split_from_mjd_f() {
+    let cases = [
+        (100.75, 100_i128, days_f!(0.75)),
+        (-100.75, -100, -days_f!(0.75)),
+        (60_961.25, 60_961, days_f!(0.25)),
+        (-1_000.25, -1_000, -days_f!(0.25)),
+    ];
+
+    for (mjd_f, whole, frac) in cases {
+        let dt = Dt::from_mjd_f(mjd_f, Scale::TAI);
+        assert_eq!(dt.to_mjd_f(), mjd_f);
+        assert_eq!(dt.to_mjd(), (whole, frac), "to_mjd failed for {mjd_f}");
+        assert_eq!(
+            dt.to_mjd_raw(),
+            (whole, frac),
+            "to_mjd_raw failed for {mjd_f}"
+        );
+    }
+}
+
+#[test]
+fn mjd_floor_split_from_mjd_f() {
+    let cases = [
+        (100.75, 100_i128, days_f!(0.75)),
+        (-100.75, -101, days_f!(0.25)),
+        (60_961.25, 60_961, days_f!(0.25)),
+        (-1_000.25, -1_001, days_f!(0.75)),
+    ];
+
+    for (mjd_f, whole, frac) in cases {
+        let dt = Dt::from_mjd_f(mjd_f, Scale::TAI);
+        assert_eq!(dt.to_mjd_f(), mjd_f);
+        assert_eq!(
+            dt.to_mjd_floor(),
+            (whole, frac),
+            "to_mjd_floor failed for {mjd_f}"
+        );
+        assert_eq!(
+            dt.to_mjd_floor_raw(),
+            (whole, frac),
+            "to_mjd_floor_raw failed for {mjd_f}"
+        );
+
+        let (days, frac_attos) = dt.to_mjd_floor();
+        let back = Dt::from_mjd(days, frac_attos, Scale::TAI);
+        assert_eq!(back, dt, "floor round-trip failed for {mjd_f}");
+    }
+}
 
 #[test]
 fn j2000_tt_is_jd_2451545() {
