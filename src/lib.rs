@@ -42,7 +42,7 @@ assert_eq!(dt, Dt::ZERO);
 resolution:
 
 ```
-use deep_time::{Dt, Lang, from_ymd};
+use deep_time::{Dt, Lang, Scale, from_ymd};
 
 let mut dt = Dt::from_str_iso("292000000000-1-1").unwrap();
 dt = dt.add_days(4);
