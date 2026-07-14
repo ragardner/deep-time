@@ -1,5 +1,7 @@
+use crate::math::{powi, round};
 use crate::{
-    ATTOS_PER_SEC_I128, Dt, NS_PER_SEC, Scale, TAI_SEC_1970_MIDNIGHT_TO_2000_NOON, frac_to_nanos,
+    ATTOS_PER_SEC_I128, Dt, NS_PER_SEC, Real, Scale, TAI_SEC_1970_MIDNIGHT_TO_2000_NOON,
+    frac_to_nanos,
 };
 
 /// Pure-numeric Unix timestamp fallback with automatic unit detection.
@@ -68,10 +70,10 @@ pub(crate) fn parse_pure_numeric_unix_timestamp(
         } else {
             frac_part
         };
-        let frac_val: f64 = frac_str.parse().ok()?;
-        let divisor = 10f64.powi(frac_str.len() as i32);
-        let frac_f64 = frac_val / divisor;
-        (frac_f64 * attos_per_unit as f64).round() as i128
+        let frac_val: Real = frac_str.parse().ok()?;
+        let divisor = powi(10.0, frac_str.len() as i32);
+        let frac_real = frac_val / divisor;
+        round(frac_real * attos_per_unit as Real) as i128
     };
 
     let total_attos_since_unix = (int_val * attos_per_unit + frac_attos) * sign;

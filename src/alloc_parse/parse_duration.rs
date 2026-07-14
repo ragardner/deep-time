@@ -1,4 +1,5 @@
-use crate::{Dt, DtErr, DtErrKind, Lang, Scale, an_err, natural_duration_to_iso};
+use crate::math::round;
+use crate::{Dt, DtErr, DtErrKind, Lang, Real, Scale, an_err, natural_duration_to_iso};
 use alloc::string::String;
 
 impl Dt {
@@ -33,11 +34,12 @@ impl Dt {
             return Ok(dur);
         }
 
-        if let Ok(ms) = s.parse::<f64>() {
+        if let Ok(ms) = s.parse::<Real>() {
             if !ms.is_finite() {
                 return Err(an_err!(DtErrKind::OutOfRange, "{}", s));
             }
-            let nanos = (ms * 1_000_000.0).round() as i128;
+            let nanos = round(ms * 1_000_000.0) as i128;
+
             let span = Dt::from_ns(nanos, 0, Scale::TAI, Scale::TAI);
             return Ok(span);
         }

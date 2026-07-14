@@ -14,10 +14,12 @@ pub mod log;
 pub mod powi;
 pub mod rem_pio2;
 pub mod rem_pio2_large;
+pub mod round;
 pub mod scalbn;
 pub mod sin;
 pub mod sqrt;
 pub mod tan;
+pub mod trunc;
 
 pub use atan::atan;
 pub use atan2::atan2;
@@ -26,9 +28,11 @@ pub use div::rem_euclid_f;
 pub use floor::floor_f;
 pub use log::log;
 pub use powi::powi;
+pub use round::round;
 pub use sin::sin;
 pub use sqrt::sqrt;
 pub use tan::tan;
+pub use trunc::trunc;
 
 use k_cos::*;
 use k_sin::*;

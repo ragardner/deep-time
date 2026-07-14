@@ -98,6 +98,22 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
+/*
+uncomment this fn and run
+cargo test --release --features "parse"
+
+if it builds then std is being silently pulled in
+
+update to use something that requires std if
+.round() can work without std in the future
+*/
+
+// #[allow(dead_code)]
+// fn check_if_std_silently_pulled_in() {
+//     let x: f64 = 0.5;
+//     let _: f64 = x.round();
+// }
+
 // ──────────────────────────────────────────────────────────────
 // Optional panic handler (opt-in via feature)
 // ──────────────────────────────────────────────────────────────

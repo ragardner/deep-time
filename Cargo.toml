@@ -1,8 +1,10 @@
 [workspace]
+
 members = [".", "crates/deep-time-leap-seconds-gen"]
 default-members = ["."]
 
 [package]
+
 name = "deep-time"
 version = "0.1.0-beta.25"
 authors = ["ragardner <github@ragardner.simplelogin.com>"]
@@ -16,9 +18,10 @@ edition = "2024"
 rust-version = "1.90"
 
 [dependencies]
-hashbrown    = { version = "0.17", optional = true }
-aho-corasick = { version = "1.1", optional = true }
+
 once_cell    = { version = "=1.21", optional = true, default-features = false, features = ["alloc"] }
+hashbrown    = { version = "0.17", optional = true }
+aho-corasick = { version = "1.1", optional = true, default-features = false }
 jiff         = { version = "0.2", optional = true, default-features = false }
 chrono       = { version = "0.4", optional = true, default-features = false }
 hifitime     = { version = "4.3", optional = true, default-features = false }
@@ -68,6 +71,7 @@ eop = ["alloc"]
 # and loading your own leap seconds files
 std = [
     "alloc",
+    "aho-corasick?/std",
     "jiff?/std",
     "chrono?/std",
     "hifitime?/std",

@@ -90,7 +90,8 @@
 //!   `i128` division (`attos / unit`). Any leftover below one whole unit is
 //!   dropped, and the result moves toward zero—not toward −∞. For example,
 //!   −0.5 s as whole seconds is `0`, and −1.5 s is `-1`. The floating reverse
-//!   converters ([`as_sec_f!`], [`as_days_f!`]) are lossy `f64` casts instead.
+//!   converters ([`as_sec_f!`], [`as_days_f!`]) are lossy
+//!   [`Real`](crate::Real) casts instead.
 //! - **Signed remainders on constructors.** Macros such as [`from_sec!`] and
 //!   [`from_ns!`] accept an optional fractional remainder in **attoseconds**.
 //!   Both signs of the remainder are valid; the total is
