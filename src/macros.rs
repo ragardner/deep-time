@@ -170,12 +170,12 @@ macro_rules! mins {
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, hrs};
+/// use deep_time::{Dt, hours};
 ///
-/// assert_eq!(hrs!(1), Dt::hours_to_attos(1));
+/// assert_eq!(hours!(1), Dt::hours_to_attos(1));
 /// ```
 #[macro_export]
-macro_rules! hrs {
+macro_rules! hours {
     ($x:expr) => {
         $crate::Dt::hours_to_attos($x)
     };
@@ -232,12 +232,12 @@ macro_rules! days_f {
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, wks};
+/// use deep_time::{Dt, weeks};
 ///
-/// assert_eq!(wks!(1), Dt::weeks_to_attos(1));
+/// assert_eq!(weeks!(1), Dt::weeks_to_attos(1));
 /// ```
 #[macro_export]
-macro_rules! wks {
+macro_rules! weeks {
     ($x:expr) => {
         $crate::Dt::weeks_to_attos($x)
     };
@@ -394,12 +394,12 @@ macro_rules! as_mins {
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_hrs};
+/// use deep_time::{Dt, as_hours};
 ///
-/// assert_eq!(as_hrs!(Dt::hours_to_attos(3)), 3);
+/// assert_eq!(as_hours!(Dt::hours_to_attos(3)), 3);
 /// ```
 #[macro_export]
-macro_rules! as_hrs {
+macro_rules! as_hours {
     ($x:expr) => {
         $crate::Dt::attos_to_hours($x)
     };
@@ -448,12 +448,12 @@ macro_rules! as_days_f {
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_wks};
+/// use deep_time::{Dt, as_weeks};
 ///
-/// assert_eq!(as_wks!(Dt::weeks_to_attos(3)), 3);
+/// assert_eq!(as_weeks!(Dt::weeks_to_attos(3)), 3);
 /// ```
 #[macro_export]
-macro_rules! as_wks {
+macro_rules! as_weeks {
     ($x:expr) => {
         $crate::Dt::attos_to_weeks($x)
     };

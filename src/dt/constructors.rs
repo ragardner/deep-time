@@ -576,10 +576,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, dt, hrs};
+    /// use deep_time::{Dt, Scale, dt, hours};
     ///
     /// // 1.25 d
-    /// let a = Dt::from_days(1, dt!(hrs!(6)), Scale::TAI, Scale::TAI);
+    /// let a = Dt::from_days(1, dt!(hours!(6)), Scale::TAI, Scale::TAI);
     /// assert_eq!(a.to_sec(), 108_000); // 1.25 * 86400
     ///
     /// // -1.25 d
