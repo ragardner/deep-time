@@ -12,6 +12,11 @@
 //! t.sidereal_time('apparent')               # ≈ 20 hourangle
 //! ```
 //!
+//! The published docs only print whole-hour labels (`12.` / `20.` hourangle).
+//! HMS strings, residual table, and `ASTROPY_*` goldens below come from a
+//! local Astropy measurement (script in the block comment after this module
+//! doc), not from a web page.
+//!
 //! Loads IERS finals (same file as the library tests), converts UTC → UT1
 //! with DUT1, then checks **mean** and **apparent** sidereal time at
 //! Greenwich and at 120° E — plus a sample hour angle.
@@ -38,6 +43,63 @@
 //! ```text
 //! cargo run --example sidereal_time --features "sidereal-earth eop std"
 //! ```
+
+/*
+Astropy reference values for the asserts below (astropy 8.0.1).
+
+The docs only show `<Longitude 12. hourangle>` / `<Longitude 20. hourangle>`.
+Everything more precise (1 ms HMS, ASTROPY_* seconds, residual µs) was
+measured with this script (venv: /home/r/Documents/.venv):
+
+```python
+from astropy.time import Time
+import erfa
+
+t = Time(
+    "2001-03-22 00:01:44.732327132980",
+    scale="utc",
+    location=("120d", "40d"),
+)
+
+def to_sec(st) -> float:
+    return float(st.hour) * 3600.0
+
+def format_hms(hourangle_hours: float) -> str:
+    sec = (hourangle_hours % 24.0) * 3600.0
+    h = int(sec // 3600)
+    m = int((sec % 3600) // 60)
+    s = sec % 60.0
+    return f"{h:02d}:{m:02d}:{s:06.3f}"
+
+gast = t.sidereal_time("apparent", "greenwich")
+last = t.sidereal_time("apparent")
+gmst = t.sidereal_time("mean", "greenwich")
+lmst = t.sidereal_time("mean")
+era = float(erfa.era00(t.ut1.jd1, t.ut1.jd2))
+
+print("mjd_utc", float(t.mjd))                 # 51990.00121217971
+print("dut1", float(t.delta_ut1_utc))          # 0.0345727753541418 s
+print("gast_sec", to_sec(gast))                # 43200.000002614826  → ASTROPY_APPARENT_SEC
+print("last_sec", to_sec(last))                # 72000.00000258541
+print("gmst_sec", to_sec(gmst))                # 43201.019318368511  → ASTROPY_MEAN_SEC
+print("lmst_sec", to_sec(lmst))                # 72001.0193183391
+print("era_rad", era)                          # 3.1413939758024103
+print(
+    "hms",
+    format_hms(float(gast.hour)),              # 12:00:00.000
+    format_hms(float(last.hour)),              # 20:00:00.000
+    format_hms(float(gmst.hour)),              # 12:00:01.019
+    format_hms(float(lmst.hour)),              # 20:00:01.019
+)
+print("gast_off_12h_us", (to_sec(gast) - 43200) * 1e6)  # ~2.615 µs
+print("last_off_20h_us", (to_sec(last) - 72000) * 1e6)  # ~2.585 µs
+```
+
+Checked against this crate’s regression goldens (same instant, our IERS file):
+
+  |ours − Astropy| ≈ DUT1 0.78 µs, ERA ~0.65 µs (as time),
+  GAST/LAST ~0.5 µs, GMST/LMST ~2.5 µs.
+*/
 
 use deep_time::eop::{EopData, EopFormat, Separator};
 use deep_time::{Dt, DtErr, Scale, Sidereal};
@@ -138,7 +200,8 @@ fn main() -> Result<(), DtErr> {
     assert_close("DUT1", dut1, 0.034_573_559_110_934, 1e-12);
     assert!(mjd_ut1 > mjd_utc);
 
-    // Display form at 1 ms (both we and Astropy round to these HMS strings).
+    // Display form at 1 ms — same strings as Astropy when formatted that way
+    // (measured; see top-of-file Python block, not in the public docs).
     assert_eq!(gast_hms, "12:00:00.000");
     assert_eq!(last_hms, "20:00:00.000");
     assert_eq!(gmst_hms, "12:00:01.019");
@@ -152,7 +215,7 @@ fn main() -> Result<(), DtErr> {
     assert_close("ERA", era_rad, 3.141_393_975_849_745, 1e-15);
 
     // Textbook hourangles: within 5 µs of exact 12h / 20h.
-    // (Astropy itself is ~2.6 µs off these round numbers on this instant.)
+    // (Astropy is ~2.6 µs off 12h / 20h on this instant; see Python block.)
     const FIVE_US_AS_HOURS: f64 = 5e-6 / 3600.0;
     assert_close("GAST hourangle", gast_h, 12.0, FIVE_US_AS_HOURS);
     assert_close("LAST hourangle", last_h, 20.0, FIVE_US_AS_HOURS);
@@ -164,10 +227,10 @@ fn main() -> Result<(), DtErr> {
     assert_close("LAST − GAST", lon_hours, 8.0, 1e-12);
     assert_close("HA (RA=18h)", ha_signed, 2.0, FIVE_US_AS_HOURS);
 
-    // Bound vs Astropy-class agreement (see module docs). Leaves headroom
-    // above the measured ~0.5 µs (apparent) / ~2.5 µs (mean) residuals.
-    const ASTROPY_APPARENT_SEC: f64 = 43_200.000_002_614_826; // GAST from Astropy
-    const ASTROPY_MEAN_SEC: f64 = 43_201.019_318_368_511; // GMST from Astropy
+    // Bound vs live Astropy (top-of-file Python). Leaves headroom above the
+    // measured ~0.5 µs (apparent) / ~2.5 µs (mean) residuals.
+    const ASTROPY_APPARENT_SEC: f64 = 43_200.000_002_614_826; // to_sec(GAST)
+    const ASTROPY_MEAN_SEC: f64 = 43_201.019_318_368_511; // to_sec(GMST)
     assert_close("GAST vs Astropy", gast_sec, ASTROPY_APPARENT_SEC, 1e-6);
     assert_close("GMST vs Astropy", gmst_sec, ASTROPY_MEAN_SEC, 5e-6);
 
