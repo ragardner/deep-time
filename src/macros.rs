@@ -397,7 +397,7 @@ pub use __weeks as weeks;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -426,7 +426,7 @@ pub use __as_fs as as_fs;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -455,7 +455,7 @@ pub use __as_ps as as_ps;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -484,7 +484,7 @@ pub use __as_ns as as_ns;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -513,7 +513,7 @@ pub use __as_us as as_us;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -542,7 +542,7 @@ pub use __as_ms as as_ms;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -569,7 +569,7 @@ pub use __as_sec as as_sec;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -598,7 +598,7 @@ pub use __as_sec_f as as_sec_f;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -627,7 +627,7 @@ pub use __as_mins as as_mins;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -656,7 +656,7 @@ pub use __as_hours as as_hours;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -683,7 +683,7 @@ pub use __as_days as as_days;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
@@ -712,7 +712,7 @@ pub use __as_days_f as as_days_f;
 ///
 /// ## Examples
 ///
-/// Example shows inputs being built with macros rather than counting
+/// Example shows attos inputs being built with macros rather than counting
 /// attosecond zeros by hand.
 ///
 /// ```rust
