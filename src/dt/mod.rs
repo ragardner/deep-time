@@ -49,9 +49,10 @@ use core::fmt;
 ///
 /// **Fields:**
 ///
-/// - pub attos: [`i128`] - total time in attoseconds since the reference epoch
-///   (2000-01-01 noon), as a signed integer. Negative values represent times
-///   before the epoch.
+/// - pub attos: [`i128`] - signed attosecond count. As a duration this is an
+///   elapsed span; as an instant it is an offset from some epoch (any epoch may
+///   apply depending on construction and use; calendar/conversion APIs commonly
+///   use the library epoch of 2000-01-01 noon).
 /// - pub scale: [`Scale`] - the current time scale of the object.
 /// - pub target: [`Scale`] - a target time scale used by many output functions such as
 ///   [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) and
@@ -285,8 +286,23 @@ use core::fmt;
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Dt {
+    /// Signed attosecond count.
+    ///
+    /// [`Dt`] can represent a duration or an instant. As a duration, `attos` is
+    /// simply an elapsed span. As an instant, it is an offset from some epoch —
+    /// any epoch may apply depending on how the value is constructed and used.
+    ///
+    /// Calendar and conversion APIs commonly interpret it relative to the library
+    /// epoch (2000-01-01 noon), but the field itself is only a count of attoseconds.
     pub attos: i128,
+    /// The current time scale of this value.
     pub scale: Scale,
+    /// Target time scale used by many output functions such as
+    /// [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
+    /// and
+    /// [`Dt::to_unix`](../struct.Dt.html#method.to_unix).
+    ///
+    /// These functions convert to this scale before producing output.
     pub target: Scale,
 }
 
