@@ -14,9 +14,5 @@ mod tests {
     // use deep_time::Sidereal;  // needs "sidereal" feature
 
     #[test]
-    fn print_stuff() {
-        use deep_time::days_f;
-
-        days_f!(5.0);
-    }
+    fn print_stuff() {}
 }

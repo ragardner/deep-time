@@ -811,7 +811,7 @@ impl Dt {
         if is_negative { -abs_total } else { abs_total }
     }
 
-    /// Returns the current system time as TAI from 2000-01-01 12:00:00.
+    /// Returns the current **UTC** system time as TAI from 2000-01-01 12:00:00.
     ///
     /// This method is only available when the `std` feature is enabled and the target
     /// is not WASM with the `js` feature.
@@ -829,13 +829,13 @@ impl Dt {
             }
         };
         Dt::from_diff_and_scale(
-            from_sec!(sec as i128, ns!(nanos as i128), target = Scale::UTC),
+            from_sec!(sec as i128, ns!(nanos as i128), on = Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )
     }
 
-    /// Returns the current system time as TAI from 2000-01-01 12:00:00.
+    /// Returns the current **UTC** system time as TAI from 2000-01-01 12:00:00.
     /// (browser WASM version using JavaScript’s `Date.now()`).
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
     pub fn now() -> Dt {
@@ -845,7 +845,7 @@ impl Dt {
         let sec = (ms / 1000.0).floor() as i128;
         let nanos = ((ms % 1000.0) * 1_000_000.0) as i128;
         Dt::from_diff_and_scale(
-            from_sec!(sec as i128, ns!(nanos as i128), target = Scale::UTC),
+            from_sec!(sec as i128, ns!(nanos as i128), on = Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )
