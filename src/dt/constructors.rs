@@ -817,6 +817,8 @@ impl Dt {
     /// is not WASM with the `js` feature.
     #[cfg(all(feature = "std", not(all(target_arch = "wasm32", feature = "js"))))]
     pub fn now() -> Dt {
+        use crate::macros::{from_sec, ns};
+
         let now = std::time::SystemTime::now();
 
         let (sec, nanos): (i64, i64) = match now.duration_since(std::time::UNIX_EPOCH) {
@@ -826,28 +828,27 @@ impl Dt {
                 (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
             }
         };
-
         Dt::from_diff_and_scale(
-            Dt::new(Dt::sec_to_attos(sec as i128), Scale::TAI, Scale::UTC),
+            from_sec!(sec as i128, ns!(nanos as i128), target = Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )
-        .add(Dt::from_ns(nanos as i128, 0, Scale::TAI, Scale::TAI))
     }
 
     /// Returns the current system time as TAI from 2000-01-01 12:00:00.
     /// (browser WASM version using JavaScript’s `Date.now()`).
     #[cfg(all(target_arch = "wasm32", feature = "js"))]
     pub fn now() -> Dt {
+        use crate::macros::{from_sec, ns};
+
         let ms: f64 = js_sys::Date::now();
         let sec = (ms / 1000.0).floor() as i128;
         let nanos = ((ms % 1000.0) * 1_000_000.0) as i128;
         Dt::from_diff_and_scale(
-            Dt::new(Dt::sec_to_attos(sec), Scale::TAI, Scale::UTC),
+            from_sec!(sec as i128, ns!(nanos as i128), target = Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )
-        .add(Dt::from_ns(nanos as i128, 0, Scale::TAI, Scale::TAI))
     }
 
     /// Returns an instant that is this duration **before** the current system time.
