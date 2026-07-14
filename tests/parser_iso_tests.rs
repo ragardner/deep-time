@@ -614,6 +614,6 @@ mod from_str_iso_tests {
         assert_eq!(ymd.hr(), 18);
         assert_eq!(ymd.min(), 30);
         assert_eq!(ymd.sec(), 25);
-        assert_eq!(deep_time::as_ms!(ymd.attos() as i128), 123);
+        assert_eq!(deep_time::macros::as_ms!(ymd.attos() as i128), 123);
     }
 }

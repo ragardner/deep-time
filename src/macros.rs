@@ -1,50 +1,52 @@
-//! Convenience macros
+//! Convenient macros.
 
 /// Converts whole femtoseconds (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::fs_to_attos`](../struct.Dt.html#method.fs_to_attos). Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
-/// constant (saturating).
+/// Equivalent to [`Dt::fs_to_attos`](../struct.Dt.html#method.fs_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, fs};
+/// use deep_time::{Dt, macros::fs};
 ///
 /// assert_eq!(fs!(1), Dt::fs_to_attos(1));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! fs {
+macro_rules! __fs {
     ($x:expr) => {
         $crate::Dt::fs_to_attos($x)
     };
 }
 
+#[doc(inline)]
+pub use __fs as fs;
+
 /// Converts whole picoseconds (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::ps_to_attos`](../struct.Dt.html#method.ps_to_attos). Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
-/// constant (saturating).
+/// Equivalent to [`Dt::ps_to_attos`](../struct.Dt.html#method.ps_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, ps};
+/// use deep_time::{Dt, macros::ps};
 ///
 /// assert_eq!(ps!(1), Dt::ps_to_attos(1));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! ps {
+macro_rules! __ps {
     ($x:expr) => {
         $crate::Dt::ps_to_attos($x)
     };
 }
 
+#[doc(inline)]
+pub use __ps as ps;
+
 /// Converts whole nanoseconds (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::ns_to_attos`](../struct.Dt.html#method.ns_to_attos). Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
-/// constant (saturating).
+/// Equivalent to [`Dt::ns_to_attos`](../struct.Dt.html#method.ns_to_attos).
 ///
 /// ## Example
 ///
@@ -62,29 +64,29 @@ macro_rules! ns {
 
 /// Converts whole microseconds (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::us_to_attos`](../struct.Dt.html#method.us_to_attos). Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
-/// constant (saturating).
+/// Equivalent to [`Dt::us_to_attos`](../struct.Dt.html#method.us_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, us};
+/// use deep_time::{Dt, macros::us};
 ///
 /// assert_eq!(us!(1), Dt::us_to_attos(1));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! us {
+macro_rules! __us {
     ($x:expr) => {
         $crate::Dt::us_to_attos($x)
     };
 }
 
+#[doc(inline)]
+pub use __us as us;
+
 /// Converts whole milliseconds (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::ms_to_attos`](../struct.Dt.html#method.ms_to_attos). Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
-/// constant (saturating).
+/// Equivalent to [`Dt::ms_to_attos`](../struct.Dt.html#method.ms_to_attos).
 ///
 /// ## Example
 ///
@@ -102,111 +104,118 @@ macro_rules! ms {
 
 /// Converts whole seconds (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::sec_to_attos`](../struct.Dt.html#method.sec_to_attos). Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
-/// constant (saturating).
+/// Equivalent to [`Dt::sec_to_attos`](../struct.Dt.html#method.sec_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, sec};
+/// use deep_time::{Dt, macros::sec};
 ///
 /// assert_eq!(sec!(1), Dt::sec_to_attos(1));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! sec {
+macro_rules! __sec {
     ($x:expr) => {
         $crate::Dt::sec_to_attos($x)
     };
 }
 
-/// Converts a floating-point second count ([`Real`](crate::Real)) to total attoseconds (`i128`).
+#[doc(inline)]
+pub use __sec as sec;
+
+/// Converts a floating-point second count ([`Real`](crate::Real)) to
+/// total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::sec_f_to_attos`](../struct.Dt.html#method.sec_f_to_attos). Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only converts the second count to attoseconds via the
-/// high-precision IEEE 754 path.
+/// Equivalent to [`Dt::sec_f_to_attos`](../struct.Dt.html#method.sec_f_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, sec_f};
+/// use deep_time::{Dt, macros::sec_f};
 ///
 /// assert_eq!(sec_f!(1.5), Dt::sec_f_to_attos(1.5));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! sec_f {
+macro_rules! __sec_f {
     ($x:expr) => {
         $crate::Dt::sec_f_to_attos($x)
     };
 }
 
+#[doc(inline)]
+pub use __sec_f as sec_f;
+
 /// Converts whole minutes (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::mins_to_attos`](../struct.Dt.html#method.mins_to_attos). Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
-/// constant (saturating).
+/// Equivalent to [`Dt::mins_to_attos`](../struct.Dt.html#method.mins_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, mins};
+/// use deep_time::{Dt, macros::mins};
 ///
 /// assert_eq!(mins!(1), Dt::mins_to_attos(1));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! mins {
+macro_rules! __mins {
     ($x:expr) => {
         $crate::Dt::mins_to_attos($x)
     };
 }
 
+#[doc(inline)]
+pub use __mins as mins;
+
 /// Converts whole hours (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::hours_to_attos`](../struct.Dt.html#method.hours_to_attos).
-/// Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the
-/// attoseconds-per-unit constant (saturating).
+/// Equivalent to [`Dt::hours_to_attos`](../struct.Dt.html#method.hours_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, hours};
+/// use deep_time::{Dt, macros::hours};
 ///
 /// assert_eq!(hours!(1), Dt::hours_to_attos(1));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! hours {
+macro_rules! __hours {
     ($x:expr) => {
         $crate::Dt::hours_to_attos($x)
     };
 }
 
+#[doc(inline)]
+pub use __hours as hours;
+
 /// Converts whole days (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::days_to_attos`](../struct.Dt.html#method.days_to_attos). Does **not**
-/// build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the attoseconds-per-unit
-/// constant (saturating).
+/// Equivalent to [`Dt::days_to_attos`](../struct.Dt.html#method.days_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, days};
+/// use deep_time::{Dt, macros::days};
 ///
 /// assert_eq!(days!(1), Dt::days_to_attos(1));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! days {
+macro_rules! __days {
     ($x:expr) => {
         $crate::Dt::days_to_attos($x)
     };
 }
 
+#[doc(inline)]
+pub use __days as days;
+
 /// Converts a floating-point day count ([`Real`](crate::Real)) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::days_f_to_attos`](../struct.Dt.html#method.days_f_to_attos). Does **not**
-/// build a
-/// [`Dt`](../struct.Dt.html) — only converts the day count to attoseconds.
+/// Equivalent to [`Dt::days_f_to_attos`](../struct.Dt.html#method.days_f_to_attos).
 ///
 /// ## Example
 ///
@@ -224,245 +233,294 @@ macro_rules! days_f {
 
 /// Converts whole weeks (`i128`) to total attoseconds (`i128`).
 ///
-/// Sugar for [`Dt::weeks_to_attos`](../struct.Dt.html#method.weeks_to_attos).
-/// Does **not** build a
-/// [`Dt`](../struct.Dt.html) — only multiplies the unit count by the
-/// attoseconds-per-unit constant (saturating).
+/// Equivalent to [`Dt::weeks_to_attos`](../struct.Dt.html#method.weeks_to_attos).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, weeks};
+/// use deep_time::{Dt, macros::weeks};
 ///
 /// assert_eq!(weeks!(1), Dt::weeks_to_attos(1));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! weeks {
+macro_rules! __weeks {
     ($x:expr) => {
         $crate::Dt::weeks_to_attos($x)
     };
 }
 
+#[doc(inline)]
+pub use __weeks as weeks;
+
 /// Converts total attoseconds (`i128`) → whole femtoseconds (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_fs`](../struct.Dt.html#method.attos_to_fs). Truncating division.
+/// Equivalent to [`Dt::attos_to_fs`](../struct.Dt.html#method.attos_to_fs).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_fs};
+/// use deep_time::{Dt, macros::as_fs};
 ///
 /// assert_eq!(as_fs!(Dt::fs_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_fs {
+macro_rules! __as_fs {
     ($x:expr) => {
         $crate::Dt::attos_to_fs($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_fs as as_fs;
+
 /// Converts total attoseconds (`i128`) → whole picoseconds (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_ps`](../struct.Dt.html#method.attos_to_ps). Truncating division.
+/// Equivalent to [`Dt::attos_to_ps`](../struct.Dt.html#method.attos_to_ps).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_ps};
+/// use deep_time::{Dt, macros::as_ps};
 ///
 /// assert_eq!(as_ps!(Dt::ps_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_ps {
+macro_rules! __as_ps {
     ($x:expr) => {
         $crate::Dt::attos_to_ps($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_ps as as_ps;
+
 /// Converts total attoseconds (`i128`) → whole nanoseconds (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_ns`](../struct.Dt.html#method.attos_to_ns). Truncating division.
+/// Equivalent to [`Dt::attos_to_ns`](../struct.Dt.html#method.attos_to_ns).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_ns};
+/// use deep_time::{Dt, macros::as_ns};
 ///
 /// assert_eq!(as_ns!(Dt::ns_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_ns {
+macro_rules! __as_ns {
     ($x:expr) => {
         $crate::Dt::attos_to_ns($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_ns as as_ns;
+
 /// Converts total attoseconds (`i128`) → whole microseconds (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_us`](../struct.Dt.html#method.attos_to_us). Truncating division.
+/// Equivalent to [`Dt::attos_to_us`](../struct.Dt.html#method.attos_to_us).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_us};
+/// use deep_time::{Dt, macros::as_us};
 ///
 /// assert_eq!(as_us!(Dt::us_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_us {
+macro_rules! __as_us {
     ($x:expr) => {
         $crate::Dt::attos_to_us($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_us as as_us;
+
 /// Converts total attoseconds (`i128`) → whole milliseconds (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_ms`](../struct.Dt.html#method.attos_to_ms). Truncating division.
+/// Equivalent to [`Dt::attos_to_ms`](../struct.Dt.html#method.attos_to_ms).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_ms};
+/// use deep_time::{Dt, macros::as_ms};
 ///
 /// assert_eq!(as_ms!(Dt::ms_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_ms {
+macro_rules! __as_ms {
     ($x:expr) => {
         $crate::Dt::attos_to_ms($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_ms as as_ms;
+
 /// Converts total attoseconds (`i128`) → whole seconds (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_sec`](../struct.Dt.html#method.attos_to_sec). Truncating division.
+/// Equivalent to [`Dt::attos_to_sec`](../struct.Dt.html#method.attos_to_sec).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_sec};
+/// use deep_time::{Dt, macros::as_sec};
 ///
 /// assert_eq!(as_sec!(Dt::sec_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_sec {
+macro_rules! __as_sec {
     ($x:expr) => {
         $crate::Dt::attos_to_sec($x)
     };
 }
 
-/// Converts total attoseconds (`i128`) → float seconds ([`Real`](crate::Real)).
+#[doc(inline)]
+pub use __as_sec as as_sec;
+
+/// Converts total attoseconds (`i128`) → lossy float seconds ([`Real`](crate::Real)).
 ///
-/// Sugar for [`Dt::attos_to_sec_f`](../struct.Dt.html#method.attos_to_sec_f). Lossy.
+/// Equivalent to [`Dt::attos_to_sec_f`](../struct.Dt.html#method.attos_to_sec_f).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_sec_f};
+/// use deep_time::{Dt, macros::as_sec_f};
 ///
 /// assert_eq!(as_sec_f!(Dt::sec_to_attos(3)), 3.0);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_sec_f {
+macro_rules! __as_sec_f {
     ($x:expr) => {
         $crate::Dt::attos_to_sec_f($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_sec_f as as_sec_f;
+
 /// Converts total attoseconds (`i128`) → whole minutes (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_mins`](../struct.Dt.html#method.attos_to_mins). Truncating division.
+/// Equivalent to [`Dt::attos_to_mins`](../struct.Dt.html#method.attos_to_mins).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_mins};
+/// use deep_time::{Dt, macros::as_mins};
 ///
 /// assert_eq!(as_mins!(Dt::mins_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_mins {
+macro_rules! __as_mins {
     ($x:expr) => {
         $crate::Dt::attos_to_mins($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_mins as as_mins;
+
 /// Converts total attoseconds (`i128`) → whole hours (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_hours`](../struct.Dt.html#method.attos_to_hours). Truncating division.
+/// Equivalent to [`Dt::attos_to_hours`](../struct.Dt.html#method.attos_to_hours).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_hours};
+/// use deep_time::{Dt, macros::as_hours};
 ///
 /// assert_eq!(as_hours!(Dt::hours_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_hours {
+macro_rules! __as_hours {
     ($x:expr) => {
         $crate::Dt::attos_to_hours($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_hours as as_hours;
+
 /// Converts total attoseconds (`i128`) → whole days (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_days`](../struct.Dt.html#method.attos_to_days). Truncating division.
+/// Equivalent to [`Dt::attos_to_days`](../struct.Dt.html#method.attos_to_days).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_days};
+/// use deep_time::{Dt, macros::as_days};
 ///
 /// assert_eq!(as_days!(Dt::days_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_days {
+macro_rules! __as_days {
     ($x:expr) => {
         $crate::Dt::attos_to_days($x)
     };
 }
 
-/// Converts total attoseconds (`i128`) → floating-point days ([`Real`](crate::Real)).
+#[doc(inline)]
+pub use __as_days as as_days;
+
+/// Converts total attoseconds (`i128`) → lossy float days ([`Real`](crate::Real)).
 ///
-/// Sugar for [`Dt::attos_to_days_f`](../struct.Dt.html#method.attos_to_days_f). Lossy.
+/// Equivalent to [`Dt::attos_to_days_f`](../struct.Dt.html#method.attos_to_days_f).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_days_f};
+/// use deep_time::{Dt, macros::as_days_f};
 ///
 /// assert_eq!(as_days_f!(Dt::days_to_attos(3)), 3.0);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_days_f {
+macro_rules! __as_days_f {
     ($x:expr) => {
         $crate::Dt::attos_to_days_f($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_days_f as as_days_f;
+
 /// Converts total attoseconds (`i128`) → whole weeks (`i128`).
 ///
-/// Sugar for [`Dt::attos_to_weeks`](../struct.Dt.html#method.attos_to_weeks). Truncating division.
+/// Equivalent to [`Dt::attos_to_weeks`](../struct.Dt.html#method.attos_to_weeks).
 ///
 /// ## Example
 ///
 /// ```rust
-/// use deep_time::{Dt, as_weeks};
+/// use deep_time::{Dt, macros::as_weeks};
 ///
 /// assert_eq!(as_weeks!(Dt::weeks_to_attos(3)), 3);
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! as_weeks {
+macro_rules! __as_weeks {
     ($x:expr) => {
         $crate::Dt::attos_to_weeks($x)
     };
 }
 
+#[doc(inline)]
+pub use __as_weeks as as_weeks;
+
 /// Builds a [`Dt`](../struct.Dt.html) from total attoseconds with optional scale labels.
 ///
-/// Sugar for [`Dt::new`](../struct.Dt.html#method.new). Does **not** perform time-scale
-/// conversion.
+/// - Equivalent to [`Dt::new`](../struct.Dt.html#method.new).
+/// - Does **not** perform time-scale conversion.
 ///
 /// ## Defaults
 ///
@@ -521,8 +579,8 @@ macro_rules! dt {
 /// Builds a [`Dt`](../struct.Dt.html) from whole seconds and an optional signed
 /// sub-second remainder (attoseconds).
 ///
-/// Sugar for [`Dt::from_sec_and_frac`](../struct.Dt.html#method.from_sec_and_frac).
-/// Does **not** perform time-scale conversion.
+/// - Equivalent to [`Dt::from_sec_and_frac`](../struct.Dt.html#method.from_sec_and_frac).
+/// - Does **not** perform time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
 /// [`ms!`](../macro.ms.html) (or another `*_to_attos`
@@ -555,7 +613,7 @@ macro_rules! dt {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_sec, ms};
+/// use deep_time::{Dt, Scale, macros::from_sec, ms};
 ///
 /// // 1.3 s → whole seconds + 300 ms remainder
 /// let a = from_sec!(1);
@@ -577,8 +635,9 @@ macro_rules! dt {
 /// assert_eq!(signed, floor);
 /// assert_eq!(signed, Dt::from_sec_and_frac(-1, ms!(-300), Scale::TAI, Scale::TAI));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_sec {
+macro_rules! __from_sec {
     ($sec:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_sec_and_frac($sec, $frac, $scale, $target)
     };
@@ -611,11 +670,14 @@ macro_rules! from_sec {
     };
 }
 
+#[doc(inline)]
+pub use __from_sec as from_sec;
+
 /// Builds a [`Dt`](../struct.Dt.html) from a floating-point seconds count with optional
 /// scale labels.
 ///
-/// Sugar for [`Dt::from_sec_f`](../struct.Dt.html#method.from_sec_f). Does **not** perform
-/// time-scale conversion.
+/// - Equivalent to [`Dt::from_sec_f`](../struct.Dt.html#method.from_sec_f).
+/// - Does **not** perform time-scale conversion.
 ///
 /// ## Defaults
 ///
@@ -673,8 +735,8 @@ macro_rules! from_sec_f {
 /// Builds a [`Dt`](../struct.Dt.html) from a floating-point day count with optional
 /// scale labels.
 ///
-/// Sugar for [`Dt::from_days_f`](../struct.Dt.html#method.from_days_f). Does **not**
-/// perform time-scale conversion.
+/// - Equivalent to [`Dt::from_days_f`](../struct.Dt.html#method.from_days_f).
+/// - Does **not** perform time-scale conversion.
 ///
 /// ## Defaults
 ///
@@ -698,7 +760,7 @@ macro_rules! from_sec_f {
 ///
 /// ```
 /// use deep_time::Scale;
-/// use deep_time::from_days_f;
+/// use deep_time::macros::from_days_f;
 ///
 /// let a = from_days_f!(1.25);
 /// let b = from_days_f!(0.0, on=Scale::UTC);
@@ -708,8 +770,9 @@ macro_rules! from_sec_f {
 /// assert_eq!(b, deep_time::Dt::from_days_f(0.0, Scale::UTC, Scale::UTC));
 /// assert_eq!(c, deep_time::Dt::from_days_f(1.0, Scale::TAI, Scale::UTC));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_days_f {
+macro_rules! __from_days_f {
     ($days:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_days_f($days, $scale, $target)
     };
@@ -727,14 +790,17 @@ macro_rules! from_days_f {
     };
 }
 
+#[doc(inline)]
+pub use __from_days_f as from_days_f;
+
 /// Builds a [`Dt`](../struct.Dt.html) from whole nanoseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_ns`](../struct.Dt.html#method.from_ns). Does **not** perform
-/// time-scale conversion.
+/// - Equivalent to [`Dt::from_ns`](../struct.Dt.html#method.from_ns).
+/// - Does **not** perform time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`ps!`](../macro.ps.html) (or another `*_to_attos`
+/// [`ps!`](macro.ps.html) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -764,7 +830,7 @@ macro_rules! from_days_f {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_ns, ps};
+/// use deep_time::{Dt, Scale, macros::from_ns, macros::ps};
 ///
 /// // 1.3 ns → whole nanoseconds + 300 ps remainder
 /// let a = from_ns!(1);
@@ -786,8 +852,9 @@ macro_rules! from_days_f {
 /// assert_eq!(signed, floor);
 /// assert_eq!(signed, Dt::from_ns(-1, ps!(-300), Scale::TAI, Scale::TAI));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_ns {
+macro_rules! __from_ns {
     ($ns:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_ns($ns, $frac, $scale, $target)
     };
@@ -820,14 +887,17 @@ macro_rules! from_ns {
     };
 }
 
+#[doc(inline)]
+pub use __from_ns as from_ns;
+
 /// Builds a [`Dt`](../struct.Dt.html) from whole milliseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_ms`](../struct.Dt.html#method.from_ms). Does **not** perform
-/// time-scale conversion.
+/// - Equivalent to [`Dt::from_ms`](../struct.Dt.html#method.from_ms).
+/// - Does **not** perform time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`us!`](../macro.us.html) (or another `*_to_attos`
+/// [`us!`](macro.us.html) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -857,7 +927,7 @@ macro_rules! from_ns {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_ms, us};
+/// use deep_time::{Dt, Scale, macros::from_ms, macros::us};
 ///
 /// // 1.3 ms → whole milliseconds + 300 µs remainder
 /// let a = from_ms!(1);
@@ -879,8 +949,9 @@ macro_rules! from_ns {
 /// assert_eq!(signed, floor);
 /// assert_eq!(signed, Dt::from_ms(-1, us!(-300), Scale::TAI, Scale::TAI));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_ms {
+macro_rules! __from_ms {
     ($ms:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_ms($ms, $frac, $scale, $target)
     };
@@ -913,11 +984,14 @@ macro_rules! from_ms {
     };
 }
 
+#[doc(inline)]
+pub use __from_ms as from_ms;
+
 /// Builds a [`Dt`](../struct.Dt.html) from whole microseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_us`](../struct.Dt.html#method.from_us). Does **not** perform
-/// time-scale conversion.
+/// - Equivalent to [`Dt::from_us`](../struct.Dt.html#method.from_us).
+/// - Does **not** perform time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
 /// [`ns!`](../macro.ns.html) (or another `*_to_attos`
@@ -950,7 +1024,7 @@ macro_rules! from_ms {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_us, ns};
+/// use deep_time::{Dt, Scale, macros::from_us, ns};
 ///
 /// // 1.3 µs → whole microseconds + 300 ns remainder
 /// let a = from_us!(1);
@@ -972,8 +1046,9 @@ macro_rules! from_ms {
 /// assert_eq!(signed, floor);
 /// assert_eq!(signed, Dt::from_us(-1, ns!(-300), Scale::TAI, Scale::TAI));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_us {
+macro_rules! __from_us {
     ($us:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_us($us, $frac, $scale, $target)
     };
@@ -1006,14 +1081,17 @@ macro_rules! from_us {
     };
 }
 
+#[doc(inline)]
+pub use __from_us as from_us;
+
 /// Builds a [`Dt`](../struct.Dt.html) from whole picoseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_ps`](../struct.Dt.html#method.from_ps). Does **not** perform
-/// time-scale conversion.
+/// - Equivalent to [`Dt::from_ps`](../struct.Dt.html#method.from_ps).
+/// - Does **not** perform time-scale conversion.
 ///
 /// The fractional remainder is in **attoseconds** — use
-/// [`fs!`](../macro.fs.html) (or another `*_to_attos`
+/// [`fs!`](macro.fs.html) (or another `*_to_attos`
 /// helper) instead of writing the attosecond literal by hand.
 ///
 /// ## Defaults
@@ -1043,7 +1121,7 @@ macro_rules! from_us {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_ps, fs};
+/// use deep_time::{Dt, Scale, macros::from_ps, macros::fs};
 ///
 /// // 1.3 ps → whole picoseconds + 300 fs remainder
 /// let a = from_ps!(1);
@@ -1065,8 +1143,9 @@ macro_rules! from_us {
 /// assert_eq!(signed, floor);
 /// assert_eq!(signed, Dt::from_ps(-1, fs!(-300), Scale::TAI, Scale::TAI));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_ps {
+macro_rules! __from_ps {
     ($ps:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_ps($ps, $frac, $scale, $target)
     };
@@ -1099,11 +1178,14 @@ macro_rules! from_ps {
     };
 }
 
+#[doc(inline)]
+pub use __from_ps as from_ps;
+
 /// Builds a [`Dt`](../struct.Dt.html) from whole femtoseconds and an optional signed
 /// fractional remainder in attoseconds.
 ///
-/// Sugar for [`Dt::from_fs`](../struct.Dt.html#method.from_fs). Does **not** perform
-/// time-scale conversion.
+/// - Equivalent to [`Dt::from_fs`](../struct.Dt.html#method.from_fs).
+/// - Does **not** perform time-scale conversion.
 ///
 /// The fractional remainder is already in **attoseconds** (one femtosecond is
 /// 1000 attoseconds) — there is no smaller named unit macro.
@@ -1135,7 +1217,7 @@ macro_rules! from_ps {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, from_fs};
+/// use deep_time::{Dt, Scale, macros::from_fs};
 ///
 /// // 1.3 fs → whole femtoseconds + 300 attoseconds remainder
 /// let a = from_fs!(1);
@@ -1157,8 +1239,9 @@ macro_rules! from_ps {
 /// assert_eq!(signed, floor);
 /// assert_eq!(signed, Dt::from_fs(-1, -300, Scale::TAI, Scale::TAI));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_fs {
+macro_rules! __from_fs {
     ($fs:expr, $frac:expr, on=$scale:expr, target=$target:expr) => {
         $crate::Dt::from_fs($fs, $frac, $scale, $target)
     };
@@ -1191,10 +1274,13 @@ macro_rules! from_fs {
     };
 }
 
+#[doc(inline)]
+pub use __from_fs as from_fs;
+
 /// Builds a **TAI** [`Dt`](../struct.Dt.html) from a Julian Date (whole days plus
 /// optional attosecond remainder).
 ///
-/// Sugar for [`Dt::from_jd`](../struct.Dt.html#method.from_jd).
+/// Equivalent to [`Dt::from_jd`](../struct.Dt.html#method.from_jd).
 ///
 /// When an `on` arg is provided and it's not [`Scale::TAI`](crate::Scale::TAI)
 /// then a time scale conversion is performed equivalent to `on` ->
@@ -1228,7 +1314,7 @@ macro_rules! from_fs {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, days_f, from_jd};
+/// use deep_time::{Dt, Scale, days_f, macros::from_jd};
 ///
 /// // 2_460_782.25
 /// let a = from_jd!(2_460_782);
@@ -1249,8 +1335,9 @@ macro_rules! from_fs {
 /// // or with floor style
 /// assert_eq!(neg, from_jd!(-1_001, days_f!(0.75)));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_jd {
+macro_rules! __from_jd {
     // `on=` arms before bare `$frac:expr` so `on=…` is not taken as an expr.
     ($jd_days:expr, $frac:expr, on=$scale:expr) => {
         $crate::Dt::from_jd($jd_days, $frac, $scale)
@@ -1266,9 +1353,12 @@ macro_rules! from_jd {
     };
 }
 
+#[doc(inline)]
+pub use __from_jd as from_jd;
+
 /// Builds a **TAI** [`Dt`](../struct.Dt.html) from a floating-point Julian Date.
 ///
-/// Sugar for [`Dt::from_jd_f`](../struct.Dt.html#method.from_jd_f).
+/// Equivalent to [`Dt::from_jd_f`](../struct.Dt.html#method.from_jd_f).
 ///
 /// When an `on` arg is provided and it's not [`Scale::TAI`](crate::Scale::TAI)
 /// then a time scale conversion is performed equivalent to `on` ->
@@ -1295,7 +1385,7 @@ macro_rules! from_jd {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, days_f, from_jd_f};
+/// use deep_time::{Dt, Scale, days_f, macros::from_jd_f};
 ///
 /// // 2_460_782.25
 /// let a = from_jd_f!(2_460_782.25);
@@ -1312,8 +1402,9 @@ macro_rules! from_jd {
 /// assert_eq!(neg, Dt::from_jd_f(-1_000.25, Scale::TAI));
 /// assert_eq!(neg.to_jd(), (-1_000, -days_f!(0.25)));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_jd_f {
+macro_rules! __from_jd_f {
     ($jd:expr, on=$scale:expr) => {
         $crate::Dt::from_jd_f($jd, $scale)
     };
@@ -1322,10 +1413,13 @@ macro_rules! from_jd_f {
     };
 }
 
+#[doc(inline)]
+pub use __from_jd_f as from_jd_f;
+
 /// Builds a **TAI** [`Dt`](../struct.Dt.html) from a Modified Julian Date (whole days
 /// plus optional attosecond remainder).
 ///
-/// Sugar for [`Dt::from_mjd`](../struct.Dt.html#method.from_mjd).
+/// Equivalent to [`Dt::from_mjd`](../struct.Dt.html#method.from_mjd).
 ///
 /// When an `on` arg is provided and it's not [`Scale::TAI`](crate::Scale::TAI)
 /// then a time scale conversion is performed equivalent to `on` ->
@@ -1361,7 +1455,7 @@ macro_rules! from_jd_f {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, days_f, from_mjd};
+/// use deep_time::{Dt, Scale, days_f, macros::from_mjd};
 ///
 /// // J2000.0 → MJD 51_544.5
 /// let a = from_mjd!(51_544);
@@ -1380,8 +1474,9 @@ macro_rules! from_jd_f {
 /// assert_eq!(neg, Dt::from_mjd(-1_000, -days_f!(0.25), Scale::TAI));
 /// assert_eq!(neg.to_mjd(), (-1_000, -days_f!(0.25)));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_mjd {
+macro_rules! __from_mjd {
     // `on=` arms before bare `$frac:expr` so `on=…` is not taken as an expr.
     ($mjd_days:expr, $frac:expr, on=$scale:expr) => {
         $crate::Dt::from_mjd($mjd_days, $frac, $scale)
@@ -1397,9 +1492,12 @@ macro_rules! from_mjd {
     };
 }
 
+#[doc(inline)]
+pub use __from_mjd as from_mjd;
+
 /// Builds a **TAI** [`Dt`](../struct.Dt.html) from a floating-point Modified Julian Date.
 ///
-/// Sugar for [`Dt::from_mjd_f`](../struct.Dt.html#method.from_mjd_f).
+/// Equivalent to [`Dt::from_mjd_f`](../struct.Dt.html#method.from_mjd_f).
 ///
 /// When an `on` arg is provided and it's not [`Scale::TAI`](crate::Scale::TAI)
 /// then a time scale conversion is performed equivalent to `on` ->
@@ -1428,7 +1526,7 @@ macro_rules! from_mjd {
 /// ## Examples
 ///
 /// ```
-/// use deep_time::{Dt, Scale, days_f, from_mjd_f};
+/// use deep_time::{Dt, Scale, days_f, macros::from_mjd_f};
 ///
 /// // 60_961.25
 /// let a = from_mjd_f!(60_961.25);
@@ -1445,8 +1543,9 @@ macro_rules! from_mjd {
 /// assert_eq!(neg, Dt::from_mjd_f(-1_000.25, Scale::TAI));
 /// assert_eq!(neg.to_mjd_floor(), (-1_001, days_f!(0.75)));
 /// ```
+#[doc(hidden)]
 #[macro_export]
-macro_rules! from_mjd_f {
+macro_rules! __from_mjd_f {
     ($mjd:expr, on=$scale:expr) => {
         $crate::Dt::from_mjd_f($mjd, $scale)
     };
@@ -1455,9 +1554,12 @@ macro_rules! from_mjd_f {
     };
 }
 
+#[doc(inline)]
+pub use __from_mjd_f as from_mjd_f;
+
 /// Builds a [`Dt`](../struct.Dt.html) from a Gregorian calendar date and optional time.
 ///
-/// Sugar for [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd).
+/// Equivalent to [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd).
 ///
 /// Date fields are positional (`y`, `m`, `d`). Time is optional: put a
 /// **semicolon after the day**, then hour (required if `;` is present), then
@@ -1571,3 +1673,6 @@ macro_rules! from_ymd {
         $crate::Dt::from_ymd($y, 1, 1, $crate::Scale::UTC, 0, 0, 0, 0)
     };
 }
+
+#[doc(inline)]
+pub use crate::{days_f, dt, from_sec_f, from_ymd, ms, ns};

@@ -2,7 +2,8 @@
 
 #[cfg(feature = "mars")]
 mod mars_tests {
-    use deep_time::{Dt, Real, Scale, f, from_sec, mars::MARS_SOL_LENGTH_SEC};
+    use deep_time::macros::from_sec;
+    use deep_time::{Dt, Real, Scale, f, mars::MARS_SOL_LENGTH_SEC};
 
     #[test]
     fn utc_leap_seconds_are_handled_in_mars_time() {

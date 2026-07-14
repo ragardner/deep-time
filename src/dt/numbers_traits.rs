@@ -143,22 +143,22 @@ impl TraitsTime for u128 {
 impl TraitsTime for f64 {
     #[inline]
     fn ns(self) -> Dt {
-        crate::from_sec_f!(self * 1e-9)
+        crate::macros::from_sec_f!(self * 1e-9)
     }
 
     #[inline]
     fn us(self) -> Dt {
-        crate::from_sec_f!(self * 1e-6)
+        crate::macros::from_sec_f!(self * 1e-6)
     }
 
     #[inline]
     fn ms(self) -> Dt {
-        crate::from_sec_f!(self * 1e-3)
+        crate::macros::from_sec_f!(self * 1e-3)
     }
 
     #[inline]
     fn sec(self) -> Dt {
-        crate::from_sec_f!(self)
+        crate::macros::from_sec_f!(self)
     }
 
     #[inline]
@@ -190,22 +190,22 @@ impl TraitsTime for f64 {
 impl TraitsTime for f32 {
     #[inline]
     fn ns(self) -> Dt {
-        crate::from_sec_f!(self as f64 * 1e-9)
+        crate::macros::from_sec_f!(self as f64 * 1e-9)
     }
 
     #[inline]
     fn us(self) -> Dt {
-        crate::from_sec_f!(self as f64 * 1e-6)
+        crate::macros::from_sec_f!(self as f64 * 1e-6)
     }
 
     #[inline]
     fn ms(self) -> Dt {
-        crate::from_sec_f!(self as f64 * 1e-3)
+        crate::macros::from_sec_f!(self as f64 * 1e-3)
     }
 
     #[inline]
     fn sec(self) -> Dt {
-        crate::from_sec_f!(self as f64)
+        crate::macros::from_sec_f!(self as f64)
     }
 
     #[inline]

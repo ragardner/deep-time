@@ -10,7 +10,8 @@
 /// authoritative published reference value. All tolerances are set to be
 /// substantially tighter than any operational requirement for cislunar PNT.
 mod ltc_tests {
-    use deep_time::{Dt, Scale, consts::ATTOS_PER_SEC_I128, from_sec};
+    use deep_time::macros::from_sec;
+    use deep_time::{Dt, Scale, consts::ATTOS_PER_SEC_I128};
 
     /// Verifies round-trip conversion accuracy between TAI and LTC.
     ///

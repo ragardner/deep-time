@@ -3,7 +3,8 @@
 #[cfg(feature = "lang")]
 mod tests {
     use deep_time::civil_parts::Parts;
-    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale, from_sec};
+    use deep_time::macros::from_sec;
+    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
 
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]

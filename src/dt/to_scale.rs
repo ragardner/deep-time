@@ -1,6 +1,7 @@
+use crate::macros::from_sec_f;
 use crate::{
     Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS,
-    TT_TAI_OFFSET, from_sec_f,
+    TT_TAI_OFFSET,
 };
 
 impl Dt {
@@ -92,7 +93,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, from_sec};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::from_sec;
     ///
     /// let diff = from_sec!(1_718_467_200); // ~2024-06-15
     /// let dt = Dt::from_diff_and_scale(diff, Dt::UNIX_EPOCH, true);

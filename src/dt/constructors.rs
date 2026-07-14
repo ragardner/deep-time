@@ -306,7 +306,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, us};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::us;
     ///
     /// // 1.3 ms
     /// let a = Dt::from_ms(1, us!(300), Scale::TAI, Scale::TAI);
@@ -323,8 +324,8 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`from_ms!`](../macro.from_ms.html)
-    /// - [`us!`](../macro.us.html)
+    /// - [`from_ms!`](../macros/macro.from_ms.html)
+    /// - [`us!`](../macros/macro.us.html)
     #[inline(always)]
     pub const fn from_ms(ms: i128, attos: i128, on: Scale, target: Scale) -> Dt {
         let attos = Dt::unit_to_total_attos(ms, attos, ATTOS_PER_MS_I128);
@@ -368,7 +369,7 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`from_us!`](../macro.from_us.html)
+    /// - [`from_us!`](../macros/macro.from_us.html)
     /// - [`ns!`](../macro.ns.html)
     #[inline(always)]
     pub const fn from_us(us: i128, attos: i128, on: Scale, target: Scale) -> Dt {
@@ -396,7 +397,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, ps};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::ps;
     ///
     /// // 1.3 ns → whole nanoseconds + 300 ps remainder
     /// let a = Dt::from_ns(1, ps!(300), Scale::TAI, Scale::TAI);
@@ -432,7 +434,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, fs};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::fs;
     ///
     /// // 1.3 ps
     /// let a = Dt::from_ps(1, fs!(300), Scale::TAI, Scale::TAI);
@@ -507,7 +510,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, sec};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::sec;
     ///
     /// // 1.5 min
     /// let a = Dt::from_mins(1, sec!(30), Scale::TAI, Scale::TAI);
@@ -542,7 +546,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, mins};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::mins;
     ///
     /// // 1.5 h
     /// let a = Dt::from_hours(1, mins!(30), Scale::TAI, Scale::TAI);
@@ -576,7 +581,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, dt, hours};
+    /// use deep_time::{Dt, Scale, dt};
+    /// use deep_time::macros::hours;
     ///
     /// // 1.25 d
     /// let a = Dt::from_days(1, dt!(hours!(6)), Scale::TAI, Scale::TAI);

@@ -3,8 +3,9 @@
 //! Uses the built-in [`LEAP_SECS`] list or a caller-provided [`LeapSec`] slice.
 //! [`LeapInfo`] is returned by [`Dt::leap_sec`](../struct.Dt.html#method.leap_sec) and related methods.
 
+use crate::macros::from_sec_f;
 use crate::utc::leap_seconds_list::{LEAP_SECS, LeapSec};
-use crate::{Dt, Scale, from_sec_f};
+use crate::{Dt, Scale};
 
 #[cfg(feature = "std")]
 use std::{fs, io, path::Path};

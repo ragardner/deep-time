@@ -1,4 +1,5 @@
-use deep_time::{Dt, DtErr, Lang, LiteStr, ParseCfg, Scale, YmdHms, from_ns, from_ymd};
+use deep_time::macros::from_ns;
+use deep_time::{Dt, DtErr, Lang, LiteStr, ParseCfg, Scale, YmdHms, from_ymd};
 
 fn main() -> Result<(), DtErr> {
     // ============================================

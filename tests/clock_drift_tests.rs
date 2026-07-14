@@ -2,7 +2,8 @@
 
 #[cfg(feature = "physics")]
 mod tests {
-    use deep_time::{Drift, Dt, Scale, Spacetime, consts::PLANCK_LENGTH_4, from_sec_f};
+    use deep_time::macros::from_sec_f;
+    use deep_time::{Drift, Dt, Scale, Spacetime, consts::PLANCK_LENGTH_4};
 
     #[test]
     fn evaluate_zero_drift() {

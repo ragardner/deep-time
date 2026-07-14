@@ -3,9 +3,8 @@
 //! Overview and which-function guide:
 //! [docs/trajectory.md](https://github.com/ragardner/deep-time/blob/main/docs/trajectory.md).
 
-use crate::{
-    C_SQUARED, Drift, Dt, DtErr, DtErrKind, Real, Spacetime, Velocity, an_err, from_sec_f,
-};
+use crate::macros::from_sec_f;
+use crate::{C_SQUARED, Drift, Dt, DtErr, DtErrKind, Real, Spacetime, Velocity, an_err};
 
 impl Dt {
     /// Integrate proper time along samples of time, velocity, and gravitational potential.

@@ -16,8 +16,8 @@ Additional examples:
 
 The library's central time type is [`Dt`], a 32 byte struct that holds:
 
-- An `i128` attoseconds count
-- A `scale` [`Scale`] field for its current time scale
+- An `i128` attoseconds count.
+- A `scale` [`Scale`] field for its current time scale.
 - A `target` [`Scale`] field for the time scale the object came from,
   and/or which time scale it should be converted to in various output
   functions.
@@ -61,7 +61,7 @@ assert_eq!(dt.to_mjd_f(), -2505152.25);
 Once you have a [`Dt`] you can change its time scale:
 
 ```
-use deep_time::{Dt, Scale, from_jd_f};
+use deep_time::{Dt, Scale, macros::from_jd_f};
 
 let dt = from_jd_f!(2451545.0);
 assert_eq!(dt.scale, Scale::TAI);

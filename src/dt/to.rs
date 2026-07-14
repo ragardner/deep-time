@@ -381,7 +381,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, from_sec};
+    /// use deep_time::{Dt};
+    /// use deep_time::macros::from_sec;
     ///
     /// assert_eq!(Dt::ZERO.to_mins_f(), 0.0);
     ///
