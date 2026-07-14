@@ -1,10 +1,144 @@
-//! Convenient macros.
+//! Macros for easy unit conversion and
+//! [`Dt`](../struct.Dt.html) construction.
+//!
+//! Each macro expands to a call on an equivalent [`Dt`](../struct.Dt.html)
+//! method.
+//!
+//! ## Overview
+//!
+//! ### Unit → attoseconds
+//!
+//! Returns total attoseconds as `i128`.
+//!
+//! - [`fs!`]
+//! - [`ps!`]
+//! - [`ns!`]
+//! - [`us!`]
+//! - [`ms!`]
+//! - [`sec!`]
+//! - [`sec_f!`]
+//! - [`mins!`]
+//! - [`hours!`]
+//! - [`days!`]
+//! - [`days_f!`]
+//! - [`weeks!`]
+//!
+//! ### Attoseconds → unit
+//!
+//! Returns a whole-unit count as `i128`, or a lossy
+//! [`Real`](../type.Real.html) for the `_f` forms.
+//!
+//! - [`as_fs!`]
+//! - [`as_ps!`]
+//! - [`as_ns!`]
+//! - [`as_us!`]
+//! - [`as_ms!`]
+//! - [`as_sec!`]
+//! - [`as_sec_f!`]
+//! - [`as_mins!`]
+//! - [`as_hours!`]
+//! - [`as_days!`]
+//! - [`as_days_f!`]
+//! - [`as_weeks!`]
+//!
+//! ### Instant / duration
+//!
+//! Returns a [`Dt`](../struct.Dt.html).
+//!
+//! - [`dt!`]
+//! - [`from_sec!`]
+//! - [`from_sec_f!`]
+//! - [`from_ms!`]
+//! - [`from_us!`]
+//! - [`from_ns!`]
+//! - [`from_ps!`]
+//! - [`from_fs!`]
+//! - [`from_days_f!`]
+//! - [`from_ymd!`]
+//! - [`from_jd!`]
+//! - [`from_jd_f!`]
+//! - [`from_mjd!`]
+//! - [`from_mjd_f!`]
+//!
+//! ## Import paths
+//!
+//! All macros can be imported from this module:
+//!
+//! ```
+//! use deep_time::macros::{from_ns, ms, sec};
+//! ```
+//!
+//! These are also available at the crate root via `use deep_time::{…}`:
+//!
+//! - [`ns!`]
+//! - [`ms!`]
+//! - [`days_f!`]
+//! - [`dt!`]
+//! - [`from_sec_f!`]
+//! - [`from_ymd!`]
+//!
+//! The rest are available only under `deep_time::macros`.
+//! `use deep_time::macros::*` brings in every macro listed above.
+//!
+//! ## How they work
+//!
+//! - **Attosecond storage unit.** Forward converters such as [`ms!`] and
+//!   [`sec!`] return total attoseconds as `i128`. Reverse converters such as
+//!   [`as_ms!`] and [`as_sec!`] take total attoseconds and return a count in
+//!   the named unit.
+//! - **Truncation toward zero.** Integer reverse converters use ordinary
+//!   `i128` division (`attos / unit`). Any leftover below one whole unit is
+//!   dropped, and the result moves toward zero—not toward −∞. For example,
+//!   −0.5 s as whole seconds is `0`, and −1.5 s is `-1`. The floating reverse
+//!   converters ([`as_sec_f!`], [`as_days_f!`]) are lossy `f64` casts instead.
+//! - **Signed remainders on constructors.** Macros such as [`from_sec!`] and
+//!   [`from_ns!`] accept an optional fractional remainder in **attoseconds**.
+//!   Both signs of the remainder are valid; the total is
+//!   `whole × unit + frac` (with saturating arithmetic on the underlying
+//!   method). The same total can often be written with a signed remainder or
+//!   as a floor-style split with a non-negative remainder.
+//! - **Scale labels vs conversion.** Most `from_*` macros only set the
+//!   returned [`Dt`](../struct.Dt.html)'s `scale` / `target` fields; they do
+//!   **not** convert the attosecond count between time scales. [`from_ymd!`],
+//!   [`from_jd!`], [`from_jd_f!`], [`from_mjd!`], and [`from_mjd_f!`] are the
+//!   exceptions: they build a [`Dt`](../struct.Dt.html) on TAI (converting
+//!   from the `on=` scale when needed) and set `target` from `on=`, as
+//!   documented on each macro.
+//! - **`const` contexts.** Expansions call `const` methods on
+//!   [`Dt`](../struct.Dt.html), so these macros work in `const` contexts where
+//!   the underlying method does.
+//!
+//! ## Examples
+//!
+//! ```
+//! use deep_time::{Dt, Scale, dt, from_ymd, ms, ns};
+//! use deep_time::macros::{as_sec, from_sec, sec};
+//!
+//! // Unit helpers avoid hand-counting zeros in attosecond literals.
+//! assert_eq!(ms!(300), Dt::ms_to_attos(300));
+//! assert_eq!(ns!(1), 1_000_000_000);
+//!
+//! // Whole seconds + sub-second remainder (remainder is attoseconds).
+//! let a = from_sec!(1, ms!(300));
+//! assert_eq!(a, dt!(1_300_000_000_000_000_000));
+//!
+//! // Reverse conversion truncates toward zero.
+//! assert_eq!(as_sec!(sec!(1) + ms!(900)), 1);
+//! assert_eq!(as_sec!(-ms!(500)), 0);
+//! assert_eq!(as_sec!(-sec!(1) - ms!(500)), -1);
+//!
+//! // Calendar construction: builds a Dt, converting civil time to TAI.
+//! assert_eq!(from_ymd!(2000, 1, 1; 12, on=Scale::TAI), Dt::ZERO);
+//! ```
+//!
+//! See each macro's own documentation for accepted forms, defaults, and
+//! links to the corresponding [`Dt`](../struct.Dt.html) methods.
 
 /// Converts whole femtoseconds (`i128`) to total attoseconds (`i128`).
 ///
 /// Equivalent to [`Dt::fs_to_attos`](../struct.Dt.html#method.fs_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::fs};
@@ -26,7 +160,7 @@ pub use __fs as fs;
 ///
 /// Equivalent to [`Dt::ps_to_attos`](../struct.Dt.html#method.ps_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::ps};
@@ -48,7 +182,7 @@ pub use __ps as ps;
 ///
 /// Equivalent to [`Dt::ns_to_attos`](../struct.Dt.html#method.ns_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, ns};
@@ -66,7 +200,7 @@ macro_rules! ns {
 ///
 /// Equivalent to [`Dt::us_to_attos`](../struct.Dt.html#method.us_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::us};
@@ -88,7 +222,7 @@ pub use __us as us;
 ///
 /// Equivalent to [`Dt::ms_to_attos`](../struct.Dt.html#method.ms_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, ms};
@@ -106,7 +240,7 @@ macro_rules! ms {
 ///
 /// Equivalent to [`Dt::sec_to_attos`](../struct.Dt.html#method.sec_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::sec};
@@ -129,7 +263,7 @@ pub use __sec as sec;
 ///
 /// Equivalent to [`Dt::sec_f_to_attos`](../struct.Dt.html#method.sec_f_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::sec_f};
@@ -151,7 +285,7 @@ pub use __sec_f as sec_f;
 ///
 /// Equivalent to [`Dt::mins_to_attos`](../struct.Dt.html#method.mins_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::mins};
@@ -173,7 +307,7 @@ pub use __mins as mins;
 ///
 /// Equivalent to [`Dt::hours_to_attos`](../struct.Dt.html#method.hours_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::hours};
@@ -195,7 +329,7 @@ pub use __hours as hours;
 ///
 /// Equivalent to [`Dt::days_to_attos`](../struct.Dt.html#method.days_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::days};
@@ -217,7 +351,7 @@ pub use __days as days;
 ///
 /// Equivalent to [`Dt::days_f_to_attos`](../struct.Dt.html#method.days_f_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, days_f};
@@ -235,7 +369,7 @@ macro_rules! days_f {
 ///
 /// Equivalent to [`Dt::weeks_to_attos`](../struct.Dt.html#method.weeks_to_attos).
 ///
-/// ## Example
+/// ## Examples
 ///
 /// ```rust
 /// use deep_time::{Dt, macros::weeks};
@@ -257,12 +391,21 @@ pub use __weeks as weeks;
 ///
 /// Equivalent to [`Dt::attos_to_fs`](../struct.Dt.html#method.attos_to_fs).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// Half a femtosecond is `500` attoseconds (no smaller named unit macro).
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_fs};
+/// use deep_time::macros::{as_fs, fs};
 ///
-/// assert_eq!(as_fs!(Dt::fs_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 fs becomes −1 femtoseconds
+/// assert_eq!(as_fs!(-fs!(1) - 500), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -279,12 +422,19 @@ pub use __as_fs as as_fs;
 ///
 /// Equivalent to [`Dt::attos_to_ps`](../struct.Dt.html#method.attos_to_ps).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_ps};
+/// use deep_time::macros::{as_ps, fs, ps};
 ///
-/// assert_eq!(as_ps!(Dt::ps_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 ps becomes −1 picoseconds
+/// assert_eq!(as_ps!(-ps!(1) - fs!(500)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -301,12 +451,19 @@ pub use __as_ps as as_ps;
 ///
 /// Equivalent to [`Dt::attos_to_ns`](../struct.Dt.html#method.attos_to_ns).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_ns};
+/// use deep_time::macros::{as_ns, ns, ps};
 ///
-/// assert_eq!(as_ns!(Dt::ns_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 ns becomes −1 nanoseconds
+/// assert_eq!(as_ns!(-ns!(1) - ps!(500)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -323,12 +480,19 @@ pub use __as_ns as as_ns;
 ///
 /// Equivalent to [`Dt::attos_to_us`](../struct.Dt.html#method.attos_to_us).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_us};
+/// use deep_time::macros::{as_us, ns, us};
 ///
-/// assert_eq!(as_us!(Dt::us_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 µs becomes −1 microseconds
+/// assert_eq!(as_us!(-us!(1) - ns!(500)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -345,12 +509,19 @@ pub use __as_us as as_us;
 ///
 /// Equivalent to [`Dt::attos_to_ms`](../struct.Dt.html#method.attos_to_ms).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_ms};
+/// use deep_time::macros::{as_ms, ms, us};
 ///
-/// assert_eq!(as_ms!(Dt::ms_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 ms becomes −1 milliseconds
+/// assert_eq!(as_ms!(-ms!(1) - us!(500)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -367,12 +538,19 @@ pub use __as_ms as as_ms;
 ///
 /// Equivalent to [`Dt::attos_to_sec`](../struct.Dt.html#method.attos_to_sec).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_sec};
+/// use deep_time::macros::{as_sec, ms, sec};
 ///
-/// assert_eq!(as_sec!(Dt::sec_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 s becomes −1 seconds
+/// assert_eq!(as_sec!(-sec!(1) - ms!(500)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -389,12 +567,17 @@ pub use __as_sec as as_sec;
 ///
 /// Equivalent to [`Dt::attos_to_sec_f`](../struct.Dt.html#method.attos_to_sec_f).
 ///
-/// ## Example
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_sec_f};
+/// use deep_time::macros::{as_sec_f, ms, sec};
 ///
-/// assert_eq!(as_sec_f!(Dt::sec_to_attos(3)), 3.0);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 s becomes -1.5 seconds
+/// assert_eq!(as_sec_f!(-sec!(1) - ms!(500)), -1.5);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -411,12 +594,19 @@ pub use __as_sec_f as as_sec_f;
 ///
 /// Equivalent to [`Dt::attos_to_mins`](../struct.Dt.html#method.attos_to_mins).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_mins};
+/// use deep_time::macros::{as_mins, mins, sec};
 ///
-/// assert_eq!(as_mins!(Dt::mins_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 min becomes −1 minutes
+/// assert_eq!(as_mins!(-mins!(1) - sec!(30)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -433,12 +623,19 @@ pub use __as_mins as as_mins;
 ///
 /// Equivalent to [`Dt::attos_to_hours`](../struct.Dt.html#method.attos_to_hours).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_hours};
+/// use deep_time::macros::{as_hours, hours, mins};
 ///
-/// assert_eq!(as_hours!(Dt::hours_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 h becomes −1 hours
+/// assert_eq!(as_hours!(-hours!(1) - mins!(30)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -455,12 +652,19 @@ pub use __as_hours as as_hours;
 ///
 /// Equivalent to [`Dt::attos_to_days`](../struct.Dt.html#method.attos_to_days).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_days};
+/// use deep_time::macros::{as_days, days, hours};
 ///
-/// assert_eq!(as_days!(Dt::days_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 d becomes −1 days
+/// assert_eq!(as_days!(-days!(1) - hours!(12)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -477,12 +681,17 @@ pub use __as_days as as_days;
 ///
 /// Equivalent to [`Dt::attos_to_days_f`](../struct.Dt.html#method.attos_to_days_f).
 ///
-/// ## Example
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_days_f};
+/// use deep_time::macros::{as_days_f, days, hours};
 ///
-/// assert_eq!(as_days_f!(Dt::days_to_attos(3)), 3.0);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 d becomes -1.5 days
+/// assert_eq!(as_days_f!(-days!(1) - hours!(12)), -1.5);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -499,12 +708,19 @@ pub use __as_days_f as as_days_f;
 ///
 /// Equivalent to [`Dt::attos_to_weeks`](../struct.Dt.html#method.attos_to_weeks).
 ///
-/// ## Example
+/// Truncates toward zero.
+///
+/// ## Examples
+///
+/// Example shows inputs being built with macros rather than counting
+/// attosecond zeros by hand.
 ///
 /// ```rust
-/// use deep_time::{Dt, macros::as_weeks};
+/// use deep_time::macros::{as_weeks, days, hours, weeks};
 ///
-/// assert_eq!(as_weeks!(Dt::weeks_to_attos(3)), 3);
+/// // an amount of attoseconds that is equal to
+/// // −1.5 wk becomes −1 weeks
+/// assert_eq!(as_weeks!(-weeks!(1) - days!(3) - hours!(12)), -1);
 /// ```
 #[doc(hidden)]
 #[macro_export]
@@ -631,8 +847,8 @@ macro_rules! dt {
 /// assert_eq!(f, e);
 ///
 /// let signed = from_sec!(-1, ms!(-300));
-/// let floor = from_sec!(-2, ms!(700));
-/// assert_eq!(signed, floor);
+/// let floored = from_sec!(-2, ms!(700));
+/// assert_eq!(signed, floored);
 /// assert_eq!(signed, Dt::from_sec_and_frac(-1, ms!(-300), Scale::TAI, Scale::TAI));
 /// ```
 #[doc(hidden)]
@@ -1473,6 +1689,9 @@ pub use __from_jd_f as from_jd_f;
 /// let neg = from_mjd!(-1_000, -days_f!(0.25));
 /// assert_eq!(neg, Dt::from_mjd(-1_000, -days_f!(0.25), Scale::TAI));
 /// assert_eq!(neg.to_mjd(), (-1_000, -days_f!(0.25)));
+///
+/// // or with floor style
+/// assert_eq!(neg, from_mjd!(-1_001, days_f!(0.75)));
 /// ```
 #[doc(hidden)]
 #[macro_export]
