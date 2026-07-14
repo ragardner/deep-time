@@ -223,7 +223,7 @@ pub(crate) use locale::{lang_data::*, lang_map::*};
 pub use an_err::AnErr;
 pub use dt::Dt;
 pub use dt::lunar;
-pub use dt::numbers_traits::{TraitsAttos, TraitsTime};
+pub use dt::numbers_traits::TraitsTime;
 pub use error::{DtErr, DtErrKind};
 pub use lite_str::LiteStr;
 pub use locale::Lang;

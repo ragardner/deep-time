@@ -231,9 +231,8 @@ impl Dt {
     /// - `sec` — whole seconds (truncating / signed-remainder split).
     /// - `attos` — fractional part of that split, in attoseconds.
     ///   Prefer helpers such as [`Dt::ms_to_attos`](#method.ms_to_attos) /
-    ///   [`Dt::ns_to_attos`](#method.ns_to_attos) (or
-    ///   [`TraitsAttos`](../trait.TraitsAttos.html))
-    ///   instead of hand-counting zeros:
+    ///   [`Dt::ns_to_attos`](#method.ns_to_attos) or the [`ms!`](../macro.ms.html) /
+    ///   [`ns!`](../macro.ns.html) macros instead of hand-counting zeros:
     ///   - `1.3` s → `sec = 1`, `attos = Dt::ms_to_attos(300)`
     ///   - `-1.3` s → `sec = -1`, `attos = Dt::ms_to_attos(-300)`
     ///   - `-0.5` s → `sec = 0`, `attos = Dt::ms_to_attos(-500)`
@@ -243,13 +242,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{TraitsAttos, Dt, Scale, dt};
+    /// use deep_time::{Dt, Scale, dt, ms};
     ///
     /// // 1.3 s — convert 300 ms of remainder to attoseconds
-    /// let a = Dt::from_sec_and_frac(1, Dt::ms_to_attos(300), Scale::TAI, Scale::TAI);
-    /// // same via TraitsAttos on the integer
-    /// let b = Dt::from_sec_and_frac(1, 300_i128.ms_to_attos(), Scale::TAI, Scale::TAI);
-    /// assert_eq!(a, b);
+    /// let a = Dt::from_sec_and_frac(1, ms!(300), Scale::TAI, Scale::TAI);
     /// assert_eq!(a, dt!(1_300_000_000_000_000_000));
     ///
     /// // -1.3 s (signed remainder)
@@ -310,12 +306,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{TraitsAttos, Dt, Scale, us};
+    /// use deep_time::{Dt, Scale, us};
     ///
     /// // 1.3 ms
     /// let a = Dt::from_ms(1, us!(300), Scale::TAI, Scale::TAI);
-    /// let b = Dt::from_ms(1, 300_i128.us_to_attos(), Scale::TAI, Scale::TAI);
-    /// assert_eq!(a, b);
     /// assert_eq!(a.to_attos(), 1_300_000_000_000_000);
     ///
     /// // -1.3 ms
@@ -357,12 +351,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{TraitsAttos, Dt, Scale, ns};
+    /// use deep_time::{Dt, Scale, ns};
     ///
     /// // 1.3 µs
     /// let a = Dt::from_us(1, ns!(300), Scale::TAI, Scale::TAI);
-    /// let b = Dt::from_us(1, 300_i128.ns_to_attos(), Scale::TAI, Scale::TAI);
-    /// assert_eq!(a, b);
     /// assert_eq!(a.to_attos(), 1_300_000_000_000);
     ///
     /// // -1.3 µs
@@ -404,12 +396,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{TraitsAttos, Dt, Scale};
+    /// use deep_time::{Dt, Scale, ps};
     ///
     /// // 1.3 ns → whole nanoseconds + 300 ps remainder
-    /// let a = Dt::from_ns(1, Dt::ps_to_attos(300), Scale::TAI, Scale::TAI);
-    /// let b = Dt::from_ns(1, 300_i128.ps_to_attos(), Scale::TAI, Scale::TAI);
-    /// assert_eq!(a, b);
+    /// let a = Dt::from_ns(1, ps!(300), Scale::TAI, Scale::TAI);
     /// assert_eq!(a.to_attos(), 1_300_000_000);
     ///
     /// // -1.3 ns
@@ -442,12 +432,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{TraitsAttos, Dt, Scale};
+    /// use deep_time::{Dt, Scale, fs};
     ///
     /// // 1.3 ps
-    /// let a = Dt::from_ps(1, Dt::fs_to_attos(300), Scale::TAI, Scale::TAI);
-    /// let b = Dt::from_ps(1, 300_i128.fs_to_attos(), Scale::TAI, Scale::TAI);
-    /// assert_eq!(a, b);
+    /// let a = Dt::from_ps(1, fs!(300), Scale::TAI, Scale::TAI);
     /// assert_eq!(a.to_attos(), 1_300_000);
     ///
     /// // -1.3 ps
@@ -519,12 +507,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{TraitsAttos, Dt, Scale};
+    /// use deep_time::{Dt, Scale, sec};
     ///
     /// // 1.5 min
-    /// let a = Dt::from_mins(1, Dt::sec_to_attos(30), Scale::TAI, Scale::TAI);
-    /// let b = Dt::from_mins(1, 30_i128.sec_to_attos(), Scale::TAI, Scale::TAI);
-    /// assert_eq!(a, b);
+    /// let a = Dt::from_mins(1, sec!(30), Scale::TAI, Scale::TAI);
     /// assert_eq!(a.to_sec(), 90);
     ///
     /// // -1.5 min
@@ -556,12 +542,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{TraitsAttos, Dt, Scale};
+    /// use deep_time::{Dt, Scale, mins};
     ///
     /// // 1.5 h
-    /// let a = Dt::from_hours(1, Dt::mins_to_attos(30), Scale::TAI, Scale::TAI);
-    /// let b = Dt::from_hours(1, 30_i128.mins_to_attos(), Scale::TAI, Scale::TAI);
-    /// assert_eq!(a, b);
+    /// let a = Dt::from_hours(1, mins!(30), Scale::TAI, Scale::TAI);
     /// assert_eq!(a.to_sec(), 5400);
     ///
     /// // -1.5 h
@@ -592,12 +576,10 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{TraitsAttos, Dt, Scale, dt};
+    /// use deep_time::{Dt, Scale, dt, hrs};
     ///
     /// // 1.25 d
-    /// let a = Dt::from_days(1, dt!(Dt::hours_to_attos(6)), Scale::TAI, Scale::TAI);
-    /// let b = Dt::from_days(1, dt!(6_i128.hours_to_attos()), Scale::TAI, Scale::TAI);
-    /// assert_eq!(a, b);
+    /// let a = Dt::from_days(1, dt!(hrs!(6)), Scale::TAI, Scale::TAI);
     /// assert_eq!(a.to_sec(), 108_000); // 1.25 * 86400
     ///
     /// // -1.25 d

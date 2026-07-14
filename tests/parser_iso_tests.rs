@@ -599,8 +599,6 @@ mod from_str_iso_tests {
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
     fn test_iso_doy() {
-        use deep_time::TraitsAttos;
-
         let tp = Parts::from_str_iso("2024-109 14:30:25.123 [America/New_York]").unwrap();
         assert_eq!(tp.yr, Some(2024));
         assert_eq!(tp.day_of_yr, Some(109));
@@ -616,6 +614,6 @@ mod from_str_iso_tests {
         assert_eq!(ymd.hr(), 18);
         assert_eq!(ymd.min(), 30);
         assert_eq!(ymd.sec(), 25);
-        assert_eq!((ymd.attos() as i128).attos_to_ms(), 123);
+        assert_eq!(deep_time::as_ms!(ymd.attos() as i128), 123);
     }
 }
