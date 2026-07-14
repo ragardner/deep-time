@@ -213,15 +213,7 @@ pub(crate) use civil_parts::*;
 pub(crate) use consts::*;
 pub(crate) use locale::*;
 #[allow(unused_imports)]
-pub(crate) use math::{
-    atan2::atan2,
-    cos::cos,
-    div::rem_euclid_f,
-    floor::floor_f,
-    log::log,
-    sin::sin,
-    sqrt::{hypot, sqrt},
-};
+pub(crate) use math::*;
 pub(crate) use strtime::*;
 
 #[cfg(feature = "parse")]

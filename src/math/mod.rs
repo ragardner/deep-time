@@ -2,24 +2,24 @@
 //!
 //! Re-exports of `sin`, `cos`, `tan`, `atan`, `atan2`, `floor_f`, `rem_euclid_f`, `sqrt`, `log`.
 
-pub mod atan;
-pub mod atan2;
-pub mod cos;
-pub mod div;
-pub mod floor;
-pub mod k_cos;
-pub mod k_sin;
-pub mod k_tan;
-pub mod log;
-pub mod powi;
-pub mod rem_pio2;
-pub mod rem_pio2_large;
-pub mod round;
-pub mod scalbn;
-pub mod sin;
-pub mod sqrt;
-pub mod tan;
-pub mod trunc;
+mod atan;
+mod atan2;
+mod cos;
+mod div;
+mod floor;
+mod k_cos;
+mod k_sin;
+mod k_tan;
+mod log;
+mod powi;
+mod rem_pio2;
+mod rem_pio2_large;
+mod round;
+mod scalbn;
+mod sin;
+mod sqrt;
+mod tan;
+mod trunc;
 
 pub use atan::atan;
 pub use atan2::atan2;
@@ -30,7 +30,7 @@ pub use log::log;
 pub use powi::powi;
 pub use round::round;
 pub use sin::sin;
-pub use sqrt::sqrt;
+pub use sqrt::{hypot, sqrt};
 pub use tan::tan;
 pub use trunc::trunc;
 

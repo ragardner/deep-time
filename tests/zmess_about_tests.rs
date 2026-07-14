@@ -14,5 +14,7 @@ mod tests {
     // use deep_time::Sidereal;  // needs "sidereal" feature
 
     #[test]
-    fn print_stuff() {}
+    fn print_stuff() {
+        use deep_time::math::hypot;
+    }
 }

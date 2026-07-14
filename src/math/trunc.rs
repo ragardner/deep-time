@@ -1,6 +1,6 @@
 use crate::Real;
 
-/// Const-compatible version of `Real::trunc` (rounds toward zero)
+/// Const-compatible version of `f64::trunc` (rounds toward zero)
 pub const fn trunc(x: Real) -> Real {
     let bits = x.to_bits();
     let sign = bits & (1u64 << 63);

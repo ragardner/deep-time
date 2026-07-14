@@ -117,6 +117,11 @@ const fn sq(x: Real) -> (Real, Real) {
     (hi, lo)
 }
 
+/// Computes `sqrt(x² + y²)` without overflow or harmful underflow.
+///
+/// A `const fn`-compatible port of the musl `hypot` implementation.
+/// Returns `|x|` when `y` is zero, and follows IEEE special-case rules
+/// (e.g. `hypot(±∞, NaN)` returns `+∞`).
 pub const fn hypot(mut x: Real, mut y: Real) -> Real {
     let x1p700 = Real::from_bits(0x6bb0000000000000); // 0x1p700 === 2 ^ 700
     let x1p_700 = Real::from_bits(0x1430000000000000); // 0x1p-700 === 2 ^ -700

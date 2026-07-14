@@ -1,6 +1,10 @@
 use super::trunc;
 use crate::Real;
 
+/// Const-compatible version of `f64::round` (rounds to the nearest integer).
+///
+/// Half-way cases round away from zero (`0.5` → `1.0`, `-0.5` → `-1.0`).
+/// Values with magnitude ≥ 2^52 are returned unchanged (already integral at this precision).
 pub const fn round(x: Real) -> Real {
     const THRESHOLD: Real = (1u64 << 52) as Real;
 
