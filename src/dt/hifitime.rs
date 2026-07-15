@@ -1,40 +1,29 @@
 use crate::{Dt, Scale};
+use core::convert::From;
 use hifitime::{Duration, Epoch};
 
 impl Dt {
-    /// Converts this [`Dt`] to a [`hifitime::Epoch`] (TAI scale).
+    /// Converts this [`Dt`] to a [`hifitime::Epoch`].
     ///
-    /// Round-trips with [`Dt::from_hifitime_epoch`].
+    /// - The [`Dt`] is first converted to `Scale::TAI` before producing a result.
+    /// - The returned [`hifitime::Epoch`] is on the TAI time scale.
     pub fn to_hifitime_epoch(&self) -> Epoch {
-        let nanos = self.to_ns().0;
+        let nanos = self.to_tai().to_ns().0;
 
-        let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);
+        // [`Dt::ZERO`] is J2000.0 TAI noon; anchor on hifitime's matching instant.
         let j2000 = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
-        let offset_ns = j2000.to_tai_duration().total_nanoseconds()
-            - j1900.to_tai_duration().total_nanoseconds();
+        let ns_since_j1900 = nanos.saturating_add(j2000.to_tai_duration().total_nanoseconds());
 
-        let ns_since_j1900 = nanos + offset_ns;
-
-        let dur = Duration::from_total_nanoseconds(ns_since_j1900);
-        let (centuries, nanos) = dur.to_parts();
-
-        Epoch::from_tai_parts(centuries, nanos)
+        Epoch::from_tai_duration(Duration::from_total_nanoseconds(ns_since_j1900))
     }
 
-    /// Creates a [`Dt`] from a [`hifitime::Epoch`].
-    ///
-    /// - The conversion is exact (within hifitime's nanosecond precision).
-    /// - Uses a runtime-computed offset so it always matches whatever
-    ///   calendar math hifitime uses (including negative years).
+    /// Creates a TAI [`Dt`] from a [`hifitime::Epoch`].
     pub fn from_hifitime_epoch(epoch: Epoch) -> Dt {
         let ns_since_j1900 = epoch.to_tai_duration().total_nanoseconds();
 
-        let j1900 = Epoch::from_gregorian_tai(1900, 1, 1, 12, 0, 0, 0);
         let j2000 = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
-        let offset_ns = j2000.to_tai_duration().total_nanoseconds()
-            - j1900.to_tai_duration().total_nanoseconds();
-
-        let ns_since_zero_tai = ns_since_j1900 - offset_ns;
+        let ns_since_zero_tai =
+            ns_since_j1900.saturating_sub(j2000.to_tai_duration().total_nanoseconds());
         Self::from_ns(ns_since_zero_tai, 0, Scale::TAI, Scale::TAI)
     }
 
@@ -57,5 +46,33 @@ impl Dt {
     #[inline(always)]
     pub fn from_hifitime_duration(dur: Duration) -> Dt {
         Self::from_ns(dur.total_nanoseconds(), 0, Scale::TAI, Scale::TAI)
+    }
+}
+
+impl From<Epoch> for Dt {
+    #[inline]
+    fn from(epoch: Epoch) -> Self {
+        Self::from_hifitime_epoch(epoch)
+    }
+}
+
+impl From<Dt> for Epoch {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_hifitime_epoch()
+    }
+}
+
+impl From<Duration> for Dt {
+    #[inline]
+    fn from(dur: Duration) -> Self {
+        Self::from_hifitime_duration(dur)
+    }
+}
+
+impl From<Dt> for Duration {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_hifitime_duration()
     }
 }

@@ -1,4 +1,5 @@
 use crate::{Dt, Scale};
+use core::convert::From;
 use time::{Duration, OffsetDateTime, Timestamp, UtcDateTime, UtcOffset};
 
 impl Dt {
@@ -133,5 +134,61 @@ impl Dt {
     #[inline]
     pub fn from_time_duration(dur: Duration) -> Dt {
         Self::from_ns(dur.whole_nanoseconds(), 0, Scale::TAI, Scale::TAI)
+    }
+}
+
+impl From<Timestamp> for Dt {
+    #[inline]
+    fn from(ts: Timestamp) -> Self {
+        Self::from_time_timestamp(ts)
+    }
+}
+
+impl From<Dt> for Timestamp {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_time_timestamp()
+    }
+}
+
+impl From<OffsetDateTime> for Dt {
+    #[inline]
+    fn from(dt: OffsetDateTime) -> Self {
+        Self::from_time_offset_datetime(dt)
+    }
+}
+
+impl From<Dt> for OffsetDateTime {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_time_offset_datetime_utc()
+    }
+}
+
+impl From<UtcDateTime> for Dt {
+    #[inline]
+    fn from(dt: UtcDateTime) -> Self {
+        Self::from_time_utc_datetime(dt)
+    }
+}
+
+impl From<Dt> for UtcDateTime {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_time_utc_datetime()
+    }
+}
+
+impl From<Duration> for Dt {
+    #[inline]
+    fn from(dur: Duration) -> Self {
+        Self::from_time_duration(dur)
+    }
+}
+
+impl From<Dt> for Duration {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_time_duration()
     }
 }

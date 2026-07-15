@@ -1,5 +1,6 @@
 use crate::{Dt, Scale};
 use chrono::{DateTime, Datelike, Duration, TimeDelta, Timelike, Utc};
+use core::convert::From;
 
 impl Dt {
     /// Converts this [`Dt`] to a [`chrono::DateTime`].
@@ -54,5 +55,33 @@ impl Dt {
     #[inline]
     pub fn to_chrono_duration(&self) -> Duration {
         TimeDelta::nanoseconds(Dt::to_i64(self.to_ns().0))
+    }
+}
+
+impl From<DateTime<Utc>> for Dt {
+    #[inline]
+    fn from(dt: DateTime<Utc>) -> Self {
+        Self::from_chrono_datetime_utc(dt)
+    }
+}
+
+impl From<Dt> for DateTime<Utc> {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_chrono_datetime_utc()
+    }
+}
+
+impl From<Duration> for Dt {
+    #[inline]
+    fn from(dur: Duration) -> Self {
+        Self::from_chrono_duration(dur)
+    }
+}
+
+impl From<Dt> for Duration {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_chrono_duration()
     }
 }

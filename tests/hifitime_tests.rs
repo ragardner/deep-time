@@ -362,6 +362,31 @@ mod tests {
         assert_eq!(tp.attos % 1_000_000_000, 0);
     }
 
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn epoch_roundtrip() {
+        let cases = [
+            "2000-01-01T12:00:00 TAI".to_string(),
+            "1999-01-01T12:00:00.123456789 TAI".to_string(),
+        ];
+
+        for case in cases {
+            let dt = Dt::from_str_iso(&case).unwrap();
+
+            let epoch = dt.to_hifitime_epoch();
+            assert_eq!(case, epoch.to_string());
+
+            let roundtrip = Dt::from_hifitime_epoch(epoch);
+            assert_eq!(dt, roundtrip);
+        }
+
+        let case = "1999-01-01T12:00:00.123456789 TT".to_string();
+        let dt = Dt::from_str_iso(&case).unwrap();
+        let epoch = dt.to_hifitime_epoch();
+        let roundtrip = Dt::from_hifitime_epoch(epoch);
+        assert_eq!(dt, roundtrip);
+    }
+
     // #[cfg(all(test, feature = "hifitime"))]
     // mod hifitime_bug_tests {
     //     use hifitime::Epoch;

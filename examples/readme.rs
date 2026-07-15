@@ -39,7 +39,7 @@ fn main() -> Result<(), DtErr> {
 
     // Fast ISO parsing with time scale and no alloc output
     let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;
-    let lite_str: LiteStr<512> = dt.to_str_lite_iso8601()?;
+    let lite_str: LiteStr<512> = dt.to_str_lite_iso8601();
     assert_eq!("2000-01-01T12:00:00+00:00", lite_str.as_str());
 
     // ============================================

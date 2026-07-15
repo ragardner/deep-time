@@ -1,4 +1,5 @@
 use crate::{Dt, DtErr, DtErrKind, Scale, an_err};
+use core::convert::{From, TryFrom};
 use jiff::{SignedDuration, Span, Timestamp};
 
 impl Dt {
@@ -121,5 +122,41 @@ impl Dt {
         let dur = SignedDuration::try_from(span)
             .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;
         Ok(Self::from_jiff_signed_duration(dur))
+    }
+}
+
+impl From<Timestamp> for Dt {
+    #[inline]
+    fn from(ts: Timestamp) -> Self {
+        Self::from_jiff_timestamp(ts)
+    }
+}
+
+impl From<Dt> for Timestamp {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_jiff_timestamp()
+    }
+}
+
+impl From<SignedDuration> for Dt {
+    #[inline]
+    fn from(dur: SignedDuration) -> Self {
+        Self::from_jiff_signed_duration(dur)
+    }
+}
+
+impl From<Dt> for SignedDuration {
+    #[inline]
+    fn from(dt: Dt) -> Self {
+        dt.to_jiff_signed_duration()
+    }
+}
+
+impl TryFrom<Span> for Dt {
+    type Error = DtErr;
+
+    fn try_from(span: Span) -> Result<Self, Self::Error> {
+        Self::from_jiff_span(span)
     }
 }

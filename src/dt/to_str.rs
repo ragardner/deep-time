@@ -9,7 +9,6 @@ use {
 #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
 use crate::tz::UTC_ALIASES;
 
-#[allow(clippy::unwrap_used)]
 #[cfg(feature = "alloc")]
 impl Dt {
     /// Converts this `Dt` to an ISO 8601 duration string.
@@ -245,6 +244,7 @@ impl Dt {
     /// - Example: **`"2024-03-14T15:30:45.123Z"`**
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     pub fn to_str_rfc3339_nf(&self, max_precision: usize) -> String {
         let prec = max_precision.min(18);
         // Uses the formatter with the `~` "trim trailing zeros" flag.
@@ -263,6 +263,7 @@ impl Dt {
     /// - Still trims trailing zeros in the fractional part.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
     pub fn to_str_iso8601(&self) -> String {
         self.to_str_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
@@ -274,6 +275,7 @@ impl Dt {
     /// - Example: **`"20250416T143045.123456789Z"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
     pub fn to_str_iso8601_basic(&self) -> String {
         self.to_str_in_offset("%Y%m%dT%H%M%S%.~fZ", 0, Lang::En)
@@ -285,6 +287,7 @@ impl Dt {
     /// - Example: **`"2025-W16-3"`**. (year-week-day)
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
     pub fn to_str_iso_week_date(&self) -> String {
         self.to_str_in_offset("%G-W%V-%u", 0, Lang::En).unwrap()
@@ -295,6 +298,7 @@ impl Dt {
     /// - Example: **`"2025-04-16"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
     pub fn to_str_iso_date(&self) -> String {
         self.to_str_in_offset("%Y-%m-%d", 0, Lang::En).unwrap()
@@ -305,6 +309,7 @@ impl Dt {
     /// - Example: **`"14:30:45.123456789"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
     pub fn to_str_iso_time(&self) -> String {
         self.to_str_in_offset("%H:%M:%S%.~f", 0, Lang::En).unwrap()
@@ -317,6 +322,7 @@ impl Dt {
     ///   regional DST rules.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
     pub fn to_str_http(&self, lang: Lang) -> String {
         self.to_str_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
@@ -328,6 +334,7 @@ impl Dt {
     /// - Example: **`"Wed, 16 Apr 2025 14:30:45 +0000"`**.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
     pub fn to_str_rfc2822(&self, lang: Lang) -> String {
         self.to_str_in_offset("%a, %d %b %Y %H:%M:%S %z", 0, lang)
@@ -612,9 +619,11 @@ impl Dt {
     /// - Trims trailing zeros in the fractional part.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
-    pub fn to_str_lite_iso8601(&self) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
+    pub fn to_str_lite_iso8601(&self) -> LiteStr<STRTIME_SIZE> {
         self.to_str_lite_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
+            .unwrap()
     }
 
     /// **RFC 9557** / Temporal format with IANA timezone name in brackets
@@ -637,9 +646,11 @@ impl Dt {
     ///   regional DST rules.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
     #[inline(always)]
-    pub fn to_str_lite_http(&self, lang: Lang) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
+    pub fn to_str_lite_http(&self, lang: Lang) -> LiteStr<STRTIME_SIZE> {
         self.to_str_lite_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
+            .unwrap()
     }
 
     /// Returns `(is_negative, hours, minutes)`.
