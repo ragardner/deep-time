@@ -2,7 +2,7 @@
 
 // spanish won't parse "mar" as tuesday (collision with marzo)
 
-#[cfg(all(feature = "es", feature = "parse"))]
+#[cfg(all(feature = "parse", feature = "es"))]
 mod tests {
     use deep_time::macros::from_sec;
     use deep_time::{Dt, Lang, Order, ParseCfg, Scale, YmdHms};

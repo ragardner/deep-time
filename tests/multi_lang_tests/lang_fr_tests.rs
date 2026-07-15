@@ -2,7 +2,7 @@
 
 // french wont parse "mar" as tuesday
 
-#[cfg(feature = "fr")]
+#[cfg(all(feature = "parse", feature = "fr"))]
 mod tests {
     use deep_time::macros::from_sec;
     use deep_time::{Dt, Lang, Order, ParseCfg, Scale};

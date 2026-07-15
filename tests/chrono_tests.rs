@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(all(feature = "chrono", feature = "jiff-tz"))]
+#[cfg(feature = "chrono")]
 mod tests {
     use chrono::{
         DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
@@ -246,21 +246,22 @@ mod tests {
     }
 
     #[test]
-    fn test_to_chrono_datetime_civil_with_iana_america_new_york_edt() {
-        // 2024-04-15 10:30:00 America/New_York  (EDT = UTC-4)
-        let parsed = Parts::from_str(
-            "%F %T %Q",
-            "2024-04-15 10:30:00 America/New_York",
-            false,
-            false,
-            false,
-        )
-        .unwrap();
+    fn test_to_chrono_datetime_unix_timestamp_ignores_fixed_offset() {
+        // %s + %z → must still be pure UTC (+0000)
+        let parsed = Parts::from_str("%s %z", "1713191400 -0400", false, false, false).unwrap();
         let dt = parsed.to_chrono_datetime().unwrap();
 
-        assert_eq!(dt.offset(), &FixedOffset::west_opt(4 * 3600).unwrap());
-        assert_eq!(dt.timestamp(), 1713191400); // 14:30:00 UTC
+        assert_eq!(dt.offset(), &FixedOffset::east_opt(0).unwrap());
+        assert_eq!(dt.timestamp(), 1713191400);
     }
+}
+
+#[cfg(all(feature = "chrono", feature = "jiff-tz-bundle"))]
+mod tz_tests {
+    use chrono::{
+        DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,
+    };
+    use deep_time::civil_parts::Parts;
 
     #[test]
     fn test_to_chrono_datetime_civil_with_iana_fallback_offset_at() {
@@ -279,6 +280,23 @@ mod tests {
     }
 
     #[test]
+    fn test_to_chrono_datetime_civil_with_iana_america_new_york_edt() {
+        // 2024-04-15 10:30:00 America/New_York  (EDT = UTC-4)
+        let parsed = Parts::from_str(
+            "%F %T %Q",
+            "2024-04-15 10:30:00 America/New_York",
+            false,
+            false,
+            false,
+        )
+        .unwrap();
+        let dt = parsed.to_chrono_datetime().unwrap();
+
+        assert_eq!(dt.offset(), &FixedOffset::west_opt(4 * 3600).unwrap());
+        assert_eq!(dt.timestamp(), 1713191400); // 14:30:00 UTC
+    }
+
+    #[test]
     fn test_to_chrono_datetime_unix_timestamp_ignores_iana_name() {
         // %s + IANA name → must still be pure UTC (+0000)
         let parsed =
@@ -290,13 +308,41 @@ mod tests {
     }
 
     #[test]
-    fn test_to_chrono_datetime_unix_timestamp_ignores_fixed_offset() {
-        // %s + %z → must still be pure UTC (+0000)
-        let parsed = Parts::from_str("%s %z", "1713191400 -0400", false, false, false).unwrap();
+    fn test_to_chrono_datetime_iana_exact_fall_back_boundary() {
+        // Exact transition moment: 2023-11-05 01:00:00 America/New_York (overlap boundary)
+        // We follow Jiff behavior: pick earlier occurrence (EDT, -04:00)
+        let parsed = Parts::from_str(
+            "%F %T %Q",
+            "2023-11-05 01:00:00 America/New_York",
+            false,
+            false,
+            false,
+        )
+        .unwrap();
+
         let dt = parsed.to_chrono_datetime().unwrap();
 
-        assert_eq!(dt.offset(), &FixedOffset::east_opt(0).unwrap());
-        assert_eq!(dt.timestamp(), 1713191400);
+        assert_eq!(dt.offset(), &FixedOffset::west_opt(4 * 3600).unwrap()); // EDT (earlier occurrence)
+        assert_eq!(dt.timestamp(), 1699160400); // 2023-11-05 05:00:00 UTC
+    }
+
+    #[test]
+    fn test_to_chrono_datetime_iana_southern_hemisphere_gap() {
+        // Southern hemisphere spring-forward gap (Australia/Sydney)
+        // 02:30 is in the gap → shifts to 03:30 AEDT
+        let parsed = Parts::from_str(
+            "%F %T %Q",
+            "2024-10-06 02:30:00 Australia/Sydney",
+            false,
+            false,
+            false,
+        )
+        .unwrap();
+
+        let dt = parsed.to_chrono_datetime().unwrap();
+
+        assert_eq!(dt.offset(), &FixedOffset::east_opt(11 * 3600).unwrap()); // AEDT
+        assert_eq!(dt.timestamp(), 1728145800); // 2024-10-05 16:30:00 UTC (correct shifted time)
     }
 
     #[test]
@@ -370,43 +416,5 @@ mod tests {
 
         assert_eq!(dt.offset(), &FixedOffset::west_opt(4 * 3600).unwrap()); // EDT (earlier occurrence)
         assert_eq!(dt.timestamp(), 1699160400); // 2023-11-05 05:00:00 UTC
-    }
-
-    #[test]
-    fn test_to_chrono_datetime_iana_exact_fall_back_boundary() {
-        // Exact transition moment: 2023-11-05 01:00:00 America/New_York (overlap boundary)
-        // We follow Jiff behavior: pick earlier occurrence (EDT, -04:00)
-        let parsed = Parts::from_str(
-            "%F %T %Q",
-            "2023-11-05 01:00:00 America/New_York",
-            false,
-            false,
-            false,
-        )
-        .unwrap();
-
-        let dt = parsed.to_chrono_datetime().unwrap();
-
-        assert_eq!(dt.offset(), &FixedOffset::west_opt(4 * 3600).unwrap()); // EDT (earlier occurrence)
-        assert_eq!(dt.timestamp(), 1699160400); // 2023-11-05 05:00:00 UTC
-    }
-
-    #[test]
-    fn test_to_chrono_datetime_iana_southern_hemisphere_gap() {
-        // Southern hemisphere spring-forward gap (Australia/Sydney)
-        // 02:30 is in the gap → shifts to 03:30 AEDT
-        let parsed = Parts::from_str(
-            "%F %T %Q",
-            "2024-10-06 02:30:00 Australia/Sydney",
-            false,
-            false,
-            false,
-        )
-        .unwrap();
-
-        let dt = parsed.to_chrono_datetime().unwrap();
-
-        assert_eq!(dt.offset(), &FixedOffset::east_opt(11 * 3600).unwrap()); // AEDT
-        assert_eq!(dt.timestamp(), 1728145800); // 2024-10-05 16:30:00 UTC (correct shifted time)
     }
 }

@@ -1,10 +1,17 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-#[cfg(feature = "lang")]
+#[cfg(all(feature = "parse", feature = "lang"))]
 mod tests {
     use deep_time::civil_parts::Parts;
     use deep_time::macros::from_sec;
     use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
+
+    #[test]
+    fn parser_works_no_tz() {
+        let dt =
+            Dt::from_str_parse("2000-01-01T12:00:00 America/New_York", &ParseCfg::DEFAULT).unwrap();
+        assert_eq!(dt.to_str_lite_iso_sc().as_str(), "2000-01-01T17:00:00 UTC");
+    }
 
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
@@ -45,7 +52,7 @@ mod tests {
         assert_eq!(output2, expected_snapped, "round-trip must be stable");
     }
 
-    #[cfg(feature = "jiff-tz")]
+    #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
     fn tz_output() {
         use deep_time::{Dt, Scale};

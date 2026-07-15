@@ -611,6 +611,20 @@ impl Dt {
         )
     }
 
+    /// **ISO 8601 / RFC 3339** style with a time scale suffix and without
+    /// an offset, as a fixed size no-alloc binary string.
+    ///
+    /// - Example: **`"2025-04-16T14:30:45.123 TAI"`**.
+    /// - Trims trailing zeros in the fractional part.
+    /// - Converts from this [`Dt`]'s current time `scale` to its `target`
+    ///   time scale before producing the result.
+    #[allow(clippy::unwrap_used)]
+    #[inline(always)]
+    pub fn to_str_lite_iso_sc(&self) -> LiteStr<STRTIME_SIZE> {
+        self.to_str_lite_in_offset("%Y-%m-%dT%H:%M:%S%.~f %L", 0, Lang::En)
+            .unwrap()
+    }
+
     /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style)
     /// as a fixed size no-alloc binary string.
     ///

@@ -21,7 +21,7 @@
 //! Iterate over IANA time zone names when `jiff-tz` is enabled:
 //!
 //! ```rust
-//! # #[cfg(feature = "jiff-tz")]
+//! # #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
 //! # {
 //! use deep_time::tz::tz_names;
 //!

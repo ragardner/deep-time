@@ -2,8 +2,8 @@
 
 #[cfg(all(test, feature = "jiff"))]
 mod tests {
-    use deep_time::DtErr;
     use deep_time::civil_parts::Parts;
+    use deep_time::{DtErr, LiteStr};
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtErr> {
@@ -119,5 +119,28 @@ mod tests {
             bdt.offset(),
             Some(jiff::tz::Offset::from_seconds(7200).unwrap())
         );
+    }
+
+    #[cfg(feature = "alloc")]
+    #[test]
+    fn test_broken_down_time_assembly_with_tz() {
+        let mut parsed = Parts::from_str(
+            "%Y-%m-%d %H:%M:%S %z",
+            "2024-04-15 14:30:45 +0200",
+            false,
+            false,
+            false,
+        )
+        .unwrap();
+        parsed.iana_name = Some(LiteStr::new("America/New_York"));
+        let bdt = parsed.to_jiff_broken_down_time().unwrap();
+
+        assert_eq!(bdt.year(), Some(2024));
+        assert_eq!(bdt.month(), Some(4));
+        assert_eq!(bdt.day(), Some(15));
+        assert_eq!(bdt.hour(), Some(14));
+        assert_eq!(bdt.minute(), Some(30));
+        assert_eq!(bdt.second(), Some(45));
+        assert_eq!(bdt.iana_time_zone(), Some("America/New_York"));
     }
 }

@@ -71,7 +71,7 @@ eop = ["alloc"]
 # and loading your own leap seconds files
 std = [
     "alloc",
-    "aho-corasick?/std",
+    "aho-corasick?/default",
     "jiff?/std",
     "chrono?/std",
     "hifitime?/std",
@@ -134,7 +134,6 @@ serde = [
 
 jiff = [
     "dep:jiff",
-    "alloc",
 ]
 jiff-tz = [
     "jiff",
@@ -159,7 +158,6 @@ jiff-tz-bundle = [
 
 chrono = [
     "dep:chrono",
-    "alloc",
 ]
 
 hifitime = [

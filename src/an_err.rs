@@ -55,6 +55,7 @@
 //!
 //! [`Display`] writes the kind's [`Debug`] output (`{kind:?}`), then `: ` and the
 //! reason when it is non-empty — e.g. `YearOutOfRange` or `YearOutOfRange: year=10000`.
+//! If the reason fills its buffer, ` (reason may be truncated)` is appended.
 //!
 //! ## Wire format (`wire` feature)
 //!
@@ -174,6 +175,9 @@ where
 
         if !self.reason.as_bytes().is_empty() {
             write!(f, ": {}", self.reason.as_str())?;
+            if self.reason.as_bytes().len() == REASON_LEN {
+                write!(f, " (reason may be truncated)")?;
+            }
         }
 
         Ok(())
@@ -230,6 +234,13 @@ where
     fn format(&self, f: defmt::Formatter) {
         if self.reason.as_bytes().is_empty() {
             defmt::write!(f, "{}", self.kind);
+        } else if self.reason.as_bytes().len() == REASON_LEN {
+            defmt::write!(
+                f,
+                "{}: {} (reason may be truncated)",
+                self.kind,
+                self.reason.as_str()
+            );
         } else {
             defmt::write!(f, "{}: {}", self.kind, self.reason.as_str());
         }

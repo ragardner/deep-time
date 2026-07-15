@@ -3,14 +3,20 @@ use aho_corasick::AhoCorasick;
 use aho_corasick::FindIter;
 use core::ops::Range;
 
+/// Splits `haystack` into alternating **gaps** and **Aho-Corasick matches**.
+///
+/// Each item is `(&str, Range<usize>)` — the slice and its byte range in
+/// `haystack`. Gaps (including pure whitespace between matches) are yielded;
+/// only a trailing all-whitespace tail is dropped.
 #[derive(Debug)]
 pub struct SplitKeepWithPos<'a> {
     haystack: &'a str,
     finder: FindIter<'a, 'a>,
+    /// Byte index of the next unconsumed character in `haystack`.
     last: usize,
-    /// Next Aho-Corasick match we've already pulled but haven't processed yet.
+    /// Match pulled from the automaton but not yet yielded (start, end).
     pending: Option<(usize, usize)>,
-    /// Cached next item that `next()` will return (enables `peek()`).
+    /// One-item lookahead for [`Self::peek`].
     peeked: Option<(&'a str, Range<usize>)>,
 }
 
@@ -26,10 +32,8 @@ impl<'a> SplitKeepWithPos<'a> {
         }
     }
 
-    /// Peek at the next item without advancing the iterator.
-    ///
-    /// Returns `Some(&item)` if there is a next item, or `None` if exhausted.
-    /// Repeated calls return the same value until `next()` is called.
+    /// Next item without consuming it. Stable across repeated calls until
+    /// [`Iterator::next`] (or another `advance`) runs.
     pub fn peek(&mut self) -> Option<&<Self as Iterator>::Item> {
         if self.peeked.is_none() {
             self.peeked = self.advance();
@@ -37,46 +41,33 @@ impl<'a> SplitKeepWithPos<'a> {
         self.peeked.as_ref()
     }
 
-    /// Core splitting logic. Called by both `peek()` and `next()`.
-    ///
-    /// Pure-whitespace gaps (leading, between matches, or trailing) are
-    /// silently skipped so they are never emitted as parts.
+    /// Yield the next gap or match. Used by both [`Self::peek`] and [`Iterator::next`].
     fn advance(&mut self) -> Option<(&'a str, Range<usize>)> {
         if self.last >= self.haystack.len() {
             return None;
         }
 
-        // 1. Handle a pending match we already pulled from Aho-Corasick
+        // Pending match: yield any preceding gap first, then the match.
         if let Some((mstart, mend)) = self.pending.take() {
             if mstart > self.last {
                 let gap = &self.haystack[self.last..mstart];
-
-                if gap.trim().is_empty() {
-                    // Skip pure-whitespace gap (leading or between tokens)
-                    self.last = mstart;
-                    self.pending = Some((mstart, mend));
-                    return self.advance();
-                } else {
-                    // Yield the non-whitespace gap, keep match pending
-                    let range = self.last..mstart;
-                    self.last = mstart;
-                    self.pending = Some((mstart, mend));
-                    return Some((gap, range));
-                }
+                let range = self.last..mstart;
+                self.last = mstart;
+                self.pending = Some((mstart, mend));
+                return Some((gap, range));
             } else {
-                // Yield the match itself
                 self.last = mend;
                 return Some((&self.haystack[mstart..mend], mstart..mend));
             }
         }
 
-        // 2. Pull next match from Aho-Corasick
+        // Buffer the next automaton match, then recurse once to yield gap/match.
         if let Some(m) = self.finder.next() {
             self.pending = Some((m.start(), m.end()));
-            return self.advance(); // single level of recursion (depth = 1)
+            return self.advance();
         }
 
-        // 3. Final tail segment (drop if it's only whitespace)
+        // Remainder after the last match (omit if only whitespace).
         let start = self.last;
         let end = self.haystack.len();
         let tail = &self.haystack[start..end];

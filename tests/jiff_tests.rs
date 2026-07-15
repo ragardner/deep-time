@@ -282,7 +282,10 @@ mod interop {
 // deep-time's parser against jiff as ground truth; they do not replace the
 // Dt↔Timestamp interop tests above.
 
-#[cfg(all(feature = "jiff-tz", feature = "parse"))]
+#[cfg(all(
+    any(feature = "jiff-tz", feature = "jiff-tz-bundle"),
+    feature = "parse"
+))]
 mod tz_parse {
     use deep_time::{Dt, ParseCfg};
     use jiff::{Timestamp, Zoned, civil::DateTime};

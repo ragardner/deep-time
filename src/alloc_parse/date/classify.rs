@@ -28,6 +28,24 @@ fn send_to_relative_parser(
     Ok(ClassifiedDate::Parsed(dt))
 }
 
+/// True when `am`/`pm` is not glued inside a larger alphabetic run
+/// (e.g. reject `am` inside `america/...`).
+///
+/// Digits and punctuation neighbors are fine (`12am`, `9:00pm`).
+/// Uses Unicode `char::is_alphabetic` so non-ASCII letters count as glue.
+#[inline]
+fn is_ampm_standalone(s: &str, start: usize, end: usize) -> bool {
+    let prev_ok = s
+        .get(..start)
+        .and_then(|p| p.chars().next_back())
+        .is_none_or(|c| !c.is_alphabetic());
+    let next_ok = s
+        .get(end..)
+        .and_then(|n| n.chars().next())
+        .is_none_or(|c| !c.is_alphabetic());
+    prev_ok && next_ok
+}
+
 /// Expects s to be lowercase.
 pub(crate) fn classify_date(
     s: &str,
@@ -78,7 +96,7 @@ pub(crate) fn classify_date(
 
     let splitter = SplitKeepWithPos::new(finder, s);
 
-    for (part, _) in splitter {
+    for (part, range) in splitter {
         if let Some((norm_part, token)) = term_map.get(part) {
             if (token.is_relative() || token.is_duration()) && !currently.after_date() {
                 return send_to_relative_parser(s, lang, ref_time);
@@ -94,7 +112,9 @@ pub(crate) fn classify_date(
                     date_norm.push_str(norm_part);
                 }
                 Token::Am | Token::Pm => {
-                    if matches!(currently, IndexIn::Time | IndexIn::PostDate) {
+                    if matches!(currently, IndexIn::Time | IndexIn::PostDate)
+                        && is_ampm_standalone(s, range.start, range.end)
+                    {
                         has_ampm = true;
                         currently = IndexIn::PostDate;
                         date_norm.push_str(norm_part);

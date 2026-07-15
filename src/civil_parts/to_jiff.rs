@@ -3,7 +3,6 @@ use {
         ATTOS_PER_NS, Dt, Epoch, Meridiem, Offset, Parts, Scale, Weekday, an_err,
         error::{DtErr, DtErrKind},
     },
-    alloc::string::String,
     core::result::Result,
     jiff::{
         Zoned,
@@ -126,7 +125,14 @@ impl Parts {
         if let Some(name) = &self.iana_name {
             let name_str = name.as_str();
             if !name_str.is_empty() {
-                bdt.set_iana_time_zone(Some(String::from(name_str)));
+                #[cfg(feature = "alloc")]
+                {
+                    bdt.set_iana_time_zone(Some(alloc::string::String::from(name_str)));
+                }
+                #[cfg(not(feature = "alloc"))]
+                {
+                    return Err(an_err!(DtErrKind::MissingFeature));
+                }
             }
         } else if let Some(Offset::Fixed(sec)) = self.offset {
             if let Ok(jiff_offset) = JiffOffset::from_seconds(sec) {

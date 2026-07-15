@@ -199,32 +199,32 @@ cargo add deep-time --features "parse,jiff-tz"
 
 ### Feature Flags
 
-| Feature              | Description                                                                 | Requires     |
-|----------------------|-----------------------------------------------------------------------------|--------------|
-| `parse`              | Enables the auto-parsers (`from_str_parse`, `from_str_duration`, etc.)      | `alloc`      |
-| `jiff-tz`            | Enables timezone-aware calendar math (`add_days_tz`, `add_hours_tz`, etc.) and `to_str_in_tz` | `std`       |
-| `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                  | `std`       |
-| `jiff`               | Enables basic Jiff interop                                                | `alloc`     |
-| `chrono`             | Enables Chrono interop                                                    | `alloc`     |
-| `hifitime`           | Enables Hifitime interop                                                  | —           |
-| `time`               | Enables interop with the [`time`](https://docs.rs/time) crate (`Timestamp`, `OffsetDateTime`, `UtcDateTime`, `Duration`) | —           |
-| `serde`              | Enables `Serialize` / `Deserialize` for `Dt` and other types              | `alloc`     |
-| `js`                 | WebAssembly support (includes `serde` and JS bindings)                    | `std`       |
-| `tsify`              | TypeScript definitions via `tsify` (for WASM)                             | `js`        |
-| `std`                | Enables `std` functionality including `Dt::now()` and file handling       | —           |
-| `alloc`              | Enables allocation (required for parsing and some conversions)            | —           |
+| Feature              | Description                                                                  | Requires    |
+|----------------------|------------------------------------------------------------------------------|-------------|
+| `parse`              | Enables the auto-parsers (`from_str_parse`, `from_str_duration`, etc.)       | `alloc`     |
+| `jiff-tz`            | Enables timezone features such as tz parsing, tz calendar math, formatting   | `std`       |
+| `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                     | `std`       |
+| `jiff`               | Enables [`jiff`](https://crates.io/crates/jiff) interop                      | —           |
+| `chrono`             | Enables [`chrono`](https://crates.io/crates/chrono) interop                  | —           |
+| `hifitime`           | Enables [`hifitime`](https://crates.io/crates/hifitime) interop              | —           |
+| `time`               | Enables [`time`](https://crates.io/crates/time) interop                      | —           |
+| `serde`              | Enables `Serialize` / `Deserialize` for `Dt` and other types                 | `alloc`     |
+| `js`                 | WebAssembly support (includes `serde` and JS bindings)                       | `std`       |
+| `tsify`              | TypeScript definitions via `tsify` (for WASM)                                | `js`        |
+| `std`                | Enables `std` functionality including `Dt::now()` and file handling          | —           |
+| `alloc`              | Enables allocation (required for parsing and some conversions)               | —           |
 | `es` / `de` / `fr`   | Language support, parsing different languages requires alloc, formatting does not | —           |
-| `euro`               | Enables all European languages                                            |             |
-| `lang`               | Enables all languages                                                     | `euro`      |
-| `panic-handler`      | Provides an optional simple `#[panic_handler]` for `no_std` environments  | `no_std`    |
-| `defmt`              | Enables `defmt::Format` trait implementations the main types. Intended for use with the `defmt` logging framework on embedded systems. | — |
-| `wire`               | Enables wire format (serialization) support                               | —           |
-| `tdb-hi`             | Replaces the fast TDB and TCB conversions with the full ERFA TDB model    | —           |
+| `euro`               | Enables all European languages                                               |             |
+| `lang`               | Enables all languages                                                        | `euro`      |
+| `panic-handler`      | Provides an optional simple `#[panic_handler]` for `no_std` environments     | `no_std`    |
+| `defmt`              | Enables [`defmt::Format`](https://crates.io/crates/defmt)                    | —           |
+| `wire`               | Enables wire format (serialization) support                                  | —           |
+| `tdb-hi`             | Replaces the fast TDB and TCB conversions with the full ERFA TDB model       | —           |
 | `physics`            | Enables relativistic physics support (`Drift`, `Spacetime`, `Position`, `Velocity`, `Observer`, light-time, etc.) | —           |
-| `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                  | —           |
-| `sidereal`           | Enables sidereal time support                                             | —           |
-| `eop`                | Enables Earth Orientation Parameters (UT1, etc.)                          | `alloc`     |
-| `locale`             | Enables system locale detection                                           | `std`       |
+| `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                     | —           |
+| `sidereal`           | Enables sidereal time support                                                | —           |
+| `eop`                | Enables Earth Orientation Parameters (UT1, etc.)                             | `alloc`     |
+| `locale`             | Enables system locale detection                                              | `std`       |
 
 #### Optional No-Alloc Panic Handler
 
