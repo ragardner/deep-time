@@ -267,7 +267,7 @@ cargo bench --bench perf --features "parse hifitime std jiff-tz"
 | `Parts::from_str_iso` vs `DateTime::parse`               | 19.4 ns   | 29.2% faster   |
 | `Parts::from_str` vs `BrokenDownTime::parse`             | 33.4 ns   | 13.9% faster   |
 | `Dt::from_str` vs `BrokenDownTime::parse`+`to_zoned`     | 185 ns    | 15.8% slower   |
-| `Dt::to_str_b` vs `DateTime::strftime`+`.to_string`   | 77.4 ns   | 28.2% slower   |
+| `Dt::to_str_b` vs `DateTime::strftime`+`.to_string`      | 77.4 ns   | 28.2% slower   |
 | `Dt::to_str` vs `DateTime::strftime`+`.to_string`        | 88.7 ns   | 46.8% slower   |
 | `Dt::from_str_parse`                                     | 553 ns    | —              |
 

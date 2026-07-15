@@ -1,21 +1,24 @@
 use core::fmt;
 use core::str;
 
-/// A fixed-capacity, stack-allocated **byte buffer** that can hold a UTF-8 string.
+/// A fixed-capacity, stack-allocated byte buffer that can hold a UTF-8
+/// string.
 ///
 /// `BufStr<N>` stores its content in a `[u8; N]` array using C-style nul
 /// termination. The logical length is determined by the position of the first
 /// `b'\0'` byte (or `N` if the buffer is completely filled without a nul).
 ///
 /// This type performs **no validation during construction**. UTF-8 validity is
-/// only checked when the content is accessed via [`as_str`](#method.as_str), [`Debug`], or
-/// serialization.
+/// only checked when the content is accessed via [`as_str`](#method.as_str),
+/// [`Debug`], or serialization.
 ///
-/// Both [`new`](#method.new) and [`from_bytes`](#method.from_bytes) silently truncate input that exceeds the
-/// capacity `N`. This type is intentionally minimal because each `BufStr<N>`
-/// is monomorphized independently.
+/// Both [`new`](#method.new) and [`from_bytes`](#method.from_bytes)
+/// silently truncate input that exceeds the capacity `N`.
 ///
-/// ## .len()
+/// This type is intentionally minimal because each `BufStr<N>`is
+/// monomorphized independently.
+///
+/// ## To get the length of the str
 ///
 /// - **Byte length**: [`BufStr::as_bytes`](#method.as_bytes) (then `.len()`)
 /// - **Unicode character count**: Use `as_str().chars().count()`
@@ -38,7 +41,7 @@ impl<const N: usize> BufStr<N> {
     ///
     /// If the input is longer than `N` bytes, it is truncated at the nearest
     /// valid UTF-8 boundary.
-    #[inline(always)]
+    #[inline]
     pub fn new(s: &str) -> Self {
         let mut bytes = [0u8; N];
         copy_valid_utf8_prefix(&mut bytes, s.as_bytes(), N);
@@ -51,7 +54,7 @@ impl<const N: usize> BufStr<N> {
     /// If `bytes.len() > N`, the input is silently truncated.
     ///
     /// No UTF-8 validation is performed.
-    #[inline(always)]
+    #[inline]
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let mut arr = [0u8; N];
         let len = bytes.len().min(N);
@@ -66,11 +69,13 @@ impl<const N: usize> BufStr<N> {
     ///   character (`�`).
     /// - Otherwise returns only the valid prefix up to the first invalid
     ///   sequence (everything after the first error is discarded).
-    ///
-    /// This method is infallible and never allocates.
-    #[inline(always)]
+    /// - This method is infallible.
     pub fn as_str(&self) -> &str {
-        let slice = &self.bytes[..find_first_nul(&self.bytes)];
+        let slice = &self.bytes[..self
+            .bytes
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(Self::SIZE)];
         match str::from_utf8(slice) {
             Ok(s) => s,
             Err(e) => handle_invalid_utf8(slice, e),
@@ -78,9 +83,12 @@ impl<const N: usize> BufStr<N> {
     }
 
     /// Returns the content as a byte slice (up to the first nul byte).
-    #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes[..find_first_nul(&self.bytes)]
+        &self.bytes[..self
+            .bytes
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(Self::SIZE)]
     }
 }
 
@@ -137,11 +145,6 @@ impl<const N: usize> defmt::Format for BufStr<N> {
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "{}", self.as_str());
     }
-}
-
-#[inline(never)]
-fn find_first_nul(bytes: &[u8]) -> usize {
-    bytes.iter().position(|&b| b == 0).unwrap_or(bytes.len())
 }
 
 #[inline(never)]
