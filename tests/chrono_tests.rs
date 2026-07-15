@@ -256,7 +256,10 @@ mod tests {
     }
 }
 
-#[cfg(all(feature = "chrono", feature = "jiff-tz-bundle"))]
+#[cfg(all(
+    feature = "chrono",
+    any(feature = "jiff-tz", feature = "jiff-tz-bundle")
+))]
 mod tz_tests {
     use chrono::{
         DateTime, FixedOffset, NaiveDate, NaiveDateTime, NaiveTime, TimeZone as ChronoTimeZone,

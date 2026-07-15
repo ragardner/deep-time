@@ -6,11 +6,16 @@ mod tests {
     use deep_time::macros::from_sec;
     use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
 
+    // Only meaningful without IANA TZ support: with jiff-tz*, America/New_York is applied.
+    #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
     #[test]
     fn parser_works_no_tz() {
-        let dt =
-            Dt::from_str_parse("2000-01-01T12:00:00 America/New_York", &ParseCfg::DEFAULT).unwrap();
-        assert_eq!(dt.to_str_b_iso_sc().as_str(), "2000-01-01T17:00:00 UTC");
+        let dt = Dt::from_str_parse(
+            "2000-01-01T12:00:00 TAI America/New_York",
+            &ParseCfg::DEFAULT,
+        )
+        .unwrap();
+        assert_eq!(dt.to_str_b_iso_sc().as_str(), "2000-01-01T12:00:00 TAI");
     }
 
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
