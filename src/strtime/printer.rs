@@ -1,12 +1,12 @@
-use crate::{Dt, DtErr, DtErrKind, FormatNames, Lang, LiteStr, STRTIME_SIZE, YmdHms, an_err};
+use crate::{BufStr, Dt, DtErr, DtErrKind, FormatNames, Lang, STRTIME_SIZE, YmdHms, an_err};
 
 struct Printer<'a> {
     ymd: &'a YmdHms,
     buf: [u8; STRTIME_SIZE],
     pos: usize,
     offset: Option<i32>,
-    tz: Option<LiteStr<49>>,
-    abbrev: Option<LiteStr<49>>,
+    tz: Option<BufStr<49>>,
+    abbrev: Option<BufStr<49>>,
     names: &'static FormatNames,
 }
 
@@ -15,8 +15,8 @@ impl<'a> Printer<'a> {
     fn new(
         ymd: &'a YmdHms,
         offset: Option<i32>,
-        tz: Option<LiteStr<49>>,
-        abbrev: Option<LiteStr<49>>,
+        tz: Option<BufStr<49>>,
+        abbrev: Option<BufStr<49>>,
         lang: Lang,
     ) -> Self {
         Self {
@@ -736,8 +736,8 @@ impl YmdHms {
         &self,
         fmt: &str,
         offset: Option<i32>,
-        tz: Option<LiteStr<49>>,
-        abbrev: Option<LiteStr<49>>,
+        tz: Option<BufStr<49>>,
+        abbrev: Option<BufStr<49>>,
         lang: Lang,
     ) -> Result<alloc::string::String, DtErr> {
         let mut printer = Printer::new(self, offset, tz, abbrev, lang);
@@ -747,16 +747,16 @@ impl YmdHms {
     }
 
     #[inline]
-    pub(crate) fn _to_str_lite(
+    pub(crate) fn _to_str_b(
         &self,
         fmt: &str,
         offset: Option<i32>,
-        tz: Option<LiteStr<49>>,
-        abbrev: Option<LiteStr<49>>,
+        tz: Option<BufStr<49>>,
+        abbrev: Option<BufStr<49>>,
         lang: Lang,
-    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
+    ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
         let mut printer = Printer::new(self, offset, tz, abbrev, lang);
         printer.print(fmt.as_bytes())?;
-        Ok(LiteStr { bytes: printer.buf })
+        Ok(BufStr { bytes: printer.buf })
     }
 }

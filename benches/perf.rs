@@ -35,7 +35,7 @@ fn main() {
     let mut iso_deep_ns = 0.0f64;
     let mut iso_jiff_ns = 0.0f64;
 
-    let mut strftime_lite_ns = 0.0f64;
+    let mut strftime_b_ns = 0.0f64;
     let mut strftime_alloc_ns = 0.0f64;
     let mut strftime_jiff_ns = 0.0f64;
 
@@ -312,20 +312,20 @@ fn main() {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // strftime — Dt::to_str_lite / to_str vs Jiff civil::DateTime::strftime
+    // strftime — Dt::to_str_b / to_str vs Jiff civil::DateTime::strftime
     // ═══════════════════════════════════════════════════════════════════════
     {
         const ITERATIONS: usize = 20_000_000;
         const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
-        // ── deep_time (LiteStr, no alloc) ───────────────────────
+        // ── deep_time (BufStr, no alloc) ───────────────────────
         let dt = Dt::from_str("2024-03-14T00:00:00", FORMAT, true, true, false).unwrap();
 
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
-            let x = dt.to_str_lite(FORMAT, Lang::En);
+            let x = dt.to_str_b(FORMAT, Lang::En);
         }
-        strftime_lite_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+        strftime_b_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
         // ── deep_time (alloc String) ───────────────────────
         let start = std::time::Instant::now();
@@ -420,9 +420,9 @@ fn main() {
         &pct(zoned_deep_ns, zoned_jiff_ns),
     );
     perf_row(
-        "`Dt::to_str_lite` vs `DateTime::strftime`+`.to_string`",
-        &fmt_ns(strftime_lite_ns),
-        &pct(strftime_lite_ns, strftime_jiff_ns),
+        "`Dt::to_str_b` vs `DateTime::strftime`+`.to_string`",
+        &fmt_ns(strftime_b_ns),
+        &pct(strftime_b_ns, strftime_jiff_ns),
     );
     perf_row(
         "`Dt::to_str` vs `DateTime::strftime`+`.to_string`",

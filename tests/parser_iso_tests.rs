@@ -60,7 +60,7 @@ mod from_str_iso_tests {
         assert_eq!(tp.min, 30);
         assert_eq!(tp.sec, 25);
         assert_eq!(tp.offset, None); // no offset in this case
-        // iana_name is set via set_iana_name (LiteStr), so we just check it's Some
+        // iana_name is set via set_iana_name (BufStr), so we just check it's Some
         assert!(tp.iana_name.is_some());
     }
 

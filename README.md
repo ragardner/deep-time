@@ -21,7 +21,7 @@ A fully featured and high performance **Rust date and time library** with attose
 - To and from all kinds of inputs and outputs, functions mostly prefixed with `to` and `from`, available on the library's types, see the main time types functions: [Dt](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html). Including [JD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jd_f), [MJD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_mjd_f), [Unix](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_unix), [NTP](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ntp), etc.
 - [Calendar aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days) and, with the `jiff-tz` feature, [timezone aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days_tz) math
 - To and from [jiff](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), [hifitime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_hifitime_epoch), and [time](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_time_timestamp) types
-- No-alloc [string return type](https://docs.rs/deep-time/latest/deep_time/struct.LiteStr.html)
+- No-alloc [string return type](https://docs.rs/deep-time/latest/deep_time/struct.BufStr.html)
 - Const fn [libm math](https://docs.rs/deep-time/latest/deep_time/math/index.html) functions
 - Safe, saturating arithmetic throughout
 - **No** `unsafe` in the library - [`#![forbid(unsafe_code)]`](https://github.com/ragardner/deep-time/blob/main/src/lib.rs)
@@ -38,7 +38,7 @@ A fully featured and high performance **Rust date and time library** with attose
 
 ```rust
 use deep_time::macros::from_ns;
-use deep_time::{Dt, DtErr, Lang, LiteStr, ParseCfg, Scale, YmdHms, from_ymd};
+use deep_time::{Dt, DtErr, Lang, BufStr, ParseCfg, Scale, YmdHms, from_ymd};
 
 fn main() -> Result<(), DtErr> {
     // ============================================
@@ -78,8 +78,8 @@ fn main() -> Result<(), DtErr> {
 
     // Fast ISO parsing with time scale and no alloc output
     let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;
-    let lite_str: LiteStr<512> = dt.to_str_lite_iso8601();
-    assert_eq!("2000-01-01T12:00:00+00:00", lite_str.as_str());
+    let buf_str: BufStr<512> = dt.to_str_b_iso8601();
+    assert_eq!("2000-01-01T12:00:00+00:00", buf_str.as_str());
 
     // ============================================
     // Formatting
@@ -96,7 +96,7 @@ fn main() -> Result<(), DtErr> {
     // ============================================
 
     let span: Dt = Dt::from_str_duration("3 days 12 hours", Lang::En)?;
-    let dur = span.to_str_lite_media_duration();
+    let dur = span.to_str_b_media_duration();
     assert_eq!("3:12:00:00", dur.to_string());
 
     // ============================================
@@ -267,7 +267,7 @@ cargo bench --bench perf --features "parse hifitime std jiff-tz"
 | `Parts::from_str_iso` vs `DateTime::parse`               | 19.4 ns   | 29.2% faster   |
 | `Parts::from_str` vs `BrokenDownTime::parse`             | 33.4 ns   | 13.9% faster   |
 | `Dt::from_str` vs `BrokenDownTime::parse`+`to_zoned`     | 185 ns    | 15.8% slower   |
-| `Dt::to_str_lite` vs `DateTime::strftime`+`.to_string`   | 77.4 ns   | 28.2% slower   |
+| `Dt::to_str_b` vs `DateTime::strftime`+`.to_string`   | 77.4 ns   | 28.2% slower   |
 | `Dt::to_str` vs `DateTime::strftime`+`.to_string`        | 88.7 ns   | 46.8% slower   |
 | `Dt::from_str_parse`                                     | 553 ns    | —              |
 

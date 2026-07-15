@@ -200,47 +200,44 @@ mod tests {
     }
 
     #[test]
-    fn test_to_str_lite_media_duration_expected_values() {
+    fn test_to_str_b_media_duration_expected_values() {
         assert_eq!(
             deep_time::dt!(45 * ATTOS_PER_SEC_I128)
-                .to_str_lite_media_duration()
+                .to_str_b_media_duration()
                 .as_str(),
             "0:45"
         );
         assert_eq!(
             deep_time::dt!(581 * ATTOS_PER_SEC_I128)
-                .to_str_lite_media_duration()
+                .to_str_b_media_duration()
                 .as_str(),
             "9:41"
         );
         assert_eq!(
             deep_time::dt!(5025 * ATTOS_PER_SEC_I128)
-                .to_str_lite_media_duration()
+                .to_str_b_media_duration()
                 .as_str(),
             "1:23:45"
         );
         assert_eq!(
             deep_time::dt!(114870 * ATTOS_PER_SEC_I128)
-                .to_str_lite_media_duration()
+                .to_str_b_media_duration()
                 .as_str(),
             "1:07:54:30"
         );
 
         assert_eq!(
             deep_time::dt!(-45 * ATTOS_PER_SEC_I128)
-                .to_str_lite_media_duration()
+                .to_str_b_media_duration()
                 .as_str(),
             "-0:45"
         );
         assert_eq!(
             deep_time::dt!(-5025 * ATTOS_PER_SEC_I128)
-                .to_str_lite_media_duration()
+                .to_str_b_media_duration()
                 .as_str(),
             "-1:23:45"
         );
-        assert_eq!(
-            deep_time::dt!(0).to_str_lite_media_duration().as_str(),
-            "0:00"
-        );
+        assert_eq!(deep_time::dt!(0).to_str_b_media_duration().as_str(), "0:00");
     }
 }

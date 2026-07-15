@@ -3,7 +3,7 @@
 #[cfg(all(test, feature = "jiff"))]
 mod tests {
     use deep_time::civil_parts::Parts;
-    use deep_time::{DtErr, LiteStr};
+    use deep_time::{BufStr, DtErr};
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtErr> {
@@ -132,7 +132,7 @@ mod tests {
             false,
         )
         .unwrap();
-        parsed.iana_name = Some(LiteStr::new("America/New_York"));
+        parsed.iana_name = Some(BufStr::new("America/New_York"));
         let bdt = parsed.to_jiff_broken_down_time().unwrap();
 
         assert_eq!(bdt.year(), Some(2024));

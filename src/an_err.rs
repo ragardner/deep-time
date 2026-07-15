@@ -67,7 +67,7 @@
 //!
 //! [`AnErr`]: AnErr
 
-use crate::LiteStr;
+use crate::BufStr;
 use core::fmt;
 use core::fmt::Write;
 
@@ -91,7 +91,7 @@ where
 
     /// Accumulated reason string (controlled by `REASON_LEN`).
     /// Can be empty.
-    pub reason: LiteStr<REASON_LEN>,
+    pub reason: BufStr<REASON_LEN>,
 }
 
 impl<K, const REASON_LEN: usize> AnErr<K, REASON_LEN>
@@ -103,13 +103,13 @@ where
     pub fn new(kind: K) -> Self {
         Self {
             kind,
-            reason: LiteStr::default(),
+            reason: BufStr::default(),
         }
     }
 
     /// Creates a new error with the given kind and reason.
     #[inline(always)]
-    pub fn with_reason(kind: K, reason: LiteStr<REASON_LEN>) -> Self {
+    pub fn with_reason(kind: K, reason: BufStr<REASON_LEN>) -> Self {
         Self { kind, reason }
     }
 
@@ -118,7 +118,7 @@ where
     /// The formatted text is truncated if it exceeds `REASON_LEN` bytes.
     #[inline]
     pub fn with_fmt(kind: K, args: core::fmt::Arguments<'_>) -> Self {
-        let mut reason = LiteStr::<REASON_LEN>::default();
+        let mut reason = BufStr::<REASON_LEN>::default();
         let _ = write!(&mut reason, "{}", args);
         Self { kind, reason }
     }
@@ -126,20 +126,20 @@ where
     /// Appends context by appending the given reason text to the accumulated
     /// reason. Truncates if the total would exceed `REASON_LEN` bytes.
     #[inline(always)]
-    pub fn context(&mut self, new_reason: LiteStr<REASON_LEN>) {
+    pub fn context(&mut self, new_reason: BufStr<REASON_LEN>) {
         self.append_reason(new_reason);
     }
 
     /// Appends context using a formatted reason string.
     #[inline]
     pub fn context_fmt(&mut self, args: core::fmt::Arguments<'_>) {
-        let mut new_reason = LiteStr::<REASON_LEN>::default();
+        let mut new_reason = BufStr::<REASON_LEN>::default();
         let _ = write!(&mut new_reason, "{}", args);
         self.append_reason(new_reason);
     }
 
     #[inline(always)]
-    fn append_reason(&mut self, new_reason: LiteStr<REASON_LEN>) {
+    fn append_reason(&mut self, new_reason: BufStr<REASON_LEN>) {
         let _ = write!(&mut self.reason, "{}", new_reason.as_str());
     }
 
@@ -151,7 +151,7 @@ where
 
     /// Returns the accumulated reason.
     #[inline(always)]
-    pub fn reason(&self) -> &LiteStr<REASON_LEN> {
+    pub fn reason(&self) -> &BufStr<REASON_LEN> {
         &self.reason
     }
 }
@@ -306,7 +306,7 @@ where
         offset += 2;
 
         let reason_bytes = &bytes[offset..offset + REASON_LEN];
-        let reason = LiteStr::from_bytes(reason_bytes);
+        let reason = BufStr::from_bytes(reason_bytes);
 
         Some(Self { kind, reason })
     }

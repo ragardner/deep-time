@@ -1,5 +1,5 @@
 use deep_time::macros::from_ns;
-use deep_time::{Dt, DtErr, Lang, LiteStr, ParseCfg, Scale, YmdHms, from_ymd};
+use deep_time::{BufStr, Dt, DtErr, Lang, ParseCfg, Scale, YmdHms, from_ymd};
 
 fn main() -> Result<(), DtErr> {
     // ============================================
@@ -39,8 +39,8 @@ fn main() -> Result<(), DtErr> {
 
     // Fast ISO parsing with time scale and no alloc output
     let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;
-    let lite_str: LiteStr<512> = dt.to_str_lite_iso8601();
-    assert_eq!("2000-01-01T12:00:00+00:00", lite_str.as_str());
+    let buf_str: BufStr<512> = dt.to_str_b_iso8601();
+    assert_eq!("2000-01-01T12:00:00+00:00", buf_str.as_str());
 
     // ============================================
     // Formatting
@@ -57,7 +57,7 @@ fn main() -> Result<(), DtErr> {
     // ============================================
 
     let span: Dt = Dt::from_str_duration("3 days 12 hours", Lang::En)?;
-    let dur = span.to_str_lite_media_duration();
+    let dur = span.to_str_b_media_duration();
     assert_eq!("3:12:00:00", dur.to_string());
 
     // ============================================

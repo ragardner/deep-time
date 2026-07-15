@@ -1,4 +1,4 @@
-use crate::{Dt, DtErr, DtErrKind, Lang, LiteStr, STRTIME_SIZE, YmdHms, an_err};
+use crate::{BufStr, Dt, DtErr, DtErrKind, Lang, STRTIME_SIZE, YmdHms, an_err};
 
 #[cfg(feature = "alloc")]
 use {
@@ -201,7 +201,7 @@ impl Dt {
         ymd._to_str(
             fmt,
             Some(offset),
-            Some(LiteStr::new(tz_name)),
+            Some(BufStr::new(tz_name)),
             Some(abbrev),
             lang,
         )
@@ -398,7 +398,7 @@ impl Dt {
         ymd._to_str(
             fmt,
             Some(offset),
-            Some(LiteStr::new(tz_name)),
+            Some(BufStr::new(tz_name)),
             Some(abbrev),
             lang,
         )
@@ -406,7 +406,7 @@ impl Dt {
 }
 
 impl Dt {
-    /// Formats this [`Dt`] into a fixed-size binary string.
+    /// Formats this [`Dt`] into a fixed-size [`BufStr`] (no-alloc byte buffer).
     ///
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
@@ -417,7 +417,7 @@ impl Dt {
     /// use deep_time::{Dt, Lang, Scale};
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
-    /// let b = x.to_str_lite("%F", Lang::En).unwrap();
+    /// let b = x.to_str_b("%F", Lang::En).unwrap();
     /// let s = b.as_str();
     ///
     /// println!("{}", s);
@@ -431,14 +431,15 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_lite_in_offset`](../struct.Dt.html#method.to_str_lite_in_offset)
-    /// - [`Dt::to_str_lite_in_tz`](../struct.Dt.html#method.to_str_lite_in_tz)
+    /// - [`Dt::to_str`](../struct.Dt.html#method.to_str) — alloc `String` variant
+    /// - [`Dt::to_str_b_in_offset`](../struct.Dt.html#method.to_str_b_in_offset)
+    /// - [`Dt::to_str_b_in_tz`](../struct.Dt.html#method.to_str_b_in_tz)
     #[inline(always)]
-    pub fn to_str_lite(&self, fmt: &str, lang: Lang) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
-        self.to_ymd()._to_str_lite(fmt, None, None, None, lang)
+    pub fn to_str_b(&self, fmt: &str, lang: Lang) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
+        self.to_ymd()._to_str_b(fmt, None, None, None, lang)
     }
 
-    /// Formats this [`Dt`] into a fixed-size binary string, applying a fixed UTC offset.
+    /// Formats this [`Dt`] into a fixed-size [`BufStr`], applying a fixed UTC offset.
     ///
     /// - A copy of the [`Dt`] is adjusted by the given `sec` offset **before**
     ///   formatting, and the offset is stored so that `%z` / `%:z` format directives
@@ -455,7 +456,7 @@ impl Dt {
     /// let x = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     ///
     /// // offset of minus one hour
-    /// let b = x.to_str_lite_in_offset("%F", -3600, Lang::En).unwrap();
+    /// let b = x.to_str_b_in_offset("%F", -3600, Lang::En).unwrap();
     /// let s = b.as_str();
     ///
     /// println!("{}", s);
@@ -469,20 +470,20 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_lite`](../struct.Dt.html#method.to_str_lite)
-    /// - [`Dt::to_str_lite_in_tz`](../struct.Dt.html#method.to_str_lite_in_tz)
+    /// - [`Dt::to_str_b`](../struct.Dt.html#method.to_str_b)
+    /// - [`Dt::to_str_b_in_tz`](../struct.Dt.html#method.to_str_b_in_tz)
     #[inline(always)]
-    pub fn to_str_lite_in_offset(
+    pub fn to_str_b_in_offset(
         &self,
         fmt: &str,
         sec: i32,
         lang: Lang,
-    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
+    ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
         self.ymd_with_offset(sec)
-            ._to_str_lite(fmt, Some(sec), None, None, lang)
+            ._to_str_b(fmt, Some(sec), None, None, lang)
     }
 
-    /// Formats this [`Dt`] into a fixed-size binary string, time adjusted to the given
+    /// Formats this [`Dt`] into a fixed-size [`BufStr`], time adjusted to the given
     /// IANA timezone.
     ///
     /// Use this method when you want full IANA-aware formatting (`%Q`, `%Z`, `%z`, etc.).
@@ -495,7 +496,7 @@ impl Dt {
     ///     - Full IANA timezone name (for `%Q` / `%:Q`).
     /// - Converts to the provided timezone, if your [`Dt`] is already in
     ///   the timezone then use the label function instead:
-    ///   [`Dt::to_str_lite_with_tz_label`](../struct.Dt.html#method.to_str_lite_with_tz_label).
+    ///   [`Dt::to_str_b_with_tz_label`](../struct.Dt.html#method.to_str_b_with_tz_label).
     ///   This is unlikely to be case because when a date with a timezone is parsed
     ///   the returned [`Dt`] is not in local time. But, label only functions are
     ///   provided just in case anyway.
@@ -512,7 +513,7 @@ impl Dt {
     ///
     /// let x = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
     ///
-    /// let b = x.to_str_lite_in_tz("%F", "America/New_York", Lang::En).unwrap();
+    /// let b = x.to_str_b_in_tz("%F", "America/New_York", Lang::En).unwrap();
     /// let s = b.as_str();
     ///
     /// println!("{}", s);
@@ -527,27 +528,27 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_lite`](../struct.Dt.html#method.to_str_lite)
-    /// - [`Dt::to_str_lite_in_offset`](../struct.Dt.html#method.to_str_lite_in_offset)
-    /// - [`Dt::to_str_lite_with_tz_label`](../struct.Dt.html#method.to_str_lite_with_tz_label)
+    /// - [`Dt::to_str_b`](../struct.Dt.html#method.to_str_b)
+    /// - [`Dt::to_str_b_in_offset`](../struct.Dt.html#method.to_str_b_in_offset)
+    /// - [`Dt::to_str_b_with_tz_label`](../struct.Dt.html#method.to_str_b_with_tz_label)
     #[inline(always)]
-    pub fn to_str_lite_in_tz(
+    pub fn to_str_b_in_tz(
         &self,
         fmt: &str,
         tz_name: &str,
         lang: Lang,
-    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
+    ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, true)?;
-        ymd._to_str_lite(
+        ymd._to_str_b(
             fmt,
             Some(offset),
-            Some(LiteStr::new(tz_name)),
+            Some(BufStr::new(tz_name)),
             Some(abbrev),
             lang,
         )
     }
 
-    /// Formats this [`Dt`] into a `LiteStr`, attaching an offset **as a label only**.
+    /// Formats this [`Dt`] into a `BufStr`, attaching an offset **as a label only**.
     ///
     /// - The actual datetime components are **not** shifted or adjusted.
     /// - The given `offset` is used **only** for `%z` / `%:z` format directives.
@@ -562,20 +563,19 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_lite_in_offset`](../struct.Dt.html#method.to_str_lite_in_offset) —
+    /// - [`Dt::to_str_b_in_offset`](../struct.Dt.html#method.to_str_b_in_offset) —
     ///   shifts the datetime by the offset
     #[inline(always)]
-    pub fn to_str_lite_with_offset_label(
+    pub fn to_str_b_with_offset_label(
         &self,
         fmt: &str,
         offset: i32,
         lang: Lang,
-    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
-        self.to_ymd()
-            ._to_str_lite(fmt, Some(offset), None, None, lang)
+    ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
+        self.to_ymd()._to_str_b(fmt, Some(offset), None, None, lang)
     }
 
-    /// Formats this [`Dt`] into a `LiteStr`, attaching a timezone **as a label only**.
+    /// Formats this [`Dt`] into a `BufStr`, attaching a timezone **as a label only**.
     ///
     /// - The actual datetime components are **not** shifted or adjusted.
     /// - The timezone is used to provide correct values for `%z`, `%:z`, `%Z`, `%Q`, and `%:Q`.
@@ -592,27 +592,27 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_str_lite_in_tz`](../struct.Dt.html#method.to_str_lite_in_tz) —
+    /// - [`Dt::to_str_b_in_tz`](../struct.Dt.html#method.to_str_b_in_tz) —
     ///   shifts the datetime into the given timezone
     #[inline(always)]
-    pub fn to_str_lite_with_tz_label(
+    pub fn to_str_b_with_tz_label(
         &self,
         fmt: &str,
         tz_name: &str,
         lang: Lang,
-    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
+    ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, false)?;
-        ymd._to_str_lite(
+        ymd._to_str_b(
             fmt,
             Some(offset),
-            Some(LiteStr::new(tz_name)),
+            Some(BufStr::new(tz_name)),
             Some(abbrev),
             lang,
         )
     }
 
     /// **ISO 8601 / RFC 3339** style with a time scale suffix and without
-    /// an offset, as a fixed size no-alloc binary string.
+    /// an offset, as a fixed-size no-alloc [`BufStr`].
     ///
     /// - Example: **`"2025-04-16T14:30:45.123 TAI"`**.
     /// - Trims trailing zeros in the fractional part.
@@ -620,13 +620,13 @@ impl Dt {
     ///   time scale before producing the result.
     #[allow(clippy::unwrap_used)]
     #[inline(always)]
-    pub fn to_str_lite_iso_sc(&self) -> LiteStr<STRTIME_SIZE> {
-        self.to_str_lite_in_offset("%Y-%m-%dT%H:%M:%S%.~f %L", 0, Lang::En)
+    pub fn to_str_b_iso_sc(&self) -> BufStr<STRTIME_SIZE> {
+        self.to_str_b_in_offset("%Y-%m-%dT%H:%M:%S%.~f %L", 0, Lang::En)
             .unwrap()
     }
 
     /// **ISO 8601 / RFC 3339** with **actual offset** (modern `+00:00` style)
-    /// as a fixed size no-alloc binary string.
+    /// as a fixed-size no-alloc [`BufStr`].
     ///
     /// - Example: **`"2025-04-16T14:30:45.123+00:00"`**.
     /// - Uses colon-separated offset (`%:z`) instead of forcing `Z`.
@@ -635,25 +635,25 @@ impl Dt {
     ///   time scale before producing the result.
     #[allow(clippy::unwrap_used)]
     #[inline(always)]
-    pub fn to_str_lite_iso8601(&self) -> LiteStr<STRTIME_SIZE> {
-        self.to_str_lite_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
+    pub fn to_str_b_iso8601(&self) -> BufStr<STRTIME_SIZE> {
+        self.to_str_b_in_offset("%Y-%m-%dT%H:%M:%S%.~f%:z", 0, Lang::En)
             .unwrap()
     }
 
     /// **RFC 9557** / Temporal format with IANA timezone name in brackets
-    /// as a fixed size no-alloc binary string.
+    /// as a fixed-size no-alloc [`BufStr`].
     ///
     /// - Example: **`"2020-06-15T14:30:00-04:00[America/New_York]"`**.
     /// - Automatically trims trailing zeros in the fractional part.
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[inline(always)]
-    pub fn to_str_lite_rfc9557(&self, tz_name: &str) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
-        self.to_str_lite_in_tz("%Y-%m-%dT%H:%M:%S%.~f%:z[%Q]", tz_name, Lang::En)
+    pub fn to_str_b_rfc9557(&self, tz_name: &str) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
+        self.to_str_b_in_tz("%Y-%m-%dT%H:%M:%S%.~f%:z[%Q]", tz_name, Lang::En)
     }
 
     /// **HTTP-date** format (RFC 7231 / RFC 1123) — **always in GMT**
-    /// as a fixed size no-alloc binary string.
+    /// as a fixed-size no-alloc [`BufStr`].
     ///
     /// - Example: **`"Wed, 16 Apr 2025 14:30:45 GMT"`**.
     /// - Always outputs in GMT (equivalent to UTC+00:00). Does not apply
@@ -662,8 +662,8 @@ impl Dt {
     ///   time scale before producing the result.
     #[allow(clippy::unwrap_used)]
     #[inline(always)]
-    pub fn to_str_lite_http(&self, lang: Lang) -> LiteStr<STRTIME_SIZE> {
-        self.to_str_lite_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
+    pub fn to_str_b_http(&self, lang: Lang) -> BufStr<STRTIME_SIZE> {
+        self.to_str_b_in_offset("%a, %d %b %Y %H:%M:%S GMT", 0, lang)
             .unwrap()
     }
 
@@ -689,9 +689,9 @@ impl Dt {
         &self,
         tz_name: &str,
         apply_offset: bool,
-    ) -> Result<(YmdHms, i32, LiteStr<49>), DtErr> {
+    ) -> Result<(YmdHms, i32, BufStr<49>), DtErr> {
         #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
-        let (offset_sec, abbrev): (i32, LiteStr<49>) = {
+        let (offset_sec, abbrev): (i32, BufStr<49>) = {
             use jiff::{Timestamp, tz::TimeZone};
 
             let tz =
@@ -704,18 +704,18 @@ impl Dt {
 
             let info = tz.to_offset_info(ts);
             let offset_sec = info.offset().seconds();
-            let abbrev: LiteStr<49> = LiteStr::new(info.abbreviation());
+            let abbrev: BufStr<49> = BufStr::new(info.abbreviation());
 
             (offset_sec, abbrev)
         };
 
         #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
-        let (offset_sec, abbrev): (i32, LiteStr<49>) = {
+        let (offset_sec, abbrev): (i32, BufStr<49>) = {
             if !UTC_ALIASES.contains(&tz_name) {
                 return Err(an_err!(DtErrKind::MissingFeature));
             }
             // UTC → offset 0, canonical abbrev "UTC"
-            let abbrev: LiteStr<49> = LiteStr::new("UTC");
+            let abbrev: BufStr<49> = BufStr::new("UTC");
             (0i32, abbrev)
         };
 
@@ -735,15 +735,15 @@ impl Dt {
     #[cfg(feature = "alloc")]
     #[inline(always)]
     pub fn to_str_media_duration(&self) -> String {
-        self.to_str_lite_media_duration().to_string()
+        self.to_str_b_media_duration().to_string()
     }
 
     /// Formats the duration using the common media/video player style
     /// (e.g. `"0:45"`, `"9:41"`, `"1:23:45"`, `"1:07:54:30"`).
     #[inline(always)]
-    pub fn to_str_lite_media_duration(&self) -> LiteStr<STRTIME_SIZE> {
+    pub fn to_str_b_media_duration(&self) -> BufStr<STRTIME_SIZE> {
         let (buf, len) = self.format_media_duration();
-        LiteStr::from_bytes(&buf[..len])
+        BufStr::from_bytes(&buf[..len])
     }
 
     /// Returns a stack buffer + the number of valid bytes written.

@@ -49,7 +49,7 @@
 //! # }
 //! ```
 
-use crate::LiteStr;
+use crate::BufStr;
 
 /// Well-known aliases for UTC accepted in parsed date/time strings.
 pub static UTC_ALIASES: &[&str] = &[
@@ -63,11 +63,11 @@ pub static UTC_ALIASES: &[&str] = &[
     "Zulu",
 ];
 
-/// Returns an iterator over known time zone names as [`LiteStr<49>`](../struct.LiteStr.html).
+/// Returns an iterator over known time zone names as [`BufStr<49>`](../struct.BufStr.html).
 ///
 /// With `jiff-tz` or `jiff-tz-bundle`, yields every IANA identifier from the Jiff
 /// time zone database. Otherwise yields only [`UTC_ALIASES`].
-pub fn tz_names() -> impl Iterator<Item = LiteStr<49>> {
+pub fn tz_names() -> impl Iterator<Item = BufStr<49>> {
     #[cfg(feature = "alloc")]
     {
         tz_names_alloc()
@@ -80,21 +80,21 @@ pub fn tz_names() -> impl Iterator<Item = LiteStr<49>> {
 
 // alloc version (uses Jiff when available)
 #[cfg(feature = "alloc")]
-fn tz_names_alloc() -> impl Iterator<Item = LiteStr<49>> {
+fn tz_names_alloc() -> impl Iterator<Item = BufStr<49>> {
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     {
         jiff::tz::db()
             .available()
-            .map(|s| LiteStr::new(&s.to_string()))
+            .map(|s| BufStr::new(&s.to_string()))
     }
     #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
     {
-        UTC_ALIASES.iter().copied().map(LiteStr::new)
+        UTC_ALIASES.iter().copied().map(BufStr::new)
     }
 }
 
 // no-alloc version (only UTC aliases)
 #[cfg(not(feature = "alloc"))]
-fn tz_names_no_alloc() -> impl Iterator<Item = LiteStr<49>> {
-    UTC_ALIASES.iter().copied().map(LiteStr::new)
+fn tz_names_no_alloc() -> impl Iterator<Item = BufStr<49>> {
+    UTC_ALIASES.iter().copied().map(BufStr::new)
 }

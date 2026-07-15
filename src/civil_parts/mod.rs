@@ -22,7 +22,7 @@ mod to_chrono;
 #[cfg(feature = "jiff")]
 mod to_jiff;
 
-use crate::{LiteStr, Scale};
+use crate::{BufStr, Scale};
 
 /// Intermediate representation of parsed civil date and time.
 ///
@@ -63,7 +63,7 @@ pub struct Parts {
     /// Timezone offset from UTC.
     pub offset: Option<Offset>,
     /// IANA timezone name (e.g. `"America/New_York"`), stored as ASCII.
-    pub iana_name: Option<LiteStr<49>>,
+    pub iana_name: Option<BufStr<49>>,
     /// The time scale this value belongs to (TAI, UTC, etc.).
     pub scale: Scale,
     /// Day of the week.
@@ -107,7 +107,7 @@ impl Parts {
     /// Sets the IANA timezone name.
     #[inline(always)]
     pub fn set_iana_name(&mut self, name: Option<&str>) {
-        self.iana_name = name.map(LiteStr::new);
+        self.iana_name = name.map(BufStr::new);
     }
 }
 
@@ -499,7 +499,7 @@ impl Parts {
 
         // iana_name (49 bytes)
         let iana_bytes = &bytes[offset..offset + 49];
-        let name = LiteStr::<49>::from_bytes(iana_bytes);
+        let name = BufStr::<49>::from_bytes(iana_bytes);
         if !name.as_bytes().is_empty() {
             dc.iana_name = Some(name);
         }

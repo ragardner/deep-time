@@ -1,9 +1,9 @@
 use core::fmt;
 use core::str;
 
-/// A fixed-capacity, stack-allocated buffer that can hold a UTF-8 string.
+/// A fixed-capacity, stack-allocated **byte buffer** that can hold a UTF-8 string.
 ///
-/// `LiteStr<N>` stores its content in a `[u8; N]` array using C-style nul
+/// `BufStr<N>` stores its content in a `[u8; N]` array using C-style nul
 /// termination. The logical length is determined by the position of the first
 /// `b'\0'` byte (or `N` if the buffer is completely filled without a nul).
 ///
@@ -12,29 +12,29 @@ use core::str;
 /// serialization.
 ///
 /// Both [`new`](#method.new) and [`from_bytes`](#method.from_bytes) silently truncate input that exceeds the
-/// capacity `N`. This type is intentionally minimal because each `LiteStr<N>`
+/// capacity `N`. This type is intentionally minimal because each `BufStr<N>`
 /// is monomorphized independently.
 ///
 /// ## .len()
 ///
-/// - **Byte length**: [`LiteStr::as_bytes`](#method.as_bytes) (then `.len()`)
+/// - **Byte length**: [`BufStr::as_bytes`](#method.as_bytes) (then `.len()`)
 /// - **Unicode character count**: Use `as_str().chars().count()`
 #[derive(Clone, PartialEq, Eq)]
-pub struct LiteStr<const N: usize> {
+pub struct BufStr<const N: usize> {
     pub bytes: [u8; N],
 }
 
-impl<const N: usize> Default for LiteStr<N> {
+impl<const N: usize> Default for BufStr<N> {
     #[inline(always)]
     fn default() -> Self {
         Self { bytes: [0; N] }
     }
 }
 
-impl<const N: usize> LiteStr<N> {
+impl<const N: usize> BufStr<N> {
     pub const SIZE: usize = N;
 
-    /// Creates a new `LiteStr` from a `&str`.
+    /// Creates a new `BufStr` from a `&str`.
     ///
     /// If the input is longer than `N` bytes, it is truncated at the nearest
     /// valid UTF-8 boundary.
@@ -45,7 +45,7 @@ impl<const N: usize> LiteStr<N> {
         Self { bytes }
     }
 
-    /// Creates a `LiteStr<N>` from a byte slice.
+    /// Creates a `BufStr<N>` from a byte slice.
     ///
     /// Copies up to `N` bytes from the input and zero-fills the remainder.
     /// If `bytes.len() > N`, the input is silently truncated.
@@ -84,7 +84,7 @@ impl<const N: usize> LiteStr<N> {
     }
 }
 
-impl<const N: usize> fmt::Write for LiteStr<N> {
+impl<const N: usize> fmt::Write for BufStr<N> {
     #[inline(never)]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let current = self.as_bytes().len();
@@ -98,21 +98,21 @@ impl<const N: usize> fmt::Write for LiteStr<N> {
     }
 }
 
-impl<const N: usize> fmt::Display for LiteStr<N> {
+impl<const N: usize> fmt::Display for BufStr<N> {
     #[inline(always)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl<const N: usize> fmt::Debug for LiteStr<N> {
+impl<const N: usize> fmt::Debug for BufStr<N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.as_str())
     }
 }
 
 #[cfg(feature = "serde")]
-impl<const N: usize> serde::Serialize for LiteStr<N> {
+impl<const N: usize> serde::Serialize for BufStr<N> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -122,18 +122,18 @@ impl<const N: usize> serde::Serialize for LiteStr<N> {
 }
 
 #[cfg(feature = "serde")]
-impl<'de, const N: usize> serde::Deserialize<'de> for LiteStr<N> {
+impl<'de, const N: usize> serde::Deserialize<'de> for BufStr<N> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         let s: &str = serde::Deserialize::deserialize(deserializer)?;
-        Ok(LiteStr::new(s))
+        Ok(BufStr::new(s))
     }
 }
 
 #[cfg(feature = "defmt")]
-impl<const N: usize> defmt::Format for LiteStr<N> {
+impl<const N: usize> defmt::Format for BufStr<N> {
     fn format(&self, f: defmt::Formatter) {
         defmt::write!(f, "{}", self.as_str());
     }
@@ -177,38 +177,38 @@ mod tests {
 
     #[test]
     fn as_str_valid() {
-        assert_eq!(LiteStr::<16>::new("hello").as_str(), "hello");
-        assert_eq!(LiteStr::<8>::default().as_str(), "");
+        assert_eq!(BufStr::<16>::new("hello").as_str(), "hello");
+        assert_eq!(BufStr::<8>::default().as_str(), "");
     }
 
     #[test]
     fn as_str_invalid_leading_byte() {
-        let s = LiteStr::<8>::from_bytes(&[0xFF, b'a']);
+        let s = BufStr::<8>::from_bytes(&[0xFF, b'a']);
         assert_eq!(s.as_str(), "\u{FFFD}");
     }
 
     #[test]
     fn as_str_valid_prefix_then_garbage() {
-        let s = LiteStr::<8>::from_bytes(&[b'h', b'i', 0xFF, b'!']);
+        let s = BufStr::<8>::from_bytes(&[b'h', b'i', 0xFF, b'!']);
         assert_eq!(s.as_str(), "hi");
     }
 
     #[test]
     fn as_str_truncated_multibyte_at_start() {
         // incomplete U+20AC (euro sign)
-        let s = LiteStr::<8>::from_bytes(&[0xE2, 0x82]);
+        let s = BufStr::<8>::from_bytes(&[0xE2, 0x82]);
         assert_eq!(s.as_str(), "\u{FFFD}");
     }
 
     #[test]
     fn as_str_truncated_multibyte_after_valid_prefix() {
-        let s = LiteStr::<8>::from_bytes(&[b'h', b'i', 0xE2, 0x82]);
+        let s = BufStr::<8>::from_bytes(&[b'h', b'i', 0xE2, 0x82]);
         assert_eq!(s.as_str(), "hi");
     }
 
     #[test]
     fn as_str_stops_at_nul() {
-        let s = LiteStr::<8>::from_bytes(b"ab\0cd");
+        let s = BufStr::<8>::from_bytes(b"ab\0cd");
         assert_eq!(s.as_str(), "ab");
         assert_eq!(s.as_bytes(), b"ab");
     }

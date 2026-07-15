@@ -64,8 +64,8 @@ mod tests {
         assert_eq!(zero_tai, p_tai);
         assert_eq!(zero_tdb, p_tdb);
 
-        let back_tai = p_tai.to_str_lite("%J %L", Lang::En).unwrap();
-        let back_tdb = p_tdb.to_str_lite("%J %L", Lang::En).unwrap();
+        let back_tai = p_tai.to_str_b("%J %L", Lang::En).unwrap();
+        let back_tdb = p_tdb.to_str_b("%J %L", Lang::En).unwrap();
 
         assert_eq!(back_tai.as_str(), "-0.5 TAI");
         assert_eq!(back_tdb.as_str(), "-0.5 TDB");

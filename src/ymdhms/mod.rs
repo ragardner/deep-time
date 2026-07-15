@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC_I128, Dt, LiteStr, STRTIME_SIZE, Scale};
+use crate::{ATTOS_PER_SEC_I128, BufStr, Dt, STRTIME_SIZE, Scale};
 use core::fmt::Write;
 
 #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
@@ -307,7 +307,7 @@ impl YmdHms {
     }
 
     /// Formats this value the same way as [`Display`](core::fmt::Display),
-    /// but into a [`LiteStr`](../struct.LiteStr.html).
+    /// but into a [`BufStr`](../struct.BufStr.html).
     ///
     /// ## Example
     ///
@@ -315,11 +315,11 @@ impl YmdHms {
     /// use deep_time::{Dt, Scale};
     ///
     /// let ymd = Dt::from_ymd(2000, 1, 2, Scale::UTC, 3, 4, 5, 0).to_ymd();
-    /// assert_eq!(ymd.to_str_lite().as_str(), "2000-01-02T03:04:05 UTC");
+    /// assert_eq!(ymd.to_str_b().as_str(), "2000-01-02T03:04:05 UTC");
     /// ```
     #[inline]
-    pub fn to_str_lite(&self) -> LiteStr<STRTIME_SIZE> {
-        let mut s = LiteStr::<STRTIME_SIZE>::default();
+    pub fn to_str_b(&self) -> BufStr<STRTIME_SIZE> {
+        let mut s = BufStr::<STRTIME_SIZE>::default();
         let _ = write!(s, "{}", self);
         s
     }

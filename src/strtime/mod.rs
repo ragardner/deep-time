@@ -2,7 +2,7 @@ pub mod parser;
 pub mod printer;
 
 use crate::error::{DtErr, DtErrKind};
-use crate::{Dt, Lang, LiteStr, Parts, STRTIME_SIZE, an_err};
+use crate::{BufStr, Dt, Lang, Parts, STRTIME_SIZE, an_err};
 use core::result::Result;
 use core::str;
 
@@ -227,11 +227,11 @@ impl StrPTimeFmt {
         .to_str(output_fmt, lang)
     }
 
-    /// Formats a [`Dt`] into a [`LiteStr`] using this pre-validated format and a given
+    /// Formats a [`Dt`] into a [`BufStr`] using this pre-validated format and a given
     /// output format.
     ///
     /// Effectively parses a [`prim@str`] with the contained format, then outputs a
-    /// [`LiteStr`] with a new given format.
+    /// [`BufStr`] with a new given format.
     ///
     /// ## Parameters
     ///
@@ -245,11 +245,11 @@ impl StrPTimeFmt {
     /// use deep_time::{Dt, Lang, StrPTimeFmt};
     ///
     /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
-    /// let s = fmt.to_str_lite("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
+    /// let s = fmt.to_str_b("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
     ///
     /// assert_eq!(s.as_str(), "01 01 2000 12:00:00");
     /// ```
-    pub fn to_str_lite(
+    pub fn to_str_b(
         &self,
         s: &str,
         output_fmt: &str,
@@ -257,7 +257,7 @@ impl StrPTimeFmt {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
         lang: Lang,
-    ) -> Result<LiteStr<STRTIME_SIZE>, DtErr> {
+    ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
         Parts::from_str(
             self.as_str()?,
             s,
@@ -266,7 +266,7 @@ impl StrPTimeFmt {
             allow_partial_date,
         )?
         .to_dt()?
-        .to_str_lite(output_fmt, lang)
+        .to_str_b(output_fmt, lang)
     }
 
     fn validate_format(mut fmt: &[u8]) -> Result<(), DtErr> {

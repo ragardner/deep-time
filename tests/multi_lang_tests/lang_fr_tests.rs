@@ -186,13 +186,13 @@ mod tests {
     fn fr_output_formatting() {
         let dt: Dt = "2025-01-01".parse().unwrap();
 
-        let out = dt.to_str_lite("%a, %d %b %Y", Lang::Fr).unwrap();
+        let out = dt.to_str_b("%a, %d %b %Y", Lang::Fr).unwrap();
         assert_eq!(out.as_str(), "Mer, 01 janv 2025");
 
-        let out = dt.to_str_lite("%A, %d %B %Y", Lang::Fr).unwrap();
+        let out = dt.to_str_b("%A, %d %B %Y", Lang::Fr).unwrap();
         assert_eq!(out.as_str(), "Mercredi, 01 janvier 2025");
 
-        let out = dt.to_str_lite("%A, %d %B %Y %H:%M:%S", Lang::Fr).unwrap();
+        let out = dt.to_str_b("%A, %d %B %Y %H:%M:%S", Lang::Fr).unwrap();
         assert_eq!(out.as_str(), "Mercredi, 01 janvier 2025 00:00:00");
     }
 }

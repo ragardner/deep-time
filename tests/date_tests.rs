@@ -10,7 +10,7 @@ mod tests {
     fn parser_works_no_tz() {
         let dt =
             Dt::from_str_parse("2000-01-01T12:00:00 America/New_York", &ParseCfg::DEFAULT).unwrap();
-        assert_eq!(dt.to_str_lite_iso_sc().as_str(), "2000-01-01T17:00:00 UTC");
+        assert_eq!(dt.to_str_b_iso_sc().as_str(), "2000-01-01T17:00:00 UTC");
     }
 
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
@@ -62,7 +62,7 @@ mod tests {
             .to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En)
             .unwrap();
         let b = x
-            .to_str_lite_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En)
+            .to_str_b_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En)
             .unwrap();
 
         assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");

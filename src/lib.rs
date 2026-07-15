@@ -46,7 +46,7 @@ use deep_time::{Dt, Lang, Scale, from_ymd};
 
 let mut dt = Dt::from_str_iso("292000000000-1-1").unwrap();
 dt = dt.add_days(4);
-let s = dt.to_str_lite("%Y-%m-%dT%H:%M:%S %L", Lang::En).unwrap();
+let s = dt.to_str_b("%Y-%m-%dT%H:%M:%S %L", Lang::En).unwrap();
 
 assert_eq!(s.as_str(), "292000000000-01-05T00:00:00 UTC");
 
@@ -175,9 +175,9 @@ macro_rules! byte_arrays {
 // MOD
 // _________________________________________
 mod an_err;
+mod buf_str;
 mod dt;
 mod error;
-mod lite_str;
 mod locale;
 mod scale;
 mod strtime;
@@ -229,11 +229,11 @@ pub(crate) use locale::{lang_data::*, lang_map::*};
 // PUB USE
 // _________________________________________
 pub use an_err::AnErr;
+pub use buf_str::BufStr;
 pub use dt::Dt;
 pub use dt::lunar;
 pub use dt::numbers_traits::TraitsTime;
 pub use error::{DtErr, DtErrKind};
-pub use lite_str::LiteStr;
 pub use locale::Lang;
 pub use scale::Scale;
 pub use strtime::StrPTimeFmt;

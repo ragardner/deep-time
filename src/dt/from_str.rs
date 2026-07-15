@@ -804,7 +804,7 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::to_str_media_duration`](../struct.Dt.html#method.to_str_media_duration)
-    /// - [`Dt::to_str_lite_media_duration`](../struct.Dt.html#method.to_str_lite_media_duration)
+    /// - [`Dt::to_str_b_media_duration`](../struct.Dt.html#method.to_str_b_media_duration)
     pub fn from_str_media_duration(input: &str) -> Result<Dt, DtErr> {
         let bytes = input.as_bytes();
         let len = bytes.len();

@@ -35,8 +35,8 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(depart, to_utc_and_floor(from_ymd!(2026, 7, 9; 9, 15)));
 
     // Display: omit seconds with strftime-style formatting (no need for a wrapper type).
-    let depart_s = depart.to_str_lite("%Y-%m-%d %H:%M", Lang::En)?;
-    let arrive_s = arrive.to_str_lite("%Y-%m-%d %H:%M", Lang::En)?;
+    let depart_s = depart.to_str_b("%Y-%m-%d %H:%M", Lang::En)?;
+    let arrive_s = arrive.to_str_b("%Y-%m-%d %H:%M", Lang::En)?;
     assert_eq!(depart_s.as_str(), "2026-07-09 09:15");
     assert_eq!(arrive_s.as_str(), "2026-07-09 12:42");
 

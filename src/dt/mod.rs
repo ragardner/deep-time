@@ -110,9 +110,9 @@ use core::fmt;
 /// - [`Dt::to_str_in_offset`](../struct.Dt.html#method.to_str_in_offset)*
 /// - [`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz)*
 /// - [`Dt::to_str_iso8601`](../struct.Dt.html#method.to_str_iso8601)*
-/// - [`Dt::to_str_lite`](../struct.Dt.html#method.to_str_lite)
-/// - [`Dt::to_str_lite_in_offset`](../struct.Dt.html#method.to_str_lite_in_offset)
-/// - [`Dt::to_str_lite_in_tz`](../struct.Dt.html#method.to_str_lite_in_tz)
+/// - [`Dt::to_str_b`](../struct.Dt.html#method.to_str_b)
+/// - [`Dt::to_str_b_in_offset`](../struct.Dt.html#method.to_str_b_in_offset)
+/// - [`Dt::to_str_b_in_tz`](../struct.Dt.html#method.to_str_b_in_tz)
 ///
 /// ### From and to julian dates
 ///
@@ -181,7 +181,7 @@ use core::fmt;
 ///  .to_str_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En)
 ///  .unwrap();
 /// let b = x
-///  .to_str_lite_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En)
+///  .to_str_b_in_tz("%A, %B %d, %Y %H:%M:%S %Q", "America/New_York", Lang::En)
 ///  .unwrap();
 ///
 /// assert_eq!(s, "Saturday, January 01, 2000 07:00:00 America/New_York");
@@ -226,7 +226,7 @@ use core::fmt;
 ///
 /// // The internal target is currently UTC so we don't need to do
 /// // anything to output back to UTC and round trip
-/// let bytes = dt.to_str_lite("%d %m %Y %H:%M:%S", Lang::En).unwrap();
+/// let bytes = dt.to_str_b("%d %m %Y %H:%M:%S", Lang::En).unwrap();
 ///
 /// assert_eq!(bytes.as_str(), "01 01 2025 00:00:00");
 ///
