@@ -101,20 +101,22 @@ impl Drift {
     ///
     /// Returns the accumulated time difference (in seconds) between proper
     /// time and coordinate time after the interval span has passed.
+    ///
+    /// Uses saturating attosecond arithmetic (same policy as [`Dt`] add/mul).
+    /// Scaled products `(a·b)/10¹⁸` avoid wrapping or early-clamping the
+    /// intermediate `a·b` when it exceeds `i128` but the result still fits.
     pub const fn time_diff_after(&self, span: &Dt) -> Dt {
         let dt_attos = span.to_attos();
         let mut total_attos = self.constant.to_attos();
 
         if !self.rate.is_zero() || !self.accel.is_zero() {
-            // Linear term: rate * dt
-            let rate_attos: i128 = self.rate.to_attos();
-            let rate_term = rate_attos.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
-            total_attos = total_attos.wrapping_add(rate_term);
+            // Linear: rate * dt  →  (rate_attos * dt_attos) / 10¹⁸
+            let rate_term = saturating_mul_div_attos_per_sec(self.rate.to_attos(), dt_attos);
+            total_attos = total_attos.saturating_add(rate_term);
 
-            // Quadratic term: accel * dt²
-            let accel_attos: i128 = self.accel.to_attos();
-            let accel_dt = accel_attos.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
-            let accel_term = accel_dt.wrapping_mul(dt_attos) / ATTOS_PER_SEC_I128;
+            // Quadratic: accel * dt²  →  two successive scaled multiplies
+            let accel_dt = saturating_mul_div_attos_per_sec(self.accel.to_attos(), dt_attos);
+            let accel_term = saturating_mul_div_attos_per_sec(accel_dt, dt_attos);
             total_attos = total_attos.saturating_add(accel_term);
         }
 
@@ -334,6 +336,48 @@ impl Dt {
         }
         guess
     }
+}
+
+/// Fixed-point product `(a * b) / ATTOS_PER_SEC`, saturating on true result overflow.
+///
+/// Drift coefficients and spans are both attosecond-scaled, so applying rate or
+/// accel needs `(a·b)/10¹⁸`. The raw product `a·b` can exceed `i128` even when
+/// that scaled result still fits; this helper avoids wrapping or early clamp.
+///
+/// 1. Uses `checked_mul` when the intermediate product fits (common path).
+/// 2. Otherwise splits `a = a_hi·D + a_lo` so
+///    `(a·b)/D = a_hi·b + (a_lo·b)/D`, with a second split on `b` if needed.
+/// 3. Combines parts with saturating arithmetic so extreme inputs clamp like
+///    the rest of [`Dt`] rather than wrapping.
+const fn saturating_mul_div_attos_per_sec(a: i128, b: i128) -> i128 {
+    if a == 0 || b == 0 {
+        return 0;
+    }
+
+    if let Some(product) = a.checked_mul(b) {
+        return product / ATTOS_PER_SEC_I128;
+    }
+
+    // a = a_hi * D + a_lo  (Rust truncating division; identity holds for negatives)
+    let a_hi = a / ATTOS_PER_SEC_I128;
+    let a_lo = a % ATTOS_PER_SEC_I128;
+    // (a_hi * D + a_lo) * b / D = a_hi * b + (a_lo * b) / D
+    let hi = a_hi.saturating_mul(b);
+
+    let lo = match a_lo.checked_mul(b) {
+        Some(product) => product / ATTOS_PER_SEC_I128,
+        None => {
+            // |a_lo| < D; split b the same way:
+            // a_lo * b / D = a_lo * b_hi + (a_lo * b_lo) / D
+            // |a_lo * b_lo| < D² = 10³⁶ < i128::MAX, so the cross term is exact.
+            let b_hi = b / ATTOS_PER_SEC_I128;
+            let b_lo = b % ATTOS_PER_SEC_I128;
+            let cross = (a_lo * b_lo) / ATTOS_PER_SEC_I128;
+            a_lo.saturating_mul(b_hi).saturating_add(cross)
+        }
+    };
+
+    hi.saturating_add(lo)
 }
 
 #[cfg(feature = "wire")]

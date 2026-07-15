@@ -69,6 +69,26 @@ mod tests {
         assert_eq!(drift.time_diff_after(&dt), from_sec_f!(0.001));
     }
 
+    /// Intermediate `rate_attos * span_attos` can exceed i128 even when the
+    /// scaled result fits; mul-div must not wrap or early-saturate.
+    #[test]
+    fn evaluate_rate_with_overflowing_intermediate_product() {
+        // rate = 1 s/s, span = 1_000_000 s
+        let drift = Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec(1, Scale::TAI, Scale::TAI));
+        let span = Dt::from_sec(1_000_000, Scale::TAI, Scale::TAI);
+        assert_eq!(
+            drift.time_diff_after(&span),
+            Dt::from_sec(1_000_000, Scale::TAI, Scale::TAI)
+        );
+
+        let drift_neg =
+            Drift::from_offset_and_rate(Dt::ZERO, Dt::from_sec(-1, Scale::TAI, Scale::TAI));
+        assert_eq!(
+            drift_neg.time_diff_after(&span),
+            Dt::from_sec(-1_000_000, Scale::TAI, Scale::TAI)
+        );
+    }
+
     // ========================================================================
     // Thorough tests for the unified proper-time rate (master Lagrangian)
     // ========================================================================
