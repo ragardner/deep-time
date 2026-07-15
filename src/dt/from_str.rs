@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, Parts, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK,
-    SEC_PER_YEAR, Scale, StrPTimeFmt, an_err,
+    SEC_PER_YEAR, Scale, StrPTimeFmt, an_err, dt,
 };
 use core::str::FromStr;
 
@@ -628,7 +628,7 @@ impl Dt {
 
         // Convert accumulated nanoseconds to attoseconds and build Dt
         let total_attos = total_nanos * 1_000_000_000i128;
-        Ok(crate::dt!(total_attos))
+        Ok(dt!(total_attos))
     }
 
     /// Parses a single component (number + optional fraction + unit) from the slice,
@@ -892,6 +892,6 @@ impl Dt {
         let total_sec = if negative { -total_sec } else { total_sec };
         let attos = total_sec.saturating_mul(ATTOS_PER_SEC_I128);
 
-        Ok(crate::dt!(attos))
+        Ok(dt!(attos))
     }
 }

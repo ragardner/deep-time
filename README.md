@@ -251,6 +251,7 @@ You only need this if you are building a binary crate in a `no_std` environment 
 |---------|----------------|-----|
 | [`precision_control`](https://github.com/ragardner/deep-time/blob/main/examples/precision_control.rs) | Compare, and format times at a chosen resolution (here: one minute) | `cargo run --example precision_control` |
 | [`sidereal_time`](https://github.com/ragardner/deep-time/blob/main/examples/sidereal_time.rs) | Astropy-style GMST/GAST/LMST/LAST with UT1 from IERS finals, plus hour angle | `cargo run --example sidereal_time --features "sidereal-earth eop std"` |
+| [`proper_time_path`](https://github.com/ragardner/deep-time/blob/main/examples/proper_time_path.rs) | Proper time / craft-vs-ground from `(t, v, Φ)` samples | `cargo run --example proper_time_path --features physics` |
 
 ### Performance
 

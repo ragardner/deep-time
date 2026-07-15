@@ -223,6 +223,10 @@ required-features = ["parse", "jiff-tz", "euro"]
 name = "sidereal_time"
 required-features = ["sidereal-earth", "eop", "std"]
 
+[[example]]
+name = "proper_time_path"
+required-features = ["physics"]
+
 [[bench]]
 name = "perf"
 harness = false

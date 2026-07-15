@@ -1,4 +1,4 @@
-use crate::{ATTOS_PER_SEC_I128, BufStr, Dt, STRTIME_SIZE, Scale};
+use crate::{ATTOS_PER_SEC_I128, BufStr, Dt, STRTIME_SIZE, Scale, dt};
 use core::fmt::Write;
 
 #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
@@ -177,7 +177,7 @@ impl YmdHms {
             self.sec,
             self.attos,
         );
-        let mut ymd = tai.add(crate::dt!(attos_delta)).to_ymd();
+        let mut ymd = tai.add(dt!(attos_delta)).to_ymd();
         ymd.dt.scale = self.dt.scale;
         ymd
     }

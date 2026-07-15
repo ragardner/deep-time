@@ -8,7 +8,7 @@
 //! [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
 
 use crate::{
-    ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Real, Scale, Spacetime, Velocity, sqrt,
+    ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Real, Scale, Spacetime, Velocity, dt, sqrt,
 };
 
 /// Quadratic polynomial that describes the accumulated difference between an
@@ -118,7 +118,7 @@ impl Drift {
             total_attos = total_attos.saturating_add(accel_term);
         }
 
-        crate::dt!(total_attos)
+        dt!(total_attos)
     }
 
     /// Evaluates the deterministic relativistic/polynomial correction **and**

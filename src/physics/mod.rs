@@ -30,6 +30,9 @@
 //! Longer guide (concepts, coverage rules, units):
 //! [docs/trajectory.md](https://github.com/ragardner/deep-time/blob/main/docs/trajectory.md).
 //!
+//! Runnable example:
+//! [examples/proper_time_path.rs](https://github.com/ragardner/deep-time/blob/main/examples/proper_time_path.rs).
+//!
 //! Rate-model theory:
 //! [docs/relativity.md](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
 

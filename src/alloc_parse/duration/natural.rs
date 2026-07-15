@@ -1,7 +1,8 @@
 use crate::{
     AS_PER_DAY, AS_PER_HOUR, AS_PER_MINUTE, AS_PER_MONTH, AS_PER_WEEK, AS_PER_YEAR,
     ATTOS_PER_MS_I128, ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_US_I128, Dt, DtErr,
-    DtErrKind, Lang, LangData, Scale, SplitKeepWithPos, Token, an_err, lang_map, to_ascii_digit,
+    DtErrKind, Lang, LangData, Scale, SplitKeepWithPos, Token, an_err, dt, lang_map,
+    to_ascii_digit,
 };
 use alloc::{
     string::{String, ToString},
@@ -952,12 +953,12 @@ impl Dt {
             };
 
             if day_delta != 0 {
-                result = result.add(crate::dt!(day_delta as i128 * AS_PER_DAY));
+                result = result.add(dt!(day_delta as i128 * AS_PER_DAY));
             }
         }
 
         if total_attos != 0 {
-            result = result.add(crate::dt!(total_attos));
+            result = result.add(dt!(total_attos));
         }
 
         // Time of day
@@ -1038,12 +1039,12 @@ impl Dt {
                     }
                     Token::Tomorrow => {
                         if !has_duration {
-                            return Ok(crate::dt!(AS_PER_DAY));
+                            return Ok(dt!(AS_PER_DAY));
                         }
                     }
                     Token::Yesterday => {
                         if !has_duration {
-                            return Ok(crate::dt!(-AS_PER_DAY));
+                            return Ok(dt!(-AS_PER_DAY));
                         }
                     }
                     Token::Ago => {
@@ -1299,7 +1300,7 @@ impl Dt {
             return Err(an_err!(DtErrKind::InvalidInput));
         }
 
-        Ok(crate::dt!(total_attos))
+        Ok(dt!(total_attos))
     }
 }
 

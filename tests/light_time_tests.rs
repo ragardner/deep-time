@@ -53,77 +53,140 @@ mod light_time_tests {
         );
     }
 
-    /// Verifies the net relativistic clock rate of a GPS satellite relative to a
-    /// ground clock.
+    /// GPS satellite vs geoid clock — Ashby’s circular factory frequency offset.
     ///
-    /// GPS satellites orbit at approximately 20,200 km altitude. Two relativistic
-    /// effects influence their onboard clocks:
+    /// # What this checks
     ///
-    /// - General relativity: weaker gravitational potential at orbital altitude
-    ///   causes clocks to run faster.
-    /// - Special relativity: orbital velocity causes clocks to run slower.
+    /// Clocks on GPS satellites run **faster** than identical clocks on the
+    /// Earth’s geoid by a nearly constant fractional rate of about
+    /// \(4.4647\times 10^{-10}\) (\(\approx +38.575\,\mu\mathrm{s/day}\)).
     ///
-    /// The gravitational effect is larger, resulting in a net rate increase.
+    /// Early GPS satellites used a *factory frequency offset*: the onboard
+    /// standard was set a little slow on the ground so that, once in a nominal
+    /// circular orbit, it would appear to beat near the geoid rate (nominal L1
+    /// synthesis from 10.23 MHz). Without the correction, ~38 µs/day is about
+    /// **11.5 km** of one-way ranging bias per day.
     ///
-    /// The accepted value used in GPS operations is approximately +38.4 µs per day.
-    /// This test confirms that `proper_time_rate()` produces a result consistent
-    /// with this established figure when using standard GPS orbital parameters.
+    /// This test rebuilds Ashby’s **circular-orbit factory offset** from
+    /// potential and velocity, then checks that the library’s
+    /// [`Observer::proper_time_rate`] matches Ashby’s first-order formula to
+    /// better than **1 ns/day**.
     ///
-    /// References:
-    /// - Ashby, N. (2003). "Relativity in the Global Positioning System".
-    ///   Living Reviews in Relativity 6(1).
-    ///   https://doi.org/10.12942/lrr-2003-1
-    /// - GPS Interface Specification IS-GPS-200.
+    /// This is the classical *mean* circular offset only. It is not a substitute
+    /// for the broadcast clock polynomial or the IS-GPS-200 user algorithm
+    /// (eccentricity term, etc.).
+    ///
+    /// # Physics (weak field, circular orbit)
+    ///
+    /// Proper time advances relative to ECI coordinate time as
+    ///
+    /// ```text
+    /// dτ/dt = sqrt( (1 + 2Φ/c²)(1 − v²/c²) )  ≈  1 + Φ/c² − v²/(2c²)
+    /// ```
+    ///
+    /// with Kretschmann left at zero (the GNSS default). The factory offset is
+    /// `rate_sat / rate_geoid − 1`.
+    ///
+    /// For a circular Kepler orbit of semi-major axis `a`, energy conservation
+    /// collapses satellite gravity + second-order Doppler to `−3GM/(2c²a)`.
+    /// The geoid reference is not simply `−GM/R` at rest: monopole, equatorial
+    /// `J₂`, and Earth-rotation Doppler all enter. Ashby’s constant-rate formula
+    /// (AAPT notes, Eq. 34) is
+    ///
+    /// ```text
+    /// Δf/f = −3GM/(2c²a) + GM/(c²a₁)(1 + J₂/2) + (ω a₁)²/(2c²)
+    ///      ≈ 4.4647×10⁻¹⁰
+    /// ```
+    ///
+    /// Here the geoid is one **effective** potential (with `v = 0`):
+    ///
+    /// ```text
+    /// Φ_geoid = −GM/a₁ (1 + J₂/2) − (ω a₁)²/2
+    /// ```
+    ///
+    /// # Intentionally omitted
+    ///
+    /// Eccentricity (`∝ e sin E`; IS-GPS-200 user algorithm), higher multipoles,
+    /// satellite `J₂` averaging, Sagnac, and tides.
+    ///
+    /// # Constants
+    ///
+    /// | Symbol | Value | Source |
+    /// |--------|-------|--------|
+    /// | `GM` | `3.986004415e14` m³/s² | Ashby AAPT Eq. 20 |
+    /// | `a₁` | `6_378_137` m | WGS 84 / Ashby `a₁` |
+    /// | `J₂` | `1.08263e-3` | Ashby AAPT Eq. 21 |
+    /// | `a` | `26_562_000` m | Ashby designed GPS semi-major axis |
+    /// | `ω` | `7.2921150e-5` rad/s | WGS 84 |
+    /// | `c` | SI / `deep_time::consts::C` | |
+    ///
+    /// WGS 84 (NIMA TR8350.2):
+    /// <https://earth-info.nga.mil/php/download.php?file=coord-wgs84>
+    ///
+    /// # References
+    ///
+    /// - Ashby (2003), *Relativity in the Global Positioning System*,
+    ///   Living Reviews in Relativity **6**, 1.
+    ///   <https://doi.org/10.12942/lrr-2003-1>
+    /// - Ashby (2002), Physics Today **55**(5), 41–47.
+    ///   <https://doi.org/10.1063/1.1485583>
+    /// - Ashby (2006), AAPT notes (Eqs. 20–34):
+    ///   <https://www.aapt.org/doorway/tgru/articles/ashbyarticle.pdf>
+    /// - IS-GPS-200: <https://www.gps.gov/technical/icwg/IS-GPS-200N.pdf>
     #[test]
-    fn gps_satellite_net_relativistic_clock_advance() {
-        let gps_distance_from_earth_center = 26_560_000.0; // m
-        let gps_speed = 3_874.0; // m/s
-        let earth_gm = 3.986004418e14_f64; // m³/s²
+    fn gps_ashby_circular_factory_offset() {
+        use deep_time::consts::C_SQUARED;
 
-        let gps_potential = -earth_gm / gps_distance_from_earth_center;
+        // Ashby AAPT Eq. (20)–(21); designed semi-major axis 26 562 km.
+        const GM: f64 = 3.986_004_415e14;
+        const A1: f64 = 6_378_137.0;
+        const J2: f64 = 1.082_63e-3;
+        const A_GPS: f64 = 26_562_000.0;
+        const OMEGA: f64 = 7.292_115_0e-5;
 
-        let gps_sat = make_state(
-            0,
-            Position::new(gps_distance_from_earth_center, 0.0, 0.0),
-            Velocity::from_speed(gps_speed),
-            gps_potential,
-            0.0,
+        // Φ_geoid = −GM/a₁(1 + J₂/2) − (ω a₁)²/2  (effective; rate uses v = 0)
+        let phi_gnd = -GM / A1 * (1.0 + 0.5 * J2) - 0.5 * (OMEGA * A1).powi(2);
+        let phi_sat = -GM / A_GPS;
+        let v_sat = (GM / A_GPS).sqrt();
+
+        // Rate depends only on Φ and |v|; position is unused here.
+        let gps = make_state(0, Position::ZERO, Velocity::from_speed(v_sat), phi_sat, 0.0);
+        let gnd = make_state(0, Position::ZERO, Velocity::ZERO, phi_gnd, 0.0);
+
+        let rate_sat = gps.proper_time_rate();
+        let rate_gnd = gnd.proper_time_rate();
+        assert!(
+            rate_sat > rate_gnd,
+            "GPS clock must run faster than the geoid clock \
+             (sat={rate_sat:.15}, gnd={rate_gnd:.15})"
         );
 
-        let earth_radius = 6_378_137.0; // WGS84 equatorial radius (m)
-        let ground_potential = -earth_gm / earth_radius;
+        let factory_lib = rate_sat / rate_gnd - 1.0;
 
-        let ground = make_state(
-            0,
-            Position::new(earth_radius, 0.0, 0.0),
-            Velocity::ZERO,
-            ground_potential,
-            0.0,
-        );
+        // Ashby AAPT Eq. 34 (first-order closed form).
+        let factory_ashby = -1.5 * GM / (A_GPS * C_SQUARED)
+            + GM / (A1 * C_SQUARED) * (1.0 + 0.5 * J2)
+            + 0.5 * (OMEGA * A1).powi(2) / C_SQUARED;
 
-        let gps_rate = gps_sat.proper_time_rate();
-        let ground_rate = ground.proper_time_rate();
+        let us_per_day = |frac: f64| frac * 86_400.0 * 1_000_000.0;
+        let us_lib = us_per_day(factory_lib);
+        let us_ashby = us_per_day(factory_ashby);
+
+        // Printed Ashby figure ~38.575 µs/day; tolerate 1 ns/day.
+        const EXPECTED_US: f64 = 38.575;
+        const TOL_US: f64 = 0.001;
 
         assert!(
-            gps_rate > ground_rate,
-            "GPS satellite proper time rate must exceed ground rate \
-         (gps_rate = {:.12}, ground_rate = {:.12})",
-            gps_rate,
-            ground_rate
+            (us_ashby - EXPECTED_US).abs() < TOL_US,
+            "Ashby formula: {us_ashby:.6} µs/day (expected {EXPECTED_US} ± {TOL_US})"
         );
-
-        let relative_rate = gps_rate / ground_rate;
-        let daily_advance_us = (relative_rate - 1.0) * 86400.0 * 1_000_000.0;
-
-        const EXPECTED: f64 = 38.4;
-        const TOL: f64 = 0.04;
-
         assert!(
-            (daily_advance_us - EXPECTED).abs() < TOL,
-            "GPS net daily advance: got {:.4} µs/day (expected {:.1} ± {:.1})",
-            daily_advance_us,
-            EXPECTED,
-            TOL
+            (us_lib - EXPECTED_US).abs() < TOL_US,
+            "library rates: {us_lib:.6} µs/day (expected {EXPECTED_US} ± {TOL_US})"
+        );
+        assert!(
+            (us_lib - us_ashby).abs() < TOL_US,
+            "library {us_lib:.6} vs Ashby {us_ashby:.6} µs/day"
         );
     }
 

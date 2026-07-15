@@ -1,7 +1,7 @@
 use crate::macros::from_sec_f;
 use crate::{
     Dt, LB_DEN, LB_NUM, LG_DEN, LG_NUM, Scale, TCG_TCB_REF_ATTOS_SINCE_J2000, TDB0_ATTOS,
-    TT_TAI_OFFSET,
+    TT_TAI_OFFSET, dt,
 };
 
 impl Dt {
@@ -407,7 +407,7 @@ impl Dt {
         // Linear-rate + constant initial guess (dominant part of the forward transformation)
         let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
         let linear_span = Self::mul_lb(elapsed); // LB * elapsed
-        let mut tt = tdb.sub(crate::dt!(linear_span)).sub(crate::dt!(TDB0_ATTOS));
+        let mut tt = tdb.sub(dt!(linear_span)).sub(dt!(TDB0_ATTOS));
 
         // Fixed-point iteration: TT_{n+1} = TDB − P(TT_n)
         let mut i = 0u8;

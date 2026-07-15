@@ -7,6 +7,10 @@ Methods live on [`Dt`](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html
 (`proper_time_from_states`, `proper_time_drift_from_states`,
 `proper_time_differential_vs_rate`, and related).
 
+Runnable sketch (sample table → proper time, vs ground, drift):
+[examples/proper_time_path.rs](https://github.com/ragardner/deep-time/blob/main/examples/proper_time_path.rs)
+(`cargo run --example proper_time_path --features physics`).
+
 Theory of the rate model (master Lagrangian, weak-field limits):
 [relativity.md](relativity.md).
 
