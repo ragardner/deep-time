@@ -38,7 +38,7 @@ A fully featured and high performance **Rust date and time library** with attose
 
 ```rust
 use deep_time::macros::from_ns;
-use deep_time::{Dt, DtErr, Lang, BufStr, ParseCfg, Scale, YmdHms, from_ymd};
+use deep_time::{BufStr, Dt, DtErr, Lang, ParseCfg, Scale, YmdHms, from_ymd};
 
 fn main() -> Result<(), DtErr> {
     // ============================================
