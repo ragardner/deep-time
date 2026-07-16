@@ -499,3 +499,23 @@ fn days_f_roundtrip() {
     let roundtrip = Dt::from_days_f(days_f, Scale::TAI, Scale::TAI);
     assert_eq!(roundtrip.to_days_f(), days_f);
 }
+
+#[test]
+fn test_to_decimalyear_extremes_do_not_panic() {
+    use deep_time::Scale;
+
+    assert_eq!(
+        Dt::from_ymd(2020, 1, 1, Scale::TAI, 0, 0, 0, 0).to_decimalyear(),
+        2020.0
+    );
+    assert_eq!(
+        Dt::from_ymd(-2000, 1, 1, Scale::TAI, 0, 0, 0, 0).to_decimalyear(),
+        -2000.0
+    );
+
+    // year.saturating_add(1) / zero year-length guard — no overflow panic
+    let _ = Dt::MAX.to_decimalyear();
+    let _ = Dt::MIN.to_decimalyear();
+    let _ = Dt::from_ymd(i64::MAX, 1, 1, Scale::TAI, 0, 0, 0, 0).to_decimalyear();
+    let _ = Dt::from_ymd(i64::MIN, 1, 1, Scale::TAI, 0, 0, 0, 0).to_decimalyear();
+}

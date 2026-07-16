@@ -700,13 +700,13 @@ impl Dt {
         Dt::new(0, scale, scale).to_tai().sub(self)
     }
 
-    /// Returns the negation of this [`Dt`].
+    /// Returns the saturating negation of this [`Dt`].
     #[inline(always)]
     pub const fn neg(self) -> Dt {
-        Dt::new(-self.attos, self.scale, self.target)
+        Dt::new(self.attos.saturating_neg(), self.scale, self.target)
     }
 
-    /// Returns the positive of this [`Dt`].
+    /// Returns the saturating positive of this [`Dt`].
     #[inline(always)]
     pub const fn abs(self) -> Dt {
         Dt::new(self.attos.saturating_abs(), self.scale, self.target)
@@ -784,18 +784,19 @@ impl Dt {
             return 0;
         }
 
+        // Keep abs_total as a magnitude only (>= 0). If the value cannot fit in
+        // i128 attoseconds, return MIN or MAX here. Putting MIN into abs_total and
+        // later doing `-abs_total` for a negative input overflows.
         let abs_total = if total_exp >= 0 {
             let shift = total_exp as u32;
             if product > (u128::MAX >> shift) {
-                if is_negative { i128::MIN } else { i128::MAX }
-            } else {
-                let shifted = product << shift;
-                if shifted > i128::MAX as u128 {
-                    if is_negative { i128::MIN } else { i128::MAX }
-                } else {
-                    shifted as i128
-                }
+                return if is_negative { i128::MIN } else { i128::MAX };
             }
+            let shifted = product << shift;
+            if shifted > i128::MAX as u128 {
+                return if is_negative { i128::MIN } else { i128::MAX };
+            }
+            shifted as i128
         } else {
             let shift = (-total_exp) as u32;
             let int_part = (product >> shift) as i128;
@@ -810,6 +811,7 @@ impl Dt {
             }
         };
 
+        // abs_total ∈ [0, i128::MAX] — plain negate is safe
         if is_negative { -abs_total } else { abs_total }
     }
 
@@ -823,15 +825,15 @@ impl Dt {
 
         let now = std::time::SystemTime::now();
 
-        let (sec, nanos): (i64, i64) = match now.duration_since(std::time::UNIX_EPOCH) {
-            Ok(dur) => (dur.as_secs() as i64, dur.subsec_nanos() as i64),
+        let (sec, nanos) = match now.duration_since(std::time::UNIX_EPOCH) {
+            Ok(dur) => (dur.as_secs() as i128, dur.subsec_nanos() as i128),
             Err(e) => {
                 let dur = e.duration();
-                (-(dur.as_secs() as i64), -(dur.subsec_nanos() as i64))
+                (-(dur.as_secs() as i128), -(dur.subsec_nanos() as i128))
             }
         };
         Dt::from_diff_and_scale(
-            from_sec!(sec as i128, ns!(nanos as i128), on = Scale::UTC),
+            from_sec!(sec, ns!(nanos), on = Scale::UTC),
             Dt::UNIX_EPOCH,
             false,
         )

@@ -437,6 +437,10 @@ impl Dt {
     /// ## Important
     ///
     /// - The `on` scale becomes this [`Dt`]'s `target`; its `scale` is always `TAI`.
+    /// - Non-finite inputs (same policy as [`Dt::from_sec_f`](../struct.Dt.html#method.from_sec_f)):
+    ///   - `NaN` → zero attoseconds (library epoch 2000-01-01 12:00:00 TAI)
+    ///   - `+∞` → [`i128::MAX`] attoseconds
+    ///   - `-∞` → [`i128::MIN`] attoseconds
     ///
     /// ## Examples
     ///
@@ -459,6 +463,17 @@ impl Dt {
     /// - [`Dt::to_jd_f`](../struct.Dt.html#method.to_jd_f)
     /// - [`Dt::from_mjd_f`](../struct.Dt.html#method.from_mjd_f)
     pub const fn from_jd_f(jd: Real, on: Scale) -> Dt {
+        if jd.is_nan() {
+            return Dt::new(0, Scale::TAI, on);
+        }
+        if jd.is_infinite() {
+            return if jd.is_sign_positive() {
+                Dt::new(i128::MAX, Scale::TAI, on)
+            } else {
+                Dt::new(i128::MIN, Scale::TAI, on)
+            };
+        }
+
         let jd_days_f = floor_f(jd);
         let jd_days = jd_days_f as i128;
 

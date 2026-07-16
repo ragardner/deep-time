@@ -75,6 +75,52 @@ fn test_mul_by_f() {
 }
 
 #[test]
+fn test_neg_saturates_at_min() {
+    // Normal cases
+    assert_eq!(dt!(5).neg().to_attos(), -5);
+    assert_eq!(dt!(-5).neg().to_attos(), 5);
+    assert_eq!((-dt!(5)).to_attos(), -5);
+
+    // MAX negates cleanly; MIN saturates to MAX (no overflow panic)
+    // i128::saturating_neg: −MIN is not representable → clamp to MAX
+    assert_eq!(Dt::MAX.neg().to_attos(), -i128::MAX);
+    assert_eq!(Dt::MIN.neg(), Dt::MAX);
+    assert_eq!(-Dt::MIN, Dt::MAX);
+}
+
+#[test]
+fn test_sec_f_to_attos_saturates_large_negatives() {
+    // Magnitudes above ~1.7e20 s overflow i128 attoseconds. Positive path already
+    // returned MAX; negatives used to put MIN into abs_total then negate → panic.
+    assert_eq!(Dt::sec_f_to_attos(1.8e20), i128::MAX);
+    assert_eq!(Dt::sec_f_to_attos(-1.8e20), i128::MIN);
+    assert_eq!(Dt::sec_f_to_attos(2e20), i128::MAX);
+    assert_eq!(Dt::sec_f_to_attos(-2e20), i128::MIN);
+    assert_eq!(Dt::sec_f_to_attos(1e25), i128::MAX);
+    assert_eq!(Dt::sec_f_to_attos(-1e25), i128::MIN);
+
+    // total_exp > 120 early path (still MIN/MAX)
+    assert_eq!(Dt::sec_f_to_attos(f64::MAX), i128::MAX);
+    assert_eq!(Dt::sec_f_to_attos(-f64::MAX), i128::MIN);
+
+    // Under the limit: still finite and signed correctly
+    assert!(Dt::sec_f_to_attos(1e19) > 0);
+    assert!(Dt::sec_f_to_attos(-1e19) < 0);
+    assert_eq!(Dt::sec_f_to_attos(-1e19), -Dt::sec_f_to_attos(1e19));
+
+    // Call-chain coverage
+    use deep_time::Scale;
+    assert_eq!(
+        Dt::from_sec_f(-2e20, Scale::TAI, Scale::TAI).to_attos(),
+        i128::MIN
+    );
+    assert_eq!(
+        Dt::from_days_f(-1e30, Scale::TAI, Scale::TAI).to_attos(),
+        i128::MIN
+    );
+}
+
+#[test]
 fn test_from_str_sec_f() {
     use deep_time::Scale;
 

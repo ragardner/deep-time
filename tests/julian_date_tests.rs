@@ -186,3 +186,33 @@ fn ymd_jd() {
         assert_eq!((yr, mo, day), (*y, *m, *d), "expected yr mo day failed");
     }
 }
+
+#[test]
+fn from_jd_f_non_finite() {
+    // NaN → library epoch (0 attos), not JD 0; scale TAI, target preserved
+    let nan = Dt::from_jd_f(f64::NAN, Scale::UTC);
+    assert_eq!(nan.to_attos(), 0);
+    assert_eq!(nan.scale, Scale::TAI);
+    assert_eq!(nan.target, Scale::UTC);
+
+    let pos_inf = Dt::from_jd_f(f64::INFINITY, Scale::TT);
+    assert_eq!(pos_inf.to_attos(), i128::MAX);
+    assert_eq!(pos_inf.scale, Scale::TAI);
+    assert_eq!(pos_inf.target, Scale::TT);
+
+    let neg_inf = Dt::from_jd_f(f64::NEG_INFINITY, Scale::TAI);
+    assert_eq!(neg_inf.to_attos(), i128::MIN);
+    assert_eq!(neg_inf.scale, Scale::TAI);
+    assert_eq!(neg_inf.target, Scale::TAI);
+
+    // from_mjd_f goes through from_jd_f
+    assert_eq!(Dt::from_mjd_f(f64::NAN, Scale::UTC).to_attos(), 0);
+    assert_eq!(
+        Dt::from_mjd_f(f64::INFINITY, Scale::UTC).to_attos(),
+        i128::MAX
+    );
+    assert_eq!(
+        Dt::from_mjd_f(f64::NEG_INFINITY, Scale::UTC).to_attos(),
+        i128::MIN
+    );
+}

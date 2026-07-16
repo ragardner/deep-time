@@ -1028,12 +1028,15 @@ impl Dt {
         let year = ymd.yr;
 
         let start = Self::from_ymd(year, 1, 1, self.target, 0, 0, 0, 0);
-        let next_start = Self::from_ymd(year + 1, 1, 1, self.target, 0, 0, 0, 0);
+        let next_start = Self::from_ymd(year.saturating_add(1), 1, 1, self.target, 0, 0, 0, 0);
 
         let elapsed = self.to_diff_raw(start).to_sec_f();
         let year_length = next_start.to_diff_raw(start).to_sec_f();
 
-        // year_length is never zero for representable years
+        // If start and next_start collapse (extreme / saturated years), avoid / 0.
+        if year_length == 0.0 {
+            return f!(year);
+        }
         f!(year) + elapsed / year_length
     }
 }
