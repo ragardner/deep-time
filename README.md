@@ -20,7 +20,7 @@ A fully featured and high performance **Rust date and time library** with attose
 - First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature
 - To and from all kinds of inputs and outputs, functions mostly prefixed with `to` and `from`, available on the library's types, see the main time types functions: [Dt](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html). Including [JD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jd_f), [MJD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_mjd_f), [Unix](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_unix), [NTP](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ntp), etc.
 - [Calendar aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days) and, with the `jiff-tz` feature, [timezone aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days_tz) math
-- To and from [jiff](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), [hifitime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_hifitime_epoch), and [time](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_time_timestamp) types
+- To and from [jiff](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), [hifitime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_hifitime_epoch), [time](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_time_timestamp), and [ICU4X](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_icu_datetime_iso) types
 - No-alloc [string return type](https://docs.rs/deep-time/latest/deep_time/struct.BufStr.html)
 - Const fn [libm math](https://docs.rs/deep-time/latest/deep_time/math/index.html) functions
 - Safe, saturating arithmetic throughout
@@ -208,6 +208,7 @@ cargo add deep-time --features "parse,jiff-tz"
 | `chrono`             | Enables [`chrono`](https://crates.io/crates/chrono) interop                  | —           |
 | `hifitime`           | Enables [`hifitime`](https://crates.io/crates/hifitime) interop              | —           |
 | `time`               | Enables [`time`](https://crates.io/crates/time) interop                      | —           |
+| `icu`                | Enables [ICU4X](https://crates.io/crates/icu_time) civil datetime interop (`DateTime<Iso>`) | —           |
 | `serde`              | Enables `Serialize` / `Deserialize` for `Dt` and other types                 | `alloc`     |
 | `js`                 | WebAssembly support (includes `serde` and JS bindings)                       | `std`       |
 | `tsify`              | TypeScript definitions via `tsify` (for WASM)                                | `js`        |

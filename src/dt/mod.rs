@@ -32,6 +32,9 @@ mod jiff;
 #[cfg(feature = "time")]
 mod time;
 
+#[cfg(feature = "icu")]
+mod icu;
+
 #[cfg(feature = "mars")]
 pub mod mars;
 

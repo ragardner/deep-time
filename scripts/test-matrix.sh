@@ -18,7 +18,7 @@ cd "$ROOT"
 # shellcheck source=common.sh
 source "${ROOT}/scripts/common.sh"
 
-FULL_FEATURES="serde defmt physics mars parse hifitime chrono time std wire eop lang sidereal-earth jiff-tz-bundle"
+FULL_FEATURES="serde defmt physics mars parse hifitime chrono time icu std wire eop lang sidereal-earth jiff-tz-bundle"
 
 MATRIX_NAMES=(
     no-std
