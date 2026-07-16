@@ -8,8 +8,8 @@
 //! cargo run --example precision_control
 //! ```
 
-use deep_time::macros::from_sec;
-use deep_time::{Dt, DtErr, Lang, Scale, from_ymd};
+use deep_time::macros::{from_sec, from_ymd};
+use deep_time::{Dt, DtErr, Lang, Scale};
 
 const ONE_MIN: Dt = from_sec!(60);
 

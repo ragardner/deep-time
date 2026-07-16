@@ -1,6 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale, dt};
+use deep_time::macros::dt;
+use deep_time::{Dt, Scale};
 
 #[test]
 fn test_ymd_to_jd() {

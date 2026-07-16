@@ -2,6 +2,7 @@
 
 use deep_time::civil_parts::{Offset, Parts};
 use deep_time::consts::{ATTOS_PER_SEC_I128, SEC_PER_DAY_I64};
+use deep_time::macros::as_ms;
 use deep_time::{Dt, DtErrKind, Scale};
 
 mod from_str_iso_tests {
@@ -614,6 +615,6 @@ mod from_str_iso_tests {
         assert_eq!(ymd.hr(), 18);
         assert_eq!(ymd.min(), 30);
         assert_eq!(ymd.sec(), 25);
-        assert_eq!(deep_time::macros::as_ms!(ymd.attos() as i128), 123);
+        assert_eq!(as_ms!(ymd.attos() as i128), 123);
     }
 }

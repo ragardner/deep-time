@@ -4,6 +4,7 @@ mod tests {
     use deep_time::DtErrKind;
     use deep_time::Lang;
     use deep_time::civil_parts::{Epoch, Offset, Parts, Timestamp, Weekday};
+    use deep_time::macros::from_sec_f;
     use deep_time::{Dt, Scale};
 
     #[test]
@@ -55,7 +56,7 @@ mod tests {
         let via_j = Parts::from_str("%J", "0", false, false, false).unwrap();
         assert_eq!(via_s.to_dt().unwrap(), via_j.to_dt().unwrap());
 
-        let zero_tai = deep_time::macros::from_sec_f!(-0.5);
+        let zero_tai = from_sec_f!(-0.5);
         let zero_tdb = Dt::new(zero_tai.to_attos(), Scale::TDB, Scale::TDB).to_tai();
 
         let p_tai = Dt::from_str("-0.5 TAI", "%J %L", false, false, false).unwrap();

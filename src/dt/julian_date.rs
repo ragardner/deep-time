@@ -19,7 +19,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, days_f};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::days_f;
     ///
     /// let dt = Dt::from_jd_f(2_460_782.25, Scale::TAI);
     /// // 2_460_782 and 0.25 days in attoseconds
@@ -69,7 +70,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, days_f};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::days_f;
     ///
     /// let dt = Dt::from_jd_f(2_460_782.25, Scale::TAI);
     /// // 2_460_782 and 0.25 days in attoseconds
@@ -169,7 +171,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, days_f};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::days_f;
     ///
     /// let dt = Dt::from_mjd(51_544, days_f!(0.5), Scale::TAI);
     /// // J2000.0 → MJD 51_544.5 as whole 51_544 plus 0.5 days in attoseconds
@@ -220,7 +223,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, days_f};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::days_f;
     ///
     /// let dt = Dt::from_mjd_f(60_961.25, Scale::TAI);
     /// // 60_961 and 0.25 days in attoseconds
@@ -333,7 +337,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, days_f};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::days_f;
     ///
     /// // 2_460_782.25 as whole days plus 0.25 days in attoseconds
     /// let dt = Dt::from_jd(2_460_782, days_f!(0.25), Scale::TAI);
@@ -395,7 +400,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, days_f};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::days_f;
     ///
     /// // J2000.0 → MJD 51_544.5 as whole 51_544 plus 0.5 days in attoseconds
     /// let dt = Dt::from_mjd(51_544, days_f!(0.5), Scale::TAI);
@@ -435,7 +441,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, days_f};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::days_f;
     ///
     /// let dt = Dt::from_jd_f(2_460_782.25, Scale::TAI);
     /// // 2_460_782 and 0.25 days in attoseconds
@@ -506,7 +513,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, days_f};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::days_f;
     ///
     /// let dt = Dt::from_mjd_f(60_961.25, Scale::TAI);
     /// // 60_961 and 0.25 days in attoseconds

@@ -135,7 +135,8 @@ impl Observer {
     /// For round-trip (two-way) measurements, square the one-way ratio:
     ///
     /// ```rust
-    /// use deep_time::{Dt, Observer, Position, Spacetime, Velocity, from_sec_f};
+    /// use deep_time::{Dt, Observer, Position, Spacetime, Velocity};
+    /// use deep_time::macros::from_sec_f;
     ///
     /// let bodies = [
     ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20), // Sun

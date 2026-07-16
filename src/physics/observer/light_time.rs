@@ -62,7 +62,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```
-    /// use deep_time::{Dt, Position, Spacetime, Velocity, from_sec_f};
+    /// use deep_time::{Dt, Position, Spacetime, Velocity};
+    /// use deep_time::macros::from_sec_f;
     ///
     /// let bodies = [
     ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20),     // Sun

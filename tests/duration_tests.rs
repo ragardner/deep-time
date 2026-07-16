@@ -2,6 +2,7 @@
 
 #[cfg(feature = "parse")]
 mod tests {
+    use deep_time::macros::dt;
     use deep_time::{Dt, Lang, consts::ATTOS_PER_SEC_I128};
 
     fn assert_duration(input: &str, expected_millis: i64) {
@@ -202,42 +203,42 @@ mod tests {
     #[test]
     fn test_to_str_b_media_duration_expected_values() {
         assert_eq!(
-            deep_time::dt!(45 * ATTOS_PER_SEC_I128)
+            dt!(45 * ATTOS_PER_SEC_I128)
                 .to_str_b_media_duration()
                 .as_str(),
             "0:45"
         );
         assert_eq!(
-            deep_time::dt!(581 * ATTOS_PER_SEC_I128)
+            dt!(581 * ATTOS_PER_SEC_I128)
                 .to_str_b_media_duration()
                 .as_str(),
             "9:41"
         );
         assert_eq!(
-            deep_time::dt!(5025 * ATTOS_PER_SEC_I128)
+            dt!(5025 * ATTOS_PER_SEC_I128)
                 .to_str_b_media_duration()
                 .as_str(),
             "1:23:45"
         );
         assert_eq!(
-            deep_time::dt!(114870 * ATTOS_PER_SEC_I128)
+            dt!(114870 * ATTOS_PER_SEC_I128)
                 .to_str_b_media_duration()
                 .as_str(),
             "1:07:54:30"
         );
 
         assert_eq!(
-            deep_time::dt!(-45 * ATTOS_PER_SEC_I128)
+            dt!(-45 * ATTOS_PER_SEC_I128)
                 .to_str_b_media_duration()
                 .as_str(),
             "-0:45"
         );
         assert_eq!(
-            deep_time::dt!(-5025 * ATTOS_PER_SEC_I128)
+            dt!(-5025 * ATTOS_PER_SEC_I128)
                 .to_str_b_media_duration()
                 .as_str(),
             "-1:23:45"
         );
-        assert_eq!(deep_time::dt!(0).to_str_b_media_duration().as_str(), "0:00");
+        assert_eq!(dt!(0).to_str_b_media_duration().as_str(), "0:00");
     }
 }

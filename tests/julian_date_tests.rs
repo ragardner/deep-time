@@ -1,6 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY, days_f};
+use deep_time::macros::days_f;
+use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY};
 
 #[test]
 fn mjd_truncating_split_from_mjd_f() {

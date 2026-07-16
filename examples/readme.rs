@@ -1,5 +1,5 @@
-use deep_time::macros::from_ns;
-use deep_time::{BufStr, Dt, DtErr, Lang, ParseCfg, Scale, YmdHms, from_ymd};
+use deep_time::macros::{from_ns, from_ymd};
+use deep_time::{BufStr, Dt, DtErr, Lang, ParseCfg, Scale, YmdHms};
 
 fn main() -> Result<(), DtErr> {
     // ============================================

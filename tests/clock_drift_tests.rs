@@ -2,7 +2,7 @@
 
 #[cfg(feature = "physics")]
 mod tests {
-    use deep_time::macros::from_sec_f;
+    use deep_time::macros::{dt, from_sec_f};
     use deep_time::{Drift, Dt, Scale, Spacetime, consts::PLANCK_LENGTH_4};
 
     #[test]
@@ -31,7 +31,7 @@ mod tests {
         let drift = Drift::new(
             Dt::from_sec(2, Scale::TAI, Scale::TAI),
             Dt::from_ns(1, 0, Scale::TAI, Scale::TAI), // exactly 1e-9 s/s
-            deep_time::dt!(2),                         // exactly 2e-18 s/s²
+            dt!(2),                                    // exactly 2e-18 s/s²
         );
         let dt = Dt::from_sec(1_000_000, Scale::TAI, Scale::TAI);
 
@@ -40,7 +40,7 @@ mod tests {
         // = 2.001002 s = 2 s + 1_002_000_000_000_000 attoseconds
         assert_eq!(
             drift.time_diff_after(&dt),
-            deep_time::dt!(2_001_002_000_000_000_000i128)
+            dt!(2_001_002_000_000_000_000i128)
         );
     }
 
@@ -156,7 +156,7 @@ mod tests {
         let drift_neg_u = Drift::from_unified_proper_time_rate(-0.5, 0.0);
 
         // Semantic check using .to_sec_f() — this is the robust way.
-        // (deep_time::from_sec_f!(-1.0) currently produces a non-canonical internal
+        // (from_sec_f!(-1.0) currently produces a non-canonical internal
         // representation while the unified function produces the canonical one.
         // The two Dts are mathematically identical but not ==.)
         assert_eq!(

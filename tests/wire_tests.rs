@@ -7,7 +7,7 @@ extern crate alloc;
 mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
-    use deep_time::macros::from_sec;
+    use deep_time::macros::{dt, from_sec};
     use deep_time::{
         Drift, Dt, Scale, TimeRange, YmdHms,
         civil_parts::{Meridiem, Offset, Parts, Weekday},
@@ -57,7 +57,7 @@ mod tests {
         let drift = Drift::new(
             Dt::from_sec(5, Scale::TAI, Scale::TAI),
             Dt::from_ns(1, 0, Scale::TAI, Scale::TAI),
-            deep_time::dt!(2),
+            dt!(2),
         );
         assert_roundtrip(
             &drift,

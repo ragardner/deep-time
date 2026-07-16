@@ -29,7 +29,8 @@ the library's epoch for most functionality is 2000-01-01 noon on the
 TAI time scale.
 
 ```
-use deep_time::{Dt, Scale, from_ymd};
+use deep_time::macros::from_ymd;
+use deep_time::{Dt, Scale};
 
 let dt = from_ymd!(2000, 1, 1; 12, on=Scale::TAI);
 assert_eq!(dt, Dt::ZERO);
@@ -42,7 +43,8 @@ assert_eq!(dt, Dt::ZERO);
 resolution:
 
 ```
-use deep_time::{Dt, Lang, Scale, from_ymd};
+use deep_time::macros::from_ymd;
+use deep_time::{Dt, Lang, Scale};
 
 let mut dt = Dt::from_str_iso("292000000000-1-1").unwrap();
 dt = dt.add_days(4);
@@ -61,7 +63,8 @@ assert_eq!(dt.to_mjd_f(), -2505152.25);
 Once you have a [`Dt`] you can change its time scale:
 
 ```
-use deep_time::{Dt, Scale, macros::from_jd_f};
+use deep_time::macros::from_jd_f;
+use deep_time::{Dt, Scale};
 
 let dt = from_jd_f!(2451545.0);
 assert_eq!(dt.scale, Scale::TAI);

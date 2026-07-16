@@ -8,8 +8,7 @@
 ))]
 mod tests {
     use deep_time::{
-        AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TraitsTime, YmdHms, an_err, dt,
-        from_ymd,
+        AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TraitsTime, YmdHms, an_err,
     };
     // use deep_time::Sidereal;  // needs "sidereal" feature
 

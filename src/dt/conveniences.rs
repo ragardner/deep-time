@@ -193,7 +193,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, dt};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::dt;
     ///
     /// let epoch = Dt::from_ymd(1970, 1, 1, Scale::UTC, 0, 0, 0, 0);
     /// let (days, frac) = epoch.to_unix_days();
@@ -226,7 +227,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, dt, from_ymd};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::{dt, from_ymd};
     ///
     /// // floor example with negative number with remainder
     /// let dt = from_ymd!(1969, 12, 30; 12);

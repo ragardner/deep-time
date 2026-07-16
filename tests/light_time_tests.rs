@@ -2,6 +2,7 @@
 
 #[cfg(feature = "physics")]
 mod light_time_tests {
+    use deep_time::macros::dt;
     use deep_time::{Dt, Observer, Position, Scale, Spacetime, Velocity, consts::C};
 
     fn make_state(
@@ -12,7 +13,7 @@ mod light_time_tests {
         char_scale: f64,
     ) -> Observer {
         Observer {
-            time: deep_time::dt!(Dt::sec_to_attos(tai_sec)),
+            time: dt!(Dt::sec_to_attos(tai_sec)),
             position: pos,
             velocity: vel,
             grav_potential_m2_s2: phi_m2_s2,

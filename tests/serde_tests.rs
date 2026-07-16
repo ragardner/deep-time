@@ -1,6 +1,6 @@
 #![cfg(feature = "serde")]
 
-use deep_time::{Dt, DtErr, Scale, YmdHms};
+use deep_time::{Dt, DtErr, DtErrKind, Scale, YmdHms, an_err};
 
 #[test]
 fn dt_roundtrip() {
@@ -47,7 +47,7 @@ fn scale_roundtrip() {
 
 #[test]
 fn dt_err_roundtrip() {
-    let err: DtErr = deep_time::an_err!(deep_time::DtErrKind::InvalidInput, "test error");
+    let err: DtErr = an_err!(DtErrKind::InvalidInput, "test error");
 
     let json = serde_json::to_string(&err).unwrap();
 

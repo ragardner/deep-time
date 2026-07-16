@@ -242,7 +242,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, dt, ms};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::{dt, ms};
     ///
     /// // 1.3 s — convert 300 ms of remainder to attoseconds
     /// let a = Dt::from_sec_and_frac(1, ms!(300), Scale::TAI, Scale::TAI);
@@ -352,7 +353,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, ns};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::ns;
     ///
     /// // 1.3 µs
     /// let a = Dt::from_us(1, ns!(300), Scale::TAI, Scale::TAI);
@@ -581,8 +583,8 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, dt};
-    /// use deep_time::macros::hours;
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::macros::{dt, hours};
     ///
     /// // 1.25 d
     /// let a = Dt::from_days(1, dt!(hours!(6)), Scale::TAI, Scale::TAI);
