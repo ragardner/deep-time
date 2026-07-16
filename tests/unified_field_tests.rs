@@ -2,7 +2,8 @@
 
 #[cfg(feature = "physics")]
 mod unified_vs_gr_tests {
-    use deep_time::{Drift, Real, Spacetime, consts::C_SQUARED, f, math::sqrt};
+    use deep_time::physics::{Drift, Spacetime};
+    use deep_time::{Real, consts::C_SQUARED, f, math::sqrt};
 
     /// Classic GR rate (what every existing pipeline uses)
     fn classic_gr_rate(alpha: Real, beta: Real) -> Real {
@@ -128,7 +129,7 @@ mod unified_vs_gr_tests {
         // from_potential_velocity_and_scale must propagate the non-zero K
         let ls = Spacetime::from_potential_velocity_and_scale(
             phi_over_c2,
-            deep_time::Velocity::ZERO,
+            deep_time::physics::Velocity::ZERO,
             length_m,
         );
         assert_eq!(ls.kretschmann, k);

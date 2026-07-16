@@ -7,9 +7,9 @@
 //! regimes of behavior, and its relationship to general relativity) can be found
 //! [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
 
-use crate::{
-    ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Real, Scale, Spacetime, Velocity, dt, sqrt,
-};
+use crate::{ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Real, Scale, dt, sqrt};
+
+use super::{Spacetime, Velocity};
 
 /// Quadratic polynomial that describes the accumulated difference between an
 /// observer’s proper time (the time measured by a real clock moving through

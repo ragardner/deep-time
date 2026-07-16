@@ -38,7 +38,8 @@
 //! Assert-driven (quiet) so the example can run under automated test suites.
 
 use deep_time::consts::C_SQUARED;
-use deep_time::{Dt, DtErr, Scale, Spacetime, Velocity};
+use deep_time::physics::{Spacetime, Velocity};
+use deep_time::{Dt, DtErr, Scale};
 
 /// Earth gravitational parameter (m³/s²). Illustrative; use your project value.
 const GM_EARTH: f64 = 3.986_004_418e14;

@@ -1,16 +1,15 @@
-//! 3D position vector (in meters) for relativistic calculations.
+//! 3D position vector (in meters) for physics / trajectory inputs.
 
 use crate::{Real, hypot};
 
 /// A 3-dimensional position vector expressed in Cartesian coordinates (x, y, z)
 /// with units of meters (SI).
 ///
-/// This type is designed for high-precision relativistic calculations in space
-/// navigation, deep-space tracking, and interplanetary timing. Positions are
-/// typically expressed in a heliocentric (Sun-centered) reference frame because
-/// the dominant gravitational light-time correction—the Shapiro delay—is
-/// calculated with respect to the Sun.
-#[derive(Clone, Debug, PartialEq)]
+/// Used with [`Velocity`](crate::physics::Velocity) and gravitational potentials
+/// when building proper-time rates and trajectory samples. The caller chooses
+/// the reference frame (e.g. Earth-centered or barycentric); this type does not
+/// tag the frame.
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Position {
@@ -29,8 +28,7 @@ impl Position {
         Self { x, y, z }
     }
 
-    /// The zero vector, representing the origin of the coordinate system
-    /// (commonly the center of the Sun).
+    /// The zero vector (origin of the chosen coordinate system).
     pub const ZERO: Self = Self::new(f!(0.0), f!(0.0), f!(0.0));
 
     /// Creates a `Position` from coordinates expressed in Astronomical Units (AU),
@@ -49,21 +47,13 @@ impl Position {
         }
     }
 
-    /// Returns the Euclidean norm (straight-line distance) of this position from
-    /// the origin.
-    ///
-    /// When the position is Sun-centered, this is the radial distance from the Sun
-    /// required for Shapiro-delay calculations.
+    /// Returns the Euclidean norm (distance from the origin).
     #[inline]
     pub const fn norm(&self) -> Real {
         hypot(hypot(self.x, self.y), self.z)
     }
 
-    /// Computes the straight-line (Euclidean) distance between this position and
-    /// another `Position`.
-    ///
-    /// Together with the two radial distances from the Sun, this value supplies the
-    /// three geometric inputs needed to evaluate the Shapiro delay.
+    /// Straight-line (Euclidean) distance to another position.
     pub const fn distance_to(&self, other: &Self) -> Real {
         let dx = self.x - other.x;
         let dy = self.y - other.y;
@@ -86,7 +76,7 @@ impl Position {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::Position;
+    /// use deep_time::physics::Position;
     ///
     /// let a = Position::new(0.0, 0.0, 0.0);
     /// let b = Position::new(10.0, 20.0, 30.0);

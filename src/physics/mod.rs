@@ -6,12 +6,13 @@
 //! - [`Velocity`] – Cartesian velocity (m/s)
 //! - [`Spacetime`] – local lapse α, speed β, and optional curvature
 //! - [`Drift`] – quadratic clock polynomial; also builds instantaneous rates
-//! - [`Observer`] – state for light-time and one-shot rate ratios
+//!
+//! Import: `use deep_time::physics::{Drift, Position, Spacetime, Velocity}`.
 //!
 //! ## Trajectory (proper time along samples)
 //!
 //! Integration methods live on [`Dt`](../struct.Dt.html): they walk tabulated
-//! states or [`Spacetime`](../struct.Spacetime.html) snapshots and accumulate
+//! states or [`Spacetime`](struct.Spacetime.html) snapshots and accumulate
 //! proper time with a trapezoidal rule.
 //!
 //! | Question | Method |
@@ -39,7 +40,11 @@
 mod trajectory;
 
 pub mod drift;
-pub mod observer;
 pub mod position;
 pub mod spacetime;
 pub mod velocity;
+
+pub use drift::Drift;
+pub use position::Position;
+pub use spacetime::Spacetime;
+pub use velocity::Velocity;

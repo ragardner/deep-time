@@ -4,7 +4,9 @@
 //! [docs/trajectory.md](https://github.com/ragardner/deep-time/blob/main/docs/trajectory.md).
 
 use crate::macros::from_sec_f;
-use crate::{C_SQUARED, Drift, Dt, DtErr, DtErrKind, Real, Spacetime, Velocity, an_err};
+use crate::{C_SQUARED, Dt, DtErr, DtErrKind, Real, an_err};
+
+use super::{Drift, Spacetime, Velocity};
 
 impl Dt {
     /// Integrate proper time along samples of time, velocity, and gravitational potential.
@@ -46,7 +48,8 @@ impl Dt {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, Velocity};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::physics::Velocity;
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(3600, Scale::TAI, Scale::TAI);
@@ -97,7 +100,8 @@ impl Dt {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, Velocity};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::physics::Velocity;
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(10_000, Scale::TAI, Scale::TAI);
@@ -164,7 +168,8 @@ impl Dt {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, Velocity};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::physics::Velocity;
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(86_400, Scale::TAI, Scale::TAI);
@@ -213,7 +218,8 @@ impl Dt {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, Spacetime};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::physics::Spacetime;
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(1000, Scale::TAI, Scale::TAI);
@@ -263,7 +269,8 @@ impl Dt {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, Spacetime};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::physics::Spacetime;
     ///
     /// let path = [
     ///     (Dt::from_sec(0, Scale::TAI, Scale::TAI), Spacetime::new(0.9, 0.0, 0.0)),
@@ -310,7 +317,8 @@ impl Dt {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, Spacetime};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::physics::Spacetime;
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(1000, Scale::TAI, Scale::TAI);
@@ -366,7 +374,8 @@ impl Dt {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, Spacetime};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::physics::Spacetime;
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(100_000, Scale::TAI, Scale::TAI);
@@ -419,7 +428,8 @@ impl Dt {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, Spacetime};
+    /// use deep_time::{Dt, Scale};
+    /// use deep_time::physics::Spacetime;
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(86_400, Scale::TAI, Scale::TAI);

@@ -1,6 +1,8 @@
 //! Local spacetime state (α, β, curvature) for proper-time rates.
 
-use crate::{C_SQUARED, Drift, Position, Real, Velocity, sqrt};
+use crate::{C_SQUARED, Real, sqrt};
+
+use super::{Drift, Position, Velocity};
 
 /// Snapshot of the local quantities that set a clock’s rate \(d\tau/dt\).
 ///
@@ -196,7 +198,7 @@ impl Spacetime {
     /// ## Example
     ///
     /// ```rust
-    /// use deep_time::{Position, Spacetime};
+    /// use deep_time::physics::{Position, Spacetime};
     ///
     /// let bodies = [
     ///     (Position::from_au(0.0, 0.0, 0.0), 1.3271244e20),     // Sun GM

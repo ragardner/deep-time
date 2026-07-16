@@ -155,14 +155,6 @@ pub const C: Real = 299792458.0;
 #[cfg(feature = "physics")]
 pub const C_SQUARED: Real = C * C;
 
-/// GM☉ / c³ in seconds (from `GM_SUN` and `C` — used in Shapiro delay)
-#[cfg(feature = "physics")]
-pub const GM_SUN_OVER_C3: Real = GM_SUN / (C * C_SQUARED);
-
-/// 2GM☉ / c³ — the standard prefactor in the one-way Shapiro delay formula
-#[cfg(feature = "physics")]
-pub const TWO_GM_SUN_OVER_C3: Real = 2.0 * GM_SUN_OVER_C3;
-
 /// Planck length ℓ_Pl in meters (standard value).
 ///
 /// This is raised to the fourth power to form the dimensionless curvature

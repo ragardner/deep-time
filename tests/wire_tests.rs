@@ -8,8 +8,9 @@ mod tests {
     use alloc::vec::Vec;
     use core::fmt::Debug;
     use deep_time::macros::{dt, from_sec};
+    use deep_time::physics::Drift;
     use deep_time::{
-        Drift, Dt, Scale, TimeRange, YmdHms,
+        Dt, Scale, TimeRange, YmdHms,
         civil_parts::{Meridiem, Offset, Parts, Weekday},
     };
 

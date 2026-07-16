@@ -50,8 +50,7 @@ panic-handler = []
 # defmt is a logging framework commonly used in embedded environments
 defmt = ["dep:defmt"]
 
-# Light time, proper time along trajectory, and physics types such as
-# Spacetime, Observer, Position, and Velocity
+# Proper time along trajectory, Drift/Spacetime rates, Position, Velocity
 physics = []
 
 # Higher accuracy but larger binary size TDB conversion code

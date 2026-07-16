@@ -199,7 +199,7 @@ fn tdb_correction_stays_within_bounds() {
 #[cfg(feature = "physics")]
 #[test]
 fn proper_to_tt_with_drift_roundtrip() {
-    use deep_time::Drift;
+    use deep_time::physics::Drift;
 
     let epoch = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     let drift = Drift::new(

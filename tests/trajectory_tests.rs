@@ -2,7 +2,8 @@
 
 #[cfg(feature = "physics")]
 mod proper_time_tests {
-    use deep_time::{Dt, DtErrKind, Scale, Spacetime, Velocity};
+    use deep_time::physics::{Spacetime, Velocity};
+    use deep_time::{Dt, DtErrKind, Scale};
 
     fn tai(sec: i128) -> Dt {
         Dt::from_sec(sec, Scale::TAI, Scale::TAI)

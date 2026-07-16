@@ -192,7 +192,7 @@ mod ymdhms;
 mod alloc_parse;
 
 #[cfg(feature = "physics")]
-mod physics;
+pub mod physics;
 
 // _________________________________________
 // PUB MOD
@@ -256,8 +256,3 @@ pub use dt::mars;
 #[cfg(feature = "sidereal")]
 #[doc(hidden)]
 pub use sidereal::Sidereal;
-
-#[cfg(feature = "physics")]
-pub use physics::{
-    drift::Drift, observer::Observer, position::Position, spacetime::Spacetime, velocity::Velocity,
-};
