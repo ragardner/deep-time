@@ -170,7 +170,7 @@ time = [
     "dep:time",
 ]
 
-# ICU4X civil datetime interop (`icu_calendar` + `icu_time`, ISO calendar)
+# ICU4X civil datetime interop
 icu = [
     "dep:icu_calendar",
     "dep:icu_time",

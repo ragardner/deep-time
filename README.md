@@ -208,7 +208,7 @@ cargo add deep-time --features "parse,jiff-tz"
 | `chrono`             | Enables [`chrono`](https://crates.io/crates/chrono) interop                  | —           |
 | `hifitime`           | Enables [`hifitime`](https://crates.io/crates/hifitime) interop              | —           |
 | `time`               | Enables [`time`](https://crates.io/crates/time) interop                      | —           |
-| `icu`                | Enables [ICU4X](https://crates.io/crates/icu_time) civil datetime interop (`DateTime<Iso>`) | —           |
+| `icu`                | Enables [ICU4X](https://crates.io/crates/icu_time) interop (`DateTime<Iso>`) | —           |
 | `serde`              | Enables `Serialize` / `Deserialize` for `Dt` and other types                 | `alloc`     |
 | `js`                 | WebAssembly support (includes `serde` and JS bindings)                       | `std`       |
 | `tsify`              | TypeScript definitions via `tsify` (for WASM)                                | `js`        |
