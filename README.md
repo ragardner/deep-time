@@ -265,23 +265,23 @@ cargo bench --bench perf --features "parse hifitime std jiff-tz"
 
 | deep-time vs jiff                                        | Time      | vs Jiff 0.2.31 |
 |----------------------------------------------------------|-----------|----------------|
-| `Parts::from_str_iso` vs `DateTime::parse`               | 19.4 ns   | 29.2% faster   |
-| `Parts::from_str` vs `BrokenDownTime::parse`             | 33.4 ns   | 13.9% faster   |
-| `Dt::from_str` vs `BrokenDownTime::parse`+`to_zoned`     | 185 ns    | 15.8% slower   |
-| `Dt::to_str_b` vs `DateTime::strftime`+`.to_string`      | 77.4 ns   | 28.2% slower   |
-| `Dt::to_str` vs `DateTime::strftime`+`.to_string`        | 88.7 ns   | 46.8% slower   |
-| `Dt::from_str_parse`                                     | 553 ns    | —              |
+| `Parts::from_str_iso` vs `DateTime::parse`               | 20.1 ns   | 27.2% faster   |
+| `Parts::from_str` vs `BrokenDownTime::parse`             | 36.3 ns   | 8.8% faster    |
+| `Dt::from_str` vs `BrokenDownTime::parse`+`to_zoned`     | 194 ns    | 20.8% slower   |
+| `Dt::to_str_b` vs `DateTime::strftime`+`.to_string`      | 75.2 ns   | 23.0% slower   |
+| `Dt::to_str` vs `DateTime::strftime`+`.to_string`        | 87.7 ns   | 43.4% slower   |
+| `Dt::from_str_parse`                                     | 542 ns    | —              |
 
 #### Time Scale Conversions
 
 | Conversion       | deep-time     | hifitime 4.3  | Relative Performance      |
 |------------------|---------------|---------------|---------------------------|
-| TAI → UTC        | 9.6 ns        | 33.8 ns       | 3.5× faster               |
-| UTC → TAI        | 12.7 ns       | 32.9 ns       | 2.6× faster               |
-| TAI → TDB        | 134 ns        | 90.7 ns       | 1.5× slower               |
-| TDB → TAI        | 598 ns        | 26.8 ns       | 22.3× slower              |
-| GPS conversion   | 20.7 ns       | 6.4 ns        | 3.2× slower               |
-| GPS week + TOW   | 28.2 ns       | 7.0 ns        | 4.0× slower               |
+| TAI → UTC        | 9.6 ns        | 34.7 ns       | 3.6× faster               |
+| UTC → TAI        | 13.0 ns       | 33.1 ns       | 2.5× faster               |
+| TAI → TDB        | 131 ns        | 93.7 ns       | 1.4× slower               |
+| TDB → TAI        | 583 ns        | 27.0 ns       | 21.6× slower              |
+| GPS conversion   | 20.2 ns       | 5.5 ns        | 3.7× slower               |
+| GPS week + TOW   | 30.2 ns       | 7.6 ns        | 4.0× slower               |
 
 ### Bundled Files
 

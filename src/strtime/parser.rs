@@ -260,7 +260,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_full_year(&mut self, ext: FmtExtensions) -> Result<(), DtErr> {
-        let (remaining, y, _sign) = match ext.parse_i64(4, FmtFlag::PadZero, self.inp, false) {
+        let (remaining, y, _sign) = match ext.parse_i64(4, FmtFlag::PadZero, self.inp) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
@@ -273,7 +273,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
     fn parse_unbounded_year(&mut self) -> Result<(), DtErr> {
         // %* is special (arbitrary width year), use FmtExtensions for number parse
         let ext = FmtExtensions::default();
-        let (remaining, y, _sign) = match ext.parse_i64(0, FmtFlag::PadZero, self.inp, true) {
+        let (remaining, y, _sign) = match ext.parse_i64(19, FmtFlag::PadZero, self.inp) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
@@ -301,19 +301,22 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_century(&mut self, ext: FmtExtensions) -> Result<(), DtErr> {
-        let (remaining, c, _sign) = match ext.parse_i64(2, FmtFlag::PadSpace, self.inp, false) {
+        let (remaining, c, _sign) = match ext.parse_i64(2, FmtFlag::PadSpace, self.inp) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedCentury)),
         };
         self.inp = remaining;
-        self.tm.yr = Some(c * 100);
+        self.tm.yr = Some(
+            c.checked_mul(100)
+                .ok_or_else(|| an_err!(DtErrKind::ExpectedCentury))?,
+        );
         self.bump_fmt();
         Ok(())
     }
 
     #[inline(always)]
     fn parse_iso_week_year(&mut self, ext: FmtExtensions) -> Result<(), DtErr> {
-        let (remaining, y, _sign) = match ext.parse_i64(4, FmtFlag::PadZero, self.inp, false) {
+        let (remaining, y, _sign) = match ext.parse_i64(4, FmtFlag::PadZero, self.inp) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedYear)),
         };
@@ -372,12 +375,12 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_day_of_year(&mut self, ext: FmtExtensions) -> Result<(), DtErr> {
-        let (remaining, n, _sign) = match ext.parse_i64(3, FmtFlag::PadZero, self.inp, false) {
+        let (remaining, n, _sign) = match ext.parse_i64(3, FmtFlag::PadZero, self.inp) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedDayOfYear)),
         };
         self.inp = remaining;
-        let day = n as u16;
+        let day = u16::try_from(n).map_err(|_| an_err!(DtErrKind::DayOfYearOutOfRange))?;
         if !(1..=366).contains(&day) {
             return Err(an_err!(DtErrKind::DayOfYearOutOfRange));
         }
@@ -450,7 +453,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if !self.inp.is_empty() && self.current_inp_byte() == b'.' {
             self.bump_inp();
         }
-        let max_digits = width.map(|w| w as usize).unwrap_or(usize::MAX);
+        let max_digits = width.map(|w| w as usize).unwrap_or(ATTOS_DIGITS);
 
         let mut frac: u64 = 0;
         let mut digits_read = 0usize;
@@ -480,8 +483,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_timestamp_sec(&mut self, ext: FmtExtensions, epoch: Epoch) -> Result<(), DtErr> {
-        let (remaining, sec_val, sign) = match ext.parse_i64(19, FmtFlag::PadSpace, self.inp, false)
-        {
+        let (remaining, sec_val, sign) = match ext.parse_i64(19, FmtFlag::PadSpace, self.inp) {
             Ok(v) => v,
             Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp)),
         };
@@ -1017,7 +1019,6 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 }
 
 impl FmtExtensions {
-    #[inline(always)]
     fn parse_u8<'i>(
         &self,
         default_pad_width: usize,
@@ -1060,13 +1061,11 @@ impl FmtExtensions {
         Ok((&inp[consumed..], acc))
     }
 
-    #[inline(always)]
     fn parse_i64<'i>(
         &self,
         default_pad_width: usize,
         default_flag: FmtFlag,
         mut inp: &'i [u8],
-        arbitrary: bool,
     ) -> Result<(&'i [u8], i64, Sign), ()> {
         // Strip leading whitespace
         while inp.get(0).is_some_and(|b| b.is_ascii_whitespace()) {
@@ -1080,33 +1079,29 @@ impl FmtExtensions {
             _ => (Sign::Positive, inp),
         };
 
-        let max_digits = if arbitrary {
-            19
-        } else {
-            match self.flag.resolve(default_flag) {
-                FmtFlag::PadSpace | FmtFlag::NoPad => default_pad_width,
-                _ => self.width.map_or(0, usize::from).max(default_pad_width),
-            }
+        let max_digits = match self.flag.resolve(default_flag) {
+            FmtFlag::PadSpace | FmtFlag::NoPad => default_pad_width,
+            _ => self.width.map_or(0, usize::from).max(default_pad_width),
         };
 
         let mut consumed = 0usize;
-        let mut acc: i64 = 0;
+        let mut acc: u64 = 0;
 
         // Skip leading zeros
         while consumed < max_digits && consumed < inp.len() && inp[consumed] == b'0' {
             consumed += 1;
         }
 
-        // Accumulate significant digits
+        // Accumulate significant digits as a magnitude (covers i64::MIN).
         for &b in inp[consumed..].iter().take(max_digits - consumed) {
             if !b.is_ascii_digit() {
                 break;
             }
+            let digit = u64::from(inp[consumed] - b'0');
             acc = acc
                 .checked_mul(10)
-                .and_then(|a| a.checked_add((b - b'0') as i64))
+                .and_then(|a| a.checked_add(digit))
                 .ok_or(())?;
-
             consumed += 1;
         }
 
@@ -1114,10 +1109,16 @@ impl FmtExtensions {
             return Err(());
         }
 
-        if sign == Sign::Positive {
-            Ok((&inp[consumed..], acc, sign))
+        let val = if sign == Sign::Positive {
+            i64::try_from(acc).map_err(|_| ())?
+        } else if let Ok(n) = i64::try_from(acc) {
+            -n
+        } else if acc == i64::MIN.unsigned_abs() {
+            i64::MIN
         } else {
-            Ok((&inp[consumed..], acc.checked_neg().ok_or(())?, sign))
-        }
+            return Err(());
+        };
+
+        Ok((&inp[consumed..], val, sign))
     }
 }

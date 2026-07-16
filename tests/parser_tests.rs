@@ -364,4 +364,66 @@ mod tests {
         );
         assert!(err.is_err());
     }
+
+    #[test]
+    fn test_fractional_seconds_default_width_caps_at_attos_digits() {
+        // Without an explicit width, %f / %.f should not scan unbounded digit runs.
+        // Only the first 18 digits contribute; further digits are left unconsumed
+        // (same as an explicit %18f).
+        let nineteen = "2024-04-15 14:30:45.1234567890123456789";
+        let err =
+            Parts::from_str("%Y-%m-%d %H:%M:%S.%.f", nineteen, false, false, true).unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::TrailingCharacters);
+
+        let p = Parts::from_str(
+            "%Y-%m-%d %H:%M:%S.%.f",
+            nineteen,
+            false,
+            true, // allow trailing
+            true,
+        )
+        .unwrap();
+        assert_eq!(p.attos, 123_456_789_012_345_678);
+
+        let eighteen = "2024-04-15 14:30:45.123456789012345678";
+        let p = Parts::from_str("%Y-%m-%d %H:%M:%S.%.f", eighteen, false, false, true).unwrap();
+        assert_eq!(p.attos, 123_456_789_012_345_678);
+    }
+
+    #[test]
+    fn test_parse_i64_full_range() {
+        use deep_time::civil_parts::{Epoch, Timestamp};
+
+        // i64::MIN was previously unparseable (magnitude did not fit in i64 before negate).
+        let p = Parts::from_str("%s", &i64::MIN.to_string(), false, true, true).unwrap();
+        assert_eq!(
+            p.timestamp,
+            Some(Timestamp {
+                attos: (i64::MIN as i128) * 1_000_000_000_000_000_000,
+                epoch: Epoch::Unix,
+            })
+        );
+
+        let p = Parts::from_str("%s", &i64::MAX.to_string(), false, true, true).unwrap();
+        assert_eq!(
+            p.timestamp,
+            Some(Timestamp {
+                attos: (i64::MAX as i128) * 1_000_000_000_000_000_000,
+                epoch: Epoch::Unix,
+            })
+        );
+
+        let p = Parts::from_str("%*", &i64::MIN.to_string(), false, true, true).unwrap();
+        assert_eq!(p.yr, Some(i64::MIN));
+
+        let p = Parts::from_str("%*", &i64::MAX.to_string(), false, true, true).unwrap();
+        assert_eq!(p.yr, Some(i64::MAX));
+
+        // One past each end of the range
+        let err = Parts::from_str("%s", "9223372036854775808", false, true, true).unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::ExpectedTimestamp);
+
+        let err = Parts::from_str("%s", "-9223372036854775809", false, true, true).unwrap_err();
+        assert_eq!(err.kind(), DtErrKind::ExpectedTimestamp);
+    }
 }

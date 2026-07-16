@@ -63,9 +63,11 @@ mod tests {
 
     #[test]
     fn test_to_chrono_naive_datetime_fractional_seconds() {
+        // %N without width reads at most 18 digits (attosecond precision); chrono
+        // only exposes nanoseconds, so the first 9 digits matter here.
         let parsed = Parts::from_str(
-            "%Y-%m-%d %H:%M:%S.%N",
-            "2024-04-15 14:30:45.123456789012345678901234567890",
+            "%Y-%m-%d %H:%M:%S.%N %L",
+            "2024-04-15 14:30:45.123456789012345678 TAI",
             false,
             false,
             false,
