@@ -263,6 +263,9 @@ pub const fn nut00a(date1: f64, date2: f64, dpsi: &mut f64, deps: &mut f64) {
     *deps = depsls + depspl;
 }
 
+/// IAU 2000A nutation with complementary adjustments (ERFA `eraNut06a`).
+///
+/// `date1` + `date2` is TT as a two-part Julian Date. Writes Δψ and Δε in radians.
 pub const fn nut06a(date1: f64, date2: f64, dpsi: &mut f64, deps: &mut f64) {
     let t = ((date1 - DJ00) + date2) / DJC;
     let fj2 = -2.7774e-6 * t;
@@ -279,6 +282,9 @@ pub const fn nut06a(date1: f64, date2: f64, dpsi: &mut f64, deps: &mut f64) {
 // Precession, obliquity, bias
 // ============================================================================
 
+/// Mean obliquity of the ecliptic, IAU 2006 (ERFA `eraObl06`), in radians.
+///
+/// `date1` + `date2` is TT as a two-part Julian Date.
 pub const fn obl06(date1: f64, date2: f64) -> f64 {
     let t = ((date1 - DJ00) + date2) / DJC;
     // eps0
@@ -350,6 +356,10 @@ const fn eors(rnpb: &[[f64; 3]; 3], s: f64) -> f64 {
 // CIO
 // ============================================================================
 
+/// CIO locator *s* for the IAU 2006/2000A precession-nutation model (ERFA `eraS06`).
+///
+/// `date1` + `date2` is TT as a two-part Julian Date; `x` and `y` are CIP
+/// coordinates in radians. Returns *s* in radians.
 pub const fn s06(date1: f64, date2: f64, x: f64, y: f64) -> f64 {
     let t = ((date1 - DJ00) + date2) / DJC;
 

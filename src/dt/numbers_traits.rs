@@ -31,15 +31,24 @@ use crate::{Dt, SEC_PER_DAY, SEC_PER_DAY_F, Scale};
 /// let dt = 10.years();
 /// ```
 pub trait TraitsTime: Copy + Sized {
+    /// Duration of `self` nanoseconds as a [`Dt`].
     fn ns(self) -> Dt;
+    /// Duration of `self` microseconds as a [`Dt`].
     fn us(self) -> Dt;
+    /// Duration of `self` milliseconds as a [`Dt`].
     fn ms(self) -> Dt;
+    /// Duration of `self` seconds as a [`Dt`].
     fn sec(self) -> Dt;
+    /// Duration of `self` minutes as a [`Dt`].
     fn mins(self) -> Dt;
+    /// Duration of `self` hours as a [`Dt`].
     fn hours(self) -> Dt;
-    fn days(self) -> Dt; // 86400 s (civil day, not leap-second aware)
+    /// Duration of `self` civil days (86 400 s each; not leap-second aware).
+    fn days(self) -> Dt;
+    /// Duration of `self` weeks (7 civil days each).
     fn weeks(self) -> Dt;
-    fn years(self) -> Dt; // 365.25 days (standard approximation)
+    /// Duration of `self` Julian years (365.25 civil days each).
+    fn years(self) -> Dt;
 }
 
 // Integer implementations (all common signed/unsigned types)

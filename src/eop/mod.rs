@@ -34,11 +34,16 @@ use core::cmp::Ordering;
 /// the MJD, offset, and polar-motion values.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum Separator {
+    /// Split on any Unicode whitespace (default).
     #[default]
     Whitespace,
+    /// Comma-separated values (`,`).
     Comma,
+    /// Tab-separated values (`\t`).
     Tab,
+    /// Pipe-separated values (`|`).
     Pipe,
+    /// Semicolon-separated values (`;`).
     Semicolon,
 }
 
@@ -70,9 +75,13 @@ pub enum EopFormat {
 /// when your input file does not match a standard IERS layout.
 #[derive(Debug, Clone)]
 pub struct CustomEopCols {
+    /// 0-based column index of the Modified Julian Date.
     pub mjd: usize,
+    /// 0-based column index of the UT1−UTC (or equivalent) offset in seconds.
     pub offset: usize,
+    /// Optional 0-based column index of polar motion *x* (arcseconds).
     pub pm_x: Option<usize>,
+    /// Optional 0-based column index of polar motion *y* (arcseconds).
     pub pm_y: Option<usize>,
 }
 
@@ -83,6 +92,7 @@ pub struct CustomEopCols {
 /// - `pm_x`, `pm_y` — Polar motion in **arcseconds**
 #[derive(Debug, Clone)]
 pub struct EopDataRow {
+    /// Modified Julian Date of this sample.
     pub mjd: Real,
     /// e.g. UT1-UTC(s)
     pub offset: Real,
@@ -205,6 +215,7 @@ impl EopData {
 }
 
 impl EopData {
+    /// Maximum accepted length of a single input line when parsing EOP text.
     pub const MAX_LINE_LEN: usize = 8192;
 
     // Small helper — parses ONE row (shared by all paths)

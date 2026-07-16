@@ -12,6 +12,7 @@ pub const MARS_SOL_ATTOS: i128 = 88_775_244_146_880_000_000_000;
 
 /// Precomputed numerical value of the Mars reference epoch on the TT scale (total attoseconds since J2000).
 pub const MARS_REF_TT_ATTOS: i128 = -3_976_386_951_349_440_000_000_000_000;
+/// Mars MSD reference epoch as a [`Dt`] on the TT scale.
 pub const MARS_REF_TT: Dt = Dt::new(MARS_REF_TT_ATTOS, Scale::TT, Scale::TT);
 
 /// Areocentric solar longitude (Ls) constants from the current NASA GISS Mars24
@@ -22,13 +23,18 @@ pub const MARS_REF_TT: Dt = Dt::new(MARS_REF_TT_ATTOS, Scale::TT, Scale::TT);
 /// Ls = 180° → northern autumnal equinox
 /// Ls = 270° → northern winter solstice
 pub const MARS_LS_M0: Real = f!(19.3871);
+/// Mean anomaly rate for Mars Ls (degrees per Earth day; Mars24 / AM2000).
 pub const MARS_LS_M_RATE: Real = f!(0.52402073);
+/// Mean solar longitude at the Mars24 reference epoch (degrees).
 pub const MARS_LS_ALPHA_FMS0: Real = f!(270.3871);
+/// Mean solar longitude rate for Mars Ls (degrees per Earth day).
 pub const MARS_LS_ALPHA_FMS_RATE: Real = f!(0.524038496);
 
 /// Equation-of-Time coefficients for LTST (from NASA GISS Mars24 / AM2000).
 pub const MARS_EOT_COEFF_2LS: Real = f!(2.861);
+/// Equation-of-Time coefficient of `sin(4·Ls)` for LTST (degrees).
 pub const MARS_EOT_COEFF_4LS: Real = f!(-0.071);
+/// Equation-of-Time coefficient of `sin(6·Ls)` for LTST (degrees).
 pub const MARS_EOT_COEFF_6LS: Real = f!(0.002);
 
 /// Mars Year epoch: JD 2435208.456 TT (northern vernal equinox Ls = 0° on 1955 April 11).

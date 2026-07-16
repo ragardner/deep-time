@@ -27,8 +27,11 @@
 use crate::{Dt, JD_2000_2_451_545F, Real, SEC_PER_DAY_F, cos, sin};
 use core::f64::consts::TAU;
 
+/// Julian Date of J2000.0 (ERFA `DJ00`).
 pub const ERFA_DJ00: Real = 2451545.0;
+/// Days per Julian millennium (ERFA `DJM`).
 pub const ERFA_DJM: Real = 365250.0;
+/// Degrees to radians (ERFA `DD2R`).
 pub const ERFA_DD2R: Real = 1.745329251994329576923691e-2;
 
 impl Dt {
@@ -166,6 +169,7 @@ impl Dt {
     }
 }
 
+/// One term of the ERFA Fairhead & Bretagnon TDB−TT periodic series.
 pub struct TdbTerm {
     amp: Real,
     freq: Real,
@@ -173,11 +177,13 @@ pub struct TdbTerm {
 }
 
 impl TdbTerm {
+    /// Creates a TDB series term from amplitude, frequency, and phase.
     pub const fn new(amp: Real, freq: Real, phase: Real) -> TdbTerm {
         TdbTerm { amp, freq, phase }
     }
 }
 
+/// Full 787-term ERFA TDB−TT periodic series (Fairhead & Bretagnon 1990).
 pub static ERFA_TDB_TERMS: [TdbTerm; 787] = [
     /* 1, 10 */
     TdbTerm::new(1656.674564e-6, 6283.075849991, 6.240054195),

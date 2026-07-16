@@ -8,8 +8,11 @@ use crate::{C_SQUARED, Real, sqrt};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Velocity {
+    /// X-component of velocity in meters per second (SI).
     pub vx: Real,
+    /// Y-component of velocity in meters per second (SI).
     pub vy: Real,
+    /// Z-component of velocity in meters per second (SI).
     pub vz: Real,
 }
 
@@ -20,6 +23,7 @@ impl Velocity {
         Self { vx, vy, vz }
     }
 
+    /// The zero velocity vector (at rest in the coordinate frame).
     pub const ZERO: Self = Self::new(f!(0.0), f!(0.0), f!(0.0));
 
     /// Creates a `Velocity` from its scalar speed (magnitude) in m/s.

@@ -43,6 +43,7 @@ pub struct Spacetime {
 }
 
 impl Spacetime {
+    /// Creates a new [`Spacetime`] snapshot from α, β, and Kretschmann K.
     #[inline]
     pub const fn new(alpha: Real, beta: Real, kretschmann: Real) -> Spacetime {
         Self {

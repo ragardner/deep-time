@@ -4,23 +4,31 @@ use crate::{Dt, Real, Scale, dt, sin};
 
 /// TCL secular rate vs TDB (value from LTE440).
 pub const TL_NUM: i128 = 6_798_355_240;
+/// Denominator for [`TL_NUM`] fixed-point fraction (10¹⁹).
 pub const TL_DEN: i128 = 10_000_000_000_000_000_000; // 10^19
 /// L_M = 6.48378 × 10^{-10} (secular rate from Ashby & Patla 2024 NIST for LTC ↔ TT)
 /// as fixed-point fraction.
 pub const LM_NUM: i128 = 648_378;
+/// Denominator for [`LM_NUM`] fixed-point fraction (10¹⁵).
 pub const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
 
-/// LTE440 periodic terms (Lu et al. 2025, A&A 704, A76; arXiv:2509.18511)
-/// A_i * sin(2π * (t_J2000_days / T_i) + ϕ_i)  with A_i in µs.
-/// These are the 13 dominant terms (>1 µs) after removing the linear secular drift.
-/// Accuracy: < 0.15 ns (before 2050) when combined with the secular rate.
+/// One LTE440 periodic term for lunar time corrections.
+///
+/// Form: `A_i * sin(2π * (t_J2000_days / T_i) + ϕ_i)` with `A_i` in µs
+/// (Lu et al. 2025, A&A 704, A76; arXiv:2509.18511).
 #[derive(Clone, Debug)]
 pub struct LunarPeriodicTerm {
-    period_days: Real,  // T_i
-    amplitude_us: Real, // A_i
-    phase_rad: Real,    // ϕ_i
+    /// Period \(T_i\) in days (argument of the sine is \(2\pi\,t_{\mathrm{J2000}}/T_i + \phi_i\)).
+    pub period_days: Real,
+    /// Amplitude \(A_i\) in microseconds.
+    pub amplitude_us: Real,
+    /// Phase \(\phi_i\) in radians.
+    pub phase_rad: Real,
 }
 
+/// The 13 dominant LTE440 periodic terms (>1 µs) after removing the linear secular drift.
+///
+/// Combined with the secular rate, accuracy is &lt; 0.15 ns before 2050.
 pub const LUNAR_PERIODIC_TERMS: [LunarPeriodicTerm; 13] = [
     LunarPeriodicTerm {
         period_days: 365.26590909,

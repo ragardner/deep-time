@@ -72,6 +72,7 @@ pub struct StrPTimeFmt {
 }
 
 impl StrPTimeFmt {
+    /// Maximum allowed length of a format string in bytes.
     pub const MAX_FMT_LEN: usize = 256;
 
     /// Creates a new validated format.

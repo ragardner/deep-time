@@ -14,8 +14,11 @@ use crate::{Real, hypot};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Position {
+    /// X-coordinate in meters (SI).
     pub x: Real,
+    /// Y-coordinate in meters (SI).
     pub y: Real,
+    /// Z-coordinate in meters (SI).
     pub z: Real,
 }
 

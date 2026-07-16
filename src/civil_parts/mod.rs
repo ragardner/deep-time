@@ -96,6 +96,7 @@ pub(crate) struct ParsedReal {
 }
 
 impl Parts {
+    /// Creates empty [`Parts`] with scale set to [`Scale::UTC`].
     #[inline(always)]
     pub fn new_utc() -> Parts {
         Self {
@@ -119,7 +120,9 @@ impl Parts {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Epoch {
+    /// Unix epoch: 1970-01-01 00:00:00 UTC (`%s`).
     Unix,
+    /// J2000.0 noon epoch: 2000-01-01 12:00:00 TAI (`%J`).
     Noon2000,
 }
 
@@ -131,7 +134,9 @@ pub enum Epoch {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Timestamp {
+    /// Instant as attoseconds relative to [`Self::epoch`].
     pub attos: i128,
+    /// Epoch that [`Self::attos`] is measured from.
     pub epoch: Epoch,
 }
 
@@ -141,8 +146,10 @@ pub struct Timestamp {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Meridiem {
+    /// Ante meridiem (before noon).
     #[default]
     AM,
+    /// Post meridiem (after noon).
     PM,
 }
 
@@ -152,13 +159,20 @@ pub enum Meridiem {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Weekday {
+    /// Sunday.
     #[default]
     Sunday,
+    /// Monday.
     Monday,
+    /// Tuesday.
     Tuesday,
+    /// Wednesday.
     Wednesday,
+    /// Thursday.
     Thursday,
+    /// Friday.
     Friday,
+    /// Saturday.
     Saturday,
 }
 
@@ -250,16 +264,19 @@ impl Weekday {
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Offset {
+    /// No timezone offset specified.
     #[default]
     None,
-    /// Fixed offset in seconds
+    /// Fixed offset in seconds east of UTC.
     Fixed(i32),
 }
 
 #[cfg(feature = "wire")]
 impl Meridiem {
+    /// Size of the wire representation in bytes.
     pub const WIRE_SIZE: usize = 1;
 
+    /// Serializes this [`Meridiem`] to a single wire byte (`0` = AM, `1` = PM).
     #[inline]
     pub const fn to_wire_byte(self) -> u8 {
         match self {
@@ -268,6 +285,7 @@ impl Meridiem {
         }
     }
 
+    /// Deserializes a [`Meridiem`] from a single wire byte.
     #[inline]
     pub const fn from_wire_byte(b: u8) -> Option<Self> {
         match b {
@@ -280,8 +298,10 @@ impl Meridiem {
 
 #[cfg(feature = "wire")]
 impl Offset {
+    /// Size of the wire representation in bytes (tag + optional `i32`).
     pub const WIRE_SIZE: usize = 5; // tag (1) + i32 (4)
 
+    /// Serializes this [`Offset`] into a fixed wire buffer.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         match self {
@@ -294,6 +314,7 @@ impl Offset {
         buf
     }
 
+    /// Deserializes an [`Offset`] from a fixed wire buffer.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -311,13 +332,16 @@ impl Offset {
 
 #[cfg(feature = "wire")]
 impl Weekday {
+    /// Size of the wire representation in bytes.
     pub const WIRE_SIZE: usize = 1;
 
+    /// Serializes this [`Weekday`] as a Sunday-based 0–6 wire byte.
     #[inline]
     pub const fn to_wire_byte(self) -> u8 {
         self.wkday_sun_0_based()
     }
 
+    /// Deserializes a [`Weekday`] from a Sunday-based 0–6 wire byte.
     #[inline]
     pub const fn from_wire_byte(b: u8) -> Option<Self> {
         Self::from_sunday_0_based(b)

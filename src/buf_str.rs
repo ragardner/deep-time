@@ -24,6 +24,7 @@ use core::str;
 /// - **Unicode character count**: Use `as_str().chars().count()`
 #[derive(Clone, PartialEq, Eq)]
 pub struct BufStr<const N: usize> {
+    /// Raw fixed-capacity byte storage (nul-terminated when shorter than `N`).
     pub bytes: [u8; N],
 }
 
@@ -35,6 +36,7 @@ impl<const N: usize> Default for BufStr<N> {
 }
 
 impl<const N: usize> BufStr<N> {
+    /// Capacity of the buffer in bytes (same as the const parameter `N`).
     pub const SIZE: usize = N;
 
     /// Creates a new `BufStr` from a `&str`.
