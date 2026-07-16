@@ -14,9 +14,6 @@ impl Dt {
     /// UTC convention used by [`Dt::to_chrono_datetime_utc`] and the Unix-based
     /// jiff/`time` interop paths.
     ///
-    /// ICU4X [`DateTime`] is a **display/civil** bag (for formatters and calendars),
-    /// not an absolute timeline type. It does not store a deep-time scale.
-    ///
     /// ## Precision and range
     ///
     /// - Sub-nanosecond attoseconds are truncated toward zero into
