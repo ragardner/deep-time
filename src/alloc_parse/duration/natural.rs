@@ -829,12 +829,16 @@ impl Dt {
                     target_minute = Some(m);
                     target_second = Some(sec);
                     target_attos = attos;
-                } else if let Ok(mil) = Dt::h_mm_duration_attos(part) {
-                    // Ops H:MM / H:MM:SS when not a civil clock.
+                } else if part.contains(':') {
+                    // Colon present but not a civil clock (`parse_hms` rejected, or
+                    // this gap sits before a duration unit). Treat as ops H:MM /
+                    // H:MM:SS and hard-fail on invalid fields. Do not fall through
+                    // to `extract_number`, which glues digits across ':' and can
+                    // turn `25:00` / `24:60` into multi-thousand day offsets.
+                    let mil = Dt::h_mm_duration_attos(part)?;
                     total_attos =
                         total_attos.saturating_add(mil.saturating_mul(overall_multiplier));
                 } else if let Some(num) = extract_number(part, &mut part_chars, *d) {
-                    // Last resort (lenient): may still glue digits across ':'.
                     if let Some(unit_attos) = pending_unit_attos.take() {
                         add_to_total(&mut total_attos, num, unit_attos, overall_multiplier);
                     } else {

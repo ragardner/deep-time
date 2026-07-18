@@ -188,45 +188,51 @@ mod tests {
 
     #[test]
     fn order_day_vs_month_vs_year_forced() {
-        // 01/02/2003: day-first → 1 Feb; month-first → 2 Jan.
+        // Prefer order, then the other two (same chains as Smart).
         assert_rfc("01/02/2003", "2003-02-01T00:00:00Z", &cfg_order(Order::Day));
         assert_rfc(
             "01/02/2003",
             "2003-01-02T00:00:00Z",
             &cfg_order(Order::Month),
         );
-        // Year-forced cannot treat leading 01 as a year → fail.
-        assert_err("01/02/2003", &cfg_order(Order::Year));
+        assert_rfc(
+            "01/02/2003",
+            "2003-02-01T00:00:00Z",
+            &cfg_order(Order::Year),
+        ); // → day
 
-        // Unambiguous by magnitude.
         assert_rfc("13/01/2003", "2003-01-13T00:00:00Z", &cfg_order(Order::Day));
-        assert_err("13/01/2003", &cfg_order(Order::Month));
+        assert_rfc(
+            "13/01/2003",
+            "2003-01-13T00:00:00Z",
+            &cfg_order(Order::Month),
+        ); // → day
         assert_rfc(
             "01/13/2003",
             "2003-01-13T00:00:00Z",
             &cfg_order(Order::Month),
         );
-        assert_err("01/13/2003", &cfg_order(Order::Day));
+        assert_rfc("01/13/2003", "2003-01-13T00:00:00Z", &cfg_order(Order::Day)); // → month
+
+        // 2-digit year triples.
+        assert_rfc("15/03/24", "2024-03-15T00:00:00Z", &cfg_order(Order::Day));
+        assert_rfc("15/03/24", "2024-03-15T00:00:00Z", &cfg_order(Order::Month)); // → day
+        assert_rfc("15/03/24", "2015-03-24T00:00:00Z", &cfg_order(Order::Year));
+        assert_rfc("01/02/03", "2003-02-01T00:00:00Z", &cfg_order(Order::Day));
+        assert_rfc("01/02/03", "2003-01-02T00:00:00Z", &cfg_order(Order::Month));
+        assert_rfc("01/02/03", "2001-02-03T00:00:00Z", &cfg_order(Order::Year));
     }
 
     #[test]
     fn order_smart_heuristic_signals() {
         let smart = cfg_order(Order::Smart);
-        // First field 13–31 → day-first.
-        assert_rfc("13/01/2003", "2003-01-13T00:00:00Z", &smart);
-        // First 1–12 and second 13–31 → month-first.
-        assert_rfc("01/13/2003", "2003-01-13T00:00:00Z", &smart);
-        // Leading 4-digit year in modern range → year-first.
-        assert_rfc("2024.03.15", "2024-03-15T00:00:00Z", &smart);
-        // US-style dotted date (month.day.yy).
-        assert_rfc("03.15.24", "2024-03-15T00:00:00Z", &smart);
-        // Without locale, fully-ambiguous 2-digit triples prefer year-first
-        // when components are all ≤12 (compact/tech convention in Smart path
-        // after pure-numeric; delimited falls to day-first fallback — both
-        // resolve 01/02/03 as 2001-02-03 here).
-        assert_rfc("01/02/03", "2001-02-03T00:00:00Z", &smart);
-        assert_rfc("05/06/07", "2005-06-07T00:00:00Z", &smart);
-        // Single-digit components with hyphens are currently rejected.
+        assert_rfc("13/01/2003", "2003-01-13T00:00:00Z", &smart); // first 13–31 → day
+        assert_rfc("01/13/2003", "2003-01-13T00:00:00Z", &smart); // 1–12 then 13–31 → month
+        assert_rfc("2024.03.15", "2024-03-15T00:00:00Z", &smart); // leading 4-digit year
+        assert_rfc("03.15.24", "2024-03-15T00:00:00Z", &smart); // US m.d.yy
+        assert_rfc("15/03/24", "2024-03-15T00:00:00Z", &smart); // EU d/m/yy
+        assert_rfc("01/02/03", "2003-02-01T00:00:00Z", &smart); // all ≤12 → day fallback
+        assert_rfc("05/06/07", "2007-06-05T00:00:00Z", &smart);
         assert_err("3-4-5", &smart);
     }
 
@@ -404,65 +410,6 @@ mod tests {
         assert_rfc("14 Mar 2024 at 2PM", "2024-03-14T14:00:00Z", &cfg);
     }
 
-    // /// Time component before the date (24h and 12h / AM/PM).
-    // #[test]
-    // fn time_before_date() {
-    //     let cfg = def();
-
-    //     // ── 24-hour clock, no meridiem ─────────────────────────────────────
-    //     let h24 = [
-    //         ("14:30 2024-03-15", "2024-03-15T14:30:00Z"),
-    //         ("14:30:00 2024-03-15", "2024-03-15T14:30:00Z"),
-    //         ("00:00 2024-03-15", "2024-03-15T00:00:00Z"),
-    //         ("23:59:59 2024-03-15", "2024-03-15T23:59:59Z"),
-    //         ("14:30 15/03/2024", "2024-03-15T14:30:00Z"),
-    //         ("14:30 15 March 2024", "2024-03-15T14:30:00Z"),
-    //         ("14:30 March 15, 2024", "2024-03-15T14:30:00Z"),
-    //         ("14:30 15 Mar 2024", "2024-03-15T14:30:00Z"),
-    //         ("9:05 2024-03-15", "2024-03-15T09:05:00Z"),
-    //         ("09:05:00 15-03-2024", "2024-03-15T09:05:00Z"),
-    //     ];
-    //     for (input, expected) in h24 {
-    //         assert_rfc(input, expected, &cfg);
-    //     }
-
-    //     // ── 12-hour clock with AM/PM ───────────────────────────────────────
-    //     let h12 = [
-    //         ("2:30 PM 2024-03-15", "2024-03-15T14:30:00Z"),
-    //         ("2:30PM 2024-03-15", "2024-03-15T14:30:00Z"),
-    //         ("2:30 pm 2024-03-15", "2024-03-15T14:30:00Z"),
-    //         ("2:30PM 15/03/2024", "2024-03-15T14:30:00Z"),
-    //         ("2:30 pm 15 March 2024", "2024-03-15T14:30:00Z"),
-    //         ("2:30 PM March 15, 2024", "2024-03-15T14:30:00Z"),
-    //         ("2:30PM 15 Mar 2024", "2024-03-15T14:30:00Z"),
-    //         ("9:00 am 2024-03-15", "2024-03-15T09:00:00Z"),
-    //         ("9:00am 2024-03-15", "2024-03-15T09:00:00Z"),
-    //         ("12:00 am 2024-03-15", "2024-03-15T00:00:00Z"),
-    //         ("12:00 pm 2024-03-15", "2024-03-15T12:00:00Z"),
-    //         ("12:00AM 15 Mar 2024", "2024-03-15T00:00:00Z"),
-    //         ("12:00PM 15 Mar 2024", "2024-03-15T12:00:00Z"),
-    //         // Bare hour + meridiem before date
-    //         ("2PM 2024-03-15", "2024-03-15T14:00:00Z"),
-    //         ("2pm 2024-03-15", "2024-03-15T14:00:00Z"),
-    //         ("2 PM 2024-03-15", "2024-03-15T14:00:00Z"),
-    //         ("2AM 2024-03-15", "2024-03-15T02:00:00Z"),
-    //         ("9am 15 March 2024", "2024-03-15T09:00:00Z"),
-    //         ("12AM 2024-03-15", "2024-03-15T00:00:00Z"),
-    //         ("12PM 2024-03-15", "2024-03-15T12:00:00Z"),
-    //         ("2PM 15 Mar 2024", "2024-03-15T14:00:00Z"),
-    //         ("2:30 PM on 15 Mar 2024", "2024-03-15T14:30:00Z"),
-    //         ("at 2:30pm on March 15, 2024", "2024-03-15T14:30:00Z"),
-    //     ];
-    //     for (input, expected) in h12 {
-    //         assert_rfc(input, expected, &cfg);
-    //     }
-
-    //     // Date-first controls still work (same instants, opposite order).
-    //     assert_rfc("2024-03-15 14:30", "2024-03-15T14:30:00Z", &cfg);
-    //     assert_rfc("15 March 2024 2:30 PM", "2024-03-15T14:30:00Z", &cfg);
-    //     assert_rfc("15 Mar 2024 2PM", "2024-03-15T14:00:00Z", &cfg);
-    // }
-
     // ── 6. Syslog / year-less dates ────────────────────────────────────────
 
     #[test]
@@ -542,18 +489,31 @@ mod tests {
         assert_rfc("2:30 PM", "2025-01-15T14:30:00Z", &cfg);
         assert_rfc("9:00 am", "2025-01-15T09:00:00Z", &cfg);
         assert_rfc("00:00", "2025-01-15T00:00:00Z", &cfg);
-        // Bare H:M:S is relative time-of-day (hour no longer left as a date field).
         assert_rfc("15:30:45", "2025-01-15T15:30:45Z", &cfg);
         assert_rfc("9:30:00", "2025-01-15T09:30:00Z", &cfg);
         assert_rfc("12:00", "2025-01-15T12:00:00Z", &cfg);
         assert_rfc("12:00:00", "2025-01-15T12:00:00Z", &cfg);
         assert_rfc("12:00 am", "2025-01-15T00:00:00Z", &cfg);
         assert_rfc("12:00 pm", "2025-01-15T12:00:00Z", &cfg);
-        // Elapsed H:MM when civil parse_hms rejects the hour.
+        // Ops H:MM / H:MM:SS when hour is not a civil clock.
         assert_rfc("24:00", "2025-01-16T12:00:00Z", &cfg);
         assert_rfc("72:30", "2025-01-18T12:30:00Z", &cfg);
         assert_rfc("25:00:00", "2025-01-16T13:00:00Z", &cfg);
         assert_rfc("72:30 ago", "2025-01-12T11:30:00Z", &cfg);
+    }
+
+    #[test]
+    fn invalid_clock_fields_do_not_glue_to_days() {
+        let cfg = ref_cfg();
+        // Invalid ops duration → Err (not digit-glue into multi-day offsets).
+        assert_err("24:60", &cfg);
+        assert_err("25:99", &cfg);
+        assert_err("at 25:00", &cfg);
+        assert_err("in 3 days at 25:00", &cfg);
+        assert_err("tomorrow at 25:00", &cfg);
+        assert_err("tomorrow at 99:00", &cfg);
+        assert_rfc("in 3 days at 14:00", "2025-01-18T14:00:00Z", &cfg);
+        assert_rfc("at 14:00", "2025-01-15T14:00:00Z", &cfg);
     }
 
     #[test]
@@ -827,51 +787,46 @@ mod tests {
 
     #[test]
     fn smart_order_matrix_classic_pitfalls() {
-        // Table-driven matrix: (input, Smart, Day, Month, Year) where None = Err.
-        type Exp = Option<&'static str>;
-        let rows: &[(&str, Exp, Exp, Exp, Exp)] = &[
+        // input → Smart, Day, Month, Year (prefer + fallback).
+        let rows: &[(&str, &str, &str, &str, &str)] = &[
             (
                 "01/02/2003",
-                Some("2003-02-01T00:00:00Z"), // Smart → day (1≤12, 2≤12 → fallback Day)
-                Some("2003-02-01T00:00:00Z"),
-                Some("2003-01-02T00:00:00Z"),
-                None,
+                "2003-02-01T00:00:00Z",
+                "2003-02-01T00:00:00Z",
+                "2003-01-02T00:00:00Z",
+                "2003-02-01T00:00:00Z",
             ),
             (
                 "02/01/2003",
-                Some("2003-01-02T00:00:00Z"),
-                Some("2003-01-02T00:00:00Z"),
-                Some("2003-02-01T00:00:00Z"),
-                None,
+                "2003-01-02T00:00:00Z",
+                "2003-01-02T00:00:00Z",
+                "2003-02-01T00:00:00Z",
+                "2003-01-02T00:00:00Z",
             ),
             (
                 "12/11/10",
-                Some("2012-11-10T00:00:00Z"),
-                Some("2012-11-10T00:00:00Z"),
-                Some("2012-11-10T00:00:00Z"),
-                Some("2012-11-10T00:00:00Z"),
+                "2010-11-12T00:00:00Z",
+                "2010-11-12T00:00:00Z",
+                "2010-12-11T00:00:00Z",
+                "2012-11-10T00:00:00Z",
             ),
             (
                 "15.03.24",
-                Some("2015-03-24T00:00:00Z"),
-                Some("2015-03-24T00:00:00Z"),
-                Some("2015-03-24T00:00:00Z"),
-                Some("2015-03-24T00:00:00Z"),
+                "2024-03-15T00:00:00Z",
+                "2024-03-15T00:00:00Z",
+                "2024-03-15T00:00:00Z",
+                "2015-03-24T00:00:00Z",
             ),
         ];
 
         for &(input, smart, day, month, year) in rows {
-            for (order, exp) in [
+            for (order, expected) in [
                 (Order::Smart, smart),
                 (Order::Day, day),
                 (Order::Month, month),
                 (Order::Year, year),
             ] {
-                let cfg = cfg_order(order);
-                match exp {
-                    Some(expected) => assert_rfc(input, expected, &cfg),
-                    None => assert_err(input, &cfg),
-                }
+                assert_rfc(input, expected, &cfg_order(order));
             }
         }
     }

@@ -40,17 +40,16 @@ pub enum Order {
     /// The `/` separator is deliberately ignored in the plausibility step
     /// because it is culturally ambiguous.
     ///
-    /// Once the preferred ordering is determined, the parser tries the
-    /// corresponding ambiguous candidate formats (Year-first → Day-first →
-    /// Month-first, or the reverse, depending on the detected order) and falls
-    /// back gracefully.
+    /// Once the preferred ordering is determined, the parser tries that order
+    /// first, then the other two (e.g. Day → Month → Year), before any
+    /// year-first unambiguous fallback.
     #[default]
     Smart,
-    /// Force **Year-first** only (YYYY/MM/DD or YY/MM/DD)
+    /// Prefer **Year-first** (YYYY/MM/DD or YY/MM/DD), then Day, then Month.
     Year,
-    /// Force **Day-first** only (DD/MM/YYYY)
+    /// Prefer **Day-first** (DD/MM/YYYY), then Month, then Year.
     Day,
-    /// Force **Month-first** only (MM/DD/YYYY)
+    /// Prefer **Month-first** (MM/DD/YYYY), then Day, then Year.
     Month,
 }
 

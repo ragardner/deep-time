@@ -78,8 +78,8 @@ impl Dt {
     ///   It strongly prefers modern/tech conventions (Year-first for compact/ISO-like data)
     ///   while handling the majority of international and US-style dates.
     ///
-    /// - **`Order::Year`**, **`Order::Day`**, or **`Order::Month`** force a
-    ///   specific interpretation and bypass the heuristic entirely.
+    /// - **`Order::Year`**, **`Order::Day`**, or **`Order::Month`** prefer that
+    ///   order first, then try the other two (same fallback chains as Smart).
     ///
     /// ## Supported Formats
     ///
@@ -268,11 +268,6 @@ impl Dt {
         {
             return Ok(dt);
         }
-
-        if let Some(dt) = try_unambiguous(normalized, &classification) {
-            return Ok(dt);
-        }
-        // std::eprintln!("done trying unambiguous");
         if let Some(dt) = match date_order {
             Order::Smart => {
                 let order = smart_detect_date_order(normalized, &classification);
@@ -352,19 +347,69 @@ impl Dt {
 
                 result
             }
-            Order::Year => try_compatible_formats(
-                normalized,
-                generate_ambiguous_year_first_candidates(&classification),
-            ),
-            Order::Day => try_compatible_formats(
-                normalized,
-                generate_ambiguous_day_first_candidates(&classification),
-            ),
-            Order::Month => try_compatible_formats(
-                normalized,
-                generate_ambiguous_month_first_candidates(&classification),
-            ),
+            // Preferred order first, then the other two (same chains as Smart).
+            // try_unambiguous stays last, after this whole match.
+            Order::Year => {
+                let mut result = try_compatible_formats(
+                    normalized,
+                    generate_ambiguous_year_first_candidates(&classification),
+                );
+                if result.is_none() {
+                    result = try_compatible_formats(
+                        normalized,
+                        generate_ambiguous_day_first_candidates(&classification),
+                    );
+                }
+                if result.is_none() {
+                    result = try_compatible_formats(
+                        normalized,
+                        generate_ambiguous_month_first_candidates(&classification),
+                    );
+                }
+                result
+            }
+            Order::Day => {
+                let mut result = try_compatible_formats(
+                    normalized,
+                    generate_ambiguous_day_first_candidates(&classification),
+                );
+                if result.is_none() {
+                    result = try_compatible_formats(
+                        normalized,
+                        generate_ambiguous_month_first_candidates(&classification),
+                    );
+                }
+                if result.is_none() {
+                    result = try_compatible_formats(
+                        normalized,
+                        generate_ambiguous_year_first_candidates(&classification),
+                    );
+                }
+                result
+            }
+            Order::Month => {
+                let mut result = try_compatible_formats(
+                    normalized,
+                    generate_ambiguous_month_first_candidates(&classification),
+                );
+                if result.is_none() {
+                    result = try_compatible_formats(
+                        normalized,
+                        generate_ambiguous_day_first_candidates(&classification),
+                    );
+                }
+                if result.is_none() {
+                    result = try_compatible_formats(
+                        normalized,
+                        generate_ambiguous_year_first_candidates(&classification),
+                    );
+                }
+                result
+            }
         } {
+            return Ok(dt);
+        }
+        if let Some(dt) = try_unambiguous(normalized, &classification) {
             return Ok(dt);
         }
         // std::eprintln!("NOW trying numeric timestamp");
