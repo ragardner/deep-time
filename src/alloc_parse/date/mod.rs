@@ -10,7 +10,6 @@ pub mod ordinal;
 pub mod smart_heuristic;
 pub mod syslog;
 pub mod unix_timestamp;
-pub mod week_date;
 pub mod year_month;
 
 pub(crate) use classify::*;
@@ -25,5 +24,4 @@ pub(crate) use ordinal::*;
 pub(crate) use smart_heuristic::*;
 pub(crate) use syslog::*;
 pub(crate) use unix_timestamp::*;
-pub(crate) use week_date::*;
 pub(crate) use year_month::*;

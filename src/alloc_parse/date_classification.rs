@@ -68,6 +68,7 @@ pub(crate) enum Token {
     LBracket,
     RBracket,
     Zulu,
+    H,
     Hm,
     HmColon,
     Hms,
@@ -120,7 +121,7 @@ pub(crate) enum Token {
 }
 
 impl Token {
-    pub(crate) fn is_duration(&self) -> bool {
+    pub(crate) fn is_duration(self) -> bool {
         matches!(
             self,
             Token::Millennium
@@ -156,7 +157,7 @@ impl Token {
     }
 
     #[inline]
-    pub(crate) fn is_relative(&self) -> bool {
+    pub(crate) fn is_relative(self) -> bool {
         matches!(
             self,
             Token::Now
@@ -172,13 +173,21 @@ impl Token {
         )
     }
 
+    #[inline]
+    pub(crate) fn is_time(self) -> bool {
+        matches!(
+            self,
+            Token::Hms | Token::HmsColon | Token::Hm | Token::HmColon | Token::H
+        )
+    }
+
     // #[inline(always)]
-    // pub(crate) fn is_direction(&self) -> bool {
+    // pub(crate) fn is_direction(self) -> bool {
     //     matches!(self, Token::Future | Token::Past | Token::Ago)
     // }
 
     #[inline]
-    pub(crate) fn to_fmt(&self) -> &'static [&'static str] {
+    pub(crate) fn to_fmt(self) -> &'static [&'static str] {
         match self {
             Token::DayShort => &["%a"],
             Token::DayLong => &["%A"],
@@ -204,7 +213,7 @@ impl Token {
     }
 
     #[inline]
-    pub(crate) fn to_fmt_year_first(&self) -> &'static [&'static str] {
+    pub(crate) fn to_fmt_year_first(self) -> &'static [&'static str] {
         match self {
             Token::Digits(n) => match n {
                 6 => &["%y%m%d"],
@@ -216,7 +225,7 @@ impl Token {
     }
 
     #[inline]
-    pub(crate) fn to_fmt_month_first(&self) -> &'static [&'static str] {
+    pub(crate) fn to_fmt_month_first(self) -> &'static [&'static str] {
         match self {
             Token::Digits(n) => match n {
                 6 => &["%m%d%y"],
@@ -228,7 +237,7 @@ impl Token {
     }
 
     #[inline]
-    pub(crate) fn to_fmt_day_first(&self) -> &'static [&'static str] {
+    pub(crate) fn to_fmt_day_first(self) -> &'static [&'static str] {
         match self {
             Token::Digits(n) => match n {
                 6 => &["%d%m%y"],
@@ -250,7 +259,7 @@ pub(crate) enum ConnectorType {
 
 impl ConnectorType {
     #[inline]
-    pub(crate) fn as_str(&self) -> &'static str {
+    pub(crate) fn as_str(self) -> &'static str {
         match self {
             ConnectorType::None => "",
             ConnectorType::UpperT => "T",
@@ -272,7 +281,7 @@ pub(crate) enum IndexIn {
 
 impl IndexIn {
     #[inline(always)]
-    pub(crate) fn after_date(&self) -> bool {
+    pub(crate) fn after_date(self) -> bool {
         !matches!(self, IndexIn::PreDate | IndexIn::Date)
     }
 }

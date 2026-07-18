@@ -894,4 +894,118 @@ impl Dt {
 
         Ok(dt!(attos))
     }
+
+    /// Hours:Minutes elapsed time: `H:MM` or `H:MM:SS[.frac]` (hours unbounded).
+    ///
+    /// Minutes and seconds must be `0..=59`. Fractional seconds (optional) may
+    /// follow only the seconds field, up to 18 digits. Requires at least one
+    /// `:`. Optional leading `-` and ASCII whitespace. Returns a pure duration
+    /// on `Scale::TAI`.
+    ///
+    /// Not media duration: two fields are **hours:minutes**, not minutes:seconds.
+    #[inline]
+    pub fn from_str_h_mm_duration(input: &str) -> Result<Dt, DtErr> {
+        Ok(dt!(Self::h_mm_duration_attos(input)?))
+    }
+
+    /// Shared by [`from_str_h_mm_duration`] and relative natural parse.
+    pub(crate) fn h_mm_duration_attos(input: &str) -> Result<i128, DtErr> {
+        let bytes = input.as_bytes();
+        let len = bytes.len();
+        let mut pos = 0usize;
+
+        while pos < len && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        if pos == len {
+            return Err(an_err!(DtErrKind::Empty));
+        }
+
+        let neg = if bytes[pos] == b'-' {
+            pos += 1;
+            if pos == len {
+                return Err(an_err!(DtErrKind::InvalidInput));
+            }
+            true
+        } else {
+            false
+        };
+
+        let hours = parse_mil_uint(bytes, &mut pos, len)?;
+        // At least one colon is required (H:MM or H:MM:SS).
+        if pos >= len || bytes[pos] != b':' {
+            return Err(an_err!(DtErrKind::InvalidSyntax));
+        }
+        pos += 1;
+
+        let minutes = parse_mil_uint(bytes, &mut pos, len)?;
+        if minutes > 59 {
+            return Err(an_err!(DtErrKind::InvalidInput));
+        }
+
+        let mut seconds: i128 = 0;
+        let mut frac_attos: i128 = 0;
+
+        if pos < len && bytes[pos] == b':' {
+            pos += 1;
+            seconds = parse_mil_uint(bytes, &mut pos, len)?;
+            if seconds > 59 {
+                return Err(an_err!(DtErrKind::InvalidInput));
+            }
+            if pos < len && bytes[pos] == b'.' {
+                pos += 1;
+                if pos >= len || !bytes[pos].is_ascii_digit() {
+                    return Err(an_err!(DtErrKind::ExpectedValue));
+                }
+                let mut digits = 0u32;
+                let mut frac = 0i128;
+                while pos < len && bytes[pos].is_ascii_digit() {
+                    if digits < 18 {
+                        frac = frac
+                            .saturating_mul(10)
+                            .saturating_add((bytes[pos] - b'0') as i128);
+                        digits += 1;
+                    }
+                    pos += 1;
+                }
+                frac_attos = frac.saturating_mul(10i128.pow(18 - digits));
+            }
+        } else if pos < len && bytes[pos] == b'.' {
+            // No fractional minutes.
+            return Err(an_err!(DtErrKind::InvalidSyntax));
+        }
+
+        while pos < len && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+        if pos != len {
+            return Err(an_err!(DtErrKind::TrailingCharacters));
+        }
+
+        let mut attos = hours
+            .saturating_mul(3600)
+            .saturating_add(minutes.saturating_mul(60))
+            .saturating_add(seconds)
+            .saturating_mul(ATTOS_PER_SEC_I128)
+            .saturating_add(frac_attos);
+        if neg {
+            attos = -attos;
+        }
+        Ok(attos)
+    }
+}
+
+#[inline]
+fn parse_mil_uint(bytes: &[u8], pos: &mut usize, len: usize) -> Result<i128, DtErr> {
+    if *pos >= len || !bytes[*pos].is_ascii_digit() {
+        return Err(an_err!(DtErrKind::ExpectedValue));
+    }
+    let mut v: i128 = 0;
+    while *pos < len && bytes[*pos].is_ascii_digit() {
+        v = v
+            .saturating_mul(10)
+            .saturating_add((bytes[*pos] - b'0') as i128);
+        *pos += 1;
+    }
+    Ok(v)
 }

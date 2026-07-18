@@ -1,9 +1,9 @@
 /*!
 # deep-time
 
-A fully featured, high performance, no_std and no alloc Rust date and
-time library with attosecond precision that provides astronomical and
-civil timekeeping.
+A fully featured, high performance, no_std and no alloc date and time
+library with attosecond precision that provides astronomical and civil
+timekeeping.
 
 Functionality:
 <https://github.com/ragardner/deep-time#overview>

@@ -1,7 +1,7 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch,
     JD_2000_2_451_545_I128, ParsedReal, Parser, Parts, SEC_PER_DAY, STRTIME_SIZE, Scale, Timestamp,
-    an_err,
+    Weekday, an_err,
 };
 
 impl Parts {
@@ -190,48 +190,60 @@ impl Parts {
         }
     }
 
-    /// Finalizes a [`Parts`] after parsing by applying sensible defaults and
-    /// performing validation.
+    /// Applies defaults; returns [`DtErrKind::Incomplete`] if no complete date form remains.
     ///
-    /// This is called automatically by the various parsing paths (`from_str`,
-    /// CCSDS parsers, etc.). It ensures the struct is in a consistent state
-    /// before being turned into a full [`Dt`](../struct.Dt.html) or passed to other converters.
-    ///
-    /// ## Behavior
-    ///
-    /// - If a Unix timestamp is present then no action is taken.
-    /// - Date completeness is checked in this priority order:
-    ///   1. Calendar date (`year`, `month`, `day`)
-    ///   2. Ordinal date (`year`, `day_of_year`)
-    ///   3. ISO week date (`iso_week_year`, `iso_week`)
-    /// - If `allow_partial_date` is `true`, missing month/day are defaulted to `1`.
-    ///
-    /// ## Errors
-    ///
-    /// - [`DtErrKind::Incomplete`] if no valid date representation is present.
+    /// Full YMD always completes (even with mixed week fields). Full ISO week
+    /// (`iso_wk_yr`+`iso_wk`) completes and defaults weekday to Monday. With
+    /// `allow_partial_date`, missing `iso_wk` is set to 1 when `iso_wk_yr` is
+    /// present; calendar month/day default to 1 only when there is no ISO week
+    /// fragment at all.
     #[inline(always)]
     pub fn finish(&mut self, allow_partial_date: bool) -> Result<(), DtErr> {
-        if self.timestamp.is_none() {
-            let has_calendar_date = if allow_partial_date {
-                if self.day.is_none() {
-                    self.day = Some(1);
-                }
-                if self.mo.is_none() {
-                    self.mo = Some(1);
-                }
-                self.yr.is_some()
-            } else {
-                self.yr.is_some() && self.mo.is_some() && self.day.is_some()
-            };
-            let has_ordinal_date = self.yr.is_some() && self.day_of_yr.is_some();
-            let has_iso_week_date = self.iso_wk_yr.is_some() && self.iso_wk.is_some();
-
-            if !has_calendar_date && !has_ordinal_date && !has_iso_week_date {
-                return Err(an_err!(DtErrKind::Incomplete));
-            }
+        if self.timestamp.is_some() {
+            return Ok(());
         }
 
-        Ok(())
+        // Resolve ISO week in one pass; `pure_calendar` means no ISO fields left hanging.
+        let pure_calendar = match (self.iso_wk_yr.is_some(), self.iso_wk.is_some()) {
+            (true, true) => {
+                self.wkday.get_or_insert(Weekday::Monday);
+                return Ok(());
+            }
+            (true, false) if allow_partial_date => {
+                self.iso_wk = Some(1);
+                self.wkday.get_or_insert(Weekday::Monday);
+                return Ok(());
+            }
+            (false, false) => true,
+            _ => false, // incomplete ISO fragment
+        };
+
+        if self.yr.is_none() {
+            return Err(an_err!(DtErrKind::Incomplete));
+        }
+
+        if self.mo.is_some() && self.day.is_some() {
+            return Ok(());
+        }
+        if self.day_of_yr.is_some() {
+            return Ok(());
+        }
+        if self.wk_sun.is_some() {
+            self.wkday.get_or_insert(Weekday::Sunday);
+            return Ok(());
+        }
+        if self.wk_mon.is_some() {
+            self.wkday.get_or_insert(Weekday::Monday);
+            return Ok(());
+        }
+
+        if allow_partial_date && pure_calendar {
+            self.day.get_or_insert(1);
+            self.mo.get_or_insert(1);
+            return Ok(());
+        }
+
+        Err(an_err!(DtErrKind::Incomplete))
     }
 
     /// Shared parser for decimal input.

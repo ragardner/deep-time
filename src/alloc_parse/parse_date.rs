@@ -2,8 +2,7 @@ use crate::{
     ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, Lang, Mode, Order, OrderFirst,
     ParseCfg, STRTIME_SIZE, an_err, classify_date, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
-    generate_unambiguous_candidates, is_week_date_missing_weekday,
-    parse_pure_numeric_unix_timestamp, parse_syslog_no_year, parse_week_date_no_weekday,
+    generate_unambiguous_candidates, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
     parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
 };
 use alloc::borrow::Cow;
@@ -23,8 +22,8 @@ impl Dt {
     ///
     /// ## Parameters
     ///
-    /// - `s`: The string to parse. Must be non-empty and no longer than 255 bytes. Empty strings or overly
-    ///   long inputs return an error.
+    /// - `s`: The string to parse. Must be non-empty and no longer than [`STRTIME_SIZE`] bytes. Empty strings
+    ///   or overly long inputs return an error.
     /// - `opts`: The [`ParseCfg`] to use. Pass `&ParseCfg::DEFAULT` (or `&ParseCfg::default()`)
     ///   to use the standard smart defaults. You can create a `ParseCfg` once and pass `&cfg`
     ///   on every call for consistent behavior and to avoid repeated construction.
@@ -95,7 +94,7 @@ impl Dt {
     ///
     /// - **ISO 8601** and variants: `2024-03-15`, `2024-03-15T14:30:00Z`, `2024-03-15T14:30:00+01:00[Europe/Paris]`
     /// - **Named dates** (in supported languages): `15 March 2024`, `15 mars 2024`, `15. März 2024`, `15 de marzo de 2024`
-    /// - **Week dates**: `2024-W15`, `2024-W15-3`, `2024W153` (missing weekday defaults to Monday)
+    /// - **Week dates**: `2024-W15`, `2024-W15-3`, `2024W15` (missing weekday defaults to Monday)
     /// - **Syslog-style** (no year): `Mar  5 10:23:45` (year inferred from `ref_time`)
     /// - **Relative expressions**: `tomorrow`, `in 3 days`, `2 weeks ago`
     /// - **12-hour time**: `2:30 PM`, `14:30:45.123`
@@ -199,7 +198,7 @@ impl Dt {
             Cow::Borrowed(s)
         };
 
-        let classification = match classify_date(&lowered, lang, ref_time) {
+        let classification = match classify_date(&lowered, lang, ref_time, opts.relative) {
             Ok(ClassifiedDate::Parsed(time_point)) => return Ok(time_point),
             Ok(ClassifiedDate::Cls(c)) => c,
             Err(e) => {
@@ -207,6 +206,8 @@ impl Dt {
                 return Err(an_err!(" {}", s => e));
             }
         };
+
+        // eprintln!("{:?}", classification);
 
         // let xx = &classification.date;
         // if xx != trimmed {
@@ -268,12 +269,6 @@ impl Dt {
             return Ok(dt);
         }
 
-        if is_week_date_missing_weekday(&classification) {
-            // std::eprintln!("IS WEEK DATE MISSING WEEKDAY: {:?}", s);
-            if let Some(dt) = parse_week_date_no_weekday(&classification, lang, ref_time) {
-                return Ok(dt);
-            }
-        }
         if let Some(dt) = try_unambiguous(normalized, &classification) {
             return Ok(dt);
         }
@@ -456,7 +451,7 @@ where
 
     // for fmt in formats.into_iter() {
     //     eprintln!("TRYING FMT: {}", fmt);
-    //     dt = match Dt::from_str(s, &fmt, true, true, false) {
+    //     dt = match Dt::from_str(s, &fmt, true, true, true) {
     //         Ok(parsed) => Some(parsed),
     //         Err(e) => {
     //             eprintln!("  FAILED with: {:?}", e);
@@ -473,7 +468,7 @@ where
     // dt
     formats
         .into_iter()
-        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, false).ok())
+        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, true).ok())
 }
 
 #[inline]

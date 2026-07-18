@@ -110,37 +110,39 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
             i += 1;
         }
 
-        // Now attach the week core (we already know it is always -W%V-%u after the year)
         for b in builders {
-            for year_fmt in ["%Y", "%G"] {
-                let mut new_b = b.clone();
-                new_b.pieces.push(year_fmt);
+            let mut new_b = b.clone();
+            // ISO week-year; calendar %Y leaves iso_wk_yr unset and can "succeed"
+            // as a bare year when trailing week digits are left unmatched.
+            new_b.pieces.push("%G");
 
-                // Walk only the tokens that come after the year we stopped at.
-                // This automatically respects whatever separators the user actually typed.
-                for token in &tokens[i + 1..] {
-                    match token {
-                        Token::W => new_b.pieces.push("W"),
-                        Token::Digits(2) => new_b.pieces.push("%V"), // week of year
-                        Token::Digits(1) => new_b.pieces.push("%u"), // weekday (1-7)
-                        Token::Hyphen => new_b.pieces.push("-"),
-                        Token::Space => new_b.pieces.push(" "),
-                        Token::Dot => new_b.pieces.push("."),
-                        Token::Slash => new_b.pieces.push("/"),
-                        _ => {} // ignore anything unexpected (should never happen for week dates)
+            for token in &tokens[i + 1..] {
+                match token {
+                    Token::W => new_b.pieces.push("W"),
+                    Token::Digits(2) => new_b.pieces.push("%V"),
+                    Token::Digits(1) => new_b.pieces.push("%u"),
+                    // Compact "2024W114" = week 11 + weekday 4
+                    Token::Digits(3) => {
+                        new_b.pieces.push("%V");
+                        new_b.pieces.push("%u");
                     }
+                    Token::Hyphen => new_b.pieces.push("-"),
+                    Token::Space => new_b.pieces.push(" "),
+                    Token::Dot => new_b.pieces.push("."),
+                    Token::Slash => new_b.pieces.push("/"),
+                    _ => {}
                 }
+            }
 
-                let date_part: String = new_b.pieces.concat();
+            let date_part: String = new_b.pieces.concat();
 
-                if !class.has_time {
-                    candidates.push(date_part.clone());
-                }
-                for suf in &suffixes {
-                    let mut s = date_part.clone();
-                    s.push_str(suf);
-                    candidates.push(s);
-                }
+            if !class.has_time {
+                candidates.push(date_part.clone());
+            }
+            for suf in &suffixes {
+                let mut s = date_part.clone();
+                s.push_str(suf);
+                candidates.push(s);
             }
         }
         return candidates;
@@ -161,6 +163,11 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
         seen_year: false,
     }];
     let no_named = class.num_named == 0;
+    // Named "Feb 29 2023": 2-digit group is the day when a 4-digit year exists —
+    // do not also try %y (that yields "%b %y %Y" → day defaults to 1).
+    let has_4digit_group = tokens
+        .iter()
+        .any(|t| matches!(t, Token::Digits(n) if *n >= 4));
 
     for &token in tokens {
         match token {
@@ -217,8 +224,9 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                 }
                 builders = new_builders;
             }
-            Token::Digits(_) => {
+            Token::Digits(n) => {
                 let mut new_builders = Vec::with_capacity(builders.len() * 4);
+                let digit_len = n;
                 for b in builders {
                     let all_opts: &[&'static str] = token.to_fmt_year_first();
                     let add_spec = |spec: &'static str, new_builders: &mut Vec<Builder>| {
@@ -258,7 +266,10 @@ pub(crate) fn generate_unambiguous_candidates(class: &DateClassification) -> Vec
                         } else {
                             matches!(spec, "%d" | "%e" | "%-d" | "%_d") && !b.seen_day
                                 || matches!(spec, "%m" | "%-m" | "%_m") && !b.seen_month
-                                || matches!(spec, "%Y" | "%G" | "%y" | "%C") && !b.seen_year
+                                || matches!(spec, "%Y" | "%G" | "%y" | "%C")
+                                    && !b.seen_year
+                                    // Prefer day for 1–2 digit groups when a 4-digit year exists.
+                                    && !(digit_len <= 2 && has_4digit_group)
                                 || spec == "%j" && !b.seen_day && !b.seen_year
                                 || matches!(spec, "%V" | "%U" | "%W")
                                     && !b.seen_year

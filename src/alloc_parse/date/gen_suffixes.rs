@@ -43,7 +43,7 @@ fn build_zone_suffix(class: &DateClassification) -> String {
     let mut i = 0usize;
 
     // Skip leading main time token
-    if i < tokens.len() && is_main_time_token(tokens[i]) {
+    if i < tokens.len() && tokens[i].is_time() {
         i += 1;
     }
 
@@ -104,8 +104,34 @@ fn build_time_bases(class: &DateClassification) -> Vec<String> {
         return Vec::new();
     }
 
-    // Derive has_seconds and time_sep directly from the first token
-    let first = tokens[0];
+    // Prefer the main time token (skip leading Space if present).
+    let first = tokens
+        .iter()
+        .copied()
+        .find(|t| t.is_time())
+        .unwrap_or(tokens[0]);
+
+    let connector_str = class.connector.as_str();
+    let is_12h = class.has_ampm;
+
+    // Bare hour only (`2PM`, `2 PM`) — no minutes.
+    if first == Token::H {
+        let hours: &[&str] = if is_12h {
+            &["%I", "%l"]
+        } else {
+            &["%H", "%k", "%I", "%l"]
+        };
+        return hours
+            .iter()
+            .map(|h| {
+                let mut base = String::with_capacity(8);
+                base.push_str(connector_str);
+                base.push_str(h);
+                base
+            })
+            .collect();
+    }
+
     let (has_seconds, time_sep) = match first {
         Token::Hms | Token::HmsColon => (true, if first == Token::HmsColon { ":" } else { "" }),
         Token::Hm | Token::HmColon => (false, if first == Token::HmColon { ":" } else { "" }),
@@ -113,9 +139,7 @@ fn build_time_bases(class: &DateClassification) -> Vec<String> {
     };
 
     let mut suffixes: Vec<String> = Vec::with_capacity(4);
-    let connector_str = class.connector.as_str();
     let use_fractional = class.has_fractional;
-    let is_12h = class.has_ampm;
 
     let include_extra = !use_fractional && class.is_pure_numeric;
 
@@ -194,9 +218,4 @@ fn build_time_bases(class: &DateClassification) -> Vec<String> {
         }
     }
     suffixes
-}
-
-#[inline]
-fn is_main_time_token(t: Token) -> bool {
-    matches!(t, Token::Hms | Token::HmsColon | Token::Hm | Token::HmColon)
 }

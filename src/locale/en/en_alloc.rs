@@ -83,6 +83,30 @@ pub const EN_WORDS: &[Word] = &[
     Word::new("today", "today", Token::Today, Cat::UnamRel),
     Word::new("tomorrow", "tomorrow", Token::Tomorrow, Cat::UnamRel),
     Word::new("yesterday", "yesterday", Token::Yesterday, Cat::UnamRel),
+    Word::new(
+        "day after tomorrow",
+        "2 days",
+        Token::TwoDaysLater,
+        Cat::UnamRel,
+    ),
+    Word::new(
+        "the day after tomorrow",
+        "2 days",
+        Token::TwoDaysLater,
+        Cat::UnamRel,
+    ),
+    Word::new(
+        "day before yesterday",
+        "-2 days",
+        Token::TwoDaysBefore,
+        Cat::UnamRel,
+    ),
+    Word::new(
+        "the day before yesterday",
+        "-2 days",
+        Token::TwoDaysBefore,
+        Cat::UnamRel,
+    ),
     Word::new("ago", "ago", Token::Ago, Cat::Ago),
     // Seconds
     Word::new("seconds", "s", Token::Second, Cat::UnamRel),

@@ -33,7 +33,7 @@ pub(crate) fn parse_syslog_no_year(input: &str, lang: Lang, ref_time: &Option<Dt
         let s = alloc::format!("{} {}", year, input);
 
         // Pass the same reference time down to classify_date
-        let cls = classify_date(&s, lang, ref_time).ok()?;
+        let cls = classify_date(&s, lang, ref_time, false).ok()?;
 
         match cls {
             ClassifiedDate::Cls(c) => try_compatible_formats(&s, generate_syslog_candidates(&c)),

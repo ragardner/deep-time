@@ -201,6 +201,39 @@ mod tests {
     }
 
     #[test]
+    fn test_from_str_h_mm_duration() {
+        use deep_time::Scale;
+        assert_eq!(
+            Dt::from_str_h_mm_duration("72:30").unwrap().to_sec(),
+            72 * 3600 + 30 * 60
+        );
+        assert_eq!(
+            Dt::from_str_h_mm_duration("24:00").unwrap().to_sec(),
+            24 * 3600
+        );
+        assert_eq!(
+            Dt::from_str_h_mm_duration("0:45").unwrap().to_sec(),
+            45 * 60
+        );
+        assert_eq!(
+            Dt::from_str_h_mm_duration("14:23:59").unwrap().to_sec(),
+            14 * 3600 + 23 * 60 + 59
+        );
+        let half = Dt::from_str_h_mm_duration("0:00:01.5").unwrap();
+        assert_eq!(half.to_sec(), 1);
+        assert_eq!(half.attos % ATTOS_PER_SEC_I128, ATTOS_PER_SEC_I128 / 2);
+        let neg = Dt::from_str_h_mm_duration("-72:00").unwrap();
+        assert_eq!(neg.to_sec(), -72 * 3600);
+        assert_eq!(neg.scale, Scale::TAI);
+        assert_eq!(neg.target, Scale::TAI);
+        assert!(Dt::from_str_h_mm_duration("72").is_err());
+        assert!(Dt::from_str_h_mm_duration("24:60").is_err());
+        assert!(Dt::from_str_h_mm_duration("1:00:60").is_err());
+        assert!(Dt::from_str_h_mm_duration("72:30.5").is_err());
+        assert!(Dt::from_str_h_mm_duration("1:07:54:30").is_err());
+    }
+
+    #[test]
     fn test_to_str_b_media_duration_expected_values() {
         assert_eq!(
             dt!(45 * ATTOS_PER_SEC_I128)

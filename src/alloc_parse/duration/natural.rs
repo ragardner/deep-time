@@ -449,6 +449,7 @@ impl Dt {
         let mut target_second: Option<u8> = None;
         let mut target_attos: u64 = 0;
         let mut is_pm = false;
+        let mut has_meridiem = false;
         let mut scale: Scale = Scale::UTC;
         let mut pending_bare_unit: Option<Token> = None;
         let mut direction: Direction = Direction::None;
@@ -795,8 +796,14 @@ impl Dt {
                             pending_unit_attos = Some(1_000_000_000_000_000 * ATTOS_PER_SEC_I128);
                         }
                     }
-                    Token::Am => is_pm = false,
-                    Token::Pm => is_pm = true,
+                    Token::Am => {
+                        is_pm = false;
+                        has_meridiem = true;
+                    }
+                    Token::Pm => {
+                        is_pm = true;
+                        has_meridiem = true;
+                    }
 
                     Token::Scale => {
                         if let Some(scl) = Scale::from_abbrev(norm) {
@@ -822,7 +829,12 @@ impl Dt {
                     target_minute = Some(m);
                     target_second = Some(sec);
                     target_attos = attos;
+                } else if let Ok(mil) = Dt::h_mm_duration_attos(part) {
+                    // Ops H:MM / H:MM:SS when not a civil clock.
+                    total_attos =
+                        total_attos.saturating_add(mil.saturating_mul(overall_multiplier));
                 } else if let Some(num) = extract_number(part, &mut part_chars, *d) {
+                    // Last resort (lenient): may still glue digits across ':'.
                     if let Some(unit_attos) = pending_unit_attos.take() {
                         add_to_total(&mut total_attos, num, unit_attos, overall_multiplier);
                     } else {
@@ -837,11 +849,19 @@ impl Dt {
             add_to_total(&mut total_attos, num, AS_PER_DAY, overall_multiplier);
         }
 
+        // Bare unit with no number: "week", "a week", "in a week", "week ago".
+        // ("a"/"in" are ignored noise; the unit was parked in pending_bare_unit.)
+        // Default quantity is 1; direction from next/last/ago/this selects sign.
         if let Some(unit) = pending_bare_unit.take() {
+            let n = match direction {
+                Direction::Past => -1,
+                Direction::Present => 0,
+                Direction::Future | Direction::None => 1,
+            };
             match unit {
-                Token::Week => week_offset = 0,
-                Token::Month => month_offset = 0,
-                Token::Year => year_offset = 0,
+                Token::Week => week_offset = n,
+                Token::Month => month_offset = n,
+                Token::Year => year_offset = n,
                 _ => {}
             }
         }
@@ -963,17 +983,20 @@ impl Dt {
 
         // Time of day
         if target_hour.is_some()
-            || is_pm
+            || has_meridiem
             || target_minute.is_some()
             || target_second.is_some()
             || target_attos != 0
         {
             let mut h = target_hour.unwrap_or(0);
-            if is_pm && h < 12 {
-                h += 12;
-            }
-            if !is_pm && h == 12 {
-                h = 0;
+            // 12-hour clock only when AM/PM was explicit; bare "12:00" is noon.
+            if has_meridiem {
+                if is_pm && h < 12 {
+                    h += 12;
+                }
+                if !is_pm && h == 12 {
+                    h = 0;
+                }
             }
 
             let ymd = result.to_ymd();

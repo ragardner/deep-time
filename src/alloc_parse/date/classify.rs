@@ -51,6 +51,7 @@ pub(crate) fn classify_date(
     s: &str,
     lang: Lang,
     ref_time: &Option<Dt>,
+    relative: bool,
 ) -> Result<ClassifiedDate, DtErr> {
     let Some(LangData {
         map: term_map,
@@ -66,6 +67,7 @@ pub(crate) fn classify_date(
     let mut has_ampm = false;
     let mut has_fractional = false;
     let mut has_w = false;
+    let mut has_named_mo = false;
     let mut is_pure_numeric = true;
     let mut num_named = 0u8;
     let mut num_colon = 0u8;
@@ -98,12 +100,13 @@ pub(crate) fn classify_date(
 
     for (part, range) in splitter {
         if let Some((norm_part, token)) = term_map.get(part) {
-            if (token.is_relative() || token.is_duration()) && !currently.after_date() {
+            if relative && ((token.is_relative() || token.is_duration()) && !currently.after_date())
+            {
                 return send_to_relative_parser(s, lang, ref_time);
             }
 
             match token {
-                Token::DayShort | Token::DayLong | Token::MonthShort | Token::MonthLong => {
+                Token::DayShort | Token::DayLong => {
                     if currently == IndexIn::PreDate {
                         currently = IndexIn::Date;
                     }
@@ -111,14 +114,50 @@ pub(crate) fn classify_date(
                     date_tokens.push(*token);
                     date_norm.push_str(norm_part);
                 }
+                Token::MonthShort | Token::MonthLong => {
+                    if currently == IndexIn::PreDate {
+                        currently = IndexIn::Date;
+                    }
+                    has_named_mo = true;
+                    num_named += 1;
+                    date_tokens.push(*token);
+                    date_norm.push_str(norm_part);
+                }
                 Token::Am | Token::Pm => {
-                    if matches!(currently, IndexIn::Time | IndexIn::PostDate)
-                        && is_ampm_standalone(s, range.start, range.end)
-                    {
-                        has_ampm = true;
-                        currently = IndexIn::PostDate;
-                        date_norm.push_str(norm_part);
-                        time_tokens.push(*token);
+                    if is_ampm_standalone(s, range.start, range.end) {
+                        // Colon clocks are already Time/PostDate. Bare "9am" /
+                        // "12 pm" is still Date — same bare-hour idea as the
+                        // ':' reclassify below (one short digit group, no month).
+                        if currently == IndexIn::Date {
+                            if in_digit_run && digit_run_len > 0 {
+                                date_tokens.push(Token::Digits(digit_run_len));
+                                in_digit_run = false;
+                                digit_run_len = 0;
+                            }
+                            // "9 am": space may sit after the hour token.
+                            while matches!(date_tokens.last(), Some(Token::Space)) {
+                                date_tokens.pop();
+                            }
+                            if !has_named_mo
+                                && num_date_digit_groups == 1
+                                && num_date_digits <= 2
+                                && matches!(date_tokens.last(), Some(Token::Digits(1 | 2)))
+                                && let Some(Token::Digits(n)) = date_tokens.pop()
+                            {
+                                num_date_digits = num_date_digits.saturating_sub(n as u8);
+                                num_date_digit_groups = num_date_digit_groups.saturating_sub(1);
+                                time_digits = n as u8;
+                                has_time = true;
+                                time_tokens.push(Token::H);
+                                currently = IndexIn::Time;
+                            }
+                        }
+                        if matches!(currently, IndexIn::Time | IndexIn::PostDate) {
+                            has_ampm = true;
+                            currently = IndexIn::PostDate;
+                            date_norm.push_str(norm_part);
+                            time_tokens.push(*token);
+                        }
                     }
                 }
                 Token::Iana => {
@@ -164,40 +203,60 @@ pub(crate) fn classify_date(
 
                     match currently {
                         IndexIn::Date => {
-                            num_date_digits += 1;
-                            if !in_digit_run {
-                                in_digit_run = true;
-                                num_date_digit_groups += 1;
-                            }
-                            digit_run_len += 1;
-
-                            if match num_date_digits {
-                                8.. => idx + 1 < part_len && part_chars[idx + 1].is_numeric(),
-                                6 => {
-                                    is_pure_numeric
-                                        && match bytes_len {
-                                            10 | 12 => {
-                                                idx + 1 < part_len
-                                                    && part_chars[idx + 1].is_numeric()
-                                                    && num_date_digit_groups == 1
-                                            }
-                                            11 => {
-                                                idx + 3 < part_len
-                                                    && part_chars[idx + 1].is_numeric()
-                                                    && part_chars[idx + 2].is_numeric()
-                                                    && part_chars[idx + 3] == ':'
-                                            }
-                                            _ => false,
-                                        }
-                                }
-                                _ => false,
-                            } {
-                                if digit_run_len > 0 {
-                                    date_tokens.push(Token::Digits(digit_run_len));
-                                    in_digit_run = false;
-                                    digit_run_len = 0;
-                                }
+                            // Starting a *new* digit group after a complete-looking
+                            // date → treat it as the hour (e.g. "14 Mar 2024 2PM").
+                            //
+                            // Must NOT fire mid-run on the year, only when a fresh
+                            // group begins after we already have enough date structure.
+                            //   - named month + ≥2 digit groups (day + year)
+                            //   - or ≥3 numeric digit groups (Y-M-D / D-M-Y / …)
+                            if !in_digit_run
+                                && ((has_named_mo && num_date_digit_groups >= 2)
+                                    || num_date_digit_groups >= 3)
+                            {
                                 currently = IndexIn::Time;
+                                if connector == ConnectorType::None {
+                                    connector = ConnectorType::Space;
+                                }
+                                time_digits += 1;
+                                in_time_digit_run = true;
+                                time_digit_run_len = 1;
+                            } else {
+                                num_date_digits += 1;
+                                if !in_digit_run {
+                                    in_digit_run = true;
+                                    num_date_digit_groups += 1;
+                                }
+                                digit_run_len += 1;
+
+                                if match num_date_digits {
+                                    8.. => idx + 1 < part_len && part_chars[idx + 1].is_numeric(),
+                                    6 => {
+                                        is_pure_numeric
+                                            && match bytes_len {
+                                                10 | 12 => {
+                                                    idx + 1 < part_len
+                                                        && part_chars[idx + 1].is_numeric()
+                                                        && num_date_digit_groups == 1
+                                                }
+                                                11 => {
+                                                    idx + 3 < part_len
+                                                        && part_chars[idx + 1].is_numeric()
+                                                        && part_chars[idx + 2].is_numeric()
+                                                        && part_chars[idx + 3] == ':'
+                                                }
+                                                _ => false,
+                                            }
+                                    }
+                                    _ => false,
+                                } {
+                                    if digit_run_len > 0 {
+                                        date_tokens.push(Token::Digits(digit_run_len));
+                                        in_digit_run = false;
+                                        digit_run_len = 0;
+                                    }
+                                    currently = IndexIn::Time;
+                                }
                             }
                         }
                         IndexIn::Time | IndexIn::Fraction | IndexIn::Offset => {
@@ -226,7 +285,14 @@ pub(crate) fn classify_date(
                     }
 
                     if in_time_digit_run && time_digit_run_len > 0 {
-                        if *ch != ':' {
+                        // Time-field separators do not end the time value:
+                        // `:` and French `h` in `14h30` (normalised to `:` below).
+                        let is_time_field_sep = *ch == ':'
+                            || (*ch == 'h'
+                                && date_norm.ends_with_ascii_digit()
+                                && idx + 1 < part_len
+                                && part_chars[idx + 1].is_numeric());
+                        if !is_time_field_sep {
                             if currently == IndexIn::Offset {
                                 let tok = if offset_colons > 0 {
                                     Token::OffsetColon
@@ -234,20 +300,28 @@ pub(crate) fn classify_date(
                                     Token::Offset
                                 };
                                 time_tokens.push(tok);
-                            } else if currently == IndexIn::Time && time_digits >= 3 {
-                                let tok = if time_digits > 4 {
-                                    if time_colons > 0 {
-                                        Token::HmsColon
+                            } else if currently == IndexIn::Time && time_digits > 0 {
+                                // Bare hour (`2PM`): 1–2 digits and no ':'.
+                                // With ':', 1–2 digits alone are not a full Hm/Hms
+                                // token — leave has_time false so inputs like
+                                // `14:00` can still go to the relative parser.
+                                if time_digits > 2 || time_colons == 0 {
+                                    let tok = if time_digits <= 2 {
+                                        Token::H
+                                    } else if time_digits > 4 {
+                                        if time_colons > 0 {
+                                            Token::HmsColon
+                                        } else {
+                                            Token::Hms
+                                        }
+                                    } else if time_colons > 0 {
+                                        Token::HmColon
                                     } else {
-                                        Token::Hms
-                                    }
-                                } else if time_colons > 0 {
-                                    Token::HmColon
-                                } else {
-                                    Token::Hm
-                                };
-                                has_time = true;
-                                time_tokens.push(tok);
+                                        Token::Hm
+                                    };
+                                    has_time = true;
+                                    time_tokens.push(tok);
+                                }
                             }
                         }
                         in_time_digit_run = false;
@@ -270,44 +344,51 @@ pub(crate) fn classify_date(
                                         connector = ConnectorType::Space;
                                     } else if idx + 1 < part_len && part_chars[idx + 1].is_numeric()
                                     {
-                                        let start = idx + 1;
-                                        following_digits = 1;
-                                        for c in &part_chars[(start + 1)..part_len.min(start + 6)] {
-                                            if !c.is_numeric() {
-                                                break;
-                                            }
-                                            following_digits += 1;
-                                        }
-                                        let j = start + following_digits;
-                                        if (following_digits == 1 || following_digits == 2)
-                                            && j < part_len
-                                            && matches!(part_chars[j], ':' | '+' | '[' | 'h')
-                                        {
+                                        if has_named_mo && num_date_digit_groups >= 2 {
                                             currently = IndexIn::Time;
                                             connector = ConnectorType::Space;
-                                        } else if following_digits >= 4 {
-                                            match num_date_digit_groups {
-                                                3.. => {
-                                                    currently = IndexIn::Time;
-                                                    connector = ConnectorType::Space;
+                                        } else {
+                                            let start = idx + 1;
+                                            following_digits = 1;
+                                            for c in
+                                                &part_chars[(start + 1)..part_len.min(start + 6)]
+                                            {
+                                                if !c.is_numeric() {
+                                                    break;
                                                 }
-                                                2.. => {
-                                                    if num_named >= 1
-                                                        && num_comma
-                                                            + num_dot
-                                                            + num_hyphen
-                                                            + num_slash
-                                                            == 0
-                                                    {
+                                                following_digits += 1;
+                                            }
+                                            let j = start + following_digits;
+                                            if (following_digits == 1 || following_digits == 2)
+                                                && j < part_len
+                                                && matches!(part_chars[j], ':' | '+' | '[' | 'h')
+                                            {
+                                                currently = IndexIn::Time;
+                                                connector = ConnectorType::Space;
+                                            } else if following_digits >= 4 {
+                                                match num_date_digit_groups {
+                                                    3.. => {
                                                         currently = IndexIn::Time;
                                                         connector = ConnectorType::Space;
                                                     }
+                                                    2.. => {
+                                                        if num_named >= 1
+                                                            && num_comma
+                                                                + num_dot
+                                                                + num_hyphen
+                                                                + num_slash
+                                                                == 0
+                                                        {
+                                                            currently = IndexIn::Time;
+                                                            connector = ConnectorType::Space;
+                                                        }
+                                                    }
+                                                    1.. if num_date_digits >= 6 && in_digit_run => {
+                                                        currently = IndexIn::Time;
+                                                        connector = ConnectorType::Space;
+                                                    }
+                                                    _ => {}
                                                 }
-                                                1.. if num_date_digits >= 6 && in_digit_run => {
-                                                    currently = IndexIn::Time;
-                                                    connector = ConnectorType::Space;
-                                                }
-                                                _ => {}
                                             }
                                         }
                                     }
@@ -333,8 +414,24 @@ pub(crate) fn classify_date(
 
                             match currently {
                                 IndexIn::Date => {
+                                    // Bare clock "12:00:00" / "9:30": only 1–2 digits
+                                    // seen so far are the hour, not a date field.
+                                    if num_date_digits <= 2
+                                        && num_date_digit_groups == 1
+                                        && !has_named_mo
+                                        && matches!(date_tokens.last(), Some(Token::Digits(1 | 2)))
+                                        && let Some(Token::Digits(n)) = date_tokens.pop()
+                                    {
+                                        num_date_digits = num_date_digits.saturating_sub(n as u8);
+                                        num_date_digit_groups =
+                                            num_date_digit_groups.saturating_sub(1);
+                                        time_digits = n as u8;
+                                        in_time_digit_run = true;
+                                        time_digit_run_len = n;
+                                    }
                                     connector = ConnectorType::Colon;
                                     currently = IndexIn::Time;
+                                    time_colons += 1;
                                 }
                                 IndexIn::Time => time_colons += 1,
                                 IndexIn::Offset => offset_colons += 1,
@@ -499,8 +596,13 @@ pub(crate) fn classify_date(
                         Token::Offset
                     };
                     time_tokens.push(tok);
-                } else if currently == IndexIn::Time && time_digits >= 3 {
-                    let tok = if time_digits > 4 {
+                } else if currently == IndexIn::Time
+                    && time_digits > 0
+                    && (time_digits > 2 || time_colons == 0)
+                {
+                    let tok = if time_digits <= 2 {
+                        Token::H
+                    } else if time_digits > 4 {
                         if time_colons > 0 {
                             Token::HmsColon
                         } else {
@@ -534,7 +636,7 @@ pub(crate) fn classify_date(
         date_tokens.pop();
     }
 
-    if tokens_look_like_relative(&date_tokens, has_ampm, num_colon, has_time) {
+    if relative && tokens_look_like_relative(&date_tokens, has_ampm, num_colon, has_time) {
         return send_to_relative_parser(s, lang, ref_time);
     }
 
@@ -546,8 +648,13 @@ pub(crate) fn classify_date(
                 Token::Offset
             };
             time_tokens.push(tok);
-        } else if currently == IndexIn::Time && time_digits >= 3 {
-            let tok = if time_digits > 4 {
+        } else if currently == IndexIn::Time
+            && time_digits > 0
+            && (time_digits > 2 || time_colons == 0)
+        {
+            let tok = if time_digits <= 2 {
+                Token::H
+            } else if time_digits > 4 {
                 if time_colons > 0 {
                     Token::HmsColon
                 } else {
@@ -638,7 +745,9 @@ fn tokens_look_like_relative(
         if num_colon == 0 {
             return false;
         }
-        return !has_time;
+        // Time token with no date left = pure clock (after hour was shifted
+        // off the date side). Still relative. Date tokens + time = absolute.
+        return !has_time || date_tokens.is_empty();
     }
     true
 }
