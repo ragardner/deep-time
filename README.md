@@ -13,9 +13,9 @@ A fully featured and high performance **Rust date and time library** with attose
 - Auto-parsers for [datetimes](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats, relative dates and multiple languages, requires the `parse` feature
 - No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd)
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
-- Fast [ISO](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_iso) parser
+- Fast multi-format [string](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str) parser (ISO-like civil, SEC/JD/MJD, …)
 - [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb-hi` can be enabled which provides the ERFA TDB model
-- [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str)
+- [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_strptime)
 - [Strftime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
 - First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature
 - To and from all kinds of inputs and outputs, functions mostly prefixed with `to` and `from`, available on the library's types, see the main time types functions: [Dt](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html). Including [JD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jd_f), [MJD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_mjd_f), [Unix](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_unix), [NTP](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ntp), etc.
@@ -76,7 +76,7 @@ fn main() -> Result<(), DtErr> {
     let _ = Dt::from_str_parse("next Monday at 14:00", &ParseCfg::DEFAULT)?;
 
     // Fast ISO parsing with time scale and no alloc output
-    let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;
+    let dt = Dt::from_str("2000-01-01T12:00:00 TAI")?;
     let buf_str: BufStr<512> = dt.to_str_b_iso8601();
     assert_eq!("2000-01-01T12:00:00+00:00", buf_str.as_str());
 
@@ -148,7 +148,7 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(ymd.day(), 29);
 
     // Timezone-aware calendar math (respects DST transitions, requires jiff-tz feature)
-    let dt = Dt::from_str_iso("2025-03-30T00:30:00Z")?; // Just before London DST start
+    let dt = Dt::from_str("2025-03-30T00:30:00Z")?; // Just before London DST start
 
     // Normal (naive) addition — ignores DST rules
     let normal = dt.add_hours(1);
@@ -241,7 +241,7 @@ You only need this if you are building a binary crate in a `no_std` environment 
 
 #### Notes
 
-- The fast ISO 8601 parser (`from_str_iso`) works **without** the `parse` feature.
+- The fast multi-format string parser (`Dt::from_str` / `Parts::from_str`) works **without** the `parse` feature.
 - Multi-language **parsing** requires the `parse` feature, but multi-language **formatting** works without it.
 - The `.parse()` implementation on `Dt` automatically chooses between the full parser and the ISO parser depending on enabled features.
 
@@ -265,12 +265,12 @@ cargo bench --bench perf --features "parse hifitime std jiff-tz"
 
 | deep-time vs jiff                                        | Time      | vs Jiff 0.2.31 |
 |----------------------------------------------------------|-----------|----------------|
-| `Parts::from_str_iso` vs `DateTime::parse`               | 20.1 ns   | 27.2% faster   |
-| `Parts::from_str` vs `BrokenDownTime::parse`             | 36.3 ns   | 8.8% faster    |
-| `Dt::from_str` vs `BrokenDownTime::parse`+`to_zoned`     | 194 ns    | 20.8% slower   |
+| `Dt::from_str` vs `DateTime::parse`                      | 47.6 ns   | 73.6% slower   |
+| `Parts::from_strptime` vs `BrokenDownTime::parse`        | 36.3 ns   | 8.8% faster    |
+| `Dt::from_strptime` vs `BrokenDownTime::parse`+`to_zoned`| 194 ns    | 20.8% slower   |
 | `Dt::to_str_b` vs `DateTime::strftime`+`.to_string`      | 75.2 ns   | 23.0% slower   |
 | `Dt::to_str` vs `DateTime::strftime`+`.to_string`        | 87.7 ns   | 43.4% slower   |
-| `Dt::from_str_parse`                                     | 542 ns    | —              |
+| `Dt::from_str_parse`                                     | 517 ns    | —              |
 
 #### Time Scale Conversions
 

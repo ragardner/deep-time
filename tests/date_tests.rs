@@ -391,8 +391,8 @@ mod tests {
             .target(Scale::UTC)
             .to_str("%Y-%m-%dT%H:%M:%S%.f", Lang::En)
             .unwrap();
-        let res_tp1 = Dt::from_str(&xp1, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
-        let res_tp2 = Dt::from_str(&xp2, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
+        let res_tp1 = Dt::from_strptime(&xp1, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
+        let res_tp2 = Dt::from_strptime(&xp2, "%Y-%m-%dT%H:%M:%S%.f", true, true, false).unwrap();
         assert!(tp1 == res_tp1);
         assert!(tp2 == res_tp2);
     }

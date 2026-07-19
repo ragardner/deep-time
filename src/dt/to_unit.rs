@@ -438,7 +438,7 @@ impl Dt {
     ///
     /// assert_eq!(Dt::ZERO.to_hours_f(), 0.0);
     ///
-    /// let dt = Dt::from_str_iso("2000-01-01 10:30:00 TAI").unwrap();
+    /// let dt = Dt::from_str("2000-01-01 10:30:00 TAI").unwrap();
     /// assert_eq!(dt.to_hours_f(), -1.5);
     /// ```
     pub const fn to_hours_f(&self) -> Real {

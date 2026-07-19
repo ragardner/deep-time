@@ -8,7 +8,9 @@ impl Parts {
     ///
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
-    /// - Round-trips with `Dt::from_str_iso` / `Parts::from_str_iso`.
+    /// - Round-trips with
+    ///   [`Dt::from_str`](../struct.Dt.html#method.from_str) /
+    ///   [`Parts::from_str`](#method.from_str).
     #[inline]
     pub fn to_str_ccsds(&self) -> Result<String, DtErr> {
         self.to_dt()?.to_str_ccsds()

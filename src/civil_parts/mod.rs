@@ -9,7 +9,7 @@
 
 mod from_bin_ccsds;
 mod from_str;
-mod from_str_iso;
+mod from_strptime;
 mod to_bin_ccsds;
 mod to_deep_time;
 
@@ -36,7 +36,7 @@ use crate::{BufStr, Scale};
 /// ```rust
 /// use deep_time::civil_parts::Parts;
 ///
-/// let parts = Parts::from_str_iso("2024-06-20T14:30:00Z").unwrap();
+/// let parts = Parts::from_str("2024-06-20T14:30:00Z").unwrap();
 ///
 /// // now you can convert to whichever type you need
 /// let dt = parts.to_dt().unwrap();

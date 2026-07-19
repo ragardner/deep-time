@@ -14,7 +14,7 @@ mod tests {
 
     #[test]
     fn print_stuff() {
-        // let dt = Dt::from_str_iso("Wed, 16 Apr 2025 14:30:45 GMT").unwrap();
+        // let dt = Dt::from_str("Wed, 16 Apr 2025 14:30:45 GMT").unwrap();
         // eprintln!("{}", dt.to_ymd());
         // let dt = Dt::from_str_parse("Wed, 16 Apr 2025 14:30:45 GMT", &ParseCfg::DEFAULT).unwrap();
         // eprintln!("{}", dt.to_ymd());

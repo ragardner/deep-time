@@ -12,7 +12,7 @@ mod tests {
 
     #[test]
     fn test_unix_epoch_1970() {
-        let parsed = Parts::from_str("%s", "0", false, false, false).unwrap();
+        let parsed = Parts::from_strptime("%s", "0", false, false, false).unwrap();
         let tp = parsed.to_dt().unwrap();
 
         let jd = jd_tt(&tp);
@@ -27,7 +27,7 @@ mod tests {
 
     #[test]
     fn test_j2000_noon_via_unix_timestamp() {
-        let parsed = Parts::from_str("%s", "946728000", false, false, false).unwrap();
+        let parsed = Parts::from_strptime("%s", "946728000", false, false, false).unwrap();
         let tp = parsed.to_dt().unwrap();
 
         let jd = jd_tt(&tp);
@@ -42,7 +42,7 @@ mod tests {
     #[test]
     fn test_ymd_and_ordinal_produce_identical_time_point() {
         // YMD and ordinal (%j) paths both set `.year` and produce the exact same instant.
-        let ymd = Parts::from_str(
+        let ymd = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%.f",
             "2024-04-15 14:30:45.123456789",
             false,
@@ -53,7 +53,7 @@ mod tests {
         .to_dt()
         .unwrap();
 
-        let ordinal = Parts::from_str(
+        let ordinal = Parts::from_strptime(
             "%Y-%j %H:%M:%S.%.f",
             "2024-106 14:30:45.123456789",
             false,
@@ -70,7 +70,7 @@ mod tests {
 
     #[test]
     fn test_fractional_seconds_are_preserved() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%9N",
             "2024-04-15 00:00:00.123456789",
             false,
@@ -90,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_jd_tt_fractional_seconds_preserved() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%9N",
             "2024-04-15 00:00:00.123456789",
             false,
@@ -149,11 +149,11 @@ mod tests {
     fn test_pure_iso_week_date() {
         // Pure ISO week date (%G/%V/%u) is now fully supported in to_time_point
         // via the iso_week_year + iso_week + weekday path (no regular .year required).
-        let parsed = Parts::from_str("%G-W%V-%u", "2024-W16-1", false, false, false).unwrap();
+        let parsed = Parts::from_strptime("%G-W%V-%u", "2024-W16-1", false, false, false).unwrap();
         let tp_iso = parsed.to_dt().unwrap();
 
         // 2024-W16-1 is Monday, April 15, 2024
-        let ymd = Parts::from_str("%Y-%m-%d", "2024-04-15", false, false, false)
+        let ymd = Parts::from_strptime("%Y-%m-%d", "2024-04-15", false, false, false)
             .unwrap()
             .to_dt()
             .unwrap();

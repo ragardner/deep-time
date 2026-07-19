@@ -229,7 +229,7 @@ fn main() {
         // ── Parts ───────────────────────
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
-            let x = Parts::from_str(FORMAT, INPUT, true, true, false).unwrap();
+            let x = Parts::from_strptime(FORMAT, INPUT, true, true, false).unwrap();
         }
         strptime_timeparts_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
     }
@@ -255,13 +255,13 @@ fn main() {
         // ── deep_time with %Q directive ─────────────────
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
-            let x = Dt::from_str(INPUT, FORMAT_WITH_Q, true, true, false).unwrap();
+            let x = Dt::from_strptime(INPUT, FORMAT_WITH_Q, true, true, false).unwrap();
         }
         zoned_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Datetime strptime — Dt::from_str vs Jiff to_datetime strtime
+    // Datetime strptime — Dt::from_strptime vs Jiff to_datetime strtime
     // ═══════════════════════════════════════════════════════════════════════
     {
         const ITERATIONS: usize = 10_000_000; // lowered because IANA zone resolution is heavier
@@ -282,13 +282,13 @@ fn main() {
 
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
-            let x = Dt::from_str(INPUT, FORMAT, true, true, false).unwrap();
+            let x = Dt::from_strptime(INPUT, FORMAT, true, true, false).unwrap();
         }
         let _dt_strptime_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Datetime parse — Dt::from_str_iso vs Jiff parse::DateTime
+    // Datetime parse — Dt::from_str vs Jiff parse::DateTime
     // ═══════════════════════════════════════════════════════════════════════
     {
         const ITERATIONS: usize = 20_000_000;
@@ -306,7 +306,7 @@ fn main() {
         // ── deep_time CCSDS/ISO dedicated parser ───────────────────────
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
-            let x = Dt::from_str_iso(INPUT).unwrap();
+            let x = Dt::from_str(INPUT).unwrap();
         }
         iso_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
     }
@@ -319,7 +319,7 @@ fn main() {
         const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
         // ── deep_time (BufStr, no alloc) ───────────────────────
-        let dt = Dt::from_str("2024-03-14T00:00:00", FORMAT, true, true, false).unwrap();
+        let dt = Dt::from_strptime("2024-03-14T00:00:00", FORMAT, true, true, false).unwrap();
 
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
@@ -405,17 +405,17 @@ fn main() {
         "-".repeat(COL_VS),
     );
     perf_row(
-        "`Dt::from_str_iso` vs `DateTime::parse`",
+        "`Dt::from_str` vs `DateTime::parse`",
         &fmt_ns(iso_deep_ns),
         &pct(iso_deep_ns, iso_jiff_ns),
     );
     perf_row(
-        "`Parts::from_str` vs `BrokenDownTime::parse`",
+        "`Parts::from_strptime` vs `BrokenDownTime::parse`",
         &fmt_ns(strptime_timeparts_ns),
         &pct(strptime_timeparts_ns, strptime_jiff_ns),
     );
     perf_row(
-        "`Dt::from_str` vs `BrokenDownTime::parse`+`to_zoned`",
+        "`Dt::from_strptime` vs `BrokenDownTime::parse`+`to_zoned`",
         &fmt_ns(zoned_deep_ns),
         &pct(zoned_deep_ns, zoned_jiff_ns),
     );

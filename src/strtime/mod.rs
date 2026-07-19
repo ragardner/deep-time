@@ -139,7 +139,7 @@ impl StrPTimeFmt {
     /// Parses a date/time string using this pre-validated format.
     ///
     /// The four boolean flags control lenient parsing behavior — see
-    /// [`Dt::from_str`](../struct.Dt.html#method.from_str) for full documentation.
+    /// [`Dt::from_strptime`](../struct.Dt.html#method.from_strptime) for full documentation.
     ///
     /// ## Parameters
     ///
@@ -152,8 +152,8 @@ impl StrPTimeFmt {
     ///
     /// - [`DtErrKind::InvalidBytes`] if `as_str()` fails to convert the stored format
     ///   back to `&str`.
-    /// - Any error returned by `Parts::from_str` followed by `Parts::to_dt` (see the
-    ///   error documentation on [`Dt::from_str`] for the complete list).
+    /// - Any error returned by `Parts::from_strptime` followed by `Parts::to_dt` (see the
+    ///   error documentation on [`Dt::from_strptime`] for the complete list).
     ///
     /// ## Examples
     ///
@@ -170,7 +170,7 @@ impl StrPTimeFmt {
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<Dt, DtErr> {
-        Parts::from_str(
+        Parts::from_strptime(
             self.as_str()?,
             s,
             inp_can_end_before_fmt,
@@ -217,7 +217,7 @@ impl StrPTimeFmt {
         allow_partial_date: bool,
         lang: Lang,
     ) -> Result<alloc::string::String, DtErr> {
-        Parts::from_str(
+        Parts::from_strptime(
             self.as_str()?,
             s,
             inp_can_end_before_fmt,
@@ -259,7 +259,7 @@ impl StrPTimeFmt {
         allow_partial_date: bool,
         lang: Lang,
     ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
-        Parts::from_str(
+        Parts::from_strptime(
             self.as_str()?,
             s,
             inp_can_end_before_fmt,

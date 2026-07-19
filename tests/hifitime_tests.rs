@@ -371,7 +371,7 @@ mod tests {
         ];
 
         for case in cases {
-            let dt = Dt::from_str_iso(&case).unwrap();
+            let dt = Dt::from_str(&case).unwrap();
 
             let epoch = dt.to_hifitime_epoch();
             assert_eq!(case, epoch.to_string());
@@ -381,7 +381,7 @@ mod tests {
         }
 
         let case = "1999-01-01T12:00:00.123456789 TT".to_string();
-        let dt = Dt::from_str_iso(&case).unwrap();
+        let dt = Dt::from_str(&case).unwrap();
         let epoch = dt.to_hifitime_epoch();
         let roundtrip = Dt::from_hifitime_epoch(epoch);
         assert_eq!(dt, roundtrip);

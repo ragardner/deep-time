@@ -8,7 +8,7 @@ pub(crate) fn parse_yyddd(s: &str) -> Option<Dt> {
     if s.len() != 5 {
         return None;
     }
-    let parsed = Parts::from_str("%y%j", s, true, true, false).ok()?;
+    let parsed = Parts::from_strptime("%y%j", s, true, true, false).ok()?;
     if let Some(y) = parsed.yr
         && !LEGACY_ORDINAL_YEAR_RANGE.contains(&(y as i32))
     {
@@ -20,7 +20,7 @@ pub(crate) fn parse_yyddd(s: &str) -> Option<Dt> {
 /// 7-digit legacy ordinal: YYYYDDD (only accepted inside LEGACY_ORDINAL_YEAR_RANGE)
 #[inline]
 pub(crate) fn parse_yyyyjjj(s: &str) -> Option<Dt> {
-    let parsed = Parts::from_str("%Y%j", s, true, true, false).ok()?;
+    let parsed = Parts::from_strptime("%Y%j", s, true, true, false).ok()?;
     if let Some(y) = parsed.yr
         && !LEGACY_ORDINAL_YEAR_RANGE.contains(&(y as i32))
     {

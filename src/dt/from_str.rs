@@ -23,7 +23,7 @@ impl FromStr for Dt {
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, DtErr> {
-        Self::from_str_iso(s)
+        Self::from_str(s)
     }
 }
 
@@ -39,7 +39,7 @@ impl Dt {
     ///
     /// - When the `parse` feature is enabled: uses the smart auto-parser.
     /// - When the `parse` feature is disabled: falls back to the fast ISO 8601 parser
-    ///   ([`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)).
+    ///   ([`Dt::from_str`](../struct.Dt.html#method.from_str)).
     ///
     /// ## Examples
     ///
@@ -62,7 +62,7 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse)
-    /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
+    /// - [`Dt::from_str`](../struct.Dt.html#method.from_str)
     #[inline(always)]
     pub fn parse(s: &str) -> Result<Self, DtErr> {
         #[cfg(feature = "parse")]
@@ -71,7 +71,7 @@ impl Dt {
         }
         #[cfg(not(feature = "parse"))]
         {
-            Self::from_str_iso(s)
+            Self::from_str(s)
         }
     }
 
@@ -255,14 +255,14 @@ impl Dt {
     ///
     /// The error kind is available via [`DtErr::kind()`].
     #[inline(always)]
-    pub fn from_str(
+    pub fn from_strptime(
         s: &str,
         fmt: &str,
         inp_can_end_before_fmt: bool,
         fmt_can_end_before_inp: bool,
         allow_partial_date: bool,
     ) -> Result<Dt, DtErr> {
-        Parts::from_str(
+        Parts::from_strptime(
             fmt,
             s,
             inp_can_end_before_fmt,
@@ -307,7 +307,7 @@ impl Dt {
 
     /// Fast, no-alloc parser for common ISO-like and epoch-style date-time strings.
     ///
-    /// Equivalent to [`Parts::from_str_iso`](../civil_parts/struct.Parts.html#method.from_str_iso)
+    /// Equivalent to [`Parts::from_str`](../civil_parts/struct.Parts.html#method.from_str)
     /// followed by [`Parts::to_dt`](../civil_parts/struct.Parts.html#method.to_dt). The
     /// formats and lenience rules below are those of the `Parts` parser; this method
     /// then resolves components to a single instant.
@@ -439,11 +439,12 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Parts::from_str_iso`](../civil_parts/struct.Parts.html#method.from_str_iso) —
+    /// - [`Parts::from_str`](../civil_parts/struct.Parts.html#method.from_str) —
     ///   same string parse without resolving to a [`Dt`].
+    #[allow(clippy::should_implement_trait)]
     #[inline(always)]
-    pub fn from_str_iso(s: &str) -> Result<Self, DtErr> {
-        Parts::from_str_iso(s)?.to_dt()
+    pub fn from_str(s: &str) -> Result<Self, DtErr> {
+        Parts::from_str(s)?.to_dt()
     }
 
     /// Parses a decimal seconds string (with optional fractional part) as seconds

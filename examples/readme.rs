@@ -38,7 +38,7 @@ fn main() -> Result<(), DtErr> {
     let _ = Dt::from_str_parse("next Monday at 14:00", &ParseCfg::DEFAULT)?;
 
     // Fast ISO parsing with time scale and no alloc output
-    let dt = Dt::from_str_iso("2000-01-01T12:00:00 TAI")?;
+    let dt = Dt::from_str("2000-01-01T12:00:00 TAI")?;
     let buf_str: BufStr<512> = dt.to_str_b_iso8601();
     assert_eq!("2000-01-01T12:00:00+00:00", buf_str.as_str());
 
@@ -110,7 +110,7 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(ymd.day(), 29);
 
     // Timezone-aware calendar math (respects DST transitions, requires jiff-tz feature)
-    let dt = Dt::from_str_iso("2025-03-30T00:30:00Z")?; // Just before London DST start
+    let dt = Dt::from_str("2025-03-30T00:30:00Z")?; // Just before London DST start
 
     // Normal (naive) addition — ignores DST rules
     let normal = dt.add_hours(1);

@@ -9,7 +9,7 @@ mod tests {
 
     #[test]
     fn test_basic_ymd_hms() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S",
             "2024-04-15 14:30:45",
             false,
@@ -29,7 +29,7 @@ mod tests {
 
     #[test]
     fn test_unix_timestamp_direct() {
-        let parsed = Parts::from_str("%s", "1713191445", false, false, false).unwrap();
+        let parsed = Parts::from_strptime("%s", "1713191445", false, false, false).unwrap();
         assert_eq!(
             parsed.timestamp,
             Some(Timestamp {
@@ -42,7 +42,7 @@ mod tests {
     #[test]
     fn test_timestamps() {
         // 0 should be the J2000 noon epoch
-        let parsed = Parts::from_str("%J", "0", false, false, false).unwrap();
+        let parsed = Parts::from_strptime("%J", "0", false, false, false).unwrap();
         assert_eq!(
             parsed.timestamp,
             Some(Timestamp {
@@ -52,15 +52,15 @@ mod tests {
         );
 
         // Same instant as the known 946728000 via %s
-        let via_s = Parts::from_str("%s", "946728000", false, false, false).unwrap();
-        let via_j = Parts::from_str("%J", "0", false, false, false).unwrap();
+        let via_s = Parts::from_strptime("%s", "946728000", false, false, false).unwrap();
+        let via_j = Parts::from_strptime("%J", "0", false, false, false).unwrap();
         assert_eq!(via_s.to_dt().unwrap(), via_j.to_dt().unwrap());
 
         let zero_tai = from_sec_f!(-0.5);
         let zero_tdb = Dt::new(zero_tai.to_attos(), Scale::TDB, Scale::TDB).to_tai();
 
-        let p_tai = Dt::from_str("-0.5 TAI", "%J %L", false, false, false).unwrap();
-        let p_tdb = Dt::from_str("-0.5 TDB", "%J %L", false, false, false).unwrap();
+        let p_tai = Dt::from_strptime("-0.5 TAI", "%J %L", false, false, false).unwrap();
+        let p_tdb = Dt::from_strptime("-0.5 TDB", "%J %L", false, false, false).unwrap();
 
         assert_eq!(zero_tai, p_tai);
         assert_eq!(zero_tdb, p_tdb);
@@ -75,7 +75,7 @@ mod tests {
     #[test]
     fn test_fractional_seconds_various_widths() {
         // Explicit literal dot + %.f (the parser's optional-dot logic works reliably this way)
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%.f",
             "2024-04-15 14:30:45.123456789",
             false,
@@ -86,7 +86,7 @@ mod tests {
         let expected = 123_456_789u64 * 10u64.pow(9);
         assert_eq!(parsed.attos, expected);
 
-        let parsed2 = Parts::from_str(
+        let parsed2 = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%3N",
             "2024-04-15 14:30:45.123",
             false,
@@ -100,7 +100,7 @@ mod tests {
 
     #[test]
     fn test_leap_second_flag() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S",
             "2024-04-15 23:59:60",
             false,
@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_iana_name_parsing() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -132,13 +132,14 @@ mod tests {
     fn test_fixed_offset_parsing() {
         // Space before %z is required by the current parser (no literal character between %T and %z otherwise)
         let parsed =
-            Parts::from_str("%F %T %z", "2024-04-15 10:30:00 -0400", false, false, false).unwrap();
+            Parts::from_strptime("%F %T %z", "2024-04-15 10:30:00 -0400", false, false, false)
+                .unwrap();
         assert_eq!(parsed.offset, Some(Offset::Fixed(-14400)));
     }
 
     #[test]
     fn test_fixed_offset_with_colons() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%F %T %:z",
             "2024-04-15 10:30:00 -04:00",
             false,
@@ -152,7 +153,7 @@ mod tests {
     #[test]
     fn test_shortcut_formats() {
         let parsed_f =
-            Parts::from_str("%F %T", "2024-04-15 14:30:45", false, false, false).unwrap();
+            Parts::from_strptime("%F %T", "2024-04-15 14:30:45", false, false, false).unwrap();
         assert_eq!(parsed_f.yr, Some(2024));
         assert_eq!(parsed_f.mo, Some(4));
         assert_eq!(parsed_f.day, Some(15));
@@ -160,7 +161,7 @@ mod tests {
         assert_eq!(parsed_f.min, 30);
         assert_eq!(parsed_f.sec, 45);
 
-        let parsed_d = Parts::from_str("%D", "04/15/24", false, false, false).unwrap();
+        let parsed_d = Parts::from_strptime("%D", "04/15/24", false, false, false).unwrap();
         assert_eq!(parsed_d.yr, Some(2024));
         assert_eq!(parsed_d.mo, Some(4));
         assert_eq!(parsed_d.day, Some(15));
@@ -168,7 +169,7 @@ mod tests {
 
     #[test]
     fn test_month_and_weekday_names() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%B %d, %Y (%A)",
             "April 15, 2024 (Monday)",
             false,
@@ -184,26 +185,27 @@ mod tests {
 
     #[test]
     fn test_strict_mode_trailing_chars() {
-        let err = Parts::from_str("%Y-%m-%d", "2024-04-15 extra", false, false, false).unwrap_err();
+        let err =
+            Parts::from_strptime("%Y-%m-%d", "2024-04-15 extra", false, false, false).unwrap_err();
         assert!(matches!(err.kind(), DtErrKind::TrailingCharacters));
     }
 
     #[test]
     fn test_incomplete_date_error() {
-        let err = Parts::from_str("%H:%M:%S", "14:30:45", false, false, false).unwrap_err();
+        let err = Parts::from_strptime("%H:%M:%S", "14:30:45", false, false, false).unwrap_err();
         assert!(matches!(err.kind(), DtErrKind::Incomplete));
     }
 
     #[test]
     fn test_ordinal_date() {
-        let parsed = Parts::from_str("%Y-%j", "2024-106", false, false, false).unwrap();
+        let parsed = Parts::from_strptime("%Y-%j", "2024-106", false, false, false).unwrap();
         assert_eq!(parsed.yr, Some(2024));
         assert_eq!(parsed.day_of_yr, Some(106));
     }
 
     #[test]
     fn test_iso_week_date() {
-        let parsed = Parts::from_str("%G-W%V-%u", "2024-W16-2", false, false, false).unwrap();
+        let parsed = Parts::from_strptime("%G-W%V-%u", "2024-W16-2", false, false, false).unwrap();
         assert_eq!(parsed.iso_wk_yr, Some(2024));
         assert_eq!(parsed.iso_wk, Some(16));
         assert_eq!(parsed.wkday, Some(Weekday::Tuesday));
@@ -212,23 +214,23 @@ mod tests {
     #[test]
     fn test_format_extensions_numeric_padding() {
         // Default zero padding
-        let p = Parts::from_str("%04Y-%02m-%02d", "2024-04-05", false, false, false).unwrap();
+        let p = Parts::from_strptime("%04Y-%02m-%02d", "2024-04-05", false, false, false).unwrap();
         assert_eq!(p.yr, Some(2024));
         assert_eq!(p.mo, Some(4));
         assert_eq!(p.day, Some(5));
 
         // Explicit zero padding
-        let p = Parts::from_str("%0Y-%0m-%0d", "2024-04-05", false, false, false).unwrap();
+        let p = Parts::from_strptime("%0Y-%0m-%0d", "2024-04-05", false, false, false).unwrap();
         assert_eq!(p.yr, Some(2024));
 
         // Space padding
-        let p = Parts::from_str("%_4Y-%_2m-%_2d", " 2024- 4- 5", false, false, false).unwrap();
+        let p = Parts::from_strptime("%_4Y-%_2m-%_2d", " 2024- 4- 5", false, false, false).unwrap();
         assert_eq!(p.yr, Some(2024));
         assert_eq!(p.mo, Some(4));
         assert_eq!(p.day, Some(5));
 
         // No padding / left justify
-        let p = Parts::from_str("%-Y-%-m-%-d", "2024-4-5", false, false, false).unwrap();
+        let p = Parts::from_strptime("%-Y-%-m-%-d", "2024-4-5", false, false, false).unwrap();
         assert_eq!(p.yr, Some(2024));
         assert_eq!(p.mo, Some(4));
         assert_eq!(p.day, Some(5));
@@ -236,14 +238,14 @@ mod tests {
 
     #[test]
     fn test_format_extensions_width_on_year() {
-        let p = Parts::from_str("%6Y-%m-%d", "2024-04-05", false, false, false).unwrap();
+        let p = Parts::from_strptime("%6Y-%m-%d", "2024-04-05", false, false, false).unwrap();
         assert_eq!(p.yr, Some(2024));
     }
 
     #[test]
     fn test_format_extensions_fractional() {
         // Width before f/N (no dot in format)
-        let p = Parts::from_str(
+        let p = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%3f",
             "2024-04-15 14:30:45.123",
             false,
@@ -253,7 +255,7 @@ mod tests {
         .unwrap();
         assert_eq!(p.attos, 123_000_000_000_000_000); // 123 * 10^15
 
-        let p = Parts::from_str(
+        let p = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%6N",
             "2024-04-15 14:30:45.123456",
             false,
@@ -264,7 +266,7 @@ mod tests {
         assert_eq!(p.attos, 123_456_000_000_000_000);
 
         // %.f style (dot in format)
-        let p = Parts::from_str(
+        let p = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%.3f",
             "2024-04-15 14:30:45.123",
             false,
@@ -278,17 +280,17 @@ mod tests {
     #[test]
     fn test_format_extensions_timezone_colons() {
         // %z (no colons)
-        let p =
-            Parts::from_str("%F %T%z", "2024-04-15 10:30:00-0400", false, false, false).unwrap();
+        let p = Parts::from_strptime("%F %T%z", "2024-04-15 10:30:00-0400", false, false, false)
+            .unwrap();
         assert_eq!(p.offset, Some(Offset::Fixed(-14400)));
 
         // %:z (one colon)
-        let p =
-            Parts::from_str("%F %T%:z", "2024-04-15 10:30:00-04:00", false, false, false).unwrap();
+        let p = Parts::from_strptime("%F %T%:z", "2024-04-15 10:30:00-04:00", false, false, false)
+            .unwrap();
         assert_eq!(p.offset, Some(Offset::Fixed(-14400)));
 
         // %::z (two colons)
-        let p = Parts::from_str(
+        let p = Parts::from_strptime(
             "%F %T%::z",
             "2024-04-15 10:30:00-04:00:00",
             false,
@@ -299,7 +301,7 @@ mod tests {
         assert_eq!(p.offset, Some(Offset::Fixed(-14400)));
 
         // %:::z (three colons) — more flexible
-        let p = Parts::from_str(
+        let p = Parts::from_strptime(
             "%F %T%:::z",
             "2024-04-15 10:30:00-04:00:00",
             false,
@@ -312,7 +314,7 @@ mod tests {
 
     #[test]
     fn test_format_extensions_combined() {
-        let p = Parts::from_str(
+        let p = Parts::from_strptime(
             "%-4Y-%_2m-%02dT%3H:%M%:z",
             "2024- 4-05T 14:30-04:00",
             false,
@@ -332,7 +334,7 @@ mod tests {
     fn test_format_extensions_case_flags() {
         // These are accepted by the extension parser.
         // Current name parsers are case-insensitive, so behavior is the same as without the flag.
-        let p = Parts::from_str("%^A", "MONDAY", false, false, false);
+        let p = Parts::from_strptime("%^A", "MONDAY", false, false, false);
         // This may currently return Incomplete depending on your from_str wrapper.
         // If it does, we can adjust. For now we just check it doesn't panic on unknown directive.
         if let Ok(p) = p {
@@ -343,19 +345,19 @@ mod tests {
     #[test]
     fn test_format_extensions_errors() {
         // Flag without directive
-        let err = Parts::from_str("%_", " ", false, false, false);
+        let err = Parts::from_strptime("%_", " ", false, false, false);
         assert!(err.is_err());
 
         // Width without directive
-        let err = Parts::from_str("%3", "123", false, false, false);
+        let err = Parts::from_strptime("%3", "123", false, false, false);
         assert!(err.is_err());
 
         // Colons without directive
-        let err = Parts::from_str("%:", ":", false, false, false);
+        let err = Parts::from_strptime("%:", ":", false, false, false);
         assert!(err.is_err());
 
         // Too many colons on %z (Jiff rejects > 3)
-        let err = Parts::from_str(
+        let err = Parts::from_strptime(
             "%F %T%::::z",
             "2024-04-15 10:30:00-04:00",
             false,
@@ -371,11 +373,11 @@ mod tests {
         // Only the first 18 digits contribute; further digits are left unconsumed
         // (same as an explicit %18f).
         let nineteen = "2024-04-15 14:30:45.1234567890123456789";
-        let err =
-            Parts::from_str("%Y-%m-%d %H:%M:%S.%.f", nineteen, false, false, true).unwrap_err();
+        let err = Parts::from_strptime("%Y-%m-%d %H:%M:%S.%.f", nineteen, false, false, true)
+            .unwrap_err();
         assert_eq!(err.kind(), DtErrKind::TrailingCharacters);
 
-        let p = Parts::from_str(
+        let p = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S.%.f",
             nineteen,
             false,
@@ -386,7 +388,8 @@ mod tests {
         assert_eq!(p.attos, 123_456_789_012_345_678);
 
         let eighteen = "2024-04-15 14:30:45.123456789012345678";
-        let p = Parts::from_str("%Y-%m-%d %H:%M:%S.%.f", eighteen, false, false, true).unwrap();
+        let p =
+            Parts::from_strptime("%Y-%m-%d %H:%M:%S.%.f", eighteen, false, false, true).unwrap();
         assert_eq!(p.attos, 123_456_789_012_345_678);
     }
 
@@ -395,7 +398,7 @@ mod tests {
         use deep_time::civil_parts::{Epoch, Timestamp};
 
         // i64::MIN was previously unparseable (magnitude did not fit in i64 before negate).
-        let p = Parts::from_str("%s", &i64::MIN.to_string(), false, true, true).unwrap();
+        let p = Parts::from_strptime("%s", &i64::MIN.to_string(), false, true, true).unwrap();
         assert_eq!(
             p.timestamp,
             Some(Timestamp {
@@ -404,7 +407,7 @@ mod tests {
             })
         );
 
-        let p = Parts::from_str("%s", &i64::MAX.to_string(), false, true, true).unwrap();
+        let p = Parts::from_strptime("%s", &i64::MAX.to_string(), false, true, true).unwrap();
         assert_eq!(
             p.timestamp,
             Some(Timestamp {
@@ -413,17 +416,18 @@ mod tests {
             })
         );
 
-        let p = Parts::from_str("%*", &i64::MIN.to_string(), false, true, true).unwrap();
+        let p = Parts::from_strptime("%*", &i64::MIN.to_string(), false, true, true).unwrap();
         assert_eq!(p.yr, Some(i64::MIN));
 
-        let p = Parts::from_str("%*", &i64::MAX.to_string(), false, true, true).unwrap();
+        let p = Parts::from_strptime("%*", &i64::MAX.to_string(), false, true, true).unwrap();
         assert_eq!(p.yr, Some(i64::MAX));
 
         // One past each end of the range
-        let err = Parts::from_str("%s", "9223372036854775808", false, true, true).unwrap_err();
+        let err = Parts::from_strptime("%s", "9223372036854775808", false, true, true).unwrap_err();
         assert_eq!(err.kind(), DtErrKind::ExpectedTimestamp);
 
-        let err = Parts::from_str("%s", "-9223372036854775809", false, true, true).unwrap_err();
+        let err =
+            Parts::from_strptime("%s", "-9223372036854775809", false, true, true).unwrap_err();
         assert_eq!(err.kind(), DtErrKind::ExpectedTimestamp);
     }
 }

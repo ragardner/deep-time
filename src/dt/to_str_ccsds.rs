@@ -7,8 +7,8 @@ impl Dt {
     /// - Example: **`"2025-04-17T14:30:45.123456789Z"`**
     /// - Uses `T` separator and trailing `Z`.
     /// - Fractional seconds are trimmed (no trailing zeros, no dot if zero).
-    /// - Round-trip with [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso) /
-    ///   [`Parts::from_str_iso`](../civil_parts/struct.Parts.html#method.from_str_iso).
+    /// - Round-trip with [`Dt::from_str`](../struct.Dt.html#method.from_str) /
+    ///   [`Parts::from_str`](../civil_parts/struct.Parts.html#method.from_str).
     #[inline(always)]
     pub fn to_str_ccsds(&self) -> Result<String, DtErr> {
         self.to_str_ccsds_nf(18)

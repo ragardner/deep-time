@@ -7,7 +7,7 @@ mod tests {
     use jiff::{SignedDuration, Timestamp};
 
     fn parse_ts(fmt: &str, input: &str, strict: bool) -> Result<Timestamp, DtErr> {
-        let parsed = Parts::from_str(fmt, input, strict, false, false)?;
+        let parsed = Parts::from_strptime(fmt, input, strict, false, false)?;
         parsed.to_jiff_timestamp()
     }
 
@@ -38,7 +38,7 @@ mod tests {
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
     fn test_iana_timezone() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%F %T %Q",
             "2024-04-15 10:30:00 America/New_York",
             false,
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_broken_down_time_assembly() {
-        let parsed = Parts::from_str(
+        let parsed = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S %z",
             "2024-04-15 14:30:45 +0200",
             false,
@@ -124,7 +124,7 @@ mod tests {
     #[cfg(feature = "alloc")]
     #[test]
     fn test_broken_down_time_assembly_with_tz() {
-        let mut parsed = Parts::from_str(
+        let mut parsed = Parts::from_strptime(
             "%Y-%m-%d %H:%M:%S %z",
             "2024-04-15 14:30:45 +0200",
             false,

@@ -35,7 +35,7 @@ use deep_time::{Dt, Scale};
 let dt = from_ymd!(2000, 1, 1; 12, on=Scale::TAI);
 assert_eq!(dt, Dt::ZERO);
 
-let dt = Dt::from_str_iso("2000-01-01 12:00 TAI").unwrap();
+let dt = Dt::from_str("2000-01-01 12:00 TAI").unwrap();
 assert_eq!(dt, Dt::ZERO);
 ```
 
@@ -46,7 +46,7 @@ resolution:
 use deep_time::macros::from_ymd;
 use deep_time::{Dt, Lang, Scale};
 
-let mut dt = Dt::from_str_iso("292000000000-1-1").unwrap();
+let mut dt = Dt::from_str("292000000000-1-1").unwrap();
 dt = dt.add_days(4);
 let s = dt.to_str_b("%Y-%m-%dT%H:%M:%S %L", Lang::En).unwrap();
 

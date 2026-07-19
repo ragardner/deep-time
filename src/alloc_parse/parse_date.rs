@@ -181,7 +181,7 @@ impl Dt {
     /// - [`Mode`]
     /// - [`Lang`]
     /// - [`Dt`](../struct.Dt.html)
-    /// - [`Dt::from_str_iso`](../struct.Dt.html#method.from_str_iso)
+    /// - [`Dt::from_str`](../struct.Dt.html#method.from_str)
     pub fn from_str_parse(s: &str, opts: &ParseCfg) -> Result<Dt, DtErr> {
         if s.is_empty() {
             return Err(an_err!(DtErrKind::Empty));
@@ -220,7 +220,7 @@ impl Dt {
         let (mode, date_order) = if let Some(formats) = &opts.parse {
             if !formats.is_empty() {
                 for fmt in formats {
-                    if let Ok(value) = Self::from_str(normalized, fmt, true, true, false) {
+                    if let Ok(value) = Self::from_strptime(normalized, fmt, true, true, false) {
                         return Ok(value);
                     }
                 }
@@ -496,7 +496,7 @@ where
 
     // for fmt in formats.into_iter() {
     //     eprintln!("TRYING FMT: {}", fmt);
-    //     dt = match Dt::from_str(s, &fmt, true, true, true) {
+    //     dt = match Dt::from_strptime(s, &fmt, true, true, true) {
     //         Ok(parsed) => Some(parsed),
     //         Err(e) => {
     //             eprintln!("  FAILED with: {:?}", e);
@@ -513,7 +513,7 @@ where
     // dt
     formats
         .into_iter()
-        .find_map(|fmt| Dt::from_str(s, &fmt, true, true, true).ok())
+        .find_map(|fmt| Dt::from_strptime(s, &fmt, true, true, true).ok())
 }
 
 #[inline]
