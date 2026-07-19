@@ -288,7 +288,7 @@ fn main() {
     }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Datetime parse — Parts::from_str_iso vs Jiff parse::DateTime
+    // Datetime parse — Dt::from_str_iso vs Jiff parse::DateTime
     // ═══════════════════════════════════════════════════════════════════════
     {
         const ITERATIONS: usize = 20_000_000;
@@ -306,7 +306,7 @@ fn main() {
         // ── deep_time CCSDS/ISO dedicated parser ───────────────────────
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
-            let x = Parts::from_str_iso(INPUT).unwrap();
+            let x = Dt::from_str_iso(INPUT).unwrap();
         }
         iso_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
     }
@@ -405,7 +405,7 @@ fn main() {
         "-".repeat(COL_VS),
     );
     perf_row(
-        "`Parts::from_str_iso` vs `DateTime::parse`",
+        "`Dt::from_str_iso` vs `DateTime::parse`",
         &fmt_ns(iso_deep_ns),
         &pct(iso_deep_ns, iso_jiff_ns),
     );

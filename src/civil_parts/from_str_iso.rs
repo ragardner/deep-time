@@ -166,31 +166,12 @@ impl Parts {
                 pos += 1;
             }
         } else {
-            return Err(an_err!(DtErrKind::ExpectedMonth));
+            tp.finish(true)?;
+            return Ok(tp);
         }
 
-        let is_doy = is_doy(bytes, pos, len_);
-
-        if is_doy {
-            // 3-digit day of year
-            let mut doy: u16 = 0;
-            // digit 1
-            if bytes[pos].is_ascii_digit() {
-                doy = doy * 10 + (bytes[pos] - b'0') as u16;
-            }
-            pos += 1;
-            // digit 2
-            if bytes[pos].is_ascii_digit() {
-                doy = doy * 10 + (bytes[pos] - b'0') as u16;
-            }
-            pos += 1;
-            // digit 3
-            if bytes[pos].is_ascii_digit() {
-                doy = doy * 10 + (bytes[pos] - b'0') as u16;
-                pos += 1;
-            } else {
-                return Err(an_err!(DtErrKind::ExpectedDayOfYear));
-            }
+        // Day-of-year (single scan) or calendar month/day
+        if let Some(doy) = try_parse_doy(bytes, &mut pos, len_) {
             tp.day_of_yr = Some(doy);
         } else {
             while pos < len_
@@ -199,12 +180,13 @@ impl Parts {
                 pos += 1;
             }
             if pos >= len_ {
-                return Err(an_err!(DtErrKind::ExpectedMonth));
+                tp.finish(true)?;
+                return Ok(tp);
             }
             // Abbreviated/full month or 1 or 2 digit month
             let mut mo: u8 = 0;
             if bytes[pos].is_ascii_digit() {
-                mo = mo * 10 + (bytes[pos] - b'0');
+                mo = bytes[pos] - b'0';
                 pos += 1;
                 if pos < len_ && bytes[pos].is_ascii_digit() {
                     mo = mo * 10 + (bytes[pos] - b'0');
@@ -214,9 +196,9 @@ impl Parts {
                 mo = parse_month_name_abbrev(&bytes[pos..])
                     .ok_or(an_err!(DtErrKind::InvalidMonthName))?;
             }
-
             if mo == 0 {
-                return Err(an_err!(DtErrKind::ExpectedMonth));
+                tp.finish(true)?;
+                return Ok(tp);
             }
             tp.mo = Some(mo);
 
@@ -228,7 +210,7 @@ impl Parts {
             // 1 or 2 digit day
             let mut day: u8 = 0;
             if pos < len_ && bytes[pos].is_ascii_digit() {
-                day = day * 10 + (bytes[pos] - b'0');
+                day = bytes[pos] - b'0';
                 pos += 1;
                 if pos < len_ && bytes[pos].is_ascii_digit() {
                     day = day * 10 + (bytes[pos] - b'0');
@@ -236,7 +218,8 @@ impl Parts {
                 }
             }
             if day == 0 {
-                return Err(an_err!(DtErrKind::ExpectedDay));
+                tp.finish(true)?;
+                return Ok(tp);
             }
             tp.day = Some(day);
         }
@@ -291,7 +274,7 @@ impl Parts {
                 return Ok(tp);
             }
             // only continue if it's not a + or - and not an alpha
-            if matches!(bytes[pos], b'+' | b'-') || bytes[pos].is_ascii_alphabetic() {
+            if matches!(bytes[pos], b'A'..=b'Z' | b'a'..=b'z' | b'+' | b'-') {
                 break 'time;
             }
 
@@ -329,7 +312,7 @@ impl Parts {
                 return Ok(tp);
             }
             // only continue if it's not a + or - and not an alpha
-            if matches!(bytes[pos], b'+' | b'-') || bytes[pos].is_ascii_alphabetic() {
+            if matches!(bytes[pos], b'A'..=b'Z' | b'a'..=b'z' | b'+' | b'-') {
                 break 'time;
             }
 
@@ -367,7 +350,7 @@ impl Parts {
                 return Ok(tp);
             }
             // only continue if it's not a + or - and not an alpha
-            if matches!(bytes[pos], b'+' | b'-') || bytes[pos].is_ascii_alphabetic() {
+            if matches!(bytes[pos], b'A'..=b'Z' | b'a'..=b'z' | b'+' | b'-') {
                 break 'time;
             }
 
@@ -379,10 +362,10 @@ impl Parts {
                 }
             }
 
+            // Fractional seconds (with or without leading dot)
             if !bytes[pos].is_ascii_digit() {
                 break 'time;
             }
-            // Fractional seconds (with or without leading dot)
             tp.attos = (bytes[pos] - b'0') as u64;
             pos += 1;
             let mut digits_seen: usize = 1;
@@ -510,28 +493,56 @@ impl Parts {
     }
 }
 
+/// Parse a day-of-year field in one pass: three slots
+/// `[digit|space][digit|space][digit]`, not followed by another digit
+/// (so `0401` stays calendar `04-01`, not DOY).
+///
+/// Spaces pad and do not force a ×10 (same as before: `"  9"` → 9, `"1 1"` → 11).
+/// On success advances `*pos` past the field; on failure leaves `*pos` unchanged.
 #[inline(always)]
-fn is_doy(bytes: &[u8], mut pos: usize, len_: usize) -> bool {
-    // index 1
-    if pos == len_ || (!bytes[pos].is_ascii_digit() && !matches!(bytes[pos], b' ')) {
-        return false;
-    } else {
-        pos += 1;
+fn try_parse_doy(bytes: &[u8], pos: &mut usize, len_: usize) -> Option<u16> {
+    let start = *pos;
+    let mut p = start;
+    let mut doy: u16 = 0;
+
+    // slot 1: digit or space
+    if p >= len_ {
+        return None;
     }
-    // index 2
-    if pos == len_ || (!bytes[pos].is_ascii_digit() && !matches!(bytes[pos], b' ')) {
-        return false;
-    } else {
-        pos += 1;
+    let b = bytes[p];
+    if b.is_ascii_digit() {
+        doy = (b - b'0') as u16;
+    } else if b != b' ' {
+        return None;
     }
-    // index 3, must be digit
-    if pos == len_ || !bytes[pos].is_ascii_digit() {
-        return false;
-    } else {
-        pos += 1;
+    p += 1;
+
+    // slot 2: digit or space
+    if p >= len_ {
+        return None;
     }
-    // index 4 end or non digit
-    pos == len_ || !bytes[pos].is_ascii_digit()
+    let b = bytes[p];
+    if b.is_ascii_digit() {
+        doy = doy * 10 + (b - b'0') as u16;
+    } else if b != b' ' {
+        return None;
+    }
+    p += 1;
+
+    // slot 3: must be digit
+    if p >= len_ || !bytes[p].is_ascii_digit() {
+        return None;
+    }
+    doy = doy * 10 + (bytes[p] - b'0') as u16;
+    p += 1;
+
+    // not a 4+ digit run (calendar mo+day glued, etc.)
+    if p < len_ && bytes[p].is_ascii_digit() {
+        return None;
+    }
+
+    *pos = p;
+    Some(doy)
 }
 
 enum Word {
