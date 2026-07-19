@@ -305,91 +305,142 @@ impl Dt {
         StrPTimeFmt::new(strptime_fmt)
     }
 
-    /// Generalized no alloc parser.
+    /// Fast, no-alloc parser for common ISO-like and epoch-style date-time strings.
     ///
-    /// - Only supports ASCII characters.
-    /// - This function is considerably faster than all other string parsing methods if
-    ///   your date-time string is in one of the supported formats.
-    /// - Timezones beyond UTC aliases require the `jiff-tz` feature, which requires `std`.
+    /// Equivalent to [`Parts::from_str_iso`](../civil_parts/struct.Parts.html#method.from_str_iso)
+    /// followed by [`Parts::to_dt`](../civil_parts/struct.Parts.html#method.to_dt). The
+    /// formats and lenience rules below are those of the `Parts` parser; this method
+    /// then resolves components to a single instant.
+    ///
+    /// - Only **ASCII** input is supported.
+    /// - Inputs longer than [`STRTIME_SIZE`](../consts/constant.STRTIME_SIZE.html) are
+    ///   rejected with [`DtErrKind::InvalidLen`](../error/enum.DtErrKind.html#variant.InvalidLen).
+    /// - Leading non-date junk is skipped until a year-like start (`digit` or `±`digit)
+    ///   or a recognized alphabetic prefix (`JD` / `MJD` / `SEC`, case-insensitive).
+    /// - Trailing characters after a successful parse are generally ignored (lenient).
+    /// - Considerably faster than format-string / smart parsers when the input is one
+    ///   of the shapes below.
+    /// - Timezones beyond UTC aliases require the `jiff-tz` or `jiff-tz-bundle` feature
+    ///   (both require `std`).
     ///
     /// ## Returns
     ///
-    /// - If there is NOT a trailing time scale in the input and the format of the input
-    ///   is a typical datetime iso e.g. `2000-01-01T17:00:00` then the time scale is
-    ///   assumed to be `UTC` and the [`Dt`] goes through a `UTC` -> `TAI` conversion
-    ///   (adding leap seconds).
-    /// - If there is NOT a trailing time scale in the input and the format of the input
-    ///   is a seconds count, jd, or mjd then the time scale is assumed to be `TAI` and
-    ///   no conversion happens.
-    /// - If there IS a trailing time scale in the input then the input goes through
-    ///   a time scale conversion (regardless of input format) of the provided time
-    ///   scale -> `TAI`. If the trailing time scale is `TAI` then no conversion occurs.
+    /// Always a [`Dt`] on the **`TAI`** time scale (after any conversion).
     ///
-    /// A [`Dt`] of the `TAI` time scale is returned.
+    /// - No trailing scale + civil ISO-like input (calendar / DOY / ISO week) → interpret
+    ///   as **UTC**, then convert **UTC → TAI** (leap seconds applied).
+    /// - No trailing scale + `SEC` / `JD` / `MJD` → interpret as **TAI** (no conversion).
+    /// - Trailing scale present (e.g. `TDB`, `GPS`) → convert **that scale → TAI**
+    ///   (no-op if the scale is already `TAI`).
+    ///
+    /// The returned value’s `target` reflects the scale assumed before conversion to TAI.
     ///
     /// ## Supported formats
     ///
-    /// An **optional** library time scale right on the end of the input, e.g. `TAI` is
-    /// supported for all of the below formats.
+    /// An **optional** library time scale at the end of the input (e.g. `TAI`) is
+    /// supported for all of the formats below.
     ///
-    /// ### ISO
+    /// ### ISO-like civil date-times
     ///
-    /// #### Format examples:
+    /// #### Format examples
     ///
-    /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
-    /// - **`2024 Apr 18, 14:30:25 [America/New_York]`**. Abbreviated or full month
-    /// - **`2024-109 14:30:25 [America/New_York]`**. Day of year
+    /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**
+    /// - **`2024 Apr 18, 14:30:25 [America/New_York]`** — month abbrev or full English name
+    /// - **`2024-109 14:30:25`** — day of year (`%Y-%j`)
+    /// - **`2024-W11`**, **`2024W11`**, **`2024-W11-4`** — ISO week date (`%G-W%V`, optional
+    ///   weekday `%u` with Monday=`1` … Sunday=`7`)
+    /// - **`2024`**, **`2024-03`**, **`2024 Mar`** — partial dates (missing month/day → `1`)
+    /// - **`2024-04-18T9:3:5.5`**, **`2024-04-18T143025`** — flexible / compact time
     ///
-    /// #### Notes:
+    /// #### Date forms (after an optional sign and year digits)
     ///
-    /// - If a time is included then some kind of date-time separator e.g. `T` or space is
-    ///   required.
-    /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
-    /// - Treats years digits literally as shown, for example `99-01-01` would be
-    ///   the year 99 AD not 1999.
-    /// - Supported **optional** components:
-    ///     - Time components after a date e.g. `T12:00:00`.
-    ///     - Offset after time components or directly after the date e.g. `+0200` or
-    ///       `2023-01-01+05:00`.
-    ///     - Timezone name, **requires square brackets** and **requires `jiff-tz`**
-    ///       feature, after time or offset e.g. `T12:00:00 [America/New_York]`.
+    /// Year digits are taken **literally** (no century window): `99-01-01` is year 99 AD.
+    /// Year overflow during accumulation yields
+    /// [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange).
     ///
-    /// ### Seconds since J2000 Noon
+    /// Exactly one of the following is used:
     ///
-    /// #### Format examples:
+    /// 1. **ISO week** — `W`/`w` immediately after the year (or after a non-letter
+    ///    separator such as `-`): e.g. `2024-W11`, `2024W114`.
+    ///    - Week number required right after `W` (1–2 digits); `0` becomes week `1`.
+    ///    - Optional weekday: `-4` or basic trailing digit `1..=7` (Monday=`1` … Sunday=`7`);
+    ///      if omitted, Monday is used when resolving the instant.
+    ///    - This is **not** strftime `%W` (Monday week-of-year on a calendar year).
+    /// 2. **Day of year** — three slots `[digit|space][digit|space][digit]` not followed
+    ///    by another digit (so `2024-0401` is calendar `04-01`, not DOY). Space padding
+    ///    is allowed (`2024-  9`).
+    /// 3. **Calendar month/day** — numeric month (1–2 digits) or English month name
+    ///    (abbrev or full; matched from the first three letters), then day (1–2 digits).
     ///
-    /// - **`SEC 1234.567 TDB`**.
+    /// **Partial calendar dates** default missing fields to `1` (January / day 1):
     ///
-    /// #### Notes:
+    /// - Year only: `2024`, `2024-` → 1 January.
+    /// - Year-month: `2024-03`, `2024 Mar` → day 1.
+    /// - Explicit zero month/day digits are treated like omitted (`2024-00`, `2024-03-0` → 1).
+    /// - Year or year-month may be followed by time: `2024T12:00`, `2024-03T12:00`.
     ///
-    /// - `sec` prefix is required but case-**in**sensitive.
-    /// - Fractional seconds are optional.
+    /// #### Time (optional)
     ///
-    /// ### JD
+    /// - Usually introduced by `T`/`t`, space, or another non-digit separator; compact
+    ///   glued times after a full day are also accepted (e.g. `…18143025`).
+    /// - Hour, minute, and second are **1 or 2** digits when the field ends at `:` /
+    ///   space (or, for seconds, `.` before a fraction).
+    /// - Compact digit runs without separators are supported (e.g. `T143025`).
+    /// - Fractional seconds: `.` then digits (up to 18 kept as attoseconds; extra digits
+    ///   ignored).
+    /// - Optional trailing `Z`/`z` is consumed.
+    /// - Minutes must be `≤ 59`; seconds must be `≤ 60` (leap second `60` allowed; resolved
+    ///   by [`Parts::to_dt`](../civil_parts/struct.Parts.html#method.to_dt)).
     ///
-    /// #### Format examples:
+    /// #### Optional trailing components
     ///
-    /// - **`JD 2451545.0 TAI`**.
+    /// - **Offset** — `+`/`-` then hours (and optional minutes), with or without `:`:
+    ///   `+02:00`, `-0530`, also allowed directly after the date.
+    /// - **IANA name** — must be in square brackets, e.g. `[America/New_York]`.
+    ///   Resolving non-UTC aliases requires the `jiff-tz` or `jiff-tz-bundle` feature
+    ///   (both require `std`).
+    /// - **Scale** — library abbreviation, e.g. `TAI`, `UTC`, `TDB`, `GPS`.
     ///
-    /// #### Notes:
+    /// ### Seconds since 2000-01-01 noon (library epoch)
     ///
-    /// - `jd` prefix is required but case-**in**sensitive.
-    /// - Fractional days are optional.
+    /// #### Format examples
     ///
-    /// ### MJD
+    /// - **`SEC 1234.567 TDB`**
+    /// - **`sec1234.5 TAI`**
     ///
-    /// #### Format examples:
+    /// #### Notes
     ///
-    /// - **`MJD 51544.5 TT`**.
+    /// - `sec` prefix is required (case-insensitive).
+    /// - Fractional seconds optional.
     ///
-    /// #### Notes:
+    /// ### Julian Date
     ///
-    /// - `mjd` prefix is required but case-**in**sensitive.
-    /// - Fractional days are optional.
+    /// #### Format examples
+    ///
+    /// - **`JD 2451545.0 TAI`**
+    /// - **`JD2451545.25 TT`**
+    ///
+    /// #### Notes
+    ///
+    /// - `jd` prefix is required (case-insensitive).
+    /// - Fractional days optional.
+    ///
+    /// ### Modified Julian Date
+    ///
+    /// #### Format examples
+    ///
+    /// - **`MJD 51544.5 TT`**
+    /// - **`mjd 51544.25`**
+    ///
+    /// #### Notes
+    ///
+    /// - `mjd` prefix is required (case-insensitive).
+    /// - Fractional days optional.
     ///
     /// ## See also
     ///
-    /// - [`Parts::from_str_iso`](../civil_parts/struct.Parts.html#method.from_str_iso)
+    /// - [`Parts::from_str_iso`](../civil_parts/struct.Parts.html#method.from_str_iso) —
+    ///   same string parse without resolving to a [`Dt`].
     #[inline(always)]
     pub fn from_str_iso(s: &str) -> Result<Self, DtErr> {
         Parts::from_str_iso(s)?.to_dt()

@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::civil_parts::{Offset, Parts};
+use deep_time::civil_parts::{Offset, Parts, Weekday};
 use deep_time::consts::{ATTOS_PER_SEC_I128, SEC_PER_DAY_I64};
 use deep_time::macros::as_ms;
 use deep_time::{Dt, DtErrKind, Scale};
@@ -435,7 +435,7 @@ mod from_str_iso_tests {
         assert_eq!(dt.mo, Some(12));
         assert_eq!(dt.day, Some(5));
 
-        // with time (times remain 2-digit)
+        // with time
         let dt = Parts::from_str_iso("2024-1-2T03:04:05").unwrap();
         assert_eq!(dt.mo, Some(1));
         assert_eq!(dt.day, Some(2));
@@ -453,6 +453,128 @@ mod from_str_iso_tests {
         assert_eq!(dt.day, Some(9));
 
         let _dt = Dt::from_str_iso("2024-1-5T12:00:00Z").unwrap();
+    }
+
+    #[test]
+    fn test_iso_partial_dates() {
+        // Year only → 1 Jan
+        let p = Parts::from_str_iso("2024").unwrap();
+        assert_eq!((p.yr, p.mo, p.day), (Some(2024), Some(1), Some(1)));
+
+        let p = Parts::from_str_iso("2024-").unwrap();
+        assert_eq!((p.mo, p.day), (Some(1), Some(1)));
+
+        // Year-month → day 1
+        let p = Parts::from_str_iso("2024-03").unwrap();
+        assert_eq!((p.mo, p.day), (Some(3), Some(1)));
+
+        let p = Parts::from_str_iso("2024-3").unwrap();
+        assert_eq!((p.mo, p.day), (Some(3), Some(1)));
+
+        // Bare month abbrev at EOS
+        let p = Parts::from_str_iso("2024 Mar").unwrap();
+        assert_eq!((p.mo, p.day), (Some(3), Some(1)));
+
+        // Explicit zero fields → default 1
+        let p = Parts::from_str_iso("2024-00").unwrap();
+        assert_eq!((p.mo, p.day), (Some(1), Some(1)));
+        let p = Parts::from_str_iso("2024-03-0").unwrap();
+        assert_eq!((p.mo, p.day), (Some(3), Some(1)));
+
+        // Year-month + time (T is not the day)
+        let p = Parts::from_str_iso("2024-03T12:00").unwrap();
+        assert_eq!((p.mo, p.day, p.hr, p.min), (Some(3), Some(1), 12, 0));
+
+        // Year + time
+        let p = Parts::from_str_iso("2024T12:00").unwrap();
+        assert_eq!((p.mo, p.day, p.hr), (Some(1), Some(1), 12));
+
+        // to_dt works on partials
+        assert!(Parts::from_str_iso("2024-06").unwrap().to_dt().is_ok());
+    }
+
+    #[test]
+    fn test_iso_week_date() {
+        // Extended / basic week only (calendar yr cleared; ISO week year set)
+        let p = Parts::from_str_iso("2024-W11").unwrap();
+        assert_eq!(p.yr, None);
+        assert_eq!(p.iso_wk_yr, Some(2024));
+        assert_eq!(p.iso_wk, Some(11));
+        assert_eq!(p.wkday, None);
+        assert!(p.to_dt().is_ok());
+
+        let p = Parts::from_str_iso("2024W11").unwrap();
+        assert_eq!((p.iso_wk_yr, p.iso_wk), (Some(2024), Some(11)));
+
+        // Optional weekday Mon=1…Sun=7
+        let p = Parts::from_str_iso("2024-W11-4").unwrap();
+        assert_eq!(p.iso_wk, Some(11));
+        assert_eq!(p.wkday, Some(Weekday::Thursday));
+
+        let p = Parts::from_str_iso("2024W114").unwrap();
+        assert_eq!((p.iso_wk, p.wkday), (Some(11), Some(Weekday::Thursday)));
+
+        // Time after week date
+        let p = Parts::from_str_iso("2024-W11-4T12:30:00").unwrap();
+        assert_eq!((p.hr, p.min, p.sec), (12, 30, 0));
+
+        // W requires an immediate digit
+        assert!(matches!(
+            Parts::from_str_iso("2024-W").unwrap_err().kind(),
+            DtErrKind::ExpectedWeekNumber
+        ));
+        assert!(Parts::from_str_iso("2024W").is_err());
+
+        // Week 0 → 1
+        let p = Parts::from_str_iso("2024-W0").unwrap();
+        assert_eq!(p.iso_wk, Some(1));
+    }
+
+    #[test]
+    fn test_iso_flexible_time_components() {
+        // 1-digit hour when next is punct/ws
+        let p = Parts::from_str_iso("2024-04-18T9:30:00").unwrap();
+        assert_eq!((p.hr, p.min, p.sec), (9, 30, 0));
+
+        // 1-digit minute then seconds
+        let p = Parts::from_str_iso("2024-04-18T14:3:25").unwrap();
+        assert_eq!((p.hr, p.min, p.sec), (14, 3, 25));
+
+        // 1-digit second + fraction
+        let p = Parts::from_str_iso("2024-04-18T14:30:5.5").unwrap();
+        assert_eq!(p.sec, 5);
+        assert_eq!(p.attos, 500_000_000_000_000_000);
+
+        // Compact HHMMSS (no separators)
+        let p = Parts::from_str_iso("2024-04-18T143025").unwrap();
+        assert_eq!((p.hr, p.min, p.sec), (14, 30, 25));
+
+        // Space-separated time
+        let p = Parts::from_str_iso("2024-04-18T9 30").unwrap();
+        assert_eq!((p.hr, p.min), (9, 30));
+    }
+
+    #[test]
+    fn test_iso_space_padded_doy() {
+        let p = Parts::from_str_iso("2024-  9").unwrap();
+        assert_eq!(p.day_of_yr, Some(9));
+        assert_eq!(p.mo, None);
+
+        let p = Parts::from_str_iso("2024- 01").unwrap();
+        assert_eq!(p.day_of_yr, Some(1));
+
+        // Four digits after year sep → calendar, not DOY
+        let p = Parts::from_str_iso("2024-0401").unwrap();
+        assert_eq!((p.mo, p.day, p.day_of_yr), (Some(4), Some(1), None));
+    }
+
+    #[test]
+    fn test_iso_year_overflow() {
+        let err = Parts::from_str_iso("999999999999999999999-01-01").unwrap_err();
+        assert!(matches!(err.kind(), DtErrKind::YearOutOfRange));
+
+        let err = Parts::from_str_iso("9223372036854775808-01-01").unwrap_err();
+        assert!(matches!(err.kind(), DtErrKind::YearOutOfRange));
     }
 
     #[test]
