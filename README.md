@@ -36,10 +36,20 @@ A fully featured and high performance **Rust date and time library** with attose
 ### Examples
 
 ```rust
-use deep_time::macros::{from_ns, from_ymd};
-use deep_time::{BufStr, Dt, DtErr, Lang, ParseCfg, Scale, YmdHms};
+#![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-fn main() -> Result<(), DtErr> {
+use deep_time::macros::{from_ns, from_ymd};
+use deep_time::{BufStr, Dt, Lang, ParseCfg, Scale, YmdHms};
+
+/*
+.unwrap() is used here so that panics can be detected
+during automated testing
+
+in your actual code you do not have to use unwrap() and
+should perhaps instead handle errors using Result<> etc.
+*/
+
+fn main() {
     // ============================================
     // Parsing
     // ============================================
@@ -49,12 +59,12 @@ fn main() -> Result<(), DtErr> {
         lang: Lang::Fr,
         ..Default::default()
     };
-    let dt = Dt::from_str_parse("15 août 2024 à 14:30 [Europe/Paris]", &cfg)?;
-    let s = dt.to_str_rfc9557("Europe/Paris")?;
+    let dt = Dt::from_str_parse("15 août 2024 à 14:30 [Europe/Paris]", &cfg).unwrap();
+    let s = dt.to_str_rfc9557("Europe/Paris").unwrap();
     assert_eq!("2024-08-15T14:30:00+02:00[Europe/Paris]", s);
 
     // or with .parse
-    let dt: Dt = "1 jan 2000 07:00 [America/New_York] TAI".parse()?; // noon
+    let dt: Dt = "1 jan 2000 07:00 [America/New_York] TAI".parse().unwrap(); // noon
     assert_eq!(Dt::ZERO, dt);
 
     // Relative dates are also supported
@@ -65,18 +75,18 @@ fn main() -> Result<(), DtErr> {
     };
 
     // from_ymd! macro defaults to Scale::UTC
-    let dt = Dt::from_str_parse("2 days from now at 9am", &en_cfg)?;
+    let dt = Dt::from_str_parse("2 days from now at 9am", &en_cfg).unwrap();
     assert_eq!(dt, from_ymd!(2026, 6, 18; 9));
 
-    let dt = Dt::from_str_parse("next Monday at 14:00", &en_cfg)?;
+    let dt = Dt::from_str_parse("next Monday at 14:00", &en_cfg).unwrap();
     assert_eq!(dt, from_ymd!(2026, 6, 22; 14));
 
     // Relative dates use Dt::now if the `std` feature is enabled and no
     // ref_time is provided in the ParseCfg
-    let _ = Dt::from_str_parse("next Monday at 14:00", &ParseCfg::DEFAULT)?;
+    let _ = Dt::from_str_parse("next Monday at 14:00", &en_cfg).unwrap();
 
     // Fast ISO parsing with time scale and no alloc output
-    let dt = Dt::from_str("2000-01-01T12:00:00 TAI")?;
+    let dt = Dt::from_str("2000-01-01T12:00:00 TAI").unwrap();
     let buf_str: BufStr<512> = dt.to_str_b_iso8601();
     assert_eq!("2000-01-01T12:00:00+00:00", buf_str.as_str());
 
@@ -84,17 +94,21 @@ fn main() -> Result<(), DtErr> {
     // Formatting
     // ============================================
 
-    let s = dt.to_str_in_tz("%A, %d %B %Y %I:%M%P", "America/New_York", Lang::En)?;
+    let s = dt
+        .to_str_in_tz("%A, %d %B %Y %I:%M%P", "America/New_York", Lang::En)
+        .unwrap();
     assert_eq!("Saturday, 01 January 2000 07:00am", s);
 
-    let s = dt.to_str_in_tz("%A, %-d de %B de %Y %H:%M", "America/New_York", Lang::Es)?;
+    let s = dt
+        .to_str_in_tz("%A, %-d de %B de %Y %H:%M", "America/New_York", Lang::Es)
+        .unwrap();
     assert_eq!("Sábado, 1 de enero de 2000 07:00", s);
 
     // ============================================
     // Duration parsing
     // ============================================
 
-    let span: Dt = Dt::from_str_duration("3 days 12 hours", Lang::En)?;
+    let span: Dt = Dt::from_str_duration("3 days 12 hours", Lang::En).unwrap();
     let dur = span.to_str_b_media_duration();
     assert_eq!("3:12:00:00", dur.to_string());
 
@@ -148,20 +162,20 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(ymd.day(), 29);
 
     // Timezone-aware calendar math (respects DST transitions, requires jiff-tz feature)
-    let dt = Dt::from_str("2025-03-30T00:30:00Z")?; // Just before London DST start
+    let dt = Dt::from_str("2025-03-30T00:30:00Z").unwrap(); // Just before London DST start
 
     // Normal (naive) addition — ignores DST rules
     let normal = dt.add_hours(1);
 
     // Timezone-aware addition — correctly handles the transition
-    let aware = dt.add_hours_tz(1, "Europe/London")?;
+    let aware = dt.add_hours_tz(1, "Europe/London").unwrap();
 
     assert_eq!(
-        normal.to_str_rfc9557("Europe/London")?,
+        normal.to_str_rfc9557("Europe/London").unwrap(),
         "2025-03-30T02:30:00+01:00[Europe/London]"
     );
     assert_eq!(
-        aware.to_str_rfc9557("Europe/London")?,
+        aware.to_str_rfc9557("Europe/London").unwrap(),
         "2025-03-30T03:30:00+01:00[Europe/London]"
     );
 
@@ -170,11 +184,9 @@ fn main() -> Result<(), DtErr> {
     // ============================================
 
     // genuine leap second input round trips
-    let dt: Dt = "2015-06-30T23:59:60".parse()?;
+    let dt: Dt = "2015-06-30T23:59:60".parse().unwrap();
     let s = dt.to_str_iso8601();
     assert_eq!("2015-06-30T23:59:60+00:00", s);
-
-    Ok(())
 }
 ```
 
@@ -201,8 +213,8 @@ cargo add deep-time --features "parse,jiff-tz"
 | Feature              | Description                                                                  | Requires    |
 |----------------------|------------------------------------------------------------------------------|-------------|
 | `parse`              | Enables the auto-parsers (`from_str_parse`, `from_str_duration`, etc.)       | `alloc`     |
-| `jiff-tz`            | Enables timezone features such as tz parsing, tz calendar math, formatting   | `std`       |
-| `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                     | `std`       |
+| `jiff-tz`            | Enables timezone features such as tz parsing, tz calendar math, formatting   | `alloc`     |
+| `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                     | `alloc`     |
 | `jiff`               | Enables [`jiff`](https://crates.io/crates/jiff) interop                      | —           |
 | `chrono`             | Enables [`chrono`](https://crates.io/crates/chrono) interop                  | —           |
 | `hifitime`           | Enables [`hifitime`](https://crates.io/crates/hifitime) interop              | —           |
@@ -213,7 +225,7 @@ cargo add deep-time --features "parse,jiff-tz"
 | `tsify`              | TypeScript definitions via `tsify` (for WASM)                                | `js`        |
 | `std`                | Enables `std` functionality including `Dt::now()` and file handling          | —           |
 | `alloc`              | Enables allocation (required for parsing and some conversions)               | —           |
-| `es` / `de` / `fr`   | Language support, parsing different languages requires alloc, formatting does not | —           |
+| `es` / `de` / `fr`   | Language support, parsing non-En languages requires alloc, formatting doesn't | —           |
 | `euro`               | Enables all European languages                                               |             |
 | `lang`               | Enables all languages                                                        | `euro`      |
 | `panic-handler`      | Provides an optional simple `#[panic_handler]` for `no_std` environments     | `no_std`    |

@@ -83,6 +83,8 @@ pub fn tz_names() -> impl Iterator<Item = BufStr<49>> {
 fn tz_names_alloc() -> impl Iterator<Item = BufStr<49>> {
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     {
+        use alloc::string::ToString;
+
         jiff::tz::db()
             .available()
             .map(|s| BufStr::new(&s.to_string()))

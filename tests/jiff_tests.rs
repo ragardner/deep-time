@@ -282,12 +282,9 @@ mod interop {
 // deep-time's parser against jiff as ground truth; they do not replace the
 // Dt↔Timestamp interop tests above.
 
-#[cfg(all(
-    any(feature = "jiff-tz", feature = "jiff-tz-bundle"),
-    feature = "parse"
-))]
+#[cfg(any(feature = "jiff-tz", feature = "jiff-tz-bundle"))]
 mod tz_parse {
-    use deep_time::{Dt, ParseCfg};
+    use deep_time::Dt;
     use jiff::{Timestamp, Zoned, civil::DateTime};
 
     #[test]
@@ -640,7 +637,7 @@ mod tz_parse {
                 .unwrap_or_else(|e| panic!("Jiff in_tz('{iana_name}') failed: {e}"));
             let jiff_str = jiff_zoned.to_string();
 
-            let our_input = format!("{civil_str} {iana_name}");
+            let our_input = format!("{civil_str} [{iana_name}]");
             let our_dt: Dt = our_input
                 .parse()
                 .unwrap_or_else(|e| panic!("deep_time failed on '{our_input}': {e}"));
@@ -731,7 +728,7 @@ mod tz_parse {
             let jiff_rfc = jiff_ts.to_string();
 
             let our_input = format!("{civil_str} {offset_str}");
-            let our_dt: Dt = Dt::from_str_parse(&our_input, &ParseCfg::DEFAULT)
+            let our_dt: Dt = Dt::from_str(&our_input)
                 .unwrap_or_else(|e| panic!("deep_time failed on '{our_input}': {e}"));
 
             let our_rfc = our_dt.to_str_rfc3339();

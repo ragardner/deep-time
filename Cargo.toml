@@ -21,19 +21,19 @@ rust-version = "1.90"
 
 once_cell    = { version = "=1.21", optional = true, default-features = false, features = ["alloc"] }
 hashbrown    = { version = "0.17", optional = true }
-aho-corasick = { version = "1.1", optional = true, default-features = false }
-jiff         = { version = "0.2", optional = true, default-features = false }
-chrono       = { version = "0.4", optional = true, default-features = false }
+aho-corasick = { version = "1.1.4", optional = true, default-features = false }
+jiff         = { version = "0.2.33", optional = true, default-features = false }
+chrono       = { version = "0.4.45", optional = true, default-features = false }
 hifitime     = { version = "4.3", optional = true, default-features = false }
-time         = { version = "0.3", optional = true, default-features = false }
+time         = { version = "0.3.53", optional = true, default-features = false }
 icu_calendar = { version = "2.2", optional = true, default-features = false }
 icu_time     = { version = "2.2", optional = true, default-features = false }
 serde        = { version = "1.0", optional = true, default-features = false, features = ["derive", "rc"] }
 tsify        = { version = "=0.5.6", optional = true }
 wasm-bindgen = { version = "0.2", optional = true, features = ["serde-serialize"] }
 js-sys       = { version = "0.3", optional = true }
-sys-locale   = { version = "=0.3", optional = true }
-defmt        = { version = "1", optional = true }
+sys-locale   = { version = "=0.3.2", optional = true }
+defmt        = { version = "1.1.1", optional = true }
 
 [features]
 
@@ -138,7 +138,7 @@ jiff = [
 ]
 jiff-tz = [
     "jiff",
-    "std",
+    "alloc",
     "jiff?/tz-system",
     "jiff?/tzdb-concatenated",
     "jiff?/tz-fat",
@@ -148,7 +148,7 @@ jiff-tz = [
 ]
 jiff-tz-bundle = [
     "jiff",
-    "std",
+    "alloc",
     "jiff?/tz-system",
     "jiff?/tzdb-concatenated",
     "jiff?/tz-fat",

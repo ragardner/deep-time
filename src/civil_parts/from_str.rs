@@ -85,7 +85,7 @@ impl Parts {
     ///   `+02:00`, `-0530`, also allowed directly after the date.
     /// - **IANA name** — must be in square brackets, e.g. `[America/New_York]`.
     ///   Resolving non-UTC aliases requires the `jiff-tz` or `jiff-tz-bundle` feature
-    ///   (both require `std`).
+    ///   (both require `alloc`).
     /// - **Scale** — library abbreviation, e.g. `TAI`, `UTC`, `TDB`, `GPS`.
     ///
     /// ### Seconds since 2000-01-01 noon (library epoch)

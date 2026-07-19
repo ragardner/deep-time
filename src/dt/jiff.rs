@@ -24,7 +24,13 @@ impl Dt {
     /// - Saturates at [`Timestamp::MIN`] / [`Timestamp::MAX`] if out of range
     ///   (jiff's supported range is roughly years −9999…9999).
     pub fn to_jiff_timestamp(&self) -> Timestamp {
-        let nanos = self.target(Scale::UTC).to_unix().to_ns().0;
+        let mut nanos = self.target(Scale::UTC).to_unix().to_ns().0;
+        // required to due jiff panic in v0.2.33
+        if nanos > Timestamp::MAX.as_nanosecond() {
+            nanos = Timestamp::MAX.as_nanosecond();
+        } else if nanos < Timestamp::MIN.as_nanosecond() {
+            nanos = Timestamp::MIN.as_nanosecond();
+        }
         match Timestamp::from_nanosecond(nanos) {
             Ok(ts) => ts,
             Err(_) => {

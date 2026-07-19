@@ -22,6 +22,7 @@ FULL_FEATURES="serde defmt physics mars parse hifitime chrono time icu std wire 
 
 MATRIX_NAMES=(
     no-std
+    jiff-tz
     no-std-extended
     full
 )
@@ -36,6 +37,7 @@ test-matrix.sh — run tests for a feature set
 
   Quick check while editing (pick the closest match):
     ./scripts/test-matrix.sh no-std          touched core / no-std code
+    ./scripts/test-matrix.sh jiff-tz         jiff-tz feature (release)
     ./scripts/test-matrix.sh no-std-extended touched physics / mars / tdb-hi
     ./scripts/test-matrix.sh full            parse, tz, lang + release features
 
@@ -47,6 +49,7 @@ test-matrix.sh — run tests for a feature set
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   no-std            bare minimum, no features
+  jiff-tz           release build with jiff-tz feature
   no-std-extended   wire, mars, sidereal, physics, hifitime, tdb-hi
   full              all release features incl. parse, jiff-tz-bundle, lang
 
@@ -78,6 +81,13 @@ run_no_std() {
     script_run cargo_msrv "${args[@]}"
 }
 
+run_jiff_tz() {
+    script_log test-matrix "jiff-tz"
+    local args=(test --release --features "jiff-tz")
+    append_nocapture args
+    script_run cargo_msrv "${args[@]}"
+}
+
 run_no_std_extended() {
     script_log test-matrix "no-std-extended"
     local args=(test --no-default-features --features "defmt mars physics sidereal sidereal-earth wire hifitime" --workspace)
@@ -95,6 +105,7 @@ run_full() {
 run_entry() {
     case "$1" in
         no-std) run_no_std ;;
+        jiff-tz) run_jiff_tz ;;
         no-std-extended) run_no_std_extended ;;
         full) run_full ;;
         *)
