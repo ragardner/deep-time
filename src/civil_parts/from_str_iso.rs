@@ -1,5 +1,5 @@
 use crate::en::parse_month_name_abbrev;
-use crate::{DtErr, DtErrKind, Offset, Parts, STRTIME_SIZE, Scale, an_err};
+use crate::{DtErr, DtErrKind, Offset, Parts, STRTIME_SIZE, Scale, Weekday, an_err};
 
 impl Parts {
     /// Generalized no alloc parser.
@@ -28,12 +28,13 @@ impl Parts {
     /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**.
     /// - **`2024 Apr 18, 14:30:25 [America/New_York]`**. Abbreviated or full month
     /// - **`2024-109 14:30:25 [America/New_York]`**. Day of year
+    /// - **`2024-W11`**, **`2024W11`**, **`2024-W11-4`**. ISO week date (optional weekday 1=Mon…7=Sun)
     ///
     /// #### Notes:
     ///
     /// - If a time is included then some kind of date-time separator e.g. `T` or space is
     ///   required.
-    /// - Supports both calendar (`%Y-%m-%d`) and day-of-year (`%Y-%j`) formats.
+    /// - Supports calendar (`%Y-%m-%d`), day-of-year (`%Y-%j`), and ISO week (`%G-W%V`) formats.
     /// - Treats years digits literally as shown, for example `99-01-01` would be
     ///   the year 99 AD not 1999.
     /// - Supported **optional** components:
@@ -172,8 +173,52 @@ impl Parts {
             return Ok(tp);
         }
 
-        // Day-of-year (single scan) or calendar month/day
-        if let Some(doy) = try_parse_doy(bytes, &mut pos, len_) {
+        // ISO week date (`2024-W11`, `2024W11`, optional weekday `…-4` / `…4`)
+        // or day-of-year or calendar month/day.
+        // `%G-W%V` / `%G-W%V-%u` — not strftime `%W` (that is calendar `wk_mon`).
+        if pos < len_ && matches!(bytes[pos], b'W' | b'w') {
+            // Require a digit immediately after W before mutating Parts.
+            let mut p = pos + 1;
+            if p >= len_ || !bytes[p].is_ascii_digit() {
+                return Err(an_err!(DtErrKind::ExpectedWeekNumber));
+            }
+            let mut week = bytes[p] - b'0';
+            p += 1;
+            if p < len_ && bytes[p].is_ascii_digit() {
+                week = week * 10 + (bytes[p] - b'0');
+                p += 1;
+            }
+
+            // Optional weekday Mon=1…Sun=7: extended `…-4` or basic trailing digit.
+            let mut wkday = None;
+            if p < len_ {
+                let b = bytes[p];
+                if b == b'-' {
+                    let dpos = p + 1;
+                    if dpos < len_ && bytes[dpos].is_ascii_digit() {
+                        let d = bytes[dpos] - b'0';
+                        wkday = Some(
+                            Weekday::from_monday_1_based(d)
+                                .ok_or(an_err!(DtErrKind::ExpectedWeekdayNumber))?,
+                        );
+                        p = dpos + 1;
+                    }
+                    // Lone `-` left for later stages.
+                } else if b.is_ascii_digit() {
+                    // Basic `YYYYWwwD` — only consume if valid ISO weekday.
+                    if let Some(wd) = Weekday::from_monday_1_based(b - b'0') {
+                        wkday = Some(wd);
+                        p += 1;
+                    }
+                }
+            }
+
+            pos = p;
+            tp.iso_wk_yr = tp.yr.take();
+            tp.iso_wk = Some(if week == 0 { 1 } else { week });
+            tp.wkday = wkday;
+            // Missing weekday → Monday in to_dt via unwrap_or.
+        } else if let Some(doy) = try_parse_doy(bytes, &mut pos, len_) {
             tp.day_of_yr = Some(doy);
         } else {
             'day_month: {
