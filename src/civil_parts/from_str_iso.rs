@@ -144,7 +144,11 @@ impl Parts {
 
         if bytes[pos].is_ascii_digit() {
             while pos < len_ && bytes[pos].is_ascii_digit() {
-                year = year * 10 + (bytes[pos] - b'0') as i64;
+                let digit = (bytes[pos] - b'0') as i64;
+                year = year
+                    .checked_mul(10)
+                    .and_then(|n| n.checked_add(digit))
+                    .ok_or_else(|| an_err!(DtErrKind::YearOutOfRange))?;
                 pos += 1;
             }
         } else {
@@ -158,7 +162,11 @@ impl Parts {
 
         // required separator after year
         if pos < len_ {
-            pos += 1;
+            if !bytes[pos].is_ascii_alphabetic() {
+                pos += 1;
+            }
+        } else {
+            return Err(an_err!(DtErrKind::ExpectedMonth));
         }
 
         let is_doy = is_doy(bytes, pos, len_);
@@ -185,21 +193,28 @@ impl Parts {
             }
             tp.day_of_yr = Some(doy);
         } else {
+            while pos < len_
+                && (bytes[pos].is_ascii_whitespace() || bytes[pos].is_ascii_punctuation())
+            {
+                pos += 1;
+            }
+            if pos >= len_ {
+                return Err(an_err!(DtErrKind::ExpectedMonth));
+            }
             // Abbreviated/full month or 1 or 2 digit month
             let mut mo: u8 = 0;
-            if pos < len_ {
-                if bytes[pos].is_ascii_digit() {
+            if bytes[pos].is_ascii_digit() {
+                mo = mo * 10 + (bytes[pos] - b'0');
+                pos += 1;
+                if pos < len_ && bytes[pos].is_ascii_digit() {
                     mo = mo * 10 + (bytes[pos] - b'0');
                     pos += 1;
-                    if pos < len_ && bytes[pos].is_ascii_digit() {
-                        mo = mo * 10 + (bytes[pos] - b'0');
-                        pos += 1;
-                    }
-                } else if bytes[pos].is_ascii_alphabetic() && pos + 3 < len_ {
-                    mo = parse_month_name_abbrev(&bytes[pos..])
-                        .ok_or(an_err!(DtErrKind::InvalidMonthName))?;
                 }
+            } else if bytes[pos].is_ascii_alphabetic() && pos + 3 < len_ {
+                mo = parse_month_name_abbrev(&bytes[pos..])
+                    .ok_or(an_err!(DtErrKind::InvalidMonthName))?;
             }
+
             if mo == 0 {
                 return Err(an_err!(DtErrKind::ExpectedMonth));
             }
@@ -249,140 +264,157 @@ impl Parts {
             }
         }
 
+        if pos >= len_ {
+            return Ok(tp);
+        }
+
         // Optional time components
-        if pos < len_ && bytes[pos].is_ascii_digit() {
-            // Hour (2 digits)
-            let mut hr: u8 = 0;
+        'time: {
+            if !bytes[pos].is_ascii_digit() {
+                break 'time;
+            }
+
+            // Hour
+            // digit 1
+            tp.hr = bytes[pos] - b'0';
+            pos += 1;
+            // digit 2
+            if pos >= len_ {
+                return Ok(tp);
+            }
+            if bytes[pos].is_ascii_digit() {
+                tp.hr = tp.hr * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            } else if !matches!(bytes[pos], b':' | b' ') {
+                break 'time;
+            }
+
+            if pos >= len_ {
+                return Ok(tp);
+            }
+            // only continue if it's not a + or - and not an alpha
+            if matches!(bytes[pos], b'+' | b'-') || bytes[pos].is_ascii_alphabetic() {
+                break 'time;
+            }
+
+            // perhaps a separator between H and M
+            if !bytes[pos].is_ascii_digit() {
+                pos += 1;
+                if pos >= len_ {
+                    return Ok(tp);
+                }
+            }
+
+            // Minutes
             // digit 1
             if bytes[pos].is_ascii_digit() {
-                hr = hr * 10 + (bytes[pos] - b'0');
+                tp.min = bytes[pos] - b'0';
                 pos += 1;
             } else {
-                return Err(an_err!(DtErrKind::ExpectedHour));
+                break 'time;
             }
             // digit 2
+            if pos >= len_ {
+                return Ok(tp);
+            }
             if bytes[pos].is_ascii_digit() {
-                hr = hr * 10 + (bytes[pos] - b'0');
+                tp.min = tp.min * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            } else if !matches!(bytes[pos], b':' | b' ') {
+                break 'time;
+            }
+            if tp.min > 59 {
+                return Err(an_err!(DtErrKind::MinuteOutOfRange));
+            }
+
+            if pos >= len_ {
+                return Ok(tp);
+            }
+            // only continue if it's not a + or - and not an alpha
+            if matches!(bytes[pos], b'+' | b'-') || bytes[pos].is_ascii_alphabetic() {
+                break 'time;
+            }
+
+            // perhaps a separator between M and S
+            if !bytes[pos].is_ascii_digit() {
+                pos += 1;
+                if pos >= len_ {
+                    return Ok(tp);
+                }
+            }
+
+            // Seconds
+            // digit 1
+            if bytes[pos].is_ascii_digit() {
+                tp.sec = bytes[pos] - b'0';
                 pos += 1;
             } else {
-                return Err(an_err!(DtErrKind::ExpectedHour));
+                break 'time;
+            }
+            // digit 2
+            if pos >= len_ {
+                return Ok(tp);
+            }
+            if bytes[pos].is_ascii_digit() {
+                tp.sec = tp.sec * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            } else if !matches!(bytes[pos], b':' | b' ') {
+                break 'time;
+            }
+            if tp.sec > 60 {
+                return Err(an_err!(DtErrKind::SecondOutOfRange));
             }
 
-            tp.hr = hr;
+            if pos >= len_ {
+                return Ok(tp);
+            }
+            // only continue if it's not a + or - and not an alpha
+            if matches!(bytes[pos], b'+' | b'-') || bytes[pos].is_ascii_alphabetic() {
+                break 'time;
+            }
 
-            'time: {
-                // only continue if it's not a + or - and not an alpha
-                if pos >= len_
-                    || bytes[pos].is_ascii_digit()
-                    || matches!(bytes[pos], b'+' | b'-')
-                    || bytes[pos].is_ascii_alphabetic()
-                {
-                    break 'time;
-                }
+            // perhaps a . between S and fractional S
+            if bytes[pos] == b'.' {
                 pos += 1;
-
-                // Minute (2 digits)
-                if pos + 2 > len_ {
-                    break 'time;
-                }
-                let mut min: u8 = 0;
-                // digit 1
-                if bytes[pos].is_ascii_digit() {
-                    min = min * 10 + (bytes[pos] - b'0');
-                    pos += 1;
-                } else {
-                    return Err(an_err!(DtErrKind::ExpectedMinute));
-                }
-                // digit 2
-                if bytes[pos].is_ascii_digit() {
-                    min = min * 10 + (bytes[pos] - b'0');
-                    pos += 1;
-                } else {
-                    return Err(an_err!(DtErrKind::ExpectedMinute));
-                }
-
-                tp.min = min;
-
-                // only continue if it's not a + or - and not an alpha
-                if pos >= len_
-                    || bytes[pos].is_ascii_digit()
-                    || matches!(bytes[pos], b'+' | b'-')
-                    || bytes[pos].is_ascii_alphabetic()
-                {
-                    break 'time;
-                }
-                pos += 1;
-
-                // Second (2 digits, if present)
-                if pos + 2 > len_ || !bytes[pos].is_ascii_digit() {
-                    break 'time;
-                }
-                let mut sec: u8 = 0;
-                // digit 1
-                if bytes[pos].is_ascii_digit() {
-                    sec = sec * 10 + (bytes[pos] - b'0');
-                    pos += 1;
-                } else {
-                    return Err(an_err!(DtErrKind::ExpectedSecond));
-                }
-                // digit 2
-                if bytes[pos].is_ascii_digit() {
-                    sec = sec * 10 + (bytes[pos] - b'0');
-                    pos += 1;
-                } else {
-                    return Err(an_err!(DtErrKind::ExpectedSecond));
-                }
-
-                tp.sec = sec;
-
-                // only continue if it's not a + or - and not an alpha
-                if pos >= len_
-                    || bytes[pos].is_ascii_digit()
-                    || matches!(bytes[pos], b'+' | b'-')
-                    || bytes[pos].is_ascii_alphabetic()
-                {
-                    break 'time;
-                }
-                pos += 1;
-
-                // Fractional seconds (with or without leading dot)
-                if pos < len_ {
-                    if bytes[pos] == b'.' {
-                        pos += 1;
-                    }
-
-                    if pos < len_ && bytes[pos].is_ascii_digit() {
-                        let mut attos: u64 = 0;
-                        let mut digits_seen: usize = 0;
-
-                        while pos < len_ && bytes[pos].is_ascii_digit() {
-                            if digits_seen < 18 {
-                                attos = attos * 10 + (bytes[pos] - b'0') as u64;
-                                digits_seen += 1;
-                            }
-                            // Ignore any digits beyond the first 18
-                            pos += 1;
-                        }
-
-                        if digits_seen > 0 {
-                            tp.attos = attos * 10u64.pow(18u32.saturating_sub(digits_seen as u32));
-                        }
-                    }
+                if pos >= len_ {
+                    return Ok(tp);
                 }
             }
-            // Optional trailing Z/z
-            if pos < len_ && matches!(bytes[pos], b'Z' | b'z') {
+
+            if !bytes[pos].is_ascii_digit() {
+                break 'time;
+            }
+            // Fractional seconds (with or without leading dot)
+            tp.attos = (bytes[pos] - b'0') as u64;
+            pos += 1;
+            let mut digits_seen: usize = 1;
+            while pos < len_ && bytes[pos].is_ascii_digit() {
+                if digits_seen < 18 {
+                    tp.attos = tp.attos * 10 + (bytes[pos] - b'0') as u64;
+                    digits_seen += 1;
+                }
+                // Ignore any digits beyond the first 18
                 pos += 1;
             }
+            if digits_seen > 0 {
+                tp.attos *= 10u64.pow(18u32.saturating_sub(digits_seen as u32));
+            }
+        }
+        // Optional trailing Z/z
+        if pos < len_ && matches!(bytes[pos], b'Z' | b'z') {
+            pos += 1;
         }
 
         // Skip any whitespace
         while pos < len_ && bytes[pos].is_ascii_whitespace() {
             pos += 1;
         }
+        if pos >= len_ {
+            return Ok(tp);
+        }
 
         // Optional offset
-        if pos < len_ && matches!(bytes[pos], b'+' | b'-') {
+        if matches!(bytes[pos], b'+' | b'-') {
             let sign: i64 = if bytes[pos] == b'+' { 1 } else { -1 };
             pos += 1;
 
@@ -421,10 +453,13 @@ impl Parts {
         while pos < len_ && bytes[pos].is_ascii_whitespace() {
             pos += 1;
         }
+        if pos >= len_ {
+            return Ok(tp);
+        }
 
         // Optional IANA timezone name in square brackets, e.g. [America/New_York]
         // Must be explicitly wrapped in [] so we don't mistake a scale for a zone.
-        if pos < len_ && bytes[pos] == b'[' {
+        if bytes[pos] == b'[' {
             pos += 1; // skip '['
 
             let name_start = pos;
@@ -445,12 +480,13 @@ impl Parts {
 
             tp.set_iana_name(Some(iana));
             pos += 1; // consume ']'
+            if pos >= len_ {
+                return Ok(tp);
+            }
         }
 
         // Optional trailing scale (e.g. TAI, UTC)
-        if pos < len_
-            && let Some(sc) = Self::parse_scale(&bytes[pos..])
-        {
+        if let Some(sc) = Self::parse_scale(&bytes[pos..]) {
             tp.scale = sc;
         }
 
@@ -467,7 +503,9 @@ impl Parts {
         while pos < len_ && !bytes[pos].is_ascii_alphabetic() {
             pos += 1;
         }
-        if let Ok(s) = core::str::from_utf8(&bytes[pos..(pos + 8).min(len_)]) {
+        if pos < len_
+            && let Ok(s) = core::str::from_utf8(&bytes[pos..(pos + 8).min(len_)])
+        {
             return Scale::from_abbrev(s);
         }
         None
@@ -505,29 +543,41 @@ enum Word {
     Mjd,
 }
 
+/// Detect `JD` (2 letters), `MJD` / `SEC` (3 letters) at `pos`.
+/// `JD` only needs two bytes so forms like `JD1` / `jd2451545` match.
 #[inline(always)]
 fn detect_word(bytes: &[u8], b: u8, pos: usize, len_: usize) -> Word {
-    if pos + 3 <= len_ {
-        if matches!(b, b'J' | b'j') {
-            let b1 = bytes[pos + 1].to_ascii_uppercase();
-            if b1 == b'D' {
-                return Word::Jd;
-            }
-        } else if matches!(b, b'M' | b'm') {
-            let b1 = bytes[pos + 1].to_ascii_uppercase();
-            let b2 = bytes[pos + 2].to_ascii_uppercase();
-            if b1 == b'J' && b2 == b'D' {
-                return Word::Mjd;
-            }
-        } else if matches!(b, b'S' | b's') {
-            let b1 = bytes[pos + 1].to_ascii_uppercase();
-            let b2 = bytes[pos + 2].to_ascii_uppercase();
-            if b1 == b'E' && b2 == b'C' {
-                return Word::Sec;
+    match b {
+        b'J' | b'j' => {
+            // "JD…" — two bytes is enough
+            if pos + 2 <= len_ && bytes[pos + 1].eq_ignore_ascii_case(&b'D') {
+                Word::Jd
+            } else {
+                Word::None
             }
         }
+        b'M' | b'm' => {
+            if pos + 3 <= len_
+                && bytes[pos + 1].eq_ignore_ascii_case(&b'J')
+                && bytes[pos + 2].eq_ignore_ascii_case(&b'D')
+            {
+                Word::Mjd
+            } else {
+                Word::None
+            }
+        }
+        b'S' | b's' => {
+            if pos + 3 <= len_
+                && bytes[pos + 1].eq_ignore_ascii_case(&b'E')
+                && bytes[pos + 2].eq_ignore_ascii_case(&b'C')
+            {
+                Word::Sec
+            } else {
+                Word::None
+            }
+        }
+        _ => Word::None,
     }
-    Word::None
 }
 
 #[inline(always)]
