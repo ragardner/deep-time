@@ -166,7 +166,9 @@ impl Parts {
                 pos += 1;
             }
         } else {
-            tp.finish(true)?;
+            // Year only → 1 Jan
+            tp.mo = Some(1);
+            tp.day = Some(1);
             return Ok(tp);
         }
 
@@ -174,54 +176,77 @@ impl Parts {
         if let Some(doy) = try_parse_doy(bytes, &mut pos, len_) {
             tp.day_of_yr = Some(doy);
         } else {
-            while pos < len_
-                && (bytes[pos].is_ascii_whitespace() || bytes[pos].is_ascii_punctuation())
-            {
-                pos += 1;
-            }
-            if pos >= len_ {
-                tp.finish(true)?;
-                return Ok(tp);
-            }
-            // Abbreviated/full month or 1 or 2 digit month
-            let mut mo: u8 = 0;
-            if bytes[pos].is_ascii_digit() {
-                mo = bytes[pos] - b'0';
-                pos += 1;
-                if pos < len_ && bytes[pos].is_ascii_digit() {
-                    mo = mo * 10 + (bytes[pos] - b'0');
+            'day_month: {
+                while pos < len_
+                    && (bytes[pos].is_ascii_whitespace() || bytes[pos].is_ascii_punctuation())
+                {
                     pos += 1;
                 }
-            } else if bytes[pos].is_ascii_alphabetic() && pos + 3 < len_ {
-                mo = parse_month_name_abbrev(&bytes[pos..])
-                    .ok_or(an_err!(DtErrKind::InvalidMonthName))?;
-            }
-            if mo == 0 {
-                tp.finish(true)?;
-                return Ok(tp);
-            }
-            tp.mo = Some(mo);
+                if pos >= len_ {
+                    // Year only (trailing junk/separators) → 1 Jan
+                    tp.mo = Some(1);
+                    tp.day = Some(1);
+                    return Ok(tp);
+                }
 
-            // Optional chars after month
-            while pos < len_ && !bytes[pos].is_ascii_digit() {
-                pos += 1;
-            }
+                // Year-only + time (`2024T12:00`): keep `T` for the time stage.
+                if matches!(bytes[pos], b'T' | b't') {
+                    tp.mo = Some(1);
+                    tp.day = Some(1);
+                    break 'day_month;
+                }
 
-            // 1 or 2 digit day
-            let mut day: u8 = 0;
-            if pos < len_ && bytes[pos].is_ascii_digit() {
-                day = bytes[pos] - b'0';
+                // Abbreviated/full month or 1 or 2 digit month
+                if bytes[pos].is_ascii_digit() {
+                    let mut mo: u8;
+                    mo = bytes[pos] - b'0';
+                    pos += 1;
+                    if pos < len_ && bytes[pos].is_ascii_digit() {
+                        mo = mo * 10 + (bytes[pos] - b'0');
+                        pos += 1;
+                    }
+                    // 0 → January (zero / missing month field → default).
+                    tp.mo = Some(if mo == 0 { 1 } else { mo });
+                } else if bytes[pos].is_ascii_alphabetic() && pos + 3 <= len_ {
+                    // `<=` so bare "Mar" at EOS matches (exactly 3 letters).
+                    tp.mo = Some(
+                        parse_month_name_abbrev(&bytes[pos..])
+                            .ok_or(an_err!(DtErrKind::InvalidMonthName))?,
+                    );
+                    // pos stays on the name; non-digit skip below walks past it.
+                }
+
+                // Skip to day; stop before `T`/`t` so `2024-03T12:00` is time, not day.
+                while pos < len_ {
+                    let b = bytes[pos];
+                    if b.is_ascii_digit() {
+                        break;
+                    }
+                    if matches!(b, b'T' | b't') && !bytes[pos - 1].is_ascii_alphabetic() {
+                        // Year-month only (+ time) → day 1; mo already set (or default below).
+                        tp.mo.get_or_insert(1);
+                        tp.day = Some(1);
+                        break 'day_month;
+                    }
+                    pos += 1;
+                }
+                if pos >= len_ {
+                    // Year-month only → day 1
+                    tp.mo.get_or_insert(1);
+                    tp.day = Some(1);
+                    return Ok(tp);
+                }
+
+                // 1 or 2 digit day
+                let mut day = bytes[pos] - b'0';
                 pos += 1;
                 if pos < len_ && bytes[pos].is_ascii_digit() {
                     day = day * 10 + (bytes[pos] - b'0');
                     pos += 1;
                 }
+                // 0 → day 1 (zero / missing day field → default).
+                tp.day = Some(if day == 0 { 1 } else { day });
             }
-            if day == 0 {
-                tp.finish(true)?;
-                return Ok(tp);
-            }
-            tp.day = Some(day);
         }
 
         // required date-time separator
