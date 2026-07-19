@@ -245,25 +245,23 @@ impl Parts {
         while pos < len_ && bytes[pos].is_ascii_whitespace() {
             pos += 1;
         }
-        if pos < len_ {
-            let c = bytes[pos];
-            // push past a T
-            if !c.is_ascii_digit() && pos + 1 < len_ && !matches!(c, b'+' | b'-') {
-                if bytes[pos + 1].is_ascii_digit() {
-                    pos += 1;
-                } else if bytes[pos + 1].is_ascii_whitespace()
-                    || bytes[pos + 1].is_ascii_punctuation()
+        if pos >= len_ {
+            return Ok(tp);
+        }
+        // push past a T
+        if !bytes[pos].is_ascii_digit() && pos + 1 < len_ && !matches!(bytes[pos], b'+' | b'-') {
+            if bytes[pos + 1].is_ascii_digit() {
+                pos += 1;
+            } else if bytes[pos + 1].is_ascii_whitespace() || bytes[pos + 1].is_ascii_punctuation()
+            {
+                pos += 1;
+                while pos < len_
+                    && (bytes[pos].is_ascii_whitespace() || bytes[pos].is_ascii_punctuation())
                 {
                     pos += 1;
-                    while pos < len_
-                        && (bytes[pos].is_ascii_whitespace() || bytes[pos].is_ascii_punctuation())
-                    {
-                        pos += 1;
-                    }
                 }
             }
         }
-
         if pos >= len_ {
             return Ok(tp);
         }
