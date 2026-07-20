@@ -5,9 +5,6 @@ use deep_time::{Dt, Lang, ParseCfg, Scale};
 use std::time::Instant;
 
 fn main() {
-    // All timing loops and test cases are left unchanged.
-    // Results are captured and only two tables are emitted (via eprintln!) at the very end.
-
     // ── results (populated by the benchmark blocks below) ───────────────────
     let mut gps_deep_ns = 0.0f64;
     let mut gps_hifi_ns = 0.0f64;
@@ -260,32 +257,32 @@ fn main() {
         zoned_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
     }
 
-    // ═══════════════════════════════════════════════════════════════════════
-    // Datetime strptime — Dt::from_strptime vs Jiff to_datetime strtime
-    // ═══════════════════════════════════════════════════════════════════════
-    {
-        const ITERATIONS: usize = 10_000_000; // lowered because IANA zone resolution is heavier
-        const INPUT: &str = "2024-03-14T00:00:00";
-        const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
+    // // ═══════════════════════════════════════════════════════════════════════
+    // // Datetime strptime — Dt::from_strptime vs Jiff to_datetime strtime
+    // // ═══════════════════════════════════════════════════════════════════════
+    // {
+    //     const ITERATIONS: usize = 10_000_000;
+    //     const INPUT: &str = "2024-03-14T00:00:00";
+    //     const FORMAT: &str = "%Y-%m-%dT%H:%M:%S";
 
-        // ── Jiff parsing via low-level strtime ───────────────────────
-        use jiff::fmt::strtime::BrokenDownTime;
+    //     // ── Jiff parsing via low-level strtime ───────────────────────
+    //     use jiff::fmt::strtime::BrokenDownTime;
 
-        let start = std::time::Instant::now();
-        for _ in 0..ITERATIONS {
-            let tm = BrokenDownTime::parse(FORMAT, INPUT).unwrap();
-            let x = tm.to_datetime().unwrap();
-        }
-        let _dt_strptime_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+    //     let start = std::time::Instant::now();
+    //     for _ in 0..ITERATIONS {
+    //         let tm = BrokenDownTime::parse(FORMAT, INPUT).unwrap();
+    //         let x = tm.to_datetime().unwrap();
+    //     }
+    //     let _dt_strptime_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
-        // ── deep time  parsing ───────────────────────
+    //     // ── deep time  parsing ───────────────────────
 
-        let start = std::time::Instant::now();
-        for _ in 0..ITERATIONS {
-            let x = Dt::from_strptime(INPUT, FORMAT, true, true, false).unwrap();
-        }
-        let _dt_strptime_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
-    }
+    //     let start = std::time::Instant::now();
+    //     for _ in 0..ITERATIONS {
+    //         let x = Dt::from_strptime(INPUT, FORMAT, true, true, false).unwrap();
+    //     }
+    //     let _dt_strptime_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+    // }
 
     // ═══════════════════════════════════════════════════════════════════════
     // Datetime parse — Dt::from_str vs Jiff parse::DateTime
@@ -380,56 +377,64 @@ fn main() {
     };
 
     const COL_OP: usize = 58;
-    const COL_TIME: usize = 11;
-    const COL_VS: usize = 16;
+    const COL_DEEP: usize = 13;
+    const COL_JIFF: usize = 13;
+    const COL_DIFF: usize = 16;
 
     let cell = |w: usize, s: &str| format!(" {:<inner$}", s, inner = w - 1);
 
-    let perf_row = |op: &str, time: &str, vs: &str| {
+    let perf_row = |op: &str, deep: &str, jiff: &str, diff: &str| {
         eprintln!(
-            "|{}|{}|{}|",
+            "|{}|{}|{}|{}|",
             cell(COL_OP, op),
-            cell(COL_TIME, time),
-            cell(COL_VS, vs),
+            cell(COL_DEEP, deep),
+            cell(COL_JIFF, jiff),
+            cell(COL_DIFF, diff),
         );
     };
 
     eprintln!();
     eprintln!("#### Parsing and Formatting");
     eprintln!();
-    perf_row("deep-time vs jiff", "Time", "vs Jiff 0.2.31");
+    perf_row("Operation", "deep-time", "jiff 0.2.33", "% diff");
     eprintln!(
-        "|{}|{}|{}|",
+        "|{}|{}|{}|{}|",
         "-".repeat(COL_OP),
-        "-".repeat(COL_TIME),
-        "-".repeat(COL_VS),
-    );
-    perf_row(
-        "`Dt::from_str` vs `DateTime::parse`",
-        &fmt_ns(iso_deep_ns),
-        &pct(iso_deep_ns, iso_jiff_ns),
+        "-".repeat(COL_DEEP),
+        "-".repeat(COL_JIFF),
+        "-".repeat(COL_DIFF),
     );
     perf_row(
         "`Parts::from_strptime` vs `BrokenDownTime::parse`",
         &fmt_ns(strptime_timeparts_ns),
+        &fmt_ns(strptime_jiff_ns),
         &pct(strptime_timeparts_ns, strptime_jiff_ns),
+    );
+    perf_row(
+        "`Dt::from_str` vs `DateTime::parse`",
+        &fmt_ns(iso_deep_ns),
+        &fmt_ns(iso_jiff_ns),
+        &pct(iso_deep_ns, iso_jiff_ns),
     );
     perf_row(
         "`Dt::from_strptime` vs `BrokenDownTime::parse`+`to_zoned`",
         &fmt_ns(zoned_deep_ns),
+        &fmt_ns(zoned_jiff_ns),
         &pct(zoned_deep_ns, zoned_jiff_ns),
     );
     perf_row(
         "`Dt::to_str_b` vs `DateTime::strftime`+`.to_string`",
         &fmt_ns(strftime_b_ns),
+        &fmt_ns(strftime_jiff_ns),
         &pct(strftime_b_ns, strftime_jiff_ns),
     );
     perf_row(
         "`Dt::to_str` vs `DateTime::strftime`+`.to_string`",
         &fmt_ns(strftime_alloc_ns),
+        &fmt_ns(strftime_jiff_ns),
         &pct(strftime_alloc_ns, strftime_jiff_ns),
     );
-    perf_row("`Dt::from_str_parse`", &fmt_ns(auto_ns_per), "—");
+    perf_row("`Dt::from_str_parse`", &fmt_ns(auto_ns_per), "—", "—");
 
     eprintln!();
     eprintln!("#### Time Scale Conversions");

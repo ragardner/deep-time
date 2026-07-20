@@ -104,7 +104,7 @@ impl Dt {
     }
 
     pub(crate) const fn tt_to_ltc(tt: Self) -> Dt {
-        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
+        let elapsed = tt.to_attos_since_tcg_tcb_epoch();
         let secular_attos = Self::mul_lm(elapsed);
         let periodic = Self::ltc_periodic_correction(tt);
 
@@ -129,7 +129,7 @@ impl Dt {
 
             // exact one-step secular inverse on the effective value
             // (identical to the formula used in tcg_to_tt)
-            let elapsed_eff = Self::to_attos_since_tcg_tcb_epoch(eff);
+            let elapsed_eff = eff.to_attos_since_tcg_tcb_epoch();
             let sec_inv_attos = Self::mul_rate(elapsed_eff, LM_NUM, LM_DEN + LM_NUM);
 
             tt = eff.sub(dt!(sec_inv_attos));

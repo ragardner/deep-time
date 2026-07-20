@@ -343,8 +343,8 @@ impl Dt {
     /// Exact integer helper: elapsed attoseconds since the TCG/TCB reference epoch (1977-01-01.0 TAI),
     /// using only the numerical value of the supplied `Dt` (scale is ignored).
     #[inline(always)]
-    pub(crate) const fn to_attos_since_tcg_tcb_epoch(numerical: Dt) -> i128 {
-        numerical.to_attos() - TCG_TCB_REF_ATTOS_SINCE_J2000
+    pub(crate) const fn to_attos_since_tcg_tcb_epoch(&self) -> i128 {
+        self.to_attos() - TCG_TCB_REF_ATTOS_SINCE_J2000
     }
 
     /// Exact fixed-point multiplication: `attos * num / den` (handles negative values safely,
@@ -371,25 +371,25 @@ impl Dt {
     }
 
     pub(crate) const fn tt_to_tcg(tt: Dt) -> Dt {
-        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tt);
+        let elapsed = tt.to_attos_since_tcg_tcb_epoch();
         let span_attos = Self::mul_rate(elapsed, LG_NUM, LG_DEN - LG_NUM);
         tt.add_attos(span_attos)
     }
 
     pub(crate) const fn tcg_to_tt(tcg: Dt) -> Dt {
-        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tcg);
+        let elapsed = tcg.to_attos_since_tcg_tcb_epoch();
         let span_attos = Self::mul_lg(elapsed);
         tcg.add_attos(-span_attos)
     }
 
     pub(crate) const fn tcb_to_tdb(tcb: Dt) -> Dt {
-        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tcb);
+        let elapsed = tcb.to_attos_since_tcg_tcb_epoch();
         let span_attos = Self::mul_lb(elapsed);
         tcb.add_attos(-span_attos).add_attos(TDB0_ATTOS)
     }
 
     pub(crate) const fn tdb_to_tcb(tdb: Dt) -> Dt {
-        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
+        let elapsed = tdb.to_attos_since_tcg_tcb_epoch();
         // Expanded factor: LB / (1 - LB)  →  use LB_DEN - LB_NUM in denominator
         let span_attos = Self::mul_rate(elapsed, LB_NUM, LB_DEN - LB_NUM);
         tdb.add_attos(span_attos).add_attos(-TDB0_ATTOS)
@@ -405,7 +405,7 @@ impl Dt {
     /// Converts a TDB [`Dt`] to TAI.
     pub const fn tdb_to_tai(tdb: Dt) -> Dt {
         // Linear-rate + constant initial guess (dominant part of the forward transformation)
-        let elapsed = Self::to_attos_since_tcg_tcb_epoch(tdb);
+        let elapsed = tdb.to_attos_since_tcg_tcb_epoch();
         let linear_span = Self::mul_lb(elapsed); // LB * elapsed
         let mut tt = tdb.sub(dt!(linear_span)).sub(dt!(TDB0_ATTOS));
 
