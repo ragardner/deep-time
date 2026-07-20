@@ -383,6 +383,32 @@ impl Dt {
         )
     }
 
+    /// Converts this [`Dt`] into whole minutes and a fractional part within one minute,
+    /// truncating toward zero.
+    ///
+    /// Returns `(whole, frac_attos)`. When the value is negative and has a fractional
+    /// part, `frac_attos` is negative too.
+    ///
+    /// For a non-negative fractional part, use
+    /// [`Dt::to_mins_floor`](#method.to_mins_floor).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, sec};
+    ///
+    /// let dt = from_sec!(90);
+    /// assert_eq!(dt.to_mins(), (1, sec!(30)));
+    ///
+    /// let dt = from_sec!(-90);
+    /// assert_eq!(dt.to_mins(), (-1, sec!(-30)));
+    /// ```
+    #[inline(always)]
+    pub const fn to_mins(&self) -> (i128, i128) {
+        (self.attos / ATTOS_PER_MIN, self.attos % ATTOS_PER_MIN)
+    }
+
     /// Converts this [`Dt`] to a float number of minutes.
     ///
     /// ## Examples
@@ -427,6 +453,19 @@ impl Dt {
             self.attos.div_euclid(ATTOS_PER_HOUR),
             self.attos.rem_euclid(ATTOS_PER_HOUR),
         )
+    }
+
+    /// Converts this [`Dt`] into whole hours and a fractional part within one hour,
+    /// truncating toward zero.
+    ///
+    /// Returns `(whole, frac_attos)`. When the value is negative and has a fractional
+    /// part, `frac_attos` is negative too.
+    ///
+    /// For a non-negative fractional part, use
+    /// [`Dt::to_hours_floor`](#method.to_hours_floor).
+    #[inline(always)]
+    pub const fn to_hours(&self) -> (i128, i128) {
+        (self.attos / ATTOS_PER_HOUR, self.attos % ATTOS_PER_HOUR)
     }
 
     /// Converts this [`Dt`] to a float number of hours.
