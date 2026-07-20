@@ -361,7 +361,7 @@ impl Dt {
     /// Returns `true` if the supplied values form a valid proleptic Gregorian calendar date.
     #[inline]
     pub const fn is_valid_ymd(yr: i64, mo: u8, day: u8) -> bool {
-        if mo < 1 || mo > 12 || day < 1 {
+        if !matches!(mo, 1..=12) || !matches!(day, 1..=31) {
             return false;
         }
         // 0 = Jan, 1 = Feb, ..., 11 = Dec
