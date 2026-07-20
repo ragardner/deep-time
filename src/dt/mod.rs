@@ -298,7 +298,7 @@ pub struct Dt {
     /// Calendar and conversion APIs commonly interpret it relative to the library
     /// epoch (2000-01-01 noon), but the field itself is only a count of attoseconds.
     pub attos: i128,
-    /// The current time scale of this value.
+    /// The current time scale of this object.
     pub scale: Scale,
     /// Target time scale used by many output functions such as
     /// [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
