@@ -13,7 +13,7 @@ A fully featured and high performance **Rust date and time library** with attose
 - Auto-parsers for [datetimes](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_parse) and [durations](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str_duration) that handle thousands of formats, relative dates and multiple languages, requires the `parse` feature
 - No std, no alloc, and wide-spread [const fn](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_ymd)
 - [Extensively validated](https://github.com/ragardner/deep-time/tree/main/tests) against outputs from **Astropy**, **Jiff**, and other libraries and sources
-- Fast multi-format [string](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str) parser (ISO-like civil, SEC/JD/MJD, …)
+- Fast no-alloc ISO-like [parser](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_str)
 - [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb-hi` can be enabled which provides the ERFA TDB model
 - [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_strptime)
 - [Strftime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)

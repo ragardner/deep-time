@@ -148,7 +148,7 @@ mod interop {
 
     #[test]
     fn timestamp_from_jiff_matches_from_unix() {
-        let nanos: i128 = 1_713_191_445_123_456_789;
+        let nanos: i128 = Timestamp::MAX.as_nanosecond();
         let ts = Timestamp::from_nanosecond(nanos).unwrap();
         let via_jiff = Dt::from_jiff_timestamp(ts);
         let via_unix = Dt::from_unix(Dt::new(
