@@ -490,17 +490,9 @@ impl Dt {
     /// let d = Dt::from_str_sec_f("0.000000000000000001", Some(Scale::TAI)).unwrap();
     /// assert_eq!(d.to_attos() % 1_000_000_000_000_000_000, 1);
     /// ```
+    #[inline]
     pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
-        let parsed = Parts::parse_str_f(s.as_bytes(), scale)?;
-
-        let int_attos = (parsed.int_u as i128) * ATTOS_PER_SEC_I128;
-        let signed_attos = if parsed.negative {
-            -int_attos - (parsed.frac_attos as i128)
-        } else {
-            int_attos + (parsed.frac_attos as i128)
-        };
-
-        Some(Dt::new(signed_attos, parsed.scale, parsed.scale).to_tai())
+        Parts::from_str_sec_f(s, scale).and_then(|p| p.to_dt().ok())
     }
 
     /// Parses a decimal Julian Date string (with optional fractional part).
@@ -530,6 +522,7 @@ impl Dt {
     /// let d = Dt::from_str_jd_f("2451544.5", Some(Scale::TAI)).unwrap();
     /// assert!(d.to_attos() < 0);
     /// ```
+    #[inline]
     pub fn from_str_jd_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
         Parts::from_str_jd_f(s, scale).and_then(|p| p.to_dt().ok())
     }
@@ -561,6 +554,7 @@ impl Dt {
     /// let d = Dt::from_str_mjd_f("51543.5", Some(Scale::TAI)).unwrap();
     /// assert!(d.to_attos() < 0);
     /// ```
+    #[inline]
     pub fn from_str_mjd_f(s: &str, scale: Option<Scale>) -> Option<Dt> {
         Parts::from_str_mjd_f(s, scale).and_then(|p| p.to_dt().ok())
     }
@@ -983,14 +977,14 @@ impl Dt {
             false
         };
 
-        let hours = parse_mil_uint(bytes, &mut pos, len)?;
+        let hours = parse_uint(bytes, &mut pos, len)?;
         // At least one colon is required (H:MM or H:MM:SS).
         if pos >= len || bytes[pos] != b':' {
             return Err(an_err!(DtErrKind::InvalidSyntax));
         }
         pos += 1;
 
-        let minutes = parse_mil_uint(bytes, &mut pos, len)?;
+        let minutes = parse_uint(bytes, &mut pos, len)?;
         if minutes > 59 {
             return Err(an_err!(DtErrKind::InvalidInput));
         }
@@ -1000,7 +994,7 @@ impl Dt {
 
         if pos < len && bytes[pos] == b':' {
             pos += 1;
-            seconds = parse_mil_uint(bytes, &mut pos, len)?;
+            seconds = parse_uint(bytes, &mut pos, len)?;
             if seconds > 59 {
                 return Err(an_err!(DtErrKind::InvalidInput));
             }
@@ -1047,8 +1041,7 @@ impl Dt {
     }
 }
 
-#[inline]
-fn parse_mil_uint(bytes: &[u8], pos: &mut usize, len: usize) -> Result<i128, DtErr> {
+fn parse_uint(bytes: &[u8], pos: &mut usize, len: usize) -> Result<i128, DtErr> {
     if *pos >= len || !bytes[*pos].is_ascii_digit() {
         return Err(an_err!(DtErrKind::ExpectedValue));
     }
