@@ -70,15 +70,27 @@ impl Dt {
             return Err(an_err!(DtErrKind::YearOutOfRange, "<1958"));
         }
 
+        // Fractional part: pure truncation to the binary fraction
+        //   k / 2^(8·n_frac)
+        // This matches the definition of CUC as the state of a free-running
+        // binary counter (CCSDS 301.0-B-4 §3.2).  Rounding is intentionally
+        // avoided so the encoding is identical to what an on-board counter
+        // would produce.
+        //
+        // For n_frac ≤ 8 the intermediate product always fits in u128.
+        // For n_frac ≥ 9 the product can overflow; we fall back to saturating
+        // arithmetic (already documented as a precision limit for these sizes).
         let frac_scaled = if n_frac == 0 {
             0u128
         } else {
             let scale = 1u128 << (8 * n_frac as u32);
-            let half = scale / 2;
-            ((rem_attos as u128)
-                .saturating_mul(scale)
-                .saturating_add(half))
-                / 1_000_000_000_000_000_000
+            match (rem_attos as u128).checked_mul(scale) {
+                Some(prod) => prod / 1_000_000_000_000_000_000,
+                None => {
+                    // Overflow path (n_frac ≥ 9).  Saturate then truncate.
+                    u128::MAX / 1_000_000_000_000_000_000
+                }
+            }
         };
 
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];

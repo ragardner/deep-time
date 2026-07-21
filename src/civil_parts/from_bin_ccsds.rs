@@ -265,9 +265,8 @@ impl Parts {
             0
         } else {
             let denom = 1u128 << (8 * n_frac as u32);
-            let numerator = frac_raw * 1_000_000_000_000_000_000u128;
-            // Add proper rounding (symmetric to the encoder)
-            ((numerator + (denom / 2)) / denom) as u64
+            // Pure truncation – exact inverse of the encoder
+            ((frac_raw * 1_000_000_000_000_000_000u128) / denom) as u64
         };
 
         // Convert to civil time using custom Gregorian conversion
