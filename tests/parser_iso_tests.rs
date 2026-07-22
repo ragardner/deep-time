@@ -770,7 +770,11 @@ mod from_str_tests {
         for s in compact {
             let tp = Parts::from_str(s).unwrap_or_else(|e| panic!("{s:?}: {e:?}"));
             assert_eq!(tp.wkday, Some(Weekday::Saturday), "{s}");
-            assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(2015)), "{s}");
+            assert_eq!(
+                (tp.day, tp.mo, tp.yr),
+                (Some(7), Some(2), Some(2015)),
+                "{s}"
+            );
             assert_eq!((tp.hr, tp.min, tp.sec), (11, 22, 33), "{s}");
         }
         // Fully glued, date only
@@ -848,4 +852,3 @@ mod from_str_tests {
         assert_eq!(as_ms!(ymd.attos() as i128), 123);
     }
 }
-
