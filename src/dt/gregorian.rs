@@ -586,17 +586,17 @@ impl Dt {
     }
 
     /// Number of days since 1958-01-01 (proleptic Gregorian) → `(year, month, day)`.
-    /// This is the inverse of [`Dt::gregorian_to_days_since_1958`].
+    /// This is the inverse of [`Dt::ymd_to_days_since_1958`].
     #[inline]
-    pub const fn days_since_1958_to_gregorian(days_since_epoch: i64) -> (i64, u8, u8) {
+    pub const fn days_since_1958_to_ymd(days_since_epoch: i64) -> (i64, u8, u8) {
         let jd_1958 = Dt::ymd_to_jd(1958, 1, 1);
         let jd = jd_1958.saturating_add(days_since_epoch);
         Dt::jd_to_ymd(jd)
     }
 
-    /// Inverse of [`Dt::days_since_1958_to_gregorian`].
+    /// Inverse of [`Dt::days_since_1958_to_ymd`].
     #[inline]
-    pub const fn gregorian_to_days_since_1958(year: i64, month: u8, day: u8) -> i64 {
+    pub const fn ymd_to_days_since_1958(year: i64, month: u8, day: u8) -> i64 {
         let jd = Dt::ymd_to_jd(year, month, day);
         let jd_1958 = Dt::ymd_to_jd(1958, 1, 1);
         jd.saturating_sub(jd_1958)

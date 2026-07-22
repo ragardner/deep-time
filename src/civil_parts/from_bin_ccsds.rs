@@ -273,7 +273,7 @@ impl Parts {
         let days_since_epoch = (coarse_sec / 86400) as i64;
         let sec_of_day = (coarse_sec % 86400) as i64;
 
-        let (year, month, day) = Dt::days_since_1958_to_gregorian(days_since_epoch);
+        let (year, month, day) = Dt::days_since_1958_to_ymd(days_since_epoch);
 
         let hour = (sec_of_day / 3600) as u8;
         let minute = ((sec_of_day % 3600) / 60) as u8;
@@ -431,7 +431,7 @@ impl Parts {
 
         // Convert day count to Gregorian
         let days_since_epoch = day_count as i64;
-        let (year, month, day) = Dt::days_since_1958_to_gregorian(days_since_epoch);
+        let (year, month, day) = Dt::days_since_1958_to_ymd(days_since_epoch);
 
         let hour = (sec_of_day / 3600) as u8;
         let minute = ((sec_of_day % 3600) / 60) as u8;
