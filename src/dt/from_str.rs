@@ -315,8 +315,9 @@ impl Dt {
     /// - Only **ASCII** input is supported.
     /// - Inputs longer than [`STRTIME_SIZE`](../consts/constant.STRTIME_SIZE.html) are
     ///   rejected with [`DtErrKind::InvalidLen`](../error/enum.DtErrKind.html#variant.InvalidLen).
-    /// - Leading non-date junk is skipped until a year-like start (`digit` or `±`digit)
-    ///   or a recognized alphabetic prefix (`JD` / `MJD` / `SEC`, case-insensitive).
+    /// - Leading non-date junk is skipped until a year-like start (`digit` or `±`digit),
+    ///   a recognized alphabetic prefix (`JD` / `MJD` / `SEC`, case-insensitive), or an
+    ///   English weekday name / abbrev (day-month-year order).
     /// - Trailing characters after a successful parse are generally ignored (lenient).
     /// - Considerably faster than format-string / smart parsers when the input is one
     ///   of the shapes below.
@@ -346,19 +347,25 @@ impl Dt {
     ///
     /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**
     /// - **`2024 Apr 18, 14:30:25 [America/New_York]`** — month abbrev or full English name
+    /// - **`Sat, 07 Feb 2015 11:22:33`**, **`Sat,07Feb2015T11:22:33`** — weekday first
+    ///   (day-month-year; `Sun`…`Sat` or full English name)
     /// - **`2024-109 14:30:25`** — day of year (`%Y-%j`)
     /// - **`2024-W11`**, **`2024W11`**, **`2024-W11-4`** — ISO week date (`%G-W%V`, optional
     ///   weekday `%u` with Monday=`1` … Sunday=`7`)
     /// - **`2024`**, **`2024-03`**, **`2024 Mar`** — partial dates (missing month/day → `1`)
     /// - **`2024-04-18T9:3:5.5`**, **`2024-04-18T143025`** — flexible / compact time
     ///
-    /// #### Date forms (after an optional sign and year digits)
+    /// #### Date forms
     ///
     /// Year digits are taken **literally** (no century window): `99-01-01` is year 99 AD.
     /// Year overflow during accumulation yields
     /// [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange).
     ///
-    /// Exactly one of the following is used:
+    /// **Weekday first** → day, month, year (required). Hyphen before the year is a
+    /// separator (`07-Feb-2015`); a signed year needs space or a doubled sign
+    /// (`07 Feb -4714`, `07-Feb--4714`, `+2015`).
+    ///
+    /// **Otherwise year first.** After an optional sign and year digits, exactly one of:
     ///
     /// 1. **ISO week** — `W`/`w` immediately after the year (or after a non-letter
     ///    separator such as `-`): e.g. `2024-W11`, `2024W114`.
@@ -372,7 +379,8 @@ impl Dt {
     /// 3. **Calendar month/day** — numeric month (1–2 digits) or English month name
     ///    (abbrev or full; matched from the first three letters), then day (1–2 digits).
     ///
-    /// **Partial calendar dates** default missing fields to `1` (January / day 1):
+    /// **Partial calendar dates** (year-first only) default missing fields to `1`
+    /// (January / day 1):
     ///
     /// - Year only: `2024`, `2024-` → 1 January.
     /// - Year-month: `2024-03`, `2024 Mar` → day 1.

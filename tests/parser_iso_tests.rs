@@ -695,6 +695,115 @@ mod from_str_tests {
     }
 
     #[test]
+    fn test_iso_weekday_first_day_month_year() {
+        // RFC 2822 / HTTP-date style: weekday, day month year time
+        let tp = Parts::from_str("Sat, 07 Feb 2015 11:22:33").unwrap();
+        assert_eq!(tp.wkday, Some(Weekday::Saturday));
+        assert_eq!(tp.day, Some(7));
+        assert_eq!(tp.mo, Some(2));
+        assert_eq!(tp.yr, Some(2015));
+        assert_eq!((tp.hr, tp.min, tp.sec), (11, 22, 33));
+
+        // Full weekday name (matched on first three letters)
+        let tp = Parts::from_str("Saturday, 7 February 2015 11:22:33").unwrap();
+        assert_eq!(tp.wkday, Some(Weekday::Saturday));
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(2015)));
+        assert_eq!((tp.hr, tp.min, tp.sec), (11, 22, 33));
+
+        // Case-insensitive abbrev, no comma
+        let tp = Parts::from_str("mon 1 jan 2000").unwrap();
+        assert_eq!(tp.wkday, Some(Weekday::Monday));
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(1), Some(1), Some(2000)));
+
+        // Numeric month also accepted in day-first order
+        let tp = Parts::from_str("Wed, 16/04/2025 14:30:45").unwrap();
+        assert_eq!(tp.wkday, Some(Weekday::Wednesday));
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(16), Some(4), Some(2025)));
+        assert_eq!((tp.hr, tp.min, tp.sec), (14, 30, 45));
+
+        // Hyphen separators must not be read as a negative year (`dd-mmm-yyyy`, `dd-mm-yyyy`)
+        let tp = Parts::from_str("Sat, 07-Feb-2015 11:22:33").unwrap();
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(2015)));
+        assert_eq!((tp.hr, tp.min, tp.sec), (11, 22, 33));
+        let tp = Parts::from_str("Sat, 07-02-2015").unwrap();
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(2015)));
+        let tp = Parts::from_str("Sat, 07 Feb-2015 11:22:33").unwrap();
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(2015)));
+
+        // Explicit signed years: space before sign, or doubled separator
+        let tp = Parts::from_str("Sat, 07 Feb -4714 12:00:00").unwrap();
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(-4714)));
+        assert_eq!((tp.hr, tp.min), (12, 0));
+        let tp = Parts::from_str("Sat, 07 Feb +0042 11:22:33").unwrap();
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(42)));
+        let tp = Parts::from_str("Sat, 07-Feb--4714").unwrap();
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(-4714)));
+
+        // Offset after a normal year still works
+        let tp = Parts::from_str("Sat, 07 Feb 2015 -0500").unwrap();
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(2015)));
+        assert_eq!(tp.offset, Some(Offset::Fixed(-5 * 3600)));
+
+        // Junk before weekday still selects day-first
+        let tp = Parts::from_str("Date: Fri, 18 Apr 2024").unwrap();
+        assert_eq!(tp.wkday, Some(Weekday::Friday));
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(18), Some(4), Some(2024)));
+
+        // Date only (no time)
+        let tp = Parts::from_str("Thu 25 Dec 2025").unwrap();
+        assert_eq!(tp.wkday, Some(Weekday::Thursday));
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(25), Some(12), Some(2025)));
+        assert_eq!((tp.hr, tp.min, tp.sec), (0, 0, 0));
+
+        // Compact / glued forms (minimal or no separators)
+        let compact = [
+            "Sat,07Feb2015T11:22:33",
+            "Sat,07Feb2015 11:22:33",
+            "Sat07Feb2015T11:22:33",
+            "Sat,7Feb2015T11:22:33",
+            "Sat,07Feb2015T112233",
+            "Sat,07February2015T11:22:33",
+            "Sat,07-Feb-2015T11:22:33",
+            "Sat,07/02/2015T11:22:33",
+            "Sat,07022015T11:22:33",
+        ];
+        for s in compact {
+            let tp = Parts::from_str(s).unwrap_or_else(|e| panic!("{s:?}: {e:?}"));
+            assert_eq!(tp.wkday, Some(Weekday::Saturday), "{s}");
+            assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(2015)), "{s}");
+            assert_eq!((tp.hr, tp.min, tp.sec), (11, 22, 33), "{s}");
+        }
+        // Fully glued, date only
+        let tp = Parts::from_str("mon1jan2000").unwrap();
+        assert_eq!(tp.wkday, Some(Weekday::Monday));
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(1), Some(1), Some(2000)));
+        assert_eq!((tp.hr, tp.min, tp.sec), (0, 0, 0));
+        let tp = Parts::from_str("Sat,07Feb2015").unwrap();
+        assert_eq!((tp.day, tp.mo, tp.yr), (Some(7), Some(2), Some(2015)));
+
+        // Year-first still works when no leading weekday
+        let tp = Parts::from_str("2015-02-07 11:22:33").unwrap();
+        assert_eq!(tp.wkday, None);
+        assert_eq!((tp.yr, tp.mo, tp.day), (Some(2015), Some(2), Some(7)));
+
+        // Weekday without a following day → error
+        assert!(matches!(
+            Parts::from_str("Saturday").unwrap_err().kind(),
+            DtErrKind::ExpectedDay
+        ));
+        // Weekday + day but no month
+        assert!(matches!(
+            Parts::from_str("Sat 07").unwrap_err().kind(),
+            DtErrKind::ExpectedMonth
+        ));
+        // Weekday + day + month but no year
+        assert!(matches!(
+            Parts::from_str("Sat 07 Feb").unwrap_err().kind(),
+            DtErrKind::ExpectedYear
+        ));
+    }
+
+    #[test]
     fn test_iso_full_month_name() {
         let tp = Parts::from_str("2024 September 18, 14:30:25 [America/New_York]").unwrap();
         assert_eq!(tp.yr, Some(2024));
@@ -739,3 +848,4 @@ mod from_str_tests {
         assert_eq!(as_ms!(ymd.attos() as i128), 123);
     }
 }
+

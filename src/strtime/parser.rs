@@ -1,5 +1,5 @@
 use super::{FmtExtensions, FmtFlag};
-use crate::en::parse_month_name_abbrev;
+use crate::en::{parse_month_name_abbrev, parse_wkday_name_abbrev};
 use crate::error::{DtErr, DtErrKind};
 use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
 use crate::{
@@ -573,24 +573,8 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         if self.inp.len() < 3 {
             return Err(an_err!(DtErrKind::InvalidWeekdayName));
         }
-        let x = &self.inp[..3];
-        let candidate = [
-            x[0].to_ascii_lowercase(),
-            x[1].to_ascii_lowercase(),
-            x[2].to_ascii_lowercase(),
-        ];
-        let index = match &candidate {
-            b"sun" => 0,
-            b"mon" => 1,
-            b"tue" => 2,
-            b"wed" => 3,
-            b"thu" => 4,
-            b"fri" => 5,
-            b"sat" => 6,
-            _ => {
-                return Err(an_err!(DtErrKind::InvalidWeekdayName));
-            }
-        };
+        let index =
+            parse_wkday_name_abbrev(self.inp).ok_or(an_err!(DtErrKind::InvalidWeekdayName))?;
         self.inp = &self.inp[3..];
         self.tm.wkday = Some(
             Weekday::from_sunday_0_based(index)

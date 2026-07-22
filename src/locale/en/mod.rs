@@ -69,3 +69,27 @@ pub(crate) fn parse_month_name_abbrev(bytes: &[u8]) -> Option<u8> {
         _ => None,
     }
 }
+
+/// English weekday from the first three letters (abbrev or full name).
+///
+/// Returns a Sunday-based index: `0` = Sunday … `6` = Saturday.
+///
+/// bytes **must** be len >= 3
+#[inline(always)]
+pub(crate) fn parse_wkday_name_abbrev(bytes: &[u8]) -> Option<u8> {
+    let candidate = [
+        bytes[0].to_ascii_lowercase(),
+        bytes[1].to_ascii_lowercase(),
+        bytes[2].to_ascii_lowercase(),
+    ];
+    match &candidate {
+        b"sun" => Some(0),
+        b"mon" => Some(1),
+        b"tue" => Some(2),
+        b"wed" => Some(3),
+        b"thu" => Some(4),
+        b"fri" => Some(5),
+        b"sat" => Some(6),
+        _ => None,
+    }
+}

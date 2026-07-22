@@ -1,4 +1,4 @@
-use crate::en::parse_month_name_abbrev;
+use crate::en::{parse_month_name_abbrev, parse_wkday_name_abbrev};
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch,
     JD_2000_2_451_545_I128, Offset, ParsedReal, Parts, SEC_PER_DAY, STRTIME_SIZE, Scale, Timestamp,
@@ -15,8 +15,9 @@ impl Parts {
     /// - Only **ASCII** input is supported.
     /// - Inputs longer than [`STRTIME_SIZE`](../consts/constant.STRTIME_SIZE.html) are
     ///   rejected with [`DtErrKind::InvalidLen`](../error/enum.DtErrKind.html#variant.InvalidLen).
-    /// - Leading non-date junk is skipped until a year-like start (`digit` or `±`digit)
-    ///   or a recognized alphabetic prefix (`JD` / `MJD` / `SEC`, case-insensitive).
+    /// - Leading non-date junk is skipped until a year-like start (`digit` or `±`digit),
+    ///   a recognized alphabetic prefix (`JD` / `MJD` / `SEC`, case-insensitive), or an
+    ///   English weekday name / abbrev (day-month-year order).
     /// - Trailing characters after a successful parse are generally ignored (lenient).
     /// - Considerably faster than format-string / smart parsers when the input is one
     ///   of the shapes below.
@@ -36,19 +37,25 @@ impl Parts {
     ///
     /// - **`+2000-01-01T17:00:00 -0500 [America/New_York] TAI`**
     /// - **`2024 Apr 18, 14:30:25 [America/New_York]`** — month abbrev or full English name
+    /// - **`Sat, 07 Feb 2015 11:22:33`**, **`Sat,07Feb2015T11:22:33`** — weekday first
+    ///   (day-month-year; `Sun`…`Sat` or full English name)
     /// - **`2024-109 14:30:25`** — day of year (`%Y-%j`)
     /// - **`2024-W11`**, **`2024W11`**, **`2024-W11-4`** — ISO week date (`%G-W%V`, optional
     ///   weekday `%u` with Monday=`1` … Sunday=`7`)
     /// - **`2024`**, **`2024-03`**, **`2024 Mar`** — partial dates (see below)
     /// - **`2024-04-18T9:3:5.5`**, **`2024-04-18T143025`** — flexible / compact time
     ///
-    /// #### Date forms (after an optional sign and year digits)
+    /// #### Date forms
     ///
     /// Year digits are taken **literally** (no century window): `99-01-01` is year 99 AD.
     /// Year overflow during accumulation yields
     /// [`DtErrKind::YearOutOfRange`](../error/enum.DtErrKind.html#variant.YearOutOfRange).
     ///
-    /// Exactly one of the following is used:
+    /// **Weekday first** → day, month, year (required); weekday stored in [`Parts::wkday`].
+    /// Hyphen before the year is a separator (`07-Feb-2015`); a signed year needs space
+    /// or a doubled sign (`07 Feb -4714`, `07-Feb--4714`, `+2015`).
+    ///
+    /// **Otherwise year first.** After an optional sign and year digits, exactly one of:
     ///
     /// 1. **ISO week** — `W`/`w` immediately after the year (or after a non-letter
     ///    separator such as `-`): e.g. `2024-W11`, `2024W114`.
@@ -63,7 +70,8 @@ impl Parts {
     /// 3. **Calendar month/day** — numeric month (1–2 digits) or English month name
     ///    (abbrev or full; matched from the first three letters), then day (1–2 digits).
     ///
-    /// **Partial calendar dates** default missing fields to `1` (January / day 1):
+    /// **Partial calendar dates** (year-first only) default missing fields to `1`
+    /// (January / day 1):
     ///
     /// - Year only: `2024`, `2024-` → 1 January.
     /// - Year-month: `2024-03`, `2024 Mar` → day 1.
@@ -143,6 +151,9 @@ impl Parts {
         }
 
         let mut start = 0usize;
+        // Leading English weekday ⇒ day-month-year field order (RFC 2822-ish).
+        let mut day_first = false;
+        let mut leading_wkday: Option<Weekday> = None;
         while start < len_ {
             let b = bytes[start];
             if b.is_ascii_digit()
@@ -170,7 +181,16 @@ impl Parts {
                             return Ok(p);
                         }
                     }
-                    _ => {}
+                    Word::None => {
+                        // Only the first weekday name selects day-first order.
+                        if !day_first
+                            && start + 3 <= len_
+                            && let Some(idx) = parse_wkday_name_abbrev(&bytes[start..])
+                        {
+                            leading_wkday = Weekday::from_sunday_0_based(idx);
+                            day_first = true;
+                        }
+                    }
                 }
                 start = next_item(bytes, start, len_);
             } else {
@@ -179,7 +199,11 @@ impl Parts {
         }
 
         if start == len_ {
-            return Err(an_err!(DtErrKind::ExpectedYear));
+            return Err(an_err!(if day_first {
+                DtErrKind::ExpectedDay
+            } else {
+                DtErrKind::ExpectedYear
+            }));
         }
 
         let s = &s[start..];
@@ -187,165 +211,170 @@ impl Parts {
         let len_ = bytes.len();
         let mut pos: usize = 0;
         let mut tp = Parts::new_utc();
+        tp.wkday = leading_wkday;
 
-        // Year (manual accumulation, optional sign)
-        let mut year: i64 = 0;
-        let negative_year = if pos < len_ && matches!(bytes[pos], b'+' | b'-') {
-            let neg = bytes[pos] == b'-';
-            pos += 1;
-            neg
+        if day_first {
+            parse_day_first_ymd(bytes, &mut pos, len_, &mut tp)?;
         } else {
-            false
-        };
-
-        if bytes[pos].is_ascii_digit() {
-            while pos < len_ && bytes[pos].is_ascii_digit() {
-                let digit = (bytes[pos] - b'0') as i64;
-                year = year
-                    .checked_mul(10)
-                    .and_then(|n| n.checked_add(digit))
-                    .ok_or_else(|| an_err!(DtErrKind::YearOutOfRange))?;
+            // Year (manual accumulation, optional sign)
+            let mut year: i64 = 0;
+            let negative_year = if pos < len_ && matches!(bytes[pos], b'+' | b'-') {
+                let neg = bytes[pos] == b'-';
                 pos += 1;
-            }
-        } else {
-            return Err(an_err!(DtErrKind::ExpectedYear));
-        }
+                neg
+            } else {
+                false
+            };
 
-        if negative_year {
-            year = -year;
-        }
-        tp.yr = Some(year);
-
-        // required separator after year
-        if pos < len_ {
-            if !bytes[pos].is_ascii_alphabetic() {
-                pos += 1;
+            if bytes[pos].is_ascii_digit() {
+                while pos < len_ && bytes[pos].is_ascii_digit() {
+                    let digit = (bytes[pos] - b'0') as i64;
+                    year = year
+                        .checked_mul(10)
+                        .and_then(|n| n.checked_add(digit))
+                        .ok_or_else(|| an_err!(DtErrKind::YearOutOfRange))?;
+                    pos += 1;
+                }
+            } else {
+                return Err(an_err!(DtErrKind::ExpectedYear));
             }
-        } else {
-            // Year only → 1 Jan
-            tp.mo = Some(1);
-            tp.day = Some(1);
-            return Ok(tp);
-        }
 
-        // ISO week date (`2024-W11`, `2024W11`, optional weekday `…-4` / `…4`)
-        // or day-of-year or calendar month/day.
-        // `%G-W%V` / `%G-W%V-%u` — not strftime `%W` (that is calendar `wk_mon`).
-        if pos < len_ && matches!(bytes[pos], b'W' | b'w') {
-            // Require a digit immediately after W before mutating Parts.
-            let mut p = pos + 1;
-            if p >= len_ || !bytes[p].is_ascii_digit() {
-                return Err(an_err!(DtErrKind::ExpectedWeekNumber));
+            if negative_year {
+                year = -year;
             }
-            let mut week = bytes[p] - b'0';
-            p += 1;
-            if p < len_ && bytes[p].is_ascii_digit() {
-                week = week * 10 + (bytes[p] - b'0');
+            tp.yr = Some(year);
+
+            // required separator after year
+            if pos < len_ {
+                if !bytes[pos].is_ascii_alphabetic() {
+                    pos += 1;
+                }
+            } else {
+                // Year only → 1 Jan
+                tp.mo = Some(1);
+                tp.day = Some(1);
+                return Ok(tp);
+            }
+
+            // ISO week date (`2024-W11`, `2024W11`, optional weekday `…-4` / `…4`)
+            // or day-of-year or calendar month/day.
+            // `%G-W%V` / `%G-W%V-%u` — not strftime `%W` (that is calendar `wk_mon`).
+            if pos < len_ && matches!(bytes[pos], b'W' | b'w') {
+                // Require a digit immediately after W before mutating Parts.
+                let mut p = pos + 1;
+                if p >= len_ || !bytes[p].is_ascii_digit() {
+                    return Err(an_err!(DtErrKind::ExpectedWeekNumber));
+                }
+                let mut week = bytes[p] - b'0';
                 p += 1;
-            }
+                if p < len_ && bytes[p].is_ascii_digit() {
+                    week = week * 10 + (bytes[p] - b'0');
+                    p += 1;
+                }
 
-            // Optional weekday Mon=1…Sun=7: extended `…-4` or basic trailing digit.
-            let mut wkday = None;
-            if p < len_ {
-                let b = bytes[p];
-                if b == b'-' {
-                    let dpos = p + 1;
-                    if dpos < len_ && bytes[dpos].is_ascii_digit() {
-                        let d = bytes[dpos] - b'0';
-                        wkday = Some(
-                            Weekday::from_monday_1_based(d)
-                                .ok_or(an_err!(DtErrKind::ExpectedWeekdayNumber))?,
-                        );
-                        p = dpos + 1;
+                // Optional weekday Mon=1…Sun=7: extended `…-4` or basic trailing digit.
+                let mut wkday = None;
+                if p < len_ {
+                    let b = bytes[p];
+                    if b == b'-' {
+                        let dpos = p + 1;
+                        if dpos < len_ && bytes[dpos].is_ascii_digit() {
+                            let d = bytes[dpos] - b'0';
+                            wkday = Some(
+                                Weekday::from_monday_1_based(d)
+                                    .ok_or(an_err!(DtErrKind::ExpectedWeekdayNumber))?,
+                            );
+                            p = dpos + 1;
+                        }
+                        // Lone `-` left for later stages.
+                    } else if b.is_ascii_digit() {
+                        // Basic `YYYYWwwD` — only consume if valid ISO weekday.
+                        if let Some(wd) = Weekday::from_monday_1_based(b - b'0') {
+                            wkday = Some(wd);
+                            p += 1;
+                        }
                     }
-                    // Lone `-` left for later stages.
-                } else if b.is_ascii_digit() {
-                    // Basic `YYYYWwwD` — only consume if valid ISO weekday.
-                    if let Some(wd) = Weekday::from_monday_1_based(b - b'0') {
-                        wkday = Some(wd);
-                        p += 1;
-                    }
-                }
-            }
-
-            pos = p;
-            tp.iso_wk_yr = tp.yr.take();
-            tp.iso_wk = Some(if week == 0 { 1 } else { week });
-            tp.wkday = wkday;
-            // Missing weekday → Monday in to_dt via unwrap_or.
-        } else if let Some(doy) = try_parse_doy(bytes, &mut pos, len_) {
-            tp.day_of_yr = Some(doy);
-        } else {
-            'day_month: {
-                while pos < len_
-                    && (bytes[pos].is_ascii_whitespace() || bytes[pos].is_ascii_punctuation())
-                {
-                    pos += 1;
-                }
-                if pos >= len_ {
-                    // Year only (trailing junk/separators) → 1 Jan
-                    tp.mo = Some(1);
-                    tp.day = Some(1);
-                    return Ok(tp);
                 }
 
-                // Year-only + time (`2024T12:00`): keep `T` for the time stage.
-                if matches!(bytes[pos], b'T' | b't') {
-                    tp.mo = Some(1);
-                    tp.day = Some(1);
-                    break 'day_month;
-                }
-
-                // Abbreviated/full month or 1 or 2 digit month
-                if bytes[pos].is_ascii_digit() {
-                    let mut mo: u8;
-                    mo = bytes[pos] - b'0';
-                    pos += 1;
-                    if pos < len_ && bytes[pos].is_ascii_digit() {
-                        mo = mo * 10 + (bytes[pos] - b'0');
+                pos = p;
+                tp.iso_wk_yr = tp.yr.take();
+                tp.iso_wk = Some(if week == 0 { 1 } else { week });
+                tp.wkday = wkday;
+                // Missing weekday → Monday in to_dt via unwrap_or.
+            } else if let Some(doy) = try_parse_doy(bytes, &mut pos, len_) {
+                tp.day_of_yr = Some(doy);
+            } else {
+                'day_month: {
+                    while pos < len_
+                        && (bytes[pos].is_ascii_whitespace() || bytes[pos].is_ascii_punctuation())
+                    {
                         pos += 1;
                     }
-                    // 0 → January (zero / missing month field → default).
-                    tp.mo = Some(if mo == 0 { 1 } else { mo });
-                } else if bytes[pos].is_ascii_alphabetic() && pos + 3 <= len_ {
-                    // `<=` so bare "Mar" at EOS matches (exactly 3 letters).
-                    tp.mo = Some(
-                        parse_month_name_abbrev(&bytes[pos..])
-                            .ok_or(an_err!(DtErrKind::InvalidMonthName))?,
-                    );
-                    // pos stays on the name; non-digit skip below walks past it.
-                }
-
-                // Skip to day; stop before `T`/`t` so `2024-03T12:00` is time, not day.
-                while pos < len_ {
-                    let b = bytes[pos];
-                    if b.is_ascii_digit() {
-                        break;
+                    if pos >= len_ {
+                        // Year only (trailing junk/separators) → 1 Jan
+                        tp.mo = Some(1);
+                        tp.day = Some(1);
+                        return Ok(tp);
                     }
-                    if matches!(b, b'T' | b't') && !bytes[pos - 1].is_ascii_alphabetic() {
-                        // Year-month only (+ time) → day 1; mo already set (or default below).
-                        tp.mo.get_or_insert(1);
+
+                    // Year-only + time (`2024T12:00`): keep `T` for the time stage.
+                    if matches!(bytes[pos], b'T' | b't') {
+                        tp.mo = Some(1);
                         tp.day = Some(1);
                         break 'day_month;
                     }
-                    pos += 1;
-                }
-                if pos >= len_ {
-                    // Year-month only → day 1
-                    tp.mo.get_or_insert(1);
-                    tp.day = Some(1);
-                    return Ok(tp);
-                }
 
-                // 1 or 2 digit day
-                let mut day = bytes[pos] - b'0';
-                pos += 1;
-                if pos < len_ && bytes[pos].is_ascii_digit() {
-                    day = day * 10 + (bytes[pos] - b'0');
+                    // Abbreviated/full month or 1 or 2 digit month
+                    if bytes[pos].is_ascii_digit() {
+                        let mut mo: u8;
+                        mo = bytes[pos] - b'0';
+                        pos += 1;
+                        if pos < len_ && bytes[pos].is_ascii_digit() {
+                            mo = mo * 10 + (bytes[pos] - b'0');
+                            pos += 1;
+                        }
+                        // 0 → January (zero / missing month field → default).
+                        tp.mo = Some(if mo == 0 { 1 } else { mo });
+                    } else if bytes[pos].is_ascii_alphabetic() && pos + 3 <= len_ {
+                        // `<=` so bare "Mar" at EOS matches (exactly 3 letters).
+                        tp.mo = Some(
+                            parse_month_name_abbrev(&bytes[pos..])
+                                .ok_or(an_err!(DtErrKind::InvalidMonthName))?,
+                        );
+                        // pos stays on the name; non-digit skip below walks past it.
+                    }
+
+                    // Skip to day; stop before `T`/`t` so `2024-03T12:00` is time, not day.
+                    while pos < len_ {
+                        let b = bytes[pos];
+                        if b.is_ascii_digit() {
+                            break;
+                        }
+                        if matches!(b, b'T' | b't') && !bytes[pos - 1].is_ascii_alphabetic() {
+                            // Year-month only (+ time) → day 1; mo already set (or default below).
+                            tp.mo.get_or_insert(1);
+                            tp.day = Some(1);
+                            break 'day_month;
+                        }
+                        pos += 1;
+                    }
+                    if pos >= len_ {
+                        // Year-month only → day 1
+                        tp.mo.get_or_insert(1);
+                        tp.day = Some(1);
+                        return Ok(tp);
+                    }
+
+                    // 1 or 2 digit day
+                    let mut day = bytes[pos] - b'0';
                     pos += 1;
+                    if pos < len_ && bytes[pos].is_ascii_digit() {
+                        day = day * 10 + (bytes[pos] - b'0');
+                        pos += 1;
+                    }
+                    // 0 → day 1 (zero / missing day field → default).
+                    tp.day = Some(if day == 0 { 1 } else { day });
                 }
-                // 0 → day 1 (zero / missing day field → default).
-                tp.day = Some(if day == 0 { 1 } else { day });
             }
         }
 
@@ -928,6 +957,115 @@ impl Parts {
 
         Some(parts)
     }
+}
+
+/// Day → month → year after a leading English weekday (RFC 2822 / HTTP-date style).
+///
+/// Day and month required; year required. Month may be numeric or an English name
+/// (first three letters). Hyphen between month and year is a field separator
+/// (`07-Feb-2015`); a year sign is `+digit`, or `-digit` only after whitespace or
+/// another sign (`07 Feb -4714`, `07-Feb--4714`). Advances `*pos` past the year.
+#[inline(always)]
+fn parse_day_first_ymd(
+    bytes: &[u8],
+    pos: &mut usize,
+    len_: usize,
+    tp: &mut Parts,
+) -> Result<(), DtErr> {
+    // Day (1–2 digits)
+    if *pos >= len_ || !bytes[*pos].is_ascii_digit() {
+        return Err(an_err!(DtErrKind::ExpectedDay));
+    }
+    let day = take_1_2_digits(bytes, pos, len_);
+    tp.day = Some(if day == 0 { 1 } else { day });
+
+    // Skip separators to month
+    while *pos < len_ && (bytes[*pos].is_ascii_whitespace() || bytes[*pos].is_ascii_punctuation()) {
+        *pos += 1;
+    }
+    if *pos >= len_ {
+        return Err(an_err!(DtErrKind::ExpectedMonth));
+    }
+
+    // Month: 1–2 digits or English name
+    if bytes[*pos].is_ascii_digit() {
+        let mo = take_1_2_digits(bytes, pos, len_);
+        tp.mo = Some(if mo == 0 { 1 } else { mo });
+    } else if bytes[*pos].is_ascii_alphabetic() && *pos + 3 <= len_ {
+        tp.mo = Some(
+            parse_month_name_abbrev(&bytes[*pos..]).ok_or(an_err!(DtErrKind::InvalidMonthName))?,
+        );
+        // Consume the month token so `-` in `07-Feb-2015` is a field separator.
+        while *pos < len_ && bytes[*pos].is_ascii_alphabetic() {
+            *pos += 1;
+        }
+    } else {
+        return Err(an_err!(DtErrKind::ExpectedMonth));
+    }
+
+    // Skip to year (digit or signed year). Stop before bare `T`.
+    // `-`+digits is a separator unless after ws/sign (`07-Feb-2015` vs `07 Feb -4714`).
+    while *pos < len_ {
+        let b = bytes[*pos];
+        if b.is_ascii_digit() {
+            break;
+        }
+        if matches!(b, b'T' | b't') {
+            return Err(an_err!(DtErrKind::ExpectedYear));
+        }
+        if matches!(b, b'+' | b'-')
+            && *pos + 1 < len_
+            && bytes[*pos + 1].is_ascii_digit()
+            && (b == b'+'
+                || (*pos > 0
+                    && (bytes[*pos - 1].is_ascii_whitespace()
+                        || matches!(bytes[*pos - 1], b'+' | b'-'))))
+        {
+            break;
+        }
+        *pos += 1;
+    }
+    if *pos >= len_ {
+        return Err(an_err!(DtErrKind::ExpectedYear));
+    }
+
+    // Year (optional sign + digits); checked accum matches year-first path.
+    let negative_year = match bytes[*pos] {
+        b'-' => {
+            *pos += 1;
+            true
+        }
+        b'+' => {
+            *pos += 1;
+            false
+        }
+        _ => false,
+    };
+    if *pos >= len_ || !bytes[*pos].is_ascii_digit() {
+        return Err(an_err!(DtErrKind::ExpectedYear));
+    }
+    let mut year: i64 = 0;
+    while *pos < len_ && bytes[*pos].is_ascii_digit() {
+        let digit = (bytes[*pos] - b'0') as i64;
+        year = year
+            .checked_mul(10)
+            .and_then(|n| n.checked_add(digit))
+            .ok_or_else(|| an_err!(DtErrKind::YearOutOfRange))?;
+        *pos += 1;
+    }
+    tp.yr = Some(if negative_year { -year } else { year });
+    Ok(())
+}
+
+/// Caller must ensure `*pos` is on an ASCII digit.
+fn take_1_2_digits(bytes: &[u8], pos: &mut usize, len_: usize) -> u8 {
+    let mut n = bytes[*pos] - b'0';
+    *pos += 1;
+    if *pos < len_ && bytes[*pos].is_ascii_digit() {
+        n = n * 10 + (bytes[*pos] - b'0');
+        *pos += 1;
+    }
+    n
 }
 
 /// Parse a day-of-year field in one pass: three slots
