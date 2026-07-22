@@ -186,7 +186,9 @@ mod ccsds_tests {
 
     #[test]
     fn test_ccsds_d_direct_frac() {
-        let d_bytes = &[0x41u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x80, 0x00];
+        // P=0x41 (CDS, 2-byte day, µs-of-ms), day=0, ms=1, µs=500
+        // → 1.5 ms into the day (Annex A unit counters, not binary fractions)
+        let d_bytes = &[0x41u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0xF4];
         let parsed = Parts::from_ccsds_cds(d_bytes).unwrap();
 
         assert_eq!(parsed.sec, 0);
@@ -218,7 +220,8 @@ mod ccsds_tests {
 
     #[test]
     fn test_ccsds_d_roundtrip() {
-        let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 400_000_000_000);
+        // 400 µs into the second → ms=0, µs-of-ms=400 with sub_ms_code=1
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 400_000_000_000_000);
 
         let (buf, len) = dt.to_ccsds_cds(2, 1, false).unwrap();
         let parsed = Parts::from_ccsds_cds(&buf[0..len]).unwrap();
@@ -231,12 +234,10 @@ mod ccsds_tests {
         assert_eq!(parsed.sec, 45);
         assert_eq!(parsed.scale, Scale::UTC);
 
-        let diff = (parsed.attos as i64 - 400_000_000_000i64).abs();
-        assert!(
-            diff < 16_000_000_000,
-            "Fractional error too large: {} attos",
-            diff
-        );
+        // µs resolution: residual below 1 µs is discarded (truncation)
+        assert_eq!(parsed.attos, 400_000_000_000_000);
+        // Encoded µs field must be 400 (0x0190)
+        assert_eq!(&buf[len - 2..len], &[0x01, 0x90]);
     }
 
     /// Helper that performs a full round-trip and verifies both the binary bytes
@@ -276,16 +277,20 @@ mod ccsds_tests {
                 "When n_subsec=0 the fractional part must be exactly zero"
             );
         } else {
-            // Allowed quantization error = half the smallest representable unit at this precision
+            // Truncation: recovered ≤ original, error < one unit at this precision
             let unit = 1_000_000_000_000_000_000u64 / 10u64.pow((2 * n_subsec) as u32);
-            let max_error = unit / 2;
-            let diff = (tp_frac as i64 - recovered_frac as i64).abs() as u64;
             assert!(
-                diff <= max_error,
-                "Fractional round-trip error too large for n_subsec={}: {} attos (max allowed {})",
+                recovered_frac <= tp_frac,
+                "Truncation must not round up for n_subsec={}",
+                n_subsec
+            );
+            let diff = tp_frac - recovered_frac;
+            assert!(
+                diff < unit,
+                "Fractional truncation error too large for n_subsec={}: {} attos (max allowed {})",
                 n_subsec,
                 diff,
-                max_error
+                unit - 1
             );
         }
 
@@ -337,11 +342,17 @@ mod ccsds_tests {
         let y9999 = Dt::from_ymd(9999, 12, 31, Scale::UTC, 23, 59, 59, 0);
         roundtrip_ccs(y9999, true, 2, 0b0101_1010);
 
-        // Subsecond rounding test (exactly halfway case)
+        // Subsecond truncation: 0.5 s with 2 decimal digits → "50"
         let half = Dt::from_ymd(2025, 4, 17, Scale::UTC, 0, 0, 0, 500_000_000_000_000_000);
         let (buf, _) = half.to_ccsds_ccs(false, 1).unwrap();
-        // Should round to 50 (i.e. 0.5 s)
-        assert_eq!(buf[8], 0x50); // last BCD byte should be 0x50 for "50"
+        assert_eq!(buf[8], 0x50); // BCD "50"
+
+        // Truncation must not carry into the next second near .999…
+        let almost = Dt::from_ymd(2025, 4, 17, Scale::UTC, 0, 0, 0, 999_999_999_999_999_999);
+        let (buf, len) = almost.to_ccsds_ccs(false, 1).unwrap();
+        assert_eq!(buf[7], 0x00); // second still 00
+        assert_eq!(buf[8], 0x99); // truncated to 0.99 s
+        assert_eq!(len, 9);
     }
 
     #[test]
@@ -468,7 +479,9 @@ mod ccsds_tests {
 
     #[test]
     fn test_ccsds_d_sub_ms_code_2() {
-        // Test the 2⁻³² sub-millisecond path
+        // Picosecond-of-millisecond path (cascaded unit counter)
+        // 123_456_789_012_345_678 attos =
+        //   123 ms + 456_789_012 ps residual within that ms
         let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 123_456_789_012_345_678);
 
         let (buf, len) = dt.to_ccsds_cds(2, 2, false).unwrap();
@@ -477,7 +490,6 @@ mod ccsds_tests {
         let parsed = Parts::from_ccsds_cds(&buf[0..len]).unwrap();
         let recovered = parsed.to_dt().unwrap();
 
-        // Compare civil time fields only
         let orig = dt.to_ymd();
         let rec = recovered.to_ymd();
 
@@ -488,13 +500,39 @@ mod ccsds_tests {
         assert_eq!(rec.min(), orig.min());
         assert_eq!(rec.sec(), orig.sec());
 
-        // Allow reasonable quantization error for 2⁻³² precision
+        // Truncation to 1 ps: residual below 1 ps discarded
+        // expected attos = 123 ms + 456_789_012 ps
+        let expected_attos = 123_000_000_000_000_000u64 + 456_789_012u64 * 1_000_000;
+        assert_eq!(parsed.attos, expected_attos);
         let diff = (recovered.attos as i128 - dt.attos).abs();
         assert!(
-            diff < 250_000_000_000_000,
+            diff < 1_000_000, // < 1 ps in attos
             "Fractional error too large for sub_ms_code=2, got: {}",
             diff,
         );
+    }
+
+    #[test]
+    fn test_ccsds_d_us_of_ms_encoding() {
+        // 1.5 ms into the second: ms=1, µs=500
+        let dt = Dt::from_ymd(1958, 1, 1, Scale::UTC, 0, 0, 0, 1_500_000_000_000_000);
+        let (buf, len) = dt.to_ccsds_cds(2, 1, false).unwrap();
+        assert_eq!(len, 9);
+        assert_eq!(buf[0], 0x41);
+        // ms of day = 1
+        assert_eq!(&buf[3..7], &[0x00, 0x00, 0x00, 0x01]);
+        // µs of ms = 500
+        assert_eq!(&buf[7..9], &[0x01, 0xF4]);
+
+        let parsed = Parts::from_ccsds_cds(&buf[..len]).unwrap();
+        assert_eq!(parsed.attos, 1_500_000_000_000_000);
+
+        // Values > 999 in the µs field are rejected (Annex A)
+        let bad = &[0x41u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0xE8]; // 1000
+        assert!(matches!(
+            Parts::from_ccsds_cds(bad),
+            Err(e) if e.kind() == DtErrKind::InvalidSubmillisecond
+        ));
     }
 
     #[test]
@@ -591,5 +629,357 @@ mod ccsds_tests {
         let ccs_parsed = Parts::from_ccsds_bin(&ccs_buf[0..ccs_len]).unwrap();
         assert_eq!(ccs_parsed.scale, Scale::UTC);
         assert_eq!(ccs_parsed.yr, Some(2025));
+    }
+
+    // ====================== Static CDS short vectors (also covered by spacepackets crate) =====
+
+    /// CDS short (ms only) reference vectors (cross-checked against
+    /// [`spacepackets`](https://crates.io/crates/spacepackets) and historical Python pack).
+    /// Full Rust-crate interop lives in `tests/spacepackets_ccsds_tests.rs`.
+    #[test]
+    fn cds_short_reference_vectors() {
+        // Generated with:
+        //   spacepackets.ccsds.time.cds.CdsShortTimestamp.from_datetime(...).pack()
+        // Integer ms truncation (no sub-ms field).
+        // Whole-second cases: byte-identical to spacepackets CdsShortTimestamp.pack().
+        // Fractional-ms cases use pure integer truncation (floor); Python spacepackets
+        // sometimes differs by 1 ms because it uses float seconds (e.g. .123000 → 122).
+        let cases: &[(&str, i64, u8, u8, u8, u8, u8, u64, &[u8])] = &[
+            (
+                "1958-01-01T00:00:00",
+                1958,
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                &[0x40, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],
+            ),
+            (
+                "1970-01-01T00:00:00",
+                1970,
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                &[0x40, 0x11, 0x1f, 0x00, 0x00, 0x00, 0x00],
+            ),
+            (
+                "2000-01-01T00:00:00",
+                2000,
+                1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                &[0x40, 0x3b, 0xec, 0x00, 0x00, 0x00, 0x00],
+            ),
+            (
+                "2000-01-01T12:00:00",
+                2000,
+                1,
+                1,
+                12,
+                0,
+                0,
+                0,
+                &[0x40, 0x3b, 0xec, 0x02, 0x93, 0x2e, 0x00],
+            ),
+            (
+                "2025-04-17T14:30:45",
+                2025,
+                4,
+                17,
+                14,
+                30,
+                45,
+                0,
+                &[0x40, 0x60, 0x02, 0x03, 0x1d, 0x32, 0x08],
+            ),
+            // 123.456 ms → floor to 123 ms (matches spacepackets for this particular value)
+            (
+                "2025-04-17T14:30:45.123456",
+                2025,
+                4,
+                17,
+                14,
+                30,
+                45,
+                123_456_000_000_000_000,
+                &[0x40, 0x60, 0x02, 0x03, 0x1d, 0x32, 0x83],
+            ),
+            // Exact .123 s → 123 ms (integer). spacepackets float path yields 122.
+            (
+                "2025-04-17T14:30:45.123000",
+                2025,
+                4,
+                17,
+                14,
+                30,
+                45,
+                123_000_000_000_000_000,
+                &[0x40, 0x60, 0x02, 0x03, 0x1d, 0x32, 0x83],
+            ),
+            // 23:59:59.999 → 86_399_999 ms (integer). spacepackets float path yields 86_399_998.
+            (
+                "1999-12-31T23:59:59.999",
+                1999,
+                12,
+                31,
+                23,
+                59,
+                59,
+                999_000_000_000_000_000,
+                &[0x40, 0x3b, 0xeb, 0x05, 0x26, 0x5b, 0xff],
+            ),
+        ];
+
+        for (desc, y, mo, d, h, mi, s, attos, expected) in cases {
+            let dt = Dt::from_ymd(*y, *mo, *d, Scale::UTC, *h, *mi, *s, *attos);
+            let (buf, len) = dt.to_ccsds_cds(2, 0, false).unwrap();
+            assert_eq!(
+                &buf[..len],
+                *expected,
+                "CDS short mismatch for {desc}: got {:02x?} want {:02x?}",
+                &buf[..len],
+                expected
+            );
+            // Round-trip decode
+            let parsed = Parts::from_ccsds_cds(&buf[..len]).unwrap();
+            assert_eq!(parsed.yr, Some(*y), "{desc}");
+            assert_eq!(parsed.mo, Some(*mo), "{desc}");
+            assert_eq!(parsed.day, Some(*d), "{desc}");
+            assert_eq!(parsed.hr, *h, "{desc}");
+            assert_eq!(parsed.min, *mi, "{desc}");
+            assert_eq!(parsed.sec, *s, "{desc}");
+        }
+    }
+
+    /// CDS with µs-of-ms: match spacepackets-rs conversion rules
+    /// (`submillis = subsec_micros % 1000`, ms truncated).
+    #[test]
+    fn cds_us_matches_spacepackets_rs_rules() {
+        // 14:30:45.123456789 → ms_of_day includes 123 ms, µs_of_ms = 456
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 123_456_789_000_000_000);
+        let (buf, len) = dt.to_ccsds_cds(2, 1, false).unwrap();
+        assert_eq!(len, 9);
+        assert_eq!(buf[0], 0x41);
+        let ms = u32::from_be_bytes([buf[3], buf[4], buf[5], buf[6]]);
+        let us = u16::from_be_bytes([buf[7], buf[8]]);
+        let expected_ms = (14u32 * 3600 + 30 * 60 + 45) * 1000 + 123;
+        assert_eq!(ms, expected_ms);
+        assert_eq!(us, 456);
+
+        let parsed = Parts::from_ccsds_cds(&buf[..len]).unwrap();
+        // Truncated to µs: 123 ms + 456 µs
+        assert_eq!(parsed.attos, 123_000_000_000_000_000 + 456_000_000_000_000);
+    }
+
+    /// CDS picosecond-of-ms: residual of ms as ps count (spacepackets-rs:
+    /// `(subsec_nanos % 1e6) * 1000` when sourced from ns — equivalent to
+    /// truncating attos-in-ms to picoseconds).
+    #[test]
+    fn cds_ps_matches_spacepackets_rs_rules() {
+        // 45.123456789012345678 s
+        let attos = 123_456_789_012_345_678u64;
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, attos);
+        let (buf, len) = dt.to_ccsds_cds(2, 2, false).unwrap();
+        assert_eq!(len, 11);
+        assert_eq!(buf[0], 0x42);
+        let ms = u32::from_be_bytes([buf[3], buf[4], buf[5], buf[6]]);
+        let ps = u32::from_be_bytes([buf[7], buf[8], buf[9], buf[10]]);
+        assert_eq!(ms, (14u32 * 3600 + 30 * 60 + 45) * 1000 + 123);
+        // attos_in_ms = 456_789_012_345_678; / 1e6 = 456_789_012 ps
+        assert_eq!(ps, 456_789_012);
+
+        let parsed = Parts::from_ccsds_cds(&buf[..len]).unwrap();
+        assert_eq!(
+            parsed.attos,
+            123_000_000_000_000_000 + 456_789_012 * 1_000_000
+        );
+    }
+
+    /// CUC binary-fraction identity: encode then decode is pure floor at 2^{-8n}.
+    #[test]
+    fn cuc_binary_fraction_truncation_identity() {
+        let attos = 123_456_789_012_345_678u64;
+        let dt = Dt::CCSDS_EPOCH.add_attos(attos as i128);
+        for n_frac in 1u8..=8 {
+            let (buf, len) = dt.to_ccsds_cuc(4, n_frac, false).unwrap();
+            let parsed = Parts::from_ccsds_cuc(&buf[..len]).unwrap();
+            let bits = 8 * n_frac as u32;
+            let scale = 1u128 << bits;
+            let frac_raw = (attos as u128 * scale) / 1_000_000_000_000_000_000;
+            let expected = (frac_raw * 1_000_000_000_000_000_000) / scale;
+            assert_eq!(parsed.attos as u128, expected, "n_frac={n_frac}");
+            assert!(parsed.attos <= attos);
+        }
+    }
+
+    /// CDS leap second: civil 23:59:60 → ms-of-day in 86_400_000..86_400_999 (Annex A).
+    #[test]
+    fn cds_positive_leap_second() {
+        // 2016-12-31 was a real positive leap second in the library tables
+        let dt = Dt::from_ymd(
+            2016,
+            12,
+            31,
+            Scale::UTC,
+            23,
+            59,
+            60,
+            250_000_000_000_000_000,
+        );
+        let ymd = dt.to_ymd();
+        assert_eq!(ymd.sec(), 60, "civil second must remain 60 for leap second");
+
+        let (buf, len) = dt.to_ccsds_cds(2, 1, false).unwrap();
+        assert_eq!(len, 9);
+        assert_eq!(buf[0], 0x41);
+        let ms = u32::from_be_bytes([buf[3], buf[4], buf[5], buf[6]]);
+        let us = u16::from_be_bytes([buf[7], buf[8]]);
+        // 86400 s * 1000 + 250 ms = 86_400_250; µs residual of that ms = 0
+        assert_eq!(ms, 86_400_250);
+        assert_eq!(us, 0);
+
+        let parsed = Parts::from_ccsds_cds(&buf[..len]).unwrap();
+        assert_eq!(parsed.sec, 60);
+        assert_eq!(parsed.hr, 23);
+        assert_eq!(parsed.min, 59);
+        assert_eq!(parsed.attos, 250_000_000_000_000_000);
+        assert_eq!(parsed.yr, Some(2016));
+        assert_eq!(parsed.mo, Some(12));
+        assert_eq!(parsed.day, Some(31));
+    }
+
+    /// CUC n_frac 9–10 still round-trips via the overflow-safe paths.
+    #[test]
+    fn cuc_high_n_frac_roundtrip() {
+        let attos = 314_159_265_358_979_323u64; // pi-ish fraction of a second
+        let dt = Dt::CCSDS_EPOCH.add_attos(attos as i128);
+        for n_frac in [9u8, 10] {
+            let (buf, len) = dt.to_ccsds_cuc(4, n_frac, false).unwrap();
+            let parsed = Parts::from_ccsds_cuc(&buf[..len]).unwrap();
+            assert!(
+                parsed.attos <= attos,
+                "n_frac={n_frac}: recovered must not exceed original"
+            );
+            // Residual must be smaller than one unit of the binary fraction.
+            // For n_frac ≥ 9, 2^(8n) does not fit the simple shift; bound by 1 as.
+            let err = attos - parsed.attos;
+            assert!(err <= 1, "n_frac={n_frac}: err={err} attos (expected ≤1)");
+        }
+    }
+
+    // ====================== Audit / coverage gap fillers ======================
+
+    #[test]
+    #[cfg(feature = "alloc")]
+    fn ascii_ccsds_a_and_b_shape() {
+        let dt = Dt::from_ymd(2025, 4, 17, Scale::UTC, 14, 30, 45, 123_456_789_000_000_000);
+        let a = dt.to_str_ccsds().unwrap();
+        assert!(a.starts_with("2025-04-17T14:30:45."), "{a}");
+        assert!(a.ends_with('Z'), "{a}");
+        assert!(a.contains(".123456789"), "{a}");
+
+        let b = dt.to_ccsds_doy_str().unwrap();
+        // 2025-04-17 is DOY 107
+        assert!(b.starts_with("2025-107T14:30:45."), "{b}");
+        assert!(b.ends_with('Z'), "{b}");
+
+        // Truncation (not rounding) at limited precision
+        let t = dt.to_str_ccsds_nf(3).unwrap();
+        assert_eq!(t, "2025-04-17T14:30:45.123Z");
+    }
+
+    #[test]
+    fn cds_rejects_agency_epoch_and_reserved_subms() {
+        // Epoch bit set (Level 2 agency epoch) — rejected
+        let agency = &[0x48u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]; // 0100_1000
+        assert!(matches!(
+            Parts::from_ccsds_cds(agency),
+            Err(e) if e.kind() == DtErrKind::ExpectedValue
+        ));
+        // Reserved sub-ms code 0b11
+        let reserved = &[0x43u8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
+        assert!(matches!(
+            Parts::from_ccsds_cds(reserved),
+            Err(e) if e.kind() == DtErrKind::InvalidSubmillisecond
+        ));
+        // ms of day over leap-second max (86_400_999)
+        // 86_401_000 = 0x05_26_5F_E8
+        let bad_ms = &[0x40u8, 0x00, 0x00, 0x05, 0x26, 0x5f, 0xe8];
+        assert!(
+            matches!(
+                Parts::from_ccsds_cds(bad_ms),
+                Err(e) if e.kind() == DtErrKind::OutOfRange
+            ),
+            "got {:?}",
+            Parts::from_ccsds_cds(bad_ms)
+        );
+    }
+
+    #[test]
+    fn cuc_rejects_third_pfield_octet() {
+        // P1 extension set, P2 further-extension set
+        let bad = &[0x9Cu8, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00];
+        assert!(matches!(
+            Parts::from_ccsds_cuc(bad),
+            Err(e) if e.kind() == DtErrKind::UnsupportedItem
+        ));
+    }
+
+    #[test]
+    fn ccs_rejects_year_zero() {
+        // P=0x50, year BCD 0000, then 01-01 00:00:00
+        let bad = &[0x50u8, 0x00, 0x00, 0x01, 0x01, 0x00, 0x00, 0x00];
+        assert!(matches!(
+            Parts::from_ccsds_ccs(bad),
+            Err(e) if e.kind() == DtErrKind::YearOutOfRange
+        ));
+    }
+
+    #[test]
+    fn to_ccsds_bin_uses_target_leap_policy() {
+        // TAI → CUC
+        let tai = Dt::from_ymd(2025, 4, 17, Scale::TAI, 0, 0, 0, 0);
+        let (buf, _) = tai.to_ccsds_bin().unwrap();
+        assert_eq!(buf[0] & 0b0111_0000, 0b0001_0000, "TAI should select CUC");
+
+        // UTC → CDS
+        let utc = Dt::from_ymd(2025, 4, 17, Scale::UTC, 0, 0, 0, 0);
+        let (buf, _) = utc.to_ccsds_bin().unwrap();
+        assert_eq!(buf[0] & 0b0111_0000, 0b0100_0000, "UTC should select CDS");
+
+        // TT does not use leap seconds → CUC (not CDS)
+        let tt = Dt::from_ymd(2025, 4, 17, Scale::TT, 0, 0, 0, 0);
+        let (buf, _) = tt.to_ccsds_bin().unwrap();
+        assert_eq!(buf[0] & 0b0111_0000, 0b0001_0000, "TT should select CUC");
+    }
+
+    #[test]
+    fn from_ccsds_dt_scale_and_target() {
+        let cuc = Dt::CCSDS_EPOCH.to_ccsds_cuc(4, 0, false).unwrap();
+        let dt = Dt::from_ccsds_cuc(&cuc.0[..cuc.1]).unwrap();
+        assert_eq!(dt.scale, Scale::TAI);
+        assert_eq!(dt.target, Scale::TAI);
+
+        let cds = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0)
+            .to_ccsds_cds(2, 0, false)
+            .unwrap();
+        let dt = Dt::from_ccsds_cds(&cds.0[..cds.1]).unwrap();
+        assert_eq!(dt.scale, Scale::TAI);
+        assert_eq!(dt.target, Scale::UTC);
+
+        let ccs = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0)
+            .to_ccsds_ccs(false, 0)
+            .unwrap();
+        let dt = Dt::from_ccsds_ccs(&ccs.0[..ccs.1]).unwrap();
+        assert_eq!(dt.scale, Scale::TAI);
+        assert_eq!(dt.target, Scale::UTC);
     }
 }

@@ -241,3 +241,5 @@ required-features = ["parse", "jiff-tz", "hifitime"]
 
 [dev-dependencies]
 serde_json = "1.0"
+# CCSDS time-code interop tests (https://crates.io/crates/spacepackets)
+spacepackets = "0.18"

@@ -1,4 +1,7 @@
-use crate::{Dt, DtErr, DtErrKind, Parts, Scale, an_err};
+use crate::{
+    ATTOS_PER_MS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_U128, ATTOS_PER_US_I128, Dt, DtErr,
+    DtErrKind, Parts, Scale, an_err,
+};
 
 impl Parts {
     /// Parses a CCSDS Calendar Segmented Time Code (CCS) into [`Parts`].
@@ -19,13 +22,11 @@ impl Parts {
     /// ## T-field
     ///
     /// - Year is encoded as 4 BCD digits (0001–9999).
-    /// - Time of day uses BCD with leap second support (`second == 60`).
-    /// - When a leap second is present, `second` is normalized to 59 and
-    ///   `is_leap_second` is set to `true` in the returned [`Parts`].
+    /// - Time of day uses BCD with leap second support (`second == 60` is preserved).
     ///
     /// ## Epoch
     ///
-    /// 1958-01-01 00:00:00 UTC (identical to CDS).
+    /// Gregorian calendar (year 1–9999); time is UTC (prime meridian).
     ///
     /// ## Errors
     ///
@@ -73,11 +74,14 @@ impl Parts {
             }
         };
 
-        // Year
+        // Year (Annex A / §3.4: 1–9999)
         let y1 = bcd_byte(input[idx])?;
         let y2 = bcd_byte(input[idx + 1])?;
         let year = (y1 as i64) * 100 + (y2 as i64);
         idx += 2;
+        if !(1..=9999).contains(&year) {
+            return Err(an_err!(DtErrKind::YearOutOfRange));
+        }
 
         // Date field
         let (month, day, day_of_year) = if !is_doy {
@@ -107,7 +111,7 @@ impl Parts {
         // Time
         let hour = bcd_byte(input[idx])?;
         let minute = bcd_byte(input[idx + 1])?;
-        let mut second = bcd_byte(input[idx + 2])?;
+        let second = bcd_byte(input[idx + 2])?;
         idx += 3;
 
         if hour > 23 {
@@ -116,14 +120,12 @@ impl Parts {
         if minute > 59 {
             return Err(an_err!(DtErrKind::MinuteOutOfRange));
         }
-
-        if second == 60 {
-            second = 59;
-        } else if second > 59 {
+        // Annex A: second-of-minute 0–59 (or 60 during positive leap second)
+        if second > 60 {
             return Err(an_err!(DtErrKind::SecondOutOfRange));
         }
 
-        // Subseconds (BCD → attoseconds)
+        // Subseconds (BCD → attoseconds), truncated inverse of the encoder
         let mut frac_value: u128 = 0;
         for _ in 0..n_subsec {
             let b = input[idx];
@@ -191,8 +193,8 @@ impl Parts {
     /// ## T-field
     ///
     /// - Coarse time is interpreted as seconds since **1958-01-01 00:00:00 TAI**.
-    /// - Fractional time is converted to attoseconds using exact integer arithmetic
-    ///   (`value × 10¹⁸ / 2^(8·n_frac)`).
+    /// - Fractional time is the binary fraction of a second: converted to attoseconds
+    ///   as `floor(value × 10¹⁸ / 2^(8·n_frac))` (inverse of the encoder's truncation).
     ///
     /// ## Returns
     ///
@@ -261,13 +263,8 @@ impl Parts {
             idx += 1;
         }
 
-        let frac_attos = if n_frac == 0 {
-            0
-        } else {
-            let denom = 1u128 << (8 * n_frac as u32);
-            // Pure truncation – exact inverse of the encoder
-            ((frac_raw * 1_000_000_000_000_000_000u128) / denom) as u64
-        };
+        // Pure truncation inverse — works for n_frac up to 10 without overflow
+        let frac_attos = cuc_frac_raw_to_attos(frac_raw, n_frac);
 
         // Convert to civil time using custom Gregorian conversion
         let days_since_epoch = (coarse_sec / 86400) as i64;
@@ -304,12 +301,13 @@ impl Parts {
     /// - 1-byte or 2-byte P-field.
     /// - Code ID must be `100` and the Epoch bit must be `0` (1958-01-01 UTC epoch).
     /// - Day count: 2 or 3 bytes.
-    /// - Milliseconds since midnight: always 4 bytes.
-    /// - Sub-millisecond field (bits 1-0 of P-field):
-    ///   - `00`: no fractional field
-    ///   - `01`: 2 bytes (microseconds within the millisecond, 0–65535)
-    ///   - `10`: 4 bytes (fractional part of the millisecond as 2⁻³²)
-    ///   - `11`: rejected (unsupported)
+    /// - Milliseconds of day: always 4 bytes (Annex A: 0–86_399_999, or up to
+    ///   86_400_999 during a positive leap second).
+    /// - Sub-millisecond field (bits 1-0 of P-field) — **cascaded unit counters**:
+    ///   - `00`: absent (millisecond resolution)
+    ///   - `01`: 2 bytes — microsecond-of-millisecond, range **0–999** (Annex A)
+    ///   - `10`: 4 bytes — picosecond-of-millisecond, range **0–999_999_999**
+    ///   - `11`: rejected (reserved)
     ///
     /// ## P-field bit layout (first octet)
     ///
@@ -321,17 +319,15 @@ impl Parts {
     ///
     /// ## T-field
     ///
-    /// - Day count is days since **1958-01-01 00:00:00 UTC**.
-    /// - Milliseconds since midnight are always present (4 bytes).
-    /// - Sub-millisecond data (if present) is converted to attoseconds with
-    ///   exact integer scaling.
+    /// - Day count is calendar days since **1958-01-01 00:00:00 UTC**.
+    /// - Milliseconds of day are always present (4 bytes).
+    /// - Sub-millisecond data (if present) is converted with unit scaling
+    ///   (µs × 10¹² attos, ps × 10⁶ attos).
     ///
     /// ## Leap-second handling
     ///
-    /// Correctly supports leap seconds. When the millisecond-of-day value
-    /// represents 23:59:60 (i.e. `millis_of_day >= 86_400_000`), `sec` is set
-    /// to `60` and `is_leap_second` is effectively indicated via the `sec` field
-    /// in the returned [`Parts`].
+    /// When `millis_of_day` is in `[86_400_000, 86_400_999]`, `sec` is set to `60`
+    /// (positive leap second). Values above `86_400_999` are rejected.
     ///
     /// ## Returns
     ///
@@ -344,9 +340,11 @@ impl Parts {
     ///   octet but the input is too short to contain it.
     /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not `100` or the Epoch bit is
     ///   set (non-Level-1 epoch).
-    /// - [`DtErrKind::InvalidSubmillisecond`] if the sub-millisecond code is `0b11`.
+    /// - [`DtErrKind::InvalidSubmillisecond`] if the sub-millisecond code is `0b11`,
+    ///   or a sub-ms counter exceeds its Annex A range.
     /// - [`DtErrKind::TFieldTooShort`] if the declared field lengths make the
     ///   T-field longer than the remaining input bytes.
+    /// - [`DtErrKind::OutOfRange`] if `millis_of_day` exceeds the leap-second max.
     pub fn from_ccsds_cds(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Empty));
@@ -405,29 +403,45 @@ impl Parts {
             idx += 1;
         }
 
-        // === Leap second handling (robust) ===
+        // Annex A: ms-of-day ≤ 86_399_999 normally; ≤ 86_400_999 during +leap second
+        if millis_of_day > 86_400_999 {
+            return Err(an_err!(DtErrKind::OutOfRange, "ms of day"));
+        }
+
         let total_sec_in_day = millis_of_day / 1000;
         let is_leap_second = total_sec_in_day == 86400;
 
-        let effective_sec = if is_leap_second {
+        // During a positive leap second, civil clock shows 23:59:60 with
+        // millis_of_day in 86_400_000..86_400_999.
+        let sec_of_day = if is_leap_second {
             86399
         } else {
             total_sec_in_day
         };
-
-        let sec_of_day = effective_sec;
         let remaining_ms = (millis_of_day % 1000) as u128;
 
-        // Sub-millisecond to attoseconds
-        let sub_ms_attos = if n_subsec == 0 {
-            0
-        } else if sub_ms_code == 0b01 {
-            (frac_raw as u128 * 1_000_000_000_000_000) / 65_536
-        } else {
-            (frac_raw as u128 * 1_000_000_000_000_000) / (1u128 << 32)
+        // Cascaded unit counters → attoseconds (not binary fractions)
+        let sub_ms_attos = match sub_ms_code {
+            0b00 => 0u128,
+            0b01 => {
+                // Microsecond-of-millisecond: Annex A range 0..=999
+                if frac_raw > 999 {
+                    return Err(an_err!(DtErrKind::InvalidSubmillisecond, "us of ms"));
+                }
+                frac_raw as u128 * ATTOS_PER_US_I128 as u128
+            }
+            0b10 => {
+                // Picosecond-of-millisecond: 0..=999_999_999
+                if frac_raw > 999_999_999 {
+                    return Err(an_err!(DtErrKind::InvalidSubmillisecond, "ps of ms"));
+                }
+                frac_raw as u128 * ATTOS_PER_PS_I128 as u128
+            }
+            // 0b11 rejected earlier; keep decode panic-free under maintenance edits
+            _ => 0u128,
         };
 
-        let frac_attos = remaining_ms * 1_000_000_000_000_000 + sub_ms_attos;
+        let frac_attos = remaining_ms * ATTOS_PER_MS_I128 as u128 + sub_ms_attos;
 
         // Convert day count to Gregorian
         let days_since_epoch = day_count as i64;
@@ -473,8 +487,8 @@ impl Parts {
     /// - [`DtErrKind::InvalidCodeId`] if the Code ID is not one of the three
     ///   recognized Level 1 values (`001`, `100`, or `101`).
     ///
-    /// The resulting [`Parts`] has `scale` set according to the detected format
-    /// (TAI for CUC, UTC for CDS, and format-dependent for CCS).
+    /// The resulting [`Parts`] has `scale` set by the detected format:
+    /// **TAI** for CUC, **UTC** for CDS and CCS.
     pub fn from_ccsds_bin(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Empty));
@@ -487,4 +501,46 @@ impl Parts {
             _ => Err(an_err!(DtErrKind::InvalidCodeId)),
         }
     }
+}
+
+/// CUC fine-time inverse: `floor(frac_raw × 10¹⁸ / 2^(8·n_frac))` without
+/// intermediate overflow for `n_frac ≤ 10` (CCSDS 301.0-B-4 §3.2).
+#[inline]
+fn cuc_frac_raw_to_attos(frac_raw: u128, n_frac: usize) -> u64 {
+    if n_frac == 0 {
+        return 0;
+    }
+    let bits = 8 * n_frac as u32;
+
+    // Common path: product fits in u128 (n_frac ≤ 8).
+    if let Some(prod) = frac_raw.checked_mul(ATTOS_PER_SEC_U128) {
+        return (prod >> bits) as u64;
+    }
+
+    // Wide path: 256-bit product then shift (n_frac 9–10).
+    let (hi, lo) = widening_mul_u128(frac_raw, ATTOS_PER_SEC_U128);
+    if bits >= 128 {
+        (hi >> (bits - 128)) as u64
+    } else {
+        ((lo >> bits) | (hi << (128 - bits))) as u64
+    }
+}
+
+/// Full 256-bit product of two `u128` values as `(hi, lo)`.
+#[inline]
+fn widening_mul_u128(a: u128, b: u128) -> (u128, u128) {
+    let a_lo = a as u64 as u128;
+    let a_hi = a >> 64;
+    let b_lo = b as u64 as u128;
+    let b_hi = b >> 64;
+
+    let p0 = a_lo * b_lo;
+    let p1 = a_lo * b_hi;
+    let p2 = a_hi * b_lo;
+    let p3 = a_hi * b_hi;
+
+    let mid = (p0 >> 64) + (p1 & 0xFFFF_FFFF_FFFF_FFFF) + (p2 & 0xFFFF_FFFF_FFFF_FFFF);
+    let lo = (p0 & 0xFFFF_FFFF_FFFF_FFFF) | (mid << 64);
+    let hi = p3 + (p1 >> 64) + (p2 >> 64) + (mid >> 64);
+    (hi, lo)
 }

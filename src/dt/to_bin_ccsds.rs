@@ -1,12 +1,19 @@
-use crate::{Dt, DtErr, DtErrKind, SEC_PER_DAY_I64, Scale, an_err};
+use crate::{
+    ATTOS_PER_MS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_U128, ATTOS_PER_US_I128, Dt, DtErr,
+    DtErrKind, Scale, an_err,
+};
 
 impl Dt {
-    /// Maximum size needed for a CCSDS C & D (CUC) binary packet (with extended P-field).
+    /// Maximum size needed for a CCSDS **CUC or CDS** binary packet (with extended P-field).
+    ///
+    /// Sized for the largest supported CUC layout (2-byte P-field + 7 coarse + 10 fine = 19 octets)
+    /// with headroom; also sufficient for CDS (≤ 2 + 3 day + 4 ms + 4 sub-ms = 13 octets).
     pub const CCSDS_C_AND_D_MAX_SIZE: usize = 32;
 
     /// Formats this [`Dt`] as a **CCSDS C (CUC – Unsegmented Time Code)** binary packet.
     ///
-    /// Fully configurable for round-tripping with [`Dt::from_ccsds_cuc`].
+    /// Fully configurable for round-tripping with
+    /// [`Dt::from_ccsds_cuc`](../struct.Dt.html#method.from_ccsds_cuc).
     /// Conforms to **CCSDS 301.0-B-4 §3.2 (Level 1)**, including full support for the
     /// extended 2-byte P-field.
     ///
@@ -16,15 +23,15 @@ impl Dt {
     /// ## Parameters
     ///
     /// - `n_coarse`: Number of bytes used for the coarse (integer) seconds since the
-    ///   1958 epoch. Must be in `1..=7`. The chosen value must be large enough to
-    ///   represent the full time; otherwise the high-order bytes are silently
-    ///   truncated. For example, a date in the year 2025 requires at least 4 bytes
-    ///   (`n_coarse >= 4`), while 3 bytes is only sufficient for dates up to roughly
-    ///   mid-1968.
+    ///   1958 epoch. Must be in `1..=7`. The value must be large enough to hold the
+    ///   full second count; if the instant does not fit, encoding returns
+    ///   [`DtErrKind::OutOfRange`] (no silent truncation). For example, a date in
+    ///   2025 requires at least 4 bytes (`n_coarse >= 4`); 3 bytes only reach
+    ///   roughly mid-1968.
     /// - `n_frac`: Number of bytes used for the fractional seconds. Must be in `0..=10`.
-    ///   Higher values provide greater sub-second precision, but values of `8` or
-    ///   above may produce reduced accuracy when round-tripping due to internal
-    ///   128-bit integer limits.
+    ///   The fine field is the **binary fraction** of a second
+    ///   (`floor(frac × 2^(8·n_frac))`), matching a free-running binary counter
+    ///   (CCSDS 301.0-B-4 §3.2). Values are **truncated**, never rounded.
     /// - `extension`: If `true`, forces inclusion of the second P-field octet even
     ///   when it is not strictly required by the field sizes.
     ///
@@ -35,11 +42,13 @@ impl Dt {
     /// ## Returns
     ///
     /// `(buffer, len)` where `buffer` is a fixed-size array of length
-    /// [`CCSDS_C_AND_D_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_C_AND_D_MAX_SIZE) and `len` is the number of bytes written.
+    /// [`Dt::CCSDS_C_AND_D_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_C_AND_D_MAX_SIZE)
+    /// and `len` is the number of bytes written.
     ///
     /// ## Errors
     ///
-    /// - [`DtErrKind::OutOfRange`] if `n_coarse` is not in `1..=7`.
+    /// - [`DtErrKind::OutOfRange`] if `n_coarse` is not in `1..=7`, or if the
+    ///   coarse second count does not fit in `n_coarse` octets.
     /// - [`DtErrKind::FracOutOfRange`] if `n_frac > 10`.
     /// - [`DtErrKind::YearOutOfRange`] if this instant is before
     ///   **1958-01-01 00:00:00 TAI** (the CUC epoch).
@@ -70,28 +79,32 @@ impl Dt {
             return Err(an_err!(DtErrKind::YearOutOfRange, "<1958"));
         }
 
-        // Fractional part: pure truncation to the binary fraction
-        //   k / 2^(8·n_frac)
-        // This matches the definition of CUC as the state of a free-running
-        // binary counter (CCSDS 301.0-B-4 §3.2).  Rounding is intentionally
-        // avoided so the encoding is identical to what an on-board counter
-        // would produce.
-        //
-        // For n_frac ≤ 8 the intermediate product always fits in u128.
-        // For n_frac ≥ 9 the product can overflow; we fall back to saturating
-        // arithmetic (already documented as a precision limit for these sizes).
-        let frac_scaled = if n_frac == 0 {
-            0u128
+        let coarse = total_tai_seconds as u64;
+        // Refuse silent truncation: coarse field must hold the full second count.
+        let coarse_bits = 8u32 * u32::from(n_coarse);
+        let max_coarse = if coarse_bits >= 64 {
+            u64::MAX
         } else {
-            let scale = 1u128 << (8 * n_frac as u32);
-            match (rem_attos as u128).checked_mul(scale) {
-                Some(prod) => prod / 1_000_000_000_000_000_000,
-                None => {
-                    // Overflow path (n_frac ≥ 9).  Saturate then truncate.
-                    u128::MAX / 1_000_000_000_000_000_000
-                }
-            }
+            (1u64 << coarse_bits) - 1
         };
+        if coarse > max_coarse {
+            return Err(an_err!(DtErrKind::OutOfRange, "n_coarse"));
+        }
+
+        // Binary-fraction fine time: state of a free-running counter
+        // (CCSDS 301.0-B-4 §3.2). Pure truncation — never round.
+        //
+        // Build big-endian octets via successive ×256 / 10¹⁸ so that large
+        // `n_frac` never needs an intermediate wider than u128.
+        let mut frac_bytes = [0u8; 10];
+        if n_frac > 0 {
+            let mut rem = rem_attos as u128;
+            for byte in frac_bytes.iter_mut().take(n_frac as usize) {
+                rem *= 256;
+                *byte = (rem / ATTOS_PER_SEC_U128) as u8;
+                rem %= ATTOS_PER_SEC_U128;
+            }
+        }
 
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
         let mut pos = 0usize;
@@ -126,7 +139,7 @@ impl Dt {
             // Bits 6-5  = additional coarse octets (0-3)
             // Bits 4-2  = additional fractional octets (0-7)
             // Bits 1-0  = reserved
-            let add_coarse = n_coarse.saturating_sub(4);
+            let add_coarse = n_coarse - 4;
             let add_frac = n_frac.saturating_sub(3);
 
             let mut p2 = 0u8;
@@ -137,15 +150,14 @@ impl Dt {
         }
 
         // Write coarse time (big-endian)
-        let coarse = total_tai_seconds as u64;
         for i in (0..n_coarse).rev() {
             buf[pos] = (coarse >> (i as u32 * 8)) as u8;
             pos += 1;
         }
 
-        // Write fractional time (big-endian)
-        for i in (0..n_frac).rev() {
-            buf[pos] = (frac_scaled >> (i as u32 * 8)) as u8;
+        // Write fractional time (big-endian, MSB already in frac_bytes[0])
+        for &byte in frac_bytes.iter().take(n_frac as usize) {
+            buf[pos] = byte;
             pos += 1;
         }
 
@@ -155,29 +167,37 @@ impl Dt {
     /// Formats this [`Dt`] as a **CCSDS D (CDS – Day Segmented Time Code)** binary packet.
     ///
     /// Fully configurable for round-tripping with
-    /// [`from_ccsds_cds`](../struct.Dt.html#method.from_ccsds_cds).
+    /// [`Dt::from_ccsds_cds`](../struct.Dt.html#method.from_ccsds_cds).
     /// Conforms to **CCSDS 301.0-B-4 §3.3 (Level 1)**.
     ///
     /// The time is always encoded on the **UTC** timescale (day count + milliseconds
-    /// since midnight UTC). Leap-second handling follows the library’s conversion rules.
+    /// of day, with optional sub-millisecond segment). Leap-second handling follows
+    /// civil UTC (`second == 60` maps into the 86_400_000 ms range of Annex A).
     ///
     /// ## Parameters
     ///
     /// - `n_day`: Number of day-count octets. Must be `2` or `3`.
-    /// - `sub_ms_code`: Sub-millisecond resolution:
-    ///   - `0`: none
-    ///   - `1`: 2 bytes (microseconds within the millisecond)
-    ///   - `2`: 4 bytes (fraction of a millisecond as 2⁻³²)
+    /// - `sub_ms_code`: Sub-millisecond resolution (cascaded unit counters):
+    ///   - `0`: none (millisecond resolution only)
+    ///   - `1`: 2 bytes — **microsecond-of-millisecond**, range **0–999** (Annex A)
+    ///   - `2`: 4 bytes — **picosecond-of-millisecond**, range **0–999_999_999**
     /// - `extension`: If `true`, emits the second P-field octet.
+    ///
+    /// ## Segment counters (truncation)
+    ///
+    /// Each segment is a right-adjusted binary counter (CCSDS 301.0-B-4 §3.3).
+    /// Sub-second fields are **truncated** to the segment unit — never rounded —
+    /// so cascaded segments do not double-count residual time.
     ///
     /// ## Epoch
     ///
-    /// Day count is days since **1958-01-01 00:00:00 UTC**.
+    /// Day count is calendar days since **1958-01-01 00:00:00 UTC**.
     ///
     /// ## Returns
     ///
     /// `(buffer, len)` where `buffer` is a fixed-size array of length
-    /// [`CCSDS_C_AND_D_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_C_AND_D_MAX_SIZE) and `len` is the number of bytes written.
+    /// [`Dt::CCSDS_C_AND_D_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_C_AND_D_MAX_SIZE)
+    /// and `len` is the number of bytes written.
     ///
     /// ## Errors
     ///
@@ -185,6 +205,7 @@ impl Dt {
     /// - [`DtErrKind::InvalidSubmillisecond`] if `sub_ms_code` is not in `0..=2`.
     /// - [`DtErrKind::YearOutOfRange`] if this instant is before
     ///   **1958-01-01 00:00:00 UTC** (the CDS Level 1 epoch).
+    /// - [`DtErrKind::OutOfRange`] if the day count does not fit in `n_day` octets.
     ///
     /// ## See also
     ///
@@ -201,37 +222,45 @@ impl Dt {
             return Err(an_err!(DtErrKind::InvalidSubmillisecond));
         }
 
-        let utc_since_1958 = self
-            .target(Scale::UTC)
-            .to_scale_and_diff(Self::CCSDS_EPOCH, false);
+        // Civil UTC so leap seconds map to Annex A ms-of-day ranges.
+        let ymd = self.target(Scale::UTC).to_ymd();
 
-        let rem_attos = utc_since_1958.to_sec_ufrac();
-        let total_utc_seconds = utc_since_1958.to_sec64_floor();
-
-        if total_utc_seconds < 0 {
+        let day_count_i = Self::ymd_to_days_since_1958(ymd.yr, ymd.mo, ymd.day);
+        if day_count_i < 0 {
             return Err(an_err!(DtErrKind::YearOutOfRange, "<1958"));
         }
+        let day_count = day_count_i as u64;
 
-        let day_count = (total_utc_seconds / SEC_PER_DAY_I64) as u64;
-        let sec_of_day = (total_utc_seconds % SEC_PER_DAY_I64) as u64;
+        let max_day = if n_day == 2 {
+            0xFFFF_u64
+        } else {
+            0xFF_FFFF_u64
+        };
+        if day_count > max_day {
+            return Err(an_err!(DtErrKind::OutOfRange, "day count"));
+        }
 
-        // Round to nearest millisecond
-        let additional_ms =
-            ((rem_attos as u128 + 500_000_000_000_000) / 1_000_000_000_000_000) as u64;
+        // Cascaded counters, pure truncation (no rounding between segments).
+        let attos = ymd.attos as u128;
+        let sec_of_day = u64::from(ymd.hr) * 3600 + u64::from(ymd.min) * 60 + u64::from(ymd.sec);
 
-        let millis_of_day = sec_of_day * 1000 + additional_ms;
+        let ms_in_sec = (attos / ATTOS_PER_MS_I128 as u128) as u64; // 0..999
+        // Civil fields already bound sec_of_day (≤ 86400 on leap second) and ms_in_sec.
+        let millis_of_day = sec_of_day
+            .checked_mul(1000)
+            .and_then(|v| v.checked_add(ms_in_sec))
+            .ok_or_else(|| an_err!(DtErrKind::OutOfRange, "ms of day"))?;
 
-        // Remaining attoseconds inside the current millisecond
-        let remaining_attos_in_ms = (rem_attos as u128) % 1_000_000_000_000_000;
+        let attos_in_ms = attos % ATTOS_PER_MS_I128 as u128;
 
         let frac_scaled = match sub_ms_code {
             0 => 0u64,
-            1 => ((remaining_attos_in_ms * 65_536u128) / 1_000_000_000_000_000u128) as u64,
-            2 => {
-                const PS_SCALE: u128 = 1u128 << 32;
-                ((remaining_attos_in_ms * PS_SCALE) / 1_000_000_000_000_000u128) as u64
-            }
-            _ => unreachable!(),
+            // Microsecond-of-millisecond: Annex A range 0..=999
+            1 => (attos_in_ms / ATTOS_PER_US_I128 as u128) as u64,
+            // Picosecond-of-millisecond: 0..=999_999_999
+            2 => (attos_in_ms / ATTOS_PER_PS_I128 as u128) as u64,
+            // sub_ms_code validated above
+            _ => 0u64,
         };
 
         let mut buf = [0u8; Self::CCSDS_C_AND_D_MAX_SIZE];
@@ -267,7 +296,7 @@ impl Dt {
             0 => 0,
             1 => 2,
             2 => 4,
-            _ => unreachable!(),
+            _ => 0,
         };
         for i in (0..n_frac).rev() {
             buf[pos] = (frac_scaled >> (i * 8)) as u8;
@@ -283,7 +312,7 @@ impl Dt {
     /// Formats this [`Dt`] as a **CCSDS CCS (Calendar Segmented Time Code)** binary packet.
     ///
     /// Fully configurable for round-tripping with
-    /// [`from_ccsds_ccs`](../struct.Dt.html#method.from_ccsds_ccs).
+    /// [`Dt::from_ccsds_ccs`](../struct.Dt.html#method.from_ccsds_ccs).
     /// Conforms to **CCSDS 301.0-B-4 §3.4** (Level 1 only).
     ///
     /// Both CCS variants are **UTC-based** and use BCD encoding.
@@ -295,6 +324,13 @@ impl Dt {
     /// - `n_subsec`: Number of subsecond BCD octets (`0`–`6`). Each octet holds two decimal digits
     ///   (so `n_subsec = 6` gives up to 12 decimal digits of subsecond precision).
     ///
+    /// ## Subsecond digits
+    ///
+    /// Fractional seconds are **truncated** to the requested number of decimal digits
+    /// (no rounding, no carry into the seconds field). This matches the cascaded-segment
+    /// model used for CDS and avoids second-boundary overflow when the discarded
+    /// residual would have rounded up.
+    ///
     /// ## Year Range
     ///
     /// The year must be in the range **1 to 9999** (as defined by the CCSDS standard).
@@ -302,7 +338,8 @@ impl Dt {
     /// ## Returns
     ///
     /// `(buffer, len)` where `buffer` is a fixed-size array of length
-    /// [`CCSDS_CCS_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_CCS_MAX_SIZE) and `len` is the number of bytes written.
+    /// [`Dt::CCSDS_CCS_MAX_SIZE`](../struct.Dt.html#associatedconstant.CCSDS_CCS_MAX_SIZE)
+    /// and `len` is the number of bytes written.
     ///
     /// ## Errors
     ///
@@ -321,7 +358,7 @@ impl Dt {
             return Err(an_err!(DtErrKind::FracOutOfRange));
         }
 
-        // ── Convert to UTC civil time (CCS uses the same 1958-01-01 UTC epoch as CDS) ─────
+        // ── Convert to UTC civil time ─────────────────────────────────────────
         let ymd = self.target(Scale::UTC).to_ymd();
 
         let year = ymd.yr;
@@ -375,14 +412,13 @@ impl Dt {
         buf[pos + 2] = bcd(ymd.sec as u32); // leap second 60 is allowed by spec
         pos += 3;
 
-        // ── Subsecond BCD (0–12 decimal digits, 2 per byte, rounded) ──────────────────
+        // ── Subsecond BCD (0–12 decimal digits, 2 per byte, truncated) ─────────────────
         if n_subsec > 0 {
             let decimal_places = (2 * n_subsec) as u32;
             let scale = 10u128.pow(decimal_places);
 
-            // Round attos to nearest representable value at this precision
-            let frac_scaled =
-                (ymd.attos as u128 * scale + 500_000_000_000_000_000) / 1_000_000_000_000_000_000;
+            // Truncate attos to the requested decimal resolution (no rounding/carry).
+            let frac_scaled = (ymd.attos as u128 * scale) / ATTOS_PER_SEC_U128;
 
             let mut remaining = frac_scaled;
             for i in (0..n_subsec).rev() {
@@ -396,11 +432,17 @@ impl Dt {
         Ok((buf, pos))
     }
 
-    /// Convenience method that automatically selects the most appropriate
-    /// CCSDS binary time code based on this [`Dt`]'s `target` time [`Scale`].
+    /// Convenience method that picks a default CCSDS binary time code from this
+    /// [`Dt`]'s **`target`** [`Scale`].
     ///
-    /// - If the `target` [`Scale`] **uses leap seconds** then **ccsds_cds is chosen**.
-    /// - Otherwise ccsds_cuc is chosen.
+    /// | Condition | Code | Defaults |
+    /// |-----------|------|----------|
+    /// | `target.uses_leap_seconds()` (UTC, UtcSpice, UtcHist) | **CDS** | 2-byte day, µs-of-ms (`sub_ms_code = 1`), no P-field extension |
+    /// | otherwise (TAI, TT, GPS, …) | **CUC** | 4 coarse + 4 fine octets, no forced extension |
+    ///
+    /// For full control over field widths, call
+    /// [`Dt::to_ccsds_cds`](../struct.Dt.html#method.to_ccsds_cds) or
+    /// [`Dt::to_ccsds_cuc`](../struct.Dt.html#method.to_ccsds_cuc) directly.
     #[inline(always)]
     pub fn to_ccsds_bin(&self) -> Result<([u8; Self::CCSDS_C_AND_D_MAX_SIZE], usize), DtErr> {
         if self.target.uses_leap_seconds() {
