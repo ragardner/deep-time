@@ -199,9 +199,9 @@ impl Dt {
 
     /// Converts directly to `new` [`Scale`], without first converting to TAI.
     ///
-    /// **Warning:**
+    /// ## Warning:
     ///
-    /// - This function should really only be used if the [`Dt`] is on the TAI
+    /// - This function should only be used if the [`Dt`] is on the TAI
     ///   time scale, or if you really know what you're doing.
     /// - For the normal time scale conversion function see
     ///   [`Dt::to`](../struct.Dt.html#method.to) which first converts
