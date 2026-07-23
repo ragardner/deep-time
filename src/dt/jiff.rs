@@ -64,29 +64,15 @@ impl Dt {
     ///
     /// ## Precision and range
     ///
-    /// - Sub-nanosecond attoseconds are truncated toward zero.
-    /// - Saturates at jiff's `Span` second/nanosecond limits
-    ///   (`±631_107_417_600` s and `±999_999_999` ns) if out of range.
-    pub fn to_jiff_span(&self) -> Span {
-        let (total_nanos, _) = self.to_ns();
-        let seconds = Dt::to_i64(total_nanos / 1_000_000_000);
-        let nanoseconds = Dt::to_i64(total_nanos % 1_000_000_000);
-
-        if let Ok(base) = Span::new().try_seconds(seconds)
-            && let Ok(span) = base.try_nanoseconds(nanoseconds)
-        {
-            return span;
-        }
-        // Saturate to Jiff's Span limits
-        if total_nanos >= 0 {
-            Span::new()
-                .seconds(631_107_417_600i64)
-                .nanoseconds(999_999_999i64)
-        } else {
-            Span::new()
-                .seconds(-631_107_417_600i64)
-                .nanoseconds(-999_999_999i64)
-        }
+    /// - Sub-nanosecond attoseconds are truncated toward zero via
+    ///   [`Dt::to_jiff_signed_duration`](../struct.Dt.html#method.to_jiff_signed_duration).
+    /// - Converts that duration with jiff's `Span::try_from` (`TryFrom<SignedDuration>`).
+    ///   Returns [`Err`] when the duration is wider than a `Span` can represent.
+    ///   Never panics.
+    #[inline]
+    pub fn to_jiff_span(&self) -> Result<Span, DtErr> {
+        Span::try_from(self.to_jiff_signed_duration())
+            .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))
     }
 
     /// Converts this [`Dt`] to a [`jiff::SignedDuration`] (nanosecond precision).
@@ -101,11 +87,21 @@ impl Dt {
     /// ## Precision and range
     ///
     /// - Sub-nanosecond attoseconds are **truncated toward zero**.
-    /// - Supports the **entire** range of [`Dt`]'s nanosecond projection
-    ///   (`SignedDuration::from_nanos_i128`; never saturates here).
-    #[inline]
+    /// - Saturates at [`SignedDuration::MIN`] / [`SignedDuration::MAX`] when the
+    ///   nanosecond count requires more than an `i64` whole-second field
+    ///   (jiff's `from_nanos_i128` would otherwise panic). Never panics.
     pub fn to_jiff_signed_duration(&self) -> SignedDuration {
-        SignedDuration::from_nanos_i128(self.to_ns().0)
+        let nanos = self.to_ns().0;
+        match SignedDuration::try_from_nanos_i128(nanos) {
+            Some(dur) => dur,
+            None => {
+                if nanos >= 0 {
+                    SignedDuration::MAX
+                } else {
+                    SignedDuration::MIN
+                }
+            }
+        }
     }
 
     /// Creates a [`Dt`] from a [`jiff::SignedDuration`] (nanosecond precision).
@@ -113,17 +109,18 @@ impl Dt {
     /// Inverse of [`Dt::to_jiff_signed_duration`]. The result is a span stored on
     /// TAI (no leap-second adjustment of the duration itself), matching
     /// chrono/`time` duration interop.
-    #[inline]
+    #[inline(always)]
     pub fn from_jiff_signed_duration(dur: SignedDuration) -> Dt {
         Self::from_ns(dur.as_nanos(), 0, Scale::TAI, Scale::TAI)
     }
 
     /// Creates a [`Dt`] from a [`jiff::Span`] (nanosecond precision).
     ///
-    /// Inverse of [`Dt::to_jiff_span`]. Converts the span to a
-    /// [`SignedDuration`] (seconds + nanoseconds only; calendar units must already
-    /// be zero or convertible without a relative datetime) and then uses
-    /// [`Dt::from_jiff_signed_duration`].
+    /// Inverse of [`Dt::to_jiff_span`](../struct.Dt.html#method.to_jiff_span).
+    /// Converts the span to a `SignedDuration` (seconds + nanoseconds only;
+    /// calendar units must already be zero or convertible without a relative
+    /// datetime) and then uses
+    /// [`Dt::from_jiff_signed_duration`](../struct.Dt.html#method.from_jiff_signed_duration).
     pub fn from_jiff_span(span: Span) -> Result<Self, DtErr> {
         let dur = SignedDuration::try_from(span)
             .map_err(|e| an_err!(DtErrKind::InvalidInput, "{}", e))?;

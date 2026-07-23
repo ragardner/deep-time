@@ -248,7 +248,7 @@ mod interop {
     #[test]
     fn span_roundtrip() {
         let dt = Dt::from_ns(3_600_000_000_000 + 123, 0, Scale::TAI, Scale::TAI);
-        let jiff_span = dt.to_jiff_span();
+        let jiff_span = dt.to_jiff_span().unwrap();
         let back = Dt::from_jiff_span(jiff_span).unwrap();
         assert_ns_eq(back, dt, "span");
     }
@@ -256,7 +256,7 @@ mod interop {
     #[test]
     fn span_negative_roundtrip() {
         let dt = Dt::from_ns(-90_000_000_001, 0, Scale::TAI, Scale::TAI);
-        let jiff_span = dt.to_jiff_span();
+        let jiff_span = dt.to_jiff_span().unwrap();
         let back = Dt::from_jiff_span(jiff_span).unwrap();
         assert_ns_eq(back, dt, "neg span");
     }
@@ -264,7 +264,7 @@ mod interop {
     #[test]
     fn span_zero() {
         let dt = Dt::from_ns(0, 0, Scale::TAI, Scale::TAI);
-        let jiff_span = dt.to_jiff_span();
+        let jiff_span = dt.to_jiff_span().unwrap();
         assert_eq!(jiff_span.fieldwise(), Span::new().fieldwise());
         assert_ns_eq(Dt::from_jiff_span(jiff_span).unwrap(), dt, "zero span");
     }
@@ -272,9 +272,91 @@ mod interop {
     #[test]
     fn span_and_duration_agree() {
         let dt = Dt::from_ns(12_345_678_901, 0, Scale::TAI, Scale::TAI);
-        let from_span = Dt::from_jiff_span(dt.to_jiff_span()).unwrap();
+        let from_span = Dt::from_jiff_span(dt.to_jiff_span().unwrap()).unwrap();
         let from_dur = Dt::from_jiff_signed_duration(dt.to_jiff_signed_duration());
         assert_ns_eq(from_span, from_dur, "span vs duration");
+    }
+
+    #[test]
+    fn span_matches_try_from_signed_duration() {
+        let dt = Dt::from_ns(86_400_000_000_000 + 123_456_789, 0, Scale::TAI, Scale::TAI);
+        let dur = dt.to_jiff_signed_duration();
+        let via_jiff = Span::try_from(dur).unwrap();
+        assert_eq!(dt.to_jiff_span().unwrap().fieldwise(), via_jiff.fieldwise());
+    }
+
+    // ─── Large / extreme values: no panic ────────────────────────────────────
+    //
+    // SignedDuration saturates at MIN/MAX (from_nanos_i128 would panic).
+    // Span is narrower than SignedDuration — to_jiff_span returns Err.
+
+    #[test]
+    fn signed_duration_saturates_dt_max_min() {
+        assert_eq!(Dt::MAX.to_jiff_signed_duration(), SignedDuration::MAX);
+        assert_eq!(Dt::MIN.to_jiff_signed_duration(), SignedDuration::MIN);
+    }
+
+    #[test]
+    fn signed_duration_saturates_past_i64_second_field() {
+        let max_ok = SignedDuration::MAX.as_nanos();
+        let min_ok = SignedDuration::MIN.as_nanos();
+        assert!(SignedDuration::try_from_nanos_i128(max_ok + 1).is_none());
+        assert!(SignedDuration::try_from_nanos_i128(min_ok - 1).is_none());
+
+        assert_eq!(
+            Dt::from_ns(max_ok + 1, 0, Scale::TAI, Scale::TAI).to_jiff_signed_duration(),
+            SignedDuration::MAX
+        );
+        assert_eq!(
+            Dt::from_ns(min_ok - 1, 0, Scale::TAI, Scale::TAI).to_jiff_signed_duration(),
+            SignedDuration::MIN
+        );
+    }
+
+    #[test]
+    fn signed_duration_exact_at_min_max_nanos() {
+        let max_ok = SignedDuration::MAX.as_nanos();
+        let min_ok = SignedDuration::MIN.as_nanos();
+
+        let max_dur = Dt::from_ns(max_ok, 0, Scale::TAI, Scale::TAI).to_jiff_signed_duration();
+        assert_eq!(max_dur, SignedDuration::MAX);
+        assert_eq!(max_dur.as_nanos(), max_ok);
+
+        let min_dur = Dt::from_ns(min_ok, 0, Scale::TAI, Scale::TAI).to_jiff_signed_duration();
+        assert_eq!(min_dur, SignedDuration::MIN);
+        assert_eq!(min_dur.as_nanos(), min_ok);
+    }
+
+    #[test]
+    fn span_errors_when_wider_than_span() {
+        assert!(Span::try_from(SignedDuration::MAX).is_err());
+        assert!(Span::try_from(SignedDuration::MIN).is_err());
+        assert!(Dt::MAX.to_jiff_span().is_err());
+        assert!(Dt::MIN.to_jiff_span().is_err());
+        assert!(
+            Dt::from_jiff_signed_duration(SignedDuration::MAX)
+                .to_jiff_span()
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn from_trait_and_extremes_do_not_panic() {
+        let _: SignedDuration = Dt::MAX.into();
+        let _: SignedDuration = Dt::MIN.into();
+        let _: Timestamp = Dt::MAX.into();
+        let _: Timestamp = Dt::MIN.into();
+        let _ = Dt::MAX.to_jiff_span();
+        let _ = Dt::MIN.to_jiff_span();
+
+        assert_eq!(
+            Dt::from_jiff_signed_duration(SignedDuration::MAX).to_jiff_signed_duration(),
+            SignedDuration::MAX
+        );
+        assert_eq!(
+            Dt::from_jiff_signed_duration(SignedDuration::MIN).to_jiff_signed_duration(),
+            SignedDuration::MIN
+        );
     }
 }
 
