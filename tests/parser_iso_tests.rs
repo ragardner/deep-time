@@ -52,6 +52,31 @@ mod from_str_tests {
     }
 
     #[test]
+    fn test_iso_offset_minutes_range() {
+        // Minutes > 59 → InvalidOffsetMinute (colon and compact forms).
+        let err = Parts::from_str("2024-01-01+00:60").unwrap_err();
+        assert!(matches!(err.kind(), DtErrKind::InvalidOffsetMinute));
+        let err = Parts::from_str("2024-01-01+0060").unwrap_err();
+        assert!(matches!(err.kind(), DtErrKind::InvalidOffsetMinute));
+        let err = Parts::from_str("2024-01-01T12:00:00-14:99").unwrap_err();
+        assert!(matches!(err.kind(), DtErrKind::InvalidOffsetMinute));
+
+        // Minutes = 59 is fine; hours are not range-checked.
+        let tp = Parts::from_str("2024-01-01+00:59").unwrap();
+        assert_eq!(tp.offset, Some(Offset::Fixed(59 * 60)));
+        let tp = Parts::from_str("2024-01-01+99:00").unwrap();
+        assert_eq!(tp.offset, Some(Offset::Fixed(99 * 3600)));
+        let tp = Parts::from_str("2024-01-01-24:30").unwrap();
+        assert_eq!(tp.offset, Some(Offset::Fixed(-(24 * 3600 + 30 * 60))));
+
+        // Hours-only and single-digit forms still work.
+        let tp = Parts::from_str("2024-01-01+5").unwrap();
+        assert_eq!(tp.offset, Some(Offset::Fixed(5 * 3600)));
+        let tp = Parts::from_str("2024-01-01+5:30").unwrap();
+        assert_eq!(tp.offset, Some(Offset::Fixed(5 * 3600 + 30 * 60)));
+    }
+
+    #[test]
     fn test_iso_iana_name() {
         let tp = Parts::from_str("2024-04-18T14:30:25 [America/New_York]").unwrap();
         assert_eq!(tp.yr, Some(2024));
@@ -513,9 +538,33 @@ mod from_str_tests {
         let p = Parts::from_str("2024W114").unwrap();
         assert_eq!((p.iso_wk, p.wkday), (Some(11), Some(Weekday::Thursday)));
 
-        // Time after week date
+        // Valid basic weekday 7 (Sunday); invalid trailing digits must not become hours.
+        let p = Parts::from_str("2024W117").unwrap();
+        assert_eq!(
+            (p.iso_wk, p.wkday, p.hr),
+            (Some(11), Some(Weekday::Sunday), 0)
+        );
+        for s in [
+            "2024W110",
+            "2024W118",
+            "2024W119",
+            "2024-W11-0",
+            "2024-W11-8",
+        ] {
+            assert!(
+                matches!(
+                    Parts::from_str(s).unwrap_err().kind(),
+                    DtErrKind::ExpectedWeekdayNumber
+                ),
+                "{s:?}"
+            );
+        }
+
+        // Time after week date (non-digit after week — not a weekday field)
         let p = Parts::from_str("2024-W11-4T12:30:00").unwrap();
         assert_eq!((p.hr, p.min, p.sec), (12, 30, 0));
+        let p = Parts::from_str("2024W11T12:00").unwrap();
+        assert_eq!((p.iso_wk, p.hr), (Some(11), 12));
 
         // W requires an immediate digit
         assert!(matches!(
@@ -551,6 +600,26 @@ mod from_str_tests {
         // Space-separated time
         let p = Parts::from_str("2024-04-18T9 30").unwrap();
         assert_eq!((p.hr, p.min), (9, 30));
+
+        // `.` is only for fractional seconds after a seconds field — not an H/M separator.
+        for s in [
+            "2024-04-18T12.5",
+            "2024-04-18T12:30.5",
+            "2024-04-18T12:3.5",
+            "2024-04-18T12:.5",
+            "2024-04-18T12:30:.5",
+        ] {
+            let err = Parts::from_str(s).unwrap_err();
+            assert!(
+                matches!(err.kind(), DtErrKind::ExpectedSecond),
+                "{s:?}: {:?}",
+                err.kind()
+            );
+        }
+        // Still fine: seconds present, then fraction.
+        let p = Parts::from_str("2024-04-18T12:30:25.5").unwrap();
+        assert_eq!((p.hr, p.min, p.sec), (12, 30, 25));
+        assert_eq!(p.attos, 500_000_000_000_000_000);
     }
 
     #[test]
@@ -577,6 +646,47 @@ mod from_str_tests {
     }
 
     #[test]
+    fn test_iso_numeric_overflow_no_panic() {
+        // Integer accumulation boundary (u64::MAX + 1) used to panic in debug.
+        let max = u64::MAX.to_string();
+        let max_p1 = format!("{}", u64::MAX as u128 + 1);
+
+        let p = Parts::from_str(&format!("SEC {max}")).unwrap();
+        assert_eq!(
+            p.timestamp.as_ref().map(|t| t.attos),
+            Some((u64::MAX as i128) * deep_time::consts::ATTOS_PER_SEC_I128)
+        );
+
+        // Saturates integer part to u64::MAX — same attos as MAX itself.
+        let p_sat = Parts::from_str(&format!("SEC {max_p1}")).unwrap();
+        assert_eq!(
+            p.timestamp.as_ref().map(|t| t.attos),
+            p_sat.timestamp.as_ref().map(|t| t.attos)
+        );
+
+        // JD/MJD day×attos used to panic for huge day counts; saturates near i128 bounds.
+        for s in [
+            format!("JD {max}"),
+            format!("JD {max_p1}"),
+            format!("MJD {max}"),
+            format!("MJD {max_p1}"),
+            "JD 1000000000000000000".into(),
+        ] {
+            let p = Parts::from_str(&s).unwrap();
+            let attos = p.timestamp.as_ref().unwrap().attos;
+            assert!(attos > 0, "{s}: {attos}");
+            // After saturating day×ATTOS_PER_DAY, epoch subtract leaves a value near MAX.
+            assert!(attos > i128::MAX / 2, "{s}: {attos}");
+        }
+
+        let p = Parts::from_str(&format!("JD -{max}")).unwrap();
+        assert!(p.timestamp.as_ref().unwrap().attos < 0);
+
+        assert!(Parts::from_str_sec_f(&max_p1, None).is_some());
+        assert!(Parts::from_str_jd_f(&max, None).is_some());
+        assert!(Parts::from_str_mjd_f(&max_p1, None).is_some());
+    }
+
     fn test_iso_sec_prefix() {
         // TAI case (exact integer + frac)
         let p = Parts::from_str("SEC 1234.567").unwrap();

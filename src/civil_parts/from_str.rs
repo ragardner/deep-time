@@ -86,6 +86,9 @@ impl Parts {
     /// - Hour, minute, and second are **1 or 2** digits when the field ends at `:` /
     ///   space (or, for seconds, `.` before a fraction).
     /// - Compact digit runs without separators are supported (e.g. `T143025`).
+    /// - HMS field separators are only `:` or space (or glued digits). A `.` before the
+    ///   seconds field is an error ([`DtErrKind::ExpectedSecond`]); fractional seconds
+    ///   require a seconds field first (e.g. `14:30:25.5`, not `14:30.5`).
     /// - Fractional seconds: `.` then digits (up to 18 kept as attoseconds; extra digits
     ///   ignored).
     /// - Optional trailing `Z`/`z` is consumed (does not set a numeric offset by itself).
@@ -94,7 +97,8 @@ impl Parts {
     /// #### Optional trailing components
     ///
     /// - **Offset** — `+`/`-` then hours (and optional minutes), with or without `:`:
-    ///   `+02:00`, `-0530`, also allowed directly after the date.
+    ///   `+02:00`, `-0530`, also allowed directly after the date. Hours are not
+    ///   range-checked; offset minutes must be `≤ 59`.
     /// - **IANA name** — must be in square brackets, e.g. `[America/New_York]`.
     ///   Resolving non-UTC aliases requires the `jiff-tz` or `jiff-tz-bundle` feature
     ///   (both require `alloc`).
@@ -288,11 +292,14 @@ impl Parts {
                         }
                         // Lone `-` left for later stages.
                     } else if b.is_ascii_digit() {
-                        // Basic `YYYYWwwD` — only consume if valid ISO weekday.
-                        if let Some(wd) = Weekday::from_monday_1_based(b - b'0') {
-                            wkday = Some(wd);
-                            p += 1;
-                        }
+                        // Basic `YYYYWwwD` — trailing digit is the weekday; must be 1..=7
+                        // (do not leave 0/8/9 for the time stage).
+                        let d = b - b'0';
+                        wkday = Some(
+                            Weekday::from_monday_1_based(d)
+                                .ok_or(an_err!(DtErrKind::ExpectedWeekdayNumber))?,
+                        );
+                        p += 1;
                     }
                 }
 
@@ -420,6 +427,9 @@ impl Parts {
             if bytes[pos].is_ascii_digit() {
                 tp.hr = tp.hr * 10 + (bytes[pos] - b'0');
                 pos += 1;
+            } else if bytes[pos] == b'.' {
+                // Fraction without a seconds field (e.g. `T12.5`).
+                return Err(an_err!(DtErrKind::ExpectedSecond));
             } else if !matches!(bytes[pos], b':' | b' ') {
                 break 'time;
             }
@@ -432,8 +442,14 @@ impl Parts {
                 break 'time;
             }
 
-            // perhaps a separator between H and M
+            // perhaps a separator between H and M (`:` / space only; compact has none)
             if !bytes[pos].is_ascii_digit() {
+                if bytes[pos] == b'.' {
+                    return Err(an_err!(DtErrKind::ExpectedSecond));
+                }
+                if !matches!(bytes[pos], b':' | b' ') {
+                    break 'time;
+                }
                 pos += 1;
                 if pos >= len_ {
                     return Ok(tp);
@@ -445,6 +461,9 @@ impl Parts {
             if bytes[pos].is_ascii_digit() {
                 tp.min = bytes[pos] - b'0';
                 pos += 1;
+            } else if bytes[pos] == b'.' {
+                // e.g. `T12:.5`
+                return Err(an_err!(DtErrKind::ExpectedSecond));
             } else {
                 break 'time;
             }
@@ -455,6 +474,9 @@ impl Parts {
             if bytes[pos].is_ascii_digit() {
                 tp.min = tp.min * 10 + (bytes[pos] - b'0');
                 pos += 1;
+            } else if bytes[pos] == b'.' {
+                // Fraction without a seconds field (e.g. `T12:3.5`).
+                return Err(an_err!(DtErrKind::ExpectedSecond));
             } else if !matches!(bytes[pos], b':' | b' ') {
                 break 'time;
             }
@@ -470,8 +492,15 @@ impl Parts {
                 break 'time;
             }
 
-            // perhaps a separator between M and S
+            // perhaps a separator between M and S (`:` / space only; compact has none)
             if !bytes[pos].is_ascii_digit() {
+                if bytes[pos] == b'.' {
+                    // Fraction without a seconds field (e.g. `T12:30.5`).
+                    return Err(an_err!(DtErrKind::ExpectedSecond));
+                }
+                if !matches!(bytes[pos], b':' | b' ') {
+                    break 'time;
+                }
                 pos += 1;
                 if pos >= len_ {
                     return Ok(tp);
@@ -483,6 +512,9 @@ impl Parts {
             if bytes[pos].is_ascii_digit() {
                 tp.sec = bytes[pos] - b'0';
                 pos += 1;
+            } else if bytes[pos] == b'.' {
+                // e.g. `T12:30:.5`
+                return Err(an_err!(DtErrKind::ExpectedSecond));
             } else {
                 break 'time;
             }
@@ -549,40 +581,87 @@ impl Parts {
             return Ok(tp);
         }
 
-        // Optional offset
-        if matches!(bytes[pos], b'+' | b'-') {
-            let sign: i64 = if bytes[pos] == b'+' { 1 } else { -1 };
+        // Optional offset (`+HH`, `+HH:MM`, `+HHMM`; hours unrestricted, minutes ≤ 59)
+        'offset: {
+            if !matches!(bytes[pos], b'+' | b'-') {
+                break 'offset;
+            }
+            let sign: i32 = if bytes[pos] == b'+' { 1 } else { -1 };
             pos += 1;
 
-            // Parse hours (up to 2 digits). "+05:30"/"+0530"
-            let mut hours: i64 = 0;
-            let mut h_digits = 0usize;
-            while pos < len_ && bytes[pos].is_ascii_digit() && h_digits < 2 {
-                hours = hours * 10 + (bytes[pos] - b'0') as i64;
+            // Hours
+            // digit 1
+            if pos >= len_ || !bytes[pos].is_ascii_digit() {
+                // Bare `+`/`-` — leave offset unset (same as before).
+                break 'offset;
+            }
+            let mut hours: i32 = (bytes[pos] - b'0') as i32;
+            pos += 1;
+            // digit 2
+            if pos >= len_ {
+                tp.offset = Some(Offset::Fixed(sign * hours * 3600));
+                return Ok(tp);
+            }
+            if bytes[pos].is_ascii_digit() {
+                hours = hours * 10 + (bytes[pos] - b'0') as i32;
                 pos += 1;
-                h_digits += 1;
+            } else if bytes[pos] != b':' {
+                // Hours only; remainder is IANA / scale / junk.
+                tp.offset = Some(Offset::Fixed(sign * hours * 3600));
+                break 'offset;
             }
 
-            if h_digits > 0 {
-                // Optional ':' separator before minutes
-                if pos < len_ && bytes[pos] == b':' {
-                    pos += 1;
-                }
-
-                // Parse minutes (up to 2 digits; optional)
-                let mut minutes: i64 = 0;
-                let mut m_digits = 0usize;
-                while pos < len_ && bytes[pos].is_ascii_digit() && m_digits < 2 {
-                    minutes = minutes * 10 + (bytes[pos] - b'0') as i64;
-                    pos += 1;
-                    m_digits += 1;
-                }
-
-                let total_sec_i64 = sign * (hours * 3600 + minutes * 60);
-                let total_seconds: i32 =
-                    total_sec_i64.clamp(i32::MIN as i64, i32::MAX as i64) as i32;
-                tp.offset = Some(Offset::Fixed(total_seconds));
+            if pos >= len_ {
+                tp.offset = Some(Offset::Fixed(sign * hours * 3600));
+                return Ok(tp);
             }
+            // Stop before scale / IANA / whitespace (do not consume them).
+            if matches!(bytes[pos], b'A'..=b'Z' | b'a'..=b'z' | b'[')
+                || bytes[pos].is_ascii_whitespace()
+            {
+                tp.offset = Some(Offset::Fixed(sign * hours * 3600));
+                break 'offset;
+            }
+
+            // perhaps a separator between H and M (`:` only; compact `+0530` has none)
+            if !bytes[pos].is_ascii_digit() {
+                if bytes[pos] != b':' {
+                    tp.offset = Some(Offset::Fixed(sign * hours * 3600));
+                    break 'offset;
+                }
+                pos += 1;
+                if pos >= len_ {
+                    tp.offset = Some(Offset::Fixed(sign * hours * 3600));
+                    return Ok(tp);
+                }
+            }
+
+            // Minutes
+            // digit 1
+            if !bytes[pos].is_ascii_digit() {
+                // e.g. `+05:` with nothing after — hours only
+                tp.offset = Some(Offset::Fixed(sign * hours * 3600));
+                break 'offset;
+            }
+            let mut minutes: u8 = bytes[pos] - b'0';
+            pos += 1;
+            // digit 2
+            if pos >= len_ {
+                if minutes > 59 {
+                    return Err(an_err!(DtErrKind::InvalidOffsetMinute));
+                }
+                tp.offset = Some(Offset::Fixed(sign * (hours * 3600 + minutes as i32 * 60)));
+                return Ok(tp);
+            }
+            if bytes[pos].is_ascii_digit() {
+                minutes = minutes * 10 + (bytes[pos] - b'0');
+                pos += 1;
+            }
+            if minutes > 59 {
+                return Err(an_err!(DtErrKind::InvalidOffsetMinute));
+            }
+
+            tp.offset = Some(Offset::Fixed(sign * (hours * 3600 + minutes as i32 * 60)));
         }
 
         // Skip any whitespace before IANA name or scale
@@ -688,23 +767,24 @@ impl Parts {
             return None;
         }
 
-        // Integer part (may be empty when we landed on '.')
+        // Integer part (may be empty when we landed on '.').
+        // Overflow → saturate at u64::MAX and skip the rest of the integer digits.
         let mut int_u: u64 = 0;
         let mut saw_digit = false;
 
         while pos < bytes.len() && bytes[pos].is_ascii_digit() {
             saw_digit = true;
             let d = (bytes[pos] - b'0') as u64;
-            if int_u > u64::MAX / 10 {
-                int_u = u64::MAX;
-                pos += 1;
-                while pos < bytes.len() && bytes[pos].is_ascii_digit() {
-                    pos += 1;
+            pos += 1;
+            match int_u.checked_mul(10).and_then(|n| n.checked_add(d)) {
+                Some(n) => int_u = n,
+                None => {
+                    int_u = u64::MAX;
+                    while pos < bytes.len() && bytes[pos].is_ascii_digit() {
+                        pos += 1;
+                    }
+                    break;
                 }
-                break;
-            } else {
-                int_u = int_u * 10 + d;
-                pos += 1;
             }
         }
 
@@ -820,6 +900,8 @@ impl Parts {
     /// - Fractional days are limited to the first 18 digits (attosecond precision
     ///   after conversion); extra digits are truncated.
     /// - Oversized integer parts set the integer component to `u64::MAX`.
+    /// - Day→attosecond conversion saturates at `i128` bounds (a full `u64::MAX`
+    ///   day count does not fit in attoseconds).
     /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
     /// - Returns `None` only for completely unparseable input.
     ///
@@ -859,11 +941,14 @@ impl Parts {
 
         // Convert the signed JD (days + fractional day) to attoseconds since JD epoch 0.
         // 1 fractional day unit in frac_attos corresponds to SEC_PER_DAY seconds.
-        let jd_attos = jd_days * ATTOS_PER_DAY + jd_frac * SEC_PER_DAY;
+        // Saturate: a saturated u64::MAX day count × ATTOS_PER_DAY does not fit in i128.
+        let jd_attos = jd_days
+            .saturating_mul(ATTOS_PER_DAY)
+            .saturating_add(jd_frac.saturating_mul(SEC_PER_DAY));
 
         // The library's Noon2000 epoch is exactly JD 2451545.0, so subtract its offset.
         let epoch_offset = JD_2000_2_451_545_I128 * ATTOS_PER_DAY;
-        let total_attos = jd_attos - epoch_offset;
+        let total_attos = jd_attos.saturating_sub(epoch_offset);
 
         let parts = Parts {
             timestamp: Some(Timestamp {
@@ -890,6 +975,8 @@ impl Parts {
     /// - Fractional days are limited to the first 18 digits (attosecond precision
     ///   after conversion); extra digits are truncated.
     /// - Oversized integer parts set the integer component to `u64::MAX`.
+    /// - Day→attosecond conversion saturates at `i128` bounds (a full `u64::MAX`
+    ///   day count does not fit in attoseconds).
     /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
     /// - Returns `None` only for completely unparseable input.
     ///
@@ -928,23 +1015,29 @@ impl Parts {
 
         // Convert MJD to JD by adding the 2400000.5 day offset.
         // MJD = JD - 2400000.5   =>   JD = MJD + 2400000.5
-        let mut jd_days = mjd_days + 2_400_000;
-        let mut sub_day_attos = mjd_frac * SEC_PER_DAY + ATTOS_PER_HALF_DAY;
+        // Saturate on overflow: a saturated u64::MAX day count × ATTOS_PER_DAY
+        // does not fit in i128.
+        let mut jd_days = mjd_days.saturating_add(2_400_000);
+        let mut sub_day_attos = mjd_frac
+            .saturating_mul(SEC_PER_DAY)
+            .saturating_add(ATTOS_PER_HALF_DAY);
 
         // Normalize sub-day attos (handle carry/borrow when adding the .5 offset)
         if sub_day_attos >= ATTOS_PER_DAY {
-            jd_days += 1;
+            jd_days = jd_days.saturating_add(1);
             sub_day_attos -= ATTOS_PER_DAY;
         } else if sub_day_attos < 0 {
-            jd_days -= 1;
+            jd_days = jd_days.saturating_sub(1);
             sub_day_attos += ATTOS_PER_DAY;
         }
 
-        let jd_attos = jd_days * ATTOS_PER_DAY + sub_day_attos;
+        let jd_attos = jd_days
+            .saturating_mul(ATTOS_PER_DAY)
+            .saturating_add(sub_day_attos);
 
         // The library's Noon2000 epoch is exactly JD 2451545.0, so subtract its offset.
         let epoch_offset = JD_2000_2_451_545_I128 * ATTOS_PER_DAY;
-        let total_attos = jd_attos - epoch_offset;
+        let total_attos = jd_attos.saturating_sub(epoch_offset);
 
         let parts = Parts {
             timestamp: Some(Timestamp {
