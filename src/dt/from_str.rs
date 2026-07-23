@@ -1,6 +1,6 @@
 use crate::{
-    ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, Parts, SEC_PER_DAY, SEC_PER_MONTH, SEC_PER_WEEK,
-    SEC_PER_YEAR, Scale, StrPTimeFmt, an_err, dt,
+    ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, Parts, SEC_PER_DAY, SEC_PER_MONTH,
+    SEC_PER_WEEK, SEC_PER_YEAR, Scale, StrPTimeFmt, an_err, dt, sec,
 };
 use core::str::FromStr;
 
@@ -630,6 +630,8 @@ impl Dt {
     ///   [`DtErrKind::WeekOutOfRange`], [`DtErrKind::DayOutOfRange`] — The component value
     ///   (after sign) overflows when multiplied by the corresponding fixed-length constant
     ///   (checked arithmetic).
+    /// - [`DtErrKind::OutOfRange`] — The accumulated duration does not fit in attoseconds
+    ///   when converting from nanoseconds (`checked_mul`).
     pub fn from_iso_duration(s: &str) -> Result<Dt, DtErr> {
         let len = s.len();
         if len == 0 {
@@ -676,17 +678,17 @@ impl Dt {
         let mut has_fraction = false;
         let mut total_nanos: i128 = 0;
 
-        // Both date and time parts now use the same fixed-length logic
         Self::parse_duration_part(date_part, &mut total_nanos, true, sign, &mut has_fraction)?;
         Self::parse_duration_part(time_part, &mut total_nanos, false, sign, &mut has_fraction)?;
 
-        // Convert accumulated nanoseconds to attoseconds and build Dt
-        let total_attos = total_nanos * 1_000_000_000i128;
+        let total_attos = total_nanos
+            .checked_mul(ATTOS_PER_NS_I128)
+            .ok_or_else(|| an_err!(DtErrKind::OutOfRange))?;
         Ok(dt!(total_attos))
     }
 
     /// Parses a single component (number + optional fraction + unit) from the slice,
-    /// advancing the index `i`. Returns `None` when the slice is exhausted.
+    /// advancing the index `i`. Returns [`Option::None`] when the slice is exhausted.
     fn parse_next_component(
         chars: &[u8],
         i: &mut usize,
@@ -944,9 +946,8 @@ impl Dt {
         };
 
         let total_sec = if negative { -total_sec } else { total_sec };
-        let attos = total_sec.saturating_mul(ATTOS_PER_SEC_I128);
 
-        Ok(dt!(attos))
+        Ok(dt!(sec!(total_sec)))
     }
 
     /// Hours:Minutes elapsed time: `H:MM` or `H:MM:SS[.frac]` (hours unbounded).
