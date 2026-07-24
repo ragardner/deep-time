@@ -34,16 +34,19 @@ use core::fmt;
 /// | `QZSS`      | QZSS Time (used by Japan’s QZSS satellite system). |
 /// | `TCG`       | Geocentric Coordinate Time. Relativistic time scale in the GCRS (Earth-centered). |
 /// | `TCB`       | Barycentric Coordinate Time. Relativistic time scale in the BCRS (solar-system barycenter). |
-/// | `LTC`       | Coordinated Lunar Time. Operational lunar time for cislunar use based on the LTE440 model. |
-/// | `TCL`       | Lunar Coordinate Time. IAU relativistic coordinate time in the LCRS based on the LTE440 model. |
+/// | `LTC`       | Mean-selenoid lunar time: TCL scaled by \(L_m\) (like TT from TCG). ~+56 µs/day vs TT. Not a finalized international LTC standard. |
+/// | `TCL`       | IAU Lunar Coordinate Time (approx.): \(L_D^M\) vs TDB from 1977 + 13-term series. Not the full LTE440 product. |
 /// | `Custom`    | Custom time scale. Can be useful when a user doesn't want to use TAI but wants similar behavior in conversion functions. |
 ///
 /// ## Lunar Time Scales (LTC / TCL)
 ///
-/// Both `LTC` and `TCL` are based on the **LTE440** model (Lu et al. 2025):
-///
-/// - `LTC` (Coordinated Lunar Time) — Intended for operational cislunar use. Applies a secular rate of **+56.02 µs/day** relative to TT plus the dominant periodic terms.
-/// - `TCL` (Lunar Coordinate Time) — Theoretical IAU relativistic coordinate time at the Moon’s center of mass. Includes the secular rate versus TDB, periodic terms, and a J2000 bias calibrated to published LTE440 values.
+/// - **`TCL`** — IAU LCRS coordinate time at the Moon’s center of mass. This crate
+///   uses \(L_D^M\) (LTE440 rate) from the 1977 epoch plus the published 13-term
+///   Fourier sketch of TCL−TDB. That is **not** the full LTE440 Chebyshev kernel.
+/// - **`LTC`** — `LTC = TCL − L_m·(TCL − t₀)` with Ashby & Patla (2024) \(L_m\)
+///   (same pattern as TT from TCG). Mean rate vs TT ≈ +56.02 µs/day. The name
+///   matches common “coordinated lunar time” language but is **not** a claim to
+///   implement a finished multi-agency LTC standard.
 #[non_exhaustive]
 #[repr(u8)]
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -118,16 +121,16 @@ pub enum Scale {
     /// A relativistic time scale for the entire solar system.
     TCB,
 
-    /// Coordinated Lunar Time (LTC).
+    /// Mean-selenoid lunar time (library `LTC`).
     ///
-    /// Operational lunar time scale intended for cislunar operations.
-    /// Based on the LTE440 model.
+    /// TCL scaled by \(L_m\) (Ashby & Patla 2024), like TT from TCG.
+    /// Mean rate vs TT ≈ +56.02 µs/day. Not a finalized international LTC.
     LTC,
 
     /// Lunar Coordinate Time (TCL).
     ///
-    /// Theoretical relativistic coordinate time at the Moon’s center of mass.
-    /// Based on the LTE440 model.
+    /// IAU LCRS coordinate time at the Moon’s center of mass. Approximate
+    /// model: \(L_D^M\) vs TDB from 1977 plus a 13-term series (not full LTE440).
     TCL,
 
     /// Custom / user-defined scale.

@@ -1,24 +1,46 @@
 //! Lunar time-scale constants and conversion methods.
+//!
+//! - **TCL** — IAU Lunar Coordinate Time (selenocenter). Approximate model:
+//!   `TCL − TDB = L_D^M · (t − t₀) + P₁₃(t)` with `t` on TDB, `t₀` = 1977-01-01
+//!   (IAU common epoch). `L_D^M` and the 13-term series come from the LTE440
+//!   papers (Lu et al. 2025); this is **not** the full LTE440 Chebyshev product.
+//! - **LTC** — mean-selenoid scale from TCL via Ashby & Patla (2024) `L_m`,
+//!   analogous to TT from TCG: `LTC = TCL − L_m · (TCL − t₀)`. This is **not**
+//!   a finalized international “Coordinated Lunar Time” standard; it is this
+//!   library’s construction. Mean `dLTC/dTT − 1 ≈ L_D^M − L_m ≈ 6.48×10⁻¹⁰`.
 
 use crate::{Dt, Real, Scale, dt, sin};
 
-/// TCL secular rate vs TDB (value from LTE440).
-pub const TL_NUM: i128 = 6_798_355_240;
-/// Denominator for [`TL_NUM`] fixed-point fraction (10¹⁹).
+/// \(L_D^M = 6.798\,355\,238\times 10^{-10}\) — LTE440 secular rate
+/// \(\langle\mathrm{d\,TCL}/\mathrm{d\,TDB}\rangle - 1\) (user manual).
+pub const TL_NUM: i128 = 6_798_355_238;
+/// Denominator for [`TL_NUM`] fixed-point fraction (\(10^{19}\)).
 pub const TL_DEN: i128 = 10_000_000_000_000_000_000; // 10^19
-/// L_M = 6.48378 × 10^{-10} (secular rate from Ashby & Patla 2024 NIST for LTC ↔ TT)
-/// as fixed-point fraction.
-pub const LM_NUM: i128 = 648_378;
-/// Denominator for [`LM_NUM`] fixed-point fraction (10¹⁵).
-pub const LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
 
-/// One LTE440 periodic term for lunar time corrections.
+/// \(L_m = 3.13881\times 10^{-11}\) — Ashby & Patla (2024) lunar selenoid
+/// scaling constant (analogous to \(L_G\) for TCG → TT).
 ///
-/// Form: `A_i * sin(2π * (t_J2000_days / T_i) + ϕ_i)` with `A_i` in µs
-/// (Lu et al. 2025, A&A 704, A76; arXiv:2509.18511).
+/// Used only for LTC ↔ TCL: `LTC = TCL − L_m · (TCL − t₀)`.
+pub const LM_NUM: i128 = 313_881;
+/// Denominator for [`LM_NUM`] fixed-point fraction (\(10^{16}\)).
+pub const LM_DEN: i128 = 10_000_000_000_000_000; // 10^16
+
+/// Ashby & Patla (2024) mean surface-to-surface rate
+/// \(L_M = 6.48378\times 10^{-10}\) (\(\mathrm{d}\tau_m/\mathrm{d}\tau_e - 1\)).
+///
+/// Informational: expected mean `dLTC/dTT − 1 ≈ L_D^M − L_m ≈ L_M`.
+/// Not used directly in the conversion (LTC is derived from TCL via [`LM_NUM`]).
+pub const ASHBY_LM_NUM: i128 = 648_378;
+/// Denominator for [`ASHBY_LM_NUM`] (\(10^{15}\)).
+pub const ASHBY_LM_DEN: i128 = 1_000_000_000_000_000; // 10^15
+
+/// One LTE440 periodic term for **TCL − TDB**.
+///
+/// Form: `A_i * sin(2π * (t_J2000_days / T_i) + ϕ_i)` with `A_i` in µs and
+/// time argument on **TDB** (Lu et al. 2025, A&A 704, A76; arXiv:2509.18511).
 #[derive(Clone, Debug)]
 pub struct LunarPeriodicTerm {
-    /// Period \(T_i\) in days (argument of the sine is \(2\pi\,t_{\mathrm{J2000}}/T_i + \phi_i\)).
+    /// Period \(T_i\) in days.
     pub period_days: Real,
     /// Amplitude \(A_i\) in microseconds.
     pub amplitude_us: Real,
@@ -26,9 +48,11 @@ pub struct LunarPeriodicTerm {
     pub phase_rad: Real,
 }
 
-/// The 13 dominant LTE440 periodic terms (>1 µs) after removing the linear secular drift.
+/// The 13 dominant LTE440 periodic terms in TCL−TDB with amplitude > 1 µs
+/// (preliminary FFT table after removal of the linear secular drift).
 ///
-/// Combined with the secular rate, accuracy is &lt; 0.15 ns before 2050.
+/// This is an analytical approximation to the full LTE440 Chebyshev product,
+/// not a substitute for it at sub-nanosecond accuracy.
 pub const LUNAR_PERIODIC_TERMS: [LunarPeriodicTerm; 13] = [
     LunarPeriodicTerm {
         period_days: 365.26590909,
@@ -98,55 +122,32 @@ pub const LUNAR_PERIODIC_TERMS: [LunarPeriodicTerm; 13] = [
 ];
 
 impl Dt {
-    #[inline(always)]
-    pub(crate) const fn mul_lm(attos: i128) -> i128 {
-        Self::mul_rate(attos, LM_NUM, LM_DEN)
-    }
+    // -------------------------------------------------------------------------
+    // Fixed-point rate helpers
+    // -------------------------------------------------------------------------
 
-    pub(crate) const fn tt_to_ltc(tt: Self) -> Dt {
-        let elapsed = tt.to_attos_since_tcg_tcb_epoch();
-        let secular_attos = Self::mul_lm(elapsed);
-        let periodic = Self::ltc_periodic_correction(tt);
-
-        tt.add(dt!(secular_attos)).add(periodic)
-    }
-
-    /// Converts from the Lunar Time Coordinate (LTC) to Terrestrial Time (TT).
-    ///
-    /// The conversion includes both a constant rate offset and periodic
-    /// corrections from lunar motion. Because the periodic terms depend on
-    /// the TT instant, a short fixed-point iteration is used. The secular
-    /// rate is inverted with the same one-step method used by the TCG and
-    /// TCB conversions.
-    pub(crate) const fn ltc_to_tt(ltc: Self) -> Dt {
-        let mut tt = ltc; // initial guess (already within ~2 ms)
-        let mut i = 0u32;
-        while i < 6 {
-            let periodic = Self::ltc_periodic_correction(tt);
-
-            // effective target after removing periodic evaluated at current guess
-            let eff = ltc.sub(periodic);
-
-            // exact one-step secular inverse on the effective value
-            // (identical to the formula used in tcg_to_tt)
-            let elapsed_eff = eff.to_attos_since_tcg_tcb_epoch();
-            let sec_inv_attos = Self::mul_rate(elapsed_eff, LM_NUM, LM_DEN + LM_NUM);
-
-            tt = eff.sub(dt!(sec_inv_attos));
-            i += 1;
-        }
-        tt
-    }
-
+    /// \(L_D^M · \mathrm{attos}\) (TCL secular vs TDB).
     #[inline(always)]
     pub(crate) const fn mul_tl(attos: i128) -> i128 {
         Self::mul_rate(attos, TL_NUM, TL_DEN)
     }
 
-    /// Returns the periodic part of (LTC − TT) in Dt (µs-level, evaluated at the TT instant).
-    const fn ltc_periodic_correction(tt: Self) -> Dt {
-        let seconds_since_j2000_tt = tt.to_sec_f();
-        let t_days = seconds_since_j2000_tt / f!(86400.0); // days since J2000.0 TT
+    /// \(L_m · \mathrm{attos}\) (LTC scaling vs TCL).
+    #[inline(always)]
+    pub(crate) const fn mul_lm(attos: i128) -> i128 {
+        Self::mul_rate(attos, LM_NUM, LM_DEN)
+    }
+
+    // -------------------------------------------------------------------------
+    // TCL − TDB periodic series (argument = TDB days since J2000)
+    // -------------------------------------------------------------------------
+
+    /// Periodic part of TCL − TDB from the 13-term LTE440 table.
+    ///
+    /// `tdb` must carry a TDB continuous count since J2000 (only the numerical
+    /// value is used). Result is a pure span (scale tags unused by add/sub).
+    const fn tcl_tdb_periodic(tdb: Dt) -> Dt {
+        let t_days = tdb.to_sec_f() / f!(86400.0);
 
         let mut delta_us = f!(0.0);
         let two_pi = f!(2.0) * f!(core::f64::consts::PI);
@@ -159,84 +160,72 @@ impl Dt {
             i += 1;
         }
 
-        // Convert µs → Dt (positive = lunar time runs ahead)
         Dt::from_sec_f(delta_us * 1e-6, Scale::TAI, Scale::TAI)
     }
 
-    /// Zero-point calibration constant for TCL so that our implementation
-    /// reproduces the official LTE440 reference value at every epoch.
-    ///
-    /// LTE440 (Lu et al. 2025) states that at J2000.0 TDB:
-    ///
-    /// ```text
-    /// published reference: TCL − TDB = +0.49330749643254945 s
-    /// ```
-    ///
-    /// At this epoch the secular term is zero, so our code produces only
-    /// the periodic contribution from the 13-term LTE440 series:
-    ///
-    /// ```text
-    /// our computed periodic sum = −0.000035111965426382064 s
-    /// ```
-    ///
-    /// The required constant bias is therefore:
-    ///
-    /// ```text
-    /// bias = published_reference − periodic_sum
-    ///      = 0.49330749643254945 − (−0.000035111965426382064)
-    ///      = +0.49334260839797583 s
-    /// ```
-    ///
-    /// This bias is a pure constant (no rate or higher-order terms) and remains
-    /// valid across the entire validity range of the LTE440 model.
-    ///
-    /// Reference: <https://github.com/xlucn/LTE440>
-    /// (README and demo output)
-    pub(crate) const TCL_TDB_BIAS_SPAN: Dt =
-        Dt::from_sec_f(0.49334260839797583, Scale::TAI, Scale::TAI);
+    // -------------------------------------------------------------------------
+    // TCL ↔ TAI (via TDB)
+    // -------------------------------------------------------------------------
 
-    /// Integer helper: elapsed attoseconds since J2000.0 TDB.
-    /// Used exclusively for the TCL pathway to match LTE440
-    /// (TCL = TDB + L_D^M × (JD_TDB − 2451545.0) × 86400 + periodic).
-    #[inline(always)]
-    pub(crate) const fn to_attos_since_j2000_tdb_epoch(numerical_tdb: Self) -> i128 {
-        numerical_tdb.to_attos()
-    }
-
+    /// TAI → TCL: `TCL = TDB + L_D^M·(TDB−t₀) + P₁₃(TDB)` (`t₀` = 1977 epoch).
     pub(crate) const fn tai_to_tcl(tai: Dt) -> Dt {
         let tdb = tai.tai_to_tdb();
 
-        let elapsed = Self::to_attos_since_j2000_tdb_epoch(tdb);
+        let elapsed = tdb.to_attos_since_tcg_tcb_epoch();
         let secular_attos = Self::mul_tl(elapsed);
-        let periodic = Self::ltc_periodic_correction(tdb);
+        let periodic = Self::tcl_tdb_periodic(tdb);
 
-        tdb.add(dt!(secular_attos))
-            .add(periodic)
-            .add(Self::TCL_TDB_BIAS_SPAN)
+        tdb.add(dt!(secular_attos)).add(periodic)
     }
 
-    /// Converts TCL to TAI.
-    ///
-    /// The conversion goes via TDB and includes the secular rate from
-    /// LTE440 plus the periodic lunar corrections. Because the periodic
-    /// terms depend on the TDB instant, a short fixed-point iteration is
-    /// used. The secular rate is inverted with the exact one-step method.
+    /// TCL → TAI (fixed-point iteration on TDB).
     pub(crate) const fn tcl_to_tai(tcl: Dt) -> Dt {
         let mut tdb = tcl;
         let mut i = 0u32;
         while i < 6 {
-            let periodic = Self::ltc_periodic_correction(tdb);
+            let periodic = Self::tcl_tdb_periodic(tdb);
+            let eff = tcl.sub(periodic);
 
-            // effective target after removing periodic + constant bias
-            let eff = tcl.sub(periodic).sub(Self::TCL_TDB_BIAS_SPAN);
-
-            // exact one-step secular inverse on the effective value
-            let elapsed_eff = Self::to_attos_since_j2000_tdb_epoch(eff);
+            let elapsed_eff = eff.to_attos_since_tcg_tcb_epoch();
             let sec_inv_attos = Self::mul_rate(elapsed_eff, TL_NUM, TL_DEN + TL_NUM);
 
             tdb = eff.sub(dt!(sec_inv_attos));
             i += 1;
         }
         Self::tdb_to_tai(tdb)
+    }
+
+    // -------------------------------------------------------------------------
+    // LTC ↔ TCL (L_m scaling, parallel to TT ↔ TCG)
+    // -------------------------------------------------------------------------
+
+    /// TCL → LTC: `LTC = TCL − L_m · (TCL − t₀)` (t₀ = IAU 1977 epoch).
+    ///
+    /// Same structure as [`Self::tcg_to_tt`].
+    pub(crate) const fn tcl_to_ltc(tcl: Dt) -> Dt {
+        let elapsed = tcl.to_attos_since_tcg_tcb_epoch();
+        let span_attos = Self::mul_lm(elapsed);
+        tcl.add_attos(-span_attos)
+    }
+
+    /// LTC → TCL: `TCL = LTC + L_m/(1−L_m) · (LTC − t₀)`.
+    ///
+    /// Same structure as [`Self::tt_to_tcg`].
+    pub(crate) const fn ltc_to_tcl(ltc: Dt) -> Dt {
+        let elapsed = ltc.to_attos_since_tcg_tcb_epoch();
+        let span_attos = Self::mul_rate(elapsed, LM_NUM, LM_DEN - LM_NUM);
+        ltc.add_attos(span_attos)
+    }
+
+    /// TAI → LTC via TCL.
+    #[inline(always)]
+    pub(crate) const fn tai_to_ltc(tai: Dt) -> Dt {
+        Self::tcl_to_ltc(Self::tai_to_tcl(tai))
+    }
+
+    /// LTC → TAI via TCL.
+    #[inline(always)]
+    pub(crate) const fn ltc_to_tai(ltc: Dt) -> Dt {
+        Self::tcl_to_tai(Self::ltc_to_tcl(ltc))
     }
 }

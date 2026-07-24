@@ -1,254 +1,262 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-/// Tests for Lunar Coordinated Time (LTC) realization.
+/// Tests for approximate TCL and library LTC (mean selenoid via L_m).
 ///
-/// LTC is the proper-time scale for a clock at rest on the lunar selenoid,
-/// as defined in Ashby & Patla (2024) with the addition of the full 13-term
-/// periodic corrections from the LTE440 lunar time ephemeris (Lu et al. 2025,
-/// A&A 704, A76; arXiv:2509.18511). These tests verify numerical stability,
-/// secular rate, periodic relativistic effects, and consistency with the
-/// authoritative published reference value. All tolerances are set to be
-/// substantially tighter than any operational requirement for cislunar PNT.
-mod ltc_tests {
-    use deep_time::macros::from_sec;
-    use deep_time::{Dt, Scale, consts::ATTOS_PER_SEC_I128};
+/// TCL: `TCL − TDB = L_D^M · (t − t₀) + P₁₃(t)`, `t₀` = 1977.
+/// LTC: `LTC = TCL − L_m · (TCL − t₀)`.
+mod ltc_tcl_tests {
+    use deep_time::{Dt, Scale};
 
-    /// Verifies round-trip conversion accuracy between TAI and LTC.
-    ///
-    /// The LTC transformation (fixed-point secular scaling + bounded periodic
-    /// correction) must be numerically reversible to sub-nanosecond precision.
-    /// The 1 ns tolerance accounts for unavoidable f64 rounding in the Julian-date
-    /// helper while remaining far stricter than any mission requirement.
+    // -------------------------------------------------------------------------
+    // Round-trips
+    // -------------------------------------------------------------------------
+
     #[test]
-    fn ltc_tai_roundtrip_is_accurate() {
+    fn tcl_tai_roundtrip_is_accurate() {
         let test_points = [
-            Dt::from_sec(0, Scale::TAI, Scale::TAI), // J2000.0 TAI
-            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI), // ~1 year after J2000.0
-            Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI), // 10 years before J2000.0
-            Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI), // ~31.7 years after J2000.0
-            Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI), // Approximate J1900 epoch
+            Dt::from_sec(0, Scale::TAI, Scale::TAI),
+            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+            Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI),
+            Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
+            Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI),
         ];
 
         for &p in &test_points {
-            let ltc = p.to(Scale::LTC);
-            let back = ltc.to(Scale::TAI);
-
+            let tcl = p.to(Scale::TCL);
+            let back = tcl.to(Scale::TAI);
             let diff = back.to_diff_raw(p).to_sec_f().abs();
-
             assert!(
                 diff < 1e-9,
-                "LTC ↔ TAI round-trip error of {} s exceeds tolerance at input instant {:?}",
+                "TCL ↔ TAI round-trip error of {} s at {:?}",
                 diff,
                 p
             );
         }
     }
 
-    /// Validates the LTC-TAI offset at the J2000.0 reference epoch.
-    ///
-    /// This test anchors the complete model (Ashby & Patla secular rate L_M plus
-    /// the full 13-term LTE440 periodic series) at the standard reference epoch.
-    /// The periodic contribution at J2000.0 is approximately -35.128 µs.
     #[test]
-    fn ltc_minus_tai_at_j2000() {
+    fn ltc_tai_roundtrip_is_accurate() {
+        let test_points = [
+            Dt::from_sec(0, Scale::TAI, Scale::TAI),
+            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+            Dt::from_sec(-86_400 * 365 * 10, Scale::TAI, Scale::TAI),
+            Dt::from_sec(1_000_000_000, Scale::TAI, Scale::TAI),
+            Dt::from_sec(-2_208_945_600, Scale::TAI, Scale::TAI),
+        ];
+
+        for &p in &test_points {
+            let ltc = p.to(Scale::LTC);
+            let back = ltc.to(Scale::TAI);
+            let diff = back.to_diff_raw(p).to_sec_f().abs();
+            assert!(
+                diff < 1e-9,
+                "LTC ↔ TAI round-trip error of {} s at {:?}",
+                diff,
+                p
+            );
+        }
+    }
+
+    #[test]
+    fn ltc_tcl_roundtrip_is_exact_linear() {
+        // LTC ↔ TCL is pure linear L_m scaling — should be essentially exact.
+        let points = [
+            Dt::from_sec(0, Scale::TAI, Scale::TAI),
+            Dt::from_sec(86_400 * 365 * 20, Scale::TAI, Scale::TAI),
+            Dt::from_sec(-86_400 * 365 * 5, Scale::TAI, Scale::TAI),
+        ];
+        for &p in &points {
+            let tcl = p.to(Scale::TCL);
+            let ltc = tcl.to(Scale::LTC);
+            let back = ltc.to(Scale::TCL);
+            let diff = back.to_diff_raw(tcl).to_sec_f().abs();
+            assert!(
+                diff < 1e-15,
+                "LTC ↔ TCL round-trip error {} s (expected near-exact linear)",
+                diff
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // TCL / LTE440
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn tcl_tdb_offset_near_j2000_is_sensible() {
         let tai = Dt::ZERO;
-        let ltc = tai.to(Scale::LTC);
-
-        let diff_s = ltc.to_diff_raw(tai).to_sec_f();
-
-        const EXPECTED_LTC_TAI_J2000_S: f64 = 32.654559693364384;
-
+        let tcl = tai.to(Scale::TCL);
+        let tdb = tai.to(Scale::TDB);
+        let diff_s = tcl.to_diff_raw(tdb).to_sec_f();
+        // ~L_D^M × 8400.5 d ≈ 0.493 s
         assert!(
-            (diff_s - EXPECTED_LTC_TAI_J2000_S).abs() < 1e-9,
-            "LTC-TAI difference at J2000.0 was {} s (expected {:.12} s)",
-            diff_s,
-            EXPECTED_LTC_TAI_J2000_S
+            (0.492..0.495).contains(&diff_s),
+            "TCL-TDB at J2000.0 was {} s (expected ~0.493 s)",
+            diff_s
         );
     }
 
-    /// Validates long-term secular growth of the LTC-TT offset.
-    ///
-    /// A selenoid clock runs faster than a TT clock by L_M ≈ 6.48378 × 10^{-10}
-    /// (Ashby & Patla 2024). This test confirms linear growth of the secular
-    /// component over multi-decade timescales. Note that secular accumulation
-    /// is measured from the library’s internal reference epoch (1977-01-01.0 TAI),
-    /// not J2000.0; the ~100-year test point therefore corresponds to ~123 years
-    /// of elapsed time.
+    /// ~2038-01-01: secular from 1977 ≈ 1.309 s plus ±~1.65 ms periodic.
     #[test]
-    fn ltc_offset_grows_linearly() {
+    fn tcl_tdb_offset_near_2038() {
+        let tai_2038 = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
+        let tcl = tai_2038.to(Scale::TCL);
+        let tdb = tai_2038.to(Scale::TDB);
+        let diff_s = tcl.to_diff_raw(tdb).to_sec_f();
+
+        assert!(
+            (1.306..1.311).contains(&diff_s),
+            "TCL-TDB on 2038-01-01 should be ~1.309 s ± periodic (got {} s)",
+            diff_s
+        );
+
+        let back = tcl.to(Scale::TAI);
+        let rt = back.to_diff_raw(tai_2038).to_sec_f().abs();
+        assert!(rt < 1e-9, "TCL → TAI round-trip error: {} s", rt);
+    }
+
+    // -------------------------------------------------------------------------
+    // LTC / Ashby + L_m
+    // -------------------------------------------------------------------------
+
+    /// LTC runs ahead of TT (Moon clocks tick faster than geoid clocks).
+    #[test]
+    fn ltc_runs_ahead_of_tt() {
         let points = [
             Dt::from_sec(0, Scale::TAI, Scale::TAI),
-            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI), // ~1 year
-            Dt::from_sec(86_400 * 365 * 100, Scale::TAI, Scale::TAI), // ~100 years from J2000.0
+            Dt::from_sec(86_400 * 365, Scale::TAI, Scale::TAI),
+            Dt::from_sec(86_400 * 365 * 100, Scale::TAI, Scale::TAI),
         ];
 
         for &p in &points {
             let tt = p.to(Scale::TT);
             let ltc = p.to(Scale::LTC);
-
             let corr_s = ltc.to_diff_raw(tt).to_sec_f();
-
             assert!(
                 corr_s > 0.0,
-                "LTC should run ahead of TT (positive offset). Got {} s at {:?}",
+                "LTC should run ahead of TT; got {} s at {:?}",
                 corr_s,
                 p
             );
 
-            // At the ~100-year point the secular offset must be ~2.516 s
-            // (L_M × ~123 years of elapsed time from the 1977 reference epoch).
+            // ~100 y after J2000 ≈ 123 y from 1977 → L_M × Δt ≈ 2.5 s
             if p.to_sec() > 86_400 * 365 * 50 {
                 assert!(
-                    (corr_s > 2.4 && corr_s < 2.6),
-                    "Secular LTC-TT offset at ~100 years from J2000.0 should be ~2.516 s (got {} s)",
+                    (2.4..2.6).contains(&corr_s),
+                    "Secular LTC-TT at ~100 y from J2000 should be ~2.5 s (got {} s)",
                     corr_s
                 );
             }
         }
     }
 
-    /// Validates consistency with the official LTE440 reference value at J2000.0.
+    /// Mean dLTC/dTT − 1 ≈ Ashby L_M ≈ 6.48378×10⁻¹⁰.
     ///
-    /// LTE440 (Lu et al. 2025) is the current state-of-the-art lunar time ephemeris.
-    /// It publishes TCL − TDB = +0.49330749643254945 s at JD 2451545.0 TDB.
-    /// Our LTC realization (proper time on the selenoid) uses the identical periodic
-    /// terms; a small constant offset relative to TCL is expected and physically correct.
-    ///
-    /// Reference value and example output: https://github.com/xlucn/LTE440
+    /// Finite difference over 20 Julian years so annual TCL−TDB / TDB−TT terms
+    /// largely average out. Theoretical mean is \(L_D^M - L_m ≈ L_M\).
     #[test]
-    fn ltc_agrees_with_lte440_j2000_reference() {
-        let tai = Dt::ZERO;
-        let ltc = tai.to(Scale::LTC);
-        let tdb = tai.to(Scale::TDB);
+    fn ltc_tt_mean_rate_matches_ashby_lm() {
+        let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
+        // 20 Julian years
+        let t1 = Dt::from_sec(86_400 * 365 * 20 + 86_400 * 5, Scale::TAI, Scale::TAI);
 
-        let diff_s = ltc.to_diff_raw(tdb).to_sec_f();
+        let d0 = t0.to(Scale::LTC).to_diff_raw(t0.to(Scale::TT)).to_sec_f();
+        let d1 = t1.to(Scale::LTC).to_diff_raw(t1.to(Scale::TT)).to_sec_f();
+        let elapsed = t1.to(Scale::TT).to_diff_raw(t0.to(Scale::TT)).to_sec_f();
+        let rate = (d1 - d0) / elapsed;
 
-        const PUBLISHED_TCL_TDB_J2000_S: f64 = 0.49330749643254945;
-
+        // L_D^M − L_m from the constants used in lunar.rs
+        const LD_MINUS_LM: f64 = 6.798355238e-10 - 3.13881e-11;
+        const ASHBY_LM: f64 = 6.48378e-10;
         assert!(
-            (diff_s - PUBLISHED_TCL_TDB_J2000_S).abs() < 0.03,
-            "LTC-TDB at J2000.0 was {} s (published TCL-TDB reference = {:.14} s)",
-            diff_s,
-            PUBLISHED_TCL_TDB_J2000_S
+            (LD_MINUS_LM - ASHBY_LM).abs() < 1e-13,
+            "L_D − L_m should match Ashby L_M to ~1e-13"
+        );
+        // Multi-year finite difference still has residual periodic leakage
+        assert!(
+            (rate - ASHBY_LM).abs() < 2e-11,
+            "mean dLTC/dTT − 1 = {:.6e} (Ashby L_M = {:.6e}, L_D−L_m = {:.6e})",
+            rate,
+            ASHBY_LM,
+            LD_MINUS_LM
         );
     }
 
-    /// Validates TCL against the official LTE440 reference value at J2000.0.
-    ///
-    /// TCL (Lunar Coordinate Time) is the coordinate time of the Lunar Celestial
-    /// Reference System (LCRS) as defined by IAU 2024 Resolution II. The LTE440
-    /// ephemeris (Lu et al. 2025, A&A 704, A76; arXiv:2509.18511) is the current
-    /// state-of-the-art numerical realization of TCL based on DE440.
-    ///
-    /// The authoritative reference value published by the LTE440 authors is:
-    ///
-    ///     TCL − TDB = +0.49330749643254945 s
-    ///
-    /// at JD 2451545.0 TDB (J2000.0). This test confirms that our TCL implementation
-    /// (LTE440 secular rate + full 13-term periodic series) reproduces this value
-    /// to high precision.
-    ///
-    /// Reference: https://github.com/xlucn/LTE440
-    /// (see demo output in the repository README)
+    /// LTC − TCL = −L_m · (TCL − t₀): pure L_m scaling, no extra periodic layer.
     #[test]
-    fn tcl_agrees_with_lte440_j2000_reference() {
+    fn ltc_minus_tcl_is_lm_scaling_only() {
         let tai = Dt::ZERO;
         let tcl = tai.to(Scale::TCL);
-        let tdb = tai.to(Scale::TDB);
+        let ltc = tai.to(Scale::LTC);
+        let diff = ltc.to_diff_raw(tcl).to_sec_f(); // LTC − TCL (< 0)
 
-        let diff_s = tcl.to_diff_raw(tdb).to_sec_f();
-
-        const PUBLISHED_TCL_TDB_J2000_S: f64 = 0.49330749643254945;
-
+        // elapsed TCL since 1977 at this instant ≈ 8400.5 d (same order as TCG epoch)
+        // L_m * 8400.5 * 86400 ≈ 0.02278 s → LTC − TCL ≈ −0.02278 s
         assert!(
-            (diff_s - PUBLISHED_TCL_TDB_J2000_S).abs() < 1e-12,
-            "TCL-TDB difference at J2000.0 was {} s (published LTE440 reference = {:.14} s)",
-            diff_s,
-            PUBLISHED_TCL_TDB_J2000_S
+            diff < 0.0 && diff > -0.03,
+            "LTC−TCL at J2000 should be ≈ −L_m·Δt ≈ −0.023 s (got {} s)",
+            diff
         );
     }
 
-    /// ### Expected TCL–TDB difference on 2038-01-01
+    /// Annual LTC−TT residual must be ≪ 1.65 ms (the raw TCL−TDB annual amplitude).
     ///
-    /// According to the official LTE440 ephemeris (Lu et al. 2025, A&A 704, A76):
-    ///
-    /// - At J2000.0 (JD 2451545.0 TDB):
-    ///   TCL − TDB = **+0.49330749643254945 s** (exact published reference value).
-    ///
-    /// - Secular (linear) rate: ⟨dTCL/dTDB⟩ − 1 = **+6.798355238 × 10⁻¹⁰**
-    ///   (from the LTE440 `.tpc` kernel constant `BODY1000000005_RATE`).
-    ///
-    /// - Representative epoch: 2038-01-01 12:00 TDB (JD 2465425.0)
-    ///   ΔJD = 13 880 days
-    ///   Linear accumulation = 6.798355238 × 10⁻¹⁰ × 13 880 × 86 400 ≈ **+0.815280515 s**
-    ///
-    /// - Therefore the expected mean value is:
-    ///   TCL − TDB ≈ 0.493307496 + 0.815280515 = **+1.308588011 s**
-    ///
-    /// The periodic contribution (13-term Fourier series) varies by up to ±1.65 ms
-    /// (dominated by the annual term of amplitude ~1.651 ms). The change in the
-    /// periodic part from J2000.0 to this 2038 epoch is only ~0.88 µs, which is
-    /// negligible at the millisecond level.
-    ///
-    /// The assertion range (1.3069 – 1.3103 s) comfortably covers the expected
-    /// secular mean plus the full periodic oscillation while remaining tight enough
-    /// to verify correct implementation.
-    ///
-    /// Reference kernels and exact values:
-    /// https://github.com/xlucn/LTE440 (lte440.bsp + lte440.tpc, README, and demo scripts)
+    /// After removing a linear trend over one year, peak residual should stay
+    /// well below ~0.5 ms (composition residual of TCL−TDB + TDB−TT).
     #[test]
-    fn tcl_for_lunar_orbit_planning_2038_example() {
-        // 2038-01-01 00:00:00 TAI
-        // (Unix timestamp 2_145_916_800 on the TAI scale)
-        let unix_tai_sec = 2_145_916_800i128;
+    fn ltc_tt_annual_residual_is_not_full_tcl_tdb_annual() {
+        let n = 37; // samples over ~1 year
+        let mut offsets = Vec::with_capacity(n);
+        for k in 0..n {
+            let tai = Dt::from_sec(k as i128 * 10 * 86_400, Scale::TAI, Scale::TAI);
+            let off = tai.to(Scale::LTC).to_diff_raw(tai.to(Scale::TT)).to_sec_f();
+            offsets.push(off);
+        }
 
-        let tai_2038 = Dt::from_diff_and_scale(from_sec!(unix_tai_sec), Dt::UNIX_EPOCH, false);
+        // Linear least-squares residual peak-to-peak
+        let n_f = (n - 1) as f64;
+        let y0 = offsets[0];
+        let y1 = offsets[n - 1];
+        let mut max_abs_res = 0.0_f64;
+        for (k, &y) in offsets.iter().enumerate() {
+            let pred = y0 + (y1 - y0) * (k as f64 / n_f);
+            max_abs_res = max_abs_res.max((y - pred).abs());
+        }
 
-        let tcl_span = tai_2038.to(Scale::TCL); // Dt on TCL scale
-        let tdb_span = tai_2038.to(Scale::TDB); // Dt on TDB scale
-
-        let diff_s = tcl_span.to_diff_raw(tdb_span).to_sec_f();
-
+        // Raw TCL−TDB annual is 1.65 ms; composed residual must be far smaller.
         assert!(
-            (diff_s > 1.3069 && diff_s < 1.3103),
-            "TCL-TDB difference on 2038-01-01 should be ~1.3086 s ± periodic terms (got {} s)",
-            diff_s
+            max_abs_res < 5e-4,
+            "LTC−TT detrended residual peak {} s exceeds 0.5 ms — annual TCL−TDB may have been applied raw",
+            max_abs_res
         );
-
-        // Round-trip sanity check
-        let tai = tcl_span.to(Scale::TAI);
-
-        let roundtrip_error = tai.to_diff_raw(tai_2038).to_sec_f().abs();
-
-        assert!(
-            roundtrip_error < 1e-9,
-            "TCL → TAI round-trip error too large: {} s",
-            roundtrip_error
-        );
+        // And not trivially zero either (there should be some residual periodic).
+        // (No lower bound: depending on sampling, residual can be small.)
     }
 
-    /// Cross-validation test against the latest hifitime (v4.3+) TCL implementation.
-    ///
-    /// hifitime 4.3.0 introduced experimental support for Lunar Coordinate Time (TCL).
-    /// This test verifies that our analytical LTE440-based TCL agrees with hifitime's
-    /// implementation to within 1 ms (the observed difference at this epoch is ~535 µs,
-    /// well within the ±1.65 ms periodic term amplitude and the experimental nature
-    /// of hifitime's TCL support).
+    /// LTC and TCL share the same physical instant mapping through TAI.
+    #[test]
+    fn ltc_and_tcl_agree_as_instants_via_tai() {
+        let tai = Dt::from_ymd(2025, 6, 15, Scale::TAI, 12, 0, 0, 0);
+        let ltc = tai.to(Scale::LTC);
+        let tcl = tai.to(Scale::TCL);
+        assert_eq!(ltc.to(Scale::TAI), tai);
+        assert_eq!(tcl.to(Scale::TAI), tai);
+        assert_eq!(ltc.to(Scale::TCL).to(Scale::TAI), tai);
+    }
+
+    // -------------------------------------------------------------------------
+    // Optional hifitime cross-check (TCL only; experimental in hifitime)
+    // -------------------------------------------------------------------------
+
     #[cfg(feature = "hifitime")]
     #[test]
     fn tcl_matches_hifitime_latest() {
         use hifitime::{Epoch, TimeScale};
 
-        // TAI seconds since 1900-01-01 00:00 TAI for the instant 2038-01-01 00:00 TAI
+        // TAI seconds since 1900-01-01 00:00 TAI for 2038-01-01 00:00 TAI
         let tai_sec: f64 = 4_354_905_600.0;
-
-        // Create Epoch directly from the raw TAI seconds value (no Gregorian anywhere)
         let epoch_tai = Epoch::from_tai_seconds(tai_sec);
-
-        // Convert the *instant* to the TCL scale
         let epoch_tcl = epoch_tai.to_time_scale(TimeScale::TCL);
-
-        // The numeric value on the TCL time scale (seconds since TCL reference epoch 1977)
         let tcl_sec = epoch_tcl.duration.to_seconds();
 
         let my_2038_tai = Dt::from_ymd(2038, 1, 1, Scale::TAI, 0, 0, 0, 0);
@@ -257,10 +265,9 @@ mod ltc_tests {
             .to_scale_and_diff(Dt::TAI_1977_EPOCH, true);
 
         let diff = (my_tcl.to_sec_f() - tcl_sec).abs();
-
         assert!(
             diff < 0.001,
-            "TCL mismatch with hifitime: our = {:.9}, hifitime = {:.9}, diff = {:.9} s (expected < 1 ms)",
+            "TCL mismatch with hifitime: our = {:.9}, hifitime = {:.9}, diff = {:.9} s",
             my_tcl,
             tcl_sec,
             diff
