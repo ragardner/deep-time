@@ -5,19 +5,17 @@ use crate::{
 };
 
 impl Dt {
-    /// Returns the whole seconds portion of this [`Dt`] using truncation towards zero
-    /// (i.e., the integer part obtained via truncating division, without rounding).
+    /// Returns this duration as a whole number of seconds, dropping any
+    /// fraction (always toward zero: 1.7 → 1, −1.7 → −1).
     ///
-    /// This is equivalent to `self.attos / ATTOS_PER_SEC_I128`.
+    /// Same as `self.attos / ATTOS_PER_SEC_I128`. Does not round.
     ///
-    /// Unlike
-    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor)
-    /// (which uses Euclidean division, flooring towards
-    /// negative infinity for negative values to keep the fractional part non-negative),
-    /// this version truncates towards zero.
-    ///
-    /// Consequently, for values in `(-1, 0)` seconds (e.g. -0.3 s or -0.8 s),
-    /// both return `0`.
+    /// On positive values this matches
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
+    /// On negatives they diverge: here −1.3 → −1, while `to_sec_floor` gives
+    /// −2 (always rounds down). Prefer `to_sec_floor` when you also need a
+    /// non-negative fractional part via
+    /// [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     ///
     /// ## Examples
     ///
@@ -25,20 +23,16 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, ms};
     ///
-    /// // -0.3 seconds → truncates to 0
-    /// let dt = from_sec!(0, -ms!(300));
-    /// assert_eq!(dt.to_sec(), 0);
+    /// // Fraction only — less than one second either way → 0
+    /// assert_eq!(from_sec!(0, -ms!(300)).to_sec(), 0);
+    /// assert_eq!(from_sec!(0, ms!(300)).to_sec(), 0);
     ///
-    /// // -0.8 seconds → truncates to 0
-    /// let dt = from_sec!(0, -ms!(800));
-    /// assert_eq!(dt.to_sec(), 0);
-    ///
-    /// // -1.3 seconds → truncates to -1 (while to_sec_floor gives -2)
+    /// // -1.3 s → -1 here, but -2 with `to_sec_floor`
     /// let dt = from_sec!(-1, -ms!(300));
     /// assert_eq!(dt.to_sec(), -1);
     /// assert_eq!(dt.to_sec_floor(), -2);
     ///
-    /// // Positive values behave the same as `to_sec_floor`
+    /// // Positive values match `to_sec_floor`
     /// let dt = from_sec!(1, ms!(300));
     /// assert_eq!(dt.to_sec(), 1);
     /// assert_eq!(dt.to_sec_floor(), 1);
@@ -48,16 +42,10 @@ impl Dt {
         self.attos / ATTOS_PER_SEC_I128
     }
 
-    /// Returns the whole seconds portion of this [`Dt`] using truncation towards zero,
-    /// then clamped to an [`i64`].
+    /// Same as [`to_sec`](../struct.Dt.html#method.to_sec), but returns an
+    /// [`i64`].
     ///
-    /// If the truncated seconds value lies outside the `i64` range, the result
-    /// saturates to [`i64::MAX`] or [`i64::MIN`].
-    ///
-    /// See
-    /// [`to_sec`](../struct.Dt.html#method.to_sec)
-    /// for the truncation semantics
-    /// (towards zero, no rounding).
+    /// Values outside the `i64` range clamp to [`i64::MAX`] or [`i64::MIN`].
     ///
     /// ## Examples
     ///
@@ -65,24 +53,28 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, ms};
     ///
-    /// let dt = from_sec!(-1, -ms!(300));
-    /// assert_eq!(dt.to_sec64(), -1);
+    /// // Same toward-zero rule as `to_sec`
+    /// assert_eq!(from_sec!(1, ms!(300)).to_sec64(), 1);
+    /// assert_eq!(from_sec!(-1, -ms!(300)).to_sec64(), -1);
     ///
-    /// let dt = from_sec!(1, ms!(300));
-    /// assert_eq!(dt.to_sec64_floor(), 1);
+    /// // Fits in i64 here; huge values would clamp instead of panicking
+    /// assert_eq!(from_sec!(i64::MAX as i128).to_sec64(), i64::MAX);
     /// ```
     #[inline(always)]
     pub const fn to_sec64(&self) -> i64 {
         Self::to_i64(self.attos / ATTOS_PER_SEC_I128)
     }
 
-    /// If this time were turned into [`i128`] seconds and [`u64`] (always
-    /// pushing to the positive) fractional attoseconds, this returns the
-    /// whole seconds part.
+    /// Returns whole seconds, always rounding down (toward −∞).
     ///
-    /// To just get seconds rounded to the nearest second use
-    /// [`Dt::to_sec_round`](../struct.Dt.html#method.to_sec_round)
-    /// instead.
+    /// So 1.3 → 1 and −1.3 → −2. The leftover attoseconds are then always
+    /// ≥ 0; get them with
+    /// [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
+    ///
+    /// For truncation toward zero (1.3 → 1, −1.3 → −1), use
+    /// [`to_sec`](../struct.Dt.html#method.to_sec).
+    /// For nearest-second rounding, use
+    /// [`to_sec_round`](../struct.Dt.html#method.to_sec_round).
     ///
     /// ## Examples
     ///
@@ -90,40 +82,27 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, ms};
     ///
-    /// // negative 1.3 seconds
+    /// // -1.3 s → whole -2, leftover +0.7 s
     /// let dt = from_sec!(-1, -ms!(300));
+    /// assert_eq!(dt.to_sec_floor(), -2);
+    /// assert_eq!(dt.to_sec_ufrac(), ms!(700) as u64);
     ///
-    /// // becomes positive 700ms
-    /// let frac = dt.to_sec_ufrac();
-    /// assert_eq!(frac, ms!(700) as u64);
-    ///
-    /// // becomes negative 2 seconds
-    /// let sec = dt.to_sec_floor();
-    /// assert_eq!(sec, -2);
-    ///
+    /// // +1.3 s → whole 1, leftover +0.3 s
     /// let dt = from_sec!(1, ms!(300));
-    ///
     /// assert_eq!(dt.to_sec_floor(), 1);
     /// assert_eq!(dt.to_sec_ufrac(), ms!(300) as u64);
-    ///
-    /// // if you just want rounded seconds
-    /// // use to_sec_round() instead
-    /// let dt = from_sec!(-1, -ms!(300));
-    /// let sec = dt.to_sec_round();
-    /// assert_eq!(sec, -1);
     /// ```
     #[inline(always)]
     pub const fn to_sec_floor(&self) -> i128 {
         self.attos.div_euclid(ATTOS_PER_SEC_I128)
     }
 
-    /// If this time were turned into [`i64`] seconds and [`u64`] (always
-    /// pushing to the positive) fractional attoseconds, this returns the
-    /// whole seconds part.
+    /// Same as [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor),
+    /// but returns an [`i64`].
     ///
-    /// To just get seconds rounded to the nearest second use
-    /// [`Dt::to_sec_round`](../struct.Dt.html#method.to_sec_round)
-    /// instead.
+    /// Values outside the `i64` range clamp to [`i64::MAX`] or [`i64::MIN`].
+    /// Pair with [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac)
+    /// for the leftover.
     ///
     /// ## Examples
     ///
@@ -131,39 +110,23 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, ms};
     ///
-    /// // negative 1.3 seconds
     /// let dt = from_sec!(-1, -ms!(300));
-    ///
-    /// // becomes positive 700ms
-    /// let frac = dt.to_sec_ufrac();
-    /// assert_eq!(frac, ms!(700) as u64);
-    ///
-    /// // becomes negative 2 seconds
-    /// let sec = dt.to_sec64_floor();
-    /// assert_eq!(sec, -2);
+    /// assert_eq!(dt.to_sec64_floor(), -2);
+    /// assert_eq!(dt.to_sec_ufrac(), ms!(700) as u64);
     ///
     /// let dt = from_sec!(1, ms!(300));
-    ///
     /// assert_eq!(dt.to_sec64_floor(), 1);
     /// assert_eq!(dt.to_sec_ufrac(), ms!(300) as u64);
-    ///
-    /// // if you just want rounded seconds
-    /// // use to_sec_round() instead
-    /// let dt = from_sec!(-1, -ms!(300));
-    /// let sec = dt.to_sec_round();
-    /// assert_eq!(sec, -1);
     /// ```
     #[inline(always)]
     pub const fn to_sec64_floor(&self) -> i64 {
         Self::to_i64(self.attos.div_euclid(ATTOS_PER_SEC_I128))
     }
 
-    /// Returns this [`Dt`] rounded to the nearest whole second, then
-    /// converted to an [`i128`] number of seconds.
+    /// Rounds to the nearest whole second and returns that count as [`i128`].
     ///
-    /// - Exactly halfway cases (e.g. 0.5 s, -0.5 s) round as follows:
-    ///   0.5 becomes 1 and -0.5 becomes -1.
-    /// - Matches the behavior of [`Dt::round`].
+    /// Halfway cases go away from zero: 0.5 → 1 and −0.5 → −1
+    /// (same rule as [`Dt::round`]).
     ///
     /// ## Examples
     ///
@@ -171,16 +134,11 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, ms};
     ///
-    /// // 1.3 seconds → rounds to 1
     /// assert_eq!(from_sec!(1, ms!(300)).to_sec_round(), 1);
-    ///
-    /// // -1.3 seconds → rounds to -1
+    /// assert_eq!(from_sec!(1, ms!(600)).to_sec_round(), 2);
     /// assert_eq!(from_sec!(-1, -ms!(300)).to_sec_round(), -1);
     ///
-    /// // 1.6 seconds → rounds to 2
-    /// assert_eq!(from_sec!(1, ms!(600)).to_sec_round(), 2);
-    ///
-    /// // Halfway cases
+    /// // Halfway: away from zero
     /// assert_eq!(from_sec!(0, ms!(500)).to_sec_round(), 1);
     /// assert_eq!(from_sec!(0, -ms!(500)).to_sec_round(), -1);
     /// ```
@@ -189,14 +147,10 @@ impl Dt {
         self.round_to_sec().to_sec()
     }
 
-    /// Returns this [`Dt`] rounded to the nearest whole second, then
-    /// converted to an [`i64`] number of seconds.
+    /// Same as [`to_sec_round`](../struct.Dt.html#method.to_sec_round),
+    /// but returns an [`i64`].
     ///
-    /// - Exactly halfway cases round as follows: 0.5 becomes 1 and -0.5 becomes -1,
-    ///   same as
-    ///   [`to_sec_round`](../struct.Dt.html#method.to_sec_round).
-    /// - If the rounded value is outside the representable `i64` range,
-    ///   it saturates to [`i64::MAX`] or [`i64::MIN`].
+    /// Values outside the `i64` range clamp to [`i64::MAX`] or [`i64::MIN`].
     ///
     /// ## Examples
     ///
@@ -204,24 +158,36 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, ms};
     ///
-    /// let dt = from_sec!(1, ms!(300));
-    /// assert_eq!(dt.to_sec64_round(), 1);
-    ///
-    /// let dt = from_sec!(-1, -ms!(300));
-    /// assert_eq!(dt.to_sec64_round(), -1);
+    /// assert_eq!(from_sec!(1, ms!(300)).to_sec64_round(), 1);
+    /// assert_eq!(from_sec!(1, ms!(600)).to_sec64_round(), 2);
+    /// assert_eq!(from_sec!(-1, -ms!(300)).to_sec64_round(), -1);
+    /// assert_eq!(from_sec!(0, ms!(500)).to_sec64_round(), 1);
     /// ```
     #[inline(always)]
     pub const fn to_sec64_round(&self) -> i64 {
         Self::to_i64(self.round_to_sec().to_sec())
     }
 
-    /// Converts this [`Dt`] to an f64 number of seconds.
+    /// Converts this duration to seconds as an [`f64`].
+    ///
+    /// Alias of [`to_sec_f`](../struct.Dt.html#method.to_sec_f).
     #[inline(always)]
     pub const fn to_f64(&self) -> f64 {
         self.to_sec_f()
     }
 
-    /// Converts this [`Dt`] to a float number of seconds.
+    /// Converts this duration to seconds as a floating-point number.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, ms};
+    ///
+    /// assert_eq!(Dt::ZERO.to_sec_f(), 0.0);
+    /// assert!((from_sec!(1, ms!(500)).to_sec_f() - 1.5).abs() < 1e-12);
+    /// assert!((from_sec!(-1, -ms!(500)).to_sec_f() + 1.5).abs() < 1e-12);
+    /// ```
     pub const fn to_sec_f(&self) -> Real {
         if self.attos == 0 {
             return 0.0;
@@ -239,21 +205,16 @@ impl Dt {
         }
     }
 
-    /// If this time were turned into seconds, this returns the signed fractional
-    /// attoseconds part — the amount left over after removing whole seconds, with the
-    /// same sign as the original value when non-zero.
+    /// Returns the signed leftover attoseconds after removing whole seconds
+    /// toward zero.
     ///
-    /// Pairs with [`from_sec_and_frac`](../struct.Dt.html#method.from_sec_and_frac).
-    #[inline(always)]
-    pub const fn to_sec_frac(&self) -> i64 {
-        (self.attos % ATTOS_PER_SEC_I128) as i64
-    }
-
-    /// If this time were turned into i64 seconds and u64 (always pushing to the positive)
-    /// fractional attoseconds, this returns the fractional attoseconds part.
+    /// Same sign as the original value when non-zero: 1.3 s → `+0.3 s` in
+    /// attoseconds, −1.3 s → `−0.3 s` in attoseconds. Pairs with
+    /// [`from_sec_and_frac`](../struct.Dt.html#method.from_sec_and_frac)
+    /// and [`to_sec`](../struct.Dt.html#method.to_sec).
     ///
-    /// - Always returns a value in the range `0 ≤ x < ATTOS_PER_SEC`.
-    /// - For negative [`Dt`]s this is **not** simply the decimal part of the time in seconds.
+    /// For a leftover that is always ≥ 0 (paired with floor), use
+    /// [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
     ///
     /// ## Examples
     ///
@@ -261,19 +222,40 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, ms};
     ///
-    /// // negative 1.3 seconds
-    /// let dt = from_sec!(-1, -ms!(300));
-    ///
-    /// // becomes positive 700ms
-    /// let frac = dt.to_sec_ufrac();
-    /// assert_eq!(frac, ms!(700) as u64);
-    ///
-    /// // becomes -2 seconds
-    /// let sec = dt.to_sec64_floor();
-    /// assert_eq!(sec, -2);
-    ///
     /// let dt = from_sec!(1, ms!(300));
+    /// assert_eq!(dt.to_sec(), 1);
+    /// assert_eq!(dt.to_sec_frac(), ms!(300) as i64);
     ///
+    /// let dt = from_sec!(-1, -ms!(300));
+    /// assert_eq!(dt.to_sec(), -1);
+    /// assert_eq!(dt.to_sec_frac(), -ms!(300) as i64);
+    /// ```
+    #[inline(always)]
+    pub const fn to_sec_frac(&self) -> i64 {
+        (self.attos % ATTOS_PER_SEC_I128) as i64
+    }
+
+    /// Returns the leftover attoseconds after
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor) /
+    /// [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor).
+    ///
+    /// Always in `0 .. ATTOS_PER_SEC`. On negatives this is **not** “the
+    /// decimal part with a sign”: −1.3 s floors to −2 whole seconds with a
+    /// **+0.7 s** leftover.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, ms};
+    ///
+    /// // -1.3 s → floor -2 s + 0.7 s leftover
+    /// let dt = from_sec!(-1, -ms!(300));
+    /// assert_eq!(dt.to_sec64_floor(), -2);
+    /// assert_eq!(dt.to_sec_ufrac(), ms!(700) as u64);
+    ///
+    /// // +1.3 s → floor 1 s + 0.3 s leftover
+    /// let dt = from_sec!(1, ms!(300));
     /// assert_eq!(dt.to_sec64_floor(), 1);
     /// assert_eq!(dt.to_sec_ufrac(), ms!(300) as u64);
     /// ```
@@ -282,7 +264,23 @@ impl Dt {
         self.attos.rem_euclid(ATTOS_PER_SEC_I128) as u64
     }
 
-    /// Returns a new [`Dt`] rounded to the nearest second.
+    /// Returns a new [`Dt`] rounded to the nearest whole second.
+    ///
+    /// Halfway cases go away from zero (same rule as [`Dt::round`]). For the
+    /// rounded value as an integer count, see
+    /// [`to_sec_round`](../struct.Dt.html#method.to_sec_round).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, ms, sec};
+    ///
+    /// assert_eq!(from_sec!(1, ms!(300)).round_to_sec(), from_sec!(1));
+    /// assert_eq!(from_sec!(1, ms!(600)).round_to_sec(), from_sec!(2));
+    /// assert_eq!(from_sec!(0, ms!(500)).round_to_sec(), from_sec!(1));
+    /// assert_eq!(from_sec!(0, -ms!(500)).round_to_sec(), from_sec!(-1));
+    /// ```
     #[inline(always)]
     pub const fn round_to_sec(&self) -> Dt {
         self.round(dt!(ATTOS_PER_SEC_I128))
@@ -294,13 +292,12 @@ impl Dt {
         self.attos
     }
 
-    /// Converts this [`Dt`] into whole femtoseconds and a fractional part within one femtosecond.
+    /// Splits into whole femtoseconds and leftover attoseconds, rounding the
+    /// whole part down so the leftover is always ≥ 0.
     ///
-    /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
-    /// - For negative values this does **not** split at the decimal point — see
-    ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
-    /// - For truncation toward zero, use [`to_fs`](../struct.Dt.html#method.to_fs).
+    /// Returns `(whole, frac_attos)`. Same floor rule as
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
+    /// For truncation toward zero, use [`to_fs`](../struct.Dt.html#method.to_fs).
     #[inline(always)]
     pub const fn to_fs_floor(&self) -> (i128, i128) {
         (
@@ -309,13 +306,12 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole picoseconds and a fractional part within one picosecond.
+    /// Splits into whole picoseconds and leftover attoseconds, rounding the
+    /// whole part down so the leftover is always ≥ 0.
     ///
-    /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
-    /// - For negative values this does **not** split at the decimal point — see
-    ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
-    /// - For truncation toward zero, use [`to_ps`](../struct.Dt.html#method.to_ps).
+    /// Returns `(whole, frac_attos)`. Same floor rule as
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
+    /// For truncation toward zero, use [`to_ps`](../struct.Dt.html#method.to_ps).
     #[inline(always)]
     pub const fn to_ps_floor(&self) -> (i128, i128) {
         (
@@ -324,13 +320,12 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole nanoseconds and a fractional part within one nanosecond.
+    /// Splits into whole nanoseconds and leftover attoseconds, rounding the
+    /// whole part down so the leftover is always ≥ 0.
     ///
-    /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
-    /// - For negative values this does **not** split at the decimal point — see
-    ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
-    /// - For truncation toward zero, use [`to_ns`](../struct.Dt.html#method.to_ns).
+    /// Returns `(whole, frac_attos)`. Same floor rule as
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
+    /// For truncation toward zero, use [`to_ns`](../struct.Dt.html#method.to_ns).
     #[inline(always)]
     pub const fn to_ns_floor(&self) -> (i128, i128) {
         (
@@ -339,13 +334,12 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole microseconds and a fractional part within one microsecond.
+    /// Splits into whole microseconds and leftover attoseconds, rounding the
+    /// whole part down so the leftover is always ≥ 0.
     ///
-    /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
-    /// - For negative values this does **not** split at the decimal point — see
-    ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
-    /// - For truncation toward zero, use [`to_us`](../struct.Dt.html#method.to_us).
+    /// Returns `(whole, frac_attos)`. Same floor rule as
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
+    /// For truncation toward zero, use [`to_us`](../struct.Dt.html#method.to_us).
     #[inline(always)]
     pub const fn to_us_floor(&self) -> (i128, i128) {
         (
@@ -354,13 +348,26 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole milliseconds and a fractional part within one millisecond.
+    /// Splits into whole milliseconds and leftover attoseconds, rounding the
+    /// whole part down so the leftover is always ≥ 0.
     ///
-    /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
-    /// - For negative values this does **not** split at the decimal point — see
-    ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
-    /// - For truncation toward zero, use [`to_ms`](../struct.Dt.html#method.to_ms).
+    /// Returns `(whole, frac_attos)`. Same floor rule as
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor)
+    /// (e.g. −1.3 ms → `(-2, 0.7 ms)`). For truncation toward zero, use
+    /// [`to_ms`](../struct.Dt.html#method.to_ms).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_ms, us};
+    ///
+    /// // +1.3 ms → 1 ms + 0.3 ms leftover
+    /// assert_eq!(from_ms!(1, us!(300)).to_ms_floor(), (1, us!(300)));
+    ///
+    /// // -1.3 ms → -2 ms + 0.7 ms leftover
+    /// assert_eq!(from_ms!(-1, -us!(300)).to_ms_floor(), (-2, us!(700)));
+    /// ```
     #[inline(always)]
     pub const fn to_ms_floor(&self) -> (i128, i128) {
         (
@@ -369,12 +376,22 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole minutes and a fractional part within one minute.
+    /// Splits into whole minutes and leftover attoseconds, rounding the whole
+    /// part down so the leftover is always ≥ 0.
     ///
-    /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
-    /// - For negative values this does **not** split at the decimal point — see
-    ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
+    /// Returns `(whole, frac_attos)`. For truncation toward zero (signed
+    /// leftover), use [`to_mins`](../struct.Dt.html#method.to_mins).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, sec};
+    ///
+    /// assert_eq!(from_sec!(90).to_mins_floor(), (1, sec!(30)));
+    /// // -90 s → -2 min + 30 s leftover
+    /// assert_eq!(from_sec!(-90).to_mins_floor(), (-2, sec!(30)));
+    /// ```
     #[inline(always)]
     pub const fn to_mins_floor(&self) -> (i128, i128) {
         (
@@ -383,14 +400,12 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole minutes and a fractional part within one minute,
-    /// truncating toward zero.
+    /// Splits into whole minutes and leftover attoseconds, dropping any
+    /// fraction toward zero (1.5 → 1, −1.5 → −1).
     ///
-    /// Returns `(whole, frac_attos)`. When the value is negative and has a fractional
-    /// part, `frac_attos` is negative too.
-    ///
-    /// For a non-negative fractional part, use
-    /// [`Dt::to_mins_floor`](#method.to_mins_floor).
+    /// Returns `(whole, frac_attos)`. When negative with a fraction,
+    /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
+    /// [`to_mins_floor`](../struct.Dt.html#method.to_mins_floor).
     ///
     /// ## Examples
     ///
@@ -398,18 +413,15 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, sec};
     ///
-    /// let dt = from_sec!(90);
-    /// assert_eq!(dt.to_mins(), (1, sec!(30)));
-    ///
-    /// let dt = from_sec!(-90);
-    /// assert_eq!(dt.to_mins(), (-1, sec!(-30)));
+    /// assert_eq!(from_sec!(90).to_mins(), (1, sec!(30)));
+    /// assert_eq!(from_sec!(-90).to_mins(), (-1, sec!(-30)));
     /// ```
     #[inline(always)]
     pub const fn to_mins(&self) -> (i128, i128) {
         (self.attos / ATTOS_PER_MIN, self.attos % ATTOS_PER_MIN)
     }
 
-    /// Converts this [`Dt`] to a float number of minutes.
+    /// Converts this duration to minutes as a floating-point number.
     ///
     /// ## Examples
     ///
@@ -418,12 +430,8 @@ impl Dt {
     /// use deep_time::macros::from_sec;
     ///
     /// assert_eq!(Dt::ZERO.to_mins_f(), 0.0);
-    ///
-    /// let dt = from_sec!(90);
-    /// assert_eq!(dt.to_mins_f(), 1.5);
-    ///
-    /// let dt = from_sec!(-90);
-    /// assert_eq!(dt.to_mins_f(), -1.5);
+    /// assert_eq!(from_sec!(90).to_mins_f(), 1.5);
+    /// assert_eq!(from_sec!(-90).to_mins_f(), -1.5);
     /// ```
     pub const fn to_mins_f(&self) -> Real {
         if self.attos == 0 {
@@ -441,12 +449,23 @@ impl Dt {
         }
     }
 
-    /// Converts this [`Dt`] into whole hours and a fractional part within one hour.
+    /// Splits into whole hours and leftover attoseconds, rounding the whole
+    /// part down so the leftover is always ≥ 0.
     ///
-    /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
-    /// - For negative values this does **not** split at the decimal point — see
-    ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
+    /// Returns `(whole, frac_attos)`. For truncation toward zero (signed
+    /// leftover), use [`to_hours`](../struct.Dt.html#method.to_hours).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, sec};
+    ///
+    /// // 90 minutes → 1 hour + 30 minutes
+    /// assert_eq!(from_sec!(90 * 60).to_hours_floor(), (1, sec!(30 * 60)));
+    /// // -90 minutes → -2 hours + 30 minutes leftover
+    /// assert_eq!(from_sec!(-90 * 60).to_hours_floor(), (-2, sec!(30 * 60)));
+    /// ```
     #[inline(always)]
     pub const fn to_hours_floor(&self) -> (i128, i128) {
         (
@@ -455,30 +474,38 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole hours and a fractional part within one hour,
-    /// truncating toward zero.
+    /// Splits into whole hours and leftover attoseconds, dropping any
+    /// fraction toward zero (1.5 → 1, −1.5 → −1).
     ///
-    /// Returns `(whole, frac_attos)`. When the value is negative and has a fractional
-    /// part, `frac_attos` is negative too.
-    ///
-    /// For a non-negative fractional part, use
-    /// [`Dt::to_hours_floor`](#method.to_hours_floor).
-    #[inline(always)]
-    pub const fn to_hours(&self) -> (i128, i128) {
-        (self.attos / ATTOS_PER_HOUR, self.attos % ATTOS_PER_HOUR)
-    }
-
-    /// Converts this [`Dt`] to a float number of hours.
+    /// Returns `(whole, frac_attos)`. When negative with a fraction,
+    /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
+    /// [`to_hours_floor`](../struct.Dt.html#method.to_hours_floor).
     ///
     /// ## Examples
     ///
     /// ```rust
     /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, sec};
+    ///
+    /// assert_eq!(from_sec!(90 * 60).to_hours(), (1, sec!(30 * 60)));
+    /// assert_eq!(from_sec!(-90 * 60).to_hours(), (-1, sec!(-30 * 60)));
+    /// ```
+    #[inline(always)]
+    pub const fn to_hours(&self) -> (i128, i128) {
+        (self.attos / ATTOS_PER_HOUR, self.attos % ATTOS_PER_HOUR)
+    }
+
+    /// Converts this duration to hours as a floating-point number.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::from_sec;
     ///
     /// assert_eq!(Dt::ZERO.to_hours_f(), 0.0);
-    ///
-    /// let dt = Dt::from_str("2000-01-01 10:30:00 TAI").unwrap();
-    /// assert_eq!(dt.to_hours_f(), -1.5);
+    /// assert_eq!(from_sec!(90 * 60).to_hours_f(), 1.5);
+    /// assert_eq!(from_sec!(-90 * 60).to_hours_f(), -1.5);
     /// ```
     pub const fn to_hours_f(&self) -> Real {
         if self.attos == 0 {
@@ -496,14 +523,15 @@ impl Dt {
         }
     }
 
-    /// Converts this [`Dt`] into whole days and a fractional part within one day,
-    /// truncating toward zero.
+    /// Splits into whole days and leftover attoseconds, dropping any fraction
+    /// toward zero (1.25 → 1, −1.25 → −1).
     ///
-    /// Returns `(whole, frac_attos)`. When the value is negative and has a fractional
-    /// part, `frac_attos` is negative too — e.g. `-1.25` days is
+    /// Returns `(whole, frac_attos)`. When negative with a fraction,
+    /// `frac_attos` is negative too — e.g. −1.25 days is
     /// `(-1, -ATTOS_PER_DAY / 4)`.
     ///
-    /// For a non-negative fractional part, use [`to_days_floor`](#method.to_days_floor).
+    /// For a leftover that is always ≥ 0, use
+    /// [`to_days_floor`](../struct.Dt.html#method.to_days_floor).
     ///
     /// ## Examples
     ///
@@ -519,37 +547,37 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_days_floor`](#method.to_days_floor)
+    /// - [`Dt::to_days_floor`](../struct.Dt.html#method.to_days_floor)
     /// - [`Dt::from_days`](../struct.Dt.html#method.from_days)
     #[inline(always)]
     pub const fn to_days(&self) -> (i128, i128) {
         (self.attos / ATTOS_PER_DAY, self.attos % ATTOS_PER_DAY)
     }
 
-    /// Converts this [`Dt`] into whole days and a fractional part within one day.
+    /// Splits into whole days and leftover attoseconds, rounding the whole
+    /// part down so the leftover is always ≥ 0.
     ///
-    /// - Returns `(whole, frac_attos)` where `frac_attos` is always non-negative.
-    /// - For negative values this does **not** split at the decimal point — see
-    ///   [`to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor) and
-    ///   [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac).
+    /// Returns `(whole, frac_attos)`. Same floor rule as
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor) (e.g. −1.5 days →
+    /// `(-2, half a day)`). For truncation toward zero, use
+    /// [`to_days`](../struct.Dt.html#method.to_days).
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY};
+    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY};
     ///
-    /// // library epoch is 2000-01-01 12:00:00 TAI
-    /// // so result will be negative 2 + half a day
-    /// // effectively -1.5 days
-    /// let dt = Dt::from_ymd(1999, 12, 31, Scale::TAI, 0, 0, 0, 0);
-    /// let (days, attos) = dt.to_days_floor();
-    /// assert_eq!(days, -2);
-    /// assert_eq!(attos, ATTOS_PER_HALF_DAY);
+    /// let dt = Dt::from_days_f(1.25, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_days_floor(), (1, ATTOS_PER_DAY / 4));
+    ///
+    /// // -1.25 days → -2 whole days + 0.75 day leftover
+    /// let dt = Dt::from_days_f(-1.25, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_days_floor(), (-2, (ATTOS_PER_DAY * 3) / 4));
     /// ```
     ///
     /// ## See also
     ///
-    /// - [`Dt::to_days`](#method.to_days)
+    /// - [`Dt::to_days`](../struct.Dt.html#method.to_days)
     #[inline(always)]
     pub const fn to_days_floor(&self) -> (i128, i128) {
         (
@@ -558,19 +586,16 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] to a float number of days.
+    /// Converts this duration to days as a floating-point number.
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_HALF_DAY_U128};
+    /// use deep_time::{Dt, Scale};
     ///
     /// assert_eq!(Dt::ZERO.to_days_f(), 0.0);
-    ///
-    /// // library epoch is 2000-01-01 12:00:00 TAI
-    /// // so -1.5 days
-    /// let dt = Dt::from_ymd(1999, 12, 31, Scale::TAI, 0, 0, 0, 0);
-    /// assert_eq!(dt.to_days_f(), -1.5);
+    /// assert_eq!(Dt::from_days_f(1.5, Scale::TAI, Scale::TAI).to_days_f(), 1.5);
+    /// assert_eq!(Dt::from_days_f(-1.5, Scale::TAI, Scale::TAI).to_days_f(), -1.5);
     /// ```
     ///
     /// ## See also
@@ -592,13 +617,22 @@ impl Dt {
         }
     }
 
-    /// Converts this [`Dt`] into whole milliseconds and a fractional part within one millisecond,
-    /// truncating toward zero.
+    /// Splits into whole milliseconds and leftover attoseconds, dropping any
+    /// fraction toward zero (1.7 → 1, −1.7 → −1).
     ///
-    /// Returns `(whole, frac_attos)`. `frac_attos` will be negative when `whole` is negative and
-    /// there is a non-zero fraction. See
-    /// [`to_sec`](../struct.Dt.html#method.to_sec)
-    /// for the same rule in seconds.
+    /// Returns `(whole, frac_attos)`. When negative with a fraction,
+    /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
+    /// [`to_ms_floor`](../struct.Dt.html#method.to_ms_floor).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_ms, us};
+    ///
+    /// assert_eq!(from_ms!(1, us!(300)).to_ms(), (1, us!(300)));
+    /// assert_eq!(from_ms!(-1, -us!(300)).to_ms(), (-1, -us!(300)));
+    /// ```
     #[inline(always)]
     pub const fn to_ms(&self) -> (i128, i128) {
         (
@@ -607,13 +641,12 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole microseconds and a fractional part within one microsecond,
-    /// truncating toward zero.
+    /// Splits into whole microseconds and leftover attoseconds, dropping any
+    /// fraction toward zero (1.7 → 1, −1.7 → −1).
     ///
-    /// Returns `(whole, frac_attos)`. `frac_attos` will be negative when `whole` is negative and
-    /// there is a non-zero fraction. See
-    /// [`to_sec`](../struct.Dt.html#method.to_sec)
-    /// for the same rule in seconds.
+    /// Returns `(whole, frac_attos)`. When negative with a fraction,
+    /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
+    /// [`to_us_floor`](../struct.Dt.html#method.to_us_floor).
     #[inline(always)]
     pub const fn to_us(&self) -> (i128, i128) {
         (
@@ -622,13 +655,12 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole nanoseconds and a fractional part within one nanosecond,
-    /// truncating toward zero.
+    /// Splits into whole nanoseconds and leftover attoseconds, dropping any
+    /// fraction toward zero (1.7 → 1, −1.7 → −1).
     ///
-    /// Returns `(whole, frac_attos)`. `frac_attos` will be negative when `whole` is negative and
-    /// there is a non-zero fraction. See
-    /// [`to_sec`](../struct.Dt.html#method.to_sec)
-    /// for the same rule in seconds.
+    /// Returns `(whole, frac_attos)`. When negative with a fraction,
+    /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
+    /// [`to_ns_floor`](../struct.Dt.html#method.to_ns_floor).
     #[inline(always)]
     pub const fn to_ns(&self) -> (i128, i128) {
         (
@@ -637,13 +669,12 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole picoseconds and a fractional part within one picosecond,
-    /// truncating toward zero.
+    /// Splits into whole picoseconds and leftover attoseconds, dropping any
+    /// fraction toward zero (1.7 → 1, −1.7 → −1).
     ///
-    /// Returns `(whole, frac_attos)`. `frac_attos` will be negative when `whole` is negative and
-    /// there is a non-zero fraction. See
-    /// [`to_sec`](../struct.Dt.html#method.to_sec)
-    /// for the same rule in seconds.
+    /// Returns `(whole, frac_attos)`. When negative with a fraction,
+    /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
+    /// [`to_ps_floor`](../struct.Dt.html#method.to_ps_floor).
     #[inline(always)]
     pub const fn to_ps(&self) -> (i128, i128) {
         (
@@ -652,13 +683,12 @@ impl Dt {
         )
     }
 
-    /// Converts this [`Dt`] into whole femtoseconds and a fractional part within one femtosecond,
-    /// truncating toward zero.
+    /// Splits into whole femtoseconds and leftover attoseconds, dropping any
+    /// fraction toward zero (1.7 → 1, −1.7 → −1).
     ///
-    /// Returns `(whole, frac_attos)`. `frac_attos` will be negative when `whole` is negative and
-    /// there is a non-zero fraction. See
-    /// [`to_sec`](../struct.Dt.html#method.to_sec)
-    /// for the same rule in seconds.
+    /// Returns `(whole, frac_attos)`. When negative with a fraction,
+    /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
+    /// [`to_fs_floor`](../struct.Dt.html#method.to_fs_floor).
     #[inline(always)]
     pub const fn to_fs(&self) -> (i128, i128) {
         (
