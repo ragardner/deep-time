@@ -46,7 +46,7 @@ impl<const N: usize> BufStr<N> {
     #[inline]
     pub fn new(s: &str) -> Self {
         let mut bytes = [0u8; N];
-        copy_valid_utf8_prefix(&mut bytes, s.as_bytes(), N);
+        copy_str_prefix(&mut bytes, s, N);
         Self { bytes }
     }
 
@@ -103,7 +103,7 @@ impl<const N: usize> fmt::Write for BufStr<N> {
             return Ok(());
         }
 
-        copy_valid_utf8_prefix(&mut self.bytes[current..], s.as_bytes(), remaining);
+        copy_str_prefix(&mut self.bytes[current..], s, remaining);
         Ok(())
     }
 }
@@ -149,20 +149,22 @@ impl<const N: usize> defmt::Format for BufStr<N> {
     }
 }
 
+/// Copy up to `max_len` bytes of already-valid UTF-8 into `dst`.
+///
+/// Both call sites pass a `&str`, so a full `from_utf8` scan is unnecessary.
+/// When capacity is smaller than `src`, walk back at most 3 bytes to a char
+/// boundary, then one `copy_from_slice`.
 #[inline(never)]
-fn copy_valid_utf8_prefix(dst: &mut [u8], src: &[u8], max_len: usize) -> usize {
-    let len = src.len().min(max_len);
-    match str::from_utf8(&src[..len]) {
-        Ok(_) => {
-            dst[..len].copy_from_slice(&src[..len]);
-            len
-        }
-        Err(e) => {
-            let valid = e.valid_up_to();
-            dst[..valid].copy_from_slice(&src[..valid]);
-            valid
-        }
+fn copy_str_prefix(dst: &mut [u8], src: &str, max_len: usize) -> usize {
+    let bytes = src.as_bytes();
+    let mut len = bytes.len().min(max_len).min(dst.len());
+    while !src.is_char_boundary(len) {
+        len -= 1;
     }
+    if len != 0 {
+        dst[..len].copy_from_slice(&bytes[..len]);
+    }
+    len
 }
 
 #[cold]
@@ -216,5 +218,25 @@ mod tests {
         let s = BufStr::<8>::from_bytes(b"ab\0cd");
         assert_eq!(s.as_str(), "ab");
         assert_eq!(s.as_bytes(), b"ab");
+    }
+
+    #[test]
+    fn new_truncates_on_char_boundary() {
+        // "€" is 3 bytes (E2 82 AC). Capacity 2 must drop the whole char.
+        assert_eq!(BufStr::<2>::new("€").as_str(), "");
+        assert_eq!(BufStr::<3>::new("€").as_str(), "€");
+        assert_eq!(BufStr::<4>::new("a€b").as_str(), "a€");
+        assert_eq!(BufStr::<5>::new("a€b").as_str(), "a€b");
+    }
+
+    #[test]
+    fn write_str_appends_and_truncates() {
+        use core::fmt::Write;
+        let mut s = BufStr::<5>::default();
+        write!(&mut s, "hi").unwrap();
+        write!(&mut s, "€").unwrap(); // 3 bytes → fills exactly
+        assert_eq!(s.as_str(), "hi€");
+        write!(&mut s, "x").unwrap(); // full → no-op
+        assert_eq!(s.as_str(), "hi€");
     }
 }
