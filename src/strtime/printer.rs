@@ -1,8 +1,8 @@
 use crate::{BufStr, Dt, DtErr, DtErrKind, FormatNames, Lang, STRTIME_SIZE, YmdHms, an_err};
 
-struct Printer<'a> {
-    ymd: &'a YmdHms,
-    buf: [u8; STRTIME_SIZE],
+struct Printer<'ymd, 'buf> {
+    ymd: &'ymd YmdHms,
+    buf: &'buf mut [u8],
     pos: usize,
     offset: Option<i32>,
     tz: Option<BufStr<49>>,
@@ -10,10 +10,11 @@ struct Printer<'a> {
     names: &'static FormatNames,
 }
 
-impl<'a> Printer<'a> {
+impl<'ymd, 'buf> Printer<'ymd, 'buf> {
     #[inline]
     fn new(
-        ymd: &'a YmdHms,
+        ymd: &'ymd YmdHms,
+        buf: &'buf mut [u8],
         offset: Option<i32>,
         tz: Option<BufStr<49>>,
         abbrev: Option<BufStr<49>>,
@@ -21,13 +22,18 @@ impl<'a> Printer<'a> {
     ) -> Self {
         Self {
             ymd,
-            buf: [0u8; STRTIME_SIZE],
+            buf,
             pos: 0,
             offset,
             tz,
             abbrev,
             names: lang.names(),
         }
+    }
+
+    #[inline(always)]
+    fn cap(&self) -> usize {
+        self.buf.len()
     }
 
     fn print(&mut self, fmt: &[u8]) -> Result<(), DtErr> {
@@ -177,14 +183,14 @@ impl<'a> Printer<'a> {
                     if let Some(iana) = self.tz.as_ref() {
                         let bytes = iana.as_bytes();
                         let len = bytes.len();
-                        if self.pos + len <= STRTIME_SIZE {
+                        if self.pos + len <= self.cap() {
                             self.buf[self.pos..self.pos + len].copy_from_slice(bytes);
                             self.pos += len;
                         }
                     } else if let Some(ab) = self.abbrev.as_ref() {
                         let bytes = ab.as_bytes();
                         let len = bytes.len();
-                        if self.pos + len <= STRTIME_SIZE {
+                        if self.pos + len <= self.cap() {
                             self.buf[self.pos..self.pos + len].copy_from_slice(bytes);
                             self.pos += len;
                         }
@@ -233,7 +239,7 @@ impl<'a> Printer<'a> {
 
     #[inline(always)]
     fn write_byte(&mut self, byte: u8) {
-        if self.pos < STRTIME_SIZE {
+        if self.pos < self.cap() {
             self.buf[self.pos] = byte;
             self.pos += 1;
         }
@@ -242,7 +248,7 @@ impl<'a> Printer<'a> {
     #[inline(always)]
     fn write_bytes(&mut self, bytes: &[u8]) {
         let len = bytes.len();
-        if self.pos + len > STRTIME_SIZE {
+        if self.pos + len > self.cap() {
             return;
         }
         self.buf[self.pos..self.pos + len].copy_from_slice(bytes);
@@ -577,7 +583,7 @@ impl<'a> Printer<'a> {
         if let Some(abbrev) = self.abbrev.as_ref() {
             let bytes = abbrev.as_bytes();
             let len = bytes.len();
-            if self.pos + len <= STRTIME_SIZE {
+            if self.pos + len <= self.cap() {
                 self.buf[self.pos..self.pos + len].copy_from_slice(bytes);
                 self.pos += len;
             }
@@ -655,7 +661,7 @@ impl<'a> Printer<'a> {
             0
         };
 
-        if self.pos + num_digits + pad_len > STRTIME_SIZE {
+        if self.pos + num_digits + pad_len > self.cap() {
             return;
         }
 
@@ -706,7 +712,7 @@ impl<'a> Printer<'a> {
             0
         };
 
-        if self.pos + (if negative { 1 } else { 0 }) + num_digits + pad_len > STRTIME_SIZE {
+        if self.pos + (if negative { 1 } else { 0 }) + num_digits + pad_len > self.cap() {
             return;
         }
 
@@ -740,10 +746,11 @@ impl YmdHms {
         abbrev: Option<BufStr<49>>,
         lang: Lang,
     ) -> Result<alloc::string::String, DtErr> {
-        let mut printer = Printer::new(self, offset, tz, abbrev, lang);
+        let mut buf = [0u8; STRTIME_SIZE];
+        let mut printer = Printer::new(self, &mut buf, offset, tz, abbrev, lang);
         printer.print(fmt.as_bytes())?;
         let pos = printer.pos;
-        Ok(alloc::string::String::from_utf8_lossy(&printer.buf[..pos]).into_owned())
+        Ok(alloc::string::String::from_utf8_lossy(&buf[..pos]).into_owned())
     }
 
     #[inline]
@@ -755,11 +762,10 @@ impl YmdHms {
         abbrev: Option<BufStr<49>>,
         lang: Lang,
     ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
-        let mut printer = Printer::new(self, offset, tz, abbrev, lang);
+        let mut out = BufStr::<STRTIME_SIZE>::default();
+        let mut printer = Printer::new(self, &mut out.bytes, offset, tz, abbrev, lang);
         printer.print(fmt.as_bytes())?;
-        Ok(BufStr {
-            bytes: printer.buf,
-            len: printer.pos as u16,
-        })
+        out.len = printer.pos as u16;
+        Ok(out)
     }
 }

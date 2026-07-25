@@ -84,9 +84,12 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers
-    /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -122,9 +125,12 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers
-    /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -187,9 +193,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers
-    /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers or the
+    /// timezone name cannot be resolved.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -350,9 +360,12 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers
-    /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -379,9 +392,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers,
-    /// if the timezone name is invalid, or if the internal formatting buffer
-    /// overflows (extremely unlikely with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers or the
+    /// timezone name cannot be resolved.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -425,9 +442,12 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers
-    /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -464,9 +484,12 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers
-    /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -522,9 +545,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers
-    /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers or the
+    /// timezone name cannot be resolved.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -557,9 +584,12 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers
-    /// or if the internal formatting buffer overflows (extremely unlikely
-    /// with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
@@ -586,9 +616,13 @@ impl Dt {
     ///
     /// ## Errors
     ///
-    /// Returns [`DtErr`] if the format string contains invalid specifiers,
-    /// if the timezone name is invalid, or if the internal formatting buffer
-    /// overflows (extremely unlikely with [`STRTIME_SIZE`]).
+    /// Returns [`DtErr`] if the format string contains invalid specifiers or the
+    /// timezone name cannot be resolved.
+    ///
+    /// ## Buffer limit
+    ///
+    /// Output is written into a fixed [`STRTIME_SIZE`]-byte buffer. When that
+    /// buffer is full, further output is dropped and the call still succeeds.
     ///
     /// ## See also
     ///
