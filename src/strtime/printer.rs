@@ -1,9 +1,9 @@
-use crate::{BufStr, Dt, DtErr, DtErrKind, FormatNames, Lang, STRTIME_SIZE, YmdHms, an_err};
+use crate::{BufStr, Dt, DtErr, DtErrKind, FormatNames, Lang, YmdHms, an_err};
 
-struct Printer<'ymd, 'buf> {
+pub(crate) struct Printer<'ymd, 'buf> {
     ymd: &'ymd YmdHms,
     buf: &'buf mut [u8],
-    pos: usize,
+    pub(crate) pos: usize,
     offset: Option<i32>,
     tz: Option<BufStr<49>>,
     abbrev: Option<BufStr<49>>,
@@ -12,7 +12,7 @@ struct Printer<'ymd, 'buf> {
 
 impl<'ymd, 'buf> Printer<'ymd, 'buf> {
     #[inline]
-    fn new(
+    pub(crate) fn new(
         ymd: &'ymd YmdHms,
         buf: &'buf mut [u8],
         offset: Option<i32>,
@@ -36,7 +36,7 @@ impl<'ymd, 'buf> Printer<'ymd, 'buf> {
         self.buf.len()
     }
 
-    fn print(&mut self, fmt: &[u8]) -> Result<(), DtErr> {
+    pub(crate) fn print(&mut self, fmt: &[u8]) -> Result<(), DtErr> {
         let mut i = 0usize;
 
         while i < fmt.len() {
@@ -732,40 +732,5 @@ impl<'ymd, 'buf> Printer<'ymd, 'buf> {
             self.buf[self.pos] = digits[j];
             self.pos += 1;
         }
-    }
-}
-
-impl YmdHms {
-    #[cfg(feature = "alloc")]
-    #[inline]
-    pub(crate) fn _to_str(
-        &self,
-        fmt: &str,
-        offset: Option<i32>,
-        tz: Option<BufStr<49>>,
-        abbrev: Option<BufStr<49>>,
-        lang: Lang,
-    ) -> Result<alloc::string::String, DtErr> {
-        let mut buf = [0u8; STRTIME_SIZE];
-        let mut printer = Printer::new(self, &mut buf, offset, tz, abbrev, lang);
-        printer.print(fmt.as_bytes())?;
-        let pos = printer.pos;
-        Ok(alloc::string::String::from_utf8_lossy(&buf[..pos]).into_owned())
-    }
-
-    #[inline]
-    pub(crate) fn _to_str_b(
-        &self,
-        fmt: &str,
-        offset: Option<i32>,
-        tz: Option<BufStr<49>>,
-        abbrev: Option<BufStr<49>>,
-        lang: Lang,
-    ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
-        let mut out = BufStr::<STRTIME_SIZE>::default();
-        let mut printer = Printer::new(self, &mut out.bytes, offset, tz, abbrev, lang);
-        printer.print(fmt.as_bytes())?;
-        out.len = printer.pos as u16;
-        Ok(out)
     }
 }

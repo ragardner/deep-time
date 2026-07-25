@@ -1,5 +1,4 @@
-use core::fmt;
-use core::str;
+use core::{fmt, str};
 
 /// A fixed-capacity, stack-allocated byte buffer that can hold a UTF-8
 /// string.
@@ -53,11 +52,8 @@ impl<const N: usize> BufStr<N> {
     #[inline]
     pub fn new(s: &str) -> Self {
         let mut bytes = [0u8; N];
-        let len = copy_str_prefix(&mut bytes, s, N);
-        Self {
-            bytes,
-            len: len as u16,
-        }
+        let len = copy_str_prefix(&mut bytes, s, N) as u16;
+        Self { bytes, len }
     }
 
     /// Creates a `BufStr<N>` from a byte slice.

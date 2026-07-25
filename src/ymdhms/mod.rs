@@ -1,8 +1,8 @@
-use crate::{ATTOS_PER_SEC_I128, BufStr, Dt, STRTIME_SIZE, Scale, dt};
+use crate::{ATTOS_PER_SEC_I128, BufStr, Dt, DtErr, Lang, Printer, STRTIME_SIZE, Scale, dt};
 use core::fmt::Write;
 
 #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
-use crate::{DtErr, DtErrKind, an_err};
+use crate::{DtErrKind, an_err};
 #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
 use jiff::civil;
 
@@ -603,5 +603,40 @@ impl core::fmt::Display for YmdHms {
 
         // Scale abbreviation at the end
         core::write!(f, " {}", self.dt.target.abbrev())
+    }
+}
+
+impl YmdHms {
+    #[cfg(feature = "alloc")]
+    #[inline]
+    pub(crate) fn _to_str(
+        &self,
+        fmt: &str,
+        offset: Option<i32>,
+        tz: Option<BufStr<49>>,
+        abbrev: Option<BufStr<49>>,
+        lang: Lang,
+    ) -> Result<alloc::string::String, DtErr> {
+        let mut buf = [0u8; STRTIME_SIZE];
+        let mut printer = Printer::new(self, &mut buf, offset, tz, abbrev, lang);
+        printer.print(fmt.as_bytes())?;
+        let pos = printer.pos;
+        Ok(alloc::string::String::from_utf8_lossy(&buf[..pos]).into_owned())
+    }
+
+    #[inline]
+    pub(crate) fn _to_str_b(
+        &self,
+        fmt: &str,
+        offset: Option<i32>,
+        tz: Option<BufStr<49>>,
+        abbrev: Option<BufStr<49>>,
+        lang: Lang,
+    ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
+        let mut out = BufStr::<STRTIME_SIZE>::default();
+        let mut printer = Printer::new(self, &mut out.bytes, offset, tz, abbrev, lang);
+        printer.print(fmt.as_bytes())?;
+        out.len = printer.pos as u16;
+        Ok(out)
     }
 }

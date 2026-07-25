@@ -205,7 +205,7 @@ impl Dt {
     ///
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str)
     /// - [`Dt::to_str_in_offset`](../struct.Dt.html#method.to_str_in_offset)
-    #[inline(always)]
+    #[inline]
     pub fn to_str_in_tz(&self, fmt: &str, tz_name: &str, lang: Lang) -> Result<String, DtErr> {
         let (ymd, offset, abbrev) = self.ymd_with_tz(tz_name, true)?;
         ymd._to_str(
@@ -255,6 +255,7 @@ impl Dt {
     /// - Converts from this [`Dt`]'s current time `scale` to its `target`
     ///   time scale before producing the result.
     #[allow(clippy::unwrap_used)]
+    #[inline]
     pub fn to_str_rfc3339_nf(&self, max_precision: usize) -> String {
         let prec = max_precision.min(18);
         // Uses the formatter with the `~` "trim trailing zeros" flag.
@@ -371,7 +372,7 @@ impl Dt {
     ///
     /// - [`Dt::to_str_in_offset`](../struct.Dt.html#method.to_str_in_offset) —
     ///   shifts the datetime by the offset
-    #[inline(always)]
+    #[inline]
     pub fn to_str_with_offset_label(
         &self,
         fmt: &str,
@@ -404,7 +405,7 @@ impl Dt {
     ///
     /// - [`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz) —
     ///   shifts the datetime into the given timezone
-    #[inline(always)]
+    #[inline]
     pub fn to_str_with_tz_label(
         &self,
         fmt: &str,
@@ -454,7 +455,7 @@ impl Dt {
     /// - [`Dt::to_str`](../struct.Dt.html#method.to_str) — alloc `String` variant
     /// - [`Dt::to_str_b_in_offset`](../struct.Dt.html#method.to_str_b_in_offset)
     /// - [`Dt::to_str_b_in_tz`](../struct.Dt.html#method.to_str_b_in_tz)
-    #[inline(always)]
+    #[inline]
     pub fn to_str_b(&self, fmt: &str, lang: Lang) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
         self.to_ymd()._to_str_b(fmt, None, None, None, lang)
     }
@@ -495,7 +496,7 @@ impl Dt {
     ///
     /// - [`Dt::to_str_b`](../struct.Dt.html#method.to_str_b)
     /// - [`Dt::to_str_b_in_tz`](../struct.Dt.html#method.to_str_b_in_tz)
-    #[inline(always)]
+    #[inline]
     pub fn to_str_b_in_offset(
         &self,
         fmt: &str,
@@ -558,7 +559,7 @@ impl Dt {
     /// - [`Dt::to_str_b`](../struct.Dt.html#method.to_str_b)
     /// - [`Dt::to_str_b_in_offset`](../struct.Dt.html#method.to_str_b_in_offset)
     /// - [`Dt::to_str_b_with_tz_label`](../struct.Dt.html#method.to_str_b_with_tz_label)
-    #[inline(always)]
+    #[inline]
     pub fn to_str_b_in_tz(
         &self,
         fmt: &str,
@@ -628,7 +629,7 @@ impl Dt {
     ///
     /// - [`Dt::to_str_b_in_tz`](../struct.Dt.html#method.to_str_b_in_tz) —
     ///   shifts the datetime into the given timezone
-    #[inline(always)]
+    #[inline]
     pub fn to_str_b_with_tz_label(
         &self,
         fmt: &str,

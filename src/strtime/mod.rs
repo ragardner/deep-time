@@ -7,6 +7,7 @@ use core::result::Result;
 use core::str;
 
 pub(crate) use parser::*;
+pub(crate) use printer::*;
 
 /// Optional `%` directive extensions: flag, width, and colon count.
 #[derive(Clone, Copy, Debug, Default)]
