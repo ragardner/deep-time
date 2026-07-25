@@ -211,5 +211,5 @@ pub enum DtErrKind {
 
 /// Wrapper around [`AnErr`].
 ///
-/// A [`DtErr`] object is 16 bytes.
-pub type DtErr = AnErr<DtErrKind, 15>;
+/// A [`DtErr`] object is 20 bytes.
+pub type DtErr = AnErr<DtErrKind, 16>;

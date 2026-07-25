@@ -4,9 +4,11 @@ use core::str;
 /// A fixed-capacity, stack-allocated byte buffer that can hold a UTF-8
 /// string.
 ///
-/// `BufStr<N>` stores its content in a `[u8; N]` array using C-style nul
-/// termination. The logical length is determined by the position of the first
-/// `b'\0'` byte (or `N` if the buffer is completely filled without a nul).
+/// `BufStr<N>` stores its content in a `[u8; N]` array. The logical length is
+/// tracked in [`len`](#structfield.len) (0..=`N`, stored as `u16`). Unused bytes
+/// past `len` are zero-filled by the constructors. [`from_bytes`](#method.from_bytes)
+/// treats the first `b'\0'` in the input as an end marker (C-style), so
+/// zero-padded wire buffers deserialize with the correct length.
 ///
 /// This type performs **no validation during construction**. UTF-8 validity is
 /// only checked when the content is accessed via [`as_str`](#method.as_str),
@@ -15,23 +17,28 @@ use core::str;
 /// Both [`new`](#method.new) and [`from_bytes`](#method.from_bytes)
 /// silently truncate input that exceeds the capacity `N`.
 ///
-/// This type is intentionally minimal because each `BufStr<N>`is
+/// This type is intentionally minimal because each `BufStr<N>` is
 /// monomorphized independently.
 ///
 /// ## To get the length of the str
 ///
-/// - **Byte length**: [`BufStr::as_bytes`](#method.as_bytes) (then `.len()`)
+/// - **Byte length**: [`BufStr::len`](#method.len) or [`as_bytes`](#method.as_bytes)`.len()`
 /// - **Unicode character count**: Use `as_str().chars().count()`
 #[derive(Clone, PartialEq, Eq)]
 pub struct BufStr<const N: usize> {
-    /// Raw fixed-capacity byte storage (nul-terminated when shorter than `N`).
+    /// Raw fixed-capacity byte storage (zero-filled past [`len`](#structfield.len)).
     pub bytes: [u8; N],
+    /// Number of valid content bytes in [`bytes`](#structfield.bytes) (0..=`N`).
+    pub len: u16,
 }
 
 impl<const N: usize> Default for BufStr<N> {
     #[inline(always)]
     fn default() -> Self {
-        Self { bytes: [0; N] }
+        Self {
+            bytes: [0; N],
+            len: 0,
+        }
     }
 }
 
@@ -46,8 +53,11 @@ impl<const N: usize> BufStr<N> {
     #[inline]
     pub fn new(s: &str) -> Self {
         let mut bytes = [0u8; N];
-        copy_str_prefix(&mut bytes, s, N);
-        Self { bytes }
+        let len = copy_str_prefix(&mut bytes, s, N);
+        Self {
+            bytes,
+            len: len as u16,
+        }
     }
 
     /// Creates a `BufStr<N>` from a byte slice.
@@ -55,13 +65,36 @@ impl<const N: usize> BufStr<N> {
     /// Copies up to `N` bytes from the input and zero-fills the remainder.
     /// If `bytes.len() > N`, the input is silently truncated.
     ///
+    /// Logical length stops at the first `b'\0'` in the copied prefix (or the
+    /// full copied length if there is no nul). This matches C-style /
+    /// zero-padded wire buffers.
+    ///
     /// No UTF-8 validation is performed.
     #[inline]
     pub fn from_bytes(bytes: &[u8]) -> Self {
         let mut arr = [0u8; N];
-        let len = bytes.len().min(N);
-        arr[..len].copy_from_slice(&bytes[..len]);
-        Self { bytes: arr }
+        let copy_len = bytes.len().min(N);
+        arr[..copy_len].copy_from_slice(&bytes[..copy_len]);
+        let len = arr[..copy_len]
+            .iter()
+            .position(|&b| b == 0)
+            .unwrap_or(copy_len);
+        Self {
+            bytes: arr,
+            len: len as u16,
+        }
+    }
+
+    /// Returns the number of valid content bytes.
+    #[inline(always)]
+    pub fn len(&self) -> usize {
+        (self.len as usize).min(N)
+    }
+
+    /// Returns `true` if the buffer has no content.
+    #[inline(always)]
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
     }
 
     /// Returns the longest valid UTF-8 prefix of the content as a `&str`.
@@ -72,38 +105,32 @@ impl<const N: usize> BufStr<N> {
     /// - Otherwise returns only the valid prefix up to the first invalid
     ///   sequence (everything after the first error is discarded).
     /// - This method is infallible.
+    #[inline]
     pub fn as_str(&self) -> &str {
-        let slice = &self.bytes[..self
-            .bytes
-            .iter()
-            .position(|&b| b == 0)
-            .unwrap_or(Self::SIZE)];
-        match str::from_utf8(slice) {
+        match str::from_utf8(self.as_bytes()) {
             Ok(s) => s,
-            Err(e) => handle_invalid_utf8(slice, e),
+            Err(e) => handle_invalid_utf8(self.as_bytes(), e),
         }
     }
 
-    /// Returns the content as a byte slice (up to the first nul byte).
+    /// Returns the content as a byte slice of length [`len`](#method.len).
+    #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
-        &self.bytes[..self
-            .bytes
-            .iter()
-            .position(|&b| b == 0)
-            .unwrap_or(Self::SIZE)]
+        &self.bytes[..self.len()]
     }
 }
 
 impl<const N: usize> fmt::Write for BufStr<N> {
     #[inline(never)]
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        let current = self.as_bytes().len();
+        let current = self.len();
         let remaining = N.saturating_sub(current);
         if remaining == 0 {
             return Ok(());
         }
 
-        copy_str_prefix(&mut self.bytes[current..], s, remaining);
+        let written = copy_str_prefix(&mut self.bytes[current..], s, remaining);
+        self.len = (current + written) as u16;
         Ok(())
     }
 }
@@ -184,20 +211,25 @@ mod tests {
 
     #[test]
     fn as_str_valid() {
-        assert_eq!(BufStr::<16>::new("hello").as_str(), "hello");
+        let s = BufStr::<16>::new("hello");
+        assert_eq!(s.as_str(), "hello");
+        assert_eq!(s.len(), 5);
         assert_eq!(BufStr::<8>::default().as_str(), "");
+        assert!(BufStr::<8>::default().is_empty());
     }
 
     #[test]
     fn as_str_invalid_leading_byte() {
         let s = BufStr::<8>::from_bytes(&[0xFF, b'a']);
         assert_eq!(s.as_str(), "\u{FFFD}");
+        assert_eq!(s.len(), 2);
     }
 
     #[test]
     fn as_str_valid_prefix_then_garbage() {
         let s = BufStr::<8>::from_bytes(&[b'h', b'i', 0xFF, b'!']);
         assert_eq!(s.as_str(), "hi");
+        assert_eq!(s.len(), 4);
     }
 
     #[test]
@@ -218,15 +250,30 @@ mod tests {
         let s = BufStr::<8>::from_bytes(b"ab\0cd");
         assert_eq!(s.as_str(), "ab");
         assert_eq!(s.as_bytes(), b"ab");
+        assert_eq!(s.len(), 2);
+    }
+
+    #[test]
+    fn from_bytes_zero_padded() {
+        // Wire-style: full capacity of zeros after content.
+        let mut raw = [0u8; 8];
+        raw[..5].copy_from_slice(b"hello");
+        let s = BufStr::<8>::from_bytes(&raw);
+        assert_eq!(s.as_str(), "hello");
+        assert_eq!(s.len(), 5);
     }
 
     #[test]
     fn new_truncates_on_char_boundary() {
         // "€" is 3 bytes (E2 82 AC). Capacity 2 must drop the whole char.
         assert_eq!(BufStr::<2>::new("€").as_str(), "");
+        assert_eq!(BufStr::<2>::new("€").len(), 0);
         assert_eq!(BufStr::<3>::new("€").as_str(), "€");
+        assert_eq!(BufStr::<3>::new("€").len(), 3);
         assert_eq!(BufStr::<4>::new("a€b").as_str(), "a€");
+        assert_eq!(BufStr::<4>::new("a€b").len(), 4);
         assert_eq!(BufStr::<5>::new("a€b").as_str(), "a€b");
+        assert_eq!(BufStr::<5>::new("a€b").len(), 5);
     }
 
     #[test]
@@ -234,9 +281,12 @@ mod tests {
         use core::fmt::Write;
         let mut s = BufStr::<5>::default();
         write!(&mut s, "hi").unwrap();
+        assert_eq!(s.len(), 2);
         write!(&mut s, "€").unwrap(); // 3 bytes → fills exactly
         assert_eq!(s.as_str(), "hi€");
+        assert_eq!(s.len(), 5);
         write!(&mut s, "x").unwrap(); // full → no-op
         assert_eq!(s.as_str(), "hi€");
+        assert_eq!(s.len(), 5);
     }
 }

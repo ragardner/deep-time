@@ -757,6 +757,9 @@ impl YmdHms {
     ) -> Result<BufStr<STRTIME_SIZE>, DtErr> {
         let mut printer = Printer::new(self, offset, tz, abbrev, lang);
         printer.print(fmt.as_bytes())?;
-        Ok(BufStr { bytes: printer.buf })
+        Ok(BufStr {
+            bytes: printer.buf,
+            len: printer.pos as u16,
+        })
     }
 }
