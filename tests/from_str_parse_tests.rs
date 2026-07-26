@@ -14,6 +14,9 @@
 //! - adversarial / lenient garbage handling
 //! - `ParseCfg` knobs (explicit formats, `to_lower`, `relative`)
 //! - `str_to_*` convenience helpers
+//! - safety (digit-counter overflow at STRTIME_SIZE)
+//! - Aho-Corasick substring false positives (month/relative inside words)
+//! - relative+absolute digit glue, dual dates, invalid compact→unix fallback
 //!
 //! Several cases document *current* behavior that is surprising; those are
 //! labeled `// CHARACTERIZATION` so they can be revisited deliberately.
@@ -829,5 +832,319 @@ mod tests {
                 assert_rfc(input, expected, &cfg_order(order));
             }
         }
+    }
+
+    // ── 17. Safety: digit-counter overflow (STRTIME_SIZE allows ≤512 digits) ─
+
+    /// Regression: `num_digits: u8` used to overflow and panic in debug at 256
+    /// digits (and wrap in release). Must never panic for inputs ≤ STRTIME_SIZE.
+    #[test]
+    fn digit_counter_no_panic_at_strtime_limit() {
+        let cfg = def();
+        for n in [255usize, 256, 300, 400, 512] {
+            let s = "1".repeat(n);
+            // Must not panic; Ok or Err are both acceptable outcomes.
+            let _ = Dt::from_str_parse(&s, &cfg);
+        }
+        // Slash-separated digit groups that also push digit count past 255.
+        let heavy = format!("1{}", "/2".repeat(200));
+        assert!(heavy.len() <= 512, "fixture must fit STRTIME_SIZE");
+        let _ = Dt::from_str_parse(&heavy, &cfg);
+        // Oversize still rejected by the length guard (no classify path).
+        assert_err_kind(&"1".repeat(513), &cfg, DtErrKind::InvalidLen);
+    }
+
+    // ── 18. Dictionary hits require alphabetic standalone neighbors ────────
+
+    /// Mid-word dictionary hits are ignored (same rule as the old am/pm guard).
+    /// Digit/punct neighbors stay allowed (`14Mar2024`, `2pm`).
+    #[test]
+    fn substring_token_false_positives_rejected() {
+        let cfg = ref_cfg();
+
+        // Mid-word month ignored; remaining absolute date can still parse.
+        assert_rfc("junk 2024-03-15", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("decorate 2024-03-15", "2024-03-15T00:00:00Z", &cfg);
+        // Not April/May/August — only the year survives.
+        assert_rfc("aprilfool 2024", "2024-01-01T00:00:00Z", &cfg);
+        assert_rfc("mayhem 2024", "2024-01-01T00:00:00Z", &cfg);
+        assert_rfc("augustine 2024", "2024-01-01T00:00:00Z", &cfg);
+        assert_err("marching 15 2024", &cfg);
+
+        assert_err("knowledge", &cfg);
+        assert_err("snow", &cfg);
+        assert_err("unknown", &cfg);
+        assert_err("wagon", &cfg);
+        // Not tomorrow/sun/mon — year only once mid-word hit is dropped.
+        assert_rfc("tomorrowland 2024", "2024-01-01T00:00:00Z", &cfg);
+        assert_rfc("sunflower 2024", "2024-01-01T00:00:00Z", &cfg);
+        assert_rfc("monster 2024", "2024-01-01T00:00:00Z", &cfg);
+        assert_err("saturn 15 2024", &cfg);
+
+        assert_err("america", &cfg);
+        assert_rfc("12am", "2025-01-15T00:00:00Z", &cfg);
+        assert_rfc("14 Mar 2024 2pm", "2024-03-14T14:00:00Z", &cfg);
+
+        assert_rfc("jun 2024", "2024-06-01T00:00:00Z", &cfg);
+        assert_rfc("June 2024", "2024-06-01T00:00:00Z", &cfg);
+        assert_rfc("Sept 15 2024", "2024-09-15T00:00:00Z", &cfg);
+        assert_rfc("Sept 2024", "2024-09-01T00:00:00Z", &cfg);
+        assert_rfc("tomorrow", "2025-01-16T12:00:00Z", &cfg);
+        assert_rfc("coming Friday", "2025-01-17T12:00:00Z", &cfg);
+        assert_rfc("14Mar2024", "2024-03-14T00:00:00Z", &cfg);
+        assert_rfc("15-Mar-2024", "2024-03-15T00:00:00Z", &cfg);
+    }
+
+    // ── 19. Relative parser: glued absolute dates → multi-millennium offsets ─
+
+    /// Leftover bare numbers default to **days**. Hyphenated ISO dates glue to
+    /// a single huge day count (`2024-03-15` → 20_240_315 days).
+    #[test]
+    fn relative_plus_absolute_date_blows_up_years() {
+        let cfg = ref_cfg(); // 2025-01-15
+        // tomorrow + 20240315 days ≈ year 57441.
+        assert_rfc("tomorrow 2024-03-15", "57441-02-22T12:00:00Z", &cfg);
+        assert_rfc("in 3 days 2024-03-15", "57441-02-24T12:00:00Z", &cfg);
+        assert_rfc("next Monday 2024-03-15", "57441-02-26T12:00:00Z", &cfg);
+        // "now" inside "noway" is not standalone → no relative early-out;
+        // remaining digits parse as an absolute date (or fail). Mid-word
+        // relative no longer produces the multi-millennium offset.
+        assert_rfc("noway 2024-03-15", "2024-03-15T00:00:00Z", &cfg);
+        // Absolute-first still wins (relative tail ignored / stripped).
+        assert_rfc("2024-03-15 tomorrow", "2024-03-15T00:00:00Z", &cfg);
+        // Relative + civil clock is fine.
+        assert_rfc("tomorrow 15:00", "2025-01-16T15:00:00Z", &cfg);
+        // Bare "N days" is intentional relative duration.
+        assert_rfc("3 days", "2025-01-18T12:00:00Z", &cfg);
+    }
+
+    // ── 20. Dual absolute dates / second date eaten as time ────────────────
+
+    #[test]
+    fn dual_absolute_dates_partially_reinterpreted() {
+        let cfg = def();
+        // Second ISO date partially consumed as time fields.
+        // CHARACTERIZATION: not an error.
+        assert_rfc("2024-03-15 2025-04-16", "2024-03-16T12:25:00Z", &cfg);
+        assert_rfc("15/03/2024 16/04/2025", "2024-03-15T16:00:00Z", &cfg);
+        // Two named months is hard-rejected.
+        assert_err("March 15 2024 March 16 2025", &cfg);
+    }
+
+    // ── 21. Invalid compact forms silently become Unix timestamps ──────────
+
+    #[test]
+    fn invalid_compact_numeric_falls_through_to_unix() {
+        let cfg = def();
+        // Impossible civil compact dates are not hard-errors under Mode::Auto;
+        // they fall through to the pure-numeric unix path.
+        assert_rfc("20241315", "1970-08-23T06:35:15Z", &cfg); // month 13
+        assert_rfc("20240230", "1970-08-23T06:17:10Z", &cfg); // Feb 30
+        assert_rfc("99999999", "1973-03-03T09:46:39Z", &cfg);
+        // Compact datetime with hour 24 → ms unix, not civil reject.
+        assert_rfc("20240315249999", "2611-05-23T21:47:29.999Z", &cfg);
+        assert_rfc("20240315243000", "2611-05-23T21:47:23Z", &cfg);
+        // 6-digit invalid YYMMDD likewise.
+        assert_rfc("123456", "1970-01-02T10:17:36Z", &cfg);
+        assert_rfc("991332", "1970-01-12T11:22:12Z", &cfg);
+    }
+
+    // ── 22. Mode::Explicit with empty / missing format list ────────────────
+
+    #[test]
+    fn explicit_mode_empty_parse_list_falls_through() {
+        // CHARACTERIZATION: empty or missing `parse` does *not* force failure;
+        // the Auto path still runs. Only a non-empty list that fails hard-stops.
+        let empty = ParseCfg {
+            mode: Mode::Explicit,
+            parse: Some(vec![]),
+            ..Default::default()
+        };
+        assert_rfc("15/03/2024", "2024-03-15T00:00:00Z", &empty);
+
+        let none = ParseCfg {
+            mode: Mode::Explicit,
+            parse: None,
+            ..Default::default()
+        };
+        assert_rfc("15/03/2024", "2024-03-15T00:00:00Z", &none);
+
+        // Non-empty list that cannot match → hard fail (no Auto fallback).
+        let ymd_only = ParseCfg {
+            mode: Mode::Explicit,
+            parse: Some(vec!["%Y-%m-%d".into()]),
+            ..Default::default()
+        };
+        assert_rfc("2024-03-15", "2024-03-15T00:00:00Z", &ymd_only);
+        assert_err("15/03/2024", &ymd_only);
+    }
+
+    /// Explicit `%Y` / `%Y-%m` must default missing month/day to 1.
+    ///
+    /// Regression: the `parse` path used `allow_partial_date = false`, so
+    /// year-only formats failed with `Incomplete` even though generated
+    /// candidates (and the intended Explicit UX) allow partial dates.
+    #[test]
+    fn explicit_partial_date_formats_default_missing_fields() {
+        let only_year = ParseCfg {
+            mode: Mode::Explicit,
+            parse: Some(vec!["%Y".into()]),
+            ..Default::default()
+        };
+        assert_rfc("2024", "2024-01-01T00:00:00Z", &only_year);
+        assert_rfc("0001", "0001-01-01T00:00:00Z", &only_year);
+        assert_rfc("9999", "9999-01-01T00:00:00Z", &only_year);
+        // Trailing junk after a complete `%Y` match is still accepted
+        // (`fmt_can_end_before_inp`); month/day stay defaulted.
+        assert_rfc("2024-03-15", "2024-01-01T00:00:00Z", &only_year);
+
+        let year_month = ParseCfg {
+            mode: Mode::Explicit,
+            parse: Some(vec!["%Y-%m".into()]),
+            ..Default::default()
+        };
+        assert_rfc("2024-03", "2024-03-01T00:00:00Z", &year_month);
+        assert_rfc("2024-12", "2024-12-01T00:00:00Z", &year_month);
+        assert_err("15/03/2024", &year_month);
+
+        let two_digit = ParseCfg {
+            mode: Mode::Explicit,
+            parse: Some(vec!["%y".into()]),
+            ..Default::default()
+        };
+        assert_rfc("24", "2024-01-01T00:00:00Z", &two_digit);
+        assert_rfc("99", "1999-01-01T00:00:00Z", &two_digit);
+
+        // Multiple formats: first match wins; partial year still usable.
+        let multi = ParseCfg {
+            mode: Mode::Explicit,
+            parse: Some(vec!["%d/%m/%Y".into(), "%Y".into()]),
+            ..Default::default()
+        };
+        assert_rfc("15/03/2024", "2024-03-15T00:00:00Z", &multi);
+        assert_rfc("2024", "2024-01-01T00:00:00Z", &multi);
+    }
+
+    // ── 23. Garbage embedding / prefix stripping ───────────────────────────
+
+    #[test]
+    fn embedded_date_in_noise_is_accepted() {
+        let cfg = def();
+        // CHARACTERIZATION: surrounding non-date text is often ignored.
+        // Do **not** use from_str_parse as a strict validator for untrusted input.
+        assert_rfc("2024-03-15'; DROP TABLE", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("../../../2024-03-15", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("{\"date\":\"2024-03-15\"}", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("<time>2024-03-15</time>", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("\"2024-03-15\"", "2024-03-15T00:00:00Z", &cfg);
+        // Trailing alphabetic glued to date is also stripped.
+        assert_rfc("2024-03-15x", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("x2024-03-15", "2024-03-15T00:00:00Z", &cfg);
+        // Trailing Z without time is accepted (Zulu-ish).
+        assert_rfc("2024-03-15Z", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("2024-03-15 junk", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("garbage 2024-03-15", "2024-03-15T00:00:00Z", &cfg);
+    }
+
+    // ── 24. Offset extremes, 12h bounds, leap-second clamp ─────────────────
+
+    #[test]
+    fn offset_and_clock_edge_cases() {
+        let cfg = def();
+        // Offsets well outside civil TZ ranges still apply.
+        assert_rfc("2024-03-15T12:00:00+15:00", "2024-03-14T21:00:00Z", &cfg);
+        assert_rfc("2024-03-15T12:00:00-13:00", "2024-03-16T01:00:00Z", &cfg);
+        assert_rfc("2024-03-15T12:00:00+23:59", "2024-03-14T12:01:00Z", &cfg);
+        assert_err("2024-03-15T12:00:00+99:00", &cfg);
+        // Hour-only offset (no minutes).
+        assert_rfc("2024-03-15T12:00:00+01", "2024-03-15T11:00:00Z", &cfg);
+
+        // Invalid 12-hour hours hard-fail.
+        assert_err("2024-03-15 0am", &cfg);
+        assert_err("2024-03-15 13pm", &cfg);
+        assert_err("2024-03-15 24am", &cfg);
+        // 00:00am is accepted as midnight.
+        assert_rfc("2024-03-15 00:00am", "2024-03-15T00:00:00Z", &cfg);
+
+        // ISO 24:00 end-of-day is rejected (unlike bare ops "24:00" relative).
+        assert_err("2024-03-15T24:00:00Z", &cfg);
+    }
+
+    #[test]
+    fn leap_second_slot_only_at_day_boundary_on_leap_days() {
+        let cfg = def();
+        // Real leap-second insertion days keep second=60.
+        assert_rfc("2015-06-30T23:59:60Z", "2015-06-30T23:59:60Z", &cfg);
+        assert_rfc("2012-06-30T23:59:60Z", "2012-06-30T23:59:60Z", &cfg);
+        // Non-leap days clamp 23:59:60 → 23:59:59 (not hard-fail).
+        assert_rfc("2024-01-01T23:59:60Z", "2024-01-01T23:59:59Z", &cfg);
+        assert_rfc("2024-03-15T23:59:60Z", "2024-03-15T23:59:59Z", &cfg);
+        // Mid-day :60 always clamps (never a leap-second site).
+        assert_rfc("2024-03-15T12:00:60Z", "2024-03-15T12:00:59Z", &cfg);
+    }
+
+    // ── 25. Unicode / control tolerance ────────────────────────────────────
+
+    #[test]
+    fn control_and_bidi_prefix_tolerance() {
+        let cfg = def();
+        // Null / CR-LF / BOM / bidi marks do not block a trailing date.
+        assert_rfc("2024-03-15\0", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("2024-03-15\r\n", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("\u{feff}2024-03-15", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("2024\u{202e}03-15", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("\u{200f}2024-03-15", "2024-03-15T00:00:00Z", &cfg);
+        // NBSP and em-space act as separators.
+        assert_rfc("2024-03-15\u{00a0}12:00", "2024-03-15T12:00:00Z", &cfg);
+        assert_rfc("2024\u{2003}03\u{2003}15", "2024-03-15T00:00:00Z", &cfg);
+    }
+
+    // ── 26. Pure-numeric unit mis-detection edges ──────────────────────────
+
+    #[test]
+    fn pure_numeric_digit_length_unit_edges() {
+        let auto = cfg_mode(Mode::Auto);
+        // 9-digit: not 8-digit YYYYMMDD, not 10-digit unix → hour glued to date.
+        assert_rfc("202403151", "2024-03-15T01:00:00Z", &auto);
+        // 10-digit unix seconds (1e10) → far future.
+        assert_rfc("10000000000", "2286-11-20T17:46:40Z", &auto);
+        // 11-digit still treated as seconds (not ms).
+        assert_rfc("17356896000", "2520-01-08T00:00:00Z", &auto);
+        // 12-digit → milliseconds path.
+        assert_rfc("100000000000", "1973-03-03T09:46:40Z", &auto);
+        // 19-digit → nanoseconds path (i64-max-ish).
+        assert_rfc(
+            "9223372036854775807",
+            "2262-04-11T23:47:16.854775807Z",
+            &auto,
+        );
+        // 2-digit year pivot boundary.
+        assert_rfc("68", "2068-01-01T00:00:00Z", &auto);
+        assert_rfc("69", "1969-01-01T00:00:00Z", &auto);
+        assert_rfc("00", "2000-01-01T00:00:00Z", &auto);
+        // Signed year / date.
+        assert_rfc("+2024", "2024-01-01T00:00:00Z", &auto);
+        assert_rfc("+2024-03-15", "2024-03-15T00:00:00Z", &auto);
+        // Very large negative pure-numeric still yields a Dt (far past).
+        let neg = format!("-{}", "9".repeat(25));
+        let dt = parse(&neg, &auto);
+        assert!(dt.to_ymd().yr() < -9999);
+    }
+
+    // ── 27. relative=false disables bare TOD as well as phrases ────────────
+
+    #[test]
+    fn relative_false_also_blocks_bare_tod() {
+        let cfg = ParseCfg {
+            relative: false,
+            ref_time: Some(Dt::from_ymd(2025, 1, 15, Scale::UTC, 12, 0, 0, 0)),
+            ..Default::default()
+        };
+        assert_err("tomorrow", &cfg);
+        assert_err("in 3 days", &cfg);
+        assert_err("14:00", &cfg);
+        assert_err("9am", &cfg);
+        assert_err("week", &cfg);
+        assert_rfc("2024-03-15", "2024-03-15T00:00:00Z", &cfg);
     }
 }

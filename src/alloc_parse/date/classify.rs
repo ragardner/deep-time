@@ -28,13 +28,14 @@ fn send_to_relative_parser(
     Ok(ClassifiedDate::Parsed(dt))
 }
 
-/// True when `am`/`pm` is not glued inside a larger alphabetic run
-/// (e.g. reject `am` inside `america/...`).
+/// True when a dictionary hit is not glued inside a larger alphabetic run
+/// (e.g. reject `jun` inside `junk`, `now` inside `knowledge`, `am` inside
+/// `america`).
 ///
-/// Digits and punctuation neighbors are fine (`12am`, `9:00pm`).
+/// Digits and punctuation neighbors are fine (`12am`, `9:00pm`, `14Mar2024`).
 /// Uses Unicode `char::is_alphabetic` so non-ASCII letters count as glue.
 #[inline]
-fn is_ampm_standalone(s: &str, start: usize, end: usize) -> bool {
+fn is_term_standalone(s: &str, start: usize, end: usize) -> bool {
     let prev_ok = s
         .get(..start)
         .and_then(|p| p.chars().next_back())
@@ -100,6 +101,12 @@ pub(crate) fn classify_date(
 
     for (part, range) in splitter {
         if let Some((norm_part, token)) = term_map.get(part) {
+            // Mid-word dictionary hits (jun⊂junk, now⊂knowledge, am⊂america)
+            // are ignored entirely — including relative early-out.
+            if !is_term_standalone(s, range.start, range.end) {
+                continue;
+            }
+
             if relative && ((token.is_relative() || token.is_duration()) && !currently.after_date())
             {
                 return send_to_relative_parser(s, lang, ref_time);
@@ -110,7 +117,7 @@ pub(crate) fn classify_date(
                     if currently == IndexIn::PreDate {
                         currently = IndexIn::Date;
                     }
-                    num_named += 1;
+                    num_named = num_named.saturating_add(1);
                     date_tokens.push(*token);
                     date_norm.push_str(norm_part);
                 }
@@ -119,45 +126,43 @@ pub(crate) fn classify_date(
                         currently = IndexIn::Date;
                     }
                     has_named_mo = true;
-                    num_named += 1;
+                    num_named = num_named.saturating_add(1);
                     date_tokens.push(*token);
                     date_norm.push_str(norm_part);
                 }
                 Token::Am | Token::Pm => {
-                    if is_ampm_standalone(s, range.start, range.end) {
-                        // Colon clocks are already Time/PostDate. Bare "9am" /
-                        // "12 pm" is still Date — same bare-hour idea as the
-                        // ':' reclassify below (one short digit group, no month).
-                        if currently == IndexIn::Date {
-                            if in_digit_run && digit_run_len > 0 {
-                                date_tokens.push(Token::Digits(digit_run_len));
-                                in_digit_run = false;
-                                digit_run_len = 0;
-                            }
-                            // "9 am": space may sit after the hour token.
-                            while matches!(date_tokens.last(), Some(Token::Space)) {
-                                date_tokens.pop();
-                            }
-                            if !has_named_mo
-                                && num_date_digit_groups == 1
-                                && num_date_digits <= 2
-                                && matches!(date_tokens.last(), Some(Token::Digits(1 | 2)))
-                                && let Some(Token::Digits(n)) = date_tokens.pop()
-                            {
-                                num_date_digits = num_date_digits.saturating_sub(n as u8);
-                                num_date_digit_groups = num_date_digit_groups.saturating_sub(1);
-                                time_digits = n as u8;
-                                has_time = true;
-                                time_tokens.push(Token::H);
-                                currently = IndexIn::Time;
-                            }
+                    // Colon clocks are already Time/PostDate. Bare "9am" /
+                    // "12 pm" is still Date — same bare-hour idea as the
+                    // ':' reclassify below (one short digit group, no month).
+                    if currently == IndexIn::Date {
+                        if in_digit_run && digit_run_len > 0 {
+                            date_tokens.push(Token::Digits(digit_run_len));
+                            in_digit_run = false;
+                            digit_run_len = 0;
                         }
-                        if matches!(currently, IndexIn::Time | IndexIn::PostDate) {
-                            has_ampm = true;
-                            currently = IndexIn::PostDate;
-                            date_norm.push_str(norm_part);
-                            time_tokens.push(*token);
+                        // "9 am": space may sit after the hour token.
+                        while matches!(date_tokens.last(), Some(Token::Space)) {
+                            date_tokens.pop();
                         }
+                        if !has_named_mo
+                            && num_date_digit_groups == 1
+                            && num_date_digits <= 2
+                            && matches!(date_tokens.last(), Some(Token::Digits(1 | 2)))
+                            && let Some(Token::Digits(n)) = date_tokens.pop()
+                        {
+                            num_date_digits = num_date_digits.saturating_sub(n as u8);
+                            num_date_digit_groups = num_date_digit_groups.saturating_sub(1);
+                            time_digits = n as u8;
+                            has_time = true;
+                            time_tokens.push(Token::H);
+                            currently = IndexIn::Time;
+                        }
+                    }
+                    if matches!(currently, IndexIn::Time | IndexIn::PostDate) {
+                        has_ampm = true;
+                        currently = IndexIn::PostDate;
+                        date_norm.push_str(norm_part);
+                        time_tokens.push(*token);
                     }
                 }
                 Token::Iana => {
@@ -196,9 +201,11 @@ pub(crate) fn classify_date(
                         continue;
                     }
 
-                    num_digits += 1;
+                    // u8 counters: input may be up to STRTIME_SIZE (512) digits.
+                    // Saturate instead of wrapping/panicking in debug builds.
+                    num_digits = num_digits.saturating_add(1);
                     if currently != IndexIn::Fraction {
-                        num_non_decimal_digits += 1;
+                        num_non_decimal_digits = num_non_decimal_digits.saturating_add(1);
                     }
 
                     match currently {
@@ -218,14 +225,14 @@ pub(crate) fn classify_date(
                                 if connector == ConnectorType::None {
                                     connector = ConnectorType::Space;
                                 }
-                                time_digits += 1;
+                                time_digits = time_digits.saturating_add(1);
                                 in_time_digit_run = true;
                                 time_digit_run_len = 1;
                             } else {
-                                num_date_digits += 1;
+                                num_date_digits = num_date_digits.saturating_add(1);
                                 if !in_digit_run {
                                     in_digit_run = true;
-                                    num_date_digit_groups += 1;
+                                    num_date_digit_groups = num_date_digit_groups.saturating_add(1);
                                 }
                                 digit_run_len += 1;
 
@@ -261,7 +268,7 @@ pub(crate) fn classify_date(
                         }
                         IndexIn::Time | IndexIn::Fraction | IndexIn::Offset => {
                             if currently == IndexIn::Time {
-                                time_digits += 1;
+                                time_digits = time_digits.saturating_add(1);
                             }
                             if !in_time_digit_run {
                                 in_time_digit_run = true;
@@ -410,7 +417,7 @@ pub(crate) fn classify_date(
                                 continue;
                             }
                             date_norm.push(':');
-                            num_colon += 1;
+                            num_colon = num_colon.saturating_add(1);
 
                             match currently {
                                 IndexIn::Date => {
@@ -431,10 +438,10 @@ pub(crate) fn classify_date(
                                     }
                                     connector = ConnectorType::Colon;
                                     currently = IndexIn::Time;
-                                    time_colons += 1;
+                                    time_colons = time_colons.saturating_add(1);
                                 }
-                                IndexIn::Time => time_colons += 1,
-                                IndexIn::Offset => offset_colons += 1,
+                                IndexIn::Time => time_colons = time_colons.saturating_add(1),
+                                IndexIn::Offset => offset_colons = offset_colons.saturating_add(1),
                                 _ => {}
                             }
                         }
@@ -448,7 +455,7 @@ pub(crate) fn classify_date(
                                 offset_colons = 0;
                             }
                             if currently == IndexIn::Date {
-                                num_hyphen += 1;
+                                num_hyphen = num_hyphen.saturating_add(1);
                                 date_tokens.push(Token::Hyphen);
                             } else if currently.after_date() {
                                 time_tokens.push(Token::Minus);
@@ -459,7 +466,7 @@ pub(crate) fn classify_date(
                                 continue;
                             }
                             date_norm.push('.');
-                            num_dot += 1;
+                            num_dot = num_dot.saturating_add(1);
                             let is_fractional_trigger = !has_fractional
                                 && (currently.after_date() || {
                                     if num_dot > 1 {
@@ -482,7 +489,7 @@ pub(crate) fn classify_date(
                                 continue;
                             }
                             date_norm.push('/');
-                            num_slash += 1;
+                            num_slash = num_slash.saturating_add(1);
                             if currently == IndexIn::Date {
                                 date_tokens.push(Token::Slash);
                             }
@@ -492,7 +499,7 @@ pub(crate) fn classify_date(
                                 continue;
                             }
                             date_norm.push(',');
-                            num_comma += 1;
+                            num_comma = num_comma.saturating_add(1);
                             if currently == IndexIn::Date {
                                 date_tokens.push(Token::Comma);
                             }
@@ -560,12 +567,12 @@ pub(crate) fn classify_date(
                             {
                                 if currently == IndexIn::Date {
                                     date_norm.push('-');
-                                    num_hyphen += 1;
+                                    num_hyphen = num_hyphen.saturating_add(1);
                                     date_tokens.push(Token::Hyphen);
                                 } else if currently == IndexIn::Time {
                                     date_norm.push(':');
-                                    num_colon += 1;
-                                    time_colons += 1;
+                                    num_colon = num_colon.saturating_add(1);
+                                    time_colons = time_colons.saturating_add(1);
                                 }
                             }
                         }

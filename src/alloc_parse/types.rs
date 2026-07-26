@@ -100,9 +100,13 @@ pub struct ParseCfg {
     /// If the mode is not Explicit then after trying the formats in parse the
     /// rest of the parser will continue as normal, using `mode` and `order`.
     ///
+    /// Partial date formats are allowed: missing month/day default to `1`
+    /// (so `"%Y"` on `"2024"` yields `2024-01-01`, and `"%Y-%m"` on
+    /// `"2024-03"` yields `2024-03-01`).
+    ///
     /// Example:
     /// ```js
-    /// parse: ["%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y"]
+    /// parse: ["%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d.%m.%Y", "%Y"]
     /// ```
     #[cfg_attr(feature = "serde", serde(default))]
     pub parse: Option<Vec<String>>,

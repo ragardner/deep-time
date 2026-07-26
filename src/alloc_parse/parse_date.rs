@@ -127,13 +127,16 @@ impl Dt {
     /// let cfg = ParseCfg { mode: Mode::UnixTimestamp, ..Default::default() };
     /// let dt = Dt::from_str_parse("1735689600123", &cfg).unwrap();
     ///
-    /// // Explicit formats only (no fallback)
+    /// // Explicit formats only (no fallback). Partial dates (`%Y`, `%Y-%m`)
+    /// // default missing month/day to 1.
     /// let cfg = ParseCfg {
-    ///     parse: Some(vec!["%d/%m/%Y".into(), "%Y-%m-%d".into()]),
+    ///     parse: Some(vec!["%d/%m/%Y".into(), "%Y-%m-%d".into(), "%Y".into()]),
     ///     mode: Mode::Explicit,
     ///     ..Default::default()
     /// };
     /// let dt = Dt::from_str_parse("15/03/2024", &cfg).unwrap();
+    /// let yr = Dt::from_str_parse("2024", &cfg).unwrap();
+    /// assert_eq!(yr, Dt::from_ymd(2024, 1, 1, Scale::UTC, 0, 0, 0, 0));
     ///
     /// // Relative dates — build config once, borrow repeatedly
     /// let ref_time = Dt::from_ymd(2026, 6, 16, Scale::UTC, 12, 0, 0, 0);
@@ -220,7 +223,11 @@ impl Dt {
         let (mode, date_order) = if let Some(formats) = &opts.parse {
             if !formats.is_empty() {
                 for fmt in formats {
-                    if let Ok(value) = Self::from_strptime(normalized, fmt, true, true, false) {
+                    // `allow_partial_date = true`: formats that omit month/day
+                    // (e.g. `%Y`, `%Y-%m`, `%y`) default the missing fields to 1
+                    // via [`Parts::finish`]. Matches `try_compatible_formats`.
+                    // Without this, Explicit `%Y` on `"2024"` fails with Incomplete.
+                    if let Ok(value) = Self::from_strptime(normalized, fmt, true, true, true) {
                         return Ok(value);
                     }
                 }
