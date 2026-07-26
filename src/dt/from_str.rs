@@ -1,6 +1,6 @@
 use crate::{
     ATTOS_PER_NS_I128, ATTOS_PER_SEC_I128, Dt, DtErr, DtErrKind, Parts, SEC_PER_DAY, SEC_PER_MONTH,
-    SEC_PER_WEEK, SEC_PER_YEAR, Scale, StrPTimeFmt, an_err, dt, sec,
+    SEC_PER_WEEK, SEC_PER_YEAR, Scale, an_err, dt, sec,
 };
 use core::str::FromStr;
 
@@ -270,39 +270,6 @@ impl Dt {
             allow_partial_date,
         )?
         .to_dt()
-    }
-
-    /// Parses and validates a `strptime`-style format string into a reusable [`StrPTimeFmt`].
-    ///
-    /// The format is checked once for syntax errors and unsupported directives,
-    /// then stored in a compact fixed-size buffer. The resulting `StrPTimeFmt` is
-    /// can be used repeatedly with
-    /// [`StrPTimeFmt::to_dt`](../struct.StrPTimeFmt.html#method.to_dt)
-    /// and
-    /// [`StrPTimeFmt::to_str`](../struct.StrPTimeFmt.html#method.to_str)
-    /// without re-validating.
-    ///
-    /// - This unfortunately doesn't improve parsing performance.
-    /// - Only ASCII formats up to
-    ///   [`StrPTimeFmt::MAX_FMT_LEN`](../struct.StrPTimeFmt.html#associatedconstant.MAX_FMT_LEN)
-    ///   bytes are accepted.
-    ///
-    /// ## Parameters
-    ///
-    /// - `strptime_fmt`: The format string using `%` directives (e.g. `"%Y-%m-%d %H:%M:%S"`,
-    ///   `"%F %T"`, `"%Y-%m-%dT%H:%M:%S%.3fZ"`).
-    ///
-    /// ## Errors
-    ///
-    /// Returns [`DtErr`] if the format is:
-    /// - Longer than
-    ///   [`StrPTimeFmt::MAX_FMT_LEN`](../struct.StrPTimeFmt.html#associatedconstant.MAX_FMT_LEN)
-    ///   bytes.
-    /// - Not valid ASCII.
-    /// - Contains unknown, unsupported, or malformed directives.
-    #[inline(always)]
-    pub fn parse_fmt(strptime_fmt: &str) -> Result<StrPTimeFmt, DtErr> {
-        StrPTimeFmt::new(strptime_fmt)
     }
 
     /// Fast, no-alloc parser for common ISO-like and epoch-style date-time strings.

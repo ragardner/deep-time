@@ -271,18 +271,27 @@ use core::fmt;
 /// assert_eq!(x.day(), 28);
 /// ```
 ///
-/// ### Changing a dates format
+/// ### Reusing a validated strptime format
+///
+/// [`StrPTimeFmt`](../struct.StrPTimeFmt.html) checks a parse format once so later
+/// use does not fail for broken directive syntax. Prefer this when the format
+/// comes from config or is applied many times. It does not speed up parsing —
+/// see [`StrPTimeFmt`](../struct.StrPTimeFmt.html) for the full guarantee and
+/// limits (including that `output_fmt` is not pre-validated).
 ///
 /// ```rust
 /// use deep_time::{Dt, Lang, StrPTimeFmt};
 ///
 /// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
+/// // parse with the validated format
+/// let dt = fmt.to_dt("2000-01-01T12:00:00", false, false, false).unwrap();
+/// assert_eq!(dt.to_ymd().yr(), 2000);
 ///
-/// # #[cfg(feature = "alloc")]
-/// let s = fmt.to_str("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En).unwrap();
-///
-/// # #[cfg(feature = "alloc")]
-/// assert_eq!(s, "01 01 2000 12:00:00", "expected: {}, got: {}", "01 01 2000 12:00:00", s);
+/// // optional: reformat (output pattern is separate and not pre-validated)
+/// let s = fmt
+///     .to_str_b("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En)
+///     .unwrap();
+/// assert_eq!(s.as_str(), "01 01 2000 12:00:00");
 /// ```
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
