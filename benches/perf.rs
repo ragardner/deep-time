@@ -8,8 +8,8 @@ fn main() {
     // ── results (populated by the benchmark blocks below) ───────────────────
     let mut gps_deep_ns = 0.0f64;
     let mut gps_hifi_ns = 0.0f64;
-    let mut tow_deep_ns = 0.0f64;
-    let mut tow_hifi_ns = 0.0f64;
+    let mut gps_elapsed_deep_ns = 0.0f64;
+    let mut gps_elapsed_hifi_ns = 0.0f64;
 
     let mut tai_utc_deep_ns = 0.0f64;
     let mut tai_utc_hifi_ns = 0.0f64;
@@ -29,6 +29,7 @@ fn main() {
     let mut zoned_deep_ns = 0.0f64;
     let mut zoned_jiff_ns = 0.0f64;
 
+    let mut iso_parts_ns = 0.0f64;
     let mut iso_deep_ns = 0.0f64;
     let mut iso_jiff_ns = 0.0f64;
 
@@ -45,12 +46,16 @@ fn main() {
 
         const ITERATIONS: usize = 10_000_000;
 
-        let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
+        // Match hifitime: start on TAI at the same civil instant (J2000.0).
+        // (Previously Scale::UTC made target=UTC, so to_gps() paid for two leap-second
+        // lookups — not comparable to hifitime's fixed-offset GPST path.)
+        let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
         let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 12, 0, 0, 0);
 
+        // Scale change only (TAI → GPS), matching hifitime's to_time_scale(GPST)
         let start = Instant::now();
         for _ in 0..ITERATIONS {
-            let _ = black_box(deep_tai).to_gps();
+            let _ = black_box(deep_tai).to(black_box(Scale::GPS));
         }
         gps_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
@@ -60,16 +65,20 @@ fn main() {
         }
         gps_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
+        // Elapsed time since GPS epoch (not week+TOW — hifitime has no week/TOW API).
+        // target(GPS) so the count is on GPS scale, matching conventional GPST elapsed.
+        let deep_gps = deep_tai.target(Scale::GPS);
         let start = Instant::now();
         for _ in 0..ITERATIONS {
-            let _ = black_box(deep_tai).to_gps_wk_and_tow();
+            let _ = black_box(deep_gps).to_gps();
         }
-        tow_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+        gps_elapsed_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
         let start = Instant::now();
         for _ in 0..ITERATIONS {
-            let _ = black_box(hifi_tai).to_gpst_seconds();
+            let _ = black_box(hifi_tai).to_gpst_duration();
         }
-        tow_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+        gps_elapsed_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -81,7 +90,8 @@ fn main() {
 
         const ITERATIONS: usize = 10_000_000;
 
-        let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::UTC, 0, 0, 0, 0);
+        // Start on TAI so the measured conversion is a true TAI → UTC (not UTC target noise).
+        let deep_tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 0, 0, 0, 0);
         let hifi_tai = Epoch::from_gregorian_tai(2000, 1, 1, 0, 0, 0, 0);
 
         // TAI → UTC
@@ -285,7 +295,8 @@ fn main() {
     // }
 
     // ═══════════════════════════════════════════════════════════════════════
-    // Datetime parse — Dt::from_str vs Jiff parse::DateTime
+    // Datetime parse — Parts::from_str / Dt::from_str vs Jiff parse::DateTime
+    // (jiff measured once; same number reported for both deep-time rows)
     // ═══════════════════════════════════════════════════════════════════════
     {
         const ITERATIONS: usize = 20_000_000;
@@ -300,7 +311,14 @@ fn main() {
         }
         iso_jiff_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
 
-        // ── deep_time CCSDS/ISO dedicated parser ───────────────────────
+        // ── deep_time Parts (civil components only) ───────────────────────
+        let start = std::time::Instant::now();
+        for _ in 0..ITERATIONS {
+            let x = Parts::from_str(INPUT).unwrap();
+        }
+        iso_parts_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+        // ── deep_time Dt (Parts + scale / epoch) ───────────────────────
         let start = std::time::Instant::now();
         for _ in 0..ITERATIONS {
             let x = Dt::from_str(INPUT).unwrap();
@@ -356,23 +374,41 @@ fn main() {
         }
     };
 
+    // ±1%: treat as a true tie (measurement noise). Wider near-ties still get a
+    // real ratio — never "1.0× slower", which is noise-looking and unhelpful.
+    const TIE_EPS: f64 = 0.01;
+
     // For parse/format table we use "% faster/slower" style (matching historical README)
     let pct = |d: f64, j: f64| -> String {
         let r = d / j;
-        if r < 1.0 {
+        if (r - 1.0).abs() < TIE_EPS {
+            "≈ same".to_string()
+        } else if r < 1.0 {
             format!("{:.1}% faster", (1.0 - r) * 100.0)
         } else {
             format!("{:.1}% slower", (r - 1.0) * 100.0)
         }
     };
 
+    // Format a multiplier: two decimals under 1.15× so 1.05× is visible; one
+    // decimal beyond that (3.4×, 21.3×, …).
+    let fmt_mult = |m: f64| -> String {
+        if m < 1.15 {
+            format!("{:.2}×", m)
+        } else {
+            format!("{:.1}×", m)
+        }
+    };
+
     // For scale conversions we use "× faster/slower" style (matching historical README)
     let xrel = |d: f64, h: f64| -> String {
         let r = d / h;
-        if r < 1.0 {
-            format!("{:.1}× faster", 1.0 / r)
+        if (r - 1.0).abs() < TIE_EPS {
+            "≈ same".to_string()
+        } else if r < 1.0 {
+            format!("{} faster", fmt_mult(1.0 / r))
         } else {
-            format!("{:.1}× slower", r)
+            format!("{} slower", fmt_mult(r))
         }
     };
 
@@ -409,6 +445,12 @@ fn main() {
         &fmt_ns(strptime_timeparts_ns),
         &fmt_ns(strptime_jiff_ns),
         &pct(strptime_timeparts_ns, strptime_jiff_ns),
+    );
+    perf_row(
+        "`Parts::from_str` vs `DateTime::parse`",
+        &fmt_ns(iso_parts_ns),
+        &fmt_ns(iso_jiff_ns),
+        &pct(iso_parts_ns, iso_jiff_ns),
     );
     perf_row(
         "`Dt::from_str` vs `DateTime::parse`",
@@ -472,10 +514,10 @@ fn main() {
         xrel(gps_deep_ns, gps_hifi_ns)
     );
     eprintln!(
-        "| GPS week + TOW   | {:<13} | {:<13} | {:<25} |",
-        fmt_ns(tow_deep_ns),
-        fmt_ns(tow_hifi_ns),
-        xrel(tow_deep_ns, tow_hifi_ns)
+        "| GPS elapsed      | {:<13} | {:<13} | {:<25} |",
+        fmt_ns(gps_elapsed_deep_ns),
+        fmt_ns(gps_elapsed_hifi_ns),
+        xrel(gps_elapsed_deep_ns, gps_elapsed_hifi_ns)
     );
     eprintln!();
 }

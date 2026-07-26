@@ -1,10 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 mod tests {
-    use core::fmt::Write;
-
-    use deep_time::{BufStr, Dt, Scale};
-
     #[cfg(all(
         feature = "parse",
         feature = "std",
@@ -13,6 +9,7 @@ mod tests {
     ))]
     #[test]
     fn print_stuff() {
-        use deep_time::{AnErr, DtErr, DtErrKind, Lang, ParseCfg, TraitsTime, YmdHms, an_err};
+        use deep_time::macros::from_ymd;
+        use deep_time::{AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TraitsTime, YmdHms};
     }
 }

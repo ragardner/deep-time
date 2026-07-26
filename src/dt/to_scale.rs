@@ -88,7 +88,7 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::to_scale_and_diff`](../struct.Dt.html#method.to_scale_and_diff)
-    /// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
+    /// - [`Dt::new`](../struct.Dt.html#method.new)
     ///
     /// ## Examples
     ///
@@ -267,7 +267,7 @@ impl Dt {
     /// ## See also
     ///
     /// * [`Dt::to_tai`](../struct.Dt.html#method.to_tai)
-    /// * [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
+    /// * [`Dt::new`](../struct.Dt.html#method.new)
     ///
     /// ## Examples
     ///

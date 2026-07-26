@@ -94,7 +94,15 @@ use core::fmt;
 ///   **2000-01-01 noon**. See also: [`Scale`](../enum.Scale.html).
 /// - Leap-second handling follows the chosen `Scale` (UTC, UtcSpice, UtcHist).
 ///
-/// ## See also (non-exhaustive list)
+/// ## See also
+///
+/// Functionality:
+/// <https://github.com/ragardner/deep-time#overview>
+///
+/// Feature flags:
+/// <https://github.com/ragardner/deep-time#feature-flags>
+///
+/// Non-exhaustive list of functions:
 ///
 /// ### From and to calendar dates
 ///
@@ -130,12 +138,11 @@ use core::fmt;
 ///
 /// - [`Dt::target`](../struct.Dt.html#method.target)
 /// - [`Dt::to`](../struct.Dt.html#method.to)
-/// - [`Dt::convert`](../struct.Dt.html#method.convert)
 /// - [`Dt::to_tai`](../struct.Dt.html#method.to_tai)
+/// - [`Dt::convert`](../struct.Dt.html#method.convert)
 /// - [`Dt::from_sec`](../struct.Dt.html#method.from_sec)
 /// - [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor)
-/// - [`Dt::from_attos`](../struct.Dt.html#method.from_attos)
-/// - [`Dt::convert`](../struct.Dt.html#method.convert)
+/// - [`Dt::new`](../struct.Dt.html#method.new)
 /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
 /// - [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp)
 /// - [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
@@ -155,11 +162,22 @@ use core::fmt;
 ///
 /// ### Parsing a date
 ///
+/// Without alloc
+///
 /// ```rust
 /// use deep_time::{Dt, Scale};
 ///
 /// // uses impl FromStr but Dt::parse provides the same functionality
 /// let x: Dt = "2000-01-01 12:00:00".parse().unwrap();
+/// let x = Dt::from_str("2000-01-01 12:00:00").unwrap();
+/// let x = Dt::from_strptime(
+///     "2000-01-01 12:00:00",
+///     "%Y-%m-%d %H:%M:%S",
+///     false,
+///     false,
+///     false,
+/// )
+/// .unwrap();
 ///
 /// let ymd = x.to_ymd();
 /// assert_eq!(ymd.yr(), 2000);
@@ -169,6 +187,28 @@ use core::fmt;
 /// assert_eq!(ymd.min(), 0);
 /// assert_eq!(ymd.sec(), 0);
 /// assert_eq!(ymd.attos(), 0);
+/// ```
+///
+/// With the lenient, auto-parser (`parse` feature; IANA zones need `jiff-tz`):
+///
+/// ```rust
+/// # #[cfg(all(feature = "parse", any(feature = "jiff-tz", feature = "jiff-tz-bundle")))]
+/// # {
+/// use deep_time::{Dt, ParseCfg, Scale};
+///
+/// let cfg = ParseCfg::default();
+///
+/// // leading junk, dotted date, 12-hour clock, IANA zone in brackets, trailing junk
+/// let dt = Dt::from_str_parse(
+///     "log >>> 15-Aug-2024 2:30pm [America/New_York] done",
+///     &cfg,
+/// )
+/// .unwrap();
+///
+/// // same instant as 18:30 UTC (EDT is UTC−4)
+/// let expected = Dt::from_ymd(2024, 8, 15, Scale::UTC, 18, 30, 0, 0);
+/// assert_eq!(dt, expected);
+/// # }
 /// ```
 ///
 /// ### Outputting a date to string / bytes
@@ -271,27 +311,55 @@ use core::fmt;
 /// assert_eq!(x.day(), 28);
 /// ```
 ///
-/// ### Reusing a validated strptime format
-///
-/// [`StrPTimeFmt`](../struct.StrPTimeFmt.html) checks a parse format once so later
-/// use does not fail for broken directive syntax. Prefer this when the format
-/// comes from config or is applied many times. It does not speed up parsing —
-/// see [`StrPTimeFmt`](../struct.StrPTimeFmt.html) for the full guarantee and
-/// limits (including that `output_fmt` is not pre-validated).
+/// ### Comparisons
 ///
 /// ```rust
-/// use deep_time::{Dt, Lang, StrPTimeFmt};
+/// use deep_time::macros::from_ymd;
+/// use deep_time::{Dt, Scale};
 ///
-/// let fmt = Dt::parse_fmt("%Y-%m-%dT%H:%M:%S").unwrap();
-/// // parse with the validated format
-/// let dt = fmt.to_dt("2000-01-01T12:00:00", false, false, false).unwrap();
-/// assert_eq!(dt.to_ymd().yr(), 2000);
+/// let a = from_ymd!(2000, 1, 1; 12, on=Scale::TAI);
+/// let mut b = Dt::from_str("2000-01-01T12 TAI").unwrap();
 ///
-/// // optional: reformat (output pattern is separate and not pre-validated)
-/// let s = fmt
-///     .to_str_b("2000-01-01T12:00:00", "%d %m %Y %H:%M:%S", false, false, false, Lang::En)
-///     .unwrap();
-/// assert_eq!(s.as_str(), "01 01 2000 12:00:00");
+/// // same instant but on the TT time scale
+/// b = b.to(Scale::TT);
+///
+/// // comparisons only use the attos field
+/// // changing b to TT has changed its attos
+/// assert_ne!(a, b);
+///
+/// // to check if two Dt's are the same instant
+/// // they must be on the same time scale and
+/// // from the same epoch
+/// b = b.to(Scale::TAI);
+/// assert_eq!(a, b);
+///
+/// // Dt also allows various mathematical operations
+/// b = b.to(Scale::UTC);
+/// let diff = (a - b).to_sec();
+/// assert_eq!(diff, 32);
+/// ```
+///
+/// #### Sorting
+///
+/// ```rust
+/// # #[cfg(feature = "alloc")]
+/// # {
+/// use deep_time::macros::from_ymd;
+/// use deep_time::{Dt, Scale};
+///
+/// let mut times = vec![
+///     from_ymd!(2000, 1, 3),
+///     from_ymd!(2000, 1, 1),
+///     from_ymd!(2000, 1, 2),
+/// ];
+///
+/// // sort uses Ord, which only looks at attos (not scale / target)
+/// times.sort();
+///
+/// assert_eq!(times[0], from_ymd!(2000, 1, 1));
+/// assert_eq!(times[1], from_ymd!(2000, 1, 2));
+/// assert_eq!(times[2], from_ymd!(2000, 1, 3));
+/// # }
 /// ```
 #[derive(Clone, Copy)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
