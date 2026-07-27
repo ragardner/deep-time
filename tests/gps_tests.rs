@@ -77,3 +77,15 @@ fn to_gps_wk_and_tow_expected_values() {
     assert_eq!(wk, 1845);
     assert_eq!(tow.to_sec(), 315000);
 }
+
+/// GPS week 0 begins 1980-01-06, which is a Sunday (GPS and civil numbering: 0 = Sunday).
+#[test]
+fn gps_epoch_weekday_is_sunday() {
+    let from_ymd = Dt::from_ymd(1980, 1, 6, Scale::GPS, 0, 0, 0, 0);
+    assert_eq!(from_ymd.to_ymd().wkday(), 0, "from_ymd civil weekday (0 = Sunday)");
+    assert_eq!(from_ymd.to_gps_day_of_wk(), 0, "from_ymd GPS day of week (0 = Sunday)");
+
+    let epoch = Dt::GPS_EPOCH;
+    assert_eq!(epoch.to_ymd().wkday(), 0, "GPS_EPOCH civil weekday (0 = Sunday)");
+    assert_eq!(epoch.to_gps_day_of_wk(), 0, "GPS_EPOCH GPS day of week (0 = Sunday)");
+}
