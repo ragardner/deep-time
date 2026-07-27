@@ -298,7 +298,8 @@ impl Dt {
         jd_jan1.saturating_add(day_of_yr as i64 - 1)
     }
 
-    /// Converts a Julian Day Number to the corresponding weekday number (0 = Sunday … 6 = Saturday).
+    /// Converts a Julian Day Number to the corresponding weekday number
+    /// (0 = Sunday … 6 = Saturday).
     #[inline]
     pub const fn jd_to_wkday(jd: i64) -> u8 {
         let rem = ((jd as i128) + 1) % 7;

@@ -22,6 +22,7 @@
 //! - [`days!`]
 //! - [`days_f!`]
 //! - [`weeks!`]
+//! - [`weeks_f!`]
 //!
 //! ### Attoseconds → unit
 //!
@@ -40,6 +41,7 @@
 //! - [`as_days!`]
 //! - [`as_days_f!`]
 //! - [`as_weeks!`]
+//! - [`as_weeks_f!`]
 //!
 //! ### Instant / duration
 //!
@@ -355,6 +357,27 @@ macro_rules! weeks {
     };
 }
 
+/// Converts a floating-point week count ([`Real`](crate::Real)) to total attoseconds (`i128`).
+///
+/// Equivalent to [`Dt::weeks_f_to_attos`](../struct.Dt.html#method.weeks_f_to_attos).
+///
+/// A week is 7 civil days (`604800` seconds).
+///
+/// ## Examples
+///
+/// ```rust
+/// use deep_time::Dt;
+/// use deep_time::macros::weeks_f;
+///
+/// assert_eq!(weeks_f!(0.5), Dt::weeks_f_to_attos(0.5));
+/// ```
+#[macro_export]
+macro_rules! weeks_f {
+    ($x:expr) => {
+        $crate::Dt::weeks_f_to_attos($x)
+    };
+}
+
 /// Converts total attoseconds (`i128`) → whole femtoseconds (`i128`).
 ///
 /// Equivalent to [`Dt::attos_to_fs`](../struct.Dt.html#method.attos_to_fs).
@@ -650,6 +673,31 @@ macro_rules! as_days_f {
 macro_rules! as_weeks {
     ($x:expr) => {
         $crate::Dt::attos_to_weeks($x)
+    };
+}
+
+/// Converts total attoseconds (`i128`) → lossy float weeks ([`Real`](crate::Real)).
+///
+/// Equivalent to [`Dt::attos_to_weeks_f`](../struct.Dt.html#method.attos_to_weeks_f).
+///
+/// A week is 7 civil days (`604800` seconds).
+///
+/// ## Examples
+///
+/// Example shows attos inputs being built with macros rather than counting
+/// attosecond zeros by hand.
+///
+/// ```rust
+/// use deep_time::macros::{as_weeks_f, days, hours, weeks};
+///
+/// // an amount of attoseconds that is equal to
+/// // −1.5 wk becomes -1.5 weeks
+/// assert_eq!(as_weeks_f!(-weeks!(1) - days!(3) - hours!(12)), -1.5);
+/// ```
+#[macro_export]
+macro_rules! as_weeks_f {
+    ($x:expr) => {
+        $crate::Dt::attos_to_weeks_f($x)
     };
 }
 
@@ -1795,6 +1843,7 @@ pub use crate::{
     as_sec_f,
     as_us,
     as_weeks,
+    as_weeks_f,
     // unit → attoseconds
     days,
     days_f,
@@ -1823,4 +1872,5 @@ pub use crate::{
     sec_f,
     us,
     weeks,
+    weeks_f,
 };

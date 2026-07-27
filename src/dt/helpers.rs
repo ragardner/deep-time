@@ -153,6 +153,16 @@ impl Dt {
         weeks.saturating_mul(ATTOS_PER_WEEK)
     }
 
+    /// Converts a floating-point week count → total attoseconds.
+    ///
+    /// Uses the same path as
+    /// [`sec_f_to_attos`](../struct.Dt.html#method.sec_f_to_attos)
+    /// (`weeks × 604_800` seconds).
+    #[inline(always)]
+    pub const fn weeks_f_to_attos(weeks: Real) -> i128 {
+        Self::sec_f_to_attos(weeks * SEC_PER_DAY_F * 7.0)
+    }
+
     /// Converts total attoseconds → whole femtoseconds.
     #[inline(always)]
     pub const fn attos_to_fs(attos: i128) -> i128 {
@@ -229,5 +239,11 @@ impl Dt {
     #[inline(always)]
     pub const fn attos_to_weeks(attos: i128) -> i128 {
         attos / ATTOS_PER_WEEK
+    }
+
+    /// **Lossy** conversion of total attoseconds → floating-point weeks.
+    #[inline(always)]
+    pub const fn attos_to_weeks_f(attos: i128) -> Real {
+        Self::attos_to_sec_f(attos) / (SEC_PER_DAY_F * 7.0)
     }
 }

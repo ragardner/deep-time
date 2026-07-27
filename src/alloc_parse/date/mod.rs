@@ -1,4 +1,5 @@
 pub mod classify;
+pub mod detect_date_order;
 pub mod gen_day_first;
 pub mod gen_month_first;
 pub mod gen_other;
@@ -7,12 +8,12 @@ pub mod gen_unambiguous;
 pub mod gen_year_first;
 pub mod numeric;
 pub mod ordinal;
-pub mod smart_heuristic;
 pub mod syslog;
 pub mod unix_timestamp;
 pub mod year_month;
 
 pub(crate) use classify::*;
+pub(crate) use detect_date_order::*;
 pub(crate) use gen_day_first::*;
 pub(crate) use gen_month_first::*;
 pub(crate) use gen_other::*;
@@ -21,7 +22,6 @@ pub(crate) use gen_unambiguous::*;
 pub(crate) use gen_year_first::*;
 pub(crate) use numeric::*;
 pub(crate) use ordinal::*;
-pub(crate) use smart_heuristic::*;
 pub(crate) use syslog::*;
 pub(crate) use unix_timestamp::*;
 pub(crate) use year_month::*;

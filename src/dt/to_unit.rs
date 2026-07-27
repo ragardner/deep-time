@@ -1,10 +1,33 @@
 use crate::{
     ATTOS_PER_DAY, ATTOS_PER_FS_I128, ATTOS_PER_HOUR, ATTOS_PER_MIN, ATTOS_PER_MS_I128,
     ATTOS_PER_NS_I128, ATTOS_PER_PS_I128, ATTOS_PER_SEC_I128, ATTOS_PER_SECF, ATTOS_PER_US_I128,
-    Dt, Real, dt,
+    ATTOS_PER_WEEK, Dt, Real, dt,
 };
 
 impl Dt {
+    /// Converts total attoseconds to a floating-point count of
+    /// `unit_attos`-sized units.
+    ///
+    /// Euclidean split keeps the remainder in `[0, unit_attos)`. For large
+    /// negative whole parts with a large remainder, rewrites as
+    /// `whole + 1 − small_frac` to avoid cancellation in the float add.
+    #[inline(always)]
+    const fn attos_to_unit_f(attos: i128, unit_attos: i128) -> Real {
+        if attos == 0 {
+            return 0.0;
+        }
+        let whole = attos.div_euclid(unit_attos);
+        let rem = attos.rem_euclid(unit_attos);
+
+        if whole < 0 && rem > unit_attos / 2 {
+            let small = unit_attos - rem;
+            let small_f = f!(small as u128) / f!(unit_attos);
+            f!(whole) + 1.0 - small_f
+        } else {
+            f!(whole) + f!(rem as u128) / f!(unit_attos)
+        }
+    }
+
     /// Returns this duration as a whole number of seconds, dropping any
     /// fraction (always toward zero: 1.7 → 1, −1.7 → −1).
     ///
@@ -433,20 +456,9 @@ impl Dt {
     /// assert_eq!(from_sec!(90).to_mins_f(), 1.5);
     /// assert_eq!(from_sec!(-90).to_mins_f(), -1.5);
     /// ```
+    #[inline(always)]
     pub const fn to_mins_f(&self) -> Real {
-        if self.attos == 0 {
-            return 0.0;
-        }
-        let mins = self.attos.div_euclid(ATTOS_PER_MIN);
-        let rem = self.attos.rem_euclid(ATTOS_PER_MIN);
-
-        if mins < 0 && rem > ATTOS_PER_MIN / 2 {
-            let small = ATTOS_PER_MIN - rem;
-            let small_f = f!(small as u128) / f!(ATTOS_PER_MIN);
-            f!(mins) + 1.0 - small_f
-        } else {
-            f!(mins) + f!(rem as u128) / f!(ATTOS_PER_MIN)
-        }
+        Self::attos_to_unit_f(self.attos, ATTOS_PER_MIN)
     }
 
     /// Splits into whole hours and leftover attoseconds, rounding the whole
@@ -507,20 +519,9 @@ impl Dt {
     /// assert_eq!(from_sec!(90 * 60).to_hours_f(), 1.5);
     /// assert_eq!(from_sec!(-90 * 60).to_hours_f(), -1.5);
     /// ```
+    #[inline(always)]
     pub const fn to_hours_f(&self) -> Real {
-        if self.attos == 0 {
-            return 0.0;
-        }
-        let hours = self.attos.div_euclid(ATTOS_PER_HOUR);
-        let rem = self.attos.rem_euclid(ATTOS_PER_HOUR);
-
-        if hours < 0 && rem > ATTOS_PER_HOUR / 2 {
-            let small = ATTOS_PER_HOUR - rem;
-            let small_f = f!(small as u128) / f!(ATTOS_PER_HOUR);
-            f!(hours) + 1.0 - small_f
-        } else {
-            f!(hours) + f!(rem as u128) / f!(ATTOS_PER_HOUR)
-        }
+        Self::attos_to_unit_f(self.attos, ATTOS_PER_HOUR)
     }
 
     /// Splits into whole days and leftover attoseconds, dropping any fraction
@@ -601,20 +602,102 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_days_f`](../struct.Dt.html#method.from_days_f)
+    #[inline(always)]
     pub const fn to_days_f(&self) -> Real {
-        if self.attos == 0 {
-            return 0.0;
-        }
-        let days = self.attos.div_euclid(ATTOS_PER_DAY);
-        let rem = self.attos.rem_euclid(ATTOS_PER_DAY);
+        Self::attos_to_unit_f(self.attos, ATTOS_PER_DAY)
+    }
 
-        if days < 0 && rem > ATTOS_PER_DAY / 2 {
-            let small = ATTOS_PER_DAY - rem;
-            let small_f = f!(small as u128) / f!(ATTOS_PER_DAY);
-            f!(days) + 1.0 - small_f
-        } else {
-            f!(days) + f!(rem as u128) / f!(ATTOS_PER_DAY)
-        }
+    /// Splits into whole weeks and leftover attoseconds, dropping any fraction
+    /// toward zero (1.25 → 1, −1.25 → −1).
+    ///
+    /// A week is 7 civil days (`604800` seconds). Returns `(whole, frac_attos)`.
+    /// When negative with a fraction, `frac_attos` is negative too — e.g.
+    /// −1.25 weeks is `(-1, -ATTOS_PER_WEEK / 4)`.
+    ///
+    /// For a leftover that is always ≥ 0, use
+    /// [`to_weeks_floor`](../struct.Dt.html#method.to_weeks_floor).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_WEEK};
+    ///
+    /// let dt = Dt::from_weeks(1, Scale::TAI, Scale::TAI)
+    ///     + Dt::new(ATTOS_PER_WEEK / 4, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_weeks(), (1, ATTOS_PER_WEEK / 4));
+    ///
+    /// let dt = Dt::from_weeks(-1, Scale::TAI, Scale::TAI)
+    ///     - Dt::new(ATTOS_PER_WEEK / 4, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_weeks(), (-1, -ATTOS_PER_WEEK / 4));
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_weeks_floor`](../struct.Dt.html#method.to_weeks_floor)
+    /// - [`Dt::from_weeks`](../struct.Dt.html#method.from_weeks)
+    #[inline(always)]
+    pub const fn to_weeks(&self) -> (i128, i128) {
+        (self.attos / ATTOS_PER_WEEK, self.attos % ATTOS_PER_WEEK)
+    }
+
+    /// Splits into whole weeks and leftover attoseconds, rounding the whole
+    /// part down so the leftover is always ≥ 0.
+    ///
+    /// A week is 7 civil days (`604800` seconds). Returns `(whole, frac_attos)`.
+    /// Same floor rule as
+    /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor) (e.g. −1.5 weeks →
+    /// `(-2, half a week)`). For truncation toward zero, use
+    /// [`to_weeks`](../struct.Dt.html#method.to_weeks).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_WEEK};
+    ///
+    /// let dt = Dt::from_weeks(1, Scale::TAI, Scale::TAI)
+    ///     + Dt::new(ATTOS_PER_WEEK / 4, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_weeks_floor(), (1, ATTOS_PER_WEEK / 4));
+    ///
+    /// // -1.25 weeks → -2 whole weeks + 0.75 week leftover
+    /// let dt = Dt::from_weeks(-1, Scale::TAI, Scale::TAI)
+    ///     - Dt::new(ATTOS_PER_WEEK / 4, Scale::TAI, Scale::TAI);
+    /// assert_eq!(dt.to_weeks_floor(), (-2, (ATTOS_PER_WEEK * 3) / 4));
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::to_weeks`](../struct.Dt.html#method.to_weeks)
+    #[inline(always)]
+    pub const fn to_weeks_floor(&self) -> (i128, i128) {
+        (
+            self.attos.div_euclid(ATTOS_PER_WEEK),
+            self.attos.rem_euclid(ATTOS_PER_WEEK),
+        )
+    }
+
+    /// Converts this duration to weeks as a floating-point number.
+    ///
+    /// A week is 7 civil days (`604800` seconds).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_WEEK};
+    ///
+    /// assert_eq!(Dt::ZERO.to_weeks_f(), 0.0);
+    ///
+    /// let half = Dt::new(ATTOS_PER_WEEK / 2, Scale::TAI, Scale::TAI);
+    /// assert_eq!((Dt::from_weeks(1, Scale::TAI, Scale::TAI) + half).to_weeks_f(), 1.5);
+    /// assert_eq!((Dt::from_weeks(-1, Scale::TAI, Scale::TAI) - half).to_weeks_f(), -1.5);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_weeks`](../struct.Dt.html#method.from_weeks)
+    /// - [`Dt::to_weeks`](../struct.Dt.html#method.to_weeks)
+    #[inline(always)]
+    pub const fn to_weeks_f(&self) -> Real {
+        Self::attos_to_unit_f(self.attos, ATTOS_PER_WEEK)
     }
 
     /// Splits into whole milliseconds and leftover attoseconds, dropping any

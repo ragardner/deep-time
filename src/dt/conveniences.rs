@@ -514,14 +514,33 @@ impl Dt {
         Self::from_diff_and_scale(elapsed, Self::GPS_EPOCH, true)
     }
 
-    /// Returns the GPS week number and Time of Week (TOW) for this instant.
+    /// Returns the continuous GPS week number and Time of Week (TOW) for this instant.
     ///
     /// Elapsed time since [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH)
     /// is computed by [`Dt::to_gps`](../struct.Dt.html#method.to_gps) — on this [`Dt`]'s
-    /// `target` time scale — and then split into whole weeks plus a remainder.
+    /// `target` time scale — and then split with
+    /// [`Dt::to_weeks_floor`](../struct.Dt.html#method.to_weeks_floor) into whole weeks plus a
+    /// non-negative remainder.
     ///
     /// This is the inverse of
     /// [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow).
+    ///
+    /// ## What this is (GPS terms)
+    ///
+    /// Matches the usual software form of GPS time: **continuous week** + **time of week**
+    /// (TOW / seconds of week), as in RINEX, IGS calendars, and most receiver APIs.
+    ///
+    /// - **Week 0** starts at the GPS epoch (**1980-01-06 00:00:00** GPS time). GPS weeks
+    ///   start on **Sunday**.
+    /// - **TOW** is how far into that week the instant is. GNSS docs often quote that span in
+    ///   SI seconds in `[0, 604_800)`; here it is a [`Dt`] so sub-second precision is kept.
+    ///   Use [`to_sec`](../struct.Dt.html#method.to_sec) /
+    ///   [`to_sec_f`](../struct.Dt.html#method.to_sec_f) on `tow` when you want whole or
+    ///   floating seconds of week.
+    /// - The returned **week is continuous** (e.g. 1845 in 2015), not the modular week field
+    ///   in the navigation message (legacy LNAV: 10 bits, `0…1023`; modern CNAV: 13 bits,
+    ///   `0…8191`). For the modular broadcast field, use `week.rem_euclid(1024)` (LNAV) or
+    ///   `week.rem_euclid(8192)` (CNAV).
     ///
     /// ## Important:
     ///
@@ -537,18 +556,17 @@ impl Dt {
     ///
     /// A `(week, tow)` pair:
     ///
-    /// - `week` (`i64`): whole weeks in the elapsed time from
-    ///   [`Dt::to_gps`](../struct.Dt.html#method.to_gps). Week 0 starts at the GPS epoch
-    ///   (1980-01-06). Before that date the elapsed time is negative and `div_euclid` yields a
-    ///   negative week — this is not a broadcast GPS week number, just how the split is defined.
-    ///   A plain integer is enough here; it is only a week count, not a duration in attoseconds.
-    /// - `tow` ([`Dt`]): seconds-within-the-week as attoseconds in `0 .. 604800`. Its `scale` and
+    /// - `week` (`i128`): how many full weeks have completed since
+    ///   [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH) (via
+    ///   [`Dt::to_gps`](../struct.Dt.html#method.to_gps)). Example: `1845`. Before the epoch,
+    ///   floor division yields a **negative** week — continuous library time, not a broadcast
+    ///   GPS week number.
+    /// - `tow` ([`Dt`]): the within-week remainder. Its attosecond count is in
+    ///   `[0, ATTOS_PER_WEEK)` — less than one week, and ≥ 0 after the epoch. Its `scale` and
     ///   `target` are set to this [`Dt`]'s `target` so
     ///   [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow) knows which
-    ///   time scale the pair belongs to. `tow` is a [`Dt`] rather than a bare integer so
-    ///   sub-second precision and scale are preserved together; the week number alone cannot
-    ///   carry either. `div_euclid` / `rem_euclid` are used (not truncating `/`) so TOW stays
-    ///   non-negative even when the elapsed time is negative.
+    ///   time scale the pair belongs to. Floor division keeps `tow` non-negative even when
+    ///   the elapsed time is negative (pre-epoch).
     ///
     /// ## Examples
     ///
@@ -568,10 +586,10 @@ impl Dt {
     ///
     /// - [`Dt::from_gps_wk_and_tow`](../struct.Dt.html#method.from_gps_wk_and_tow)
     /// - [`Dt::to_gps`](../struct.Dt.html#method.to_gps)
+    /// - [`Dt::to_gps_day_of_wk`](../struct.Dt.html#method.to_gps_day_of_wk)
+    #[inline]
     pub const fn to_gps_wk_and_tow(&self) -> (i128, Dt) {
-        let total_attos = self.to_gps().to_attos();
-        let wk = total_attos.div_euclid(ATTOS_PER_WEEK);
-        let tow_attos = total_attos.rem_euclid(ATTOS_PER_WEEK);
+        let (wk, tow_attos) = self.to_gps().to_weeks_floor();
         // was converted to target scale, scale is now target
         (wk, Dt::new(tow_attos, self.target, self.target))
     }
@@ -601,12 +619,13 @@ impl Dt {
     /// `tow` must be a [`Dt`] (not a bare second count) because
     /// [`Dt::from_gps`](../struct.Dt.html#method.from_gps) needs both the within-week attoseconds
     /// and the `scale` / `target` that say which time scale `week` and `tow` were expressed on.
-    /// The week number is multiplied back into attoseconds (`week * 604800` seconds); only `tow`
+    /// The week number is multiplied back into attoseconds (`week * ATTOS_PER_WEEK`); only `tow`
     /// carries the scale and sub-week precision needed for the round trip.
     ///
-    /// `tow` should be in `0 .. 604800` seconds, as returned by
-    /// [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow). Negative `week`
-    /// values only arise from dates before 1980-01-06 (see that function).
+    /// Prefer a `tow` from [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
+    /// (non-negative, strictly less than one week). `week` is the **continuous** GPS week
+    /// (not the modular 10-/13-bit broadcast field). Negative `week` values only arise from
+    /// dates before 1980-01-06 (see that function).
     ///
     /// ## Examples
     ///
@@ -633,8 +652,10 @@ impl Dt {
 
     /// Returns the day of the GPS week (0 = Sunday, 1 = Monday, …, 6 = Saturday).
     ///
-    /// This value is computed directly from the GPS Time of Week and is
-    /// independent of the Gregorian calendar or civil time.
+    /// GPS weeks start on **Sunday**. Derived from the Time of Week of
+    /// [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
+    /// (`floor(tow.to_attos() / ATTOS_PER_DAY)`), not from the civil Gregorian weekday of the
+    /// calendar date.
     pub const fn to_gps_day_of_wk(&self) -> u8 {
         let (_, tow) = self.to_gps_wk_and_tow();
         let sec = tow.to_attos() / ATTOS_PER_SEC_I128;
