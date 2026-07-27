@@ -194,6 +194,16 @@ impl Dt {
     /// Converts this duration to seconds as an [`f64`].
     ///
     /// Alias of [`to_sec_f`](../struct.Dt.html#method.to_sec_f).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, ms};
+    ///
+    /// assert_eq!(Dt::ZERO.to_f64(), 0.0);
+    /// assert!((from_sec!(1, ms!(500)).to_f64() - 1.5).abs() < 1e-12);
+    /// ```
     #[inline(always)]
     pub const fn to_f64(&self) -> f64 {
         self.to_sec_f()
@@ -297,7 +307,7 @@ impl Dt {
     ///
     /// ```rust
     /// use deep_time::Dt;
-    /// use deep_time::macros::{from_sec, ms, sec};
+    /// use deep_time::macros::{from_sec, ms};
     ///
     /// assert_eq!(from_sec!(1, ms!(300)).round_to_sec(), from_sec!(1));
     /// assert_eq!(from_sec!(1, ms!(600)).round_to_sec(), from_sec!(2));
@@ -310,6 +320,16 @@ impl Dt {
     }
 
     /// Returns the total time in attoseconds.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_sec, ms, sec};
+    ///
+    /// assert_eq!(Dt::ZERO.to_attos(), 0);
+    /// assert_eq!(from_sec!(1, ms!(300)).to_attos(), sec!(1) + ms!(300));
+    /// ```
     #[inline(always)]
     pub const fn to_attos(&self) -> i128 {
         self.attos
@@ -321,6 +341,18 @@ impl Dt {
     /// Returns `(whole, frac_attos)`. Same floor rule as
     /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
     /// For truncation toward zero, use [`to_fs`](../struct.Dt.html#method.to_fs).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::from_fs;
+    ///
+    /// // +1.5 fs → 1 fs + 500 attoseconds leftover
+    /// assert_eq!(from_fs!(1, 500).to_fs_floor(), (1, 500));
+    /// // -1.5 fs → -2 fs + 500 attoseconds leftover
+    /// assert_eq!(from_fs!(-1, -500).to_fs_floor(), (-2, 500));
+    /// ```
     #[inline(always)]
     pub const fn to_fs_floor(&self) -> (i128, i128) {
         (
@@ -335,6 +367,18 @@ impl Dt {
     /// Returns `(whole, frac_attos)`. Same floor rule as
     /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
     /// For truncation toward zero, use [`to_ps`](../struct.Dt.html#method.to_ps).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_ps, fs};
+    ///
+    /// // +1.3 ps → 1 ps + 0.3 ps leftover
+    /// assert_eq!(from_ps!(1, fs!(300)).to_ps_floor(), (1, fs!(300)));
+    /// // -1.3 ps → -2 ps + 0.7 ps leftover
+    /// assert_eq!(from_ps!(-1, -fs!(300)).to_ps_floor(), (-2, fs!(700)));
+    /// ```
     #[inline(always)]
     pub const fn to_ps_floor(&self) -> (i128, i128) {
         (
@@ -349,6 +393,18 @@ impl Dt {
     /// Returns `(whole, frac_attos)`. Same floor rule as
     /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
     /// For truncation toward zero, use [`to_ns`](../struct.Dt.html#method.to_ns).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_ns, ps};
+    ///
+    /// // +1.3 ns → 1 ns + 0.3 ns leftover
+    /// assert_eq!(from_ns!(1, ps!(300)).to_ns_floor(), (1, ps!(300)));
+    /// // -1.3 ns → -2 ns + 0.7 ns leftover
+    /// assert_eq!(from_ns!(-1, -ps!(300)).to_ns_floor(), (-2, ps!(700)));
+    /// ```
     #[inline(always)]
     pub const fn to_ns_floor(&self) -> (i128, i128) {
         (
@@ -363,6 +419,18 @@ impl Dt {
     /// Returns `(whole, frac_attos)`. Same floor rule as
     /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor).
     /// For truncation toward zero, use [`to_us`](../struct.Dt.html#method.to_us).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_us, ns};
+    ///
+    /// // +1.3 µs → 1 µs + 0.3 µs leftover
+    /// assert_eq!(from_us!(1, ns!(300)).to_us_floor(), (1, ns!(300)));
+    /// // -1.3 µs → -2 µs + 0.7 µs leftover
+    /// assert_eq!(from_us!(-1, -ns!(300)).to_us_floor(), (-2, ns!(700)));
+    /// ```
     #[inline(always)]
     pub const fn to_us_floor(&self) -> (i128, i128) {
         (
@@ -376,8 +444,8 @@ impl Dt {
     ///
     /// Returns `(whole, frac_attos)`. Same floor rule as
     /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor)
-    /// (e.g. −1.3 ms → `(-2, 0.7 ms)`). For truncation toward zero, use
-    /// [`to_ms`](../struct.Dt.html#method.to_ms).
+    /// (e.g. −1.3 ms → `(-2, 700 µs in attoseconds)`). For truncation toward
+    /// zero, use [`to_ms`](../struct.Dt.html#method.to_ms).
     ///
     /// ## Examples
     ///
@@ -411,6 +479,7 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, sec};
     ///
+    /// // 90 s → 1 min + 30 s leftover
     /// assert_eq!(from_sec!(90).to_mins_floor(), (1, sec!(30)));
     /// // -90 s → -2 min + 30 s leftover
     /// assert_eq!(from_sec!(-90).to_mins_floor(), (-2, sec!(30)));
@@ -436,6 +505,7 @@ impl Dt {
     /// use deep_time::Dt;
     /// use deep_time::macros::{from_sec, sec};
     ///
+    /// // 90 s → 1 min + 30 s leftover (signed on negatives)
     /// assert_eq!(from_sec!(90).to_mins(), (1, sec!(30)));
     /// assert_eq!(from_sec!(-90).to_mins(), (-1, sec!(-30)));
     /// ```
@@ -471,12 +541,12 @@ impl Dt {
     ///
     /// ```rust
     /// use deep_time::Dt;
-    /// use deep_time::macros::{from_sec, sec};
+    /// use deep_time::macros::{dt, mins};
     ///
-    /// // 90 minutes → 1 hour + 30 minutes
-    /// assert_eq!(from_sec!(90 * 60).to_hours_floor(), (1, sec!(30 * 60)));
+    /// // 90 minutes → 1 hour + 30 minutes leftover
+    /// assert_eq!(dt!(mins!(90)).to_hours_floor(), (1, mins!(30)));
     /// // -90 minutes → -2 hours + 30 minutes leftover
-    /// assert_eq!(from_sec!(-90 * 60).to_hours_floor(), (-2, sec!(30 * 60)));
+    /// assert_eq!(dt!(mins!(-90)).to_hours_floor(), (-2, mins!(30)));
     /// ```
     #[inline(always)]
     pub const fn to_hours_floor(&self) -> (i128, i128) {
@@ -497,10 +567,10 @@ impl Dt {
     ///
     /// ```rust
     /// use deep_time::Dt;
-    /// use deep_time::macros::{from_sec, sec};
+    /// use deep_time::macros::{dt, mins};
     ///
-    /// assert_eq!(from_sec!(90 * 60).to_hours(), (1, sec!(30 * 60)));
-    /// assert_eq!(from_sec!(-90 * 60).to_hours(), (-1, sec!(-30 * 60)));
+    /// assert_eq!(dt!(mins!(90)).to_hours(), (1, mins!(30)));
+    /// assert_eq!(dt!(mins!(-90)).to_hours(), (-1, -mins!(30)));
     /// ```
     #[inline(always)]
     pub const fn to_hours(&self) -> (i128, i128) {
@@ -513,11 +583,11 @@ impl Dt {
     ///
     /// ```rust
     /// use deep_time::Dt;
-    /// use deep_time::macros::from_sec;
+    /// use deep_time::macros::{dt, mins};
     ///
     /// assert_eq!(Dt::ZERO.to_hours_f(), 0.0);
-    /// assert_eq!(from_sec!(90 * 60).to_hours_f(), 1.5);
-    /// assert_eq!(from_sec!(-90 * 60).to_hours_f(), -1.5);
+    /// assert_eq!(dt!(mins!(90)).to_hours_f(), 1.5);
+    /// assert_eq!(dt!(mins!(-90)).to_hours_f(), -1.5);
     /// ```
     #[inline(always)]
     pub const fn to_hours_f(&self) -> Real {
@@ -529,7 +599,7 @@ impl Dt {
     ///
     /// Returns `(whole, frac_attos)`. When negative with a fraction,
     /// `frac_attos` is negative too — e.g. −1.25 days is
-    /// `(-1, -ATTOS_PER_DAY / 4)`.
+    /// `(-1, −6 hours in attoseconds)`.
     ///
     /// For a leftover that is always ≥ 0, use
     /// [`to_days_floor`](../struct.Dt.html#method.to_days_floor).
@@ -537,13 +607,14 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY};
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_days_f, hours};
     ///
-    /// let dt = Dt::from_days_f(1.25, Scale::TAI, Scale::TAI);
-    /// assert_eq!(dt.to_days(), (1, ATTOS_PER_DAY / 4));
+    /// // 1.25 d → 1 day + 6 hours leftover
+    /// assert_eq!(from_days_f!(1.25).to_days(), (1, hours!(6)));
     ///
-    /// let dt = Dt::from_days_f(-1.25, Scale::TAI, Scale::TAI);
-    /// assert_eq!(dt.to_days(), (-1, -ATTOS_PER_DAY / 4));
+    /// // -1.25 d → -1 day with signed -6 hours leftover
+    /// assert_eq!(from_days_f!(-1.25).to_days(), (-1, -hours!(6)));
     /// ```
     ///
     /// ## See also
@@ -560,20 +631,20 @@ impl Dt {
     ///
     /// Returns `(whole, frac_attos)`. Same floor rule as
     /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor) (e.g. −1.5 days →
-    /// `(-2, half a day)`). For truncation toward zero, use
+    /// `(-2, half a day in attoseconds)`). For truncation toward zero, use
     /// [`to_days`](../struct.Dt.html#method.to_days).
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_DAY};
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_days_f, hours};
     ///
-    /// let dt = Dt::from_days_f(1.25, Scale::TAI, Scale::TAI);
-    /// assert_eq!(dt.to_days_floor(), (1, ATTOS_PER_DAY / 4));
+    /// // 1.25 d → 1 day + 6 hours leftover
+    /// assert_eq!(from_days_f!(1.25).to_days_floor(), (1, hours!(6)));
     ///
-    /// // -1.25 days → -2 whole days + 0.75 day leftover
-    /// let dt = Dt::from_days_f(-1.25, Scale::TAI, Scale::TAI);
-    /// assert_eq!(dt.to_days_floor(), (-2, (ATTOS_PER_DAY * 3) / 4));
+    /// // -1.25 d → -2 whole days + 18 hours leftover
+    /// assert_eq!(from_days_f!(-1.25).to_days_floor(), (-2, hours!(18)));
     /// ```
     ///
     /// ## See also
@@ -592,11 +663,12 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale};
+    /// use deep_time::Dt;
+    /// use deep_time::macros::from_days_f;
     ///
     /// assert_eq!(Dt::ZERO.to_days_f(), 0.0);
-    /// assert_eq!(Dt::from_days_f(1.5, Scale::TAI, Scale::TAI).to_days_f(), 1.5);
-    /// assert_eq!(Dt::from_days_f(-1.5, Scale::TAI, Scale::TAI).to_days_f(), -1.5);
+    /// assert_eq!(from_days_f!(1.5).to_days_f(), 1.5);
+    /// assert_eq!(from_days_f!(-1.5).to_days_f(), -1.5);
     /// ```
     ///
     /// ## See also
@@ -610,9 +682,9 @@ impl Dt {
     /// Splits into whole weeks and leftover attoseconds, dropping any fraction
     /// toward zero (1.25 → 1, −1.25 → −1).
     ///
-    /// A week is 7 civil days (`604800` seconds). Returns `(whole, frac_attos)`.
+    /// A week is 7 civil days (`604_800` seconds). Returns `(whole, frac_attos)`.
     /// When negative with a fraction, `frac_attos` is negative too — e.g.
-    /// −1.25 weeks is `(-1, -ATTOS_PER_WEEK / 4)`.
+    /// −1.25 weeks is `(-1, −1 day − 18 hours in attoseconds)`.
     ///
     /// For a leftover that is always ≥ 0, use
     /// [`to_weeks_floor`](../struct.Dt.html#method.to_weeks_floor).
@@ -620,15 +692,13 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_WEEK};
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{days, dt, hours, weeks};
     ///
-    /// let dt = Dt::from_weeks(1, Scale::TAI, Scale::TAI)
-    ///     + Dt::new(ATTOS_PER_WEEK / 4, Scale::TAI, Scale::TAI);
-    /// assert_eq!(dt.to_weeks(), (1, ATTOS_PER_WEEK / 4));
-    ///
-    /// let dt = Dt::from_weeks(-1, Scale::TAI, Scale::TAI)
-    ///     - Dt::new(ATTOS_PER_WEEK / 4, Scale::TAI, Scale::TAI);
-    /// assert_eq!(dt.to_weeks(), (-1, -ATTOS_PER_WEEK / 4));
+    /// // Quarter week = 1 day + 18 hours
+    /// let q = days!(1) + hours!(18);
+    /// assert_eq!(dt!(weeks!(1) + q).to_weeks(), (1, q));
+    /// assert_eq!(dt!(-weeks!(1) - q).to_weeks(), (-1, -q));
     /// ```
     ///
     /// ## See also
@@ -643,25 +713,25 @@ impl Dt {
     /// Splits into whole weeks and leftover attoseconds, rounding the whole
     /// part down so the leftover is always ≥ 0.
     ///
-    /// A week is 7 civil days (`604800` seconds). Returns `(whole, frac_attos)`.
+    /// A week is 7 civil days (`604_800` seconds). Returns `(whole, frac_attos)`.
     /// Same floor rule as
     /// [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor) (e.g. −1.5 weeks →
-    /// `(-2, half a week)`). For truncation toward zero, use
+    /// `(-2, half a week in attoseconds)`). For truncation toward zero, use
     /// [`to_weeks`](../struct.Dt.html#method.to_weeks).
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_WEEK};
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{days, dt, hours, weeks};
     ///
-    /// let dt = Dt::from_weeks(1, Scale::TAI, Scale::TAI)
-    ///     + Dt::new(ATTOS_PER_WEEK / 4, Scale::TAI, Scale::TAI);
-    /// assert_eq!(dt.to_weeks_floor(), (1, ATTOS_PER_WEEK / 4));
+    /// // Quarter week = 1 day + 18 hours; three-quarter = 5 days + 6 hours
+    /// let q = days!(1) + hours!(18);
+    /// let three_q = days!(5) + hours!(6);
+    /// assert_eq!(dt!(weeks!(1) + q).to_weeks_floor(), (1, q));
     ///
     /// // -1.25 weeks → -2 whole weeks + 0.75 week leftover
-    /// let dt = Dt::from_weeks(-1, Scale::TAI, Scale::TAI)
-    ///     - Dt::new(ATTOS_PER_WEEK / 4, Scale::TAI, Scale::TAI);
-    /// assert_eq!(dt.to_weeks_floor(), (-2, (ATTOS_PER_WEEK * 3) / 4));
+    /// assert_eq!(dt!(-weeks!(1) - q).to_weeks_floor(), (-2, three_q));
     /// ```
     ///
     /// ## See also
@@ -677,18 +747,20 @@ impl Dt {
 
     /// Converts this duration to weeks as a floating-point number.
     ///
-    /// A week is 7 civil days (`604800` seconds).
+    /// A week is 7 civil days (`604_800` seconds).
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, Scale, consts::ATTOS_PER_WEEK};
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{days, dt, hours, weeks};
     ///
     /// assert_eq!(Dt::ZERO.to_weeks_f(), 0.0);
     ///
-    /// let half = Dt::new(ATTOS_PER_WEEK / 2, Scale::TAI, Scale::TAI);
-    /// assert_eq!((Dt::from_weeks(1, Scale::TAI, Scale::TAI) + half).to_weeks_f(), 1.5);
-    /// assert_eq!((Dt::from_weeks(-1, Scale::TAI, Scale::TAI) - half).to_weeks_f(), -1.5);
+    /// // Half week = 3 days + 12 hours
+    /// let half = days!(3) + hours!(12);
+    /// assert_eq!(dt!(weeks!(1) + half).to_weeks_f(), 1.5);
+    /// assert_eq!(dt!(-weeks!(1) - half).to_weeks_f(), -1.5);
     /// ```
     ///
     /// ## See also
@@ -730,6 +802,16 @@ impl Dt {
     /// Returns `(whole, frac_attos)`. When negative with a fraction,
     /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
     /// [`to_us_floor`](../struct.Dt.html#method.to_us_floor).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_us, ns};
+    ///
+    /// assert_eq!(from_us!(1, ns!(300)).to_us(), (1, ns!(300)));
+    /// assert_eq!(from_us!(-1, -ns!(300)).to_us(), (-1, -ns!(300)));
+    /// ```
     #[inline(always)]
     pub const fn to_us(&self) -> (i128, i128) {
         (
@@ -744,6 +826,16 @@ impl Dt {
     /// Returns `(whole, frac_attos)`. When negative with a fraction,
     /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
     /// [`to_ns_floor`](../struct.Dt.html#method.to_ns_floor).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_ns, ps};
+    ///
+    /// assert_eq!(from_ns!(1, ps!(300)).to_ns(), (1, ps!(300)));
+    /// assert_eq!(from_ns!(-1, -ps!(300)).to_ns(), (-1, -ps!(300)));
+    /// ```
     #[inline(always)]
     pub const fn to_ns(&self) -> (i128, i128) {
         (
@@ -758,6 +850,16 @@ impl Dt {
     /// Returns `(whole, frac_attos)`. When negative with a fraction,
     /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
     /// [`to_ps_floor`](../struct.Dt.html#method.to_ps_floor).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::{from_ps, fs};
+    ///
+    /// assert_eq!(from_ps!(1, fs!(300)).to_ps(), (1, fs!(300)));
+    /// assert_eq!(from_ps!(-1, -fs!(300)).to_ps(), (-1, -fs!(300)));
+    /// ```
     #[inline(always)]
     pub const fn to_ps(&self) -> (i128, i128) {
         (
@@ -772,6 +874,16 @@ impl Dt {
     /// Returns `(whole, frac_attos)`. When negative with a fraction,
     /// `frac_attos` is negative too. For a leftover that is always ≥ 0, use
     /// [`to_fs_floor`](../struct.Dt.html#method.to_fs_floor).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    /// use deep_time::macros::from_fs;
+    ///
+    /// assert_eq!(from_fs!(1, 500).to_fs(), (1, 500));
+    /// assert_eq!(from_fs!(-1, -500).to_fs(), (-1, -500));
+    /// ```
     #[inline(always)]
     pub const fn to_fs(&self) -> (i128, i128) {
         (
