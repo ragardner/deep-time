@@ -83,13 +83,14 @@ impl<const N: usize> BufStr<N> {
 
     /// Returns the number of valid content bytes.
     #[inline(always)]
-    pub fn len(&self) -> usize {
-        (self.len as usize).min(N)
+    pub const fn len(&self) -> usize {
+        let len = self.len as usize;
+        if len < N { len } else { N }
     }
 
     /// Returns `true` if the buffer has no content.
     #[inline(always)]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.len == 0
     }
 

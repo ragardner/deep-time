@@ -100,16 +100,19 @@ where
 {
     /// Creates a new error with the given kind and empty reason.
     #[inline(always)]
-    pub fn new(kind: K) -> Self {
+    pub const fn new(kind: K) -> Self {
         Self {
             kind,
-            reason: BufStr::default(),
+            reason: BufStr {
+                bytes: [0; REASON_LEN],
+                len: 0,
+            },
         }
     }
 
     /// Creates a new error with the given kind and reason.
     #[inline(always)]
-    pub fn with_reason(kind: K, reason: BufStr<REASON_LEN>) -> Self {
+    pub const fn with_reason(kind: K, reason: BufStr<REASON_LEN>) -> Self {
         Self { kind, reason }
     }
 
@@ -145,13 +148,13 @@ where
 
     /// Returns the current error kind.
     #[inline(always)]
-    pub fn kind(&self) -> K {
+    pub const fn kind(&self) -> K {
         self.kind
     }
 
     /// Returns the accumulated reason.
     #[inline(always)]
-    pub fn reason(&self) -> &BufStr<REASON_LEN> {
+    pub const fn reason(&self) -> &BufStr<REASON_LEN> {
         &self.reason
     }
 }
