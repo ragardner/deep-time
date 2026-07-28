@@ -239,10 +239,10 @@ impl Scale {
     /// Size of the canonical wire representation in bytes.
     pub const WIRE_SIZE: usize = 1;
 
-    /// Attempts to reconstruct a `Scale` from its wire byte representation.
+    /// Reconstructs a [`Scale`] from its single-byte wire form.
     ///
-    /// - Returns `Custom` for any value that does not correspond to a known variant.
-    /// - This provides safe deserialization from untrusted sources.
+    /// Always succeeds. Known values map to the matching variant; any other
+    /// byte becomes [`Scale::Custom`]. Safe for untrusted input.
     pub const fn from_u8(v: u8) -> Scale {
         match v {
             0 => Self::TAI,
@@ -266,8 +266,8 @@ impl Scale {
 
     /// Returns the wire representation of this `Scale` as a single byte.
     ///
-    /// The returned byte is the `repr(u8)` discriminant of the enum.
-    /// This is the canonical on-wire form used by [`Dt`](crate::Dt).
+    /// This is the canonical on-wire form used by [`Dt`](crate::Dt)
+    /// (`0` = TAI, `1` = TT, … — the enum’s `repr(u8)` order).
     #[inline(always)]
     pub const fn to_u8(self) -> u8 {
         self as u8

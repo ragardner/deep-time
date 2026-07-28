@@ -71,6 +71,7 @@ run_examples() {
     script_run cargo_msrv run --example precision_control
     script_run cargo_msrv run --example sidereal_time --features "sidereal-earth,eop,std"
     script_run cargo_msrv run --example proper_time_path --features physics
+    script_run cargo_msrv run --example ccsds_vs_wire --features wire
     script_run cargo_msrv run --example readme --features "parse,jiff-tz,euro"
 }
 

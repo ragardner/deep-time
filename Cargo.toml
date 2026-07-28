@@ -234,6 +234,10 @@ required-features = ["sidereal-earth", "eop", "std"]
 name = "proper_time_path"
 required-features = ["physics"]
 
+[[example]]
+name = "ccsds_vs_wire"
+required-features = ["wire"]
+
 [[bench]]
 name = "perf"
 harness = false

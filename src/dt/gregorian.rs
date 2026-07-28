@@ -176,7 +176,6 @@ impl Dt {
     ///
     /// - Returns `(year, month, day)` where `month` ∈ [1, 12] and `day` ∈ [1, 31].
     /// - Inverse of [`Dt::ymd_to_jd`](#method.ymd_to_jd).
-    /// - Howard Hinnant `civil_from_days`: `z = jd - 1721120`.
     pub const fn jd_to_ymd(jd: i64) -> (i64, u8, u8) {
         // Epoch shift can exit i64 near i64::MIN; add 12 eras and fix the year.
         let (z, year_adj) = match jd.checked_sub(1_721_120) {
@@ -212,9 +211,6 @@ impl Dt {
     /// * `yr`  - Year (any `i64`; proleptic Gregorian)
     /// * `mo` - Month (**1-based**: `1` = January, `2` = February, ..., `12` = December)
     /// * `day`   - Day of the month (**1-based**: `1` = first day of the month)
-    ///
-    /// The algorithm matches the standard astronomical convention used throughout the library
-    /// (`ymd_to_jd(2000, 1, 1) == 2451545`).
     ///
     /// ## Notes
     ///

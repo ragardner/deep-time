@@ -489,8 +489,8 @@ impl Dt {
     ///
     /// - Byte `0`: Version (`WIRE_VERSION`)
     /// - Bytes `[1..17]`: total attoseconds as little-endian `i128`
-    /// - Byte `17`: scale as `u8` (enum discriminant)
-    /// - Byte `18`: target as `u8` (enum discriminant)
+    /// - Byte `17`: scale as `u8`
+    /// - Byte `18`: target as `u8`
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0] = Self::WIRE_VERSION;
@@ -502,15 +502,22 @@ impl Dt {
 
     /// Deserializes a [`Dt`] from exactly 19 bytes of wire data.
     ///
-    /// Returns `None` if the version byte is unknown, the length is wrong,
-    /// or the scale byte is not a valid `Scale` variant.
+    /// ## Errors
+    ///
+    /// Returns `None` only when:
+    /// - `bytes` is not exactly [`WIRE_SIZE`](Self::WIRE_SIZE) long, or
+    /// - the version byte is not [`WIRE_VERSION`](Self::WIRE_VERSION).
+    ///
+    /// Scale and target never cause failure: each is passed through
+    /// [`Scale::from_u8`], which substitutes [`Scale::Custom`] for any
+    /// unrecognized value.
     ///
     /// ## Wire Format
     ///
     /// - Byte `0`: Version (`WIRE_VERSION`)
     /// - Bytes `[1..17]`: total attoseconds as little-endian `i128`
-    /// - Byte `17`: scale as `u8` (enum discriminant)
-    /// - Byte `18`: target as `u8` (enum discriminant)
+    /// - Byte `17`: scale as `u8`
+    /// - Byte `18`: target as `u8`
     ///
     /// ## Security
     ///

@@ -236,6 +236,11 @@ impl Dt {
     /// to convert from to TAI, and then the `new` arg dictates the new time scale.
     ///
     /// - Assumes that this [`Dt`] is measuring time since **2000-01-01 12:00:00**.
+    /// - Does **not** change that reference epoch (e.g. `.to(Scale::GPS)` is still
+    ///   attoseconds since J2000 noon on GPS, not since the GPS constellation epoch).
+    ///   Use helpers such as [`Dt::to_gps`](../struct.Dt.html#method.to_gps) or
+    ///   [`Dt::to_unix`](../struct.Dt.html#method.to_unix) for elapsed time since a
+    ///   named epoch.
     /// - It is not necessary to do this if you just want to use such functions
     ///   as [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) as these internally
     ///   convert to the scale of the object's `target` field before output.

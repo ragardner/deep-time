@@ -316,12 +316,14 @@ impl ExactSizeIterator for TimeRange {
 
 #[cfg(feature = "wire")]
 impl Every {
-    /// Size of the canonical wire representation in bytes (`2 × Dt::WIRE_SIZE`).
+    /// Size of the canonical wire representation in bytes
+    /// (`2 ×` [`Dt::WIRE_SIZE`](struct.Dt.html#associatedconstant.WIRE_SIZE)).
     pub const WIRE_SIZE: usize = Dt::WIRE_SIZE + Dt::WIRE_SIZE;
 
     /// Serializes this `Every` builder into a fixed buffer.
     ///
-    /// The layout is the concatenation of `start` and `step` wire encodings.
+    /// The layout is the concatenation of `start` and `step`
+    /// [`Dt`](struct.Dt.html) wire encodings.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         let start = self.start.to_wire_bytes();
@@ -332,12 +334,18 @@ impl Every {
         buf
     }
 
-    /// Deserializes an `Every` builder from exactly `WIRE_SIZE` bytes.
+    /// Deserializes an `Every` builder from exactly [`WIRE_SIZE`](Self::WIRE_SIZE) bytes.
+    ///
+    /// ## Errors
+    ///
+    /// Returns `None` only when the length is wrong or either nested
+    /// [`Dt::from_wire_bytes`](struct.Dt.html#method.from_wire_bytes) fails
+    /// (unknown [`Dt::WIRE_VERSION`](struct.Dt.html#associatedconstant.WIRE_VERSION)).
+    /// Nested scale/target bytes never fail decode.
     ///
     /// ## Security
     ///
-    /// Safe for untrusted input. Fixed size with strict validation
-    /// of the inner `Dt` and `Dt`.
+    /// Safe for untrusted input.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -383,17 +391,26 @@ impl TimeRange {
         buf
     }
 
-    /// Deserializes a `TimeRange` from exactly `WIRE_SIZE` bytes.
+    /// Deserializes a `TimeRange` from exactly [`WIRE_SIZE`](Self::WIRE_SIZE) bytes.
     ///
     /// The iterator is reconstructed in its initial state
     /// (`current = start`, `finished = false`).
     ///
-    /// Returns `None` if the version is unknown or any component is invalid.
+    /// ## Errors
+    ///
+    /// Returns `None` only when:
+    /// - `bytes` is not exactly [`WIRE_SIZE`](Self::WIRE_SIZE) long,
+    /// - the `TimeRange` version byte is not [`WIRE_VERSION`](Self::WIRE_VERSION), or
+    /// - any nested [`Dt::from_wire_bytes`](struct.Dt.html#method.from_wire_bytes)
+    ///   fails (unknown
+    ///   [`Dt::WIRE_VERSION`](struct.Dt.html#associatedconstant.WIRE_VERSION)).
+    ///
+    /// Nested scale/target bytes never fail decode. The inclusive flag is
+    /// any non-zero byte as `true` (not a hard fail).
     ///
     /// ## Security
     ///
-    /// Safe for untrusted input. Fixed size with layered validation
-    /// of all inner types. No runtime iterator state is accepted from the wire.
+    /// Safe for untrusted input. No runtime iterator state is read from the wire.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;

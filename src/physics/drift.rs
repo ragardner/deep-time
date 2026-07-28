@@ -317,7 +317,9 @@ impl Dt {
         self.add(correction)
     }
 
-    /// Performs the inverse conversion of [`Dt::convert_using_drift`], recovering the original proper
+    /// Performs the inverse conversion of
+    /// [`Dt::convert_using_drift`](../struct.Dt.html#method.convert_using_drift),
+    /// recovering the original proper
     /// time on the source clock scale.
     ///
     /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
@@ -382,38 +384,65 @@ const fn saturating_mul_div_attos_per_sec(a: i128, b: i128) -> i128 {
 
 #[cfg(feature = "wire")]
 impl Drift {
-    /// Current wire format version.
+    /// Wire format version for this type’s outer envelope.
+    ///
+    /// Independent of nested
+    /// [`Dt::WIRE_VERSION`](../struct.Dt.html#associatedconstant.WIRE_VERSION).
     pub const WIRE_VERSION: u8 = 1;
 
     /// Size of the canonical wire representation in bytes.
-    pub const WIRE_SIZE: usize = 3 * Dt::WIRE_SIZE;
-
-    /// Serializes this [`Drift`] polynomial into a fixed buffer.
     ///
-    /// The layout is the concatenation of the three `Dt` fields.
+    /// One version byte plus three
+    /// [`Dt::WIRE_SIZE`](../struct.Dt.html#associatedconstant.WIRE_SIZE)
+    /// records (`constant`, `rate`, `accel`).
+    pub const WIRE_SIZE: usize = 1 + 3 * Dt::WIRE_SIZE;
+
+    /// Serializes this polynomial into a fixed buffer.
+    ///
+    /// ## Wire format
+    ///
+    /// - Byte `0`: [`WIRE_VERSION`](Self::WIRE_VERSION)
+    /// - Next [`Dt::WIRE_SIZE`](../struct.Dt.html#associatedconstant.WIRE_SIZE)
+    ///   bytes: `constant`
+    /// - Next [`Dt::WIRE_SIZE`](../struct.Dt.html#associatedconstant.WIRE_SIZE)
+    ///   bytes: `rate`
+    /// - Next [`Dt::WIRE_SIZE`](../struct.Dt.html#associatedconstant.WIRE_SIZE)
+    ///   bytes: `accel`
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
+        buf[0] = Self::WIRE_VERSION;
+
+        let n = Dt::WIRE_SIZE;
         let c = self.constant.to_wire_bytes();
         let r = self.rate.to_wire_bytes();
         let a = self.accel.to_wire_bytes();
 
-        buf[0..Dt::WIRE_SIZE].copy_from_slice(&c);
-        buf[Dt::WIRE_SIZE..2 * Dt::WIRE_SIZE].copy_from_slice(&r);
-        buf[2 * Dt::WIRE_SIZE..].copy_from_slice(&a);
+        buf[1..1 + n].copy_from_slice(&c);
+        buf[1 + n..1 + 2 * n].copy_from_slice(&r);
+        buf[1 + 2 * n..1 + 3 * n].copy_from_slice(&a);
         buf
     }
 
-    /// Deserializes a [`Drift`] from exactly `WIRE_SIZE` bytes of wire data.
+    /// Deserializes from exactly [`WIRE_SIZE`](Self::WIRE_SIZE) bytes.
     ///
-    /// Returns `None` if any nested `Dt` fails validation or if the version
-    /// byte is unknown.
+    /// ## Errors
+    ///
+    /// Returns `None` only when:
+    /// - `bytes` is not exactly [`WIRE_SIZE`](Self::WIRE_SIZE) long,
+    /// - the version byte is not [`WIRE_VERSION`](Self::WIRE_VERSION), or
+    /// - any nested
+    ///   [`Dt::from_wire_bytes`](../struct.Dt.html#method.from_wire_bytes)
+    ///   fails (unknown
+    ///   [`Dt::WIRE_VERSION`](../struct.Dt.html#associatedconstant.WIRE_VERSION)).
+    ///
+    /// Nested scale/target bytes never fail decode (see
+    /// [`Dt::from_wire_bytes`](../struct.Dt.html#method.from_wire_bytes)).
     ///
     /// ## Security
     ///
     /// Composes the safety guarantees of
     /// [`Dt::from_wire_bytes`](../struct.Dt.html#method.from_wire_bytes).
-    ///
-    /// Fixed size and layered validation make it safe for untrusted input.
+    /// Safe for untrusted input.
     pub fn from_wire_bytes(bytes: &[u8]) -> Option<Self> {
         if bytes.len() != Self::WIRE_SIZE {
             return None;
@@ -423,9 +452,10 @@ impl Drift {
             return None;
         }
 
-        let constant = Dt::from_wire_bytes(&bytes[0..Dt::WIRE_SIZE])?;
-        let rate = Dt::from_wire_bytes(&bytes[Dt::WIRE_SIZE..2 * Dt::WIRE_SIZE])?;
-        let accel = Dt::from_wire_bytes(&bytes[2 * Dt::WIRE_SIZE..])?;
+        let n = Dt::WIRE_SIZE;
+        let constant = Dt::from_wire_bytes(&bytes[1..1 + n])?;
+        let rate = Dt::from_wire_bytes(&bytes[1 + n..1 + 2 * n])?;
+        let accel = Dt::from_wire_bytes(&bytes[1 + 2 * n..1 + 3 * n])?;
 
         Some(Self::new(constant, rate, accel))
     }
