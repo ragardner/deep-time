@@ -141,9 +141,15 @@ fn test_mjd_utc_roundtrip() {
     );
 }
 
+/// `jd_to_ymd` uses Hinnant `z = jd - 1_721_120`. Subtraction underflows for
+/// `jd < i64::MIN + 1_721_120` (cold path: era-shift + year adjust).
+const JD_TO_HINNANT_Z: i64 = 1_721_120;
+
 #[test]
 fn ymd_jd_safety() {
-    let test_points = [
+    // Extreme civil years: ymd_to_jd may saturate; recovered YMD must still be
+    // a valid calendar triple that maps back to the same (possibly saturated) JD.
+    let year_extremes = [
         (i64::MIN, 1, 1),
         (0_i64, 1, 1),
         (i64::MAX, 1, 1),
@@ -151,17 +157,43 @@ fn ymd_jd_safety() {
         (0_i64, 12, 31),
         (i64::MAX, 12, 31),
     ];
-    for (y, m, d) in &test_points {
-        let jd = Dt::ymd_to_jd(*y, *m, *d);
-        let ymd = Dt::jd_to_ymd(jd);
-        assert_eq!(ymd, (ymd), "round trip extreme ymd jd failed");
+    for &(y, m, d) in &year_extremes {
+        let jd = Dt::ymd_to_jd(y, m, d);
+        let (y2, m2, d2) = Dt::jd_to_ymd(jd);
+        assert!((1..=12).contains(&m2), "month out of range for y={y}: {m2}");
+        assert!((1..=31).contains(&d2), "day out of range for y={y}: {d2}");
+        assert_eq!(
+            Dt::ymd_to_jd(y2, m2, d2),
+            jd,
+            "ymd→jd→ymd→jd failed for year extreme ({y},{m},{d})"
+        );
     }
 
-    let test_points = [i64::MIN, 0_i64, 1721060_i64, i64::MAX];
-    for jd1 in &test_points {
-        let (y, m, d) = Dt::jd_to_ymd(*jd1);
+    // Extreme / landmark JDs, including Hinnant cold-path boundaries.
+    // Cold when `jd.checked_sub(JD_TO_HINNANT_Z)` is None.
+    let first_hot = i64::MIN.saturating_add(JD_TO_HINNANT_Z);
+    let last_cold = first_hot.saturating_sub(1);
+    let jds = [
+        i64::MIN,
+        i64::MIN.saturating_add(1),
+        last_cold.saturating_sub(1),
+        last_cold,
+        first_hot,
+        first_hot.saturating_add(1),
+        0_i64,
+        1_721_060_i64, // year 0-01-01
+        i64::MAX.saturating_sub(1),
+        i64::MAX,
+    ];
+    for &jd1 in &jds {
+        let (y, m, d) = Dt::jd_to_ymd(jd1);
+        assert!(
+            (1..=12).contains(&m),
+            "month out of range for jd={jd1}: {m}"
+        );
+        assert!((1..=31).contains(&d), "day out of range for jd={jd1}: {d}");
         let jd2 = Dt::ymd_to_jd(y, m, d);
-        assert_eq!(*jd1, jd2, "round trip extreme jd ymd failed");
+        assert_eq!(jd1, jd2, "jd→ymd→jd failed for jd={jd1} ymd=({y},{m},{d})");
     }
 }
 

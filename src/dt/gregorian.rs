@@ -1,4 +1,6 @@
-use crate::{ATTOS_PER_SEC, Dt, SEC_PER_DAY_I64, Scale, Weekday, YmdHms, utc::IsLeapSec};
+use crate::{
+    ATTOS_PER_SEC, Dt, JD_2000_2_451_545, SEC_PER_DAY_I64, Scale, Weekday, YmdHms, utc::IsLeapSec,
+};
 
 impl Dt {
     pub(crate) const DAYS_IN_GREGORIAN_MONTHS: [u8; 12] =
@@ -6,32 +8,6 @@ impl Dt {
 
     // pub(crate) const DAYS_IN_GREGORIAN_MONTHS_LEAP_YR: [u8; 12] =
     //     [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-
-    /// Converts a Unix timestamp (seconds since 1970-01-01 00:00:00)
-    /// to a proleptic Gregorian date (year, month, day).
-    pub const fn unix_sec_to_ymd(unix_sec: i64) -> (i64, u8, u8) {
-        let days = unix_sec.div_euclid(SEC_PER_DAY_I64);
-
-        // Shift so we work relative to 0000-03-01 (makes leap year math cleaner)
-        let z = days + 719468;
-
-        let era = if z >= 0 {
-            z / 146097
-        } else {
-            (z - 146096) / 146097
-        };
-        let doe = z - era * 146097; // [0, 146096]
-        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365; // [0, 399]
-        let y = yoe + era * 400;
-        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
-        let mp = (5 * doy + 2) / 153; // [0, 11]
-        let d = doy - (153 * mp + 2) / 5 + 1; // [1, 31]
-        let m = if mp < 10 { mp + 3 } else { mp - 9 }; // [1, 12]
-
-        let yr = y + if m <= 2 { 1 } else { 0 };
-
-        (yr, m as u8, d as u8)
-    }
 
     /// Returns the calendar date and time for this instant.
     ///
@@ -83,26 +59,21 @@ impl Dt {
     ///
     /// - [`Dt::from_ymd`](#method.from_ymd)
     /// - [`from_ymd!`](../macro.from_ymd.html)
-    ///
-    /// ## Implementation
-    ///
-    /// `convert_epoch` is `false`. If we converted the epoch too, the difference would cancel
-    /// out — we would not find the same instant on a different scale.
-    ///
-    /// [`Dt::to_gps`](#method.to_gps) etc. do the opposite: if we did not convert
-    /// the epoch there, we would not get seconds since the GPS epoch; we would get seconds since
-    /// something else.
     pub const fn to_ymd(&self) -> YmdHms {
-        let from_unix_epoch = self.to(self.target).to_diff_raw(Dt::UNIX_EPOCH);
+        // Attos / seconds are library-epoch offsets (J2000 noon = 0).
+        let on_target = self.to(self.target);
+        let sec_from_j2000 = on_target.to_sec64_floor();
+        let frac = on_target.to_sec_ufrac();
 
-        let unix_sec = from_unix_epoch.to_sec64_floor();
-        let frac = from_unix_epoch.to_sec_ufrac();
-        let (yr, mo, day) = Self::unix_sec_to_ymd(unix_sec);
+        // Shift so 0 = midnight of 2000-01-01, then split day + time-of-day.
+        let since_midnight_j2000 = sec_from_j2000.saturating_add(43_200);
+        let day_offset = since_midnight_j2000.div_euclid(SEC_PER_DAY_I64);
+        let tod = since_midnight_j2000.rem_euclid(SEC_PER_DAY_I64);
+        let (yr, mo, day) = Self::jd_to_ymd(JD_2000_2_451_545.saturating_add(day_offset));
 
-        let seconds_since_midnight = unix_sec.rem_euclid(SEC_PER_DAY_I64);
-        let hr = (seconds_since_midnight / 3600) as u8;
-        let min = ((seconds_since_midnight % 3600) / 60) as u8;
-        let mut sec = (seconds_since_midnight % 60) as u8;
+        let hr = (tod / 3600) as u8;
+        let min = ((tod % 3600) / 60) as u8;
+        let mut sec = (tod % 60) as u8;
         if self.target.uses_leap_seconds()
             && let Some(i) = self.to_tai().leap_sec(false)
             && matches!(i.is_leap_sec, IsLeapSec::Add)
@@ -165,11 +136,6 @@ impl Dt {
     ///
     /// - [`Dt::to_ymd`](#method.to_ymd)
     /// - [`from_ymd!`](../macro.from_ymd.html)
-    ///
-    /// ## Implementation
-    ///
-    /// Same as [`Dt::to_ymd`](#method.to_ymd) — `convert_epoch` is `false`. See
-    /// that function's Implementation section.
     pub const fn from_ymd(
         yr: i64,
         mo: u8,
@@ -184,67 +150,58 @@ impl Dt {
         let attos = Dt::clamp_u64(attos, 0, ATTOS_PER_SEC - 1);
 
         let sec_is_60 = sec == 60;
-        let s_for_unix = if sec_is_60 { 59 } else { sec };
+        let s = if sec_is_60 { 59 } else { sec };
 
-        let unix_sec = Dt::ymd_to_unix_sec(yr, mo, day, hr, min, s_for_unix);
-        let unix_attos = Dt::sec_to_attos(unix_sec as i128) + (attos as i128);
+        // Library-epoch seconds (J2000 noon = 0):
+        // (jd − 2451545) × 86400 + time-of-day offset from noon.
+        let jd = Self::ymd_to_jd(yr, mo, day);
+        let days_since_j2000 = jd.saturating_sub(JD_2000_2_451_545);
+        let seconds_from_noon = (hr as i64 - 12) * 3600 + (min as i64) * 60 + (s as i64);
+        let total_sec = days_since_j2000
+            .saturating_mul(SEC_PER_DAY_I64)
+            .saturating_add(seconds_from_noon);
 
+        let t = Dt::from_sec_and_frac(total_sec as i128, attos as i128, scale, scale).to_tai();
         if sec_is_60 && scale.uses_leap_seconds() {
-            let t =
-                Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false);
-            match Self::leap_sec_using_sec64(t.add_sec(1).to_sec64_floor(), false) {
-                Some(i) => match i.is_leap_sec {
-                    IsLeapSec::Add => t.add_sec(1),
-                    _ => t,
-                },
-                None => t,
+            match Self::leap_sec_using_sec64(total_sec.saturating_add(1), true) {
+                Some(i) if matches!(i.is_leap_sec, IsLeapSec::Add) => t.add_sec(1),
+                _ => t,
             }
         } else {
-            Dt::from_diff_and_scale(Dt::new(unix_attos, scale, scale), Dt::UNIX_EPOCH, false)
+            t
         }
-    }
-
-    /// Converts a proleptic Gregorian calendar date+time to a Unix timestamp
-    /// (seconds since 1970-01-01 00:00:00).
-    ///
-    /// - Expects **1 based** `mo` and `day`, and **0 based** `hr`, `min`, and `sec`.
-    /// - Does not perform any time scale conversions.
-    /// - Expects pre-clamped values.
-    pub const fn ymd_to_unix_sec(yr: i64, mo: u8, day: u8, hr: u8, min: u8, sec: u8) -> i64 {
-        let jd = Self::ymd_to_jd(yr, mo, day);
-        // 1970-01-01 00:00:00 UTC corresponds to JD 2440588
-        let days_since_1970 = jd.saturating_sub(2440588);
-        let time_of_day = (hr as i64) * 3600 + (min as i64) * 60 + (sec as i64);
-        days_since_1970
-            .saturating_mul(SEC_PER_DAY_I64)
-            .saturating_add(time_of_day)
     }
 
     /// Converts a Julian Day Number (JD) to a proleptic Gregorian calendar date.
     ///
-    /// - Returns `(year, month, day)` where `month` ∈ [1, 12] and `day` ∈ [1, 31]
-    ///   (standard 1-based Gregorian values).
-    /// - This is the inverse of [`Dt::ymd_to_jd`](#method.ymd_to_jd).
-    /// - Supports the full `i64` range, including negative years and year zero.
+    /// - Returns `(year, month, day)` where `month` ∈ [1, 12] and `day` ∈ [1, 31].
+    /// - Inverse of [`Dt::ymd_to_jd`](#method.ymd_to_jd).
+    /// - Howard Hinnant `civil_from_days`: `z = jd - 1721120`.
     pub const fn jd_to_ymd(jd: i64) -> (i64, u8, u8) {
-        let j = jd as i128;
+        // Epoch shift can exit i64 near i64::MIN; add 12 eras and fix the year.
+        let (z, year_adj) = match jd.checked_sub(1_721_120) {
+            Some(z) => (z, 0i64),
+            None => (jd + 32_044, -4_800i64),
+        };
 
-        #[inline]
-        const fn floor_div_pos(a: i128, b: i128) -> i128 {
-            if a >= 0 { a / b } else { (a - (b - 1)) / b }
-        }
+        // Floored era index. Avoid `z - 146096` (overflows near i64::MIN).
+        let era = if z >= 0 {
+            z / 146097
+        } else {
+            let q = z / 146097;
+            if z % 146097 == 0 { q } else { q - 1 }
+        };
+        // Widening mul so `era * 146097` cannot wrap for extreme `z`.
+        let doe = (z as i128 - era as i128 * 146097) as i64; // [0, 146096]
+        let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365; // [0, 399]
+        let y = yoe + era * 400;
+        let doy = doe - (365 * yoe + yoe / 4 - yoe / 100); // [0, 365]
+        let mp = (5 * doy + 2) / 153; // [0, 11]
+        let d = doy - (153 * mp + 2) / 5 + 1; // [1, 31]
+        let m = if mp < 10 { mp + 3 } else { mp - 9 }; // [1, 12]
+        let yr = y + if m <= 2 { 1 } else { 0 };
 
-        let a = j + 32044;
-        let b = floor_div_pos(4 * a + 3, 146097);
-        let c = a - floor_div_pos(b * 146097, 4);
-        let d = floor_div_pos(4 * c + 3, 1461);
-        let e = c - floor_div_pos(1461 * d, 4);
-        let m = floor_div_pos(5 * e + 2, 153);
-        let day = (e - floor_div_pos(153 * m + 2, 5) + 1) as u8;
-        let mo = (m + 3 - 12 * floor_div_pos(m, 10)) as u8;
-        let yr = b * 100 + d - 4800 + floor_div_pos(m, 10);
-
-        (Dt::to_i64(yr), mo, day)
+        (yr + year_adj, m as u8, d as u8)
     }
 
     /// Computes the Julian Day Number (JD) for a proleptic Gregorian calendar date at noon UT.
@@ -268,26 +225,33 @@ impl Dt {
     ///   need to sanitize a year, month, day input use
     ///   [`Dt::clamp_mdhms`](#method.clamp_mdhms) first.
     /// - The result is the integer JD corresponding to **noon** on the given date.
-    #[inline]
     pub const fn ymd_to_jd(yr: i64, mo: u8, day: u8) -> i64 {
-        let y = yr as i128;
         let m = mo as i16;
         let d = day as i16;
 
         let a = (14 - m) / 12;
-        let y = y + 4800 - a as i128;
         let m = m + 12 * a - 3;
-
-        let y4 = y >> 2; // floor(y / 4) — arithmetic shift works for negatives
-
-        // floor(y / 100)
-        let y100 = if y >= 0 { y / 100 } else { (y - 99) / 100 };
-
-        let y400 = y100 >> 2; // floor(y / 400)
-
         let day_mo = d + (153 * m + 2) / 5;
-        let yr_part = 365 * y + y4 - y100 + y400 - 32045;
 
+        // Fast path: shifted year `y = yr + 4800 - a` and `365*y + …` fit in i64.
+        // `Y_LIM = i64::MAX/366` leaves headroom for y/4, day_mo, and the −32045 term.
+        const Y_LIM: i64 = i64::MAX / 366;
+        if let Some(y) = yr.checked_add(4800 - a as i64)
+            && y >= -Y_LIM
+            && y <= Y_LIM
+        {
+            let y4 = y >> 2; // floor(y / 4)
+            let y100 = if y >= 0 { y / 100 } else { (y - 99) / 100 };
+            let y400 = y100 >> 2; // floor(y / 400)
+            return day_mo as i64 + 365 * y + y4 - y100 + y400 - 32045;
+        }
+
+        // Wide path: |yr| near i64 edges (or yr + 4800 overflows i64).
+        let y = yr as i128 + 4800 - a as i128;
+        let y4 = y >> 2;
+        let y100 = if y >= 0 { y / 100 } else { (y - 99) / 100 };
+        let y400 = y100 >> 2;
+        let yr_part = 365 * y + y4 - y100 + y400 - 32045;
         Dt::to_i64(day_mo as i128 + yr_part)
     }
 

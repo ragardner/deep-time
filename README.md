@@ -295,6 +295,7 @@ cargo bench --bench perf --features "parse hifitime std jiff-tz"
 | TDB → TAI        | 570 ns        | 26.8 ns       | 21.3× slower              |
 | GPS conversion   | 3.2 ns        | 6.3 ns        | 2.0× faster               |
 | GPS elapsed      | 6.4 ns        | 6.6 ns        | 1.03× faster              |
+| from_ymd (TAI)   | 11.7 ns       | 180 ns        | 15.4× faster              |
 
 ### Bundled Files
 

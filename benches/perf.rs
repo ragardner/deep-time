@@ -21,6 +21,9 @@ fn main() {
     let mut tdb_tai_deep_ns = 0.0f64;
     let mut tdb_tai_hifi_ns = 0.0f64;
 
+    let mut from_ymd_deep_ns = 0.0f64;
+    let mut from_ymd_hifi_ns = 0.0f64;
+
     let mut auto_ns_per = 0.0f64;
 
     let mut strptime_timeparts_ns = 0.0f64;
@@ -79,6 +82,45 @@ fn main() {
             let _ = black_box(hifi_tai).to_gpst_duration();
         }
         gps_elapsed_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // from_ymd (TAI) vs Epoch::from_gregorian_tai — civil construction only
+    // ═══════════════════════════════════════════════════════════════════════
+    {
+        use hifitime::Epoch;
+        use std::hint::black_box;
+
+        const ITERATIONS: usize = 10_000_000;
+
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            let _ = black_box(Dt::from_ymd(
+                black_box(2000),
+                black_box(1),
+                black_box(1),
+                Scale::TAI,
+                black_box(12),
+                black_box(0),
+                black_box(0),
+                0,
+            ));
+        }
+        from_ymd_deep_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
+
+        let start = Instant::now();
+        for _ in 0..ITERATIONS {
+            let _ = black_box(Epoch::from_gregorian_tai(
+                black_box(2000),
+                black_box(1),
+                black_box(1),
+                black_box(12),
+                black_box(0),
+                black_box(0),
+                0,
+            ));
+        }
+        from_ymd_hifi_ns = start.elapsed().as_nanos() as f64 / ITERATIONS as f64;
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -518,6 +560,12 @@ fn main() {
         fmt_ns(gps_elapsed_deep_ns),
         fmt_ns(gps_elapsed_hifi_ns),
         xrel(gps_elapsed_deep_ns, gps_elapsed_hifi_ns)
+    );
+    eprintln!(
+        "| from_ymd (TAI)   | {:<13} | {:<13} | {:<25} |",
+        fmt_ns(from_ymd_deep_ns),
+        fmt_ns(from_ymd_hifi_ns),
+        xrel(from_ymd_deep_ns, from_ymd_hifi_ns)
     );
     eprintln!();
 }

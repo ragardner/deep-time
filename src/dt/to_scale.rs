@@ -62,11 +62,6 @@ impl Dt {
     /// Creates a **TAI** [`Dt`] by adding a difference to an epoch and interpreting
     /// the result on the given time scale.
     ///
-    /// This is the inverse counterpart to
-    /// [`Dt::to_scale_and_diff`](../struct.Dt.html#method.to_scale_and_diff)
-    /// and is used by [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
-    /// and related constructors.
-    ///
     /// ## Arguments
     ///
     /// - `diff` — The signed difference (as a [`Dt`]) to add to the epoch.

@@ -455,17 +455,14 @@ impl Dt {
     /// ## See also
     ///
     /// - [`Dt::from_gps`](../struct.Dt.html#method.from_gps)
-    /// - [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd)
-    /// - [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
     ///
     /// ## Implementation
     ///
-    /// `convert_epoch` is `true`. If we did not convert the epoch, we would not get seconds
-    /// since the GPS epoch; we would get seconds since something else.
-    ///
-    /// [`Dt::from_ymd`](../struct.Dt.html#method.from_ymd) / [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd)
-    /// do the opposite: if they converted the epoch too, the difference would cancel out. See
-    /// [`to_ymd`](../struct.Dt.html#method.to_ymd).
+    /// Uses [`Dt::to_scale_and_diff`](../struct.Dt.html#method.to_scale_and_diff) with
+    /// `convert_epoch = true` so both this instant and
+    /// [`Dt::GPS_EPOCH`](../struct.Dt.html#associatedconstant.GPS_EPOCH)
+    /// are brought onto `target` before subtracting. Without converting the epoch, the
+    /// result would not be elapsed time since the GPS epoch on that scale.
     #[inline(always)]
     pub const fn to_gps(&self) -> Dt {
         self.to_scale_and_diff(Self::GPS_EPOCH, true)
