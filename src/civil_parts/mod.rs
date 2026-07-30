@@ -88,8 +88,8 @@ pub struct Parts {
 #[derive(Clone)]
 pub(crate) struct ParsedReal {
     pub(crate) negative: bool,
-    /// Accumulated absolute integer part (u64::MAX on overflow during accumulation).
-    pub(crate) int_u: u64,
+    /// Absolute integer part (non-negative). Saturates at [`i128::MAX`] on overflow.
+    pub(crate) int_abs: i128,
     /// Fractional attoseconds, already left-padded to 18 digits.
     pub(crate) frac_attos: u64,
     pub(crate) scale: Scale,

@@ -410,17 +410,54 @@ impl Default for Dt {
     }
 }
 
+/// Formats a [`Dt`], used when `.to_string()` is called.
+///
+/// ## Behavior
+///
+/// - Outer `[` `]`.
+/// - Signed decimal **seconds** from the raw `attos` count (up to 18 fractional
+///   digits, trailing zeros trimmed), then `s`.
+/// - Space, then `scale` and `target` abbreviations separated by `>`
+///   ([`Scale::abbrev`]).
+///
+/// ## Examples
+///
+/// ```rust
+/// use core::fmt::Write;
+/// use deep_time::{BufStr, Dt, Scale};
+/// use deep_time::macros::from_sec;
+///
+/// let mut s = BufStr::<64>::default();
+/// write!(&mut s, "{}", Dt::ZERO).unwrap();
+/// assert_eq!(s.as_str(), "[0s TAI>TAI]");
+///
+/// let dt = from_sec!(86400, on = Scale::TAI, target = Scale::UTC);
+/// s = BufStr::<64>::default();
+/// write!(&mut s, "{}", dt).unwrap();
+/// assert_eq!(s.as_str(), "[86400s TAI>UTC]");
+///
+/// let dt = Dt::new(
+///     -1_500_000_000_000_000_000,
+///     Scale::TT,
+///     Scale::GPS,
+/// );
+/// s = BufStr::<64>::default();
+/// write!(&mut s, "{}", dt).unwrap();
+/// assert_eq!(s.as_str(), "[-1.5s TT>GPS]");
+/// ```
 impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let total = self.to_attos();
-        let precision = f.precision().unwrap_or(18).min(18);
+        const PREC: usize = 18;
 
+        let total = self.to_attos();
         let is_negative = total < 0;
         let abs_attos = if is_negative {
             total.wrapping_neg() as u128
         } else {
             total as u128
         };
+
+        f.write_str("[")?;
 
         if is_negative {
             f.write_str("-")?;
@@ -434,33 +471,25 @@ impl fmt::Display for Dt {
 
         write!(f, "{}", whole_seconds)?;
 
-        if precision > 0 && fractional_attos > 0 {
-            let scale = 10u128.pow(18 - precision as u32);
-            let frac_value = fractional_attos / scale;
+        if fractional_attos > 0 {
+            f.write_str(".")?;
 
-            if frac_value > 0 {
-                f.write_str(".")?;
+            let mut digits = [0u8; 18];
+            let mut n = fractional_attos;
 
-                let mut digits = [0u8; 18];
-                let mut n = frac_value;
+            for i in (0..PREC).rev() {
+                digits[i] = (n % 10) as u8;
+                n /= 10;
+            }
 
-                for i in (0..precision).rev() {
-                    digits[i] = (n % 10) as u8;
-                    n /= 10;
-                }
+            let last = digits[..PREC].iter().rposition(|&d| d != 0).unwrap_or(0);
 
-                let last = digits[..precision]
-                    .iter()
-                    .rposition(|&d| d != 0)
-                    .unwrap_or(0);
-
-                for &d in &digits[..=last] {
-                    write!(f, "{}", d)?;
-                }
+            for &d in &digits[..=last] {
+                write!(f, "{}", d)?;
             }
         }
 
-        Ok(())
+        write!(f, "s {}>{}]", self.scale.abbrev(), self.target.abbrev())
     }
 }
 

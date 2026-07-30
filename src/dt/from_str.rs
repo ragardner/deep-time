@@ -436,7 +436,7 @@ impl Dt {
     ///
     /// - Fractional seconds are limited to the first 18 digits (attosecond
     ///   precision); extra digits are truncated.
-    /// - Oversized integer parts saturate instead of failing.
+    /// - Oversized integer parts saturate at [`i128::MAX`] instead of failing.
     /// - Inputs longer than [`STRTIME_SIZE`](../consts/constant.STRTIME_SIZE.html) are rejected.
     /// - Returns `None` only for completely unparseable input (empty, sign/dot
     ///   only, no digits after skipping, etc.).

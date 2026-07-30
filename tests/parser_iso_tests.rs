@@ -647,24 +647,31 @@ mod from_str_tests {
 
     #[test]
     fn test_iso_numeric_overflow_no_panic() {
-        // Integer accumulation boundary (u64::MAX + 1) used to panic in debug.
         let max = u64::MAX.to_string();
         let max_p1 = format!("{}", u64::MAX as u128 + 1);
 
+        // SEC: integer part is i128; u64::MAX and u64::MAX+1 both fit and differ.
         let p = Parts::from_str(&format!("SEC {max}")).unwrap();
+        let p_p1 = Parts::from_str(&format!("SEC {max_p1}")).unwrap();
         assert_eq!(
             p.timestamp.as_ref().map(|t| t.attos),
             Some((u64::MAX as i128) * deep_time::consts::ATTOS_PER_SEC_I128)
         );
-
-        // Saturates integer part to u64::MAX — same attos as MAX itself.
-        let p_sat = Parts::from_str(&format!("SEC {max_p1}")).unwrap();
         assert_eq!(
+            p_p1.timestamp.as_ref().map(|t| t.attos),
+            Some((u64::MAX as i128 + 1) * deep_time::consts::ATTOS_PER_SEC_I128)
+        );
+        assert_ne!(
             p.timestamp.as_ref().map(|t| t.attos),
-            p_sat.timestamp.as_ref().map(|t| t.attos)
+            p_p1.timestamp.as_ref().map(|t| t.attos)
         );
 
-        // JD/MJD day×attos used to panic for huge day counts; saturates near i128 bounds.
+        // Digit overflow saturates int_abs at i128::MAX → attos at i128::MAX.
+        let huge = "1".repeat(50);
+        let p_huge = Parts::from_str(&format!("SEC {huge}")).unwrap();
+        assert_eq!(p_huge.timestamp.as_ref().map(|t| t.attos), Some(i128::MAX));
+
+        // JD/MJD day×attos saturates near i128 bounds.
         for s in [
             format!("JD {max}"),
             format!("JD {max_p1}"),
@@ -675,7 +682,6 @@ mod from_str_tests {
             let p = Parts::from_str(&s).unwrap();
             let attos = p.timestamp.as_ref().unwrap().attos;
             assert!(attos > 0, "{s}: {attos}");
-            // After saturating day×ATTOS_PER_DAY, epoch subtract leaves a value near MAX.
             assert!(attos > i128::MAX / 2, "{s}: {attos}");
         }
 

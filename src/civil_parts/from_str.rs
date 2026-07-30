@@ -766,18 +766,18 @@ impl Parts {
         }
 
         // Integer part (may be empty when we landed on '.').
-        // Overflow → saturate at u64::MAX and skip the rest of the integer digits.
-        let mut int_u: u64 = 0;
+        // Overflow → saturate at i128::MAX and skip the rest of the integer digits.
+        let mut int_abs: i128 = 0;
         let mut saw_digit = false;
 
         while pos < bytes.len() && bytes[pos].is_ascii_digit() {
             saw_digit = true;
-            let d = (bytes[pos] - b'0') as u64;
+            let d = (bytes[pos] - b'0') as i128;
             pos += 1;
-            match int_u.checked_mul(10).and_then(|n| n.checked_add(d)) {
-                Some(n) => int_u = n,
+            match int_abs.checked_mul(10).and_then(|n| n.checked_add(d)) {
+                Some(n) => int_abs = n,
                 None => {
-                    int_u = u64::MAX;
+                    int_abs = i128::MAX;
                     while pos < bytes.len() && bytes[pos].is_ascii_digit() {
                         pos += 1;
                     }
@@ -819,7 +819,7 @@ impl Parts {
 
         Some(ParsedReal {
             negative,
-            int_u,
+            int_abs,
             frac_attos,
             scale: scl,
         })
@@ -841,7 +841,7 @@ impl Parts {
     ///
     /// - Fractional seconds are limited to the first 18 digits (attosecond
     ///   precision); extra digits are truncated.
-    /// - Oversized integer parts set the integer component to `u64::MAX`.
+    /// - Oversized integer parts saturate at [`i128::MAX`].
     /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
     /// - Returns `None` only for completely unparseable input.
     ///
@@ -864,13 +864,13 @@ impl Parts {
     pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
         let parsed = Self::parse_str_f(s.as_bytes(), scale)?;
 
-        let int_attos = (parsed.int_u as i128) * ATTOS_PER_SEC_I128;
+        let int_attos = parsed.int_abs.saturating_mul(ATTOS_PER_SEC_I128);
         let frac_attos = parsed.frac_attos as i128;
 
         let total_attos = if parsed.negative {
-            -(int_attos + frac_attos)
+            int_attos.saturating_add(frac_attos).saturating_neg()
         } else {
-            int_attos + frac_attos
+            int_attos.saturating_add(frac_attos)
         };
 
         let parts = Parts {
@@ -897,9 +897,8 @@ impl Parts {
     ///
     /// - Fractional days are limited to the first 18 digits (attosecond precision
     ///   after conversion); extra digits are truncated.
-    /// - Oversized integer parts set the integer component to `u64::MAX`.
-    /// - Day→attosecond conversion saturates at `i128` bounds (a full `u64::MAX`
-    ///   day count does not fit in attoseconds).
+    /// - Oversized integer parts saturate at [`i128::MAX`].
+    /// - Day→attosecond conversion saturates at `i128` bounds.
     /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
     /// - Returns `None` only for completely unparseable input.
     ///
@@ -924,12 +923,10 @@ impl Parts {
     pub fn from_str_jd_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
         let parsed = Self::parse_str_f(s.as_bytes(), scale)?;
 
-        // Build signed JD components. The integer part + frac_attos (scaled to 1e18)
-        // together represent the full JD as a real number of days.
         let jd_days: i128 = if parsed.negative {
-            -(parsed.int_u as i128)
+            parsed.int_abs.saturating_neg()
         } else {
-            parsed.int_u as i128
+            parsed.int_abs
         };
         let jd_frac: i128 = if parsed.negative {
             -(parsed.frac_attos as i128)
@@ -937,9 +934,6 @@ impl Parts {
             parsed.frac_attos as i128
         };
 
-        // Convert the signed JD (days + fractional day) to attoseconds since JD epoch 0.
-        // 1 fractional day unit in frac_attos corresponds to SEC_PER_DAY seconds.
-        // Saturate: a saturated u64::MAX day count × ATTOS_PER_DAY does not fit in i128.
         let jd_attos = jd_days
             .saturating_mul(ATTOS_PER_DAY)
             .saturating_add(jd_frac.saturating_mul(SEC_PER_DAY));
@@ -972,9 +966,8 @@ impl Parts {
     ///
     /// - Fractional days are limited to the first 18 digits (attosecond precision
     ///   after conversion); extra digits are truncated.
-    /// - Oversized integer parts set the integer component to `u64::MAX`.
-    /// - Day→attosecond conversion saturates at `i128` bounds (a full `u64::MAX`
-    ///   day count does not fit in attoseconds).
+    /// - Oversized integer parts saturate at [`i128::MAX`].
+    /// - Day→attosecond conversion saturates at `i128` bounds.
     /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
     /// - Returns `None` only for completely unparseable input.
     ///
@@ -999,11 +992,10 @@ impl Parts {
     pub fn from_str_mjd_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
         let parsed = Self::parse_str_f(s.as_bytes(), scale)?;
 
-        // Build signed MJD components.
         let mjd_days: i128 = if parsed.negative {
-            -(parsed.int_u as i128)
+            parsed.int_abs.saturating_neg()
         } else {
-            parsed.int_u as i128
+            parsed.int_abs
         };
         let mjd_frac: i128 = if parsed.negative {
             -(parsed.frac_attos as i128)
@@ -1011,10 +1003,7 @@ impl Parts {
             parsed.frac_attos as i128
         };
 
-        // Convert MJD to JD by adding the 2400000.5 day offset.
-        // MJD = JD - 2400000.5   =>   JD = MJD + 2400000.5
-        // Saturate on overflow: a saturated u64::MAX day count × ATTOS_PER_DAY
-        // does not fit in i128.
+        // MJD = JD - 2400000.5  =>  JD = MJD + 2400000.5
         let mut jd_days = mjd_days.saturating_add(2_400_000);
         let mut sub_day_attos = mjd_frac
             .saturating_mul(SEC_PER_DAY)
