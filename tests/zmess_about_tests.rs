@@ -9,7 +9,9 @@ mod tests {
     ))]
     #[test]
     fn print_stuff() {
-        use deep_time::macros::from_ymd;
-        use deep_time::{AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TraitsTime, YmdHms};
+        use deep_time::macros::{days_f, dt, from_ymd};
+        use deep_time::{
+            AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TraitsTime, YmdHms, sec_f,
+        };
     }
 }

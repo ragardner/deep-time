@@ -865,11 +865,9 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         while pos < start.len() && pos < 8 && start[pos].is_ascii_alphanumeric() {
             pos += 1;
         }
-        let abbrev =
-            core::str::from_utf8(&start[..pos]).map_err(|_| an_err!(DtErrKind::InvalidScale))?;
         self.inp = &start[pos..];
         self.bump_fmt();
-        if let Some(ct) = Scale::from_abbrev(abbrev) {
+        if let Some(ct) = Scale::from_abbrev(&start[..pos]) {
             self.tm.scale = ct;
             Ok(())
         } else {

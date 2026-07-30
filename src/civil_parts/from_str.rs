@@ -718,10 +718,8 @@ impl Parts {
         while pos < len_ && !bytes[pos].is_ascii_alphabetic() {
             pos += 1;
         }
-        if pos < len_
-            && let Ok(s) = core::str::from_utf8(&bytes[pos..(pos + 8).min(len_)])
-        {
-            return Scale::from_abbrev(s);
+        if pos < len_ {
+            return Scale::from_abbrev(&bytes[pos..]);
         }
         None
     }

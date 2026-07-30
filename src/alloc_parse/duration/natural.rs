@@ -806,7 +806,7 @@ impl Dt {
                     }
 
                     Token::Scale => {
-                        if let Some(scl) = Scale::from_abbrev(norm) {
+                        if let Some(scl) = Scale::from_abbrev(norm.as_bytes()) {
                             scale = scl;
                         }
                     }

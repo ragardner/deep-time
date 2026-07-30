@@ -172,10 +172,11 @@ impl Scale {
         matches!(self, Self::GPS | Self::GST | Self::BDT | Self::QZSS)
     }
 
-    /// Parse scale from abbreviation.
-    /// Returns `None` for any non-ASCII input.
-    pub fn from_abbrev(s: &str) -> Option<Self> {
-        let bytes = s.as_bytes();
+    /// Parse scale from an ASCII abbreviation (e.g. `b"TAI"`, `b"UtcSpice"`).
+    ///
+    /// Reads up to 8 leading alphabetic bytes, case-insensitively. Stops at the
+    /// first non-letter. Returns `None` if no known scale matches.
+    pub fn from_abbrev(bytes: &[u8]) -> Option<Self> {
         let mut buf = [0u8; 8];
         let mut len = 0;
 
