@@ -383,4 +383,175 @@ mod format_tests {
             .unwrap();
         assert_eq!(s, "2025-04-16 14:30:45 EDT");
     }
+
+    #[test]
+    fn test_display_precision() {
+        use core::fmt::Write;
+        use deep_time::BufStr;
+
+        let dt = Dt::new(
+            -1_500_000_000_000_000_000, // -1.5s
+            Scale::TT,
+            Scale::GPS,
+        );
+        assert_eq!(format!("{dt}"), "[-1.5s TT>GPS]");
+        assert_eq!(format!("{dt:.0}"), "[-1s TT>GPS]"); // truncate, not round
+        assert_eq!(format!("{dt:.1}"), "[-1.5s TT>GPS]");
+        assert_eq!(format!("{dt:.3}"), "[-1.5s TT>GPS]"); // trims trailing zeros
+        assert_eq!(format!("{dt:+.1}"), "[-1.5s TT>GPS]");
+
+        let pos = Dt::new(1_500_000_000_000_000_000, Scale::TAI, Scale::TAI);
+        assert_eq!(format!("{pos:+.1}"), "[+1.5s TAI>TAI]");
+        assert_eq!(format!("{pos:.0}"), "[1s TAI>TAI]");
+
+        // Truncation keeps the kept prefix; never bumps the digit
+        let almost = Dt::new(1_234_499_999_999_999_999, Scale::TAI, Scale::UTC);
+        assert_eq!(format!("{almost:.3}"), "[1.234s TAI>UTC]");
+
+        let half = Dt::new(1_234_500_000_000_000_000, Scale::TAI, Scale::TAI);
+        assert_eq!(format!("{half:.3}"), "[1.234s TAI>TAI]"); // not 1.235
+
+        // Would have rounded up under half-up — truncate keeps 1.999…
+        let nines = Dt::new(1_999_500_000_000_000_000, Scale::TAI, Scale::TAI);
+        assert_eq!(format!("{nines:.3}"), "[1.999s TAI>TAI]");
+
+        // Full attosecond still works; precision > 18 clamps
+        let one_atto = Dt::new(1, Scale::TDB, Scale::TDB);
+        assert_eq!(format!("{one_atto}"), "[0.000000000000000001s TDB>TDB]");
+        assert_eq!(format!("{one_atto:.18}"), "[0.000000000000000001s TDB>TDB]");
+        assert_eq!(format!("{one_atto:.20}"), "[0.000000000000000001s TDB>TDB]");
+        assert_eq!(format!("{one_atto:.0}"), "[0s TDB>TDB]");
+
+        // no_std-friendly path via BufStr (same Display impl)
+        let mut s = BufStr::<64>::default();
+        write!(&mut s, "{:.2}", pos).unwrap();
+        assert_eq!(s.as_str(), "[1.5s TAI>TAI]");
+    }
+
+    #[test]
+    fn test_display_precision_edge_cases() {
+        use deep_time::consts::ATTOS_PER_SEC_I128 as APS;
+
+        // Zero / integer-only (no decimal even when precision requested)
+        assert_eq!(format!("{:.0}", Dt::ZERO), "[0s TAI>TAI]");
+        assert_eq!(format!("{:.9}", Dt::ZERO), "[0s TAI>TAI]");
+        assert_eq!(format!("{:+.3}", Dt::ZERO), "[+0s TAI>TAI]");
+        let whole = Dt::new(42 * APS, Scale::UTC, Scale::GPS);
+        assert_eq!(format!("{whole:.5}"), "[42s UTC>GPS]");
+        assert_eq!(format!("{whole:+.0}"), "[+42s UTC>GPS]");
+
+        // Exact ±0.5s → {:.0} truncates to 0 whole seconds
+        let half = Dt::new(APS / 2, Scale::TAI, Scale::TAI);
+        let neg_half = Dt::new(-APS / 2, Scale::TAI, Scale::TAI);
+        assert_eq!(format!("{half:.0}"), "[0s TAI>TAI]");
+        assert_eq!(format!("{neg_half:.0}"), "[0s TAI>TAI]"); // not signed zero
+        assert_eq!(format!("{half:.1}"), "[0.5s TAI>TAI]");
+        assert_eq!(format!("{neg_half:.1}"), "[-0.5s TAI>TAI]");
+
+        let two_fifths = Dt::new(APS * 2 / 5, Scale::TAI, Scale::TAI); // 0.4s
+        assert_eq!(format!("{two_fifths:.0}"), "[0s TAI>TAI]");
+        assert_eq!(format!("{two_fifths:.1}"), "[0.4s TAI>TAI]");
+
+        // ±1 attosecond
+        let one_atto = Dt::new(1, Scale::TAI, Scale::TAI);
+        let neg_atto = Dt::new(-1, Scale::TAI, Scale::TAI);
+        assert_eq!(format!("{one_atto:.17}"), "[0s TAI>TAI]"); // truncated away
+        assert_eq!(format!("{one_atto:.18}"), "[0.000000000000000001s TAI>TAI]");
+        assert_eq!(
+            format!("{neg_atto:.18}"),
+            "[-0.000000000000000001s TAI>TAI]"
+        );
+        assert_eq!(format!("{neg_atto:.0}"), "[0s TAI>TAI]");
+        assert_eq!(format!("{neg_atto:.17}"), "[0s TAI>TAI]");
+        assert_eq!(format!("{neg_atto:+.0}"), "[+0s TAI>TAI]");
+
+        // 0.9995 → truncate, never carry into whole seconds
+        let nines = Dt::new(9995 * 10i128.pow(14), Scale::TAI, Scale::TAI);
+        assert_eq!(format!("{nines}"), "[0.9995s TAI>TAI]");
+        assert_eq!(format!("{nines:.3}"), "[0.999s TAI>TAI]");
+        assert_eq!(format!("{nines:.1}"), "[0.9s TAI>TAI]");
+        assert_eq!(format!("{nines:.0}"), "[0s TAI>TAI]");
+        assert_eq!(format!("{nines:.4}"), "[0.9995s TAI>TAI]");
+
+        // Max sub-second fraction (1s − 1 atto)
+        let almost_one = Dt::new(APS - 1, Scale::TAI, Scale::TAI);
+        assert_eq!(format!("{almost_one}"), "[0.999999999999999999s TAI>TAI]");
+        assert_eq!(format!("{almost_one:.0}"), "[0s TAI>TAI]");
+        assert_eq!(
+            format!("{almost_one:.18}"),
+            "[0.999999999999999999s TAI>TAI]"
+        );
+        assert_eq!(format!("{almost_one:.3}"), "[0.999s TAI>TAI]");
+
+        let x = Dt::new(1_234_500_000_000_000_000, Scale::TAI, Scale::TAI);
+        assert_eq!(format!("{x:.2}"), "[1.23s TAI>TAI]");
+        assert_eq!(format!("{x:.3}"), "[1.234s TAI>TAI]");
+        assert_eq!(format!("{x:.1}"), "[1.2s TAI>TAI]");
+        assert_eq!(format!("{x:.0}"), "[1s TAI>TAI]");
+
+        // Extremes: truncate whole seconds only; MIN uses wrapping_neg for abs
+        assert!(format!("{}", Dt::MAX).starts_with('['));
+        assert!(format!("{}", Dt::MIN).starts_with("[-"));
+        assert_eq!(
+            format!("{:.0}", Dt::MAX),
+            "[170141183460469231731s TAI>TAI]"
+        );
+        assert_eq!(
+            format!("{:.0}", Dt::MIN),
+            "[-170141183460469231731s TAI>TAI]"
+        );
+        assert_eq!(
+            format!("{:.3}", Dt::MAX),
+            "[170141183460469231731.687s TAI>TAI]"
+        );
+        assert_eq!(
+            format!("{:.3}", Dt::MIN),
+            "[-170141183460469231731.687s TAI>TAI]"
+        );
+    }
+
+    #[test]
+    fn test_ymdhms_display_precision() {
+        let ymd = Dt::from_ymd(2000, 1, 2, Scale::UTC, 3, 4, 5, 123_456_789_000_000_000).to_ymd();
+        assert_eq!(format!("{ymd}"), "2000-01-02T03:04:05.123456789 UTC");
+        assert_eq!(format!("{ymd:.3}"), "2000-01-02T03:04:05.123 UTC");
+        assert_eq!(format!("{ymd:.0}"), "2000-01-02T03:04:05 UTC");
+        assert_eq!(format!("{ymd:.20}"), "2000-01-02T03:04:05.123456789 UTC");
+
+        // Truncate: must not advance the second
+        let almost =
+            Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 999_999_999_999_999_999).to_ymd();
+        assert_eq!(format!("{almost:.3}"), "2000-01-01T12:00:00.999 TAI");
+        assert_eq!(format!("{almost:.0}"), "2000-01-01T12:00:00 TAI");
+
+        // Trailing zeros after truncate still trimmed
+        let padded =
+            Dt::from_ymd(2024, 3, 14, Scale::GPS, 15, 30, 45, 120_000_000_000_000_000).to_ymd();
+        assert_eq!(format!("{padded:.6}"), "2024-03-14T15:30:45.12 GPS");
+        assert_eq!(format!("{padded:.1}"), "2024-03-14T15:30:45.1 GPS");
+    }
+
+    #[test]
+    fn test_dt_display_alternate() {
+        let noon = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+        assert_eq!(format!("{noon}"), "[32s TAI>UTC]");
+        assert_eq!(format!("{noon:#}"), "2000-01-01T12:00:00 UTC");
+        assert_eq!(format!("{noon:#}"), format!("{}", noon.to_ymd()));
+
+        let frac = Dt::from_ymd(2024, 3, 14, Scale::UTC, 15, 30, 45, 123_456_789_000_000_000);
+        assert_eq!(format!("{frac:#}"), "2024-03-14T15:30:45.123456789 UTC");
+        assert_eq!(format!("{frac:#.3}"), "2024-03-14T15:30:45.123 UTC");
+        assert_eq!(format!("{frac:#.0}"), "2024-03-14T15:30:45 UTC");
+        assert_eq!(format!("{frac:#.3}"), format!("{:.3}", frac.to_ymd()));
+
+        let day = Dt::new(
+            86400 * deep_time::consts::ATTOS_PER_SEC_I128,
+            Scale::TAI,
+            Scale::UTC,
+        );
+        assert_eq!(format!("{day}"), "[86400s TAI>UTC]");
+        assert_eq!(format!("{day:#}"), format!("{}", day.to_ymd()));
+
+        assert_eq!(format!("{:#}", Dt::ZERO), "2000-01-01T12:00:00 TAI");
+    }
 }

@@ -213,13 +213,15 @@ use core::fmt;
 ///
 /// ### Display / `.to_string()`
 ///
-/// Formatting a [`Dt`] with [`core::fmt::Display`] (or `.to_string()` when
-/// `alloc` is enabled) writes a fixed layout that records the raw attosecond
-/// count as seconds, plus the `scale` and `target` abbreviations. That text
-/// round-trips through [`Dt::from_str`](../struct.Dt.html#method.from_str).
-/// With the `parse` feature it also round-trips through
-/// [`Dt::parse`](../struct.Dt.html#method.parse) and `Dt::from_str_parse`.
-/// Parsing Display form does not convert scales.
+/// - **`{}`** — `[seconds scale>target]`, e.g. `[86400s TAI>UTC]`. At full
+///   precision this form round-trips through
+///   [`Dt::from_str`](../struct.Dt.html#method.from_str) (and with `parse`,
+///   through [`Dt::parse`](../struct.Dt.html#method.parse) /
+///   `Dt::from_str_parse`). Parsing it does not convert scales.
+/// - **`{:#}`** — formats [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) as
+///   `YYYY-MM-DDTHH:MM:SS[.frac] TARGET`, e.g. `2000-01-01T12:00:00 UTC`.
+/// - **`{:.n}`** / **`{:#.n}`** — at most `n` fractional digits (clamped to 18),
+///   truncated, trailing zeros trimmed.
 ///
 /// ```rust
 /// # #[cfg(feature = "std")]
@@ -236,6 +238,8 @@ use core::fmt;
 /// assert_eq!(back.attos, dt.attos);
 /// assert_eq!(back.scale, Scale::TAI);
 /// assert_eq!(back.target, Scale::UTC);
+///
+/// assert_eq!(format!("{dt:#}"), "2000-01-02T11:59:28 UTC");
 /// # }
 /// ```
 ///
@@ -438,15 +442,20 @@ impl Default for Dt {
     }
 }
 
-/// Formats a [`Dt`], used when `.to_string()` is called.
+/// Formats a [`Dt`].
 ///
-/// ## Behavior
+/// ## Forms
 ///
-/// - Outer `[` `]`.
-/// - Signed decimal **seconds** from the raw `attos` count (up to 18 fractional
-///   digits, trailing zeros trimmed), then `s`.
-/// - Space, then `scale` and `target` abbreviations separated by `>`
-///   ([`Scale::abbrev`]).
+/// - **`{}`** — `[seconds scale>target]`, e.g. `[86400s TAI>UTC]`, `[-1.5s TT>GPS]`.
+/// - **`{:#}`** — formats [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) as
+///   `YYYY-MM-DDTHH:MM:SS[.frac] TARGET`, e.g. `2000-01-01T12:00:00 UTC`.
+///
+/// ## Fractional precision
+///
+/// `{:.n}` / `{:#.n}` keep at most `n` fractional digits (`n` clamped to
+/// `0..=18`), truncated (not rounded), trailing zeros trimmed. `{:.0}` /
+/// `{:#.0}` omit the fractional part. On the default form, `{:+}` forces a
+/// leading `+` when non-negative.
 ///
 /// ## Examples
 ///
@@ -472,10 +481,26 @@ impl Default for Dt {
 /// s = BufStr::<64>::default();
 /// write!(&mut s, "{}", dt).unwrap();
 /// assert_eq!(s.as_str(), "[-1.5s TT>GPS]");
+///
+/// s = BufStr::<64>::default();
+/// write!(&mut s, "{:.0}", dt).unwrap();
+/// assert_eq!(s.as_str(), "[-1s TT>GPS]");
+/// s = BufStr::<64>::default();
+/// write!(&mut s, "{:.1}", dt).unwrap();
+/// assert_eq!(s.as_str(), "[-1.5s TT>GPS]");
+///
+/// let noon = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
+/// s = BufStr::<64>::default();
+/// write!(&mut s, "{noon:#}").unwrap();
+/// assert_eq!(s.as_str(), "2000-01-01T12:00:00 UTC");
 /// ```
 impl fmt::Display for Dt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        const PREC: usize = 18;
+        if f.alternate() {
+            return fmt::Display::fmt(&self.to_ymd(), f);
+        }
+
+        const MAX_FRAC: usize = 18;
 
         let total = self.to_attos();
         let is_negative = total < 0;
@@ -485,35 +510,46 @@ impl fmt::Display for Dt {
             total as u128
         };
 
+        let attos_per_sec = ATTOS_PER_SEC as u128;
+        let whole_seconds = abs_attos / attos_per_sec;
+        let fractional_attos = abs_attos % attos_per_sec;
+
+        // Build 18 fractional digits (attosecond places).
+        let mut digits = [0u8; MAX_FRAC];
+        if fractional_attos > 0 {
+            let mut n = fractional_attos;
+            for i in (0..MAX_FRAC).rev() {
+                digits[i] = (n % 10) as u8;
+                n /= 10;
+            }
+        }
+
+        // Format precision: max fractional digits (default = full attosecond).
+        // Truncate only — never round / never bump whole seconds.
+        let max_frac = f.precision().unwrap_or(MAX_FRAC).min(MAX_FRAC);
+
+        let frac_last = if max_frac > 0 {
+            digits[..max_frac].iter().rposition(|&d| d != 0)
+        } else {
+            None
+        };
+        // Avoid printing `-0s` when a negative value truncates to zero magnitude.
+        let shown_zero = whole_seconds == 0 && frac_last.is_none();
+
         f.write_str("[")?;
 
-        if is_negative {
+        if is_negative && !shown_zero {
             f.write_str("-")?;
         } else if f.sign_plus() {
             f.write_str("+")?;
         }
 
-        let attos_per_sec = ATTOS_PER_SEC as u128;
-        let whole_seconds = abs_attos / attos_per_sec;
-        let fractional_attos = abs_attos % attos_per_sec;
+        write!(f, "{whole_seconds}")?;
 
-        write!(f, "{}", whole_seconds)?;
-
-        if fractional_attos > 0 {
+        if let Some(last) = frac_last {
             f.write_str(".")?;
-
-            let mut digits = [0u8; 18];
-            let mut n = fractional_attos;
-
-            for i in (0..PREC).rev() {
-                digits[i] = (n % 10) as u8;
-                n /= 10;
-            }
-
-            let last = digits[..PREC].iter().rposition(|&d| d != 0).unwrap_or(0);
-
             for &d in &digits[..=last] {
-                write!(f, "{}", d)?;
+                write!(f, "{d}")?;
             }
         }
 

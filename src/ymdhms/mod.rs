@@ -523,8 +523,38 @@ impl YmdHms {
     }
 }
 
+/// Formats as `YYYY-MM-DDTHH:MM:SS[.frac] TARGET`.
+///
+/// - Fractional attoseconds: up to 18 digits, trailing zeros trimmed.
+/// - `{:.n}`: at most `n` fractional digits (`n` clamped to `0..=18`),
+///   truncated (not rounded), trailing zeros trimmed. Does not change
+///   hour/minute/second.
+/// - `{:.0}`: omit the fractional part.
+/// - Ends with a space and the **target** scale abbreviation.
+///
+/// ## Examples
+///
+/// ```rust
+/// use core::fmt::Write;
+/// use deep_time::{BufStr, Dt, Scale};
+///
+/// let ymd = Dt::from_ymd(2000, 1, 2, Scale::UTC, 3, 4, 5, 123_456_789_000_000_000).to_ymd();
+/// let mut s = BufStr::<64>::default();
+/// write!(&mut s, "{ymd}").unwrap();
+/// assert_eq!(s.as_str(), "2000-01-02T03:04:05.123456789 UTC");
+/// s = BufStr::<64>::default();
+/// write!(&mut s, "{ymd:.3}").unwrap();
+/// assert_eq!(s.as_str(), "2000-01-02T03:04:05.123 UTC");
+/// s = BufStr::<64>::default();
+/// write!(&mut s, "{ymd:.0}").unwrap();
+/// assert_eq!(s.as_str(), "2000-01-02T03:04:05 UTC");
+/// ```
 impl core::fmt::Display for YmdHms {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        const MAX_FRAC: usize = 18;
+
+        let max_frac = f.precision().unwrap_or(MAX_FRAC).min(MAX_FRAC);
+
         // Year: 4-digit padded when |yr| < 10000, natural width otherwise
         if self.yr >= 0 {
             if self.yr < 10000 {
@@ -582,26 +612,22 @@ impl core::fmt::Display for YmdHms {
             core::write!(f, "{}", self.sec)?;
         }
 
-        // Fractional attoseconds
-        if self.attos != 0 {
-            let mut buf = [0u8; 18];
+        // Fractional attoseconds: truncate to max_frac, then trim trailing zeros
+        if max_frac > 0 && self.attos != 0 {
+            let mut digits = [0u8; MAX_FRAC];
             let mut n = self.attos;
-            for i in (0..18).rev() {
-                buf[i] = (n % 10) as u8 + b'0';
+            for i in (0..MAX_FRAC).rev() {
+                digits[i] = (n % 10) as u8;
                 n /= 10;
             }
-            let mut end = 18;
-            while end > 0 && buf[end - 1] == b'0' {
-                end -= 1;
-            }
-
-            core::write!(f, ".")?;
-            for &byte in &buf[..end] {
-                core::write!(f, "{}", byte as char)?;
+            if let Some(last) = digits[..max_frac].iter().rposition(|&d| d != 0) {
+                core::write!(f, ".")?;
+                for &d in &digits[..=last] {
+                    core::write!(f, "{d}")?;
+                }
             }
         }
 
-        // Scale abbreviation at the end
         core::write!(f, " {}", self.dt.target.abbrev())
     }
 }
