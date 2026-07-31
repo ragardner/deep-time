@@ -105,12 +105,16 @@ impl Parts {
             let unix = {
                 match ts.epoch {
                     Epoch::Unix => {
-                        let from_unix = Dt::new(ts.attos, self.scale, self.scale);
+                        let from_unix = Dt::new(ts.attos, self.scale, self.target);
                         let tai = Dt::from_unix(from_unix);
                         tai.target(Scale::UTC).to_unix()
                     }
                     Epoch::Noon2000 => {
-                        let dt = Dt::new(ts.attos, self.scale, Scale::UTC);
+                        let dt = Dt::new(ts.attos, self.scale, self.target);
+                        dt.to_unix()
+                    }
+                    Epoch::Noon2000NoConvert => {
+                        let dt = Dt::new(ts.attos, self.scale, self.target);
                         dt.to_unix()
                     }
                 }

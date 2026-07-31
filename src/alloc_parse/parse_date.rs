@@ -13,12 +13,16 @@ impl Dt {
     /// majority of date formats.
     ///
     /// - Requires the `"parse"` feature (which enables `alloc`).
-    /// - The returned [`Dt`] is internally on the TAI time scale. The `attos` field is an [`i128`] attosecond
-    ///   count since TAI 2000-01-01 noon. See
-    ///   [`Scale`](../enum.Scale.html)
-    ///   for more information.
-    /// - The returned [`Dt`] is **not** in local time, if a timezone is parsed then it's used to find the offset
-    ///   to return non-local instant.
+    /// - For ordinary calendar and numeric inputs, the returned [`Dt`] is on the
+    ///   **TAI** time scale: the instant is interpreted on the scale named in the
+    ///   input (or the default for that form) and then converted to TAI. Display
+    ///   form is different. If the string is Display text such as
+    ///   `[86400s TAI>UTC]`, no conversion runs, and the returned [`Dt`]'s
+    ///   `scale` and `target` are taken from the string as written.
+    /// - The `attos` field is an [`i128`] attosecond count measured from the
+    ///   library epoch of 2000-01-01 noon. See [`Scale`](../enum.Scale.html).
+    /// - The returned [`Dt`] is **not** in local time. If a timezone is parsed,
+    ///   it is used only to find the offset so the result is a non-local instant.
     ///
     /// ## Parameters
     ///
@@ -93,6 +97,9 @@ impl Dt {
     /// must come afterwards.
     ///
     /// - **ISO 8601** and variants: `2024-03-15`, `2024-03-15T14:30:00Z`, `2024-03-15T14:30:00+01:00[Europe/Paris]`
+    /// - **Display form** — same text as [`Dt`] Display / `.to_string()`, e.g.
+    ///   `[86400s TAI>UTC]`. Parsed like [`Dt::from_str`](../struct.Dt.html#method.from_str)
+    ///   (no scale conversion).
     /// - **Named dates** (in supported languages): `15 March 2024`, `15 mars 2024`, `15. März 2024`, `15 de marzo de 2024`
     /// - **Week dates**: `2024-W15`, `2024-W15-3`, `2024W15` (missing weekday defaults to Monday)
     /// - **Syslog-style** (no year): `Mar  5 10:23:45` (year inferred from `ref_time`)

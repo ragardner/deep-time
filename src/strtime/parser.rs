@@ -869,6 +869,7 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
         self.bump_fmt();
         if let Some(ct) = Scale::from_abbrev(&start[..pos]) {
             self.tm.scale = ct;
+            self.tm.target = ct;
             Ok(())
         } else {
             Err(an_err!(DtErrKind::InvalidScale))

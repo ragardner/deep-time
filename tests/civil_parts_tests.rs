@@ -161,4 +161,21 @@ mod tests {
         assert_eq!(jd_tt(&tp_iso), jd_tt(&ymd));
         assert_eq!(tp_iso.to_jd(), ymd.to_jd());
     }
+
+    /// Civil `to_dt` must copy `Parts::target` (not force it to equal `scale`).
+    #[test]
+    fn test_civil_to_dt_preserves_distinct_target() {
+        let parts = Parts {
+            yr: Some(2024),
+            mo: Some(6),
+            day: Some(20),
+            hr: 12,
+            scale: Scale::UTC,
+            target: Scale::GPS,
+            ..Parts::default()
+        };
+        let dt = parts.to_dt().unwrap();
+        assert_eq!(dt.scale, Scale::TAI);
+        assert_eq!(dt.target, Scale::GPS);
+    }
 }

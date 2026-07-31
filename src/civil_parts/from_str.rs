@@ -1,8 +1,8 @@
 use crate::en::{parse_month_name_abbrev, parse_wkday_name_abbrev};
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, DtErr, DtErrKind, Epoch,
-    JD_2000_2_451_545_I128, Offset, ParsedReal, Parts, SEC_PER_DAY, STRTIME_SIZE, Scale, Timestamp,
-    Weekday, an_err,
+    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, ATTOS_PER_SEC_U128, DtErr, DtErrKind,
+    Epoch, JD_2000_2_451_545_I128, Offset, ParsedReal, Parts, SEC_PER_DAY, STRTIME_SIZE, Scale,
+    Timestamp, Weekday, an_err,
 };
 
 impl Parts {
@@ -104,6 +104,23 @@ impl Parts {
     ///   (both require `alloc`).
     /// - **Scale** — library abbreviation, e.g. `TAI`, `UTC`, `TDB`, `GPS`.
     ///
+    /// ### Display form
+    ///
+    /// Same layout as [`Dt`](../struct.Dt.html) Display / `.to_string()`.
+    ///
+    /// #### Format examples
+    ///
+    /// - **`[86400s TAI>UTC]`**
+    /// - **`[-1.5s TT>GPS]`**
+    /// - **`[0s TAI>TAI]`**
+    ///
+    /// #### Notes
+    ///
+    /// - After [`Parts::to_dt`](struct.Parts.html#method.to_dt), the resulting
+    ///   [`Dt`](../struct.Dt.html) keeps the attosecond count and both scale names
+    ///   from the string — no scale conversion.
+    /// - Anything after the closing `]` is ignored.
+    ///
     /// ### Seconds since 2000-01-01 noon (library epoch)
     ///
     /// #### Format examples
@@ -114,8 +131,8 @@ impl Parts {
     /// #### Notes
     ///
     /// - `sec` prefix is required (case-insensitive).
-    /// - Fractional seconds optional; sets [`Parts::timestamp`] with
-    ///   [`Epoch::Noon2000`](enum.Epoch.html#variant.Noon2000).
+    /// - Fractional seconds optional. Stored as attoseconds since the library
+    ///   epoch ([`Epoch::Noon2000`](enum.Epoch.html#variant.Noon2000)).
     ///
     /// ### Julian Date
     ///
@@ -127,8 +144,8 @@ impl Parts {
     /// #### Notes
     ///
     /// - `jd` prefix is required (case-insensitive).
-    /// - Fractional days optional; result is a [`Parts::timestamp`] on
-    ///   [`Epoch::Noon2000`](enum.Epoch.html#variant.Noon2000).
+    /// - Fractional days optional. Converted to attoseconds since the library
+    ///   epoch (same storage as `SEC`, not a separate epoch kind).
     ///
     /// ### Modified Julian Date
     ///
@@ -140,12 +157,13 @@ impl Parts {
     /// #### Notes
     ///
     /// - `mjd` prefix is required (case-insensitive).
-    /// - Fractional days optional; same timestamp representation as JD.
+    /// - Fractional days optional. Converted the same way as JD (attoseconds
+    ///   since the library epoch).
     ///
     /// ## See also
     ///
     /// - [`Dt::from_str`](../struct.Dt.html#method.from_str) — same input, returns
-    ///   a [`Dt`](../struct.Dt.html) on TAI via [`Parts::to_dt`](struct.Parts.html#method.to_dt).
+    ///   a [`Dt`](../struct.Dt.html) via [`Parts::to_dt`](struct.Parts.html#method.to_dt).
     #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Result<Self, DtErr> {
         let bytes = s.as_bytes();
@@ -208,6 +226,11 @@ impl Parts {
             } else {
                 DtErrKind::ExpectedYear
             }));
+        }
+
+        // Display form: `[` immediately before the first digit/sign.
+        if start > 0 && bytes[start - 1] == b'[' {
+            return Self::from_str_display(&bytes[start..]);
         }
 
         let s = &s[start..];
@@ -703,9 +726,115 @@ impl Parts {
         // Optional trailing scale (e.g. TAI, UTC)
         if let Some(sc) = Self::parse_scale(&bytes[pos..]) {
             tp.scale = sc;
+            tp.target = sc;
         }
 
         Ok(tp)
+    }
+
+    /// Parse Display text after the opening `[` has already been skipped.
+    ///
+    /// Full examples look like `[86400s TAI>UTC]` or `[-1.5s TT>GPS]`.
+    fn from_str_display(bytes: &[u8]) -> Result<Parts, DtErr> {
+        let len = bytes.len();
+        let mut pos = 0usize;
+
+        // Optional sign
+        let negative = if pos < len && bytes[pos] == b'-' {
+            pos += 1;
+            true
+        } else if pos < len && bytes[pos] == b'+' {
+            pos += 1;
+            false
+        } else {
+            false
+        };
+
+        let num_start = pos;
+        while pos < len && bytes[pos].is_ascii_digit() {
+            pos += 1;
+        }
+        if pos < len && bytes[pos] == b'.' {
+            pos += 1;
+            while pos < len && bytes[pos].is_ascii_digit() {
+                pos += 1;
+            }
+        }
+        if pos == num_start {
+            return Err(an_err!(DtErrKind::ExpectedValue));
+        }
+        if pos >= len || bytes[pos] != b's' {
+            return Err(an_err!(DtErrKind::InvalidInput, "expect s"));
+        }
+        let num_end = pos;
+        pos += 1;
+
+        // At least one whitespace after `s` (Display emits a single space).
+        if pos >= len || !bytes[pos].is_ascii_whitespace() {
+            return Err(an_err!(DtErrKind::InvalidInput, "expect space"));
+        }
+        while pos < len && bytes[pos].is_ascii_whitespace() {
+            pos += 1;
+        }
+
+        let scale_start = pos;
+        while pos < len && bytes[pos].is_ascii_alphabetic() {
+            pos += 1;
+        }
+        if scale_start == pos {
+            return Err(an_err!(DtErrKind::InvalidScale));
+        }
+        let scale = Scale::from_abbrev(&bytes[scale_start..pos])
+            .ok_or_else(|| an_err!(DtErrKind::InvalidScale))?;
+
+        if pos >= len || bytes[pos] != b'>' {
+            return Err(an_err!(DtErrKind::InvalidInput, "expect >"));
+        }
+        pos += 1;
+
+        let target_start = pos;
+        while pos < len && bytes[pos].is_ascii_alphabetic() {
+            pos += 1;
+        }
+        if target_start == pos {
+            return Err(an_err!(DtErrKind::InvalidScale));
+        }
+        let target = Scale::from_abbrev(&bytes[target_start..pos])
+            .ok_or_else(|| an_err!(DtErrKind::InvalidScale))?;
+
+        // `]` immediately after target (no gap). Trailing input after `]` is ignored.
+        if pos >= len || bytes[pos] != b']' {
+            return Err(an_err!(DtErrKind::InvalidInput, "expect ]"));
+        }
+
+        let parsed = Self::parse_str_f(&bytes[num_start..num_end], Some(Scale::TAI))
+            .ok_or_else(|| an_err!(DtErrKind::ExpectedValue))?;
+        // Build magnitude in u128 so |i128::MIN| attos (2^127) can round-trip.
+        let mag = (parsed.int_abs as u128)
+            .saturating_mul(ATTOS_PER_SEC_U128)
+            .saturating_add(parsed.frac_attos as u128);
+        let total_attos = if negative {
+            // `2^127` is |i128::MIN|; anything larger saturates to MIN.
+            if mag >= (1u128 << 127) {
+                i128::MIN
+            } else {
+                -(mag as i128)
+            }
+        } else if mag > (i128::MAX as u128) {
+            i128::MAX
+        } else {
+            mag as i128
+        };
+
+        Ok(Parts {
+            timestamp: Some(Timestamp {
+                attos: total_attos,
+                epoch: Epoch::Noon2000NoConvert,
+            }),
+            scale,
+            target,
+            ..Default::default()
+        })
     }
 
     /// Parse a time scale abbreviation from a bytes slice.
@@ -879,6 +1008,7 @@ impl Parts {
                 epoch: Epoch::Noon2000,
             }),
             scale: parsed.scale,
+            target: parsed.scale,
             ..Default::default()
         };
 
@@ -948,6 +1078,7 @@ impl Parts {
                 epoch: Epoch::Noon2000,
             }),
             scale: parsed.scale,
+            target: parsed.scale,
             ..Default::default()
         };
 
@@ -1032,6 +1163,7 @@ impl Parts {
                 epoch: Epoch::Noon2000,
             }),
             scale: parsed.scale,
+            target: parsed.scale,
             ..Default::default()
         };
 

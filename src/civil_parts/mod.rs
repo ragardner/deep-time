@@ -64,8 +64,16 @@ pub struct Parts {
     pub offset: Option<Offset>,
     /// IANA timezone name (e.g. `"America/New_York"`), stored as ASCII.
     pub iana_name: Option<BufStr<49>>,
-    /// The time scale this value belongs to (TAI, UTC, etc.).
+    /// Time scale the input is on (used by [`Parts::to_dt`](struct.Parts.html#method.to_dt)
+    /// when converting).
     pub scale: Scale,
+    /// Preferred output scale for the resulting [`Dt`](../struct.Dt.html).
+    ///
+    /// Often the same as [`Self::scale`]. When you build a [`Parts`] yourself,
+    /// set `target` as well as `scale` if you care which scale outputs use
+    /// (Display text, CCSDS format choice, and so on). With [`Default`], both
+    /// fields are [`Scale::TAI`].
+    pub target: Scale,
     /// Day of the week.
     pub wkday: Option<Weekday>,
     /// Day of the year (1–366), corresponding to `%j`.
@@ -80,7 +88,7 @@ pub struct Parts {
     pub wk_mon: Option<u8>,
     /// AM / PM indicator.
     pub meridiem: Option<Meridiem>,
-    /// Timestamp in seconds since a known epoch (`%s` = Unix 1970, `%J` = noon 2000).
+    /// Optional attosecond timestamp (see [`Timestamp`] / [`Epoch`]).
     pub timestamp: Option<Timestamp>,
 }
 
@@ -96,11 +104,12 @@ pub(crate) struct ParsedReal {
 }
 
 impl Parts {
-    /// Creates empty [`Parts`] with scale set to [`Scale::UTC`].
+    /// Creates empty [`Parts`] with both `scale` and `target` set to [`Scale::UTC`].
     #[inline(always)]
     pub fn new_utc() -> Parts {
         Self {
             scale: Scale::UTC,
+            target: Scale::UTC,
             ..Default::default()
         }
     }
@@ -112,31 +121,32 @@ impl Parts {
     }
 }
 
-/// Used by [`Timestamp`]
+/// Where a [`Timestamp`]'s attosecond count is measured from.
 ///
-/// Records the epoch of the timestamp.
+/// Scale conversion is documented on [`Parts::to_dt`](struct.Parts.html#method.to_dt).
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub enum Epoch {
-    /// Unix epoch: 1970-01-01 00:00:00 UTC (`%s`).
+    /// From 1970-01-01 midnight (`%s`).
     Unix,
-    /// J2000.0 noon epoch: 2000-01-01 12:00:00 TAI (`%J`).
+    /// From 2000-01-01 noon (library epoch; also `%J`).
     Noon2000,
+    /// From 2000-01-01 noon, same as [`Self::Noon2000`]. Used for Display text
+    /// such as `[86400s TAI>UTC]`.
+    Noon2000NoConvert,
 }
 
-/// Timestamp seconds relative to a specific epoch.
-///
-/// Used by the `%s` (Unix epoch) and `%J` (J2000.0 noon 2000-01-01 12:00 TAI) directives.
+/// Attoseconds since an [`Epoch`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Timestamp {
-    /// Instant as attoseconds relative to [`Self::epoch`].
+    /// Attoseconds since [`Self::epoch`].
     pub attos: i128,
-    /// Epoch that [`Self::attos`] is measured from.
+    /// Instant this count is measured from.
     pub epoch: Epoch,
 }
 
@@ -415,6 +425,10 @@ impl Parts {
         buf[offset] = self.scale as u8;
         offset += 1;
 
+        // target
+        buf[offset] = self.target as u8;
+        offset += 1;
+
         // weekday
         buf[offset] = self.wkday.map_or(255, |w| w.to_wire_byte());
         offset += 1;
@@ -446,13 +460,14 @@ impl Parts {
         offset += 1;
 
         // timestamp: tag (1 byte) + i128 attos (16 bytes) = 17 bytes total
-        // tag: 0 = none, 1 = Unix, 2 = Noon2000
+        // tag: 0 = none, 1 = Unix, 2 = Noon2000, 3 = Noon2000NoConvert
         let (tag, attos) = match &self.timestamp {
             None => (0u8, 0i128),
             Some(ts) => {
                 let t = match ts.epoch {
                     Epoch::Unix => 1u8,
                     Epoch::Noon2000 => 2u8,
+                    Epoch::Noon2000NoConvert => 3u8,
                 };
                 (t, ts.attos)
             }
@@ -533,6 +548,10 @@ impl Parts {
         dc.scale = Scale::from_u8(bytes[offset]);
         offset += 1;
 
+        // target (1 byte)
+        dc.target = Scale::from_u8(bytes[offset]);
+        offset += 1;
+
         // weekday (1 byte)
         let wd_byte = bytes[offset];
         if wd_byte != 255
@@ -587,7 +606,7 @@ impl Parts {
         offset += 1;
 
         // timestamp: tag (1) + i128 attos (16)
-        // tag: 0=none, 1=Unix, 2=Noon2000
+        // tag: 0=none, 1=Unix, 2=Noon2000, 3=Noon2000NoConvert
         let tag = bytes[offset];
         offset += 1;
 
@@ -599,6 +618,7 @@ impl Parts {
             let epoch = match tag {
                 1 => Epoch::Unix,
                 2 => Epoch::Noon2000,
+                3 => Epoch::Noon2000NoConvert,
                 _ => return None,
             };
             dc.timestamp = Some(Timestamp { attos, epoch });

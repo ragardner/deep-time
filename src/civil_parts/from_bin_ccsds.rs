@@ -34,7 +34,7 @@ impl Parts {
     /// BCD digits are invalid, field lengths are insufficient, or any
     /// component (month, day, DOY, hour, minute, second) is out of range.
     ///
-    /// The resulting [`Parts`] has `scale = UTC`.
+    /// The resulting [`Parts`] has `scale` and `target` set to [`Scale::UTC`].
     pub fn from_ccsds_ccs(input: &[u8]) -> Result<Parts, DtErr> {
         if input.is_empty() {
             return Err(an_err!(DtErrKind::Empty));
@@ -156,6 +156,7 @@ impl Parts {
             sec: second,
             attos,
             scale: Scale::UTC,
+            target: Scale::UTC,
             ..Parts::default()
         };
 
@@ -198,7 +199,7 @@ impl Parts {
     ///
     /// ## Returns
     ///
-    /// A [`Parts`] with `scale = TAI` and the decoded civil date/time.
+    /// A [`Parts`] with `scale` and `target` set to [`Scale::TAI`] and the decoded civil date/time.
     ///
     /// ## Errors
     ///
@@ -285,6 +286,7 @@ impl Parts {
             sec: second,
             attos: frac_attos,
             scale: Scale::TAI,
+            target: Scale::TAI,
             ..Parts::default()
         };
         pd.finish(false)?;
@@ -331,7 +333,7 @@ impl Parts {
     ///
     /// ## Returns
     ///
-    /// A [`Parts`] with `scale = UTC` and the decoded civil date/time.
+    /// A [`Parts`] with `scale` and `target` set to [`Scale::UTC`] and the decoded civil date/time.
     ///
     /// ## Errors
     ///
@@ -464,6 +466,7 @@ impl Parts {
             sec: second,
             attos: frac_attos as u64,
             scale: Scale::UTC,
+            target: Scale::UTC,
             ..Parts::default()
         };
         pd.finish(false)?;

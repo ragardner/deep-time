@@ -284,6 +284,27 @@ pub(crate) fn classify_date(
                         }
                         _ => {}
                     }
+                } else if currently == IndexIn::PreDate && *ch == '[' {
+                    // `[` before the date, then a number → Display text
+                    // (e.g. `[86400s TAI>UTC]`). Try Dt::from_str.
+                    // Zone names like `…[Europe/Paris]` come after the date,
+                    // so they do not hit this branch.
+                    let num_follows = if idx + 1 < part_len {
+                        let n = part_chars[idx + 1];
+                        n.is_ascii_digit()
+                            || (matches!(n, '+' | '-')
+                                && idx + 2 < part_len
+                                && part_chars[idx + 2].is_ascii_digit())
+                    } else {
+                        match s.as_bytes().get(range.end..) {
+                            Some([b'0'..=b'9', ..]) => true,
+                            Some([b'+' | b'-', d, ..]) => d.is_ascii_digit(),
+                            _ => false,
+                        }
+                    };
+                    if num_follows && let Ok(dt) = Dt::from_str(s) {
+                        return Ok(ClassifiedDate::Parsed(dt));
+                    }
                 } else if currently != IndexIn::PreDate {
                     if in_digit_run && digit_run_len > 0 {
                         date_tokens.push(Token::Digits(digit_run_len));

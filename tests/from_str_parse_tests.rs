@@ -1147,4 +1147,70 @@ mod tests {
         assert_err("week", &cfg);
         assert_rfc("2024-03-15", "2024-03-15T00:00:00Z", &cfg);
     }
+
+    // ── 28. Display form (`Dt` Display / `.to_string()`) ───────────────────
+
+    #[test]
+    fn display_form_roundtrip_via_from_str_parse() {
+        let cfg = def();
+        let cases = [
+            Dt::ZERO,
+            Dt::new(
+                86400 * deep_time::consts::ATTOS_PER_SEC_I128,
+                Scale::TAI,
+                Scale::UTC,
+            ),
+            Dt::new(-1_500_000_000_000_000_000, Scale::TT, Scale::GPS),
+            Dt::new(1, Scale::TDB, Scale::TDB),
+            Dt::MAX,
+            Dt::MIN,
+        ];
+        for original in cases {
+            let s = original.to_string();
+            let back = parse(&s, &cfg);
+            assert_eq!(back.attos, original.attos, "attos for {s:?}");
+            assert_eq!(back.scale, original.scale, "scale for {s:?}");
+            assert_eq!(back.target, original.target, "target for {s:?}");
+        }
+    }
+
+    #[test]
+    fn display_form_agrees_with_dt_from_str() {
+        let cfg = def();
+        for s in [
+            "[0s TAI>TAI]",
+            "[86400s TAI>UTC]",
+            "[-1.5s TT>GPS]",
+            "  [0s TAI>TAI]",
+            "junk [42s GPS>UTC] trailing",
+        ] {
+            let via_parse = parse(s, &cfg);
+            let via_fast = Dt::from_str(s).unwrap_or_else(|e| {
+                panic!("Dt::from_str failed for {s:?}: {e}");
+            });
+            assert_eq!(via_parse, via_fast, "mismatch for {s:?}");
+        }
+    }
+
+    #[test]
+    fn display_form_not_confused_with_civil_brackets() {
+        let cfg = def();
+        // Normal civil / Zulu still works.
+        assert_rfc("2024-03-15T12:00:00Z", "2024-03-15T12:00:00Z", &cfg);
+
+        // Display form keeps the encoded scale/target (no TAI conversion).
+        let disp = parse("[-1.5s TT>GPS]", &cfg);
+        assert_eq!(disp.scale, Scale::TT);
+        assert_eq!(disp.target, Scale::GPS);
+        assert_eq!(disp.attos, -1_500_000_000_000_000_000);
+
+        // `[` + civil date is not Display: failed handoff falls through to the
+        // smart path, which treats the brackets as junk around a real date.
+        let civil = parse("[2024-03-15]", &cfg);
+        assert_eq!(civil.scale, Scale::TAI);
+        assert_eq!(civil.target, Scale::UTC);
+        assert_eq!(civil.to_ymd().yr(), 2024);
+        assert_eq!(civil.to_ymd().mo(), 3);
+        assert_eq!(civil.to_ymd().day(), 15);
+    }
 }

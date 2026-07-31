@@ -1,6 +1,6 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
-use deep_time::civil_parts::{Offset, Parts, Weekday};
+use deep_time::civil_parts::{Epoch, Offset, Parts, Weekday};
 use deep_time::consts::{ATTOS_PER_SEC_I128, SEC_PER_DAY_I64};
 use deep_time::macros::as_ms;
 use deep_time::{Dt, DtErrKind, Scale};
@@ -693,6 +693,48 @@ mod from_str_tests {
         assert!(Parts::from_str_mjd_f(&max_p1, None).is_some());
     }
 
+    #[test]
+    fn test_display_form_roundtrip() {
+        let cases = [
+            Dt::ZERO,
+            Dt::MAX,
+            Dt::MIN,
+            Dt::new(86400 * ATTOS_PER_SEC_I128, Scale::TAI, Scale::UTC),
+            Dt::new(-1_500_000_000_000_000_000, Scale::TT, Scale::GPS),
+            Dt::new(1, Scale::TDB, Scale::TDB),
+            Dt::new(0, Scale::UtcSpice, Scale::UtcHist),
+        ];
+        for original in cases {
+            let s = {
+                use core::fmt::Write;
+                let mut buf = deep_time::BufStr::<128>::default();
+                write!(&mut buf, "{original}").unwrap();
+                buf
+            };
+            let p = Parts::from_str(s.as_str()).unwrap();
+            assert_eq!(
+                p.timestamp.as_ref().map(|t| t.epoch),
+                Some(Epoch::Noon2000NoConvert)
+            );
+            let back = p.to_dt().unwrap();
+            assert_eq!(back.attos, original.attos, "attos for {s:?}");
+            assert_eq!(back.scale, original.scale, "scale for {s:?}");
+            assert_eq!(back.target, original.target, "target for {s:?}");
+        }
+    }
+
+    #[test]
+    fn test_display_form_bracket_rules() {
+        // Space before `]` is not allowed.
+        assert!(Parts::from_str("[0s TAI>TAI ]").is_err());
+        // No leading `[` → not display form.
+        assert!(Parts::from_str("0s TAI>TAI]").is_err());
+        // Trailing junk after `]` is ignored.
+        let p = Parts::from_str("[0s TAI>TAI] trailing").unwrap();
+        assert_eq!(p.to_dt().unwrap(), Dt::ZERO);
+    }
+
+    #[test]
     fn test_iso_sec_prefix() {
         // TAI case (exact integer + frac)
         let p = Parts::from_str("SEC 1234.567").unwrap();

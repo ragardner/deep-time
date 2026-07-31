@@ -211,6 +211,35 @@ use core::fmt;
 /// # }
 /// ```
 ///
+/// ### Display / `.to_string()`
+///
+/// Formatting a [`Dt`] with [`Display`] (or `.to_string()` when `alloc` is
+/// enabled) writes a fixed layout that records the raw attosecond count as
+/// seconds, plus the `scale` and `target` abbreviations. That text round-trips
+/// through [`Dt::from_str`](../struct.Dt.html#method.from_str). With the
+/// `parse` feature it also round-trips through
+/// [`Dt::parse`](../struct.Dt.html#method.parse) and
+/// [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse). Parsing
+/// Display form does not convert scales.
+///
+/// ```rust
+/// # #[cfg(feature = "std")]
+/// # {
+/// use deep_time::{Dt, Scale};
+/// use deep_time::macros::from_sec;
+///
+/// assert_eq!(Dt::ZERO.to_string(), "[0s TAI>TAI]");
+///
+/// let dt = from_sec!(86400, on = Scale::TAI, target = Scale::UTC);
+/// assert_eq!(dt.to_string(), "[86400s TAI>UTC]");
+///
+/// let back = Dt::from_str(&dt.to_string()).unwrap();
+/// assert_eq!(back.attos, dt.attos);
+/// assert_eq!(back.scale, Scale::TAI);
+/// assert_eq!(back.target, Scale::UTC);
+/// # }
+/// ```
+///
 /// ### Outputting a date to string / bytes
 ///
 /// ```rust

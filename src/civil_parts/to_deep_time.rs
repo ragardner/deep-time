@@ -6,23 +6,107 @@ use crate::{
 };
 
 impl Parts {
-    /// Converts [`Parts`] → [`Dt`].
-    /// - Resulting [`Dt`] is on the TAI timescale having been converted from
-    ///   this [`Parts`]'s `scale` field. See [`Scale`](enum.Scale.html).
-    /// - If this [`Parts`] time scale is `TAI` then no conversion is performed.
-    /// - If this [`Parts`] has a timestamp then it is used to create the [`Dt`]
-    ///   and all other fields are ignored.
+    /// Builds a [`Dt`] from this [`Parts`].
+    ///
+    /// ## Timestamp present
+    ///
+    /// If this [`Parts`] has a [`timestamp`](Parts::timestamp):
+    ///
+    /// - That timestamp is used. All other fields except `scale` and `target`
+    ///   are ignored.
+    /// - If the timestamp’s [`Epoch`] is [`Epoch::Noon2000NoConvert`], no time
+    ///   scale conversion occurs. The returned [`Dt`]'s `scale` is this
+    ///   [`Parts`]'s `scale`.
+    /// - Otherwise the count is taken on this [`Parts`]'s `scale` and converted
+    ///   to TAI (no-op if `scale` is already TAI). The returned [`Dt`]'s `scale`
+    ///   is **TAI**.
+    /// - If the epoch is [`Epoch::Unix`], the attosecond count is also shifted
+    ///   from 1970-01-01 onto library noon (2000-01-01 noon).
+    ///   [`Epoch::Noon2000`] and [`Epoch::Noon2000NoConvert`] are already counted
+    ///   from library noon.
+    ///
+    /// ## No timestamp
+    ///
+    /// Date and time-of-day fields are used (see [Civil date priority](#civil-date-priority)).
+    /// The instant is taken on this [`Parts`]'s `scale` and converted to TAI
+    /// (no-op if `scale` is already TAI). The returned [`Dt`]'s `scale` is **TAI**.
+    ///
+    /// ## Target
+    ///
+    /// The returned [`Dt`]'s `target` is always this [`Parts`]'s `target`.
+    ///
+    /// ## Civil date priority
+    ///
+    /// When there is no timestamp, the first complete form below wins (later
+    /// forms are not tried):
+    ///
+    /// 1. **Year + month + day** ([`yr`](Parts::yr), [`mo`](Parts::mo),
+    ///    [`day`](Parts::day)).
+    /// 2. **Year + day-of-year** ([`yr`](Parts::yr), [`day_of_yr`](Parts::day_of_yr)).
+    /// 3. **ISO week** ([`iso_wk_yr`](Parts::iso_wk_yr), [`iso_wk`](Parts::iso_wk));
+    ///    missing [`wkday`](Parts::wkday) defaults to Monday.
+    /// 4. **Year + Sunday week** ([`yr`](Parts::yr), [`wk_sun`](Parts::wk_sun));
+    ///    missing weekday defaults to Sunday.
+    /// 5. **Year + Monday week** ([`yr`](Parts::yr), [`wk_mon`](Parts::wk_mon));
+    ///    missing weekday defaults to Monday.
+    ///
+    /// Time-of-day uses [`hr`](Parts::hr), [`min`](Parts::min), [`sec`](Parts::sec),
+    /// and [`attos`](Parts::attos). If [`meridiem`](Parts::meridiem) is set, `hr`
+    /// is treated as 1–12 and mapped to 24-hour time.
+    ///
+    /// ## Time zone / offset
+    ///
+    /// Only used when there is no timestamp:
+    ///
+    /// - If [`iana_name`](Parts::iana_name) is set and non-empty, that zone is
+    ///   applied and [`offset`](Parts::offset) is ignored.
+    /// - Else if [`offset`](Parts::offset) is a fixed offset, it is applied
+    ///   (local civil time → the underlying count before scale conversion).
+    ///
+    /// ### `jiff-tz` / `jiff-tz-bundle`
+    ///
+    /// Resolving a real IANA name (anything other than a UTC alias such as
+    /// `UTC` / `Zulu`) needs the `jiff-tz` or `jiff-tz-bundle` feature (both
+    /// need `alloc`). Without those features, a non-UTC IANA name returns
+    /// [`DtErrKind::MissingFeature`](../error/enum.DtErrKind.html#variant.MissingFeature).
+    /// With the feature, unknown zone names return
+    /// [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone).
+    ///
+    /// ## Errors
+    ///
+    /// Returns a [`DtErr`]. Common kinds:
+    ///
+    /// - [`DtErrKind::ExpectedYear`](../error/enum.DtErrKind.html#variant.ExpectedYear)
+    ///   — no year and no ISO week year, and no usable date form.
+    /// - [`DtErrKind::InvalidDate`](../error/enum.DtErrKind.html#variant.InvalidDate)
+    ///   — invalid YMD, or incomplete date fields that did not match a form above.
+    /// - [`DtErrKind::DayOfYearOutOfRange`](../error/enum.DtErrKind.html#variant.DayOfYearOutOfRange)
+    /// - [`DtErrKind::IsoWeekOutOfRange`](../error/enum.DtErrKind.html#variant.IsoWeekOutOfRange) /
+    ///   [`DtErrKind::InvalidIsoWeek`](../error/enum.DtErrKind.html#variant.InvalidIsoWeek)
+    /// - [`DtErrKind::WeekOutOfRange`](../error/enum.DtErrKind.html#variant.WeekOutOfRange)
+    /// - [`DtErrKind::HourOutOfRange`](../error/enum.DtErrKind.html#variant.HourOutOfRange)
+    ///   — meridiem set but hour not in 1..=12.
+    /// - [`DtErrKind::MissingFeature`](../error/enum.DtErrKind.html#variant.MissingFeature) /
+    ///   [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone) /
+    ///   [`DtErrKind::InvalidTimestamp`](../error/enum.DtErrKind.html#variant.InvalidTimestamp) /
+    ///   [`DtErrKind::ConversionFail`](../error/enum.DtErrKind.html#variant.ConversionFail)
+    ///   — IANA resolution (see above).
     pub fn to_dt(&self) -> Result<Dt, DtErr> {
         // ──────────────────────────────────────────────────────────────
-        // Explicit timestamp (%s or %J)
+        // Timestamp path
         // ──────────────────────────────────────────────────────────────
         if let Some(ts) = &self.timestamp {
             match ts.epoch {
                 Epoch::Unix => {
-                    let unix = Dt::new(ts.attos, self.scale, self.scale);
+                    let unix = Dt::new(ts.attos, self.scale, self.target);
                     return Ok(Dt::from_unix(unix));
                 }
-                Epoch::Noon2000 => return Ok(Dt::new(ts.attos, self.scale, self.scale).to_tai()),
+                Epoch::Noon2000 => {
+                    return Ok(Dt::new(ts.attos, self.scale, self.target).to_tai());
+                }
+                Epoch::Noon2000NoConvert => {
+                    return Ok(Dt::new(ts.attos, self.scale, self.target));
+                }
             }
         }
 
@@ -169,7 +253,7 @@ impl Parts {
                 total_sec as i128,
                 self.attos as i128,
                 self.scale,
-                self.scale,
+                self.target,
             )
             .to_tai())
         // sec is 60
@@ -178,7 +262,7 @@ impl Parts {
                 total_sec as i128,
                 self.attos as i128,
                 self.scale,
-                self.scale,
+                self.target,
             )
             .to_tai();
             match Dt::leap_sec_using_sec64(total_sec.saturating_add(1), true) {
@@ -194,7 +278,7 @@ impl Parts {
                 total_sec as i128,
                 self.attos as i128,
                 self.scale,
-                self.scale,
+                self.target,
             )
             .to_tai())
         }

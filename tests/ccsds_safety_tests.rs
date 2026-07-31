@@ -448,6 +448,7 @@ fn parts_and_dt_encode_decode_agree() {
         sec: 45,
         attos: 123_456_789_000_000_000,
         scale: Scale::UTC,
+        target: Scale::UTC,
         ..Parts::default()
     };
 

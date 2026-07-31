@@ -7,6 +7,11 @@ use core::str::FromStr;
 #[cfg(feature = "parse")]
 use crate::ParseCfg;
 
+/// Parses a date/time string. Same entry point as [`Dt::parse`].
+///
+/// When the `parse` feature is enabled, this calls [`Dt::from_str_parse`] with
+/// [`ParseCfg::DEFAULT`]. When that feature is off, it calls the inherent
+/// [`Dt::from_str`] instead.
 #[cfg(feature = "parse")]
 impl FromStr for Dt {
     type Err = DtErr;
@@ -17,6 +22,9 @@ impl FromStr for Dt {
     }
 }
 
+/// Parses a date/time string. Same entry point as [`Dt::parse`].
+///
+/// Without the `parse` feature this uses the inherent [`Dt::from_str`].
 #[cfg(not(feature = "parse"))]
 impl FromStr for Dt {
     type Err = DtErr;
@@ -37,9 +45,19 @@ struct ParsedComponent {
 impl Dt {
     /// Parses a date/time string.
     ///
-    /// - When the `parse` feature is enabled: uses the smart auto-parser.
-    /// - When the `parse` feature is disabled: falls back to the fast ISO 8601 parser
-    ///   ([`Dt::from_str`](../struct.Dt.html#method.from_str)).
+    /// When the `parse` feature is enabled, this is equivalent to calling
+    /// [`Dt::from_str_parse`] with [`ParseCfg::DEFAULT`]. When that feature is
+    /// disabled, it uses the inherent
+    /// [`Dt::from_str`](../struct.Dt.html#method.from_str) instead.
+    ///
+    /// This is the same routing as [`str::parse`](core::str::FromStr) /
+    /// [`FromStr`] for [`Dt`].
+    ///
+    /// Both paths accept the text produced by [`Display`] / `.to_string()`, for
+    /// example `[86400s TAI>UTC]`. When the input is that Display form, no scale
+    /// conversion is performed: the returned [`Dt`] takes `attos`, `scale`, and
+    /// `target` from the string as written. Other inputs follow the rules of
+    /// the path that is active (`from_str_parse` or `from_str`).
     ///
     /// ## Examples
     ///
@@ -293,20 +311,36 @@ impl Dt {
     ///
     /// ## Returns
     ///
-    /// Always a [`Dt`] on the **`TAI`** time scale (after any conversion).
+    /// For the display format (`[86400s TAI>UTC]`, same as [`Dt`] Display), the returned
+    /// [`Dt`] undergoes **no** time scale conversion. The [`Dt`]'s `scale` field is
+    /// from the 1st time scale abbreviation in the string, the `target` field is
+    /// from the 2nd.
     ///
-    /// - No trailing scale + civil ISO-like input (calendar / DOY / ISO week) → interpret
-    ///   as **UTC**, then convert **UTC → TAI** (leap seconds applied).
-    /// - No trailing scale + `SEC` / `JD` / `MJD` → interpret as **TAI** (no conversion).
-    /// - Trailing scale present (e.g. `TDB`, `GPS`) → convert **that scale → TAI**
-    ///   (no-op if the scale is already `TAI`).
-    ///
-    /// The returned value’s `target` reflects the scale assumed before conversion to TAI.
+    /// **Everything else** (civil, `SEC`, `JD`, `MJD`, …) is converted to **TAI** from
+    /// a given trailing time scale. **If there is no trailing time scale abbreviation** then
+    /// for civil datetimes the conversion is UTC -> TAI, and for prefixed formats such as
+    /// `SEC`/`JD`/`MJD` no conversion takes place.
+    /// The returned value’s `target` is the scale the text was interpreted on
+    /// (before conversion to TAI).
     ///
     /// ## Supported formats
     ///
     /// An **optional** library time scale at the end of the input (e.g. `TAI`) is
-    /// supported for all of the formats below.
+    /// supported for the civil / `SEC` / `JD` / `MJD` formats below.
+    ///
+    /// ### Display form (`Dt` text from Display / `.to_string()`)
+    ///
+    /// #### Format examples
+    ///
+    /// - **`[86400s TAI>UTC]`**
+    /// - **`[-1.5s TT>GPS]`**
+    /// - **`[0s TAI>TAI]`**
+    ///
+    /// #### Notes
+    ///
+    /// - Parsing this form and formatting with Display round-trip (same attoseconds,
+    ///   `scale`, and `target`).
+    /// - Anything after the closing `]` is ignored.
     ///
     /// ### ISO-like civil date-times
     ///
