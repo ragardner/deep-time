@@ -213,14 +213,13 @@ use core::fmt;
 ///
 /// ### Display / `.to_string()`
 ///
-/// Formatting a [`Dt`] with [`Display`] (or `.to_string()` when `alloc` is
-/// enabled) writes a fixed layout that records the raw attosecond count as
-/// seconds, plus the `scale` and `target` abbreviations. That text round-trips
-/// through [`Dt::from_str`](../struct.Dt.html#method.from_str). With the
-/// `parse` feature it also round-trips through
-/// [`Dt::parse`](../struct.Dt.html#method.parse) and
-/// [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse). Parsing
-/// Display form does not convert scales.
+/// Formatting a [`Dt`] with [`core::fmt::Display`] (or `.to_string()` when
+/// `alloc` is enabled) writes a fixed layout that records the raw attosecond
+/// count as seconds, plus the `scale` and `target` abbreviations. That text
+/// round-trips through [`Dt::from_str`](../struct.Dt.html#method.from_str).
+/// With the `parse` feature it also round-trips through
+/// [`Dt::parse`](../struct.Dt.html#method.parse) and `Dt::from_str_parse`.
+/// Parsing Display form does not convert scales.
 ///
 /// ```rust
 /// # #[cfg(feature = "std")]

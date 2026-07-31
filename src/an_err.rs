@@ -237,15 +237,11 @@ where
     fn format(&self, f: defmt::Formatter) {
         if self.reason.as_bytes().is_empty() {
             defmt::write!(f, "{}", self.kind);
-        } else if self.reason.as_bytes().len() == REASON_LEN {
-            defmt::write!(
-                f,
-                "{}: {} (reason may be truncated)",
-                self.kind,
-                self.reason.as_str()
-            );
         } else {
             defmt::write!(f, "{}: {}", self.kind, self.reason.as_str());
+            if self.reason.as_bytes().len() == REASON_LEN {
+                defmt::write!(f, " (reason may be truncated)");
+            }
         }
     }
 }

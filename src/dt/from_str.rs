@@ -7,11 +7,6 @@ use core::str::FromStr;
 #[cfg(feature = "parse")]
 use crate::ParseCfg;
 
-/// Parses a date/time string. Same entry point as [`Dt::parse`].
-///
-/// When the `parse` feature is enabled, this calls [`Dt::from_str_parse`] with
-/// [`ParseCfg::DEFAULT`]. When that feature is off, it calls the inherent
-/// [`Dt::from_str`] instead.
 #[cfg(feature = "parse")]
 impl FromStr for Dt {
     type Err = DtErr;
@@ -22,9 +17,6 @@ impl FromStr for Dt {
     }
 }
 
-/// Parses a date/time string. Same entry point as [`Dt::parse`].
-///
-/// Without the `parse` feature this uses the inherent [`Dt::from_str`].
 #[cfg(not(feature = "parse"))]
 impl FromStr for Dt {
     type Err = DtErr;
@@ -46,18 +38,19 @@ impl Dt {
     /// Parses a date/time string.
     ///
     /// When the `parse` feature is enabled, this is equivalent to calling
-    /// [`Dt::from_str_parse`] with [`ParseCfg::DEFAULT`]. When that feature is
+    /// `Dt::from_str_parse` with `ParseCfg::DEFAULT`. When that feature is
     /// disabled, it uses the inherent
     /// [`Dt::from_str`](../struct.Dt.html#method.from_str) instead.
     ///
     /// This is the same routing as [`str::parse`](core::str::FromStr) /
     /// [`FromStr`] for [`Dt`].
     ///
-    /// Both paths accept the text produced by [`Display`] / `.to_string()`, for
-    /// example `[86400s TAI>UTC]`. When the input is that Display form, no scale
-    /// conversion is performed: the returned [`Dt`] takes `attos`, `scale`, and
-    /// `target` from the string as written. Other inputs follow the rules of
-    /// the path that is active (`from_str_parse` or `from_str`).
+    /// Both paths accept the text produced by
+    /// [`core::fmt::Display`] / `.to_string()`, for example `[86400s TAI>UTC]`.
+    /// When the input is that Display form, no scale conversion is performed:
+    /// the returned [`Dt`] takes `attos`, `scale`, and `target` from the string
+    /// as written. Other inputs follow the rules of the path that is active
+    /// (`from_str_parse` or `from_str`).
     ///
     /// ## Examples
     ///
@@ -79,7 +72,7 @@ impl Dt {
     ///
     /// ## See also
     ///
-    /// - [`Dt::from_str_parse`](../struct.Dt.html#method.from_str_parse)
+    /// - `Dt::from_str_parse` (requires the `parse` feature)
     /// - [`Dt::from_str`](../struct.Dt.html#method.from_str)
     #[inline(always)]
     pub fn parse(s: &str) -> Result<Self, DtErr> {
