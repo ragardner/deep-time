@@ -9,16 +9,15 @@ use alloc::borrow::Cow;
 use alloc::string::String;
 
 impl Dt {
-    /// Automatically parses datetime [`str`] into a [`Dt`] by guessing and generating the format. Supports the vast
-    /// majority of date formats.
+    /// Automatically parses datetime [`str`] into a [`Dt`] by guessing and generating the
+    /// format. Supports the vast majority of date formats.
     ///
     /// - Requires the `"parse"` feature (which enables `alloc`).
-    /// - For ordinary calendar and numeric inputs, the returned [`Dt`] is on the
-    ///   **TAI** time scale: the instant is interpreted on the scale named in the
-    ///   input (or the default for that form) and then converted to TAI. Display
-    ///   form is different. If the string is Display text such as
-    ///   `[86400s TAI>UTC]`, no conversion runs, and the returned [`Dt`]'s
-    ///   `scale` and `target` are taken from the string as written.
+    /// - For ordinary calendar and numeric inputs, the returned [`Dt`] is converted to `TAI`
+    ///   from a given time scale if the input includes one, or if not then `UTC`. The
+    ///   exception to this is the format `[86400s TAI>UTC]`, with this input format no time
+    ///   scale conversion happens, and the returned [`Dt`]'s `scale` and `target` are taken
+    ///   from the string as written.
     /// - The `attos` field is an [`i128`] attosecond count measured from the
     ///   library epoch of 2000-01-01 noon. See [`Scale`](../enum.Scale.html).
     /// - The returned [`Dt`] is **not** in local time. If a timezone is parsed,
@@ -26,8 +25,8 @@ impl Dt {
     ///
     /// ## Parameters
     ///
-    /// - `s`: The string to parse. Must be non-empty and no longer than [`STRTIME_SIZE`] bytes. Empty strings
-    ///   or overly long inputs return an error.
+    /// - `s`: The string to parse. Must be non-empty and no longer than [`STRTIME_SIZE`]
+    ///   bytes. Empty strings or overly long inputs return an error.
     /// - `opts`: The [`ParseCfg`] to use. Pass `&ParseCfg::DEFAULT` (or `&ParseCfg::default()`)
     ///   to use the standard smart defaults. You can create a `ParseCfg` once and pass `&cfg`
     ///   on every call for consistent behavior and to avoid repeated construction.
@@ -44,7 +43,7 @@ impl Dt {
     /// | `order`        | [`Order::Smart`]                 | How to resolve ambiguous numeric dates like `01/02/03`                                            |
     /// | `mode`         | [`Mode::Auto`]                   | Special handling for purely numeric inputs                                                        |
     /// | `parse`        | [`Option<Vec<String>>`] - `None` | An explicit list of formats to try, if the [`Mode`] is Explicit then only these formats are tried |
-    /// | `relative`     | [`bool`] - `true`                | Enable phrases like "tomorrow", "in 3 days"                   |
+    /// | `relative`     | [`bool`] - `true`                | Enable phrases like "tomorrow", "in 3 days"                                                       |
     /// | `ref_time`     | [`Option<Dt>`] - `None`          | Reference time for relative dates and syslog-style "no-year" dates                                |
     /// | `to_lower`     | [`bool`] - `true`                | Automatically lowercase the input, **only** set to false if it's already lowercase                |
     ///
@@ -56,10 +55,10 @@ impl Dt {
     ///
     /// | Digits | Example(s)               | `Mode`          | Interpreted as                          | Notes |
     /// |--------|--------------------------|-----------------|-----------------------------------------|-------|
-    /// | 1–4    | `2024`, `24`, `5`        | `Auto`/`Legacy` | Year (2-digit uses 2000/1900 pivot)    | 1- and 3-digit years only work in `Scientific` |
+    /// | 1–4    | `2024`, `24`, `5`        | `Auto`/`Legacy` | Year (2-digit uses 2000/1900 pivot)     | 1- and 3-digit years only work in `Scientific` |
     /// | 5      | `24123`, `60400`         | `Legacy`        | Ordinal date (YYDDD)                    | — |
     /// | 5      | `60400`, `60400.75`      | `Scientific`    | Modified Julian Date (MJD)              | Fractional days supported |
-    /// | 5      | `24123`, `60400.75`      | `Auto`          | Ordinal (non-decimal) or MJD (decimal) | Smart default |
+    /// | 5      | `24123`, `60400.75`      | `Auto`          | Ordinal (non-decimal) or MJD (decimal)  | Smart default |
     /// | 6      | `240315`, `202403`       | `Auto`          | YYYYMM if plausible year, else YYMMDD   | Most common compact form |
     /// | 6      | `240315`                 | `Legacy`        | YYMMDD preferred                        | — |
     /// | 6      | `202403`                 | `Scientific`    | YYYYMM preferred                        | — |
