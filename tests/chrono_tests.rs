@@ -263,6 +263,54 @@ mod tests {
         assert_eq!(dt.offset(), &FixedOffset::east_opt(0).unwrap());
         assert_eq!(dt.timestamp(), 1713191400);
     }
+
+    /// Without jiff-tz*: real IANA names → MissingFeature; UTC aliases → +00:00
+    #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
+    #[test]
+    fn test_to_chrono_datetime_iana_without_jiff_tz() {
+        use deep_time::DtErrKind;
+        use deep_time::tz::UTC_ALIASES;
+
+        let mut real = Parts::from_strptime(
+            "%Y-%m-%d %H:%M:%S",
+            "2000-01-01 12:00:00",
+            false,
+            false,
+            false,
+        )
+        .unwrap();
+        real.set_iana_name(Some("Europe/Paris"));
+        let err = real.to_chrono_datetime().unwrap_err();
+        assert!(
+            matches!(err.kind(), DtErrKind::MissingFeature),
+            "expected MissingFeature, got {:?}",
+            err.kind()
+        );
+
+        for &alias in UTC_ALIASES {
+            let mut p = Parts::from_strptime(
+                "%Y-%m-%d %H:%M:%S",
+                "2000-01-01 12:00:00",
+                false,
+                false,
+                false,
+            )
+            .unwrap();
+            p.set_iana_name(Some(alias));
+            let dt = p.to_chrono_datetime().unwrap_or_else(|e| {
+                panic!("UTC alias {alias:?} should succeed without jiff-tz: {e}")
+            });
+            assert_eq!(
+                dt.offset(),
+                &FixedOffset::east_opt(0).unwrap(),
+                "alias {alias}"
+            );
+            assert_eq!(
+                dt.format("%Y-%m-%d %H:%M:%S").to_string(),
+                "2000-01-01 12:00:00"
+            );
+        }
+    }
 }
 
 #[cfg(all(

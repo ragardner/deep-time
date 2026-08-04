@@ -254,6 +254,14 @@ fn test_from_sec_and_frac_round_trip() {
         500_000_000_000_000_000,
         123_456_789_012_345_678,
         -123_456_789_012_345_678,
+        // edges of the Dt range, including near MIN where sec × 10¹⁸ is tight
+        i128::MAX,
+        i128::MIN,
+        i128::MIN + 1,
+        i128::MAX - 1,
+        // largest whole-second magnitude that still multiplies cleanly by 10¹⁸
+        -170_141_183_460_469_231_731 * APS,
+        -170_141_183_460_469_231_731 * APS + (APS - 1),
     ];
 
     for attos in cases {
@@ -264,6 +272,129 @@ fn test_from_sec_and_frac_round_trip() {
             Scale::TAI,
             Scale::TAI,
         );
-        assert_eq!(dt, rebuilt, "round-trip failed for {attos} attos");
+        assert_eq!(dt, rebuilt, "trunc round-trip failed for {attos} attos");
+
+        // same split to_ymd uses: floor seconds + non-negative fraction
+        let rebuilt_floor = Dt::from_sec_and_frac(
+            dt.to_sec_floor(),
+            dt.to_sec_ufrac() as i128,
+            Scale::TAI,
+            Scale::TAI,
+        );
+        assert_eq!(
+            dt, rebuilt_floor,
+            "floor/ufrac round-trip failed for {attos} attos"
+        );
     }
+}
+
+/// `to_ymd` covers the full range of `Dt` (including MIN/MAX) and round-trips
+#[test]
+fn test_to_ymd_full_i128_attosecond_range() {
+    use deep_time::Scale;
+
+    let extremes = [i128::MAX, i128::MIN, i128::MAX - 1, i128::MIN + 1];
+    for attos in extremes {
+        let dt = Dt::new(attos, Scale::TAI, Scale::TAI);
+        let ymd = dt.to_ymd();
+
+        assert_eq!(
+            ymd.to_dt().to_attos(),
+            attos,
+            "embedded Dt lost for {attos}"
+        );
+        assert!(
+            (1..=12).contains(&ymd.mo()),
+            "month for {attos}: {}",
+            ymd.mo()
+        );
+        assert!(
+            (1..=31).contains(&ymd.day()),
+            "day for {attos}: {}",
+            ymd.day()
+        );
+        assert!(ymd.hr() <= 23, "hour for {attos}: {}", ymd.hr());
+        assert!(ymd.min() <= 59, "min for {attos}: {}", ymd.min());
+        assert!(ymd.sec() <= 60, "sec for {attos}: {}", ymd.sec());
+        assert!(
+            ymd.attos() < APS as u64,
+            "frac for {attos}: {}",
+            ymd.attos()
+        );
+
+        let back = Dt::from_ymd(
+            ymd.yr(),
+            ymd.mo(),
+            ymd.day(),
+            Scale::TAI,
+            ymd.hr(),
+            ymd.min(),
+            ymd.sec(),
+            ymd.attos(),
+        );
+        assert_eq!(
+            back.to_attos(),
+            attos,
+            "from_ymd(to_ymd) lost attos for {attos}; ymd yr={}",
+            ymd.yr()
+        );
+    }
+
+    // larger than i64 seconds must not share the civil date of i64::MAX seconds
+    let past_i64 = Dt::from_sec((i64::MAX as i128) + 1, Scale::TAI, Scale::TAI);
+    let at_i64 = Dt::from_sec(i64::MAX as i128, Scale::TAI, Scale::TAI);
+    let y_past = past_i64.to_ymd();
+    let y_at = at_i64.to_ymd();
+    assert!(
+        y_past.yr() > y_at.yr()
+            || y_past.mo() > y_at.mo()
+            || y_past.day() > y_at.day()
+            || y_past.hr() > y_at.hr()
+            || y_past.min() > y_at.min()
+            || y_past.sec() > y_at.sec(),
+        "to_ymd still saturates at i64 seconds: past={:?} at={:?}",
+        (
+            y_past.yr(),
+            y_past.mo(),
+            y_past.day(),
+            y_past.hr(),
+            y_past.min(),
+            y_past.sec()
+        ),
+        (
+            y_at.yr(),
+            y_at.mo(),
+            y_at.day(),
+            y_at.hr(),
+            y_at.min(),
+            y_at.sec()
+        ),
+    );
+
+    let back_past = Dt::from_ymd(
+        y_past.yr(),
+        y_past.mo(),
+        y_past.day(),
+        Scale::TAI,
+        y_past.hr(),
+        y_past.min(),
+        y_past.sec(),
+        y_past.attos(),
+    );
+    assert_eq!(back_past, past_i64);
+
+    // MIN/MAX must not look like the i64 second min/max dates
+    let y_max = Dt::new(i128::MAX, Scale::TAI, Scale::TAI).to_ymd();
+    assert_ne!(
+        (y_max.yr(), y_max.mo(), y_max.day()),
+        (y_at.yr(), y_at.mo(), y_at.day()),
+        "i128::MAX to_ymd collapsed to i64::MAX-seconds date"
+    );
+    let y_min = Dt::new(i128::MIN, Scale::TAI, Scale::TAI).to_ymd();
+    let at_i64_min = Dt::from_sec(i64::MIN as i128, Scale::TAI, Scale::TAI).to_ymd();
+    assert_ne!(
+        (y_min.yr(), y_min.mo(), y_min.day()),
+        (at_i64_min.yr(), at_i64_min.mo(), at_i64_min.day()),
+        "i128::MIN to_ymd collapsed to i64::MIN-seconds date"
+    );
 }

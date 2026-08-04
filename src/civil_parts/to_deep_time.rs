@@ -1,5 +1,5 @@
 use crate::{
-    Dt, Epoch, JD_2000_2_451_545, SEC_PER_DAY_I64, an_err,
+    Dt, Epoch, JD_2000_2_451_545, SEC_PER_DAY, an_err,
     error::{DtErr, DtErrKind},
     utc::IsLeapSec,
     {Meridiem, Offset, Parts, Weekday},
@@ -71,6 +71,15 @@ impl Parts {
     /// [`DtErrKind::MissingFeature`](../error/enum.DtErrKind.html#variant.MissingFeature).
     /// With the feature, unknown zone names return
     /// [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone).
+    ///
+    /// Named time zones (IANA) go through jiff, so they only cover dates jiff
+    /// supports — about year −9999 through 9999. For much older or newer
+    /// calendar years, leave the zone name empty or use a fixed numeric offset.
+    ///
+    /// ## Range
+    ///
+    /// Aside from the IANA / jiff limit above, this method supports the full
+    /// range of [`Dt`].
     ///
     /// ## Errors
     ///
@@ -186,18 +195,15 @@ impl Parts {
             }
         };
 
-        let minute = self.min as i64;
-        let mut second = self.sec as i64;
-        let sec_is_60 = second == 60;
-        if sec_is_60 {
-            second -= 1;
-        }
+        let sec_is_60 = self.sec == 60;
+        let s = if sec_is_60 { 59 } else { self.sec };
 
-        let days_since_j2000 = jd.saturating_sub(JD_2000_2_451_545);
-        let seconds_from_noon_utc = (hour as i64 - 12) * 3600 + minute * 60 + second;
-        let mut total_sec: i64 = days_since_j2000
-            .saturating_mul(SEC_PER_DAY_I64)
-            .saturating_add(seconds_from_noon_utc);
+        // i128 because days × 86400 does not always fit in i64 for far-away years
+        let days_since_j2000 = (jd as i128).saturating_sub(JD_2000_2_451_545 as i128);
+        let seconds_from_noon = (hour as i128 - 12) * 3600 + (self.min as i128) * 60 + (s as i128);
+        let mut total_sec = days_since_j2000
+            .saturating_mul(SEC_PER_DAY)
+            .saturating_add(seconds_from_noon);
 
         // ──────────────────────────────────────────────────────────────
         // Apply timezone correction (IANA or Fixed offset)
@@ -214,8 +220,10 @@ impl Parts {
                     let tz =
                         TimeZone::get(name_str).map_err(|_| an_err!(DtErrKind::InvalidTimeZone))?;
 
-                    let provisional_unix =
-                        total_sec.saturating_add(TAI_SEC_1970_MIDNIGHT_TO_2000_NOON);
+                    // jiff takes Unix seconds as i64, and only supports about year ±9999
+                    let provisional_unix = Dt::to_i64(
+                        total_sec.saturating_add(TAI_SEC_1970_MIDNIGHT_TO_2000_NOON as i128),
+                    );
 
                     let civil = Timestamp::from_second(provisional_unix)
                         .map_err(|_| an_err!(DtErrKind::InvalidTimestamp))?
@@ -226,10 +234,8 @@ impl Parts {
                         .to_zoned(civil)
                         .map_err(|_| an_err!(DtErrKind::ConversionFail))?;
 
-                    total_sec = zoned
-                        .timestamp()
-                        .as_second()
-                        .saturating_sub(TAI_SEC_1970_MIDNIGHT_TO_2000_NOON);
+                    total_sec = (zoned.timestamp().as_second() as i128)
+                        .saturating_sub(TAI_SEC_1970_MIDNIGHT_TO_2000_NOON as i128);
                 }
                 #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
                 {
@@ -242,45 +248,19 @@ impl Parts {
             }
         } else if let Some(Offset::Fixed(offset)) = self.offset {
             // local civil time → true UTC instant
-            total_sec = total_sec.saturating_sub(offset as i64);
+            total_sec = total_sec.saturating_sub(offset as i128);
         }
 
-        // ──────────────────────────────────────────────────────────────
-        // Final construction
-        // ──────────────────────────────────────────────────────────────
-        if !sec_is_60 {
-            Ok(Dt::from_sec_and_frac(
-                total_sec as i128,
-                self.attos as i128,
-                self.scale,
-                self.target,
-            )
-            .to_tai())
-        // sec is 60
-        } else if self.scale.uses_leap_seconds() {
-            let t = Dt::from_sec_and_frac(
-                total_sec as i128,
-                self.attos as i128,
-                self.scale,
-                self.target,
-            )
-            .to_tai();
-            match Dt::leap_sec_using_sec64(total_sec.saturating_add(1), true) {
-                Some(info) => match info.is_leap_sec {
-                    IsLeapSec::Add => Ok(t.add_sec(1)),
-                    // Negative leaps have no civil 23:59:60; treat as ordinary :59.
-                    _ => Ok(t),
-                },
-                None => Ok(t),
+        let t =
+            Dt::from_sec_and_frac(total_sec, self.attos as i128, self.scale, self.target).to_tai();
+        if sec_is_60 && self.scale.uses_leap_seconds() {
+            // leap_sec_using_sec64 takes i64; the table only has modern dates
+            match Dt::leap_sec_using_sec64(Dt::to_i64(total_sec.saturating_add(1)), true) {
+                Some(info) if matches!(info.is_leap_sec, IsLeapSec::Add) => Ok(t.add_sec(1)),
+                _ => Ok(t),
             }
         } else {
-            Ok(Dt::from_sec_and_frac(
-                total_sec as i128,
-                self.attos as i128,
-                self.scale,
-                self.target,
-            )
-            .to_tai())
+            Ok(t)
         }
     }
 }

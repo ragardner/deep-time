@@ -1,7 +1,7 @@
 #![allow(clippy::all, clippy::pedantic, clippy::restriction, warnings)]
 
 mod tests {
-    use deep_time::civil_parts::{Parts, Weekday};
+    use deep_time::civil_parts::{Offset, Parts, Weekday};
     use deep_time::consts::ATTOS_PER_SEC_I128;
     use deep_time::{Dt, DtErrKind, Scale};
 
@@ -177,5 +177,97 @@ mod tests {
         let dt = parts.to_dt().unwrap();
         assert_eq!(dt.scale, Scale::TAI);
         assert_eq!(dt.target, Scale::GPS);
+    }
+
+    /// Civil `to_dt` without IANA covers the full range of `Dt`
+    #[test]
+    fn test_civil_to_dt_full_i128_range() {
+        // Round-trip extremes via to_ymd civil fields (no zone)
+        for attos in [i128::MAX, i128::MIN, i128::MAX - 1, i128::MIN + 1] {
+            let dt = Dt::new(attos, Scale::TAI, Scale::TAI);
+            let ymd = dt.to_ymd();
+            let parts = Parts {
+                yr: Some(ymd.yr()),
+                mo: Some(ymd.mo()),
+                day: Some(ymd.day()),
+                hr: ymd.hr(),
+                min: ymd.min(),
+                sec: ymd.sec(),
+                attos: ymd.attos(),
+                scale: Scale::TAI,
+                target: Scale::TAI,
+                ..Parts::default()
+            };
+            let back = parts.to_dt().unwrap();
+            assert_eq!(back.to_attos(), attos, "civil to_dt lost attos for {attos}");
+        }
+
+        // larger than i64 seconds - must agree with from_ymd
+        let past = Dt::from_sec((i64::MAX as i128) + 1, Scale::TAI, Scale::TAI);
+        let y = past.to_ymd();
+        let parts = Parts {
+            yr: Some(y.yr()),
+            mo: Some(y.mo()),
+            day: Some(y.day()),
+            hr: y.hr(),
+            min: y.min(),
+            sec: y.sec(),
+            attos: y.attos(),
+            scale: Scale::TAI,
+            target: Scale::TAI,
+            ..Parts::default()
+        };
+        assert_eq!(parts.to_dt().unwrap(), past);
+
+        // fixed offset (no jiff)
+        let parts = Parts {
+            yr: Some(2000),
+            mo: Some(1),
+            day: Some(1),
+            hr: 12,
+            offset: Some(Offset::Fixed(3600)),
+            scale: Scale::TAI,
+            target: Scale::TAI,
+            ..Parts::default()
+        };
+        // local 12:00+01:00 → 11:00 library noon = -3600 s
+        assert_eq!(parts.to_dt().unwrap().to_sec(), -3600);
+    }
+
+    /// Without jiff-tz*: real IANA names → MissingFeature; UTC aliases still work
+    #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
+    #[test]
+    fn test_to_dt_iana_without_jiff_tz() {
+        use deep_time::tz::UTC_ALIASES;
+
+        let base = || Parts {
+            yr: Some(2000),
+            mo: Some(1),
+            day: Some(1),
+            hr: 12,
+            scale: Scale::TAI,
+            target: Scale::TAI,
+            ..Parts::default()
+        };
+
+        let mut real = base();
+        real.set_iana_name(Some("America/New_York"));
+        let err = real.to_dt().unwrap_err();
+        assert!(
+            matches!(err.kind(), DtErrKind::MissingFeature),
+            "expected MissingFeature, got {:?}",
+            err.kind()
+        );
+
+        let without = base().to_dt().unwrap();
+        for &alias in UTC_ALIASES {
+            let mut p = base();
+            p.set_iana_name(Some(alias));
+            let dt = p.to_dt().unwrap_or_else(|e| {
+                panic!("UTC alias {alias:?} should succeed without jiff-tz: {e}")
+            });
+            // Alias is treated as UTC; no local shift relative to no zone
+            assert_eq!(dt, without, "alias {alias}");
+        }
     }
 }

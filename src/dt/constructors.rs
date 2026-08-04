@@ -263,11 +263,36 @@ impl Dt {
     /// ```
     #[inline(always)]
     pub const fn from_sec_and_frac(sec: i128, attos: i128, on: Scale, target: Scale) -> Dt {
-        Dt::new(
-            sec.saturating_mul(ATTOS_PER_SEC_I128).saturating_add(attos),
-            on,
-            target,
-        )
+        Dt::new(Self::sec_and_frac_to_attos(sec, attos), on, target)
+    }
+
+    /// Combines whole seconds and an attosecond remainder into total attoseconds.
+    ///
+    /// Reverse of [`to_sec_floor`](../struct.Dt.html#method.to_sec_floor) +
+    /// [`to_sec_ufrac`](../struct.Dt.html#method.to_sec_ufrac). Handles the full
+    /// range of [`Dt`], including near [`i128::MIN`] where `seconds × 10¹⁸` alone
+    /// does not fit in an `i128`.
+    #[inline]
+    pub(crate) const fn sec_and_frac_to_attos(sec: i128, attos: i128) -> i128 {
+        match sec.checked_mul(ATTOS_PER_SEC_I128) {
+            Some(s) => s.saturating_add(attos),
+            None => Self::sec_and_frac_to_attos_overflow(sec, attos),
+        }
+    }
+
+    /// When `seconds × 10¹⁸` does not fit in an `i128` on its own
+    const fn sec_and_frac_to_attos_overflow(sec: i128, attos: i128) -> i128 {
+        if sec > 0 {
+            i128::MAX.saturating_add(attos)
+        } else if let Some(sec1) = sec.checked_add(1)
+            && let Some(base) = sec1.checked_mul(ATTOS_PER_SEC_I128)
+        {
+            // near the lowest Dt, (sec+1)×10¹⁸ plus a reduced remainder still
+            // fits and gives the correct total
+            base.saturating_add(attos.saturating_sub(ATTOS_PER_SEC_I128))
+        } else {
+            i128::MIN.saturating_add(attos)
+        }
     }
 
     /// Builds a [`Dt`] holding the given whole seconds.

@@ -682,11 +682,20 @@ mod tests {
     #[test]
     fn iana_zone_bracket_requires_tz_feature() {
         let cfg = def();
-        // Without jiff-tz*, bracketed IANA zones are not applied / rejected.
+        // Without jiff-tz*, bracketed real IANA zones are rejected (parser/zone list)
         #[cfg(not(any(feature = "jiff-tz", feature = "jiff-tz-bundle")))]
         {
             assert_err("2024-03-15T14:30:00[Europe/Paris]", &cfg);
             assert_err("2024-03-15T14:30:00+01:00[Europe/Paris]", &cfg);
+            // UTC aliases remain accepted without jiff-tz
+            for s in [
+                "2024-03-15T14:30:00[UTC]",
+                "2024-03-15T14:30:00[Zulu]",
+                "2024-03-15T14:30:00[Etc/UTC]",
+            ] {
+                Dt::from_str_parse(s, &cfg)
+                    .unwrap_or_else(|e| panic!("{s} should succeed without jiff-tz: {e}"));
+            }
         }
         #[cfg(any(feature = "jiff-tz", feature = "jiff-tz-bundle"))]
         {

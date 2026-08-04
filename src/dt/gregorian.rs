@@ -1,5 +1,5 @@
 use crate::{
-    ATTOS_PER_SEC, Dt, JD_2000_2_451_545, SEC_PER_DAY_I64, Scale, Weekday, YmdHms, utc::IsLeapSec,
+    ATTOS_PER_SEC, Dt, JD_2000_2_451_545, SEC_PER_DAY, Scale, Weekday, YmdHms, utc::IsLeapSec,
 };
 
 impl Dt {
@@ -37,6 +37,10 @@ impl Dt {
     ///
     /// The implementation converts internally to TAI before checking leap-second status.
     ///
+    /// ## Range
+    ///
+    /// Supports the full range of [`Dt`].
+    ///
     /// ## Examples
     ///
     /// ```rust
@@ -60,16 +64,19 @@ impl Dt {
     /// - [`Dt::from_ymd`](#method.from_ymd)
     /// - [`from_ymd!`](../macro.from_ymd.html)
     pub const fn to_ymd(&self) -> YmdHms {
-        // Attos / seconds are library-epoch offsets (J2000 noon = 0).
+        // Whole seconds since 2000-01-01 12:00 (library zero)
+        // i128 because an i64 second count is not always large enough for every Dt
         let on_target = self.to(self.target);
-        let sec_from_j2000 = on_target.to_sec64_floor();
+        let sec_from_j2000 = on_target.to_sec_floor();
         let frac = on_target.to_sec_ufrac();
 
-        // Shift so 0 = midnight of 2000-01-01, then split day + time-of-day.
+        // Library zero is noon, so add 12 hours before splitting into day_offset
+        // (days after 2000-01-01) and tod (hour/min/sec as seconds past midnight)
         let since_midnight_j2000 = sec_from_j2000.saturating_add(43_200);
-        let day_offset = since_midnight_j2000.div_euclid(SEC_PER_DAY_I64);
-        let tod = since_midnight_j2000.rem_euclid(SEC_PER_DAY_I64);
-        let (yr, mo, day) = Self::jd_to_ymd(JD_2000_2_451_545.saturating_add(day_offset));
+        let day_offset = since_midnight_j2000.div_euclid(SEC_PER_DAY);
+        let tod = since_midnight_j2000 - day_offset * SEC_PER_DAY;
+        let (yr, mo, day) =
+            Self::jd_to_ymd(JD_2000_2_451_545.saturating_add(Self::to_i64(day_offset)));
 
         let hr = (tod / 3600) as u8;
         let min = ((tod % 3600) / 60) as u8;
@@ -152,18 +159,19 @@ impl Dt {
         let sec_is_60 = sec == 60;
         let s = if sec_is_60 { 59 } else { sec };
 
-        // Library-epoch seconds (J2000 noon = 0):
-        // (jd − 2451545) × 86400 + time-of-day offset from noon.
+        // Whole seconds since 2000-01-01 12:00
+        // i128 because days × 86400 does not always fit in i64 for far-away years
         let jd = Self::ymd_to_jd(yr, mo, day);
-        let days_since_j2000 = jd.saturating_sub(JD_2000_2_451_545);
-        let seconds_from_noon = (hr as i64 - 12) * 3600 + (min as i64) * 60 + (s as i64);
+        let days_since_j2000 = (jd as i128).saturating_sub(JD_2000_2_451_545 as i128);
+        let seconds_from_noon = (hr as i128 - 12) * 3600 + (min as i128) * 60 + (s as i128);
         let total_sec = days_since_j2000
-            .saturating_mul(SEC_PER_DAY_I64)
+            .saturating_mul(SEC_PER_DAY)
             .saturating_add(seconds_from_noon);
 
-        let t = Dt::from_sec_and_frac(total_sec as i128, attos as i128, scale, scale).to_tai();
+        let t = Dt::from_sec_and_frac(total_sec, attos as i128, scale, scale).to_tai();
         if sec_is_60 && scale.uses_leap_seconds() {
-            match Self::leap_sec_using_sec64(total_sec.saturating_add(1), true) {
+            // leap_sec_using_sec64 takes i64; the table only has modern dates
+            match Self::leap_sec_using_sec64(Self::to_i64(total_sec.saturating_add(1)), true) {
                 Some(i) if matches!(i.is_leap_sec, IsLeapSec::Add) => t.add_sec(1),
                 _ => t,
             }

@@ -723,6 +723,53 @@ mod from_str_tests {
         }
     }
 
+    /// `SEC` / `from_str_sec_f` cover the full range of `Dt`, including MIN and MAX
+    #[test]
+    fn test_sec_prefix_full_i128_range() {
+        // absolute seconds + fraction as Display writes them
+        let max_s = "170141183460469231731.687303715884105727";
+        let min_s = "-170141183460469231731.687303715884105728";
+
+        let p_max = Parts::from_str(&format!("SEC {max_s}")).unwrap();
+        assert_eq!(p_max.timestamp.as_ref().map(|t| t.attos), Some(i128::MAX));
+        assert_eq!(p_max.to_dt().unwrap().to_attos(), i128::MAX);
+
+        let p_min = Parts::from_str(&format!("SEC {min_s}")).unwrap();
+        assert_eq!(p_min.timestamp.as_ref().map(|t| t.attos), Some(i128::MIN));
+        assert_eq!(p_min.to_dt().unwrap().to_attos(), i128::MIN);
+
+        assert_eq!(
+            Parts::from_str_sec_f(max_s, Some(Scale::TAI))
+                .unwrap()
+                .timestamp
+                .unwrap()
+                .attos,
+            i128::MAX
+        );
+        assert_eq!(
+            Parts::from_str_sec_f(min_s, Some(Scale::TAI))
+                .unwrap()
+                .timestamp
+                .unwrap()
+                .attos,
+            i128::MIN
+        );
+
+        // past the range of Dt: saturate, do not wrap
+        let over = Parts::from_str("SEC 170141183460469231732").unwrap();
+        assert_eq!(over.timestamp.as_ref().map(|t| t.attos), Some(i128::MAX));
+        let under = Parts::from_str("SEC -170141183460469231732").unwrap();
+        assert_eq!(under.timestamp.as_ref().map(|t| t.attos), Some(i128::MIN));
+
+        // larger than i64 seconds still exact
+        let past_i64 = (i64::MAX as i128) + 1;
+        let p = Parts::from_str(&format!("SEC {past_i64}")).unwrap();
+        assert_eq!(
+            p.timestamp.as_ref().map(|t| t.attos),
+            Some(past_i64 * ATTOS_PER_SEC_I128)
+        );
+    }
+
     #[test]
     fn test_display_form_bracket_rules() {
         // Space before `]` is not allowed.

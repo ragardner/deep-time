@@ -350,6 +350,48 @@ mod format_tests {
         assert_eq!(s.as_str(), ".123456789012345678");
     }
 
+    /// Without jiff-tz*: real IANA names → MissingFeature; UTC aliases format ok
+    #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
+    #[test]
+    fn test_format_in_tz_without_jiff_tz() {
+        use deep_time::DtErrKind;
+        use deep_time::tz::UTC_ALIASES;
+
+        let t = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+
+        let err = t
+            .to_str_b_in_tz("%Y-%m-%d %H:%M:%S %Z", "America/New_York", Lang::En)
+            .unwrap_err();
+        assert!(
+            matches!(err.kind(), DtErrKind::MissingFeature),
+            "expected MissingFeature, got {:?}",
+            err.kind()
+        );
+
+        #[cfg(feature = "alloc")]
+        {
+            let err = t
+                .to_str_in_tz("%Y-%m-%d %H:%M:%S %Z", "Europe/London", Lang::En)
+                .unwrap_err();
+            assert!(matches!(err.kind(), DtErrKind::MissingFeature));
+        }
+
+        for &alias in UTC_ALIASES {
+            let s = t
+                .to_str_b_in_tz("%Y-%m-%d %H:%M:%S %Z", alias, Lang::En)
+                .unwrap_or_else(|e| panic!("UTC alias {alias:?} should format: {e}"));
+            // UTC alias: no civil shift, abbrev is "UTC"
+            assert!(
+                s.as_str().starts_with("2000-01-01 12:00:00"),
+                "alias {alias}: {s}"
+            );
+            assert!(
+                s.as_str().ends_with(" UTC") || s.as_str().contains(" UTC"),
+                "alias {alias}: expected UTC abbrev in {s}"
+            );
+        }
+    }
+
     #[cfg(any(feature = "jiff-tz-bundle", feature = "jiff-tz"))]
     #[test]
     fn test_format_label_only_no_time_shift() {

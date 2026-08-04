@@ -1,9 +1,37 @@
 use crate::en::{parse_month_name_abbrev, parse_wkday_name_abbrev};
 use crate::{
-    ATTOS_PER_DAY, ATTOS_PER_HALF_DAY, ATTOS_PER_SEC_I128, ATTOS_PER_SEC_U128, DtErr, DtErrKind,
-    Epoch, JD_2000_2_451_545_I128, Offset, ParsedReal, Parts, SEC_PER_DAY, STRTIME_SIZE, Scale,
-    Timestamp, Weekday, an_err,
+    ATTOS_PER_SEC_I128, ATTOS_PER_SEC_U128, Dt, DtErr, DtErrKind, Epoch, JD_2000_2_451_545_I128,
+    Offset, ParsedReal, Parts, SEC_PER_DAY, STRTIME_SIZE, Scale, Timestamp, Weekday, an_err,
 };
+
+/// SEC / Display: absolute seconds + fraction → signed attoseconds
+///
+/// Multiplies in `u128` so values near the most negative `Dt` still work
+fn attos_from_sec_abs_frac(negative: bool, int_abs: i128, frac_attos: u64) -> i128 {
+    let mag = (int_abs as u128)
+        .saturating_mul(ATTOS_PER_SEC_U128)
+        .saturating_add(frac_attos as u128);
+    if negative {
+        if mag >= (1u128 << 127) {
+            i128::MIN
+        } else {
+            -(mag as i128)
+        }
+    } else {
+        Dt::to_i128(mag)
+    }
+}
+
+/// Julian day + day fraction → attoseconds since 2000-01-01 12:00
+fn attos_from_jd(jd_days: i128, day_frac_signed: i128) -> i128 {
+    let days_since = jd_days.saturating_sub(JD_2000_2_451_545_I128);
+    let mut sec = days_since.saturating_mul(SEC_PER_DAY);
+    let frac_day_attos = day_frac_signed.saturating_mul(SEC_PER_DAY);
+    let q = frac_day_attos.div_euclid(ATTOS_PER_SEC_I128);
+    let rem = frac_day_attos - q * ATTOS_PER_SEC_I128;
+    sec = sec.saturating_add(q);
+    Dt::sec_and_frac_to_attos(sec, rem)
+}
 
 impl Parts {
     /// Fast, no-alloc parser for common ISO-like and epoch-style date-time strings.
@@ -809,22 +837,7 @@ impl Parts {
 
         let parsed = Self::parse_str_f(&bytes[num_start..num_end], Some(Scale::TAI))
             .ok_or_else(|| an_err!(DtErrKind::ExpectedValue))?;
-        // Build magnitude in u128 so |i128::MIN| attos (2^127) can round-trip.
-        let mag = (parsed.int_abs as u128)
-            .saturating_mul(ATTOS_PER_SEC_U128)
-            .saturating_add(parsed.frac_attos as u128);
-        let total_attos = if negative {
-            // `2^127` is |i128::MIN|; anything larger saturates to MIN.
-            if mag >= (1u128 << 127) {
-                i128::MIN
-            } else {
-                -(mag as i128)
-            }
-        } else if mag > (i128::MAX as u128) {
-            i128::MAX
-        } else {
-            mag as i128
-        };
+        let total_attos = attos_from_sec_abs_frac(negative, parsed.int_abs, parsed.frac_attos);
 
         Ok(Parts {
             timestamp: Some(Timestamp {
@@ -970,8 +983,8 @@ impl Parts {
     ///
     /// - Fractional seconds are limited to the first 18 digits (attosecond
     ///   precision); extra digits are truncated.
-    /// - Oversized integer parts saturate at [`i128::MAX`].
-    /// - Inputs longer than [`STRTIME_SIZE`] are rejected.
+    /// - Values outside the range of [`Dt`] saturate at the min or max
+    /// - Inputs longer than [`STRTIME_SIZE`] are rejected
     /// - Returns `None` only for completely unparseable input.
     ///
     /// The returned [`Parts`] has its [`timestamp`](Parts::timestamp) field set to a
@@ -993,14 +1006,8 @@ impl Parts {
     pub fn from_str_sec_f(s: &str, scale: Option<Scale>) -> Option<Parts> {
         let parsed = Self::parse_str_f(s.as_bytes(), scale)?;
 
-        let int_attos = parsed.int_abs.saturating_mul(ATTOS_PER_SEC_I128);
-        let frac_attos = parsed.frac_attos as i128;
-
-        let total_attos = if parsed.negative {
-            int_attos.saturating_add(frac_attos).saturating_neg()
-        } else {
-            int_attos.saturating_add(frac_attos)
-        };
+        let total_attos =
+            attos_from_sec_abs_frac(parsed.negative, parsed.int_abs, parsed.frac_attos);
 
         let parts = Parts {
             timestamp: Some(Timestamp {
@@ -1064,13 +1071,7 @@ impl Parts {
             parsed.frac_attos as i128
         };
 
-        let jd_attos = jd_days
-            .saturating_mul(ATTOS_PER_DAY)
-            .saturating_add(jd_frac.saturating_mul(SEC_PER_DAY));
-
-        // The library's Noon2000 epoch is exactly JD 2451545.0, so subtract its offset.
-        let epoch_offset = JD_2000_2_451_545_I128 * ATTOS_PER_DAY;
-        let total_attos = jd_attos.saturating_sub(epoch_offset);
+        let total_attos = attos_from_jd(jd_days, jd_frac);
 
         let parts = Parts {
             timestamp: Some(Timestamp {
@@ -1134,28 +1135,20 @@ impl Parts {
             parsed.frac_attos as i128
         };
 
-        // MJD = JD - 2400000.5  =>  JD = MJD + 2400000.5
+        // MJD = JD − 2_400_000.5, so add 2_400_000 days plus half a day
         let mut jd_days = mjd_days.saturating_add(2_400_000);
-        let mut sub_day_attos = mjd_frac
-            .saturating_mul(SEC_PER_DAY)
-            .saturating_add(ATTOS_PER_HALF_DAY);
-
-        // Normalize sub-day attos (handle carry/borrow when adding the .5 offset)
-        if sub_day_attos >= ATTOS_PER_DAY {
+        let mut day_frac = mjd_frac;
+        const HALF_DAY_FRAC: i128 = 500_000_000_000_000_000;
+        day_frac = day_frac.saturating_add(HALF_DAY_FRAC);
+        if day_frac >= ATTOS_PER_SEC_I128 {
             jd_days = jd_days.saturating_add(1);
-            sub_day_attos -= ATTOS_PER_DAY;
-        } else if sub_day_attos < 0 {
+            day_frac -= ATTOS_PER_SEC_I128;
+        } else if day_frac < 0 {
             jd_days = jd_days.saturating_sub(1);
-            sub_day_attos += ATTOS_PER_DAY;
+            day_frac += ATTOS_PER_SEC_I128;
         }
 
-        let jd_attos = jd_days
-            .saturating_mul(ATTOS_PER_DAY)
-            .saturating_add(sub_day_attos);
-
-        // The library's Noon2000 epoch is exactly JD 2451545.0, so subtract its offset.
-        let epoch_offset = JD_2000_2_451_545_I128 * ATTOS_PER_DAY;
-        let total_attos = jd_attos.saturating_sub(epoch_offset);
+        let total_attos = attos_from_jd(jd_days, day_frac);
 
         let parts = Parts {
             timestamp: Some(Timestamp {
