@@ -10,6 +10,8 @@
 mod from_bin_ccsds;
 mod from_str;
 mod from_strptime;
+
+pub(crate) use from_str::attos_from_sec_abs_frac;
 mod to_bin_ccsds;
 mod to_deep_time;
 

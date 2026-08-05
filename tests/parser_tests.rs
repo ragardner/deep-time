@@ -395,14 +395,14 @@ mod tests {
 
     #[test]
     fn test_parse_i64_full_range() {
-        use deep_time::civil_parts::{Epoch, Timestamp};
+        use deep_time::consts::ATTOS_PER_SEC_I128;
 
         // i64::MIN was previously unparseable (magnitude did not fit in i64 before negate).
         let p = Parts::from_strptime("%s", &i64::MIN.to_string(), false, true, true).unwrap();
         assert_eq!(
             p.timestamp,
             Some(Timestamp {
-                attos: (i64::MIN as i128) * 1_000_000_000_000_000_000,
+                attos: (i64::MIN as i128) * ATTOS_PER_SEC_I128,
                 epoch: Epoch::Unix,
             })
         );
@@ -411,7 +411,7 @@ mod tests {
         assert_eq!(
             p.timestamp,
             Some(Timestamp {
-                attos: (i64::MAX as i128) * 1_000_000_000_000_000_000,
+                attos: (i64::MAX as i128) * ATTOS_PER_SEC_I128,
                 epoch: Epoch::Unix,
             })
         );
@@ -421,13 +421,5 @@ mod tests {
 
         let p = Parts::from_strptime("%*", &i64::MAX.to_string(), false, true, true).unwrap();
         assert_eq!(p.yr, Some(i64::MAX));
-
-        // One past each end of the range
-        let err = Parts::from_strptime("%s", "9223372036854775808", false, true, true).unwrap_err();
-        assert_eq!(err.kind(), DtErrKind::ExpectedTimestamp);
-
-        let err =
-            Parts::from_strptime("%s", "-9223372036854775809", false, true, true).unwrap_err();
-        assert_eq!(err.kind(), DtErrKind::ExpectedTimestamp);
     }
 }

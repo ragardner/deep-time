@@ -1,11 +1,9 @@
 use super::{FmtExtensions, FmtFlag};
+use crate::civil_parts::attos_from_sec_abs_frac;
 use crate::en::{parse_month_name_abbrev, parse_wkday_name_abbrev};
 use crate::error::{DtErr, DtErrKind};
 use crate::locale::en::{EN_MONTHS_FULL, EN_WEEKDAYS_FULL};
-use crate::{
-    ATTOS_DIGITS, ATTOS_PER_SEC_I128, Epoch, Meridiem, Offset, Parts, Scale, Timestamp, Weekday,
-    an_err,
-};
+use crate::{ATTOS_DIGITS, Epoch, Meridiem, Offset, Parts, Scale, Timestamp, Weekday, an_err};
 use core::result::Result;
 use core::str;
 
@@ -483,26 +481,22 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
 
     #[inline(always)]
     fn parse_timestamp_sec(&mut self, ext: FmtExtensions, epoch: Epoch) -> Result<(), DtErr> {
-        let (remaining, sec_val, sign) = match ext.parse_i64(19, FmtFlag::PadSpace, self.inp) {
-            Ok(v) => v,
-            Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp)),
-        };
+        // 40 digit budget is enough for any whole-second count a Dt can hold
+        let (remaining, sec_digits, sign) =
+            match ext.parse_nonneg_i128(40, FmtFlag::PadSpace, self.inp) {
+                Ok(v) => v,
+                Err(_) => return Err(an_err!(DtErrKind::ExpectedTimestamp)),
+            };
         self.inp = remaining;
 
-        // Start with integer seconds converted to attoseconds
-        let mut total_attos: i128 = (sec_val as i128) * ATTOS_PER_SEC_I128;
-
-        // Greedily consume optional fractional seconds (e.g. 1712345678.123456789012345678)
-        // This allows a single %s (or %J) directive to parse a full high-precision timestamp
-        // without requiring a separate %.f / %N directive afterward.
+        // Optional fractional seconds on the same directive (e.g. 1712345678.123)
+        let mut frac_attos: u64 = 0;
         if !self.inp.is_empty()
             && self.current_inp_byte() == b'.'
             && self.inp.len() >= 2
             && self.inp[1].is_ascii_digit()
         {
-            // Only consume the dot if it's followed by at least one digit
-
-            self.bump_inp(); // eat '.'
+            self.bump_inp();
 
             let mut frac: u64 = 0;
             let mut digits_read: usize = 0;
@@ -518,27 +512,21 @@ impl<'f, 'i, 't> Parser<'f, 'i, 't> {
             }
 
             if digits_read > 0 {
-                let frac_attos = if digits_read >= ATTOS_DIGITS {
+                frac_attos = if digits_read >= ATTOS_DIGITS {
                     frac
                 } else {
-                    let multiplier = 10u64.pow((ATTOS_DIGITS - digits_read) as u32);
-                    frac * multiplier
+                    frac * 10u64.pow((ATTOS_DIGITS - digits_read) as u32)
                 };
-
-                if sign == Sign::Negative {
-                    total_attos -= frac_attos as i128;
-                } else {
-                    total_attos += frac_attos as i128;
-                }
             }
-            // dot with no following digit → leave it in input (do not consume)
         }
 
-        let ts = Timestamp {
+        let total_attos =
+            attos_from_sec_abs_frac(matches!(sign, Sign::Negative), sec_digits, frac_attos);
+
+        self.tm.timestamp = Some(Timestamp {
             attos: total_attos,
             epoch,
-        };
-        self.tm.timestamp = Some(ts);
+        });
         self.bump_fmt();
         Ok(())
     }
@@ -1103,5 +1091,65 @@ impl FmtExtensions {
         };
 
         Ok((&inp[consumed..], val, sign))
+    }
+
+    /// For `%s` / `%J` only: sign + non-negative whole digits as `i128`
+    /// (saturates at `i128::MAX`). Does not replace [`parse_i64`].
+    fn parse_nonneg_i128<'i>(
+        &self,
+        default_pad_width: usize,
+        default_flag: FmtFlag,
+        mut inp: &'i [u8],
+    ) -> Result<(&'i [u8], i128, Sign), ()> {
+        while inp.first().is_some_and(|b| b.is_ascii_whitespace()) {
+            inp = &inp[1..];
+        }
+
+        let (sign, inp) = match inp.first() {
+            Some(b'-') => (Sign::Negative, &inp[1..]),
+            Some(b'+') => (Sign::Positive, &inp[1..]),
+            None => return Err(()),
+            _ => (Sign::Positive, inp),
+        };
+
+        let max_digits = match self.flag.resolve(default_flag) {
+            FmtFlag::PadSpace | FmtFlag::NoPad => default_pad_width,
+            _ => self.width.map_or(0, usize::from).max(default_pad_width),
+        };
+
+        let mut consumed = 0usize;
+        let mut acc: i128 = 0;
+
+        while consumed < max_digits && consumed < inp.len() && inp[consumed] == b'0' {
+            consumed += 1;
+        }
+
+        for &b in inp[consumed..].iter().take(max_digits - consumed) {
+            if !b.is_ascii_digit() {
+                break;
+            }
+            let digit = i128::from(inp[consumed] - b'0');
+            match acc.checked_mul(10).and_then(|a| a.checked_add(digit)) {
+                Some(n) => acc = n,
+                None => {
+                    acc = i128::MAX;
+                    consumed += 1;
+                    while consumed < max_digits
+                        && consumed < inp.len()
+                        && inp[consumed].is_ascii_digit()
+                    {
+                        consumed += 1;
+                    }
+                    break;
+                }
+            }
+            consumed += 1;
+        }
+
+        if consumed == 0 {
+            return Err(());
+        }
+
+        Ok((&inp[consumed..], acc, sign))
     }
 }

@@ -411,25 +411,21 @@ impl<'ymd, 'buf> Printer<'ymd, 'buf> {
 
     #[inline(always)]
     fn write_unix_timestamp(&mut self) {
-        let dt = self.ymd.dt.to_unix();
-        if dt.to_attos() < 0 {
-            self.write_byte(b'-');
-        }
-        self.write_i64(dt.to_sec64().saturating_abs(), b'-', Some(0), b'0');
-        let frac = dt.to_sec_frac().saturating_abs() as u64;
-        if frac != 0 {
-            self.write_byte(b'.');
-            let _ = self.write_fractional(frac, None, true);
-        }
+        self.write_signed_timestamp_secs(self.ymd.dt.to_unix());
     }
 
     #[inline(always)]
     fn write_noon2000_timestamp(&mut self) {
-        let dt = self.ymd.dt.to(self.ymd.dt.target);
+        self.write_signed_timestamp_secs(self.ymd.dt.to(self.ymd.dt.target));
+    }
+
+    /// `%s` / `%J`: sign, whole seconds (trunc toward zero), optional fraction
+    fn write_signed_timestamp_secs(&mut self, dt: Dt) {
         if dt.to_attos() < 0 {
             self.write_byte(b'-');
         }
-        self.write_i64(dt.to_sec64().saturating_abs(), b'-', Some(0), b'0');
+        // u128 digits cover full Dt; normal timestamps still only write ~10 digits
+        self.write_u128_digits(dt.to_sec().unsigned_abs());
         let frac = dt.to_sec_frac().saturating_abs() as u64;
         if frac != 0 {
             self.write_byte(b'.');
@@ -729,6 +725,26 @@ impl<'ymd, 'buf> Printer<'ymd, 'buf> {
         }
 
         for j in (0..num_digits).rev() {
+            self.buf[self.pos] = digits[j];
+            self.pos += 1;
+        }
+    }
+
+    fn write_u128_digits(&mut self, mut v: u128) {
+        let mut digits = [0u8; 40];
+        let mut n = 0;
+        loop {
+            digits[n] = b'0' + (v % 10) as u8;
+            n += 1;
+            v /= 10;
+            if v == 0 {
+                break;
+            }
+        }
+        if self.pos + n > self.cap() {
+            return;
+        }
+        for j in (0..n).rev() {
             self.buf[self.pos] = digits[j];
             self.pos += 1;
         }

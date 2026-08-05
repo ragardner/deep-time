@@ -282,6 +282,69 @@ mod format_tests {
         assert_eq!(s.as_str(), "2147483647");
     }
 
+    /// Full `Dt` range: year and both timestamps print (and parse back) for MAX/MIN.
+    #[test]
+    fn test_dt_extremes_year_and_timestamps() {
+        use deep_time::StrPTimeFmt;
+        use deep_time::civil_parts::Parts;
+
+        // printer
+        assert_eq!(
+            Dt::MAX.to_str_b("%*", Lang::En).unwrap().as_str(),
+            "5391559473918"
+        );
+        assert_eq!(
+            Dt::MAX.to_str_b("%J", Lang::En).unwrap().as_str(),
+            "170141183460469231731.687303715884105727"
+        );
+        // to_unix saturates at MAX, so %s matches %J here
+        assert_eq!(
+            Dt::MAX.to_str_b("%s", Lang::En).unwrap().as_str(),
+            "170141183460469231731.687303715884105727"
+        );
+
+        assert_eq!(
+            Dt::MIN.to_str_b("%*", Lang::En).unwrap().as_str(),
+            "-5391559469919"
+        );
+        assert_eq!(
+            Dt::MIN.to_str_b("%J", Lang::En).unwrap().as_str(),
+            "-170141183460469231731.687303715884105728"
+        );
+        assert_eq!(
+            Dt::MIN.to_str_b("%s", Lang::En).unwrap().as_str(),
+            "-170141183459522503731.687303715884105728"
+        );
+
+        // strptime: %J + TAI (avoid default UTC leap conversion)
+        let fmt_j = StrPTimeFmt::new("%J %L").unwrap();
+        assert_eq!(
+            fmt_j
+                .to_dt("170141183460469231731.687303715884105727 TAI", false, false, false)
+                .unwrap()
+                .to_attos(),
+            Dt::MAX.to_attos()
+        );
+        assert_eq!(
+            fmt_j
+                .to_dt(
+                    "-170141183460469231731.687303715884105728 TAI",
+                    false,
+                    false,
+                    false
+                )
+                .unwrap()
+                .to_attos(),
+            Dt::MIN.to_attos()
+        );
+
+        // year-only parse needs allow_partial_date
+        let p = Parts::from_strptime("%*", "5391559473918", false, false, true).unwrap();
+        assert_eq!(p.yr, Some(5_391_559_473_918));
+        let p = Parts::from_strptime("%*", "-5391559469919", false, false, true).unwrap();
+        assert_eq!(p.yr, Some(-5_391_559_469_919));
+    }
+
     #[test]
     fn test_fractional_trim_flag() {
         // Value with trailing zeros in fractional part

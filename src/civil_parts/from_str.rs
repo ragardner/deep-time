@@ -4,10 +4,11 @@ use crate::{
     Offset, ParsedReal, Parts, SEC_PER_DAY, STRTIME_SIZE, Scale, Timestamp, Weekday, an_err,
 };
 
-/// SEC / Display: absolute seconds + fraction → signed attoseconds
+/// Whole seconds (digits only, non-negative) + fraction → signed attoseconds
 ///
-/// Multiplies in `u128` so values near the most negative `Dt` still work
-fn attos_from_sec_abs_frac(negative: bool, int_abs: i128, frac_attos: u64) -> i128 {
+/// `int_abs` must be ≥ 0 (as with [`ParsedReal::int_abs`]). The multiply is done
+/// in `u128` so values near the most negative `Dt` still work.
+pub(crate) fn attos_from_sec_abs_frac(negative: bool, int_abs: i128, frac_attos: u64) -> i128 {
     let mag = (int_abs as u128)
         .saturating_mul(ATTOS_PER_SEC_U128)
         .saturating_add(frac_attos as u128);
