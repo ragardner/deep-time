@@ -320,7 +320,12 @@ mod format_tests {
         let fmt_j = StrPTimeFmt::new("%J %L").unwrap();
         assert_eq!(
             fmt_j
-                .to_dt("170141183460469231731.687303715884105727 TAI", false, false, false)
+                .to_dt(
+                    "170141183460469231731.687303715884105727 TAI",
+                    false,
+                    false,
+                    false
+                )
                 .unwrap()
                 .to_attos(),
             Dt::MAX.to_attos()

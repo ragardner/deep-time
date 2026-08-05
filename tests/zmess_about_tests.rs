@@ -14,10 +14,10 @@ mod tests {
             AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TraitsTime, YmdHms, sec_f,
         };
 
-        eprintln!("{:#}", Dt::MAX);
-        let s = Dt::MIN.to_string();
-        eprintln!("{}", s);
-        let s = Dt::ZERO.to_string();
-        eprintln!("{}", s);
+        // eprintln!("{:#}", Dt::MAX);
+        // let s = Dt::MIN.to_string();
+        // eprintln!("{}", s);
+        // let s = Dt::ZERO.to_string();
+        // eprintln!("{}", s);
     }
 }
