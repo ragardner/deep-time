@@ -293,3 +293,24 @@ fn test_leap_second_subtracted() {
     let tai2 = utc2.to_tai_from_utc_using_list(&leap_seconds_list);
     assert_eq!(x, tai2);
 }
+
+#[test]
+fn test_utc_day_length_sec() {
+    use deep_time::Dt;
+
+    // 2016-12-31 leap (MJD 57753); 2017-01-01 = 57754
+    assert_eq!(Dt::utc_day_length_sec(57_753.0), 86_401.0);
+    assert_eq!(Dt::utc_day_length_sec(57_753.999_999), 86_401.0);
+    assert_eq!(Dt::utc_day_length_sec(57_754.0), 86_400.0);
+
+    // 2015-06-30 leap (MJD 57203); 2012-06-30 leap (MJD 56108)
+    assert_eq!(Dt::utc_day_length_sec(57_203.5), 86_401.0);
+    assert_eq!(Dt::utc_day_length_sec(56_108.5), 86_401.0);
+
+    // Ordinary day
+    assert_eq!(Dt::utc_day_length_sec(56_879.0), 86_400.0);
+
+    // 1972-01-01 TAI−UTC = 10 start is not a one-second leap day.
+    assert_eq!(Dt::utc_day_length_sec(41_316.0), 86_400.0); // 1971-12-31
+    assert_eq!(Dt::utc_day_length_sec(41_317.0), 86_400.0); // 1972-01-01
+}

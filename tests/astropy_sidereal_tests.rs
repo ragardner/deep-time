@@ -65,7 +65,7 @@ def main():
     print(
         "    pub eo_apparent_rad: f64,               // Equation of Origins from erfa::eo06a (apparent, TT)"
     )
-    print("    pub eo_mean_rad: f64,                   // Mean EO = ERA - GMST")
+    print("    pub eo_mean_rad: f64,                   // EO+EE offset = ERA - GMST")
     print("    pub gmst_rad: f64,                      // Greenwich Mean Sidereal Time")
     print("    pub mean_sidereal_time_sec: f64,")
     print("    pub equation_of_equinoxes_rad: f64,     // EE = GAST - GMST")
@@ -103,14 +103,15 @@ if __name__ == "__main__":
 
 #[cfg(all(feature = "std", feature = "eop", feature = "sidereal-earth"))]
 mod sidereal_tests {
-    use deep_time::Dt;
     use deep_time::eop::{EopData, EopFormat, Separator};
     use deep_time::sidereal::Sidereal;
+    use deep_time::{Dt, Scale, from_mjd_f};
 
-    fn load_finals2000a() -> EopData {
-        let path = "tests/assets/finals.all.iau2000.txt";
-        EopData::from_text_file(path, EopFormat::Finals2000A, Separator::Whitespace)
-            .expect("failed to load EopData")
+    /// C04 / eopc04 (same DUT1 source as Astropy IERS_Auto).
+    fn load_c04() -> EopData {
+        let path = "tests/assets/EOP_20u24_C04_one_file_1962-now.txt";
+        EopData::from_text_file(path, EopFormat::C04, Separator::Whitespace)
+            .expect("failed to load C04 EopData")
     }
 
     #[test]
@@ -120,35 +121,37 @@ mod sidereal_tests {
             let lon_deg = eos.longitude_deg;
             let astropy_mjd_ut1 = eos.ut1_mjd;
             let astropy_rot = eos.earth_rotation_angle_rad;
-            let _eo_app = eos.eo_apparent_rad;
-            let _eo_mean = eos.eo_mean_rad;
-            let _ee = eos.equation_of_equinoxes_rad;
+            let astropy_eo_app = eos.eo_apparent_rad;
+            let astropy_eo_mean = eos.eo_mean_rad;
+            let astropy_ee = eos.equation_of_equinoxes_rad;
             let astropy_gmst = eos.gmst_rad;
             let astropy_time = eos.mean_sidereal_time_sec;
             let astropy_apparent_angle = eos.gast_rad;
             let astropy_apparent_time = eos.apparent_sidereal_time_sec;
 
-            let sid = if lon_deg == 0.0 {
-                Sidereal::EARTH
-            } else {
-                Sidereal {
-                    longitude_rad: lon_deg * (core::f64::consts::PI / 180.0),
-                    ..Sidereal::EARTH
-                }
+            let lon_rad = lon_deg * (core::f64::consts::PI / 180.0);
+            let sid = Sidereal {
+                longitude_rad: lon_rad,
+                ..Sidereal::EARTH
             };
 
-            let dut1 = Dt::mjd_to_eop_offset_f(mjd, &provider).expect("to_ut1 failed");
-            let rust_ut1_mjd = mjd + (dut1 / 86400.0);
+            // UTC MJD fraction is of the UTC day (86401 s on a leap-insertion day).
+            let rust_ut1_mjd =
+                Dt::utc_mjd_to_ut1_mjd(mjd, provider).expect("utc_mjd_to_ut1_mjd failed");
+
+            // EO series need TT (UTC → TAI → TT), not UT1 + 32.184 s.
+            let mjd_tt = from_mjd_f!(mjd, on = Scale::UTC)
+                .to(Scale::TT)
+                .to_mjd_f_raw();
             let rust_rot = sid.local_rotation_angle(rust_ut1_mjd);
-            let rust_eo = sid.earth_eo_apparent(rust_ut1_mjd + 32.184 / 86400.0);
-            let rust_ee = sid.earth_ee(rust_ut1_mjd + 32.184 / 86400.0);
+            let rust_eo = Sidereal::eo(mjd_tt);
+            let rust_ee = Sidereal::ee(mjd_tt);
             let rust_eo_mean = rust_eo + rust_ee;
 
-            // Use the EO value from Astropy
-            let rust_local = sid.local_sidereal_angle_mean(rust_ut1_mjd, rust_eo_mean);
-            let rust_time = sid.local_sidereal_time_mean(rust_ut1_mjd, rust_eo_mean);
-            let rust_app_angle = sid.local_sidereal_angle_apparent(rust_ut1_mjd, rust_eo);
-            let rust_app_time = sid.local_sidereal_time_apparent(rust_ut1_mjd, rust_eo);
+            let rust_local = sid.lmst(rust_ut1_mjd, mjd_tt);
+            let rust_time = Sidereal::to_sec(rust_local);
+            let rust_app_angle = sid.last(rust_ut1_mjd, mjd_tt);
+            let rust_app_time = Sidereal::to_sec(rust_app_angle);
 
             // eprintln!("\nMJD                  = {mjd}             lon     = {lon_deg}° ===");
             // eprintln!(
@@ -158,73 +161,88 @@ mod sidereal_tests {
             //     (rust_ut1_mjd - astropy_mjd_ut1).abs()
             // );
             // eprintln!(
-            //     "RUST EO APP: {}, ASTROPY EO APP: {}, DIFF: {:.2e}",
+            //     "EO (eo06a)     Rust  = {:.15}   Astropy = {:.15}   diff = {:.2e}",
             //     rust_eo,
-            //     _eo_app,
-            //     (rust_eo - _eo_app).abs()
+            //     astropy_eo_app,
+            //     (rust_eo - astropy_eo_app).abs()
             // );
             // eprintln!(
-            //     "RUST EO MEAN: {}, ASTROPY EO MEAN: {}, DIFF: {:.2e}",
+            //     "EO+EE offset   Rust  = {:.15}   Astropy = {:.15}   diff = {:.2e}",
             //     rust_eo_mean,
-            //     _eo_mean,
-            //     (rust_eo_mean - _eo_mean).abs()
+            //     astropy_eo_mean,
+            //     (rust_eo_mean - astropy_eo_mean).abs()
             // );
             // eprintln!(
-            //     "RUST EE: {}, ASTROPY EE: {}, DIFF: {:.2e}",
+            //     "EE (ee06a)     Rust  = {:.15}   Astropy = {:.15}   diff = {:.2e}",
             //     rust_ee,
-            //     _ee,
-            //     (rust_ee - _ee).abs()
+            //     astropy_ee,
+            //     (rust_ee - astropy_ee).abs()
             // );
             // eprintln!(
-            //     "rotation_angle Rust  = {:.15}   Astropy = {:.15}       diff = {:.2e}",
+            //     "rotation_angle Rust  = {:.15}   Astropy = {:.15}   diff = {:.2e}",
             //     rust_rot,
             //     astropy_rot,
             //     (rust_rot - astropy_rot).abs()
             // );
             // eprintln!(
-            //     "sidereal_angle    Rust  = {:.15}   Astropy = {:.15}       diff = {:.2e}",
+            //     "mean angle     Rust  = {:.15}   Astropy = {:.15}   diff = {:.2e}",
             //     rust_local,
             //     astropy_gmst,
             //     (rust_local - astropy_gmst).abs()
             // );
             // eprintln!(
-            //     "sidereal_time     Rust  = {:.12}  Astropy = {:.12}      diff = {:.2e}",
+            //     "mean time      Rust  = {:.12}  Astropy = {:.12}  diff = {:.2e}",
             //     rust_time,
             //     astropy_time,
             //     (rust_time - astropy_time).abs()
             // );
             // eprintln!(
-            //     "apparent sidereal_angle    Rust  = {:.15}   Astropy = {:.15}       diff = {:.2e}",
+            //     "apparent angle Rust  = {:.15}   Astropy = {:.15}   diff = {:.2e}",
             //     rust_app_angle,
             //     astropy_apparent_angle,
             //     (rust_app_angle - astropy_apparent_angle).abs()
             // );
             // eprintln!(
-            //     "apparent sidereal_time     Rust  = {:.12}  Astropy = {:.12}      diff = {:.2e}",
+            //     "apparent time  Rust  = {:.12}  Astropy = {:.12}  diff = {:.2e}",
             //     rust_app_time,
             //     astropy_apparent_time,
             //     (rust_app_time - astropy_apparent_time).abs()
             // );
             let ut1_diff = (rust_ut1_mjd - astropy_mjd_ut1).abs();
             let rot_diff = (rust_rot - astropy_rot).abs();
+            let eo_diff = (rust_eo - astropy_eo_app).abs();
+            let ee_diff = (rust_ee - astropy_ee).abs();
+            let eo_mean_diff = (rust_eo_mean - astropy_eo_mean).abs();
             let angle_diff = (rust_local - astropy_gmst).abs();
             let time_diff = (rust_time - astropy_time).abs();
             let app_angle_diff = (rust_app_angle - astropy_apparent_angle).abs();
             let app_time_diff = (rust_app_time - astropy_apparent_time).abs();
             assert!(
                 ut1_diff < 1e-9,
-                "UT1 MJD too far from Astropy: diff = {ut1_diff:.2e}"
+                "UT1 MJD too far from Astropy: deep-time: {rust_ut1_mjd}, astropy: {astropy_mjd_ut1}, diff = {ut1_diff:.2e}"
             );
             assert!(
                 rot_diff < 5e-9,
                 "rotation_angle too far from Astropy: diff = {rot_diff:.2e}"
             );
             assert!(
+                eo_diff < 5e-9,
+                "eo (eo06a) too far from Astropy: diff = {eo_diff:.2e}"
+            );
+            assert!(
+                ee_diff < 5e-9,
+                "ee (ee06a) too far from Astropy: diff = {ee_diff:.2e}"
+            );
+            assert!(
+                eo_mean_diff < 5e-9,
+                "eo+ee offset too far from Astropy: diff = {eo_mean_diff:.2e}"
+            );
+            assert!(
                 angle_diff < 5e-9,
                 "sidereal_angle too far from Astropy: diff = {angle_diff:.2e}"
             );
             assert!(
-                time_diff < 6.10e-5,
+                time_diff < 1e-6,
                 "sidereal_time too far from Astropy: diff = {time_diff:.2e}"
             );
             assert!(
@@ -232,12 +250,12 @@ mod sidereal_tests {
                 "apparent sidereal_angle too far from Astropy: diff = {app_angle_diff:.2e}"
             );
             assert!(
-                app_time_diff < 7e-5,
+                app_time_diff < 1e-6,
                 "apparent sidereal_time too far from Astropy: diff = {app_time_diff:.2e}"
             );
         }
 
-        let provider = load_finals2000a();
+        let provider = load_c04();
 
         #[derive(Debug, Clone, Copy)]
         pub struct EoAndSiderealTimes {
@@ -245,9 +263,9 @@ mod sidereal_tests {
             pub longitude_deg: f64,
             pub ut1_mjd: f64,
             pub earth_rotation_angle_rad: f64, // ERA (Earth Rotation Angle)
-            pub eo_apparent_rad: f64, // Equation of Origins from erfa::eo06a (apparent, TT)
-            pub eo_mean_rad: f64,     // Mean EO = ERA - GMST
-            pub gmst_rad: f64,        // Greenwich Mean Sidereal Time
+            pub eo_apparent_rad: f64,          // Equation of the Origins from erfa::eo06a (TT)
+            pub eo_mean_rad: f64,              // EO+EE offset = ERA − GMST
+            pub gmst_rad: f64,                 // Greenwich Mean Sidereal Time
             pub mean_sidereal_time_sec: f64,
             pub equation_of_equinoxes_rad: f64, // EE = GAST - GMST
             pub gast_rad: f64,                  // Greenwich Apparent Sidereal Time

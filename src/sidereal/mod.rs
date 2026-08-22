@@ -1,96 +1,107 @@
-//! Sidereal rotation and time calculations for celestial bodies.
+//! Prime-meridian / spin-angle clocks, plus Earth equinox sidereal time.
 //!
-//! [`Sidereal`] struct with ready-to-use `EARTH`, `MARS`, `MOON` constants.
-//! Computes rotation angle, LMST/LAST, GMST/GAST.
+//! [`Sidereal`] is a planet-agnostic prime-meridian clock with presets
+//! [`Sidereal::EARTH`], [`Sidereal::MARS`], and [`Sidereal::MOON`]. It
+//! evaluates rotation angle and local meridian angle from a linear spin model.
 //!
-//! With the `"sidereal-earth"` feature enabled a rust implementation of the
-//! ERFA Earth Equation of the Origins / Equinoxes are both available as well.
+//! On Earth that angle is the Earth Rotation Angle (ERA, CIO origin). Hour
+//! angle uses the same frame as the angle (`HA = local meridian − RA`).
+//!
+//! **Earth equinox sidereal time** (GMST, GAST, LMST, LAST) is not a generic
+//! mode of this clock. It is an Earth-only readout of ERA via the IAU 2000/2006
+//! Equation of the Origins / Equinoxes (`sidereal-earth`):
+//! [`Sidereal::gmst`](struct.Sidereal.html#method.gmst),
+//! [`Sidereal::gast`](struct.Sidereal.html#method.gast),
+//! [`Sidereal::lmst`](struct.Sidereal.html#method.lmst),
+//! [`Sidereal::last`](struct.Sidereal.html#method.last) (see [`earth`]).
 
 /// ERFA Earth equation of the origins / equinoxes (`sidereal-earth` feature).
 #[cfg(feature = "sidereal-earth")]
 pub mod earth_eo_ee;
 
+/// Earth equinox sidereal time: GMST, GAST, LMST, LAST (`sidereal-earth`).
+#[cfg(feature = "sidereal-earth")]
+pub mod earth;
+
 use crate::Real;
 use core::f64::consts::TAU;
 
-#[cfg(feature = "sidereal-earth")]
-use earth_eo_ee::*;
+/// Wrap an angle into `[0, 2π)`.
+#[inline]
+const fn wrap_angle(angle: Real) -> Real {
+    ((angle % TAU) + TAU) % TAU
+}
 
-/// Represents the rotational state of a celestial body and provides
-/// methods to compute the orientation of its prime meridian at any
-/// given time.
+/// Prime-meridian / spin-angle clock for a rotating body.
 ///
-/// The rotation angle of the prime meridian is the basis for
-/// calculating local sidereal time. Local sidereal time is required
-/// to compute the hour angle of a celestial object (HA = LST − RA),
-/// to determine when an object will cross the local meridian,
-/// to convert between horizon coordinates (altitude/azimuth) and
-/// equatorial coordinates, and to calculate accurate pointing
-/// directions for telescopes and spacecraft antennas.
+/// The model is linear in time:
 ///
-/// The struct implements the modern CIO-based rotation model and
-/// works for any rotating body (Earth, Mars, the Moon, etc.) by
-/// supplying the appropriate rotation rate and reference values.
+/// ```text
+/// angle(t) = ref_angle + rate × (t − ref_epoch) + correction
+/// ```
+///
+/// plus optional observer longitude for local meridian angle. For Earth that
+/// is the Earth Rotation Angle (ERA). For other bodies it is only a simple
+/// mean spin / meridian angle if you supply a rate — not a full orientation
+/// ephemeris (the Moon’s librations, for example, are not included).
+///
+/// **Earth.** [`Sidereal::EARTH`] uses the IAU 2000 Earth Rotation Angle
+/// relative to the Celestial Intermediate Origin (CIO). Equinox sidereal times
+/// (`sidereal-earth`) are on this type:
+/// [`Sidereal::gmst`](struct.Sidereal.html#method.gmst),
+/// [`Sidereal::gast`](struct.Sidereal.html#method.gast),
+/// [`Sidereal::lmst`](struct.Sidereal.html#method.lmst),
+/// [`Sidereal::last`](struct.Sidereal.html#method.last).
+///
+/// **Other bodies.** Supply a published spin rate and reference angle (for
+/// example IAU WGCCRE `Ẇ` / `W0`), or start from the simplified
+/// [`Sidereal::MARS`] / [`Sidereal::MOON`] presets. Use
+/// [`rotation_angle`](Self::rotation_angle) /
+/// [`local_rotation_angle`](Self::local_rotation_angle).
+///
+/// Local meridian angle is the usual input to hour angle
+/// (`HA = local meridian − RA`), meridian transit, and horizon ↔ equatorial
+/// conversions. Meridian angle and `RA` must share the same equatorial frame
+/// (CIO/CIRS with local ERA; mean or true equinox with LMST/LAST).
 ///
 /// ## Fields
 ///
-/// * `rate_rad_per_sec` — Mean sidereal rotation rate in radians per SI second.
-/// * `ref_epoch` — Reference epoch (MJD) at which `ref_angle_rad` is defined.
+/// * `rate_rad_per_sec` — Sidereal rotation rate in radians per SI second.
+/// * `ref_epoch` — Reference epoch as an MJD at which `ref_angle_rad` is defined.
+///   For Earth ERA this is a **UT1** MJD.
 /// * `ref_angle_rad` — Rotation angle of the prime meridian at `ref_epoch`.
 /// * `longitude_rad` — Observer longitude on the body (radians, east positive).
 ///   `0.0` corresponds to the body's prime meridian.
-/// * `correction_rad` — General-purpose additive correction in radians.
+/// * `correction_rad` — Optional additive angle (radians) folded into
+///   [`rotation_angle`](Self::rotation_angle). Do **not** use this for DUT1;
+///   put UT1 in the time argument instead.
 ///
 /// ## Examples
 ///
-/// Basic usage with Earth constants:
+/// Earth ERA from UTC via IERS C04 (needs `eop` and `std`). Equinox sidereal
+/// time needs `sidereal-earth` as well — see
+/// [`Sidereal::gmst`](struct.Sidereal.html#method.gmst).
 ///
 /// ```rust
-/// use deep_time::Sidereal;
+/// # #[cfg(all(feature = "eop", feature = "std"))] {
+/// use deep_time::{Dt, Scale, Sidereal};
+/// use deep_time::eop::{EopData, EopFormat, Separator};
+///
+/// let eop = EopData::from_text_file(
+///     "tests/assets/EOP_20u24_C04_one_file_1962-now.txt",
+///     EopFormat::C04,
+///     Separator::Whitespace,
+/// ).unwrap();
+///
+/// let utc = Dt::from_mjd_f(56879.0, Scale::UTC);
+/// let mjd_ut1 = utc.to_ut1(&eop).unwrap().to_mjd_f_raw();
 ///
 /// let mut earth = Sidereal::EARTH;
 /// earth.longitude_rad = 0.0; // Greenwich
 ///
-/// let mjd = 60000.0;
-/// let era = earth.rotation_angle(mjd);
-///
-/// // Local Mean Sidereal Time using the mean Equation of the Origins
-/// // (requires the "sidereal-earth" feature)
-/// # #[cfg(feature = "sidereal-earth")] {
-/// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
-/// let lmst = earth.local_sidereal_time_mean(mjd, eo_mean);
-/// # }
-/// ```
-///
-/// Realistic usage with DUT1 correction (UT1 time scale):
-///
-/// ```rust
-/// // This advanced example requires the "eop" feature for EopData
-/// // and "sidereal-earth" for the EO calculations.
-/// # #[cfg(all(feature = "eop", feature = "sidereal-earth"))] {
-/// use deep_time::Dt;
-/// use deep_time::Sidereal;
-/// use deep_time::eop::{EopData, EopFormat, Separator};
-///
-/// let eop = EopData::from_text_file(
-///     "tests/assets/finals.all.iau2000.txt",
-///     EopFormat::Finals2000A,
-///     Separator::Whitespace,
-/// ).unwrap();
-///
-/// let mjd_utc = 56879.0;
-/// let dut1 = Dt::mjd_to_eop_offset_f(mjd_utc, &eop).unwrap();
-/// let mjd_ut1 = mjd_utc + dut1 / 86400.0;
-///
-/// let earth = Sidereal::EARTH;
-///
 /// let era = earth.rotation_angle(mjd_ut1);
-///
-/// let eo_mean = earth.earth_eo_mean(mjd_ut1 + 32.184 / 86400.0);
-/// let gmst = earth.sidereal_angle_mean(mjd_ut1, eo_mean);
-///
-/// // Local Mean Sidereal Time
-/// let lmst = earth.local_sidereal_time_mean(mjd_ut1, eo_mean);
+/// let local_era = earth.local_rotation_angle(mjd_ut1);
+/// let _ = (era, local_era);
 /// # }
 /// ```
 #[derive(Clone, Debug, PartialEq)]
@@ -98,29 +109,33 @@ use earth_eo_ee::*;
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[cfg_attr(feature = "defmt", derive(defmt::Format))]
 pub struct Sidereal {
-    /// Mean sidereal rotation rate in **radians per SI second**.
+    /// Sidereal rotation rate in **radians per SI second**.
     pub rate_rad_per_sec: Real,
-    /// Reference epoch.
+    /// Reference epoch as an MJD (UT1 for Earth ERA).
     pub ref_epoch: Real,
     /// Rotation angle of the prime meridian (radians) at `ref_epoch`.
     pub ref_angle_rad: Real,
     /// Longitude of the observer on the body (radians, east positive).
     /// `0.0` = body's prime meridian.
     pub longitude_rad: Real,
-    /// General scalar correction in radians.
+    /// Optional additive angle (radians) applied inside [`Self::rotation_angle`].
+    /// Not a substitute for DUT1 — pass UT1 via the time argument instead.
     pub correction_rad: Real,
 }
 
 impl Sidereal {
-    /// Pre-configured `Sidereal` for Earth using IAU 2000/2006 conventions.
+    /// Pre-configured `Sidereal` for Earth using the IAU 2000 ERA.
     ///
     /// This uses:
-    /// - The conventional mean sidereal rotation rate of Earth.
-    /// - J2000.0 as the reference epoch (`ref_epoch = 51544.5`).
+    /// - The IAU 2000 Earth Rotation Angle rate
+    ///   (`1.00273781191135448` turns per UT1 day).
+    /// - J2000.0 as the reference epoch (`ref_epoch = 51544.5` UT1 MJD).
     /// - The Earth Rotation Angle (ERA) at J2000.0 as `ref_angle_rad`.
     ///
     /// You can still customize fields after construction (e.g. `longitude_rad`
-    /// or `correction_rad`).
+    /// or `correction_rad`). For GMST/GAST/LMST/LAST see
+    /// [`Sidereal::gmst`](struct.Sidereal.html#method.gmst)
+    /// (`sidereal-earth`).
     pub const EARTH: Self = Self {
         rate_rad_per_sec: (1.00273781191135448 * core::f64::consts::TAU) / 86400.0,
         ref_epoch: 51544.5,
@@ -129,11 +144,13 @@ impl Sidereal {
         correction_rad: 0.0,
     };
 
-    /// Pre-configured `Sidereal` for Mars.
+    /// Simplified `Sidereal` preset for Mars (mean spin rate only).
     ///
-    /// Uses a simplified mean sidereal rotation rate and J2000.0 as the
-    /// reference epoch. `ref_angle_rad` is set to zero (no specific
-    /// reference angle is defined).
+    /// Uses an approximate mean sidereal rotation period and J2000.0 as the
+    /// reference epoch. `ref_angle_rad` is `0.0` (not a published prime-meridian
+    /// offset). Suitable for demos and coarse meridian/spin geometry — not a
+    /// full IAU WGCCRE orientation series. For higher fidelity, replace the
+    /// rate and reference angle with published values.
     ///
     /// You can customize fields (especially `longitude_rad`) after construction.
     pub const MARS: Self = Self {
@@ -144,11 +161,12 @@ impl Sidereal {
         correction_rad: 0.0,
     };
 
-    /// Pre-configured `Sidereal` for the Moon.
+    /// Simplified `Sidereal` preset for the Moon (mean spin rate only).
     ///
-    /// Uses a simplified mean sidereal rotation rate and J2000.0 as the
-    /// reference epoch. `ref_angle_rad` is set to zero (no specific
-    /// reference angle is defined).
+    /// Uses an approximate mean sidereal rotation period and J2000.0 as the
+    /// reference epoch. `ref_angle_rad` is `0.0` (not a published prime-meridian
+    /// offset). Useful for coarse work; precise selenographic orientation needs
+    /// lunar librations, which this preset does not include.
     ///
     /// You can customize fields (especially `longitude_rad`) after construction.
     pub const MOON: Self = Self {
@@ -159,28 +177,52 @@ impl Sidereal {
         correction_rad: 0.0,
     };
 
-    // Normalize to [0, 2π)
+    /// Convert a meridian / sidereal angle in radians to seconds on a 24-hour
+    /// sidereal clock, wrapped to `[0, 86400)`.
+    ///
+    /// This is `(angle / 2π) × 86400` — an hour-angle clock, not SI seconds of a
+    /// sidereal day.
+    ///
+    /// ## Examples
+    ///
+    /// ```
+    /// use core::f64::consts::PI;
+    /// use deep_time::Sidereal;
+    ///
+    /// assert!((Sidereal::to_sec(PI) - 43_200.0).abs() < 1e-9);
+    /// ```
     #[inline]
-    const fn normalize_angle(angle: Real) -> Real {
-        ((angle % TAU) + TAU) % TAU
+    pub const fn to_sec(angle_rad: Real) -> Real {
+        let fraction = ((angle_rad / TAU) % 1.0 + 1.0) % 1.0;
+        fraction * 86400.0
     }
 
     /// Returns the instantaneous rotation angle of the body's prime meridian
     /// (in radians) at the given instant, normalized to `[0, 2π)`.
     ///
-    /// For Earth this is the pure Earth Rotation Angle (ERA) in the
-    /// Celestial Intermediate Origin (CIO) frame. It does **not** include
-    /// observer longitude or the Equation of the Origins.
-    ///
-    /// Matches Astropy's `Time.earth_rotation_angle(longitude=None)`
-    /// (or with `longitude=0`).
+    /// For Earth this is the IAU 2000 Earth Rotation Angle (ERA) relative to the
+    /// Celestial Intermediate Origin (CIO) — the same definition as ERFA `era00`.
+    /// `mjd` is **UT1** MJD for Earth ERA.
+    /// It does **not** include observer longitude or the Equation of the Origins.
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::Sidereal;
+    /// # #[cfg(all(feature = "eop", feature = "std"))] {
+    /// use deep_time::{Dt, Scale, Sidereal};
+    /// use deep_time::eop::{EopData, EopFormat, Separator};
     ///
-    /// let era = Sidereal::EARTH.rotation_angle(57753.5);
+    /// let eop = EopData::from_text_file(
+    ///     "tests/assets/EOP_20u24_C04_one_file_1962-now.txt",
+    ///     EopFormat::C04,
+    ///     Separator::Whitespace,
+    /// ).unwrap();
+    /// let utc = Dt::from_mjd_f(57753.5, Scale::UTC);
+    /// let mjd_ut1 = utc.to_ut1(&eop).unwrap().to_mjd_f_raw();
+    ///
+    /// let era = Sidereal::EARTH.rotation_angle(mjd_ut1);
+    /// let _ = era;
+    /// # }
     /// ```
     pub const fn rotation_angle(&self, mjd: Real) -> Real {
         // elapsed time in seconds between ref_epoch (MJD) and the given mjd
@@ -189,558 +231,49 @@ impl Sidereal {
 
         let angle = self.ref_angle_rad + self.rate_rad_per_sec * elapsed_sec + self.correction_rad;
 
-        Self::normalize_angle(angle)
+        wrap_angle(angle)
     }
 
     /// Returns the rotation angle of the prime meridian at the observer's
     /// longitude, normalized to `[0, 2π)`.
     ///
     /// This is equivalent to `rotation_angle(mjd) + self.longitude_rad`.
-    /// It gives the angle between the Celestial Intermediate Origin (CIO)
-    /// and the observer’s local meridian.
+    /// For Earth with [`Sidereal::EARTH`], that is the local ERA: the angle
+    /// between the Celestial Intermediate Origin (CIO) and the observer’s
+    /// local meridian.
     ///
-    /// This value is commonly used when computing the local hour angle
-    /// of a celestial object:
+    /// Hour angle of a source:
     ///
     /// ```text
-    /// HA = local_rotation_angle(mjd) - RA
+    /// HA = local_rotation_angle(mjd) − RA
     /// ```
+    ///
+    /// Use a right ascension in the **same** frame as this angle (CIO/CIRS RA
+    /// with local ERA; equinox RA with LMST/LAST).
     ///
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::Sidereal;
+    /// # #[cfg(all(feature = "eop", feature = "std"))] {
+    /// use deep_time::{Dt, Scale, Sidereal};
+    /// use deep_time::eop::{EopData, EopFormat, Separator};
+    ///
+    /// let eop = EopData::from_text_file(
+    ///     "tests/assets/EOP_20u24_C04_one_file_1962-now.txt",
+    ///     EopFormat::C04,
+    ///     Separator::Whitespace,
+    /// ).unwrap();
+    /// let utc = Dt::from_mjd_f(56879.0, Scale::UTC);
+    /// let mjd_ut1 = utc.to_ut1(&eop).unwrap().to_mjd_f_raw();
     ///
     /// let mut earth = Sidereal::EARTH;
     /// earth.longitude_rad = 0.0; // Greenwich
-    ///
-    /// let mjd = 60000.0;
-    /// let local_era = earth.local_rotation_angle(mjd);
+    /// let local_era = earth.local_rotation_angle(mjd_ut1);
+    /// let _ = local_era;
+    /// # }
     /// ```
     #[inline]
     pub const fn local_rotation_angle(&self, mjd: Real) -> Real {
-        Self::normalize_angle(self.rotation_angle(mjd) + self.longitude_rad)
-    }
-
-    /// Returns the sidereal angle of the body's prime meridian in radians,
-    /// normalized to `[0, 2π)`.
-    ///
-    /// This computes Greenwich Mean Sidereal Time (GMST) when an appropriate
-    /// Equation of the Origins value is supplied.
-    ///
-    /// ## Parameters
-    ///
-    /// - `eo_rad`: The Equation of the Origins value to subtract from the
-    ///   Earth Rotation Angle (ERA).  
-    ///   - Pass `0.0` to get the pure CIO-based rotation angle (ERA).
-    ///   - Pass the **mean** Equation of the Origins (e.g. from
-    ///     [`Sidereal::earth_eo_mean`](#method.earth_eo_mean)) to obtain GMST.
-    ///
-    /// ## Details
-    ///
-    /// - When `eo_rad = 0.0`, the result is the modern Earth Rotation Angle (ERA)
-    ///   relative to the Celestial Intermediate Origin (CIO).
-    ///
-    /// - When `eo_rad` is the mean Equation of the Origins (i.e. the value that
-    ///   satisfies `GMST = ERA − eo_rad`), the result is Greenwich Mean Sidereal
-    ///   Time (GMST) referred to the mean equinox. This is the traditional
-    ///   equinox-based mean sidereal time.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let earth = Sidereal::EARTH;
-    /// let mjd = 60000.0;
-    ///
-    /// // Pure CIO-based rotation angle (Earth Rotation Angle)
-    /// let era = earth.sidereal_angle_mean(mjd, 0.0);
-    ///
-    /// // Traditional mean sidereal time using the mean Equation of the Origins
-    /// // (requires "sidereal-earth" feature)
-    /// # #[cfg(feature = "sidereal-earth")] {
-    /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
-    /// let gmst = earth.sidereal_angle_mean(mjd, eo_mean);
-    /// # }
-    /// ```
-    #[inline]
-    pub const fn sidereal_angle_mean(&self, mjd: Real, eo_rad: Real) -> Real {
-        let angle = self.rotation_angle(mjd) - eo_rad;
-        Self::normalize_angle(angle)
-    }
-
-    /// Returns the local sidereal angle at the observer's longitude in radians,
-    /// normalized to `[0, 2π)`.
-    ///
-    /// This computes **Local Mean Sidereal Time (LMST)** when an appropriate
-    /// Equation of the Origins value is supplied.
-    ///
-    /// ## Parameters
-    ///
-    /// - `eo_rad`: The Equation of the Origins value to subtract from the
-    ///   Earth Rotation Angle (ERA).  
-    ///   - Pass `0.0` to get the pure local Earth Rotation Angle (CIO-based).
-    ///   - Pass the **mean** Equation of the Origins (e.g. from
-    ///     [`Sidereal::earth_eo_mean`](#method.earth_eo_mean)) to obtain Local Mean
-    ///     Sidereal Time (LMST).
-    ///
-    /// ## Details
-    ///
-    /// - When `eo_rad = 0.0`, the result is the local Earth Rotation Angle
-    ///   relative to the Celestial Intermediate Origin (CIO) at the observer’s
-    ///   longitude.
-    ///
-    /// - When `eo_rad` is the mean Equation of the Origins, the result is
-    ///   **Local Mean Sidereal Time (LMST)** referred to the mean equinox.
-    ///
-    /// This value is commonly used when calculating the local hour angle of a
-    /// celestial object:
-    ///
-    /// ```text
-    /// HA = local_sidereal_angle_mean(mjd, eo) − RA
-    /// ```
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let mut earth = Sidereal::EARTH;
-    /// earth.longitude_rad = 0.0; // Greenwich
-    ///
-    /// let mjd = 60000.0;
-    ///
-    /// // Pure local Earth Rotation Angle (CIO-based)
-    /// let local_era = earth.local_sidereal_angle_mean(mjd, 0.0);
-    ///
-    /// // Local Mean Sidereal Time using the mean Equation of the Origins
-    /// // (requires "sidereal-earth" feature)
-    /// # #[cfg(feature = "sidereal-earth")] {
-    /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
-    /// let lmst = earth.local_sidereal_angle_mean(mjd, eo_mean);
-    /// # }
-    /// ```
-    #[inline]
-    pub const fn local_sidereal_angle_mean(&self, mjd: Real, eo_rad: Real) -> Real {
-        let angle = self.rotation_angle(mjd) + self.longitude_rad - eo_rad;
-        Self::normalize_angle(angle)
-    }
-
-    /// Returns sidereal time at the body's prime meridian as seconds since
-    /// sidereal midnight, wrapped to the range `[0, 86400)`.
-    ///
-    /// This is the time equivalent of
-    /// [`Sidereal::sidereal_angle_mean`].
-    ///
-    /// ## Parameters
-    ///
-    /// - `eo_rad`: The Equation of the Origins value to use.  
-    ///   - Pass `0.0` to get the time equivalent of the pure Earth Rotation Angle (ERA).  
-    ///   - Pass the **mean** Equation of the Origins (e.g. from
-    ///     [`Sidereal::earth_eo_mean`](#method.earth_eo_mean)) to obtain Greenwich Mean
-    ///     Sidereal Time (GMST).
-    ///
-    /// ## Details
-    ///
-    /// - When `eo_rad = 0.0`, the result is the time equivalent of the modern
-    ///   Earth Rotation Angle (ERA).
-    ///
-    /// - When `eo_rad` is the mean Equation of the Origins, the result is
-    ///   **Greenwich Mean Sidereal Time (GMST)** referred to the mean equinox.
-    ///
-    /// As of Astropy 7.x, this is consistent with
-    /// `Time.sidereal_time("mean").to_value("sec")` (when no longitude is
-    /// specified) when using matching UT1 time and the mean Equation of the Origins.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let earth = Sidereal::EARTH;
-    /// let mjd = 60000.0;
-    ///
-    /// // Time equivalent of pure Earth Rotation Angle
-    /// let era_seconds = earth.sidereal_time_mean(mjd, 0.0);
-    ///
-    /// // Greenwich Mean Sidereal Time in seconds
-    /// // (requires "sidereal-earth" feature)
-    /// # #[cfg(feature = "sidereal-earth")] {
-    /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
-    /// let gmst_seconds = earth.sidereal_time_mean(mjd, eo_mean);
-    /// # }
-    /// ```
-    pub const fn sidereal_time_mean(&self, mjd: Real, eo_rad: Real) -> Real {
-        let angle = self.sidereal_angle_mean(mjd, eo_rad);
-        let fraction = ((angle / TAU) % 1.0 + 1.0) % 1.0;
-        fraction * 86400.0
-    }
-
-    /// Returns local sidereal time at the observer's longitude as seconds since
-    /// sidereal midnight, wrapped to the range `[0, 86400)`.
-    ///
-    /// This is the time equivalent of
-    /// [`Sidereal::local_sidereal_angle_mean`].
-    ///
-    /// ## Parameters
-    ///
-    /// - `eo_rad`: The Equation of the Origins value to use.  
-    ///   - Pass `0.0` to get the time equivalent of the local Earth Rotation Angle (CIO-based).  
-    ///   - Pass the **mean** Equation of the Origins (e.g. from
-    ///     [`Sidereal::earth_eo_mean`](#method.earth_eo_mean)) to obtain **Local Mean Sidereal Time (LMST)**.
-    ///
-    /// ## Details
-    ///
-    /// - When `eo_rad = 0.0`, the result is the time equivalent of the local
-    ///   Earth Rotation Angle relative to the Celestial Intermediate Origin (CIO)
-    ///   at the observer’s longitude.
-    ///
-    /// - When `eo_rad` is the mean Equation of the Origins, the result is
-    ///   **Local Mean Sidereal Time (LMST)** referred to the mean equinox.
-    ///
-    /// As of Astropy 7.x, this is consistent with
-    /// `Time.sidereal_time("mean", longitude=...).to_value("sec")` when using
-    /// matching UT1 time and the mean Equation of the Origins.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let mut earth = Sidereal::EARTH;
-    /// earth.longitude_rad = 0.0; // Greenwich
-    ///
-    /// let mjd = 60000.0;
-    ///
-    /// // Time equivalent of local Earth Rotation Angle
-    /// let local_era_seconds = earth.local_sidereal_time_mean(mjd, 0.0);
-    ///
-    /// // Local Mean Sidereal Time in seconds
-    /// // (requires "sidereal-earth" feature)
-    /// # #[cfg(feature = "sidereal-earth")] {
-    /// let eo_mean = earth.earth_eo_mean(mjd + 32.184 / 86400.0);
-    /// let lmst_seconds = earth.local_sidereal_time_mean(mjd, eo_mean);
-    /// # }
-    /// ```
-    pub const fn local_sidereal_time_mean(&self, mjd: Real, eo_rad: Real) -> Real {
-        let angle = self.local_sidereal_angle_mean(mjd, eo_rad);
-        let fraction = ((angle / TAU) % 1.0 + 1.0) % 1.0;
-        fraction * 86400.0
-    }
-
-    /// Returns the apparent sidereal angle of the body's prime meridian
-    /// in radians, normalized to `[0, 2π)`.
-    ///
-    /// This computes **Greenwich Apparent Sidereal Time (GAST)** when the
-    /// apparent Equation of the Origins is supplied.
-    ///
-    /// ## Parameters
-    ///
-    /// - `eo_rad`: The **apparent** Equation of the Origins
-    ///   (e.g. from [`Sidereal::earth_eo_apparent`](#method.earth_eo_apparent)).
-    ///   When supplied, the result is Greenwich Apparent Sidereal Time (GAST)
-    ///   referred to the true equinox.
-    ///
-    /// ## Details
-    ///
-    /// This function implements the direct relationship:
-    ///
-    /// ```text
-    /// GAST = ERA − EO_apparent
-    /// ```
-    ///
-    /// As of Astropy 7.x, this is consistent with
-    /// `Time.sidereal_time("apparent").rad` (when no longitude is specified)
-    /// when using matching UT1 time and the apparent Equation of the Origins.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let earth = Sidereal::EARTH;
-    /// let mjd = 60000.0;
-    ///
-    /// // Greenwich Apparent Sidereal Time
-    /// // (requires "sidereal-earth" feature)
-    /// # #[cfg(feature = "sidereal-earth")] {
-    /// let eo_app = earth.earth_eo_apparent(mjd + 32.184 / 86400.0);
-    /// let gast = earth.sidereal_angle_apparent(mjd, eo_app);
-    /// # }
-    /// ```
-    pub const fn sidereal_angle_apparent(&self, mjd: Real, eo_rad: Real) -> Real {
-        let angle = self.rotation_angle(mjd) - eo_rad;
-        Self::normalize_angle(angle)
-    }
-
-    /// Returns the local apparent sidereal angle at the observer's longitude
-    /// in radians, normalized to `[0, 2π)`.
-    ///
-    /// This computes **Local Apparent Sidereal Time (LAST)** when the
-    /// apparent Equation of the Origins is supplied.
-    ///
-    /// ## Parameters
-    ///
-    /// - `eo_rad`: The **apparent** Equation of the Origins
-    ///   (e.g. from [`Sidereal::earth_eo_apparent`](#method.earth_eo_apparent)).
-    ///   When supplied, the result is Local Apparent Sidereal Time (LAST)
-    ///   at the observer’s longitude, referred to the true equinox.
-    ///
-    /// ## Details
-    ///
-    /// This function implements the direct relationship:
-    ///
-    /// ```text
-    /// LAST = ERA + longitude − EO_apparent
-    /// ```
-    ///
-    /// As of Astropy 7.x, this is consistent with
-    /// `Time.sidereal_time("apparent", longitude=...).rad` when using
-    /// matching UT1 time and the apparent Equation of the Origins.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let mut earth = Sidereal::EARTH;
-    /// earth.longitude_rad = 0.0; // Greenwich
-    ///
-    /// let mjd = 60000.0;
-    ///
-    /// // Local Apparent Sidereal Time
-    /// // (requires "sidereal-earth" feature)
-    /// # #[cfg(feature = "sidereal-earth")] {
-    /// let eo_app = earth.earth_eo_apparent(mjd + 32.184 / 86400.0);
-    /// let last = earth.local_sidereal_angle_apparent(mjd, eo_app);
-    /// # }
-    /// ```
-    pub const fn local_sidereal_angle_apparent(&self, mjd: Real, eo_rad: Real) -> Real {
-        let angle = self.rotation_angle(mjd) + self.longitude_rad - eo_rad;
-        Self::normalize_angle(angle)
-    }
-
-    /// Returns apparent sidereal time at the body's prime meridian as seconds
-    /// since sidereal midnight, wrapped to the range `[0, 86400)`.
-    ///
-    /// This is the time equivalent of
-    /// [`Sidereal::sidereal_angle_apparent`].
-    ///
-    /// When the **apparent** Equation of the Origins is supplied, this function
-    /// returns **Greenwich Apparent Sidereal Time (GAST)**.
-    ///
-    /// ## Parameters
-    ///
-    /// - `eo_rad`: The **apparent** Equation of the Origins
-    ///   (e.g. from [`Sidereal::earth_eo_apparent`](#method.earth_eo_apparent)).
-    ///   When supplied, the result is Greenwich Apparent Sidereal Time (GAST)
-    ///   in seconds since sidereal midnight.
-    ///
-    /// ## Details
-    ///
-    /// This function computes:
-    ///
-    /// ```text
-    /// GAST (seconds) = (ERA − EO_apparent) in fractional days × 86400
-    /// ```
-    ///
-    /// As of Astropy 7.x, this is consistent with
-    /// `Time.sidereal_time("apparent").to_value("sec")` (Greenwich) when using
-    /// matching UT1 time and the apparent Equation of the Origins.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let earth = Sidereal::EARTH;
-    /// let mjd = 60000.0;
-    ///
-    /// // Greenwich Apparent Sidereal Time in seconds
-    /// // (requires "sidereal-earth" feature)
-    /// # #[cfg(feature = "sidereal-earth")] {
-    /// let eo_app = earth.earth_eo_apparent(mjd + 32.184 / 86400.0);
-    /// let gast_seconds = earth.sidereal_time_apparent(mjd, eo_app);
-    /// # }
-    /// ```
-    pub const fn sidereal_time_apparent(&self, mjd: Real, eo_rad: Real) -> Real {
-        let angle = self.sidereal_angle_apparent(mjd, eo_rad);
-        let fraction = ((angle / TAU) % 1.0 + 1.0) % 1.0;
-        fraction * 86400.0
-    }
-
-    /// Returns local apparent sidereal time at the observer's longitude as
-    /// seconds since sidereal midnight, wrapped to the range `[0, 86400)`.
-    ///
-    /// This is the time equivalent of
-    /// [`Sidereal::local_sidereal_angle_apparent`].
-    ///
-    /// When the **apparent** Equation of the Origins is supplied, this function
-    /// returns **Local Apparent Sidereal Time (LAST)**.
-    ///
-    /// ## Parameters
-    ///
-    /// - `eo_rad`: The **apparent** Equation of the Origins
-    ///   (e.g. from [`Sidereal::earth_eo_apparent`](#method.earth_eo_apparent)).
-    ///   When supplied, the result is Local Apparent Sidereal Time (LAST)
-    ///   at the observer’s longitude, in seconds since sidereal midnight.
-    ///
-    /// ## Details
-    ///
-    /// This function computes:
-    ///
-    /// ```text
-    /// LAST (seconds) = (ERA + longitude − EO_apparent) in fractional days × 86400
-    /// ```
-    ///
-    /// As of Astropy 7.x, this is consistent with
-    /// `Time.sidereal_time("apparent", longitude=...).to_value("sec")` when using
-    /// matching UT1 time and the apparent Equation of the Origins.
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let mut earth = Sidereal::EARTH;
-    /// earth.longitude_rad = 0.0; // Greenwich
-    ///
-    /// let mjd = 60000.0;
-    ///
-    /// // Local Apparent Sidereal Time in seconds
-    /// // (requires "sidereal-earth" feature)
-    /// # #[cfg(feature = "sidereal-earth")] {
-    /// let eo_app = earth.earth_eo_apparent(mjd + 32.184 / 86400.0);
-    /// let last_seconds = earth.local_sidereal_time_apparent(mjd, eo_app);
-    /// # }
-    /// ```
-    pub const fn local_sidereal_time_apparent(&self, mjd: Real, eo_rad: Real) -> Real {
-        let angle = self.local_sidereal_angle_apparent(mjd, eo_rad);
-        let fraction = ((angle / TAU) % 1.0 + 1.0) % 1.0;
-        fraction * 86400.0
-    }
-
-    /// Returns the apparent Equation of the Origins (radians) at the given MJD.
-    ///
-    /// This returns the value computed by ERFA’s `eo06a`. It is the modern
-    /// CIO-based quantity used to derive **Greenwich Apparent Sidereal Time (GAST)**
-    /// from the Earth Rotation Angle (ERA).
-    ///
-    /// When you subtract this value from the ERA, you get GAST:
-    ///
-    /// ```text
-    /// GAST = ERA − earth_eo_apparent(...)
-    /// ```
-    ///
-    /// This method is equivalent to calling `erfa.eo06a(tt.jd1, tt.jd2)` in Astropy.
-    ///
-    /// You should pass the value returned by this function to the apparent
-    /// sidereal time functions (`sidereal_angle_apparent`, `local_sidereal_angle_apparent`,
-    /// `sidereal_time_apparent`, and `local_sidereal_time_apparent`).
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let earth = Sidereal::EARTH;
-    /// let mjd_tt = 60000.0 + 32.184 / 86400.0;
-    ///
-    /// let eo_app = earth.earth_eo_apparent(mjd_tt);
-    /// let gast = earth.sidereal_angle_apparent(mjd_tt, eo_app);
-    /// ```
-    #[cfg(feature = "sidereal-earth")]
-    #[inline]
-    pub const fn earth_eo_apparent(&self, tt_mjd: Real) -> Real {
-        // Convert MJD → two-part Julian Date
-        let date1 = 2400000.5 + tt_mjd;
-        earth_eo(date1, 0.0)
-    }
-
-    /// Returns the mean Equation of the Origins (radians) at the given MJD.
-    ///
-    /// This returns the value that should be subtracted from the Earth Rotation
-    /// Angle (ERA) to obtain **Greenwich Mean Sidereal Time (GMST)**:
-    ///
-    /// ```text
-    /// GMST = ERA − earth_eo_mean(...)
-    /// ```
-    ///
-    /// Internally, this is computed as:
-    ///
-    /// ```text
-    /// earth_eo_mean = earth_eo_apparent() + earth_ee()
-    /// ```
-    ///
-    /// This is equivalent to computing `era - gmst` in Astropy:
-    ///
-    /// ```python
-    /// era = ut1.earth_rotation_angle(...).rad
-    /// gmst = ut1.sidereal_time("mean", ...).rad
-    /// eo_mean = era - gmst
-    /// ```
-    ///
-    /// You should pass the value returned by this function to the mean
-    /// sidereal time functions (`sidereal_angle_mean`, `local_sidereal_angle_mean`,
-    /// `sidereal_time_mean`, and `local_sidereal_time_mean`).
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let earth = Sidereal::EARTH;
-    /// let mjd_tt = 60000.0 + 32.184 / 86400.0;
-    ///
-    /// let eo_mean = earth.earth_eo_mean(mjd_tt);
-    /// let gmst = earth.sidereal_angle_mean(mjd_tt, eo_mean);
-    /// ```
-    #[cfg(feature = "sidereal-earth")]
-    #[inline]
-    pub const fn earth_eo_mean(&self, tt_mjd: Real) -> Real {
-        // Convert MJD → two-part Julian Date
-        let date1 = 2400000.5 + tt_mjd;
-        earth_eo(date1, 0.0) + earth_ee(date1, 0.0)
-    }
-
-    /// Returns the Equation of the Equinoxes (radians) at the given MJD.
-    ///
-    /// This returns the value computed by ERFA’s `ee06a`. The Equation of the
-    /// Equinoxes represents the nutation contribution to sidereal time and is
-    /// defined as:
-    ///
-    /// ```text
-    /// EE = GAST − GMST
-    /// ```
-    ///
-    /// It is equivalent to computing `gast - gmst` in Astropy:
-    ///
-    /// ```python
-    /// gast = ut1.sidereal_time("apparent", ...).rad
-    /// gmst = ut1.sidereal_time("mean", ...).rad
-    /// ee = gast - gmst
-    /// ```
-    ///
-    /// This value is used internally when converting between mean and apparent
-    /// sidereal time (for example, when the mean functions are given the apparent
-    /// EO + EE).
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// use deep_time::Sidereal;
-    ///
-    /// let earth = Sidereal::EARTH;
-    /// let mjd_tt = 60000.0 + 32.184 / 86400.0;
-    ///
-    /// let ee = earth.earth_ee(mjd_tt);
-    /// ```
-    #[cfg(feature = "sidereal-earth")]
-    #[inline]
-    pub const fn earth_ee(&self, tt_mjd: Real) -> Real {
-        // Convert MJD → two-part Julian Date
-        let date1 = 2400000.5 + tt_mjd;
-        earth_ee(date1, 0.0)
+        wrap_angle(self.rotation_angle(mjd) + self.longitude_rad)
     }
 }

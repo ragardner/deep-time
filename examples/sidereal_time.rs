@@ -13,28 +13,19 @@
 //! ```
 //!
 //! The published docs only print whole-hour labels (`12.` / `20.` hourangle).
-//! HMS strings, residual table, and `ASTROPY_*` goldens below come from a
+//! HMS strings, difference table, and `ASTROPY_*` expected values below come from a
 //! local Astropy measurement (script in the block comment after this module
 //! doc), not from a web page.
 //!
-//! Loads IERS finals (same file as the library tests), converts UTC → UT1
-//! with DUT1, then checks **mean** and **apparent** sidereal time at
-//! Greenwich and at 120° E — plus a sample hour angle.
+//! Loads IERS C04 EOP data, converts UTC → UT1 with DUT1, evaluates the
+//! equation of the origins on TT, then checks **mean** and **apparent**
+//! sidereal time at Greenwich and at 120° E — plus a sample hour angle.
 //!
 //! ## Agreement with Astropy (measured on this instant)
 //!
-//! With `tests/assets/finals.all.iau2000.txt` vs Astropy’s default IERS
-//! tables, residuals on this date are roughly:
-//!
-//! | Quantity | \|ours − Astropy\| |
-//! |----------|--------------------|
-//! | UTC MJD  | exact              |
-//! | DUT1     | ~0.7 µs            |
-//! | ERA      | ~0.7 µs (as time)  |
-//! | GAST/LAST (apparent) | ~0.5 µs |
-//! | GMST/LMST (mean)     | ~2.5 µs |
-//!
-//! Most of the gap is DUT1 / IERS table differences, not the EO model.
+//! DUT1 comes from the C04 series (Astropy’s definitive eopc04 / IERS B
+//! path). EO uses TT via `utc.to(Scale::TT)`. Measured differences vs Astropy
+//! on this instant are ~0.03 µs for GMST/GAST and ~0.03 µs (as time) for ERA.
 //! Against the textbook “exactly 12h / 20h” labels, both libraries sit
 //! about 2 µs off (the Astropy docs round to the hour).
 //!
@@ -48,8 +39,8 @@
 Astropy reference values for the asserts below (astropy 8.0.1).
 
 The docs only show `<Longitude 12. hourangle>` / `<Longitude 20. hourangle>`.
-Everything more precise (1 ms HMS, ASTROPY_* seconds, residual µs) was
-measured with this script (venv: /home/r/Documents/.venv):
+Everything more precise (1 ms HMS, ASTROPY_* seconds, µs differences) was
+measured with this script (Astropy + PyERFA):
 
 ```python
 from astropy.time import Time
@@ -62,6 +53,7 @@ t = Time(
 )
 
 def to_sec(st) -> float:
+    # Longitude is hourangle; convert hours → seconds of hourangle.
     return float(st.hour) * 3600.0
 
 def format_hms(hourangle_hours: float) -> str:
@@ -95,10 +87,7 @@ print("gast_off_12h_us", (to_sec(gast) - 43200) * 1e6)  # ~2.615 µs
 print("last_off_20h_us", (to_sec(last) - 72000) * 1e6)  # ~2.585 µs
 ```
 
-Checked against this crate’s regression goldens (same instant, our IERS file):
-
-  |ours − Astropy| ≈ DUT1 0.78 µs, ERA ~0.65 µs (as time),
-  GAST/LAST ~0.5 µs, GMST/LMST ~2.5 µs.
+With C04 EOP, DUT1 matches Astropy; sidereal differences are well under a microsecond.
 */
 
 use deep_time::eop::{EopData, EopFormat, Separator};
@@ -134,37 +123,30 @@ fn main() -> Result<(), DtErr> {
     let frac_attos = Dt::sec_f_to_attos(0.732_327_132_980);
     let utc = Dt::from_ymd(2001, 3, 22, Scale::UTC, 0, 1, 44, Dt::to_u64(frac_attos));
 
-    // ── UT1 via IERS finals (same asset / pattern as astropy_sidereal_tests) ─
+    // ── UT1 via IERS C04 (same definitive series as Astropy IERS_Auto / eopc04)
     let eop = EopData::from_text_file(
-        "tests/assets/finals.all.iau2000.txt",
-        EopFormat::Finals2000A,
+        "tests/assets/EOP_20u24_C04_one_file_1962-now.txt",
+        EopFormat::C04,
         Separator::Whitespace,
     )?;
 
     let mjd_utc = utc.to_mjd_f();
-    let dut1 = Dt::mjd_to_eop_offset_f(mjd_utc, &eop)?; // seconds
-    let mjd_ut1 = mjd_utc + dut1 / 86_400.0;
+    let dut1 = Dt::mjd_to_eop_offset_f(mjd_utc, &eop)?; // seconds; assert vs Astropy
+    let mjd_ut1 = utc.to_ut1(&eop)?.to_mjd_f_raw();
 
-    // Equation of the Origins is evaluated on TT.
-    // Match the test / ERFA convention: TT ≈ UT1 + 32.184 s.
-    let mjd_tt = mjd_ut1 + 32.184 / 86_400.0;
+    // EO series need TT MJD (ERA / GMST use UT1; precession-nutation uses TT).
+    let mjd_tt = utc.to(Scale::TT).to_mjd_f_raw();
 
     // ── Observatories (Astropy location=('120d', '40d')) ──────────────────
-    let mut greenwich = Sidereal::EARTH;
-    greenwich.longitude_rad = 0.0;
-
     let mut observer = Sidereal::EARTH;
     observer.longitude_rad = 120.0_f64.to_radians(); // east positive
 
-    let eo_mean = greenwich.earth_eo_mean(mjd_tt);
-    let eo_app = greenwich.earth_eo_apparent(mjd_tt);
-
     // ── Gather results ───────────────────────────────────────────────────
-    let gmst_sec = greenwich.sidereal_time_mean(mjd_ut1, eo_mean);
-    let lmst_sec = observer.local_sidereal_time_mean(mjd_ut1, eo_mean);
-    let gast_sec = greenwich.sidereal_time_apparent(mjd_ut1, eo_app);
-    let last_sec = observer.local_sidereal_time_apparent(mjd_ut1, eo_app);
-    let era_rad = greenwich.rotation_angle(mjd_ut1);
+    let gmst_sec = Sidereal::to_sec(Sidereal::gmst(mjd_ut1, mjd_tt));
+    let lmst_sec = Sidereal::to_sec(observer.lmst(mjd_ut1, mjd_tt));
+    let gast_sec = Sidereal::to_sec(Sidereal::gast(mjd_ut1, mjd_tt));
+    let last_sec = Sidereal::to_sec(observer.last(mjd_ut1, mjd_tt));
+    let era_rad = Sidereal::era(mjd_ut1);
 
     let gmst_h = to_hourangle(gmst_sec);
     let gast_h = to_hourangle(gast_sec);
@@ -190,14 +172,14 @@ fn main() -> Result<(), DtErr> {
 
     // ── Asserts ──────────────────────────────────────────────────────────
     //
-    // Two layers:
-    // 1. Regression goldens for *this* binary / finals file (sub-ns stable).
-    // 2. Textbook Astropy labels (12h / 20h) within a few microseconds —
-    //    matching measured Astropy agreement on this date (~0.5–2.5 µs).
+    // Checks:
+    // 1. Expected values for this program and C04 data file.
+    // 2. Textbook Astropy labels (12h / 20h) within a few microseconds.
+    // 3. Cross-check vs measured Astropy (same C04/eopc04 DUT1 source).
 
-    // Input path
+    // Input path — DUT1 matches Astropy IERS_Auto on this instant.
     assert_close("MJD UTC", mjd_utc, 51_990.001_212_179_712, 1e-12);
-    assert_close("DUT1", dut1, 0.034_573_559_110_934, 1e-12);
+    assert_close("DUT1", dut1, 0.034_572_775_354_142, 1e-12);
     assert!(mjd_ut1 > mjd_utc);
 
     // Display form at 1 ms — same strings as Astropy when formatted that way
@@ -207,32 +189,39 @@ fn main() -> Result<(), DtErr> {
     assert_eq!(gmst_hms, "12:00:01.019");
     assert_eq!(lmst_hms, "20:00:01.019");
 
-    // Regression goldens (seconds since sidereal midnight).
-    assert_close("GAST", gast_sec, 43_200.000_002_072_287, 1e-9);
-    assert_close("LAST", last_sec, 72_000.000_002_072_265, 1e-9);
-    assert_close("GMST", gmst_sec, 43_201.019_315_904_887, 1e-9);
-    assert_close("LMST", lmst_sec, 72_001.019_315_904_865, 1e-9);
-    assert_close("ERA", era_rad, 3.141_393_975_849_745, 1e-15);
+    // Expected values for this program and C04 data file.
+    assert_close("GAST", gast_sec, 43_200.000_002_640_387, 1e-9);
+    assert_close("LAST", last_sec, 72_000.000_002_640_401, 1e-9);
+    assert_close("GMST", gmst_sec, 43_201.019_318_394_094, 1e-9);
+    assert_close("LMST", lmst_sec, 72_001.019_318_394_072, 1e-9);
+    assert_close("ERA", era_rad, 3.141_393_975_804_270, 1e-15);
+    assert_close(
+        "MJD TT",
+        utc.to(Scale::TT).to_mjd_f_raw(),
+        51_990.001_955_050_08,
+        1e-12,
+    );
 
     // Textbook hourangles: within 5 µs of exact 12h / 20h.
     // (Astropy is ~2.6 µs off 12h / 20h on this instant; see Python block.)
     const FIVE_US_AS_HOURS: f64 = 5e-6 / 3600.0;
     assert_close("GAST hourangle", gast_h, 12.0, FIVE_US_AS_HOURS);
     assert_close("LAST hourangle", last_h, 20.0, FIVE_US_AS_HOURS);
-    // Mean is ~1.019 s after apparent → ~12.000283 h / 20.000283 h.
-    assert_close("GMST hourangle", gmst_h, 12.000_283_143_306_913, 1e-12);
-    assert_close("LMST hourangle", lmst_h, 20.000_283_143_306_905, 1e-12);
+    // Mean is ~1.019 s after apparent.
+    assert_close("GMST hourangle", gmst_h, 12.000_283_143_998_360, 1e-12);
+    assert_close("LMST hourangle", lmst_h, 20.000_283_143_998_352, 1e-12);
 
     // Geometry
     assert_close("LAST − GAST", lon_hours, 8.0, 1e-12);
     assert_close("HA (RA=18h)", ha_signed, 2.0, FIVE_US_AS_HOURS);
 
-    // Bound vs live Astropy (top-of-file Python). Leaves headroom above the
-    // measured ~0.5 µs (apparent) / ~2.5 µs (mean) residuals.
-    const ASTROPY_APPARENT_SEC: f64 = 43_200.000_002_614_826; // to_sec(GAST)
-    const ASTROPY_MEAN_SEC: f64 = 43_201.019_318_368_511; // to_sec(GMST)
-    assert_close("GAST vs Astropy", gast_sec, ASTROPY_APPARENT_SEC, 1e-6);
-    assert_close("GMST vs Astropy", gmst_sec, ASTROPY_MEAN_SEC, 5e-6);
+    // Cross-check vs measured Astropy (top-of-file Python; differences ~0.03 µs).
+    const ASTROPY_APPARENT_SEC: f64 = 43_200.000_002_614_826;
+    const ASTROPY_MEAN_SEC: f64 = 43_201.019_318_368_511;
+    const ASTROPY_ERA: f64 = 3.141_393_975_802_410_3;
+    assert_close("GAST vs Astropy", gast_sec, ASTROPY_APPARENT_SEC, 1e-7);
+    assert_close("GMST vs Astropy", gmst_sec, ASTROPY_MEAN_SEC, 1e-7);
+    assert_close("ERA vs Astropy", era_rad, ASTROPY_ERA, 5e-12);
 
     Ok(())
 }

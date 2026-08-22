@@ -9,15 +9,7 @@ mod tests {
     ))]
     #[test]
     fn print_stuff() {
-        use deep_time::macros::{days_f, dt, from_ymd};
-        use deep_time::{
-            AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TraitsTime, YmdHms, sec_f,
-        };
-
-        // eprintln!("{:#}", Dt::MAX);
-        // let s = Dt::MIN.to_string();
-        // eprintln!("{}", s);
-        // let s = Dt::ZERO.to_string();
-        // eprintln!("{}", s);
+        use deep_time::macros::{days_f, dt, from_mjd_f, from_ymd, sec_f};
+        use deep_time::{AnErr, Dt, DtErr, DtErrKind, Lang, ParseCfg, Scale, TraitsTime, YmdHms};
     }
 }

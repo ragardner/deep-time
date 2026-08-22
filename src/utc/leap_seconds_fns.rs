@@ -5,7 +5,7 @@
 
 use crate::macros::from_sec_f;
 use crate::utc::leap_seconds_list::{LEAP_SECS, LeapSec};
-use crate::{Dt, Scale};
+use crate::{Dt, Real, Scale, floor_f};
 
 #[cfg(feature = "std")]
 use std::{fs, io, path::Path};
@@ -325,6 +325,47 @@ impl Dt {
             }
             // defer to library conversion function
             _ => self.to(new),
+        }
+    }
+
+    /// SI seconds in the UTC calendar day that contains `mjd_utc`.
+    ///
+    /// IAU / ERFA / Astropy treat the fractional part of a UTC MJD as a
+    /// fraction of that UTC day:
+    ///
+    /// - `86_400` on a normal day
+    /// - `86_401` when a positive leap second is inserted at the end of the day
+    /// - `86_399` if a negative leap second is removed
+    ///
+    /// The 1972-01-01 introduction of TAI−UTC = 10 s is not a one-second leap
+    /// and does not change the day length.
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::Dt;
+    ///
+    /// // 2016-12-31 ends with a leap second (MJD 57753).
+    /// assert_eq!(Dt::utc_day_length_sec(57_753.5), 86_401.0);
+    /// assert_eq!(Dt::utc_day_length_sec(57_754.0), 86_400.0);
+    /// ```
+    pub const fn utc_day_length_sec(mjd_utc: Real) -> Real {
+        let day = floor_f(mjd_utc);
+        let dat0 = match Self::from_mjd_f(day, Scale::TAI).leap_sec(true) {
+            Some(i) => i.offset,
+            None => 0,
+        };
+        let dat1 = match Self::from_mjd_f(day + 1.0, Scale::TAI).leap_sec(true) {
+            Some(i) => i.offset,
+            None => 0,
+        };
+        let jump = dat1 - dat0;
+        if jump == 1 {
+            86_401.0
+        } else if jump == -1 {
+            86_399.0
+        } else {
+            86_400.0
         }
     }
 }

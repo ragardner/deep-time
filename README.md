@@ -17,7 +17,7 @@ A fully featured and high performance **Rust date and time library** with attose
 - [Time scales](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html) e.g. UTC with leap seconds support, including historical, TT, TAI, TDB, NAIF ET, LTC, GPS, etc. An optional feature `tdb-hi` can be enabled which provides the ERFA TDB model
 - [Strptime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.from_strptime)
 - [Strftime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str) (multi-language day and month names available)
-- First class [timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature
+- [Timezone](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_str_in_tz) support provided by the Rust library [jiff](https://github.com/BurntSushi/jiff) enabled with the `jiff-tz` feature
 - To and from all kinds of inputs and outputs, functions mostly prefixed with `to` and `from`, available on the library's types, see the main time types functions: [Dt](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html). Including [JD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jd_f), [MJD](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_mjd_f), [Unix](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_unix), [NTP](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ntp), etc.
 - [Calendar aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days) and, with the `jiff-tz` feature, [timezone aware](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.add_days_tz) math
 - To and from [jiff](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_jiff_timestamp), [chrono](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_chrono_datetime_utc), [hifitime](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_hifitime_epoch), [time](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_time_timestamp), and [ICU4X](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_icu_datetime_iso) types
@@ -26,7 +26,7 @@ A fully featured and high performance **Rust date and time library** with attose
 - Safe, saturating arithmetic throughout
 - **No** `unsafe` in the library - [`#![forbid(unsafe_code)]`](https://github.com/ragardner/deep-time/blob/main/src/lib.rs)
 - [Lunar](https://docs.rs/deep-time/latest/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/latest/deep_time/mars/index.html) modules
-- [Sidereal time](https://docs.rs/deep-time/latest/deep_time/sidereal/struct.Sidereal.html) with a const fn implementation of ERFA Equation of the Origins / Equinoxes
+- [Sidereal](https://docs.rs/deep-time/latest/deep_time/sidereal/struct.Sidereal.html) prime-meridian clocks, plus Earth [GMST/GAST/LMST/LAST](https://docs.rs/deep-time/latest/deep_time/sidereal/earth/index.html) (`sidereal-earth`)
 - [UT1 and EOP](https://docs.rs/deep-time/latest/deep_time/eop/index.html)
 - [Proper time along trajectories](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.proper_time_from_states) — usage guide [docs/trajectory.md](docs/trajectory.md). Requires the `physics` feature
 - Relativity types: [Drift](https://docs.rs/deep-time/latest/deep_time/physics/struct.Drift.html), [Spacetime](https://docs.rs/deep-time/latest/deep_time/physics/struct.Spacetime.html), [Position](https://docs.rs/deep-time/latest/deep_time/physics/struct.Position.html), [Velocity](https://docs.rs/deep-time/latest/deep_time/physics/struct.Velocity.html) — rate-model theory [docs/relativity.md](docs/relativity.md). Import via `deep_time::physics`. Requires the `physics` feature.
@@ -262,7 +262,7 @@ You only need this if you are building a binary crate in a `no_std` environment 
 | Example | What it shows | Run |
 |---------|----------------|-----|
 | [`precision_control`](https://github.com/ragardner/deep-time/blob/main/examples/precision_control.rs) | Compare, and format times at a chosen resolution (here: one minute) | `cargo run --example precision_control` |
-| [`sidereal_time`](https://github.com/ragardner/deep-time/blob/main/examples/sidereal_time.rs) | Astropy-style GMST/GAST/LMST/LAST with UT1 from IERS finals, plus hour angle | `cargo run --example sidereal_time --features "sidereal-earth eop std"` |
+| [`sidereal_time`](https://github.com/ragardner/deep-time/blob/main/examples/sidereal_time.rs) | Astropy-style GMST/GAST/LMST/LAST with UT1 from IERS C04, plus hour angle | `cargo run --example sidereal_time --features "sidereal-earth eop std"` |
 | [`proper_time_path`](https://github.com/ragardner/deep-time/blob/main/examples/proper_time_path.rs) | Proper time / craft-vs-ground from `(t, v, Φ)` samples | `cargo run --example proper_time_path --features physics` |
 | [`ccsds_vs_wire`](https://github.com/ragardner/deep-time/blob/main/examples/ccsds_vs_wire.rs) | CCSDS CUC Level 1 (4+3 packet stamp) vs private `wire` size/fidelity | `cargo run --example ccsds_vs_wire --features wire` |
 
