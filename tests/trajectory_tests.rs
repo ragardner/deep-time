@@ -2,6 +2,7 @@
 
 #[cfg(feature = "physics")]
 mod proper_time_tests {
+    use deep_time::consts::C;
     use deep_time::physics::{Spacetime, Velocity};
     use deep_time::{Dt, DtErrKind, Scale};
 
@@ -14,6 +15,16 @@ mod proper_time_tests {
         Spacetime::grav_potential_from_alpha(alpha)
     }
 
+    /// Rates like 0.9 are not exact in f64, so Δτ is not an integer number of
+    /// attoseconds. Check the value in seconds.
+    fn assert_secs(dt: Dt, sec: f64) {
+        assert!(
+            (dt.to_sec_f() - sec).abs() < 1e-12,
+            "got {} s, expected {sec} s",
+            dt.to_sec_f()
+        );
+    }
+
     // =====================================================================
     // proper_time_from_path
     // =====================================================================
@@ -21,7 +32,7 @@ mod proper_time_tests {
     #[test]
     fn zero_duration_or_insufficient_samples_returns_zero() {
         let t = tai(0);
-        let flat = Spacetime::new(1.0, 0.0, 0.0);
+        let flat = Spacetime::new(1.0, 0.0);
 
         // Empty path
         assert_eq!(
@@ -46,7 +57,7 @@ mod proper_time_tests {
         let t1 = tai(86400);
 
         // Flat spacetime → proper time rate = 1.0 (no dilation)
-        let flat = Spacetime::new(1.0, 0.0, 0.0);
+        let flat = Spacetime::new(1.0, 0.0);
 
         // Build a two-point path
         let path = [(t0, flat.clone()), (t1, flat)];
@@ -56,16 +67,28 @@ mod proper_time_tests {
     }
 
     #[test]
+    fn flat_rate_preserves_attosecond_span() {
+        // r = 1: Δτ must equal the integer attosecond span, including a 1-as
+        // remainder that f64 seconds cannot represent (ulp(1 s) ≈ 2e-16 s).
+        let t0 = tai(0);
+        let t1 = Dt::from_sec(1, Scale::TAI, Scale::TAI).add_attos(1);
+        let flat = Spacetime::new(1.0, 0.0);
+        let dtau = Dt::proper_time_from_path([(t0, flat), (t1, flat)]).unwrap();
+        assert_eq!(dtau, t1.to_diff_raw(t0));
+        assert_eq!(dtau.to_attos(), 1_000_000_000_000_000_001);
+    }
+
+    #[test]
     fn constant_gravitational_time_dilation_exact() {
         let t0 = tai(0);
         let t1 = tai(1000);
 
         // Constant rate of 0.9 (e.g. gravitational time dilation)
-        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let slow = Spacetime::new(0.9, 0.0);
         let path = [(t0, slow.clone()), (t1, slow)];
 
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
-        assert_eq!(dtau, Dt::from_sec(900, Scale::TAI, Scale::TAI));
+        assert_secs(dtau, 900.0);
     }
 
     #[test]
@@ -74,11 +97,11 @@ mod proper_time_tests {
         let t1 = tai(500);
 
         // Spacetime with velocity β = 0.6 → proper time rate ≈ 0.8
-        let moving = Spacetime::new(1.0, 0.6, 0.0);
+        let moving = Spacetime::new(1.0, 0.6);
         let path = [(t0, moving.clone()), (t1, moving)];
 
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
-        assert_eq!(dtau, Dt::from_sec(400, Scale::TAI, Scale::TAI));
+        assert_secs(dtau, 400.0);
     }
 
     #[test]
@@ -89,30 +112,30 @@ mod proper_time_tests {
 
         // Three samples with a linearly decreasing rate
         let path = [
-            (t0, Spacetime::new(1.00, 0.0, 0.0)),
-            (t_mid, Spacetime::new(0.95, 0.0, 0.0)),
-            (t1, Spacetime::new(0.90, 0.0, 0.0)),
+            (t0, Spacetime::new(1.00, 0.0)),
+            (t_mid, Spacetime::new(0.95, 0.0)),
+            (t1, Spacetime::new(0.90, 0.0)),
         ];
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
-        // With piecewise trapezoidal integration, the result is 570 seconds
-        assert_eq!(dtau, Dt::from_sec(570, Scale::TAI, Scale::TAI));
+        // Piecewise trapezoid: ½(1.00+0.95)×300 + ½(0.95+0.90)×300 = 570 s
+        assert_secs(dtau, 570.0);
     }
 
     #[test]
     fn multi_segment_trapezoidal_with_odd_number_of_intervals() {
         // 4 samples → 3 segments (odd number of intervals)
         let path = [
-            (tai(0), Spacetime::new(1.00, 0.0, 0.0)),
-            (tai(300), Spacetime::new(0.96, 0.0, 0.0)),
-            (tai(600), Spacetime::new(0.92, 0.0, 0.0)),
-            (tai(900), Spacetime::new(0.88, 0.0, 0.0)),
+            (tai(0), Spacetime::new(1.00, 0.0)),
+            (tai(300), Spacetime::new(0.96, 0.0)),
+            (tai(600), Spacetime::new(0.92, 0.0)),
+            (tai(900), Spacetime::new(0.88, 0.0)),
         ];
 
         let dtau = Dt::proper_time_from_path(path).expect("valid path");
 
         // Piecewise trapezoidal result over 3 segments
-        assert_eq!(dtau, Dt::from_sec(846, Scale::TAI, Scale::TAI));
+        assert_secs(dtau, 846.0);
     }
 
     #[test]
@@ -120,49 +143,13 @@ mod proper_time_tests {
         let t0 = tai(0);
         let t1 = tai(1000);
 
-        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let slow = Spacetime::new(0.9, 0.0);
         let path = [(t0, slow.clone()), (t1, slow)];
 
         let dtau = Dt::proper_time_from_path(path).unwrap();
         let dt = t1.to_diff_raw(t0);
 
-        assert_eq!(dtau.sub(dt), Dt::from_sec(-100, Scale::TAI, Scale::TAI));
-    }
-
-    #[test]
-    fn planck_saturation_activates_in_extreme_curvature() {
-        let t0 = tai(0);
-        let t1 = tai(100);
-
-        let extreme = Spacetime::new(0.5, 0.0, 1e200);
-        let path = [(t0, extreme.clone()), (t1, extreme)];
-
-        let dtau = Dt::proper_time_from_path(path).expect("valid path");
-
-        // K_eff saturates at ≈ 0.9013878188659973
-        let expected = Dt::from_sec_f(90.13878188659973, Scale::TAI, Scale::TAI);
-        assert_eq!(dtau, expected);
-    }
-
-    #[test]
-    fn planck_term_is_negligible_in_solar_system_regimes() {
-        let t0 = tai(0);
-        let t1 = tai(86400);
-
-        let alpha = 0.999_999;
-        let beta = 1.2e-4;
-
-        let no_k = Spacetime::new(alpha, beta, 0.0);
-        let with_k = Spacetime::new(alpha, beta, 1e20);
-
-        let path_no_k = [(t0, no_k.clone()), (t1, no_k)];
-        let path_with_k = [(t0, with_k.clone()), (t1, with_k)];
-
-        let dtau_no_k = Dt::proper_time_from_path(path_no_k).unwrap();
-        let dtau_with_k = Dt::proper_time_from_path(path_with_k).unwrap();
-
-        let diff_attos = dtau_no_k.sub(dtau_with_k).to_attos().abs();
-        assert!(diff_attos < 10);
+        assert_secs(dtau.sub(dt), -100.0);
     }
 
     #[test]
@@ -173,7 +160,7 @@ mod proper_time_tests {
             Ok(Dt::ZERO)
         );
 
-        let single = &[(tai(0), Spacetime::new(1.0, 0.0, 0.0))];
+        let single = &[(tai(0), Spacetime::new(1.0, 0.0))];
         assert_eq!(
             Dt::proper_time_from_path(single.iter().cloned()),
             Ok(Dt::ZERO)
@@ -184,13 +171,12 @@ mod proper_time_tests {
     fn proper_time_from_path_consistent_with_two_point_path() {
         let t0 = tai(0);
         let t1 = tai(300);
-        let ls = Spacetime::new(0.95, 0.0, 0.0);
+        let ls = Spacetime::new(0.95, 0.0);
 
-        let via_path = Dt::proper_time_from_path([(t0, ls.clone()), (t1, ls)]).unwrap();
+        let via_path = Dt::proper_time_from_path([(t0, ls), (t1, ls)]).unwrap();
 
         // With constant rate, this should equal rate * Δt
-        let expected = Dt::from_sec_f(0.95 * 300.0, Scale::TAI, Scale::TAI);
-        assert_eq!(via_path, expected);
+        assert_secs(via_path, 0.95 * 300.0);
     }
 
     /// Smoke test at Apollo 12 mission duration: a synthetic path with GET times
@@ -256,7 +242,7 @@ mod proper_time_tests {
                 alpha = coast_alpha;
             }
 
-            let ls = Spacetime::new(alpha, beta, 0.0);
+            let ls = Spacetime::new(alpha, beta);
             spacecraft_path.push((tai(t as i128), ls));
         }
 
@@ -265,7 +251,7 @@ mod proper_time_tests {
 
         let t0 = spacecraft_path[0].0;
         let t1 = spacecraft_path.last().unwrap().0;
-        let ground_ls = Spacetime::new(0.999_999_999_305, 0.0, 0.0);
+        let ground_ls = Spacetime::new(0.999_999_999_305, 0.0);
 
         let ground_dtau = t0.proper_time_between_constant_rate(t1, ground_ls.proper_time_rate());
 
@@ -307,11 +293,11 @@ mod proper_time_tests {
         let phi = phi_for_alpha(0.9);
         let states = [(t0, Velocity::ZERO, phi), (t1, Velocity::ZERO, phi)];
 
-        let drift = Dt::proper_time_drift_from_states(t0, t1, states, 0.0).unwrap();
+        let drift = Dt::proper_time_drift_from_states(t0, t1, states).unwrap();
         // dτ = 0.9 * 1000, Δt = 1000 → drift = −100
-        assert_eq!(drift, Dt::from_sec(-100, Scale::TAI, Scale::TAI));
+        assert_secs(drift, -100.0);
 
-        let dtau = Dt::proper_time_from_states(states, 0.0).unwrap();
+        let dtau = Dt::proper_time_from_states(states).unwrap();
         assert_eq!(drift, dtau.sub(t1.to_diff_raw(t0)));
     }
 
@@ -324,9 +310,9 @@ mod proper_time_tests {
             (tai(1000), Velocity::ZERO, phi),
         ];
 
-        let drift = Dt::proper_time_drift_from_states(tai(100), tai(900), states, 0.0).unwrap();
+        let drift = Dt::proper_time_drift_from_states(tai(100), tai(900), states).unwrap();
         // Window Δt = 800; dτ = 0.9 * 800 → drift = −80
-        assert_eq!(drift, Dt::from_sec(-80, Scale::TAI, Scale::TAI));
+        assert_secs(drift, -80.0);
     }
 
     #[test]
@@ -339,7 +325,7 @@ mod proper_time_tests {
             (tai(1000), Velocity::ZERO, phi),
         ];
 
-        let windowed = Dt::proper_time_drift_from_states(tai(100), tai(900), states, 0.0).unwrap();
+        let windowed = Dt::proper_time_drift_from_states(tai(100), tai(900), states).unwrap();
         let exact = Dt::proper_time_drift_from_states(
             tai(100),
             tai(900),
@@ -347,12 +333,11 @@ mod proper_time_tests {
                 (tai(100), Velocity::ZERO, phi),
                 (tai(900), Velocity::ZERO, phi),
             ],
-            0.0,
         )
         .unwrap();
 
         assert_eq!(windowed, exact);
-        assert_eq!(windowed, Dt::from_sec(-80, Scale::TAI, Scale::TAI));
+        assert_secs(windowed, -80.0);
     }
 
     #[test]
@@ -361,11 +346,11 @@ mod proper_time_tests {
         let phi = phi_for_alpha(0.9);
         // Even with empty states, start == end is zero drift.
         assert_eq!(
-            Dt::proper_time_drift_from_states(t, t, std::iter::empty(), 0.0),
+            Dt::proper_time_drift_from_states(t, t, std::iter::empty()),
             Ok(Dt::ZERO)
         );
         assert_eq!(
-            Dt::proper_time_drift_from_states(t, t, [(t, Velocity::ZERO, phi)], 0.0),
+            Dt::proper_time_drift_from_states(t, t, [(t, Velocity::ZERO, phi)]),
             Ok(Dt::ZERO)
         );
     }
@@ -380,7 +365,6 @@ mod proper_time_tests {
                 (tai(0), Velocity::ZERO, phi),
                 (tai(100), Velocity::ZERO, phi),
             ],
-            0.0,
         )
         .unwrap_err();
         assert_eq!(err.kind(), DtErrKind::OutOfRange);
@@ -391,8 +375,8 @@ mod proper_time_tests {
         let phi = phi_for_alpha(0.9);
 
         // Empty
-        let err = Dt::proper_time_drift_from_states(tai(0), tai(100), std::iter::empty(), 0.0)
-            .unwrap_err();
+        let err =
+            Dt::proper_time_drift_from_states(tai(0), tai(100), std::iter::empty()).unwrap_err();
         assert_eq!(err.kind(), DtErrKind::Incomplete);
 
         // First sample after start
@@ -403,7 +387,6 @@ mod proper_time_tests {
                 (tai(10), Velocity::ZERO, phi),
                 (tai(100), Velocity::ZERO, phi),
             ],
-            0.0,
         )
         .unwrap_err();
         assert_eq!(err.kind(), DtErrKind::Incomplete);
@@ -416,7 +399,6 @@ mod proper_time_tests {
                 (tai(0), Velocity::ZERO, phi),
                 (tai(50), Velocity::ZERO, phi),
             ],
-            0.0,
         )
         .unwrap_err();
         assert_eq!(err.kind(), DtErrKind::Incomplete);
@@ -433,7 +415,6 @@ mod proper_time_tests {
                 (tai(80), Velocity::ZERO, phi),
                 (tai(40), Velocity::ZERO, phi),
             ],
-            0.0,
         )
         .unwrap_err();
         assert_eq!(err.kind(), DtErrKind::NonMonotonic);
@@ -449,7 +430,6 @@ mod proper_time_tests {
                 (tai(0), Velocity::ZERO, phi),
                 (tai(86400), Velocity::ZERO, phi),
             ],
-            0.0,
         )
         .unwrap();
         assert_eq!(drift, Dt::ZERO);
@@ -463,23 +443,23 @@ mod proper_time_tests {
     fn between_matches_full_span_when_endpoints_align() {
         let t0 = tai(0);
         let t1 = tai(1000);
-        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let slow = Spacetime::new(0.9, 0.0);
         let path = [(t0, slow.clone()), (t1, slow)];
 
-        let full = Dt::proper_time_from_path(path.clone()).unwrap();
+        let full = Dt::proper_time_from_path(path).unwrap();
         let between = Dt::proper_time_from_path_between(t0, t1, path).unwrap();
         assert_eq!(between, full);
-        assert_eq!(between, Dt::from_sec(900, Scale::TAI, Scale::TAI));
+        assert_secs(between, 900.0);
     }
 
     #[test]
     fn between_windows_absolute_proper_time() {
-        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let slow = Spacetime::new(0.9, 0.0);
         let path = [(tai(0), slow.clone()), (tai(1000), slow)];
 
         // Δτ on [100, 900] = 0.9 * 800 = 720
         let dtau = Dt::proper_time_from_path_between(tai(100), tai(900), path).unwrap();
-        assert_eq!(dtau, Dt::from_sec(720, Scale::TAI, Scale::TAI));
+        assert_secs(dtau, 720.0);
     }
 
     #[test]
@@ -492,16 +472,16 @@ mod proper_time_tests {
 
         let start = tai(100);
         let end = tai(900);
-        let dtau = Dt::proper_time_from_states_between(start, end, states, 0.0).unwrap();
-        let drift = Dt::proper_time_drift_from_states(start, end, states, 0.0).unwrap();
+        let dtau = Dt::proper_time_from_states_between(start, end, states).unwrap();
+        let drift = Dt::proper_time_drift_from_states(start, end, states).unwrap();
         assert_eq!(drift, dtau.sub(end.to_diff_raw(start)));
-        assert_eq!(dtau, Dt::from_sec(720, Scale::TAI, Scale::TAI));
-        assert_eq!(drift, Dt::from_sec(-80, Scale::TAI, Scale::TAI));
+        assert_secs(dtau, 720.0);
+        assert_secs(drift, -80.0);
     }
 
     #[test]
     fn between_rejects_incomplete_and_inverted() {
-        let ls = Spacetime::new(1.0, 0.0, 0.0);
+        let ls = Spacetime::new(1.0, 0.0);
 
         let err = Dt::proper_time_from_path_between(
             tai(100),
@@ -520,13 +500,42 @@ mod proper_time_tests {
         assert_eq!(err.kind(), DtErrKind::Incomplete);
     }
 
+    #[test]
+    fn between_lerps_varying_rate_inside_segment() {
+        // Linear rate 1.0 → 0.9 on [0, 1000]; window [250, 750].
+        // r(250) = 0.975, r(750) = 0.925 → Δτ = ½(0.975+0.925)×500 = 475.
+        let path = [
+            (tai(0), Spacetime::new(1.00, 0.0)),
+            (tai(1000), Spacetime::new(0.90, 0.0)),
+        ];
+        let dtau = Dt::proper_time_from_path_between(tai(250), tai(750), path).unwrap();
+        assert_secs(dtau, 475.0);
+    }
+
+    #[test]
+    fn from_states_nonzero_speed_matches_spacetime_path() {
+        let t0 = tai(0);
+        let t1 = tai(500);
+        let speed = 0.6 * C;
+        let vel = Velocity::from_speed(speed);
+        let states = [(t0, vel, 0.0), (t1, vel, 0.0)];
+        let via_states = Dt::proper_time_from_states(states).unwrap();
+
+        let moving = Spacetime::from_potential_and_velocity(0.0, vel);
+        let via_path = Dt::proper_time_from_path([(t0, moving), (t1, moving)]).unwrap();
+
+        // Φ = 0, β = 0.6 → r = √(1 − 0.36) = 0.8; Δτ = 400 s
+        assert_eq!(via_states, via_path);
+        assert_secs(via_states, 400.0);
+    }
+
     // =====================================================================
     // differential helpers
     // =====================================================================
 
     #[test]
     fn differential_from_paths_self_is_zero() {
-        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let slow = Spacetime::new(0.9, 0.0);
         let path = [(tai(0), slow.clone()), (tai(1000), slow)];
         let diff =
             Dt::proper_time_differential_from_paths(tai(0), tai(1000), path.clone(), path).unwrap();
@@ -535,21 +544,21 @@ mod proper_time_tests {
 
     #[test]
     fn differential_from_paths_compares_two_rates() {
-        let a = Spacetime::new(0.95, 0.0, 0.0);
-        let b = Spacetime::new(0.90, 0.0, 0.0);
+        let a = Spacetime::new(0.95, 0.0);
+        let b = Spacetime::new(0.90, 0.0);
         let path_a = [(tai(0), a.clone()), (tai(1000), a)];
         let path_b = [(tai(0), b.clone()), (tai(1000), b)];
 
         // Δτ_a = 950, Δτ_b = 900 → differential = +50
         let diff =
             Dt::proper_time_differential_from_paths(tai(0), tai(1000), path_a, path_b).unwrap();
-        assert_eq!(diff, Dt::from_sec(50, Scale::TAI, Scale::TAI));
+        assert_secs(diff, 50.0);
     }
 
     #[test]
     fn differential_vs_rate_matches_manual() {
-        let sc = Spacetime::new(0.999_999_999_9997, 0.0, 0.0);
-        let ground_rate = Spacetime::new(0.999_999_999_305, 0.0, 0.0).proper_time_rate();
+        let sc = Spacetime::new(0.999_999_999_9997, 0.0);
+        let ground_rate = Spacetime::new(0.999_999_999_305, 0.0).proper_time_rate();
         let path = [(tai(0), sc.clone()), (tai(100_000), sc)];
 
         let start = tai(0);
@@ -570,15 +579,15 @@ mod proper_time_tests {
             (tai(0), Velocity::ZERO, phi),
             (tai(1000), Velocity::ZERO, phi),
         ];
-        let slow = Spacetime::new(0.9, 0.0, 0.0);
+        let slow = Spacetime::new(0.9, 0.0);
         let path = [(tai(0), slow.clone()), (tai(1000), slow)];
 
         // ref_rate = 1.0 → differential = Δτ − Δt = drift
         let start = tai(0);
         let end = tai(1000);
         let diff = Dt::proper_time_differential_vs_rate(start, end, path, 1.0).unwrap();
-        let drift = Dt::proper_time_drift_from_states(start, end, states, 0.0).unwrap();
+        let drift = Dt::proper_time_drift_from_states(start, end, states).unwrap();
         assert_eq!(diff, drift);
-        assert_eq!(diff, Dt::from_sec(-100, Scale::TAI, Scale::TAI));
+        assert_secs(diff, -100.0);
     }
 }

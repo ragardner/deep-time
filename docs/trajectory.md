@@ -11,7 +11,7 @@ Runnable sketch (sample table → proper time, vs ground, drift):
 [examples/proper_time_path.rs](https://github.com/ragardner/deep-time/blob/main/examples/proper_time_path.rs)
 (`cargo run --example proper_time_path --features physics`).
 
-Theory of the rate model (master Lagrangian, weak-field limits):
+Theory of the rate model (interval, IERS / Ashby weak-field fill):
 [relativity.md](relativity.md).
 
 ## Concepts
@@ -26,6 +26,39 @@ Theory of the rate model (master Lagrangian, weak-field limits):
 Integration uses the trapezoidal rule on sample-to-sample rates. Between samples
 the rate is treated as linear. Accuracy follows sample density and the
 gravitational potential \(\Phi\) you supply.
+
+## Rate model
+
+The engine is \(d\tau/dt=\alpha\sqrt{1-\beta^2}\). Trajectory `*_from_states`
+methods fill \(\alpha\) and \(\beta\) from Φ and \(v\):
+
+\[
+r = \frac{d\tau}{dt} = \sqrt{\Bigl(1 + \frac{2\Phi}{c^2}\Bigr)\Bigl(1 - \frac{v^2}{c^2}\Bigr)}
+\approx 1 + \frac{\Phi}{c^2} - \frac{v^2}{2c^2}.
+\]
+
+That is IERS Conventions (2010) eqs. (10.6)–(10.7) and Ashby (2003) through
+\(O(c^{-2})\). The library takes **Φ negative** for bound gravity (physics
+convention). IERS writes the same physics with a **positive** \(U_E\)
+(\(\Phi = -U_E\)). Passing \(+GM/r\) makes clocks appear to run fast.
+
+If you already have lapse and Eulerian speed from a metric, build
+[`Spacetime`](https://docs.rs/deep-time/latest/deep_time/physics/struct.Spacetime.html)
+with `new(alpha, beta)` and use the `*_from_path` methods. Same engine.
+
+This integrator is the IERS **general** method (numerical integral of \(d\tau/dt\)
+along the path). The GPS closed form \(\Delta t_r = -2\,\mathbf{r}\cdot\mathbf{v}/c^2\)
+is a Keplerian special case after a factory frequency offset; IERS says not to
+use it for LEO — put \(J_2\) (and anything else) **into Φ**, then integrate here.
+
+The result is a **duration**, not an epoch. All sample times must share one
+coordinate time scale (comparisons use attoseconds only; TAI mixed with TT will
+silently integrate the wrong span). IERS (10.7) is written with \(t=\) TCG;
+these methods treat the sample times as that kind of coordinate time. IERS
+(10.8)–(10.9) add \(L_G\) for \(t=\) TT; that factor is a `Scale` conversion,
+not part of this integral. Velocity should be inertial-style (e.g. GCRS / ECI).
+ECEF speed includes Earth rotation and is the wrong \(\beta\) unless you mean
+that.
 
 ## Which function should I call?
 
@@ -49,18 +82,15 @@ no separate start/end check.
    `Spacetime::grav_potential_from_point_masses` for a simple point-mass sum.
 2. Use the same inertial-style frame for position (when building Φ) and velocity
    (e.g. Earth-centered inertial for near-Earth work).
-3. Pass `characteristic_length_scale = 0.0` for ordinary solar-system / GNSS
-   work (disables the optional curvature term).
-4. Call a `*_between` / drift / differential method with your arc `[t₁, t₂]`.
+3. Call a `*_between` / drift / differential method with your arc `[t₁, t₂]`.
    Samples must **cover** that interval or you get `DtErrKind::Incomplete`.
 
 ## Units and common mistakes
 
 - Trajectory **`*_from_states`** APIs take Φ in **m²/s²** and divide by \(c^2\)
   internally. Do **not** pass Φ/c² there.
-- `Spacetime::from_potential_velocity_and_scale` takes **Φ/c²** (dimensionless).
+- `Spacetime::from_potential_and_velocity` takes **Φ/c²** (dimensionless).
 - Velocity is m/s; only speed enters the rate (via \(\beta = v/c\)).
-- For almost all flight work, `characteristic_length_scale = 0.0`.
 
 ## Coverage rules (interval APIs)
 

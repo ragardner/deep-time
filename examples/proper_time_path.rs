@@ -18,13 +18,11 @@
 //! | API | Potential |
 //! |-----|-----------|
 //! | [`Dt::proper_time_from_states_between`], [`Dt::proper_time_drift_from_states`] | Φ in **m²/s²** (SI); divided by \(c^2\) internally |
-//! | [`Spacetime::from_potential_velocity_and_scale`] | **Φ/c²** (dimensionless) |
+//! | [`Spacetime::from_potential_and_velocity`] | **Φ/c²** (dimensionless) |
 //!
 //! - Velocity: m/s; only **speed** enters the rate model.
 //! - Use a consistent inertial-style frame for position (when forming Φ) and
 //!   velocity (e.g. Earth-centered inertial).
-//! - Set `characteristic_length_scale = 0.0` for LEO, GNSS, and solar-system
-//!   work (disables higher-order curvature terms).
 //!
 //! Interval methods require `start ≤ end`, sample coverage of `[start, end]`,
 //! and non-decreasing sample times. See [docs/trajectory.md](../docs/trajectory.md).
@@ -65,13 +63,9 @@ fn phi_point_mass(r_m: f64) -> f64 {
     -GM_EARTH / r_m
 }
 
-/// Local spacetime state from SI potential and speed (`characteristic_length_scale = 0`).
+/// Local spacetime state from SI potential and speed.
 fn spacetime_from_phi_speed(phi_m2_s2: f64, speed_m_s: f64) -> Spacetime {
-    Spacetime::from_potential_velocity_and_scale(
-        phi_m2_s2 / C_SQUARED,
-        Velocity::from_speed(speed_m_s),
-        0.0,
-    )
+    Spacetime::from_potential_and_velocity(phi_m2_s2 / C_SQUARED, Velocity::from_speed(speed_m_s))
 }
 
 fn main() -> Result<(), DtErr> {
@@ -103,14 +97,14 @@ fn main() -> Result<(), DtErr> {
 
     // --- Integrate ---------------------------------------------------------
     // Proper time on the vehicle over [t0, t1].
-    let proper_time_craft = Dt::proper_time_from_states_between(t0, t1, samples, 0.0)?;
+    let proper_time_craft = Dt::proper_time_from_states_between(t0, t1, samples)?;
 
     // Vehicle versus constant ground rate on the same coordinate interval.
-    let path = [(t0, craft.clone()), (t1, craft)];
+    let path = [(t0, craft), (t1, craft)];
     let versus_ground = Dt::proper_time_differential_vs_rate(t0, t1, path, ground_rate)?;
 
     // Drift relative to coordinate time: Δτ − Δt along the vehicle path.
-    let drift = Dt::proper_time_drift_from_states(t0, t1, samples, 0.0)?;
+    let drift = Dt::proper_time_drift_from_states(t0, t1, samples)?;
 
     // --- Consistency (uniform samples ⇒ closed-form constant-rate results) -
     let proper_time_const = t0.proper_time_between_constant_rate(t1, craft_rate);

@@ -1,13 +1,17 @@
 //! Quadratic polynomial for relativistic corrections, clock drift, and custom timescale steering.
 //!
-//! Used to model the accumulated difference between Proper time (τ)
+//! Used to model the accumulated difference between proper time (τ)
 //! and a coordinate time such as TT (or any other `Scale`).
 //!
-//! Information on the underlying physical model (the master Lagrangian, different
-//! regimes of behavior, and its relationship to general relativity) can be found
-//! [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
+//! Instantaneous proper-time rates from [`Spacetime`] use the 3+1 interval
+//! \(d\tau/dt=\alpha\sqrt{1-\beta^2}\). With α and β from Φ and \(v\), the
+//! \(O(c^{-2})\) expansion of that interval is IERS Conventions (2010)
+//! eqs. (10.6)–(10.7) / Ashby (2003). A [`Drift`] polynomial can also hold
+//! measured clock bias, aging, or other steering that is not that interval.
+//! See
+//! [docs/relativity.md](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
 
-use crate::{ATTOS_PER_SEC_I128, C_SQUARED, Dt, PLANCK_LENGTH_4, Real, Scale, dt, sqrt};
+use crate::{ATTOS_PER_SEC_I128, C_SQUARED, Dt, Real, Scale, dt};
 
 use super::{Spacetime, Velocity};
 
@@ -16,10 +20,11 @@ use super::{Spacetime, Velocity};
 /// spacetime) and a chosen coordinate time such as TT, TAI, or any other
 /// `Scale`.
 ///
-/// The polynomial follows the classic form  
-/// Δt = constant + rate·Δt + accel·(Δt)²  
-/// where the three coefficients capture any fixed offset, constant drift, and
-/// quadratic acceleration of the clock. This structure is used throughout
+/// The polynomial follows the classic form
+/// offset = constant + rate·s + accel·s²
+/// where \(s\) is elapsed coordinate time. The three coefficients capture any
+/// fixed offset, constant drift, and quadratic acceleration of the clock.
+/// This structure is used throughout
 /// spacecraft navigation, GNSS systems, and relativistic timing pipelines to
 /// steer clocks, predict time offsets, and maintain synchronization over long
 /// durations.
@@ -83,15 +88,15 @@ impl Drift {
         Self::new(offset, rate, Dt::ZERO)
     }
 
-    /// Returns the instantaneous proper-time rate `dτ/dt` (dimensionless).
+    /// Returns the instantaneous rate `dτ/dt` implied by this polynomial’s
+    /// linear term (`1 + rate`, dimensionless).
     ///
-    /// This value tells you how fast a real physical clock (such as a spacecraft
-    /// onboard clock) is advancing compared to coordinate time. A value of
-    /// `1.0` means the clock runs at the normal rate. Values slightly below `1.0`
-    /// are typical when the clock is moving or sitting in a gravitational well.
-    ///
-    /// The rate includes special-relativistic velocity effects, gravitational
-    /// time dilation, and the library’s built-in Planck-scale saturation term.
+    /// When this `Drift` was built with [`from_spacetime`](Self::from_spacetime)
+    /// or [`from_velocity_and_potential`](Self::from_velocity_and_potential),
+    /// that term is the general-relativity interval. Otherwise it is the rate
+    /// you stored (steering, a measured frequency offset, aging). `1.0` means
+    /// the linear term ticks in step with the coordinate time the polynomial
+    /// is written against.
     #[inline]
     pub const fn proper_time_rate(&self) -> Real {
         f!(1.0) + self.rate.to_sec_f()
@@ -143,76 +148,34 @@ impl Drift {
         ))
     }
 
-    /// Build a linear-rate [`Drift`] from speed (m/s) and SI potential Φ (m²/s²).
+    /// Linear-rate [`Drift`] from spatial speed (m/s) and SI gravitational
+    /// potential Φ (m²/s²).
     ///
-    /// Given how fast you move and how deep you sit in gravity, return a
-    /// [`Drift`] whose rate term matches the library’s proper-time model
-    /// (special-relativistic and gravitational effects). Useful when you want
-    /// the rate as a polynomial coefficient rather than integrating a path.
-    ///
-    /// ## `characteristic_length_scale`
-    ///
-    /// Pass **`0.0`** for ordinary weak-field work (Earth orbit, solar system):
-    /// Kretschmann is zero and the rate is the first-order weak-field form.
-    /// Pass a positive length (meters) only if you want the optional curvature
-    /// estimate (see [`Spacetime::kretschmann_from_potential_and_scale`]).
-    pub const fn from_velocity_potential_and_scale(
+    /// Φ is the gravitational potential of the field (how deep the gravity
+    /// well is), not a position. Spatial speed is metres of travel through
+    /// space per second of the same coordinate time \(t\). Both must be in
+    /// one coordinate system. Φ is **negative** for bound gravity. Uses
+    /// [`Spacetime::from_potential_and_velocity`]
+    /// then [`from_spacetime`](Self::from_spacetime).
+    pub const fn from_velocity_and_potential(
         velocity_m_s: Real,
         grav_potential_m2_s2: Real,
-        characteristic_length_scale: Real,
     ) -> Drift {
         let phi = grav_potential_m2_s2 / C_SQUARED;
         let velocity = Velocity::from_speed(velocity_m_s);
-        let spacetime = Spacetime::from_potential_velocity_and_scale(
-            phi,
-            velocity,
-            characteristic_length_scale,
-        );
+        let spacetime = Spacetime::from_potential_and_velocity(phi, velocity);
         Self::from_spacetime(&spacetime)
     }
 
-    /// Canonical low-level constructor that implements the library's general
-    /// relativity formula.
-    ///
-    /// This function is the single source of truth for the proper-time rate
-    /// calculation used throughout the library. Most users will never call it
-    /// directly; the high-level constructors `from_velocity_potential_and_scale`
-    /// and `from_spacetime` are the intended entry points.
-    ///
-    /// The internal expression is  
-    /// K_eff = [δ(1 + x) + x(1−δ)²] / (1 + x)  
-    /// where δ = α²(1−β²) and x = ℓ_Pl⁴ 𝒦.
-    ///
-    /// The returned rate offset is then applied as a linear term in the `Drift`
-    /// polynomial.
-    pub const fn from_unified_proper_time_rate(u: Real, kretschmann: Real) -> Drift {
-        let delta = u.max(f!(0.0));
-        let x = PLANCK_LENGTH_4 * kretschmann.max(f!(0.0));
-
-        let one_minus_delta = f!(1.0) - delta;
-        let num = delta * (f!(1.0) + x) + x * (one_minus_delta * one_minus_delta);
-        let k_eff = num / (f!(1.0) + x);
-
-        let rate_factor = sqrt(k_eff).max(f!(0.0));
-        let rate_offset = rate_factor - f!(1.0);
-
-        Self::from_offset_and_rate(
-            Dt::ZERO,
-            Dt::from_sec_f(rate_offset, Scale::TAI, Scale::TAI),
-        )
-    }
-
-    /// Creates a `Drift` from a fully resolved `Spacetime` snapshot.  
-    ///
-    /// This is the canonical high-level entry point when you already hold a
-    /// `Spacetime` object containing the gravitational lapse factor α, the
-    /// local velocity β, and the Kretschmann scalar. It internally computes the
-    /// unified proper-time rate and packages the result as a `Drift`
-    /// polynomial ready for evaluation at any future time.
+    /// [`Drift`] whose linear term is the general-relativity tick-rate offset
+    /// [`Spacetime::proper_time_rate_offset`]
+    /// (\(d\tau/dt-1\)).
     #[inline]
     pub const fn from_spacetime(spacetime: &Spacetime) -> Drift {
-        let u = spacetime.alpha * spacetime.alpha * (f!(1.0) - spacetime.beta * spacetime.beta);
-        Self::from_unified_proper_time_rate(u, spacetime.kretschmann)
+        Self::from_offset_and_rate(
+            Dt::ZERO,
+            Dt::from_sec_f(spacetime.proper_time_rate_offset(), Scale::TAI, Scale::TAI),
+        )
     }
 }
 
@@ -229,9 +192,9 @@ impl Dt {
     ///
     /// The other two arguments describe how the difference between the two
     /// clocks will evolve:
-    /// - `rate` — the constant fractional speed difference (how much faster or
-    ///   slower one clock runs compared with the other).
-    /// - `accel` — how quickly that speed difference itself is changing (for
+    /// - `rate` — the constant fractional rate difference (how much faster or
+    ///   slower one clock ticks compared with the other).
+    /// - `accel` — how quickly that rate difference itself is changing (for
     ///   example because the spacecraft is moving through a varying gravitational
     ///   field).
     ///
@@ -250,11 +213,11 @@ impl Dt {
     /// [`Dt`], you can use this method to attach an initial time offset and a
     /// quadratic term and obtain a complete [`Drift`] polynomial.
     ///
-    /// Physically, the rate term captures the fact that two clocks that are
-    /// moving at different velocities or sitting at different gravitational
-    /// potentials will accumulate a steadily growing time difference. The
-    /// other two parameters let you also describe any starting bias and any
-    /// change in that rate over time.
+    /// Physically, the rate term captures the fact that two clocks with
+    /// different spatial velocities or different gravitational potentials
+    /// will accumulate a steadily growing time difference. The other two
+    /// parameters let you also describe any starting bias and any change in
+    /// that rate over time.
     ///
     /// See the documentation on [`Drift`] for the meaning of the three
     /// coefficients in a relativistic timing context.

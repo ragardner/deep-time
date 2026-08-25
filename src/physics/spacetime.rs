@@ -1,167 +1,195 @@
-//! Local spacetime state (α, β, curvature) for proper-time rates.
+//! Gravity, spatial velocity, and proper-time rate for one clock.
 
 use crate::{C_SQUARED, Real, sqrt};
 
-use super::{Drift, Position, Velocity};
+use super::{Position, Velocity};
 
-/// Snapshot of the local quantities that set a clock’s rate \(d\tau/dt\).
+/// Lapse α and spatial-velocity fraction β for one clock, written in a
+/// coordinate system you already chose. The tick rate is compared to that
+/// system’s time \(t\) (the same \(t\) used when measuring spatial velocity).
+/// This struct does not store a second clock, a
+/// [`Position`], or a time-scale tag.
 ///
-/// Think of this as “how gravity and motion look right here, right now” for a
-/// clock:
+/// **α** is the lapse: the gravitational redshift factor of general relativity.
+/// With no shift, \(\alpha=\sqrt{-g_{00}}\). It is the number of seconds a
+/// clock with no spatial velocity (\(\beta = 0\)) ticks during one second of
+/// coordinate time \(t\). From gravitational potential,
+/// \(\alpha=\sqrt{1+2\Phi/c^2}\). Φ is the potential of the field (negative
+/// for bound gravity), not a location. Whether α is less than 1 depends on
+/// how \(t\) is scaled: if Φ → 0 at infinity, a bound well has α < 1. On one
+/// shared \(t\), a more negative Φ gives a smaller α.
 ///
-/// - **α** — gravitational redshift factor (deeper in a well → smaller α →
-///   slower clocks).
-/// - **β** — speed as a fraction of light speed (\(v/c\)).
-/// - **kretschmann** — a curvature measure; leave at `0.0` for almost all
-///   Earth/solar-system work.
+/// **β** is spatial velocity in that coordinate system, as a fraction of light
+/// speed. Spatial velocity \(v\) is the [`Velocity`] vector:
+/// metres of travel through space per one second of the same \(t\).
+/// \(\beta = |v|/c\).
 ///
-/// Trajectory APIs either take [`Spacetime`] samples directly, or build them
-/// from velocity and potential via
-/// [`Spacetime::from_potential_velocity_and_scale`].
+/// α = 1 and β = 0 means no spatial velocity and a lapse of 1, so the clock
+/// ticks in step with \(t\).
 ///
-/// Instantaneous rate: [`Spacetime::proper_time_rate`].
-#[derive(Clone, Debug, PartialEq)]
+/// The general-relativity formula is
+/// [`proper_time_rate_offset`](Self::proper_time_rate_offset). Fill from Φ and
+/// spatial velocity with
+/// [`from_potential_and_velocity`](Self::from_potential_and_velocity), or pass
+/// α and β from a metric with [`new`](Self::new).
+#[derive(Clone, Copy, Debug, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 pub struct Spacetime {
-    /// Gravitational lapse (redshift) factor α.
+    /// Lapse: gravitational redshift factor \(\alpha=\sqrt{-g_{00}}\) (no shift).
     ///
-    /// Clocks run slower where gravity is stronger: α &lt; 1 in a potential well.
-    /// In the weak field, α ≈ √(1 + 2Φ/c²) with Φ &lt; 0.
+    /// This is the number of seconds a clock with no spatial velocity
+    /// (\(\beta = 0\)) ticks during one second of coordinate time \(t\). From
+    /// gravitational potential Φ, \(\alpha=\sqrt{1+2\Phi/c^2}\) with Φ
+    /// negative for bound gravity. Whether that is less than 1 depends on how
+    /// \(t\) is scaled; on one shared \(t\), a more negative Φ gives a smaller
+    /// α.
     pub alpha: Real,
 
-    /// Local three-velocity β = v/c in the coordinate rest frame used for the analysis.
+    /// Spatial velocity in the same coordinate system as α, as a fraction of
+    /// light speed: \(\beta = |v|/c\). Spatial velocity \(v\) is metres of
+    /// travel through space per one second of that \(t\).
     pub beta: Real,
-
-    /// Kretschmann scalar (curvature invariant), in geometric units of the model.
-    ///
-    /// For solar-system, GNSS, and similar work leave this **0.0** — the
-    /// curvature correction is negligible. Non-zero values matter only in
-    /// extreme gravity (near compact objects), where you may estimate K from
-    /// potential and a length scale (see
-    /// [`Spacetime::kretschmann_from_potential_and_scale`]) or supply K from a
-    /// metric.
-    pub kretschmann: Real,
 }
 
 impl Spacetime {
-    /// Creates a new [`Spacetime`] snapshot from α, β, and Kretschmann K.
+    /// Lapse α and spatial-velocity fraction β in one coordinate system.
+    ///
+    /// When these come from a metric, β is the Eulerian speed as a fraction of
+    /// light speed (from the spatial metric, not a raw coordinate speed). For
+    /// solar-system and GNSS work prefer
+    /// [`from_potential_and_velocity`](Self::from_potential_and_velocity),
+    /// which fills \(\alpha=\sqrt{1+2\Phi/c^2}\) and Euclidean \(\beta=|v|/c\).
     #[inline]
-    pub const fn new(alpha: Real, beta: Real, kretschmann: Real) -> Spacetime {
-        Self {
-            alpha,
-            beta,
-            kretschmann,
-        }
+    pub const fn new(alpha: Real, beta: Real) -> Spacetime {
+        Self { alpha, beta }
     }
 
-    /// Instantaneous proper-time rate \(d\tau/dt\) for this snapshot.
+    /// Number of seconds this clock ticks during one second of the coordinate
+    /// time \(t\) that α and β were written in.
     ///
-    /// Dimensionless: `1.0` means the clock tracks coordinate time; values a
-    /// little below `1.0` are typical when moving or sitting in a gravitational
-    /// well. Same calculation as [`Drift::proper_time_rate`] after
-    /// [`Drift::from_spacetime`].
+    /// `1.0` means the clock ticks in step with that \(t\). Below `1.0` it
+    /// ticks slower than that \(t\). \(t\) is not an argument; it is implied
+    /// by how α and β were built. Equal to `1 +`
+    /// [`proper_time_rate_offset`](Self::proper_time_rate_offset).
     #[inline]
     pub const fn proper_time_rate(&self) -> Real {
-        Drift::from_spacetime(self).proper_time_rate()
+        f!(1.0) + self.proper_time_rate_offset()
     }
 
-    /// Build from lapse α, a velocity vector, and Kretschmann K.
+    /// General-relativity proper-time equation: \(d\tau/dt - 1\).
     ///
-    /// Sets β from [`Velocity::beta`]. Pass `kretschmann = 0.0` for ordinary
-    /// weak-field work.
+    /// Returns how many extra (or fewer) seconds this clock ticks during one
+    /// second of coordinate time \(t\). Negative means it ticked slower than
+    /// \(t\). Zero means it matched \(t\). `Drift` and the trajectory
+    /// integrators use this value.
+    ///
+    /// \(t\) is not an input, and there is no second clock on this method. It
+    /// is a rate, not a clock reading. α is the lapse: the number of seconds a
+    /// clock with no spatial velocity ticks during one second of \(t\), equal
+    /// to \(\sqrt{-g_{00}}\) with no shift. β is spatial velocity as a
+    /// fraction of light speed. Spatial velocity \(v\) is metres of travel
+    /// through space per one second of that same \(t\); \(\beta = |v|/c\).
+    ///
+    /// \[
+    /// \frac{d\tau}{dt} = \alpha\sqrt{1-\beta^2}.
+    /// \]
+    ///
+    /// To compare two clocks, give each its own α and β and subtract the rates
+    /// ([`Dt::proper_time_differential_vs_rate`](crate::Dt::proper_time_differential_vs_rate)
+    /// /
+    /// [`Dt::proper_time_differential_from_paths`](crate::Dt::proper_time_differential_from_paths)).
+    ///
+    /// When α and β come from Φ and spatial velocity
+    /// ([`from_potential_and_velocity`](Self::from_potential_and_velocity)),
+    /// the \(O(c^{-2})\) expansion is IERS Conventions (2010) eqs. (10.6)–(10.7)
+    /// and Ashby (2003). This method evaluates the square-root interval, not
+    /// that linearized right-hand side. Φ is negative for bound gravity; IERS
+    /// uses a positive \(U_E\) (\(\Phi=-U_E\)). IERS writes \(t\) as TCG in
+    /// GCRS; this crate takes \(t\) as whichever coordinate time Φ and \(v\)
+    /// were computed with. IERS eqs. (10.8)–(10.9) are the same expansion with
+    /// \(t\) as TT and an extra conventional rate \(L_G\); this method does
+    /// not add \(L_G\).
+    ///
+    /// Computed as \((\delta-1)/(\sqrt{\delta}+1)\) with
+    /// \(\delta=\max(\alpha^2(1-\beta^2),0)\), which equals \(\sqrt{\delta}-1\)
+    /// without evaluating \(\sqrt{1+\varepsilon}-1\) in floating point.
+    ///
+    /// ## References
+    ///
+    /// - Petit, G. and Luzum, B. (eds.), *IERS Conventions (2010)*, IERS
+    ///   Technical Note 36, §10.2, eqs. (10.6)–(10.7); see also (10.8)–(10.9)
+    ///   for the same expansion with \(t\) as TT.
+    /// - Ashby, N., “Relativity in the Global Positioning System,”
+    ///   *Living Reviews in Relativity* **6**, 1 (2003).
+    /// - Soffel, M. et al., “The IAU 2000 resolutions for astrometry, celestial
+    ///   mechanics and metrology in the relativistic framework,” *Astron. J.*
+    ///   **126**, 2687 (2003).
     #[inline]
-    pub const fn from_gravitic_and_velocity(
-        alpha: Real,
-        velocity: Velocity,
-        kretschmann: Real,
-    ) -> Spacetime {
-        Self::new(alpha, velocity.beta(), kretschmann)
+    pub const fn proper_time_rate_offset(&self) -> Real {
+        let delta = (self.alpha * self.alpha * (f!(1.0) - self.beta * self.beta)).max(f!(0.0));
+        (delta - f!(1.0)) / (sqrt(delta) + f!(1.0))
     }
 
-    /// Weak-field lapse from dimensionless potential: α = √(1 + 2Φ/c²).
+    /// Combines a lapse α with a spatial-velocity vector in the same coordinate
+    /// system.
     ///
-    /// Given how deep you are in a gravity well (as Φ/c²), return the factor by
-    /// which clocks run slow. Φ is **negative** for bound gravity, so α &lt; 1.
+    /// Sets β from [`Velocity::beta`]: \(|v|/c\), where spatial velocity \(v\)
+    /// is metres of travel through space per one second of that system’s \(t\).
+    #[inline]
+    pub const fn from_lapse_and_velocity(alpha: Real, velocity: Velocity) -> Spacetime {
+        Self::new(alpha, velocity.beta())
+    }
+
+    /// Builds the lapse α from gravitational potential:
+    /// \(\alpha=\sqrt{1+2\Phi/c^2}\).
     ///
-    /// ## Validity
+    /// α is the gravitational redshift factor (\(\sqrt{-g_{00}}\) with no
+    /// shift). It is the number of seconds a clock with no spatial velocity
+    /// ticks during one second of coordinate time \(t\). The `1` in the
+    /// formula is this coordinate system’s scale: Φ = 0 gives α = 1, so a
+    /// clock with no spatial velocity ticks in step with \(t\). Φ is
+    /// **negative** for bound gravity. If Φ → 0 at infinity, a bound well has
+    /// α < 1.
     ///
-    /// Good when |Φ|/c² ≪ 1 (Earth, solar system, most spacecraft). Not
-    /// sufficient alone near neutron stars or black holes (|Φ|/c² ≳ 0.1); then
-    /// you need a strong-field metric treatment and usually a non-zero
-    /// Kretschmann on [`Spacetime`].
+    /// Use this for Earth, GNSS, and solar-system work (IERS / Ashby). Near a
+    /// compact object pass the metric lapse to [`new`](Self::new) instead.
     ///
-    /// ## Note on units
-    ///
-    /// Argument is **Φ/c²** (dimensionless), not Φ in m²/s². Trajectory
-    /// `*_from_states` APIs take SI Φ and divide by \(c^2\) for you.
+    /// The argument is **Φ/c²** (dimensionless). Trajectory `*_from_states`
+    /// APIs take SI Φ (m²/s²) and divide by \(c^2\) for you.
     #[inline]
     pub const fn alpha_from_weak_field_potential(grav_potential_over_c2: Real) -> Real {
-        // grav_potential_over_c2 = Φ/c² < 0 → α < 1 (clocks run slower)
+        // Φ/c²; Φ → 0 at infinity and Φ < 0 in a bound well ⇒ α < 1
         sqrt((f!(1.0) + f!(2.0) * grav_potential_over_c2).max(f!(0.0)))
     }
 
-    /// Estimate Kretschmann scalar \(\mathcal{K} \approx 48\,\phi^2 / L^4\).
+    /// Builds α and β from gravitational potential Φ and spatial velocity,
+    /// both in one coordinate system you already chose.
     ///
-    /// Optional helper to guess curvature from potential strength and a length
-    /// scale. For normal flight timing you do **not** need this: pass
-    /// `characteristic_length_scale = 0.0` and get K = 0.
+    /// Φ is the gravitational potential of the field (how deep the gravity
+    /// well is), not a [`Position`]. Spatial velocity \(v\)
+    /// (the [`Velocity`] vector) is metres of travel through
+    /// space per one second of that system’s \(t\). This function does not
+    /// take a reference clock or a time-scale tag; the comparison to \(t\) is
+    /// the \(t\) of that system.
     ///
-    /// ## Parameters
-    ///
-    /// - `grav_potential_over_c2` — Φ/c² (typically **negative**). The estimate
-    ///   uses φ², so the sign of φ does not matter for K.
-    /// - `characteristic_length_scale` — meters. Use **`0.0`** to disable
-    ///   (recommended default). A positive L is a curvature scale; for a single
-    ///   spherical mass the Schwarzschild match is L = r with
-    ///   |φ| = GM/(c² r). L cannot be recovered from φ alone in general.
-    ///
-    /// Background: [relativity model](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
-    pub const fn kretschmann_from_potential_and_scale(
-        grav_potential_over_c2: Real,
-        characteristic_length_scale: Real,
-    ) -> Real {
-        // Weak-field default: no length scale → curvature term disabled.
-        // Do **not** reject negative φ: bound-system potentials are negative, and the
-        // estimate uses φ² (see below).
-        if characteristic_length_scale <= f!(0.0) {
-            return f!(0.0);
-        }
-        // Weak-field limit: K ≈ 48 φ² / L⁴
-        // (curvature_scale = 2φ/L² ⇒ 12 · (curvature_scale)² = 48 φ²/L⁴)
-        let curvature_scale = f!(2.0) * grav_potential_over_c2
-            / (characteristic_length_scale * characteristic_length_scale);
-        f!(12.0) * (curvature_scale * curvature_scale)
-    }
-
-    /// Build [`Spacetime`] from dimensionless potential Φ/c², velocity, and length scale.
-    ///
-    /// Turn “how deep in the well” and “how fast I’m moving” into the α, β, K
-    /// snapshot used for clock rates.
-    ///
-    /// ## Parameters
+    /// Fills the lapse \(\alpha=\sqrt{1+2\Phi/c^2}\) and \(\beta=|v|/c\), then
+    /// uses the same interval as [`new`](Self::new).
     ///
     /// - `grav_potential_over_c2` — **Φ/c²** (dimensionless), not SI Φ.
-    /// - `velocity` — m/s; only speed enters (via β).
-    /// - `characteristic_length_scale` — pass **`0.0`** for solar-system / GNSS
-    ///   work (K = 0). Positive L only if you want the optional K estimate.
+    ///   Φ is **negative** for bound gravity. IERS writes a positive \(U_E\)
+    ///   (\(\Phi=-U_E\)).
+    /// - `velocity` — spatial velocity in m/s in the same frame; only the
+    ///   speed \(|v|\) enters (via β).
     ///
     /// For SI potential (m²/s²), divide by \(c^2\) first, or use trajectory
     /// `proper_time_*_from_states` which does that conversion.
-    ///
-    /// Weak-field α is valid for |Φ|/c² ≪ 1. Strong gravity needs more than
-    /// this constructor alone.
-    pub const fn from_potential_velocity_and_scale(
-        grav_potential_over_c2: Real, // Φ/c² (total local potential)
+    pub const fn from_potential_and_velocity(
+        grav_potential_over_c2: Real,
         velocity: Velocity,
-        characteristic_length_scale: Real,
     ) -> Spacetime {
         let alpha: Real = Self::alpha_from_weak_field_potential(grav_potential_over_c2);
-        let kretschmann: Real = Self::kretschmann_from_potential_and_scale(
-            grav_potential_over_c2,
-            characteristic_length_scale,
-        );
-        Self::from_gravitic_and_velocity(alpha, velocity, kretschmann)
+        Self::from_lapse_and_velocity(alpha, velocity)
     }
 
     /// Recovers the Newtonian gravitational potential Φ (m²/s²) from the
@@ -229,21 +257,20 @@ impl Spacetime {
 
 #[cfg(feature = "wire")]
 impl Spacetime {
-    /// Size of the canonical wire representation in bytes (24 bytes).
-    pub const WIRE_SIZE: usize = 24;
+    /// Size of the canonical wire representation in bytes (16 bytes).
+    pub const WIRE_SIZE: usize = 16;
 
-    /// Serializes this [`Spacetime`] snapshot into a fixed 24-byte buffer.
+    /// Serializes this [`Spacetime`] snapshot into a fixed 16-byte buffer.
     ///
     /// All fields are stored as little-endian IEEE 754 `f64`.
     pub fn to_wire_bytes(&self) -> [u8; Self::WIRE_SIZE] {
         let mut buf = [0u8; Self::WIRE_SIZE];
         buf[0..8].copy_from_slice(&self.alpha.to_le_bytes());
         buf[8..16].copy_from_slice(&self.beta.to_le_bytes());
-        buf[16..24].copy_from_slice(&self.kretschmann.to_le_bytes());
         buf
     }
 
-    /// Deserializes a [`Spacetime`] from exactly 24 bytes.
+    /// Deserializes a [`Spacetime`] from exactly 16 bytes.
     ///
     /// ## Security
     ///
@@ -260,13 +287,6 @@ impl Spacetime {
         let beta = Real::from_le_bytes([
             bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15],
         ]);
-        let kretschmann = Real::from_le_bytes([
-            bytes[16], bytes[17], bytes[18], bytes[19], bytes[20], bytes[21], bytes[22], bytes[23],
-        ]);
-        Some(Self {
-            alpha,
-            beta,
-            kretschmann,
-        })
+        Some(Self { alpha, beta })
     }
 }

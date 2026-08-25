@@ -4,7 +4,7 @@
 //!
 //! - [`Position`] – Cartesian position (meters)
 //! - [`Velocity`] – Cartesian velocity (m/s)
-//! - [`Spacetime`] – local lapse α, speed β, and optional curvature
+//! - [`Spacetime`] – local lapse α and speed β
 //! - [`Drift`] – quadratic clock polynomial; also builds instantaneous rates
 //!
 //! Import: `use deep_time::physics::{Drift, Position, Spacetime, Velocity}`.
@@ -24,9 +24,11 @@
 //! | Path A vs path B | `proper_time_differential_from_paths` |
 //! | Constant rate only | `proper_time_between_constant_rate` |
 //!
-//! **Typical use:** samples `(time, velocity, Φ)` with Φ in m²/s², pass
-//! `characteristic_length_scale = 0.0`, and call a `*_between` / drift /
-//! differential method. Samples must cover the requested interval.
+//! **Typical use:** samples `(time, velocity, Φ)` with Φ in m²/s² (negative for
+//! bound gravity), and call a `*_between` / drift / differential method.
+//! Samples must cover the requested interval and share one time scale. The rate
+//! is \(\sqrt{(1+2\Phi/c^2)(1-v^2/c^2)}\); that square root’s \(O(c^{-2})\)
+//! expansion is IERS 2010 eqs. 10.6–10.7 / Ashby 2003.
 //!
 //! Longer guide (concepts, coverage rules, units):
 //! [docs/trajectory.md](https://github.com/ragardner/deep-time/blob/main/docs/trajectory.md).

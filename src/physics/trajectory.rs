@@ -1,12 +1,19 @@
 //! Proper-time integration methods on [`Dt`] (see the public method docs).
 //!
+//! Instantaneous rate from Φ and \(v\):
+//! \(r = \sqrt{(1 + 2\Phi/c^2)(1 - v^2/c^2)}\), which is IERS Conventions
+//! (2010) eqs. (10.6)–(10.7) and Ashby (2003) through \(O(c^{-2})\). Φ is the
+//! **negative** Newtonian potential (m²/s² on `*_from_states`); IERS writes the
+//! same physics with a positive \(U_E\). Samples must share one coordinate
+//! time scale (comparisons use attoseconds only).
+//!
 //! Overview and which-function guide:
 //! [docs/trajectory.md](https://github.com/ragardner/deep-time/blob/main/docs/trajectory.md).
 
 use crate::macros::from_sec_f;
 use crate::{C_SQUARED, Dt, DtErr, DtErrKind, Real, an_err};
 
-use super::{Drift, Spacetime, Velocity};
+use super::{Spacetime, Velocity};
 
 impl Dt {
     /// Integrate proper time along samples of time, velocity, and gravitational potential.
@@ -36,15 +43,6 @@ impl Dt {
     /// Times must be non-decreasing. Empty or single-point paths yield zero.
     /// Non-monotonic times yield [`DtErrKind::NonMonotonic`].
     ///
-    /// ## `characteristic_length_scale`
-    ///
-    /// Pass **`0.0`** for Earth orbit, GNSS, cislunar, and similar work. That sets
-    /// curvature to zero and uses the usual weak-field clock rate from Φ and \(v\).
-    ///
-    /// Pass a positive length in meters only if you intentionally want the
-    /// library’s optional curvature estimate (see
-    /// [`Spacetime::kretschmann_from_potential_and_scale`]).
-    ///
     /// ## Example
     ///
     /// ```rust
@@ -59,7 +57,7 @@ impl Dt {
     ///     (t0, Velocity::ZERO, phi),
     ///     (t1, Velocity::from_speed(0.0), phi),
     /// ];
-    /// let dtau = Dt::proper_time_from_states(samples, 0.0).expect("monotonic");
+    /// let dtau = Dt::proper_time_from_states(samples).expect("monotonic");
     /// assert!(dtau.to_sec_f() > 0.0 && dtau.to_sec_f() < 3600.0);
     /// ```
     ///
@@ -68,14 +66,11 @@ impl Dt {
     /// - [`Dt::proper_time_from_states_between`](#method.proper_time_from_states_between) — named interval `[start, end]`
     /// - [`Dt::proper_time_drift_from_states`](#method.proper_time_drift_from_states) — gain/loss vs coordinate time
     /// - [`Dt::proper_time_from_path`](#method.proper_time_from_path) — same integral if you already have [`Spacetime`]
-    pub fn proper_time_from_states<I>(
-        samples: I,
-        characteristic_length_scale: Real,
-    ) -> Result<Self, DtErr>
+    pub fn proper_time_from_states<I>(samples: I) -> Result<Self, DtErr>
     where
         I: IntoIterator<Item = (Self, Velocity, Real)>,
     {
-        Self::proper_time_from_path(Self::states_to_path(samples, characteristic_length_scale))
+        Self::proper_time_from_path(Self::states_to_path(samples))
     }
 
     /// Proper time Δτ on a named mission arc `[start, end]`.
@@ -112,7 +107,7 @@ impl Dt {
     /// ];
     /// let start = Dt::from_sec(1000, Scale::TAI, Scale::TAI);
     /// let end = Dt::from_sec(4600, Scale::TAI, Scale::TAI);
-    /// let dtau = Dt::proper_time_from_states_between(start, end, samples, 0.0)
+    /// let dtau = Dt::proper_time_from_states_between(start, end, samples)
     ///     .expect("samples cover the arc");
     /// assert_eq!(dtau, Dt::from_sec(3600, Scale::TAI, Scale::TAI));
     /// ```
@@ -121,20 +116,11 @@ impl Dt {
     ///
     /// - [`Dt::proper_time_drift_from_states`](#method.proper_time_drift_from_states) — same window, but Δτ − Δt
     /// - [`Dt::proper_time_from_path_between`](#method.proper_time_from_path_between) — if samples are already [`Spacetime`]
-    pub fn proper_time_from_states_between<I>(
-        start: Dt,
-        end: Dt,
-        states: I,
-        characteristic_length_scale: Real,
-    ) -> Result<Dt, DtErr>
+    pub fn proper_time_from_states_between<I>(start: Dt, end: Dt, states: I) -> Result<Dt, DtErr>
     where
         I: IntoIterator<Item = (Self, Velocity, Real)>,
     {
-        Self::proper_time_from_path_between(
-            start,
-            end,
-            Self::states_to_path(states, characteristic_length_scale),
-        )
+        Self::proper_time_from_path_between(start, end, Self::states_to_path(states))
     }
 
     /// Clock drift vs coordinate time on `[start, end]`: Δτ − (end − start).
@@ -160,8 +146,7 @@ impl Dt {
     /// ## Inputs and errors
     ///
     /// Same sample layout as [`Dt::proper_time_from_states`](#method.proper_time_from_states):
-    /// `(time, velocity m/s, Φ m²/s²)`. Pass `characteristic_length_scale = 0.0`
-    /// for ordinary weak-field work. Coverage and error kinds match
+    /// `(time, velocity m/s, Φ m²/s²)`. Coverage and error kinds match
     /// [`Dt::proper_time_from_states_between`](#method.proper_time_from_states_between). `start == end` returns zero
     /// without reading samples.
     ///
@@ -178,24 +163,18 @@ impl Dt {
     ///     (t0, Velocity::ZERO, phi),
     ///     (t1, Velocity::ZERO, phi),
     /// ];
-    /// let drift = Dt::proper_time_drift_from_states(t0, t1, samples, 0.0).unwrap();
+    /// let drift = Dt::proper_time_drift_from_states(t0, t1, samples).unwrap();
     /// // Stationary in a potential well → clock runs slow vs coordinate time
     /// assert!(drift.to_sec_f() < 0.0);
     /// ```
-    pub fn proper_time_drift_from_states<I>(
-        start: Dt,
-        end: Dt,
-        states: I,
-        characteristic_length_scale: Real,
-    ) -> Result<Dt, DtErr>
+    pub fn proper_time_drift_from_states<I>(start: Dt, end: Dt, states: I) -> Result<Dt, DtErr>
     where
         I: IntoIterator<Item = (Self, Velocity, Real)>,
     {
         if start.eq(&end) {
             return Ok(Dt::ZERO);
         }
-        let dtau =
-            Self::proper_time_from_states_between(start, end, states, characteristic_length_scale)?;
+        let dtau = Self::proper_time_from_states_between(start, end, states)?;
         Ok(dtau.sub(end.to_diff_raw(start)))
     }
 
@@ -223,10 +202,11 @@ impl Dt {
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(1000, Scale::TAI, Scale::TAI);
-    /// // α = 0.9, at rest → rate 0.9, Δτ = 900 s
-    /// let slow = Spacetime::new(0.9, 0.0, 0.0);
-    /// let dtau = Dt::proper_time_from_path([(t0, slow.clone()), (t1, slow)]).unwrap();
-    /// assert_eq!(dtau, Dt::from_sec(900, Scale::TAI, Scale::TAI));
+    /// // α = 0.9, at rest → rate 0.9, Δτ ≈ 900 s
+    /// let slow = Spacetime::new(0.9, 0.0);
+    /// let dtau = Dt::proper_time_from_path([(t0, slow), (t1, slow)]).unwrap();
+    /// assert_eq!(dtau, t0.proper_time_between_constant_rate(t1, slow.proper_time_rate()));
+    /// assert!((dtau.to_sec_f() - 900.0).abs() < 1e-12);
     /// ```
     pub fn proper_time_from_path<I>(path: I) -> Result<Self, DtErr>
     where
@@ -273,14 +253,16 @@ impl Dt {
     /// use deep_time::physics::Spacetime;
     ///
     /// let path = [
-    ///     (Dt::from_sec(0, Scale::TAI, Scale::TAI), Spacetime::new(0.9, 0.0, 0.0)),
-    ///     (Dt::from_sec(1000, Scale::TAI, Scale::TAI), Spacetime::new(0.9, 0.0, 0.0)),
+    ///     (Dt::from_sec(0, Scale::TAI, Scale::TAI), Spacetime::new(0.9, 0.0)),
+    ///     (Dt::from_sec(1000, Scale::TAI, Scale::TAI), Spacetime::new(0.9, 0.0)),
     /// ];
     /// let start = Dt::from_sec(100, Scale::TAI, Scale::TAI);
     /// let end = Dt::from_sec(900, Scale::TAI, Scale::TAI);
-    /// // 0.9 × 800 s = 720 s
+    /// let r = path[0].1.proper_time_rate();
+    /// // 0.9 × 800 s ≈ 720 s
     /// let dtau = Dt::proper_time_from_path_between(start, end, path).unwrap();
-    /// assert_eq!(dtau, Dt::from_sec(720, Scale::TAI, Scale::TAI));
+    /// assert_eq!(dtau, start.proper_time_between_constant_rate(end, r));
+    /// assert!((dtau.to_sec_f() - 720.0).abs() < 1e-12);
     /// ```
     pub fn proper_time_from_path_between<I>(start: Dt, end: Dt, path: I) -> Result<Dt, DtErr>
     where
@@ -322,13 +304,13 @@ impl Dt {
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(1000, Scale::TAI, Scale::TAI);
-    /// let high = Spacetime::new(0.95, 0.0, 0.0); // less redshifted
-    /// let low = Spacetime::new(0.90, 0.0, 0.0);
-    /// let path_a = [(t0, high.clone()), (t1, high)];
-    /// let path_b = [(t0, low.clone()), (t1, low)];
+    /// let high = Spacetime::new(0.95, 0.0); // less redshifted
+    /// let low = Spacetime::new(0.90, 0.0);
+    /// let path_a = [(t0, high), (t1, high)];
+    /// let path_b = [(t0, low), (t1, low)];
     /// let diff = Dt::proper_time_differential_from_paths(t0, t1, path_a, path_b).unwrap();
-    /// // 950 − 900 = +50 s
-    /// assert_eq!(diff, Dt::from_sec(50, Scale::TAI, Scale::TAI));
+    /// // 950 − 900 ≈ +50 s
+    /// assert!((diff.to_sec_f() - 50.0).abs() < 1e-12);
     /// ```
     pub fn proper_time_differential_from_paths<Ia, Ib>(
         start: Dt,
@@ -380,8 +362,8 @@ impl Dt {
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(100_000, Scale::TAI, Scale::TAI);
     /// // Slightly higher rate than a deeper potential well
-    /// let sc = Spacetime::new(0.999_999_999_9, 0.0, 0.0);
-    /// let ground = Spacetime::new(0.999_999_999_3, 0.0, 0.0);
+    /// let sc = Spacetime::new(0.999_999_999_9, 0.0);
+    /// let ground = Spacetime::new(0.999_999_999_3, 0.0);
     /// let path = [(t0, sc.clone()), (t1, sc)];
     /// let diff = Dt::proper_time_differential_vs_rate(
     ///     t0,
@@ -433,14 +415,15 @@ impl Dt {
     ///
     /// let t0 = Dt::from_sec(0, Scale::TAI, Scale::TAI);
     /// let t1 = Dt::from_sec(86_400, Scale::TAI, Scale::TAI);
-    /// let ground = Spacetime::new(0.999_999_999_3, 0.0, 0.0);
+    /// let ground = Spacetime::new(0.999_999_999_3, 0.0);
     /// let dtau = t0.proper_time_between_constant_rate(t1, ground.proper_time_rate());
     /// assert!(dtau.to_sec_f() > 0.0 && dtau.to_sec_f() < 86_400.0);
     /// ```
     #[inline]
     pub const fn proper_time_between_constant_rate(self, end: Dt, dtau_dt: Real) -> Dt {
-        let dt_sec = end.to_diff_raw(self).to_sec_f();
-        from_sec_f!(dtau_dt * dt_sec)
+        let dt = end.to_diff_raw(self);
+        // Δτ = Δt + (r − 1) Δt keeps the large Δt in attoseconds.
+        dt.add(from_sec_f!((dtau_dt - f!(1.0)) * dt.to_sec_f()))
     }
 
     // -----------------------------------------------------------------------
@@ -448,20 +431,13 @@ impl Dt {
     // -----------------------------------------------------------------------
 
     /// Maps `(t, velocity, Φ)` states to `(t, Spacetime)` using the library rate model.
-    fn states_to_path<I>(
-        samples: I,
-        characteristic_length_scale: Real,
-    ) -> impl Iterator<Item = (Self, Spacetime)>
+    fn states_to_path<I>(samples: I) -> impl Iterator<Item = (Self, Spacetime)>
     where
         I: IntoIterator<Item = (Self, Velocity, Real)>,
     {
-        samples.into_iter().map(move |(t, vel, phi)| {
+        samples.into_iter().map(|(t, vel, phi)| {
             let phi_over_c2 = phi / C_SQUARED;
-            let ls = Spacetime::from_potential_velocity_and_scale(
-                phi_over_c2,
-                vel,
-                characteristic_length_scale,
-            );
+            let ls = Spacetime::from_potential_and_velocity(phi_over_c2, vel);
             (t, ls)
         })
     }
@@ -568,10 +544,11 @@ impl Dt {
     ///
     /// Uses the compensated form
     /// \(\Delta\tau = \Delta t + \tfrac12(r_0 + r_1 - 2)\,\Delta t\)
-    /// so that the large \(\approx 1\) part of the rate does not cancel against
-    /// \(\Delta t\) in floating point. Supports a negative segment
-    /// (`t1 < t0`) for symmetry; callers that enforce monotonic times only see
-    /// non-negative \(\Delta t\).
+    /// so the large \(\approx 1\) part of the rate does not cancel against
+    /// \(\Delta t\) in floating point. \(\Delta t\) is kept as attoseconds;
+    /// only the small relativistic piece goes through [`Real`]. Supports a
+    /// negative segment (`t1 < t0`) for symmetry; callers that enforce
+    /// monotonic times only see non-negative \(\Delta t\).
     #[inline]
     const fn proper_time_segment(t0: Dt, rate0: Real, t1: Dt, rate1: Real) -> Dt {
         let dt = t1.to_diff_raw(t0);
@@ -579,12 +556,8 @@ impl Dt {
             return Self::ZERO;
         }
 
-        let sign = if dt.to_attos() < 0 { f!(-1.0) } else { f!(1.0) };
-        let dt_pos = if sign < f!(0.0) { dt.neg() } else { dt };
-        let dt_sec = dt_pos.to_sec_f();
-
-        let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt_sec;
-        from_sec_f!(sign * (dt_sec + integral))
+        let integral = f!(0.5) * (rate0 + rate1 - f!(2.0)) * dt.to_sec_f();
+        dt.add(from_sec_f!(integral))
     }
 
     /// Linearly interpolates the proper-time rate at coordinate time `t`,
@@ -603,7 +576,6 @@ impl Dt {
     /// spacetime state.
     #[inline]
     const fn rate_from_local(spacetime: &Spacetime) -> Real {
-        let drift = Drift::from_spacetime(spacetime);
-        f!(1.0) + drift.rate.to_sec_f()
+        spacetime.proper_time_rate()
     }
 }

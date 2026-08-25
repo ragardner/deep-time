@@ -8,10 +8,9 @@ mod spacetime_rate_tests {
     use deep_time::physics::{Drift, Spacetime, Velocity};
 
     fn rate_from_phi_speed(phi_m2_s2: f64, speed_m_s: f64) -> f64 {
-        Spacetime::from_potential_velocity_and_scale(
+        Spacetime::from_potential_and_velocity(
             phi_m2_s2 / C_SQUARED,
             Velocity::from_speed(speed_m_s),
-            0.0,
         )
         .proper_time_rate()
     }
@@ -71,22 +70,18 @@ mod spacetime_rate_tests {
 
     #[test]
     fn rate_ratio_identical_states_is_one() {
-        let st =
-            Spacetime::from_potential_velocity_and_scale(-8.87e8 / C_SQUARED, Velocity::ZERO, 0.0);
+        let st = Spacetime::from_potential_and_velocity(-8.87e8 / C_SQUARED, Velocity::ZERO);
         let r = st.proper_time_rate();
         assert!((r / r - 1.0).abs() < 1e-14);
     }
 
     #[test]
-    fn drift_from_velocity_potential_matches_spacetime_rate() {
+    fn drift_from_velocity_and_potential_matches_spacetime_rate() {
         let phi = -8.87e8_f64;
         let speed = 7_000.0_f64;
-        let st = Spacetime::from_potential_velocity_and_scale(
-            phi / C_SQUARED,
-            Velocity::from_speed(speed),
-            0.0,
-        );
-        let drift = Drift::from_velocity_potential_and_scale(speed, phi, 0.0);
+        let st =
+            Spacetime::from_potential_and_velocity(phi / C_SQUARED, Velocity::from_speed(speed));
+        let drift = Drift::from_velocity_and_potential(speed, phi);
         assert!((st.proper_time_rate() - drift.proper_time_rate()).abs() < 1e-15);
     }
 }

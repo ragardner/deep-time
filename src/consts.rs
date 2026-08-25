@@ -154,26 +154,3 @@ pub const C: Real = 299792458.0;
 /// Speed of light squared (c²) in m² s⁻².
 #[cfg(feature = "physics")]
 pub const C_SQUARED: Real = C * C;
-
-/// Planck length ℓ_Pl in meters (standard value).
-///
-/// This is raised to the fourth power to form the dimensionless curvature
-/// parameter `x = ℓ_Pl⁴ × 𝒦` inside the master Lagrangian. The term only
-/// affects the proper-time rate at extreme (Planckian) curvatures.
-/// See the [relativistic timing model](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
-#[cfg(feature = "physics")]
-pub const PLANCK_LENGTH: Real = 1.616255e-35;
-
-/// Planck length to the fourth power (ℓ_Pl⁴) in m⁴.
-///
-/// This is the coefficient actually used at runtime:
-///
-/// ```text
-/// let x = PLANCK_LENGTH_4 * kretschmann;
-/// ```
-///
-/// The fourth power produces a dimensionless `x` because the Kretschmann
-/// scalar has units of L⁻⁴. Information on the underlying model can be found
-/// [here](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
-#[cfg(feature = "physics")]
-pub const PLANCK_LENGTH_4: Real = PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH * PLANCK_LENGTH;

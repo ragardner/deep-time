@@ -4,7 +4,7 @@
 mod tests {
     use deep_time::macros::{dt, from_sec_f};
     use deep_time::physics::{Drift, Spacetime};
-    use deep_time::{Dt, Scale, consts::PLANCK_LENGTH_4};
+    use deep_time::{Dt, Scale};
 
     #[test]
     fn evaluate_zero_drift() {
@@ -91,139 +91,57 @@ mod tests {
     }
 
     // ========================================================================
-    // Thorough tests for the unified proper-time rate (master Lagrangian)
+    // Proper-time rate: dτ/dt = α √(1 − β²)
     // ========================================================================
 
     #[test]
-    fn unified_proper_time_rate_low_curvature() {
-        // kretschmann = 0 must recover exactly the GR limit dτ/dt = √(max(δ, 0))
-        // where δ = α²(1 − β²). This is the canonical weak-field / solar-system path.
-        let test_cases: &[(f64, f64, f64)] = &[
-            (1.0, 0.0, 1.0),     // stationary flat space
-            (0.64, 0.0, 0.8),    // β = 0.6, α = 1
-            (0.81, 0.0, 0.9),    // α = 0.9, β = 0
-            (0.5184, 0.0, 0.72), // realistic combined α = 0.9, β = 0.6
-            (0.0, 0.0, 0.0),     // null / lightlike edge
-            (1.21, 0.0, 1.1),    // δ > 1 (mathematically allowed, physically rare)
+    fn proper_time_rate_matches_interval() {
+        let cases: &[(f64, f64, f64)] = &[
+            (1.0, 0.0, 1.0),  // stationary flat space
+            (1.0, 0.6, 0.8),  // β = 0.6, α = 1
+            (0.9, 0.0, 0.9),  // α = 0.9, β = 0
+            (0.9, 0.6, 0.72), // α = 0.9, β = 0.6
+            (0.0, 0.0, 0.0),  // null / lightlike edge
+            (1.1, 0.0, 1.1),  // α > 1
         ];
 
-        for &(u, k, expected_rate) in test_cases {
-            let drift = Drift::from_unified_proper_time_rate(u, k);
-            let expected_offset = expected_rate - 1.0;
-            let expected_drift =
-                Drift::from_offset_and_rate(Dt::ZERO, from_sec_f!(expected_offset));
-            assert_eq!(
-                drift, expected_drift,
-                "Low-curvature GR recovery failed for u={}, k={}",
-                u, k
-            );
-        }
-    }
-
-    #[test]
-    fn unified_proper_time_rate_high_curvature_saturation() {
-        // When x = ℓ_Pl⁴ 𝒦 ≫ 1 the master Lagrangian saturates:
-        //     K_eff → δ² − δ + 1   ⇒   dτ/dt → √(δ² − δ + 1) ≥ √(3/4) ≈ 0.866
-        // (tested with an astronomically large kretschmann that forces x → ∞ in f64)
-        let large_kretschmann = 1e200_f64;
-
-        let deltas = [0.0_f64, 0.25, 0.5, 0.64, 0.81, 1.0, 1.21];
-        for &delta in &deltas {
-            let drift = Drift::from_unified_proper_time_rate(delta, large_kretschmann);
-
-            // Exact algebraic saturation limit from the master Lagrangian
-            let k_eff_limit = delta * delta - delta + 1.0;
-            let expected_rate = k_eff_limit.sqrt().max(0.0);
-            let expected_offset = expected_rate - 1.0;
-
-            let expected_drift =
-                Drift::from_offset_and_rate(Dt::ZERO, from_sec_f!(expected_offset));
-            // Only allow difference when seconds match
-            assert_eq!(drift.rate.to_sec(), expected_drift.rate.to_sec());
-
-            let attos_diff = (drift.rate.to_attos() - expected_drift.rate.to_attos()).abs();
+        for &(alpha, beta, expected_rate) in cases {
+            let st = Spacetime::new(alpha, beta);
+            let drift = Drift::from_spacetime(&st);
             assert!(
-                attos_diff <= 200, // Allow up to 200 attoseconds difference
-                "Attos difference too large for δ = {}: {} attos",
-                delta,
-                attos_diff
+                (st.proper_time_rate() - expected_rate).abs() < 1e-12,
+                "rate {} vs {expected_rate} for α={alpha} β={beta}",
+                st.proper_time_rate()
+            );
+            assert!(
+                (drift.proper_time_rate() - expected_rate).abs() < 1e-12,
+                "Drift rate {} vs {expected_rate} for α={alpha} β={beta}",
+                drift.proper_time_rate()
             );
         }
     }
 
     #[test]
-    fn unified_proper_time_rate_clamping_and_edges() {
-        // Negative inputs must be clamped (u.max(0), kretschmann.max(0))
-        let drift_neg_u = Drift::from_unified_proper_time_rate(-0.5, 0.0);
-
-        // Semantic check using .to_sec_f() — this is the robust way.
-        // (from_sec_f!(-1.0) currently produces a non-canonical internal
-        // representation while the unified function produces the canonical one.
-        // The two Dts are mathematically identical but not ==.)
-        assert_eq!(
-            drift_neg_u.rate.to_sec_f(),
-            -1.0,
-            "Negative u should clamp to dτ/dt = 0.0 → rate_offset = -1.0"
-        );
-
-        let drift_neg_k = Drift::from_unified_proper_time_rate(0.81, -100.0);
-        let expected_neg_k = Drift::from_unified_proper_time_rate(0.81, 0.0);
-        assert_eq!(
-            drift_neg_k, expected_neg_k,
-            "Negative kretschmann not clamped"
-        );
-
-        // delta = 1.0 must always give exactly rate = 1.0 (no drift) regardless of curvature
-        for k in [0.0, 1.0, 1e10, 1e30] {
-            let drift = Drift::from_unified_proper_time_rate(1.0, k);
-            assert_eq!(drift.rate, Dt::ZERO, "δ=1 should be exactly rate=1");
-        }
-
-        // delta = 0 with moderate curvature (null-ray / lightlike edge case sanity).
-        // We deliberately choose a kretschmann value large enough that
-        // x = PLANCK_LENGTH_4 * kretschmann ≈ 6.82 (non-negligible in f64).
-        // This tests the actual intermediate-curvature branch of the master Lagrangian,
-        // unlike the old 1e10 which produced x ≈ 0 in floating-point.
-        let kretschmann = 1e140_f64;
-        let drift_null = Drift::from_unified_proper_time_rate(0.0, kretschmann);
-
-        // Expected value computed with the exact same formula the implementation uses
-        let x = PLANCK_LENGTH_4 * kretschmann;
-        let k_eff = x / (1.0 + x);
-        let expected_null_rate: f64 = k_eff.sqrt() - 1.0;
-        let expected_null = Drift::from_offset_and_rate(Dt::ZERO, from_sec_f!(expected_null_rate));
-
-        assert_eq!(drift_null, expected_null);
+    fn flat_spacetime_has_zero_rate_offset() {
+        let drift = Drift::from_spacetime(&Spacetime::new(1.0, 0.0));
+        assert_eq!(drift.rate, Dt::ZERO);
+        assert_eq!(drift.proper_time_rate(), 1.0);
     }
 
     #[test]
-    fn spacetime_to_unified_proper_time_rate() {
-        // from_spacetime must compute δ = α²(1 − β²) and delegate to the unified path
-        let spacetime = Spacetime::new(0.9, 0.6, 0.0); // realistic values
+    fn superluminal_beta_clamps_rate_to_zero() {
+        let st = Spacetime::new(1.0, 2.0);
+        assert_eq!(st.proper_time_rate(), 0.0);
+        assert_eq!(Drift::from_spacetime(&st).rate.to_sec_f(), -1.0);
+    }
+
+    #[test]
+    fn spacetime_to_drift_uses_stable_offset() {
+        let spacetime = Spacetime::new(0.9, 0.6);
         let drift = Drift::from_spacetime(&spacetime);
-
-        // Manual verification of the exact same path
-        let u = 0.9 * 0.9 * (1.0 - 0.6 * 0.6);
-        let expected_drift = Drift::from_unified_proper_time_rate(u, 0.0);
-
-        assert_eq!(drift, expected_drift, "Spacetime → unified path mismatch");
-    }
-
-    #[test]
-    fn unified_proper_time_rate_intermediate_curvature_sanity() {
-        // Spot-check a few intermediate x values (neither zero nor infinite) to ensure
-        // the rational expression behaves smoothly and never goes negative.
-        let u = 0.64_f64;
-        let k_values = [0.0, 1e5, 1e15, 1e30];
-        for &k in &k_values {
-            let drift = Drift::from_unified_proper_time_rate(u, k);
-            let rate_factor = 1.0 + drift.rate.to_sec_f(); // internal f64 value
-            assert!(rate_factor > 0.0, "proper-time rate became non-positive");
-            // monotonicity / bound check
-            assert!(
-                rate_factor <= 1.0 + 1e-10,
-                "rate > 1 for u < 1 should not happen"
-            );
-        }
+        let delta: f64 = 0.9 * 0.9 * (1.0 - 0.6 * 0.6);
+        let expected_offset = (delta - 1.0) / (delta.sqrt() + 1.0);
+        let expected = Drift::from_offset_and_rate(Dt::ZERO, from_sec_f!(expected_offset));
+        assert_eq!(drift, expected);
     }
 }

@@ -1,39 +1,25 @@
 # Relativistic Timing Model
 
-Unified Lagrangian with Intrinsic Planck-Scale Saturation (proper-time rates)
-
-This document describes the theoretical foundation of the **proper-time rate**
-model used under the `physics` feature: instantaneous \(d\tau/dt\), clock
+Proper-time rates under the `physics` feature: instantaneous \(d\tau/dt\),
+clock
 [`Drift`](https://docs.rs/deep-time/latest/deep_time/physics/struct.Drift.html)
 polynomials, and integration along trajectories.
 
-In the weak-field regime relevant to solar-system navigation, GNSS, and
-spacecraft, the rate model is consistent with general relativity.
-
-The distinctive feature is that the rate at which proper time advances never
-reaches zero even in the limit of extreme curvature. Instead of the classical
-singularity, the equations produce a smooth lower bound on \(d\tau/dt\).
+The rate engine is the 3+1 interval of general relativity. Potential and
+spatial velocity fill the lapse and speed of that interval the way IERS /
+Ashby do in the weak field.
 
 ## Relation to the library
 
-The concepts in this document are implemented directly in `src/physics/` and
-exposed through these public types:
+Implemented in `src/physics/` and exposed as:
 
-- `Spacetime` — holds the instantaneous \(\alpha\), \(\beta\), and Kretschmann
-  values; builds proper-time rates from potential and velocity.
+- `Spacetime` — lapse \(\alpha\) and speed \(\beta\); builds rates from a
+  metric snapshot or from potential and velocity.
 - `Drift` — quadratic polynomial that accumulates the difference between proper
   time and coordinate time.
-- `Position` and `Velocity` — Cartesian vectors (meters and m/s) used as inputs.
-
-Functionality that makes use of this model includes:
-
-- Instantaneous proper-time rates (`Spacetime` / `Drift`)
-- Clock drift polynomials (`Drift`)
-- Proper-time integration along sampled trajectories
+- `Position` and `Velocity` — Cartesian vectors (meters and m/s).
 
 Import physics types via `deep_time::physics`.
-
-Usage examples and information:
 
 - [Proper time along trajectories](trajectory.md) — which `Dt` methods to call,
   units, coverage rules
@@ -42,212 +28,67 @@ Usage examples and information:
 - [Trajectory tests](https://github.com/ragardner/deep-time/blob/main/tests/trajectory_tests.rs)
 - [Spacetime / Drift rate tests](https://github.com/ragardner/deep-time/blob/main/tests/spacetime_rate_tests.rs)
 
-## The Master Lagrangian
+## The interval
 
-The proper-time dynamics for massive (timelike) worldlines are derived from a
-single algebraic action. The same formal structure can describe null probes in
-the theory.
-
-### The Lagrangian
+A clock measures the metric interval. In 3+1 form, with lapse \(\alpha\) and
+physical speed \(\beta\) relative to the time slices,
 
 \[
-S = \int L \, dt, \qquad L = -\mu \sqrt{ \frac{ \delta (1 + x) + x (1 - \delta)^2 }{1 + x} },
+\frac{d\tau}{dt} = \alpha \sqrt{1-\beta^2} = \sqrt{\max\bigl(0,\,\alpha^2(1-\beta^2)\bigr)}.
 \]
 
-with the key on-shell quantity
+That is the single rate used by `Spacetime` and the trajectory integrators,
+and by `Drift` when it is built from a `Spacetime`. \(\beta\) is the Eulerian
+speed (spatial metric, not a raw coordinate speed) when \(\alpha\) and
+\(\beta\) come from a full metric.
+
+Two ways to supply \(\alpha\) and \(\beta\):
+
+### Industry (GNSS, solar system, spacecraft)
+
+[`Spacetime::from_potential_and_velocity`](https://docs.rs/deep-time/latest/deep_time/physics/struct.Spacetime.html)
+and the trajectory `*_from_states` methods fill
 
 \[
-K_{\rm eff} \equiv \frac{ \delta (1 + x) + x (1 - \delta)^2 }{1 + x} > 0
+\alpha = \sqrt{1 + \frac{2\Phi}{c^2}}, \qquad \beta = \frac{|\mathbf{v}|}{c}
 \]
 
-(always strictly positive and bounded away from zero). The auxiliary quantities
-are
+with **Φ negative** for bound gravity. The rate is then
 
 \[
-\delta \equiv \alpha^{2}(1-\beta^{2}), \qquad x \equiv \ell_{\rm Pl}^4 \mathcal{K}.
+\frac{d\tau}{dt} = \sqrt{\Bigl(1 + \frac{2\Phi}{c^2}\Bigr)\Bigl(1 - \frac{v^2}{c^2}\Bigr)}
+\approx 1 + \frac{\Phi}{c^2} - \frac{v^2}{2c^2}.
 \]
 
-Here:
+That expansion is IERS Conventions (2010) eqs. (10.6)–(10.7) and Ashby (2003)
+through \(O(c^{-2})\). IERS writes a **positive** \(U_E\) (\(\Phi = -U_E\)).
+The library integrates the square-root interval, not the linearized form.
 
-- \(\mu = 1\) for massive probes (proper-time clocks), \(\mu = 0\) for light.
-- \(\alpha(t, \mathbf{x})\) is the local lapse/redshift factor supplied by
-  gravity.
-- \(\beta = v/c\) is the local speed.
-- \(\mathcal{K}\) is the Kretschmann scalar (curvature invariant) supplied by
-  the spacetime background.
+IERS (10.7) takes coordinate time \(t\) as GCRS time (TCG). Trajectory sample
+times are treated as that kind of coordinate time: one shared scale, not a
+TT-vs-TCG conversion inside the integral. IERS (10.8)–(10.9) are the same
+expansion with \(t\) taken as TT and an extra conventional rate \(L_G\); this
+crate does not add \(L_G\) inside the interval. TT / TCG / TCB / TDB remain
+[`Scale`](https://docs.rs/deep-time/latest/deep_time/enum.Scale.html)
+conversions.
 
-### Key Property: Inherent Non-Singularity
+IERS (10.6) also has tidal terms \(V(\mathbf{X}_A)-V(\mathbf{X}_E)-x_A^i\partial_i V(\mathbf{X}_E)\).
+Fold those into Φ if you need them. Put \(J_2\) and other multipoles into Φ as
+well. The GPS closed form \(\Delta t_r = -2\,\mathbf{r}\cdot\mathbf{v}/c^2\) is
+a Keplerian special case after a factory frequency offset; IERS says not to use
+it for LEO.
 
-The expression is the exact algebraic substitution of a minimal Padé form into
-the standard relativistic Lagrangian structure. It is **inherently
-non-singular**. As curvature grows without bound (\(x \to \infty\)),
-\(K_{\rm eff}\) smoothly approaches
+### Exact lapse and speed (including strong field)
 
-\[
-K_{\rm eff} \to \delta^2 - \delta + 1 \geq \frac{3}{4} > 0.
-\]
+[`Spacetime::new(alpha, beta)`](https://docs.rs/deep-time/latest/deep_time/physics/struct.Spacetime.html)
+takes the lapse and Eulerian speed from **your** metric. Same interval. Φ is
+not used. A numerical-relativity or Schwarzschild/Kerr snapshot belongs here;
+Newtonian Φ does not describe a horizon.
 
-The regularization is intrinsic to the Lagrangian; no separate regulator
-function is required. The regularization is not an external fix applied after
-the fact — it arises directly from the algebraic structure of the master
-Lagrangian itself.
+## Implementation
 
-## On-Shell Reductions
-
-When the Lagrangian is evaluated on-shell, it yields simple, physically
-meaningful expressions for each sector.
-
-### Massive probes (clocks)
-
-For \(\mu = 1\):
-
-\[
-L\big|_{\rm on-shell} = -\sqrt{K_{\rm eff}}, \qquad \frac{d\tau}{dt} = \sqrt{K_{\rm eff}}.
-\]
-
-Varying the action recovers the standard timelike geodesics of GR plus a small
-correction of order \(\mathcal{O}(\ell_{\rm Pl}^4 \mathcal{K})\). This
-correction is exponentially suppressed under normal conditions.
-
-### Light Signals
-
-For \(\mu = 0\), \(L \equiv 0\) subject to the constraint
-\(K_{\rm eff} \approx 0\) (the local light cone). Light propagation remains
-exactly the null geodesic of GR.
-
-### Unified Geodesic Equation
-
-In both cases the equations of motion reduce (after reparameterization) to
-
-\[
-\frac{d^2 x^\mu}{d\lambda^2} + \Gamma^\mu_{\alpha\beta} \frac{dx^\alpha}{d\lambda} \frac{dx^\beta}{d\lambda} = \delta f^\mu,
-\]
-
-where the extra force term \(\delta f^\mu\) is
-\(\mathcal{O}(\ell_{\rm Pl}^4 \mathcal{K})\) and negligible in all regimes the
-library currently targets. The Planck-scale saturation is already present
-inside \(K_{\rm eff}\), so no additional regulator is needed anywhere in the
-derivation.
-
-## Behavior in Different Regimes
-
-When curvature is small (\(x \ll 1\)):
-
-\[
-K_{\rm eff} = \delta + x (1-\delta)^2 + \mathcal{O}(x^2).
-\]
-
-Defining
-\(\Lambda^2 = \beta^2 + (1 - \alpha^2) - (1 - \alpha^2)\beta^2\), this expands
-to
-
-\[
-K_{\rm eff} = 1 - \Lambda^2 + (\ell_{\rm Pl}^4 \mathcal{K})\Lambda^4 + \mathcal{O}(\ell_{\rm Pl}^8 \mathcal{K}^2),
-\]
-
-\[
-\frac{d\tau}{dt} = \sqrt{1 - \Lambda^2}\left(1 + \frac{\ell_{\rm Pl}^4 \mathcal{K} \,\Lambda^4}{2(1 - \Lambda^2)} + \mathcal{O}(\ell_{\rm Pl}^8 \mathcal{K}^2)\right).
-\]
-
-When the characteristic length scale is set to zero (the normal choice for
-solar-system, GNSS, and spacecraft work), kretschmann is exactly zero, the
-extra term vanishes, and the rate is identical to the standard weak-field
-general-relativistic expression.
-
-If a positive length scale is supplied, the Planck correction term appears.
-Even then, in weak gravitational fields its accumulated effect over cosmic
-history remains ≪ \(10^{-140}\) s — far below machine precision for any
-solar-system or deep-space application.
-
-When \(x \gg 1\):
-
-\[
-K_{\rm eff} \to \delta^2 - \delta + 1, \qquad \frac{d\tau}{dt} \to \sqrt{\delta^2 - \delta + 1} \geq \sqrt{3/4} \approx 0.866.
-\]
-
-The rate at which proper time advances never drops all the way to zero. It
-levels off at a minimum value of about 0.866. The reason is that the quadratic
-\(\delta^2 - \delta + 1\) reaches its lowest value of 3/4 when \(\delta = 1/2\).
-Because \(\delta\) is always between 0 and 1, the rate cannot go lower. Instead
-of the sharp point where time would stop in ordinary general relativity, there
-is a smooth region controlled by the Planck scale.
-
-## The Spacetime Interface
-
-The background quantities (\(\alpha\), \(\beta\), \(\mathcal{K}\)) are provided
-through a modular interface. The same interface has been (or can be)
-implemented for many different spacetimes:
-
-- FLRW cosmology
-- Multi-body post-Newtonian solar-system models
-- Kerr (rotating black hole) ZAMO frames
-- Numerical relativity grids
-
-In every case the low-curvature limit (\(x \ll 1\)) is exactly standard GR. The
-saturation term activates only when curvature becomes Planckian
-(\(\mathcal{K}^{1/4} \gtrsim 1/\ell_{\rm Pl}\)).
-
-In deep-time those three quantities are the fields of
-[`Spacetime`](https://docs.rs/deep-time/latest/deep_time/physics/struct.Spacetime.html)
-(`alpha`, `beta`, `kretschmann`). Weak-field helpers build them from potential
-and velocity; a custom metric or multipole model can fill the same struct for
-rate evaluation and trajectory integration.
-
-## Numerical Implementation
-
-In post-Newtonian regimes the parameter \(x \ll 10^{-100}\), so
-\(K_{\rm eff} \approx \delta\). The correction term is negligible. Integrators
-only need to evaluate the rational expression directly; no special-case
-regulator code is required.
-
-deep-time ships the rate \(d\tau/dt = \sqrt{K_{\rm eff}}\)
-(`Spacetime` / `Drift`) and trapezoidal integration of that rate along samples
-(see [trajectory.md](trajectory.md)). The sketch below shows how the same rate
-fits in a fuller probe step if you are building a simulator around the model.
-
-### Example pseudocode (massive probe)
-
-```python
-def step_probe(t, x, v, dt, local_metric):
-    alpha, beta, Kretschmann = local_metric.evaluate(t, x, v)
-    delta = alpha**2 * (1 - beta**2)
-    x_val = planck_length**4 * Kretschmann
-
-    # Saturation is intrinsic — no separate regulator branch
-    K_eff = (delta * (1 + x_val) + x_val * (1 - delta)**2) / (1 + x_val)
-    dtau_dt = np.sqrt(K_eff)
-
-    # Standard GR geodesic + tiny optional higher-order term
-    a = geodesic_acceleration(x, v, local_metric)
-    # ... RK4 or adaptive integrator ...
-    return t + dt, x_new, v_new, tau_new, dtau_dt
-```
-
-Null geodesics simply enforce \(K_{\rm eff} \approx 0\) (local light cone) at
-each step. The formulation stays non-singular everywhere.
-
-## Observational and Numerical Status
-
-The model is empirically identical to GR on all scales that have been tested:
-
-- Solar system
-- Binary pulsars
-- Gravitational-wave events (LIGO/Virgo)
-- Black-hole imaging (EHT)
-- Neutron-star observations (NICER)
-- Cosmology (CMB, large-scale structure)
-
-The saturation term remains dormant to better than 140 decimal places in all
-regimes outside Planck cores. Implementations on numerical-relativity grids
-have shown no time-stopping or division-by-zero problems.
-
-## Philosophy
-
-General relativity is recovered exactly as the low-curvature projection of this
-structure. The Planck-scale cutoff is built directly into the master Lagrangian
-as an algebraic property via the minimal Padé substitution.
-
-The formulation is minimal and modular. It is designed to be production-ready
-for mixed weak- and strong-field applications while recovering all prior stages
-algebraically in the appropriate limits. No new fields or parameters are
-introduced. No auxiliary regulator function is introduced at any stage.
+The offset \(d\tau/dt-1\) is evaluated as
+\((\delta-1)/(\sqrt{\delta}+1)\) with \(\delta=\max(\alpha^2(1-\beta^2),0)\),
+so a near-unity rate does not go through \(\sqrt{1+\varepsilon}-1\). Trajectory
+methods integrate that rate with a trapezoidal rule; see
+[trajectory.md](trajectory.md).

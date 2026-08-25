@@ -17,7 +17,7 @@ pub struct Velocity {
 }
 
 impl Velocity {
-    /// Creates a new `Velocity` directly from its Cartesian components in m/s.
+    /// Creates a new [`Velocity`] directly from its Cartesian components in m/s.
     #[inline]
     pub const fn new(vx: Real, vy: Real, vz: Real) -> Velocity {
         Self { vx, vy, vz }
@@ -26,11 +26,11 @@ impl Velocity {
     /// The zero velocity vector (at rest in the coordinate frame).
     pub const ZERO: Self = Self::new(f!(0.0), f!(0.0), f!(0.0));
 
-    /// Creates a `Velocity` from its scalar speed (magnitude) in m/s.
+    /// Creates a [`Velocity`] from its scalar speed (magnitude) in m/s.
     ///
     /// Direction is set along the x-axis because only the speed matters
     /// for relativistic calculations (`beta()`, `norm_squared()`, etc.).
-    /// This is the convenience constructor used by `Drift::from_velocity_potential_and_scale`.
+    /// This is the convenience constructor used by `Drift::from_velocity_and_potential`.
     #[inline]
     pub const fn from_speed(speed_m_s: Real) -> Velocity {
         Self::new(speed_m_s, f!(0.0), f!(0.0))
@@ -48,8 +48,11 @@ impl Velocity {
         sqrt(self.norm_squared().max(f!(0.0)))
     }
 
-    /// Dimensionless 3-velocity β = v/c relative to the local chrono-rest frame.
-    /// This is what the master Lagrangian and `Spacetime` expect.
+    /// Spatial velocity as a fraction of light speed: \(\beta = |v|/c\).
+    ///
+    /// Spatial velocity \(v\) is this vector in metres of travel through space
+    /// per one second of the coordinate time \(t\) in which `(vx, vy, vz)` were
+    /// measured. [`Spacetime`](super::Spacetime) uses β in \(d\tau/dt\).
     #[inline]
     pub const fn beta(self) -> Real {
         sqrt((self.norm_squared() / C_SQUARED).max(f!(0.0)))
