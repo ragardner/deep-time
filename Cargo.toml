@@ -50,7 +50,7 @@ panic-handler = []
 # defmt is a logging framework commonly used in embedded environments
 defmt = ["dep:defmt"]
 
-# Proper-time rates (Spacetime/Drift) and trajectory APIs; Position/Velocity helpers
+# Proper-time rates (Spacetime/Drift) from Φ, v or metric α, β; Position/Velocity helpers
 physics = []
 
 # Higher accuracy but larger binary size TDB conversion code
@@ -229,10 +229,6 @@ required-features = ["parse", "jiff-tz", "euro"]
 [[example]]
 name = "sidereal_time"
 required-features = ["sidereal-earth", "eop", "std"]
-
-[[example]]
-name = "proper_time_path"
-required-features = ["physics"]
 
 [[example]]
 name = "ccsds_vs_wire"

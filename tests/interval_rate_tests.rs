@@ -26,7 +26,7 @@ mod interval_rate_tests {
     }
 
     #[test]
-    fn from_velocity_and_potential_matches_interval() {
+    fn from_potential_and_velocity_matches_interval() {
         let v = 7800.0;
         let phi = -6.26e7;
 
@@ -36,15 +36,17 @@ mod interval_rate_tests {
             alpha * sqrt(1.0 - beta * beta)
         };
 
-        let drift = Drift::from_velocity_and_potential(v, phi);
+        let st = Spacetime::from_potential_and_velocity(phi, Velocity::from_speed(v));
+        let drift = Drift::from_spacetime(&st);
+        assert!((st.proper_time_rate() - classic).abs() < 1e-15);
         assert!((drift.proper_time_rate() - classic).abs() < 1e-15);
     }
 
     #[test]
     fn from_potential_and_velocity_matches_lapse_fill() {
-        let phi_over_c2 = -6.961_274_586_591_855e-10_f64;
-        let ls = Spacetime::from_potential_and_velocity(phi_over_c2, Velocity::ZERO);
-        let expected_alpha = (1.0 + 2.0 * phi_over_c2).sqrt();
+        let phi = -6.26e7_f64;
+        let ls = Spacetime::from_potential_and_velocity(phi, Velocity::ZERO);
+        let expected_alpha = (1.0 + 2.0 * phi / C_SQUARED).sqrt();
         assert!((ls.alpha - expected_alpha).abs() < 1e-15);
         assert_eq!(ls.beta, 0.0);
         assert!((ls.proper_time_rate() - expected_alpha).abs() < 1e-15);

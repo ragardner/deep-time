@@ -1,57 +1,54 @@
-//! Quadratic polynomial for relativistic corrections, clock drift, and custom timescale steering.
-//!
-//! Used to model the accumulated difference between proper time (τ)
-//! and a coordinate time such as TT (or any other `Scale`).
+//! Clock polynomial for the difference between proper time and a coordinate
+//! time.
 //!
 //! Instantaneous proper-time rates from [`Spacetime`] use the 3+1 interval
 //! \(d\tau/dt=\alpha\sqrt{1-\beta^2}\). With α and β from Φ and \(v\), the
 //! \(O(c^{-2})\) expansion of that interval is IERS Conventions (2010)
-//! eqs. (10.6)–(10.7) / Ashby (2003). A [`Drift`] polynomial can also hold
-//! measured clock bias, aging, or other steering that is not that interval.
-//! See
+//! eqs. (10.6)–(10.7) / Ashby (2003). A [`Drift`] can also hold measured clock
+//! bias, aging, or other steering that is not that interval. See
 //! [docs/relativity.md](https://github.com/ragardner/deep-time/blob/main/docs/relativity.md).
 
-use crate::{ATTOS_PER_SEC_I128, C_SQUARED, Dt, Real, Scale, dt};
+use crate::{ATTOS_PER_SEC_I128, Dt, Real, Scale, dt};
 
-use super::{Spacetime, Velocity};
+use super::Spacetime;
 
-/// Quadratic polynomial that describes the accumulated difference between an
-/// observer’s proper time (the time measured by a real clock moving through
-/// spacetime) and a chosen coordinate time such as TT, TAI, or any other
-/// `Scale`.
+/// Quadratic polynomial for the accumulated difference between an observer’s
+/// proper time (what a real clock measures) and a chosen coordinate time such
+/// as TT, TAI, or any other [`Scale`].
 ///
-/// The polynomial follows the classic form
-/// offset = constant + rate·s + accel·s²
-/// where \(s\) is elapsed coordinate time. The three coefficients capture any
-/// fixed offset, constant drift, and quadratic acceleration of the clock.
-/// This structure is used throughout
-/// spacecraft navigation, GNSS systems, and relativistic timing pipelines to
-/// steer clocks, predict time offsets, and maintain synchronization over long
-/// durations.
+/// The form is \(\mathrm{offset} = a_0 + a_1 s + a_2 s^2\), where \(s\) is
+/// elapsed coordinate time. The three coefficients are a fixed offset, a
+/// constant fractional rate, and a quadratic term (aging, or a changing rate).
+/// GNSS and spacecraft clock steering use this polynomial.
 ///
-/// All three coefficients are stored using [`Dt`].
+/// All three coefficients are stored as [`Dt`]. The rate coefficient is
+/// dimensionless (seconds per second); the acceleration coefficient is seconds
+/// per second squared. [`from_spacetime`](Self::from_spacetime) fills only the
+/// linear term from the general-relativity interval.
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "tsify", derive(tsify::Tsify))]
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Drift {
-    /// Constant term a₀ expressed in seconds.  
-    /// This represents any fixed time offset between the observer’s proper time
-    /// and the chosen coordinate time.
+    /// Constant term \(a_0\), a fixed time offset between proper time and the
+    /// chosen coordinate time.
     pub constant: Dt,
 
-    /// Linear drift rate a₁ expressed in seconds per second.  
-    /// This term captures a steady fractional rate difference (for example, a
-    /// clock that runs consistently fast or slow).
+    /// Linear coefficient \(a_1\), a fractional rate in seconds per second
+    /// (for example a clock that runs steadily fast or slow).
     pub rate: Dt,
 
-    /// Quadratic acceleration term a₂ expressed in seconds per second squared.  
-    /// This term accounts for any changing drift rate, such as the gradual
-    /// acceleration caused by relativistic effects or hardware aging.
+    /// Quadratic coefficient \(a_2\), in seconds per second squared (aging, or
+    /// a rate that itself changes). [`from_spacetime`](Self::from_spacetime)
+    /// leaves this at zero.
     pub accel: Dt,
 }
 
 impl Drift {
-    /// Creates a new `Drift` polynomial from its three coefficients.
+    /// Creates a `Drift` polynomial from its three coefficients.
+    ///
+    /// `constant` is a time offset, `rate` is dimensionless (seconds per
+    /// second), and `accel` is seconds per second squared. All three are
+    /// stored as [`Dt`].
     #[inline]
     pub const fn new(constant: Dt, rate: Dt, accel: Dt) -> Drift {
         Self {
@@ -61,17 +58,16 @@ impl Drift {
         }
     }
 
-    /// The zero polynomial representing no correction at all.
+    /// Polynomial with all coefficients zero, meaning no correction at all.
     ///
-    /// Use this when the observer’s clock is already perfectly synchronized with
-    /// the chosen coordinate time.
+    /// Use this when the observer’s clock is already synchronized with the
+    /// chosen coordinate time.
     pub const ZERO: Self = Self::new(Dt::ZERO, Dt::ZERO, Dt::ZERO);
 
     /// Creates a [`Drift`] consisting of a pure constant offset.
     ///
-    /// This is the most common constructor when only a fixed time bias is known
-    /// (for example, after a one-time clock synchronization or leap-second
-    /// adjustment).
+    /// This is the usual constructor when only a fixed time bias is known
+    /// (for example after a one-time clock synchronization).
     #[inline]
     pub const fn from_constant(c: Dt) -> Drift {
         Self::new(c, Dt::ZERO, Dt::ZERO)
@@ -88,28 +84,32 @@ impl Drift {
         Self::new(offset, rate, Dt::ZERO)
     }
 
-    /// Returns the instantaneous rate `dτ/dt` implied by this polynomial’s
-    /// linear term (`1 + rate`, dimensionless).
+    /// Instantaneous rate \(d\tau/dt\) implied by this polynomial’s linear
+    /// term (`1 + rate`, dimensionless).
     ///
-    /// When this `Drift` was built with [`from_spacetime`](Self::from_spacetime)
-    /// or [`from_velocity_and_potential`](Self::from_velocity_and_potential),
+    /// When this `Drift` was built with [`from_spacetime`](Self::from_spacetime),
     /// that term is the general-relativity interval. Otherwise it is the rate
     /// you stored (steering, a measured frequency offset, aging). `1.0` means
     /// the linear term ticks in step with the coordinate time the polynomial
-    /// is written against.
+    /// is written against. The constant and quadratic coefficients do not
+    /// enter this value.
     #[inline]
     pub const fn proper_time_rate(&self) -> Real {
         f!(1.0) + self.rate.to_sec_f()
     }
 
-    /// Evaluates the polynomial at the given elapsed coordinate time span.  
+    /// Evaluates the polynomial after `span` of coordinate time.
     ///
-    /// Returns the accumulated time difference (in seconds) between proper
-    /// time and coordinate time after the interval span has passed.
+    /// The result is \(a_0 + a_1 s + a_2 s^2\) as a [`Dt`]. When this
+    /// polynomial was built with [`from_spacetime`](Self::from_spacetime),
+    /// that value is \(\Delta\tau - \Delta t\). Otherwise it is whatever
+    /// offset, rate, and aging you stored (steering, a measured frequency
+    /// offset, and so on).
     ///
-    /// Uses saturating attosecond arithmetic (same policy as [`Dt`] add/mul).
-    /// Scaled products `(a·b)/10¹⁸` avoid wrapping or early-clamping the
-    /// intermediate `a·b` when it exceeds `i128` but the result still fits.
+    /// Arithmetic saturates like [`Dt`] add and mul. Scaled products
+    /// \((a\cdot b)/10^{18}\) avoid wrapping or early-clamping the
+    /// intermediate \(a\cdot b\) when it exceeds `i128` but the result still
+    /// fits.
     pub const fn time_diff_after(&self, span: &Dt) -> Dt {
         let dt_attos = span.to_attos();
         let mut total_attos = self.constant.to_attos();
@@ -128,17 +128,12 @@ impl Drift {
         dt!(total_attos)
     }
 
-    /// Evaluates the deterministic relativistic/polynomial correction **and**
-    /// adds a user-supplied stochastic offset (in seconds).
+    /// Adds `stochastic_offset_sec` to the result of
+    /// [`time_diff_after`](Self::time_diff_after).
     ///
-    /// This is the single production method for realistic stochastic clock
-    /// modeling. In real mission pipelines the deterministic part (this
-    /// polynomial) is kept perfectly clean; stochastic noise (white phase noise,
-    /// random-walk frequency noise, Monte-Carlo realizations, Kalman process
-    /// noise, measured clock residuals, etc.) is added at evaluation time.
-    ///
-    /// Pass `0.0` (or simply call the original `time_diff_after`) when you
-    /// want purely deterministic behavior.
+    /// The polynomial is left as you stored it. Pass noise at evaluation time
+    /// (measured residuals, a Monte-Carlo draw, and so on). Pass `0.0` to get
+    /// the same result as [`time_diff_after`](Self::time_diff_after).
     #[inline]
     pub fn time_diff_after_with_noise(&self, span: &Dt, stochastic_offset_sec: Real) -> Dt {
         self.time_diff_after(span).add(Dt::from_sec_f(
@@ -148,28 +143,12 @@ impl Drift {
         ))
     }
 
-    /// Linear-rate [`Drift`] from spatial speed (m/s) and SI gravitational
-    /// potential Φ (m²/s²).
+    /// Builds a linear [`Drift`] from a [`Spacetime`] snapshot.
     ///
-    /// Φ is the gravitational potential of the field (how deep the gravity
-    /// well is), not a position. Spatial speed is metres of travel through
-    /// space per second of the same coordinate time \(t\). Both must be in
-    /// one coordinate system. Φ is **negative** for bound gravity. Uses
-    /// [`Spacetime::from_potential_and_velocity`]
-    /// then [`from_spacetime`](Self::from_spacetime).
-    pub const fn from_velocity_and_potential(
-        velocity_m_s: Real,
-        grav_potential_m2_s2: Real,
-    ) -> Drift {
-        let phi = grav_potential_m2_s2 / C_SQUARED;
-        let velocity = Velocity::from_speed(velocity_m_s);
-        let spacetime = Spacetime::from_potential_and_velocity(phi, velocity);
-        Self::from_spacetime(&spacetime)
-    }
-
-    /// [`Drift`] whose linear term is the general-relativity tick-rate offset
-    /// [`Spacetime::proper_time_rate_offset`]
-    /// (\(d\tau/dt-1\)).
+    /// The linear coefficient is the general-relativity tick-rate offset
+    /// [`Spacetime::proper_time_rate_offset`] (\(d\tau/dt-1\)). The constant
+    /// and quadratic terms are zero. Build the [`Spacetime`] from whichever
+    /// potential, velocity, or metric lapse you have, then call this.
     #[inline]
     pub const fn from_spacetime(spacetime: &Spacetime) -> Drift {
         Self::from_offset_and_rate(
@@ -185,8 +164,8 @@ impl Dt {
     /// the chosen coordinate time.
     ///
     /// In practice you often compute or measure a one-time offset (for example
-    /// after a clock synchronization or a leap-second jump) and then want to
-    /// combine it with a steady rate difference and any quadratic change.
+    /// after a clock synchronization) and then want to combine it with a
+    /// steady rate difference and any quadratic change.
     /// This method lets you do that directly from a [`Dt`] without having to
     /// call the more verbose [`Drift::new`].
     ///
@@ -230,7 +209,7 @@ impl Dt {
     /// term that describes how the rate difference itself is changing.
     ///
     /// Some situations (a spacecraft on a highly elliptical orbit, a clock
-    /// whose frequency is aging, or a trajectory that takes it through regions
+    /// whose frequency is aging, or a path that takes it through regions
     /// of changing gravitational potential) cause the *rate* at which two
     /// clocks diverge to change over time. If you have computed that changing
     /// rate as a [`Dt`], this method lets you combine it with an initial offset
@@ -248,45 +227,48 @@ impl Dt {
         Drift::new(constant, rate, self)
     }
 
-    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
-    /// derived from the supplied `Spacetime` model.
+    /// Advances this instant by the proper time that elapses during the
+    /// coordinate interval `elapsed` at `spacetime`.
     ///
-    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
-    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
+    /// Adds \(\Delta\tau = \Delta t + (r-1)\Delta t\), where \(r\) is
+    /// [`Spacetime::proper_time_rate`]. For a clock that already ticks proper
+    /// time, use the plain `add` methods instead.
     #[inline]
     pub const fn adjusted_advance(&mut self, elapsed: &Dt, spacetime: &Spacetime) {
         let dtau = elapsed.add(Drift::from_spacetime(spacetime).time_diff_after(elapsed));
         *self = self.add(dtau);
     }
 
-    /// Advances this `Dt` by the given elapsed duration while applying the relativistic proper-time correction
-    /// from a pre-computed `Drift` value.
+    /// Advances this instant by `elapsed` plus the [`Drift`] polynomial
+    /// evaluated at `elapsed`.
     ///
-    /// - This is an optimized variant of [`Dt::adjusted_advance`](../struct.Dt.html#method.adjusted_advance)
-    ///   for callers that already hold a [`Drift`] instance.
-    /// - This method is intended for simulation of remote clocks (e.g., Earth time as observed from a spacecraft).
-    /// - For a local hardware proper-time clock, use the plain `add` methods instead.
+    /// When `drift` came from [`Drift::from_spacetime`], this matches
+    /// [`adjusted_advance`](Self::adjusted_advance). A polynomial with a
+    /// constant or quadratic term is applied in full. The constant term is
+    /// added on every call, so a stepping loop should use a polynomial whose
+    /// constant is zero, or [`adjusted_advance`](Self::adjusted_advance).
     #[inline]
     pub const fn adjusted_advance_using_drift(&mut self, elapsed: &Dt, drift: &Drift) {
         let dtau = elapsed.add(drift.time_diff_after(elapsed));
         *self = self.add(dtau);
     }
 
-    /// Converts this instant to any other [`Scale`] while applying an exact quadratic relativistic
-    /// or clock-drift correction defined by a [`Drift`] model relative to a reference instant.
+    /// Adds the [`Drift`] polynomial evaluated at `(self − reference)` to this
+    /// instant.
+    ///
+    /// GNSS broadcast clock corrections and other quadratic steering use this.
     pub const fn convert_using_drift(self, reference: Dt, drift: &Drift) -> Dt {
         let span = self.to_diff_raw(reference);
         let correction = drift.time_diff_after(&span);
         self.add(correction)
     }
 
-    /// Performs the inverse conversion of
-    /// [`Dt::convert_using_drift`](../struct.Dt.html#method.convert_using_drift),
-    /// recovering the original proper
-    /// time on the source clock scale.
+    /// Inverse of [`convert_using_drift`](Self::convert_using_drift).
     ///
-    /// A fixed-point iteration (at most 16 steps) is used to solve the implicit equation. For the common
-    /// case of a pure constant offset the function returns immediately without iteration.
+    /// Recovers the instant that would produce `self` after adding the
+    /// polynomial relative to `reference`. A fixed-point iteration (at most 16
+    /// steps) solves the implicit equation. If the polynomial is a pure
+    /// constant offset, the result is returned immediately.
     pub const fn convert_back_using_drift(self, reference: Dt, drift: &Drift) -> Dt {
         if drift.rate.is_zero() && drift.accel.is_zero() {
             return self.sub(drift.constant);

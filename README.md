@@ -28,7 +28,6 @@ A fully featured and high performance **Rust date and time library** with attose
 - [Lunar](https://docs.rs/deep-time/latest/deep_time/lunar/index.html) and [Mars](https://docs.rs/deep-time/latest/deep_time/mars/index.html) modules
 - [Sidereal](https://docs.rs/deep-time/latest/deep_time/sidereal/struct.Sidereal.html) prime-meridian clocks, plus Earth [GMST/GAST/LMST/LAST](https://docs.rs/deep-time/latest/deep_time/sidereal/earth/index.html) (`sidereal-earth`)
 - [UT1 and EOP](https://docs.rs/deep-time/latest/deep_time/eop/index.html)
-- [Proper time along trajectories](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.proper_time_from_states) from samples of coordinate time, spatial velocity, and gravitational potential Φ — usage guide [docs/trajectory.md](docs/trajectory.md). Requires the `physics` feature
 - Relativity: [Spacetime](https://docs.rs/deep-time/latest/deep_time/physics/struct.Spacetime.html) stores lapse α and spatial velocity β; [Drift](https://docs.rs/deep-time/latest/deep_time/physics/struct.Drift.html) is the clock polynomial. [Position](https://docs.rs/deep-time/latest/deep_time/physics/struct.Position.html) and [Velocity](https://docs.rs/deep-time/latest/deep_time/physics/struct.Velocity.html) are Cartesian vectors used when forming Φ and β. Theory: [docs/relativity.md](docs/relativity.md). Import via `deep_time::physics`. Requires the `physics` feature.
 - CCSDS [CUC](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cuc), [CDS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_cds), and [CCS](https://docs.rs/deep-time/latest/deep_time/struct.Dt.html#method.to_ccsds_ccs)
 - Binary size is mainly controlled through feature gating
@@ -232,7 +231,7 @@ cargo add deep-time --features "parse,jiff-tz"
 | `defmt`              | Enables [`defmt::Format`](https://crates.io/crates/defmt)                    | —           |
 | `wire`               | Enables wire format (serialization) support                                  | —           |
 | `tdb-hi`             | Replaces the fast TDB and TCB conversions with the full ERFA TDB model       | —           |
-| `physics`            | Proper-time rates (`Spacetime`, `Drift`) and trajectory APIs from gravitational potential Φ and spatial velocity. `Position` and `Velocity` are Cartesian helpers. Import via `deep_time::physics`. | —           |
+| `physics`            | Proper-time rates (`Spacetime`, `Drift`) from Φ and spatial velocity, or from metric lapse α and Eulerian β. `Position` and `Velocity` are Cartesian helpers. Import via `deep_time::physics`. | —           |
 | `mars`               | Enables Mars time support (`to_msd`, `to_mars_ls`, etc.)                     | —           |
 | `sidereal`           | Enables sidereal time support                                                | —           |
 | `eop`                | Enables Earth Orientation Parameters (UT1, etc.)                             | `alloc`     |
@@ -263,7 +262,6 @@ You only need this if you are building a binary crate in a `no_std` environment 
 |---------|----------------|-----|
 | [`precision_control`](https://github.com/ragardner/deep-time/blob/main/examples/precision_control.rs) | Compare, and format times at a chosen resolution (here: one minute) | `cargo run --example precision_control` |
 | [`sidereal_time`](https://github.com/ragardner/deep-time/blob/main/examples/sidereal_time.rs) | Astropy-style GMST/GAST/LMST/LAST with UT1 from IERS C04, plus hour angle | `cargo run --example sidereal_time --features "sidereal-earth eop std"` |
-| [`proper_time_path`](https://github.com/ragardner/deep-time/blob/main/examples/proper_time_path.rs) | Proper time / craft-vs-ground from coordinate time, spatial velocity, and gravitational potential Φ | `cargo run --example proper_time_path --features physics` |
 | [`ccsds_vs_wire`](https://github.com/ragardner/deep-time/blob/main/examples/ccsds_vs_wire.rs) | CCSDS CUC Level 1 (4+3 packet stamp) vs private `wire` size/fidelity | `cargo run --example ccsds_vs_wire --features wire` |
 
 ### Performance

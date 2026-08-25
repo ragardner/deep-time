@@ -1,4 +1,4 @@
-//! 3D position vector (in meters) for physics / trajectory inputs.
+//! 3D position vector (in meters) for physics inputs.
 
 use crate::{Real, hypot};
 
@@ -6,7 +6,7 @@ use crate::{Real, hypot};
 /// with units of meters (SI).
 ///
 /// Used with [`Velocity`](crate::physics::Velocity) and gravitational potentials
-/// when building proper-time rates and trajectory samples. The caller chooses
+/// when building proper-time rates. The caller chooses
 /// the reference frame (e.g. Earth-centered or barycentric); this type does not
 /// tag the frame.
 #[derive(Clone, Copy, Debug, PartialEq)]

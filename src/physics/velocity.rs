@@ -28,9 +28,8 @@ impl Velocity {
 
     /// Creates a [`Velocity`] from its scalar speed (magnitude) in m/s.
     ///
-    /// Direction is set along the x-axis because only the speed matters
-    /// for relativistic calculations (`beta()`, `norm_squared()`, etc.).
-    /// This is the convenience constructor used by `Drift::from_velocity_and_potential`.
+    /// Direction is set along the x-axis because only the speed enters the
+    /// interval (`beta()`, `norm_squared()`, etc.).
     #[inline]
     pub const fn from_speed(speed_m_s: Real) -> Velocity {
         Self::new(speed_m_s, f!(0.0), f!(0.0))
