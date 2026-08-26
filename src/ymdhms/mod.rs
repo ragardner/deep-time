@@ -525,9 +525,10 @@ impl YmdHms {
 
 /// Formats as `YYYY-MM-DDTHH:MM:SS[.frac] TARGET`.
 ///
-/// - Fractional attoseconds: up to 18 digits, trailing zeros trimmed.
-/// - `{:.n}`: at most `n` fractional digits (`n` clamped to `0..=18`),
-///   truncated (not rounded), trailing zeros trimmed. Does not change
+/// - Fractional attoseconds: up to 18 digits; trailing zeros trimmed when
+///   no precision is given.
+/// - `{:.n}`: exactly `n` fractional digits (`n` clamped to `0..=18`),
+///   truncated (not rounded), zero-padded like `f64`. Does not change
 ///   hour/minute/second.
 /// - `{:.0}`: omit the fractional part.
 /// - Ends with a space and the **target** scale abbreviation.
@@ -553,7 +554,9 @@ impl core::fmt::Display for YmdHms {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         const MAX_FRAC: usize = 18;
 
-        let max_frac = f.precision().unwrap_or(MAX_FRAC).min(MAX_FRAC);
+        let requested = f.precision();
+        let max_frac = requested.unwrap_or(MAX_FRAC).min(MAX_FRAC);
+        let pad_frac = requested.is_some();
 
         // Year: 4-digit padded when |yr| < 10000, natural width otherwise
         if self.yr >= 0 {
@@ -612,17 +615,26 @@ impl core::fmt::Display for YmdHms {
             core::write!(f, "{}", self.sec)?;
         }
 
-        // Fractional attoseconds: truncate to max_frac, then trim trailing zeros
-        if max_frac > 0 && self.attos != 0 {
+        // Fractional attoseconds: truncate to max_frac. `{:.n}` zero-pads;
+        // no precision trims trailing zeros.
+        if max_frac > 0 && (pad_frac || self.attos != 0) {
             let mut digits = [0u8; MAX_FRAC];
             let mut n = self.attos;
             for i in (0..MAX_FRAC).rev() {
                 digits[i] = (n % 10) as u8;
                 n /= 10;
             }
-            if let Some(last) = digits[..max_frac].iter().rposition(|&d| d != 0) {
+            let end = if pad_frac {
+                max_frac
+            } else {
+                digits[..max_frac]
+                    .iter()
+                    .rposition(|&d| d != 0)
+                    .map_or(0, |i| i + 1)
+            };
+            if end > 0 {
                 core::write!(f, ".")?;
-                for &d in &digits[..=last] {
+                for &d in &digits[..end] {
                     core::write!(f, "{d}")?;
                 }
             }

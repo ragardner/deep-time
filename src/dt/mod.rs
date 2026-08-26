@@ -220,8 +220,9 @@ use core::fmt;
 ///   `Dt::from_str_parse`). Parsing it does not convert scales.
 /// - **`{:#}`** — formats [`Dt::to_ymd`](../struct.Dt.html#method.to_ymd) as
 ///   `YYYY-MM-DDTHH:MM:SS[.frac] TARGET`, e.g. `2000-01-01T12:00:00 UTC`.
-/// - **`{:.n}`** / **`{:#.n}`** — at most `n` fractional digits (clamped to 18),
-///   truncated, trailing zeros trimmed.
+/// - **`{:.n}`** / **`{:#.n}`** — exactly `n` fractional digits (clamped to
+///   18), truncated, zero-padded like `f64`. With no precision, trailing
+///   zeros are trimmed.
 ///
 /// ```rust
 /// # #[cfg(feature = "std")]
@@ -452,10 +453,11 @@ impl Default for Dt {
 ///
 /// ## Fractional precision
 ///
-/// `{:.n}` / `{:#.n}` keep at most `n` fractional digits (`n` clamped to
-/// `0..=18`), truncated (not rounded), trailing zeros trimmed. `{:.0}` /
-/// `{:#.0}` omit the fractional part. On the default form, `{:+}` forces a
-/// leading `+` when non-negative.
+/// `{:.n}` / `{:#.n}` emit exactly `n` fractional digits (`n` clamped to
+/// `0..=18`), truncated (not rounded), zero-padded like `f64`. `{:.0}` /
+/// `{:#.0}` omit the fractional part. With no precision, trailing zeros are
+/// trimmed. On the default form, `{:+}` forces a leading `+` when
+/// non-negative.
 ///
 /// ## Examples
 ///
@@ -488,6 +490,9 @@ impl Default for Dt {
 /// s = BufStr::<64>::default();
 /// write!(&mut s, "{:.1}", dt).unwrap();
 /// assert_eq!(s.as_str(), "[-1.5s TT>GPS]");
+/// s = BufStr::<64>::default();
+/// write!(&mut s, "{:.3}", dt).unwrap();
+/// assert_eq!(s.as_str(), "[-1.500s TT>GPS]");
 ///
 /// let noon = Dt::from_ymd(2000, 1, 1, Scale::UTC, 12, 0, 0, 0);
 /// s = BufStr::<64>::default();
@@ -526,15 +531,24 @@ impl fmt::Display for Dt {
 
         // Format precision: max fractional digits (default = full attosecond).
         // Truncate only — never round / never bump whole seconds.
-        let max_frac = f.precision().unwrap_or(MAX_FRAC).min(MAX_FRAC);
+        // `{:.n}` keeps exactly n digits (zero-padded). No precision: trim zeros.
+        let requested = f.precision();
+        let max_frac = requested.unwrap_or(MAX_FRAC).min(MAX_FRAC);
+        let pad_frac = requested.is_some();
 
-        let frac_last = if max_frac > 0 {
-            digits[..max_frac].iter().rposition(|&d| d != 0)
-        } else {
+        let frac_end = if max_frac == 0 {
             None
+        } else if pad_frac {
+            Some(max_frac)
+        } else {
+            digits[..max_frac]
+                .iter()
+                .rposition(|&d| d != 0)
+                .map(|i| i + 1)
         };
-        // Avoid printing `-0s` when a negative value truncates to zero magnitude.
-        let shown_zero = whole_seconds == 0 && frac_last.is_none();
+        // Avoid printing `-0` when a negative value truncates to zero magnitude.
+        let shown_zero =
+            whole_seconds == 0 && frac_end.is_none_or(|end| digits[..end].iter().all(|&d| d == 0));
 
         f.write_str("[")?;
 
@@ -546,9 +560,9 @@ impl fmt::Display for Dt {
 
         write!(f, "{whole_seconds}")?;
 
-        if let Some(last) = frac_last {
+        if let Some(end) = frac_end {
             f.write_str(".")?;
-            for &d in &digits[..=last] {
+            for &d in &digits[..end] {
                 write!(f, "{d}")?;
             }
         }

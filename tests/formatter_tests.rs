@@ -507,7 +507,7 @@ mod format_tests {
         assert_eq!(format!("{dt}"), "[-1.5s TT>GPS]");
         assert_eq!(format!("{dt:.0}"), "[-1s TT>GPS]"); // truncate, not round
         assert_eq!(format!("{dt:.1}"), "[-1.5s TT>GPS]");
-        assert_eq!(format!("{dt:.3}"), "[-1.5s TT>GPS]"); // trims trailing zeros
+        assert_eq!(format!("{dt:.3}"), "[-1.500s TT>GPS]"); // zero-pad like f64
         assert_eq!(format!("{dt:+.1}"), "[-1.5s TT>GPS]");
 
         let pos = Dt::new(1_500_000_000_000_000_000, Scale::TAI, Scale::TAI);
@@ -535,19 +535,19 @@ mod format_tests {
         // no_std-friendly path via BufStr (same Display impl)
         let mut s = BufStr::<64>::default();
         write!(&mut s, "{:.2}", pos).unwrap();
-        assert_eq!(s.as_str(), "[1.5s TAI>TAI]");
+        assert_eq!(s.as_str(), "[1.50s TAI>TAI]");
     }
 
     #[test]
     fn test_display_precision_edge_cases() {
         use deep_time::consts::ATTOS_PER_SEC_I128 as APS;
 
-        // Zero / integer-only (no decimal even when precision requested)
+        // `{:.0}` omits the fraction; `{:.n}` zero-pads like f64
         assert_eq!(format!("{:.0}", Dt::ZERO), "[0s TAI>TAI]");
-        assert_eq!(format!("{:.9}", Dt::ZERO), "[0s TAI>TAI]");
-        assert_eq!(format!("{:+.3}", Dt::ZERO), "[+0s TAI>TAI]");
+        assert_eq!(format!("{:.9}", Dt::ZERO), "[0.000000000s TAI>TAI]");
+        assert_eq!(format!("{:+.3}", Dt::ZERO), "[+0.000s TAI>TAI]");
         let whole = Dt::new(42 * APS, Scale::UTC, Scale::GPS);
-        assert_eq!(format!("{whole:.5}"), "[42s UTC>GPS]");
+        assert_eq!(format!("{whole:.5}"), "[42.00000s UTC>GPS]");
         assert_eq!(format!("{whole:+.0}"), "[+42s UTC>GPS]");
 
         // Exact ±0.5s → {:.0} truncates to 0 whole seconds
@@ -565,14 +565,14 @@ mod format_tests {
         // ±1 attosecond
         let one_atto = Dt::new(1, Scale::TAI, Scale::TAI);
         let neg_atto = Dt::new(-1, Scale::TAI, Scale::TAI);
-        assert_eq!(format!("{one_atto:.17}"), "[0s TAI>TAI]"); // truncated away
+        assert_eq!(format!("{one_atto:.17}"), "[0.00000000000000000s TAI>TAI]");
         assert_eq!(format!("{one_atto:.18}"), "[0.000000000000000001s TAI>TAI]");
         assert_eq!(
             format!("{neg_atto:.18}"),
             "[-0.000000000000000001s TAI>TAI]"
         );
         assert_eq!(format!("{neg_atto:.0}"), "[0s TAI>TAI]");
-        assert_eq!(format!("{neg_atto:.17}"), "[0s TAI>TAI]");
+        assert_eq!(format!("{neg_atto:.17}"), "[0.00000000000000000s TAI>TAI]");
         assert_eq!(format!("{neg_atto:+.0}"), "[+0s TAI>TAI]");
 
         // 0.9995 → truncate, never carry into whole seconds
@@ -582,6 +582,7 @@ mod format_tests {
         assert_eq!(format!("{nines:.1}"), "[0.9s TAI>TAI]");
         assert_eq!(format!("{nines:.0}"), "[0s TAI>TAI]");
         assert_eq!(format!("{nines:.4}"), "[0.9995s TAI>TAI]");
+        assert_eq!(format!("{nines:.6}"), "[0.999500s TAI>TAI]");
 
         // Max sub-second fraction (1s − 1 atto)
         let almost_one = Dt::new(APS - 1, Scale::TAI, Scale::TAI);
@@ -626,7 +627,10 @@ mod format_tests {
         assert_eq!(format!("{ymd}"), "2000-01-02T03:04:05.123456789 UTC");
         assert_eq!(format!("{ymd:.3}"), "2000-01-02T03:04:05.123 UTC");
         assert_eq!(format!("{ymd:.0}"), "2000-01-02T03:04:05 UTC");
-        assert_eq!(format!("{ymd:.20}"), "2000-01-02T03:04:05.123456789 UTC");
+        assert_eq!(
+            format!("{ymd:.20}"),
+            "2000-01-02T03:04:05.123456789000000000 UTC"
+        );
 
         // Truncate: must not advance the second
         let almost =
@@ -634,11 +638,16 @@ mod format_tests {
         assert_eq!(format!("{almost:.3}"), "2000-01-01T12:00:00.999 TAI");
         assert_eq!(format!("{almost:.0}"), "2000-01-01T12:00:00 TAI");
 
-        // Trailing zeros after truncate still trimmed
+        // `{:.n}` zero-pads; `{}` still trims
         let padded =
             Dt::from_ymd(2024, 3, 14, Scale::GPS, 15, 30, 45, 120_000_000_000_000_000).to_ymd();
-        assert_eq!(format!("{padded:.6}"), "2024-03-14T15:30:45.12 GPS");
+        assert_eq!(format!("{padded}"), "2024-03-14T15:30:45.12 GPS");
+        assert_eq!(format!("{padded:.6}"), "2024-03-14T15:30:45.120000 GPS");
         assert_eq!(format!("{padded:.1}"), "2024-03-14T15:30:45.1 GPS");
+
+        let whole = Dt::from_ymd(2024, 3, 14, Scale::GPS, 15, 30, 45, 0).to_ymd();
+        assert_eq!(format!("{whole:.2}"), "2024-03-14T15:30:45.00 GPS");
+        assert_eq!(format!("{whole}"), "2024-03-14T15:30:45 GPS");
     }
 
     #[test]
@@ -653,6 +662,15 @@ mod format_tests {
         assert_eq!(format!("{frac:#.3}"), "2024-03-14T15:30:45.123 UTC");
         assert_eq!(format!("{frac:#.0}"), "2024-03-14T15:30:45 UTC");
         assert_eq!(format!("{frac:#.3}"), format!("{:.3}", frac.to_ymd()));
+
+        // `{:#.n}` zero-pads through YmdHms (`.3` above does not exercise this)
+        let padded = Dt::from_ymd(2024, 3, 14, Scale::UTC, 15, 30, 45, 120_000_000_000_000_000);
+        assert_eq!(format!("{padded:#}"), "2024-03-14T15:30:45.12 UTC");
+        assert_eq!(format!("{padded:#.6}"), "2024-03-14T15:30:45.120000 UTC");
+        assert_eq!(format!("{padded:#.6}"), format!("{:.6}", padded.to_ymd()));
+        let whole = Dt::from_ymd(2024, 3, 14, Scale::UTC, 15, 30, 45, 0);
+        assert_eq!(format!("{whole:#.2}"), "2024-03-14T15:30:45.00 UTC");
+        assert_eq!(format!("{whole:#}"), "2024-03-14T15:30:45 UTC");
 
         let day = Dt::new(
             86400 * deep_time::consts::ATTOS_PER_SEC_I128,
