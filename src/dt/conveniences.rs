@@ -311,19 +311,65 @@ impl Dt {
         f!(days) + f!(attos) / f!(ATTOS_PER_DAY)
     }
 
+    /// Creates a **TAI** [`Dt`] from a floating-point day count since `epoch`.
+    ///
+    /// The day count is interpreted on `on` (same rules as
+    /// [`from_unix_days_f`](Self::from_unix_days_f)): if `on` is
+    /// [`Scale::UTC`](../enum.Scale.html#variant.UTC), leap seconds are applied
+    /// when converting to TAI. `epoch` is converted to that scale before the sum.
+    ///
+    /// This is the epoch-generic form of [`from_unix_days_f`](Self::from_unix_days_f)
+    /// (`from_unix_days_f(d, on)` is `from_days_since(d, UNIX_EPOCH, on)`).
+    ///
+    /// ## Examples
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// // Spreadsheet serial 25569 = 1970-01-01 (1899-12-30 date base).
+    /// let dt = Dt::from_days_since(25569.0, Dt::SERIAL_EPOCH_1899, Scale::UTC);
+    /// let ymd = dt.to_ymd();
+    /// assert_eq!(ymd.yr(), 1970);
+    /// assert_eq!(ymd.mo(), 1);
+    /// assert_eq!(ymd.day(), 1);
+    ///
+    /// // Same as from_unix_days_f.
+    /// let via_since = Dt::from_days_since(0.0, Dt::UNIX_EPOCH, Scale::UTC);
+    /// let via_unix = Dt::from_unix_days_f(0.0, Scale::UTC);
+    /// assert_eq!(via_since, via_unix);
+    ///
+    /// // Fractional day is time of day: 0.5 = noon.
+    /// let noon = Dt::from_days_since(25569.5, Dt::SERIAL_EPOCH_1899, Scale::UTC);
+    /// assert_eq!(noon.to_ymd().hr(), 12);
+    /// ```
+    ///
+    /// ## See also
+    ///
+    /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
+    /// - [`Dt::from_days_f`](../struct.Dt.html#method.from_days_f)
+    /// - [`Dt::SERIAL_EPOCH_1899`](../struct.Dt.html#associatedconstant.SERIAL_EPOCH_1899)
+    /// - [`Dt::SERIAL_EPOCH_1904`](../struct.Dt.html#associatedconstant.SERIAL_EPOCH_1904)
+    #[inline(always)]
+    pub const fn from_days_since(days: Real, epoch: Dt, on: Scale) -> Dt {
+        Self::from_diff_and_scale(Dt::from_days_f(days, on, on), epoch, true)
+    }
+
     /// Creates a **TAI** [`Dt`] from a floating-point day count since
     /// [`Dt::UNIX_EPOCH`](../struct.Dt.html#associatedconstant.UNIX_EPOCH).
     ///
     /// This is the inverse of
     /// [`Dt::to_unix_days_f`](../struct.Dt.html#method.to_unix_days_f).
     ///
+    /// Equivalent to [`from_days_since`](Self::from_days_since)`(days, UNIX_EPOCH, on)`.
+    ///
     /// ## See also
     ///
+    /// - [`Dt::from_days_since`](../struct.Dt.html#method.from_days_since)
     /// - [`Dt::to_unix_days_f`](../struct.Dt.html#method.to_unix_days_f)
     /// - [`Dt::from_unix_days`](../struct.Dt.html#method.from_unix_days)
     #[inline(always)]
     pub const fn from_unix_days_f(days: Real, on: Scale) -> Dt {
-        Self::from_unix(Dt::from_days_f(days, on, on))
+        Self::from_days_since(days, Dt::UNIX_EPOCH, on)
     }
 
     /// Returns this [`Dt`] but as time since the

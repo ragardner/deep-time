@@ -1,8 +1,8 @@
 use crate::{
-    ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, Lang, Mode, Order, OrderFirst,
-    ParseCfg, STRTIME_SIZE, an_err, classify_date, generate_ambiguous_day_first_candidates,
+    ClassifiedDate, DateClassification, Dt, DtErr, DtErrKind, Lang, Order, OrderFirst, ParseCfg,
+    ParseFmt, STRTIME_SIZE, an_err, classify_date, generate_ambiguous_day_first_candidates,
     generate_ambiguous_month_first_candidates, generate_ambiguous_year_first_candidates,
-    generate_unambiguous_candidates, parse_pure_numeric_unix_timestamp, parse_syslog_no_year,
+    generate_unambiguous_candidates, infer_unix_unit, parse_syslog_no_year, parse_unix_timestamp,
     parse_yyyy_mm, smart_detect_date_order, try_pure_numeric,
 };
 use alloc::borrow::Cow;
@@ -37,40 +37,45 @@ impl Dt {
     ///
     /// See [`ParseCfg`] for more information.
     ///
-    /// | Field          | Type and Default     | Effect |
-    /// |----------------|----------------------------------|--------|
-    /// | `lang`         | [`Lang::En`]                     | Language, scroll down to see currently supported languages                                        |
-    /// | `order`        | [`Order::Smart`]                 | How to resolve ambiguous numeric dates like `01/02/03`                                            |
-    /// | `mode`         | [`Mode::Auto`]                   | Special handling for purely numeric inputs                                                        |
-    /// | `parse`        | [`Option<Vec<String>>`] - `None` | An explicit list of formats to try, if the [`Mode`] is Explicit then only these formats are tried |
-    /// | `relative`     | [`bool`] - `true`                | Enable phrases like "tomorrow", "in 3 days"                                                       |
-    /// | `ref_time`     | [`Option<Dt>`] - `None`          | Reference time for relative dates and syslog-style "no-year" dates                                |
-    /// | `to_lower`     | [`bool`] - `true`                | Automatically lowercase the input, **only** set to false if it's already lowercase                |
+    /// | Field               | Type and Default              | Effect |
+    /// |---------------------|-------------------------------|--------|
+    /// | `lang`              | [`Lang::En`]                  | Language, scroll down to see currently supported languages |
+    /// | `order`             | [`Order::Smart`]              | How to resolve ambiguous numeric dates like `01/02/03` |
+    /// | `fmt`               | [`ParseFmt::Guess`]       | Guess layouts, or try caller `strptime` formats ([`ParseFmt::Prefer`] / [`ParseFmt::Only`]) |
+    /// | `numeric`           | [`Option<Numeric>`] — `None`  | Type of unmarked numbers; `None` uses the unguided guess below |
+    /// | `relative`          | [`bool`] — `true`             | Enable phrases like "tomorrow", "in 3 days" |
+    /// | `ref_time`          | [`Option<Dt>`] — `None`       | Reference time for relative dates and syslog-style "no-year" dates |
+    /// | `assume_lowercase`  | [`bool`] — `false`            | Skip lowercasing; **only** set to true if the input is already lowercase |
     ///
     /// ## Purely Numeric Inputs
     ///
-    /// When the input consists **only** of digits (and optionally a decimal point),
-    /// the parser uses a fast, mode-aware path before trying any other strategies.
-    /// The exact interpretation depends on the number of digits and the selected `mode`.
+    /// When the input consists **only** of digits (and optionally a sign and decimal
+    /// point), `numeric` decides the type. `None` (default) is a best-guess for a
+    /// date column with no format: valid civil form for that length first, else
+    /// MJD/JD or unix when that is the remaining reading.
     ///
-    /// | Digits | Example(s)               | `Mode`          | Interpreted as                          | Notes |
-    /// |--------|--------------------------|-----------------|-----------------------------------------|-------|
-    /// | 1–4    | `2024`, `24`, `5`        | `Auto`/`Legacy` | Year (2-digit uses 2000/1900 pivot)     | 1- and 3-digit years only work in `Scientific` |
-    /// | 5      | `24123`, `60400`         | `Legacy`        | Ordinal date (YYDDD)                    | — |
-    /// | 5      | `60400`, `60400.75`      | `Scientific`    | Modified Julian Date (MJD)              | Fractional days supported |
-    /// | 5      | `24123`, `60400.75`      | `Auto`          | Ordinal (non-decimal) or MJD (decimal)  | Smart default |
-    /// | 6      | `240315`, `202403`       | `Auto`          | YYYYMM if plausible year, else YYMMDD   | Most common compact form |
-    /// | 6      | `240315`                 | `Legacy`        | YYMMDD preferred                        | — |
-    /// | 6      | `202403`                 | `Scientific`    | YYYYMM preferred                        | — |
-    /// | 7      | `2024123`                | `Legacy`        | Ordinal date (YYYYDDD)                  | — |
-    /// | 7      | `2460123`, `2460123.5`   | `Scientific`    | Julian Day (JD)                         | Fractional days supported |
-    /// | 7      | `2024123`                | `Auto`          | Ordinal (integer) or JD (decimal)       | Smart default |
-    /// | 10–11  | `1735689600`             | any             | Unix seconds                            | — |
-    /// | 12–15  | `1735689600123`          | any             | Unix milliseconds                       | Most common high-precision case |
-    /// | 16–18  | `1735689600123456`       | any             | Unix microseconds                       | — |
-    /// | 19+    | `1735689600123456789`    | any             | Unix nanoseconds                        | Full precision |
+    /// | Digits | Example(s)            | Unguided (`numeric: None`) | Notes |
+    /// |--------|-----------------------|----------------------------|-------|
+    /// | 1–4    | `2024`, `24`, `5`     | Year (2-digit uses 1969–2068 pivot) | `5` is year 5 |
+    /// | 5      | `24123`, `60400`      | Valid `YYDDD` ordinal, else MJD if in range | `60400.75` is MJD |
+    /// | 6      | `240315`, `202403`    | YYYYMM if plausible year, else YYMMDD | Invalid 6-digit is an error |
+    /// | 7      | `2024123`, `2460000`  | Valid `YYYYDDD` ordinal, else JD if in range | `2440587.5` is JD |
+    /// | 8      | `20240315`, `20241315`| Valid `YYYYMMDD`, else unix seconds | `20241315` is `1970-08-23T06:35:15Z` |
+    /// | 9      | `202403151`           | Unix seconds | Not a compact datetime layout |
+    /// | 10     | `1735689600`, `2024031514` | Compact `YYYYMMDDHH` if it parses, else unix seconds | |
+    /// | 11     | `17356896000`         | Unix seconds | |
+    /// | 12     | `240315143045`        | Compact `YYMMDDHHMMSS` if it parses, else unix ms | |
+    /// | 13     | `1735689600123`       | Unix milliseconds | |
+    /// | 14     | `20240315143045`      | Compact `YYYYMMDDHHMMSS` if it parses, else unix ms | |
+    /// | 15     | —                     | Unix milliseconds | Not a compact datetime layout |
+    /// | 16–18  | `1735689600123456`    | Unix microseconds | |
+    /// | 19+    | `1735689600123456789` | Unix nanoseconds | |
     ///
-    /// Use `Mode::UnixTimestamp` when you know the input is always a Unix timestamp.
+    /// Set `numeric: Some(Numeric::Unix(UnixUnit::Millis))` (or `Mjd`, `Jd`,
+    /// `Ordinal`, `Year`, `CompactYmd`, `DateSerial`) when the caller knows
+    /// the type. A unix
+    /// pin accepts any length (`"3"` with `Millis` is 3 milliseconds). Other
+    /// pins require a value that is actually that quantity.
     ///
     /// ## Ambiguous Numeric Dates
     ///
@@ -113,7 +118,7 @@ impl Dt {
     /// ## Examples
     ///
     /// ```rust
-    /// use deep_time::{Dt, ParseCfg, Order, Mode, Scale};
+    /// use deep_time::{Dt, ParseFmt, Numeric, ParseCfg, Scale, UnixUnit};
     ///
     /// // Default smart parsing
     /// let dt = Dt::from_str_parse("2024-03-15 14:30:00", &ParseCfg::DEFAULT).unwrap();
@@ -130,14 +135,16 @@ impl Dt {
     /// let dt = Dt::from_str_parse("20240315", &ParseCfg::DEFAULT).unwrap(); // March 15, 2024
     ///
     /// // Unix timestamp (milliseconds)
-    /// let cfg = ParseCfg { mode: Mode::UnixTimestamp, ..Default::default() };
+    /// let cfg = ParseCfg {
+    ///     numeric: Some(Numeric::Unix(UnixUnit::Millis)),
+    ///     ..Default::default()
+    /// };
     /// let dt = Dt::from_str_parse("1735689600123", &cfg).unwrap();
     ///
     /// // Explicit formats only (no fallback). Partial dates (`%Y`, `%Y-%m`)
     /// // default missing month/day to 1.
     /// let cfg = ParseCfg {
-    ///     parse: Some(vec!["%d/%m/%Y".into(), "%Y-%m-%d".into(), "%Y".into()]),
-    ///     mode: Mode::Explicit,
+    ///     fmt: ParseFmt::Only(vec!["%d/%m/%Y".into(), "%Y-%m-%d".into(), "%Y".into()]),
     ///     ..Default::default()
     /// };
     /// let dt = Dt::from_str_parse("15/03/2024", &cfg).unwrap();
@@ -157,7 +164,8 @@ impl Dt {
     ///
     /// ## Notes
     ///
-    /// - The `Smart` + `Auto` combination gives the best real-world success rate for mixed data.
+    /// - [`Order::Smart`] with `numeric: None` is the default for mixed data with no
+    ///   format provided.
     /// - Relative expressions and syslog-style no-year dates need a reference time. If `ref_time` is `None`
     ///   and the `std` feature is enabled, system time is used; without `std`, set `ref_time` explicitly or
     ///   parsing will fail.
@@ -187,7 +195,8 @@ impl Dt {
     ///
     /// - [`ParseCfg`]
     /// - [`Order`]
-    /// - [`Mode`]
+    /// - [`ParseFmt`]
+    /// - [`crate::Numeric`]
     /// - [`Lang`]
     /// - [`Dt`](../struct.Dt.html)
     /// - [`Dt::from_str`](../struct.Dt.html#method.from_str)
@@ -201,10 +210,10 @@ impl Dt {
         let lang: Lang = opts.lang;
         let ref_time = &opts.ref_time;
 
-        let lowered: Cow<str> = if opts.to_lower {
-            Cow::Owned(s.to_lowercase())
-        } else {
+        let lowered: Cow<str> = if opts.assume_lowercase {
             Cow::Borrowed(s)
+        } else {
+            Cow::Owned(s.to_lowercase())
         };
 
         let classification = match classify_date(&lowered, lang, ref_time, opts.relative) {
@@ -225,27 +234,32 @@ impl Dt {
         // eprintln!("BEFORE & AFTER: {:?}, {:?}", lowered, &classification.date);
 
         let normalized = &classification.date;
+        let date_order = opts.order;
 
-        let (mode, date_order) = if let Some(formats) = &opts.parse {
-            if !formats.is_empty() {
+        match &opts.fmt {
+            ParseFmt::Guess => {}
+            ParseFmt::Prefer(formats) => {
                 for fmt in formats {
                     // `allow_partial_date = true`: formats that omit month/day
                     // (e.g. `%Y`, `%Y-%m`, `%y`) default the missing fields to 1
                     // via [`Parts::finish`]. Matches `try_compatible_formats`.
-                    // Without this, Explicit `%Y` on `"2024"` fails with Incomplete.
                     if let Ok(value) = Self::from_strptime(normalized, fmt, true, true, true) {
                         return Ok(value);
                     }
                 }
-                // None of the provided formats worked and mode is Explicit
-                if opts.mode == Mode::Explicit {
-                    return Err(an_err!(DtErrKind::InvalidInput, "{}", s));
-                }
             }
-            (opts.mode, opts.order)
-        } else {
-            (opts.mode, opts.order)
-        };
+            ParseFmt::Only(formats) => {
+                for fmt in formats {
+                    // Format must consume the whole input (`fmt_can_end_before_inp`
+                    // false). Partial date *formats* (`%Y`, `%Y-%m`) still default
+                    // missing month/day to 1.
+                    if let Ok(value) = Self::from_strptime(normalized, fmt, false, false, true) {
+                        return Ok(value);
+                    }
+                }
+                return Err(an_err!(DtErrKind::InvalidInput, "{}", s));
+            }
+        }
 
         // if s == "on the 5th of april 2024 at 00:00am" {
         //     std::eprintln!("{:?}", classification);
@@ -253,27 +267,17 @@ impl Dt {
         // std::eprintln!("{:?}", classification);
 
         if classification.is_pure_numeric {
-            match mode {
-                Mode::UnixTimestamp => {
-                    if let Some(dt) = parse_pure_numeric_unix_timestamp(
-                        normalized,
-                        classification.num_non_decimal_digits as usize,
-                    ) {
-                        return Ok(dt);
-                    }
-                }
-                _ => {
-                    if let Some(dt) = try_pure_numeric(
-                        normalized,
-                        classification.num_digits,
-                        classification.num_non_decimal_digits,
-                        classification.is_decimal,
-                        mode,
-                    ) {
-                        // std::eprintln!("NUMERIC INPUT SUCCESS: {:?}", s);
-                        return Ok(dt);
-                    }
-                }
+            if let Some(dt) = try_pure_numeric(
+                normalized,
+                classification.num_digits,
+                classification.num_non_decimal_digits,
+                classification.is_decimal,
+                opts.numeric,
+            ) {
+                return Ok(dt);
+            }
+            if opts.numeric.is_some() {
+                return Err(an_err!(DtErrKind::InvalidInput, "{}", s));
             }
         }
         if !classification.has_year
@@ -425,15 +429,14 @@ impl Dt {
         if let Some(dt) = try_unambiguous(normalized, &classification) {
             return Ok(dt);
         }
-        // std::eprintln!("NOW trying numeric timestamp");
-        if classification.is_pure_numeric
-            && mode != Mode::UnixTimestamp
-            && let Some(dt) = parse_pure_numeric_unix_timestamp(
-                normalized,
-                classification.num_non_decimal_digits as usize,
-            )
-        {
-            return Ok(dt);
+        // 10 / 12 / 14: compact datetime missed format generation.
+        if classification.is_pure_numeric && opts.numeric.is_none() {
+            let digits = classification.num_non_decimal_digits as usize;
+            if matches!(digits, 10 | 12 | 14)
+                && let Some(dt) = parse_unix_timestamp(normalized, infer_unix_unit(digits))
+            {
+                return Ok(dt);
+            }
         }
         Err(an_err!(DtErrKind::InvalidInput, "{}", s))
     }

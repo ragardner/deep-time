@@ -144,6 +144,8 @@ use core::fmt;
 /// - [`Dt::to_sec64_floor`](../struct.Dt.html#method.to_sec64_floor)
 /// - [`Dt::new`](../struct.Dt.html#method.new)
 /// - [`Dt::to_unix`](../struct.Dt.html#method.to_unix)
+/// - [`Dt::from_days_since`](../struct.Dt.html#method.from_days_since)
+/// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
 /// - [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp)
 /// - [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
 ///

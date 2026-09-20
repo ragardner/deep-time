@@ -4,7 +4,7 @@
 mod tests {
     use deep_time::civil_parts::Parts;
     use deep_time::macros::from_sec;
-    use deep_time::{Dt, Lang, Mode, Order, ParseCfg, Scale};
+    use deep_time::{Dt, Lang, Numeric, Order, ParseCfg, ParseFmt, Scale};
 
     // Only meaningful without IANA TZ support: with jiff-tz*, America/New_York is applied.
     #[cfg(not(any(feature = "jiff-tz-bundle", feature = "jiff-tz")))]
@@ -339,7 +339,7 @@ mod tests {
                 "60400".to_string(),
                 "2024-03-31T00:00:00Z".to_string(),
                 Some(ParseCfg {
-                    mode: Mode::Scientific,
+                    numeric: Some(Numeric::Mjd),
                     ..Default::default()
                 }),
             ),
@@ -355,7 +355,7 @@ mod tests {
                 "14/03/2024 15:30".to_string(),
                 "2024-03-14T15:30:00Z".to_string(),
                 Some(ParseCfg {
-                    parse: Some(vec!["%d/%m/%Y %H:%M".to_string()]),
+                    fmt: ParseFmt::Prefer(vec!["%d/%m/%Y %H:%M".to_string()]),
                     ..Default::default()
                 }),
             ),
@@ -420,7 +420,7 @@ mod tests {
                 "2440587.5",
                 "1970-01-01T00:00:00Z",
                 Some(ParseCfg {
-                    mode: Mode::Scientific,
+                    numeric: Some(Numeric::Jd),
                     ..Default::default()
                 }),
             ),
@@ -927,8 +927,7 @@ mod tests {
                 "60400",
                 "2024-03-31T00:00:00Z",
                 Some(ParseCfg {
-                    parse: None,
-                    mode: Mode::Scientific,
+                    numeric: Some(Numeric::Mjd),
                     order: Order::default(),
                     ..Default::default()
                 }),
@@ -937,8 +936,7 @@ mod tests {
                 "24073",
                 "2024-03-13T00:00:00Z",
                 Some(ParseCfg {
-                    parse: None,
-                    mode: Mode::Legacy,
+                    numeric: Some(Numeric::Ordinal),
                     order: Order::default(),
                     ..Default::default()
                 }),
@@ -948,8 +946,6 @@ mod tests {
                 "05/06/2024",
                 "2024-06-05T00:00:00Z",
                 Some(ParseCfg {
-                    parse: None,
-                    mode: Mode::Scientific,
                     order: Order::Day,
                     ..Default::default()
                 }),
@@ -984,7 +980,7 @@ mod tests {
                 "14/03/2024 15:30",
                 "2024-03-14T15:30:00Z",
                 Some(ParseCfg {
-                    parse: Some(vec!["%d/%m/%Y %H:%M".to_string()]),
+                    fmt: ParseFmt::Prefer(vec!["%d/%m/%Y %H:%M".to_string()]),
                     ..Default::default()
                 }),
             ),

@@ -5,18 +5,18 @@
 //! - guardrails (empty / oversize / whitespace)
 //! - calendar validity (leap years, ordinal/week bounds)
 //! - ambiguous numeric order under Smart / Day / Month / Year
-//! - pure-numeric modes (Auto / Legacy / Scientific / UnixTimestamp)
+//! - pure-numeric unguided guess and `Numeric` pins
 //! - named English dates, ordinals, 12-hour clock quirks
 //! - syslog year inference
 //! - relative phrases + bare times-of-day
 //! - offsets, leap seconds, scale suffixes
 //! - separators (unicode dashes, fullwidth digits, JP calendar units)
 //! - adversarial / lenient garbage handling
-//! - `ParseCfg` knobs (explicit formats, `to_lower`, `relative`)
+//! - `ParseCfg` knobs (explicit formats, `assume_lowercase`, `relative`)
 //! - `str_to_*` convenience helpers
 //! - safety (digit-counter overflow at STRTIME_SIZE)
 //! - Aho-Corasick substring false positives (month/relative inside words)
-//! - relative+absolute digit glue, dual dates, invalid compact→unix fallback
+//! - relative+absolute digit glue, dual dates, 8-digit invalid civil→unix
 //!
 //! Several cases document *current* behavior that is surprising; those are
 //! labeled `// CHARACTERIZATION` so they can be revisited deliberately.
@@ -25,11 +25,11 @@
 
 #[cfg(feature = "parse")]
 mod tests {
-    use deep_time::{Dt, DtErrKind, Mode, Order, ParseCfg, Scale};
+    use deep_time::{DateBase, Dt, DtErrKind, Numeric, Order, ParseCfg, ParseFmt, Scale, UnixUnit};
 
     // ── helpers ────────────────────────────────────────────────────────────
 
-    fn def() -> ParseCfg {
+    fn default_cfg() -> ParseCfg {
         ParseCfg::DEFAULT
     }
 
@@ -48,9 +48,9 @@ mod tests {
         }
     }
 
-    fn cfg_mode(mode: Mode) -> ParseCfg {
+    fn cfg_numeric(numeric: Numeric) -> ParseCfg {
         ParseCfg {
-            mode,
+            numeric: Some(numeric),
             ..Default::default()
         }
     }
@@ -88,7 +88,7 @@ mod tests {
 
     #[test]
     fn guardrails_empty_and_oversize() {
-        let cfg = def();
+        let cfg = default_cfg();
         assert_err_kind("", &cfg, DtErrKind::Empty);
         // STRTIME_SIZE is 512; one past that is InvalidLen.
         assert_err_kind(&"x".repeat(513), &cfg, DtErrKind::InvalidLen);
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn iso_happy_paths_and_offsets() {
-        let cfg = def();
+        let cfg = default_cfg();
         assert_rfc("2024-03-15", "2024-03-15T00:00:00Z", &cfg);
         assert_rfc("2024-03-15T14:30:00Z", "2024-03-15T14:30:00Z", &cfg);
         assert_rfc(
@@ -121,7 +121,7 @@ mod tests {
 
     #[test]
     fn week_and_ordinal_dates() {
-        let cfg = def();
+        let cfg = default_cfg();
         assert_rfc("2024-W11-4", "2024-03-14T00:00:00Z", &cfg);
         assert_rfc("2024-074", "2024-03-14T00:00:00Z", &cfg);
         assert_rfc("2024074", "2024-03-14T00:00:00Z", &cfg);
@@ -140,14 +140,14 @@ mod tests {
 
     #[test]
     fn iso_week_no_weekday() {
-        let cfg = def();
+        let cfg = default_cfg();
         assert_rfc("2024-W11", "2024-03-11T00:00:00Z", &cfg);
         assert_rfc("2024W11", "2024-03-11T00:00:00Z", &cfg);
     }
 
     #[test]
     fn calendar_bounds_and_leap_years() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Extreme but valid years.
         assert_rfc("0000-01-01", "0000-01-01T00:00:00Z", &cfg);
         assert_rfc("9999-12-31", "9999-12-31T00:00:00Z", &cfg);
@@ -172,7 +172,7 @@ mod tests {
 
     #[test]
     fn time_component_bounds() {
-        let cfg = def();
+        let cfg = default_cfg();
         assert_rfc(
             "2024-03-15 12:00:00.999999999",
             "2024-03-15T12:00:00.999999999Z",
@@ -243,91 +243,138 @@ mod tests {
 
     #[test]
     fn pure_numeric_years_and_compact_dates() {
-        let auto = cfg_mode(Mode::Auto);
-        let sci = cfg_mode(Mode::Scientific);
-        let leg = cfg_mode(Mode::Legacy);
+        let year_lit = cfg_numeric(Numeric::Year {
+            two_digit_pivot: false,
+        });
+        let compact = cfg_numeric(Numeric::CompactYmd);
 
         // 2-digit year pivot (≤68 → 20xx).
-        assert_rfc("24", "2024-01-01T00:00:00Z", &auto);
-        // Scientific treats 1–4 digits as literal year.
-        assert_rfc("24", "0024-01-01T00:00:00Z", &sci);
-        assert_rfc("5", "0005-01-01T00:00:00Z", &sci);
-        // Auto/Legacy: 1- and 3-digit years fall through to unix seconds.
-        assert_rfc("5", "1970-01-01T00:00:05Z", &auto);
-        assert_rfc("202", "1970-01-01T00:03:22Z", &auto);
+        assert_rfc("24", "2024-01-01T00:00:00Z", &ParseCfg::DEFAULT);
+        // Literal year pin: digits are the year.
+        assert_rfc("24", "0024-01-01T00:00:00Z", &year_lit);
+        assert_rfc("5", "0005-01-01T00:00:00Z", &year_lit);
+        // Unguided 1- and 3-digit are years, not unix.
+        assert_rfc("5", "0005-01-01T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("202", "0202-01-01T00:00:00Z", &ParseCfg::DEFAULT);
 
-        assert_rfc("2024", "2024-01-01T00:00:00Z", &auto);
-        assert_rfc("240315", "2024-03-15T00:00:00Z", &auto);
-        assert_rfc("20240315", "2024-03-15T00:00:00Z", &auto);
+        assert_rfc("2024", "2024-01-01T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("240315", "2024-03-15T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("20240315", "2024-03-15T00:00:00Z", &ParseCfg::DEFAULT);
         // 6-digit with plausible YYYYMM year → first-of-month.
-        assert_rfc("202403", "2024-03-01T00:00:00Z", &auto);
-        assert_rfc("202403", "2024-03-01T00:00:00Z", &sci);
-        assert_rfc("202403", "2024-03-01T00:00:00Z", &leg);
+        assert_rfc("202403", "2024-03-01T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("202403", "2024-03-01T00:00:00Z", &compact);
     }
 
     #[test]
-    fn pure_numeric_ordinal_mjd_jd_by_mode() {
-        let auto = cfg_mode(Mode::Auto);
-        let sci = cfg_mode(Mode::Scientific);
-        let leg = cfg_mode(Mode::Legacy);
+    fn pure_numeric_ordinal_mjd_jd() {
+        let mjd = cfg_numeric(Numeric::Mjd);
+        let jd = cfg_numeric(Numeric::Jd);
+        let ord = cfg_numeric(Numeric::Ordinal);
 
         // 5-digit YYDDD ordinal (24-123 → 2024-05-02).
-        assert_rfc("24123", "2024-05-02T00:00:00Z", &auto);
-        assert_rfc("24123", "2024-05-02T00:00:00Z", &leg);
+        assert_rfc("24123", "2024-05-02T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("24123", "2024-05-02T00:00:00Z", &ord);
 
-        // MJD 60400 → 2024-03-31 (Auto integer prefers ordinal when valid;
-        // 60400 as YYDDD is invalid so MJD wins; Sci prefers MJD).
-        assert_rfc("60400", "2024-03-31T00:00:00Z", &auto);
-        assert_rfc("60400", "2024-03-31T00:00:00Z", &sci);
-        // Legacy is ordinal-only; 60400 is not a valid YYDDD → unix fallback.
-        assert_rfc("60400", "1970-01-01T16:46:40Z", &leg);
+        // MJD 60400 → 2024-03-31 (unguided integer prefers ordinal when valid;
+        // 60400 as YYDDD is invalid so MJD wins).
+        assert_rfc("60400", "2024-03-31T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("60400", "2024-03-31T00:00:00Z", &mjd);
+        // Ordinal pin: 60400 is not a valid YYDDD → error, not unix.
+        assert_err("60400", &ord);
 
         // Fractional MJD.
-        assert_rfc("60400.75", "2024-03-31T18:00:00Z", &auto);
-        assert_rfc("60400.75", "2024-03-31T18:00:00Z", &sci);
+        assert_rfc("60400.75", "2024-03-31T18:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("60400.75", "2024-03-31T18:00:00Z", &mjd);
 
         // 7-digit YYYYDDD ordinal.
-        assert_rfc("2024123", "2024-05-02T00:00:00Z", &auto);
-        assert_rfc("2024123", "2024-05-02T00:00:00Z", &leg);
-        // Sci prefers JD for integer 7-digit (JD noon convention for integers).
-        assert_rfc("2024123", "0829-10-05T00:00:00Z", &sci);
+        assert_rfc("2024123", "2024-05-02T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("2024123", "2024-05-02T00:00:00Z", &ord);
+        // JD pin: integer 7-digit uses noon convention.
+        assert_rfc("2024123", "0829-10-05T00:00:00Z", &jd);
 
         // Famous JD of Unix epoch (fractional, so no +0.5 noon adjust).
-        assert_rfc("2440587.5", "1970-01-01T00:00:00Z", &sci);
+        assert_rfc("2440587.5", "1970-01-01T00:00:00Z", &jd);
+        assert_rfc("2440587.5", "1970-01-01T00:00:00Z", &ParseCfg::DEFAULT);
+    }
+
+    #[test]
+    fn date_serial_pin_only() {
+        let d1900 = cfg_numeric(Numeric::DateSerial(DateBase::Epoch1900));
+        let d1904 = cfg_numeric(Numeric::DateSerial(DateBase::Epoch1904));
+        let d1899 = cfg_numeric(Numeric::DateSerial(DateBase::Epoch1899));
+
+        // OOXML 1900 date base (fictitious leap day).
+        assert_rfc("1", "1900-01-01T00:00:00Z", &d1900);
+        assert_rfc("59", "1900-02-28T00:00:00Z", &d1900);
+        assert_err("60", &d1900);
+        assert_rfc("61", "1900-03-01T00:00:00Z", &d1900);
+        assert_rfc("25569", "1970-01-01T00:00:00Z", &d1900);
+        assert_rfc("25569.5", "1970-01-01T12:00:00Z", &d1900);
+        assert_rfc("39448", "2008-01-01T00:00:00Z", &d1900);
+        assert_rfc("40729", "2011-07-05T00:00:00Z", &d1900);
+        assert_rfc("0", "1899-12-31T00:00:00Z", &d1900);
+        assert_rfc("-1", "1899-12-30T00:00:00Z", &d1900);
+        assert_rfc("-1.5", "1899-12-29T12:00:00Z", &d1900);
+
+        // Unguided 5-digit is still MJD, not a spreadsheet serial.
+        let unguided = parse("40729", &ParseCfg::DEFAULT);
+        let pinned = parse("40729", &d1900);
+        assert_ne!(unguided.to_str_rfc3339_nf(9), pinned.to_str_rfc3339_nf(9));
+
+        assert_rfc("0", "1904-01-01T00:00:00Z", &d1904);
+        assert_rfc("24107", "1970-01-01T00:00:00Z", &d1904);
+        assert_rfc("-1", "1903-12-31T00:00:00Z", &d1904);
+
+        // LibreOffice Calc default: serial 0 = 1899-12-30; serial 2 = 1900-01-01.
+        assert_rfc("0", "1899-12-30T00:00:00Z", &d1899);
+        assert_rfc("2", "1900-01-01T00:00:00Z", &d1899);
+        assert_rfc("60", "1900-02-28T00:00:00Z", &d1899);
+        assert_rfc("61", "1900-03-01T00:00:00Z", &d1899);
+        assert_rfc("25569", "1970-01-01T00:00:00Z", &d1899);
+        assert_rfc("-1", "1899-12-29T00:00:00Z", &d1899);
     }
 
     #[test]
     fn pure_numeric_unix_timestamps() {
-        let auto = cfg_mode(Mode::Auto);
-        let unix = cfg_mode(Mode::UnixTimestamp);
+        let unix_s = cfg_numeric(Numeric::Unix(UnixUnit::Seconds));
+        let unix_ms = cfg_numeric(Numeric::Unix(UnixUnit::Millis));
 
         // Seconds / ms / µs / ns of 2025-01-01 00:00:00 UTC.
-        assert_rfc("1735689600", "2025-01-01T00:00:00Z", &auto);
-        assert_rfc("1735689600", "2025-01-01T00:00:00Z", &unix);
-        assert_rfc("1735689600123", "2025-01-01T00:00:00.123Z", &auto);
-        assert_rfc("1735689600123456", "2025-01-01T00:00:00.123456Z", &auto);
+        assert_rfc("1735689600", "2025-01-01T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("1735689600", "2025-01-01T00:00:00Z", &unix_s);
+        assert_rfc(
+            "1735689600123",
+            "2025-01-01T00:00:00.123Z",
+            &ParseCfg::DEFAULT,
+        );
+        assert_rfc(
+            "1735689600123456",
+            "2025-01-01T00:00:00.123456Z",
+            &ParseCfg::DEFAULT,
+        );
         assert_rfc(
             "1735689600123456789",
             "2025-01-01T00:00:00.123456789Z",
-            &auto,
+            &ParseCfg::DEFAULT,
         );
-        assert_rfc("1735689600.5", "2025-01-01T00:00:00.5Z", &auto);
+        assert_rfc("1735689600.5", "2025-01-01T00:00:00.5Z", &ParseCfg::DEFAULT);
 
         // Signed unix seconds.
-        assert_rfc("0", "1970-01-01T00:00:00Z", &unix);
-        assert_rfc("-1", "1969-12-31T23:59:59Z", &unix);
+        assert_rfc("0", "1970-01-01T00:00:00Z", &unix_s);
+        assert_rfc("-1", "1969-12-31T23:59:59Z", &unix_s);
 
-        // Mode::UnixTimestamp forces short numbers into the unix path.
-        assert_rfc("2024", "1970-01-01T00:33:44Z", &unix);
-        assert_rfc("1000000000", "2001-09-09T01:46:40Z", &unix); // 1e9 sec
-        assert_rfc("1000000000000", "2001-09-09T01:46:40Z", &unix); // 1e12 ms
+        // Unix pin: every pure-numeric string is that unit, including short values.
+        assert_rfc("2024", "1970-01-01T00:33:44Z", &unix_s);
+        assert_rfc("3", "1970-01-01T00:00:00.003Z", &unix_ms);
+        assert_rfc("1000000000", "2001-09-09T01:46:40Z", &unix_s);
+        assert_rfc("1000000000000", "2001-09-09T01:46:40Z", &unix_ms);
     }
 
     // ── 5. Named English dates ─────────────────────────────────────────────
 
     #[test]
     fn named_english_and_ordinal_days() {
-        let cfg = def();
+        let cfg = default_cfg();
         let cases = [
             ("15 March 2024", "2024-03-15T00:00:00Z"),
             ("March 15, 2024", "2024-03-15T00:00:00Z"),
@@ -358,7 +405,7 @@ mod tests {
     /// Month + year with no day → first of that month.
     #[test]
     fn month_and_year_without_day() {
-        let cfg = def();
+        let cfg = default_cfg();
         let cases = [
             ("2024-03", "2024-03-01T00:00:00Z"),
             ("2024/03", "2024-03-01T00:00:00Z"),
@@ -392,7 +439,7 @@ mod tests {
 
     #[test]
     fn twelve_hour_clock_and_at_glue() {
-        let cfg = def();
+        let cfg = default_cfg();
         assert_rfc("14 Mar 2024 2:30 PM", "2024-03-14T14:30:00Z", &cfg);
         assert_rfc("14 Mar 2024 2:30PM", "2024-03-14T14:30:00Z", &cfg);
         assert_rfc("14 Mar 2024 at 2:30pm", "2024-03-14T14:30:00Z", &cfg);
@@ -401,7 +448,7 @@ mod tests {
     /// Bare hour + meridian with no minutes (`2PM` → 14:00 on the same day).
     #[test]
     fn bare_hour_2pm() {
-        let cfg = def();
+        let cfg = default_cfg();
         assert_rfc("14 Mar 2024 2PM", "2024-03-14T14:00:00Z", &cfg);
         assert_rfc("14 Mar 2024 2pm", "2024-03-14T14:00:00Z", &cfg);
         assert_rfc("14 Mar 2024 2 PM", "2024-03-14T14:00:00Z", &cfg);
@@ -536,7 +583,7 @@ mod tests {
 
     #[test]
     fn scale_suffixes_and_leap_seconds() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Scale suffix is recognized; RFC3339 view is the civil form on that
         // scale projected through the usual conversion path.
         for s in [
@@ -565,7 +612,7 @@ mod tests {
 
     #[test]
     fn separators_and_unicode_digits() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Leading/trailing ASCII whitespace is fine.
         assert_rfc("  2024-03-15  ", "2024-03-15T00:00:00Z", &cfg);
         // Unicode dashes used as separators.
@@ -590,7 +637,7 @@ mod tests {
 
     #[test]
     fn compact_datetime_layouts() {
-        let cfg = def();
+        let cfg = default_cfg();
         let cases = [
             ("20240315143045", "2024-03-15T14:30:45Z"),
             ("240315143045", "2024-03-15T14:30:45Z"),
@@ -613,7 +660,7 @@ mod tests {
 
     #[test]
     fn http_and_rfc2822_style() {
-        let cfg = def();
+        let cfg = default_cfg();
         assert_rfc(
             "Thu, 14 Mar 2024 15:30:45 GMT",
             "2024-03-14T15:30:45Z",
@@ -671,9 +718,8 @@ mod tests {
         assert_rfc("'2024-03-15'", "2024-03-15T00:00:00Z", &cfg);
         assert_rfc("[2024-03-15]", "2024-03-15T00:00:00Z", &cfg);
         assert_rfc("(2024-03-15)", "2024-03-15T00:00:00Z", &cfg);
-        // CHARACTERIZATION: alphabetic noise + digits can fall through to a
-        // pure-numeric unix-seconds path (abc123 → 123 seconds past epoch).
-        assert_rfc("abc123", "1970-01-01T00:02:03Z", &cfg);
+        // Prefix stripped; remaining 3 digits are an unguided year.
+        assert_rfc("abc123", "0123-01-01T00:00:00Z", &cfg);
         // CHARACTERIZATION: scientific-notation-looking tokens can be
         // reinterpreted as date pieces (2.5e10 → 2010-05-02).
         assert_rfc("2.5e10", "2010-05-02T00:00:00Z", &cfg);
@@ -681,7 +727,7 @@ mod tests {
 
     #[test]
     fn iana_zone_bracket_requires_tz_feature() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Without jiff-tz*, bracketed real IANA zones are rejected (parser/zone list)
         #[cfg(not(any(feature = "jiff-tz", feature = "jiff-tz-bundle")))]
         {
@@ -712,25 +758,21 @@ mod tests {
     #[test]
     fn explicit_mode_only_tries_listed_formats() {
         let cfg = ParseCfg {
-            mode: Mode::Explicit,
-            parse: Some(vec!["%Y-%m-%d".into()]),
+            fmt: ParseFmt::Only(vec!["%Y-%m-%d".into()]),
             ..Default::default()
         };
         assert_rfc("2024-03-15", "2024-03-15T00:00:00Z", &cfg);
         // Completely different layout is rejected (no Auto fallback).
         assert_err("15/03/2024", &cfg);
         assert_err("March 15, 2024", &cfg);
-        // CHARACTERIZATION: `%Y-%m-%d` succeeds and the trailing time is
-        // ignored / absorbed by the lower-level `from_str` path, so this
-        // does *not* hard-fail under Explicit.
-        assert_rfc("2024-03-15 12:00", "2024-03-15T00:00:00Z", &cfg);
+        // Trailing time is leftover input; Only does not ignore it.
+        assert_err("2024-03-15 12:00", &cfg);
     }
 
     #[test]
     fn explicit_formats_then_fallback_when_not_explicit_mode() {
         let cfg = ParseCfg {
-            mode: Mode::Auto,
-            parse: Some(vec!["%Y-%m-%d".into()]),
+            fmt: ParseFmt::Prefer(vec!["%Y-%m-%d".into()]),
             ..Default::default()
         };
         // Listed format works.
@@ -740,14 +782,14 @@ mod tests {
     }
 
     #[test]
-    fn to_lower_false_requires_already_lowercase_names() {
+    fn assume_lowercase_requires_already_lowercase_names() {
         let cfg = ParseCfg {
-            to_lower: false,
+            assume_lowercase: true,
             ..Default::default()
         };
         // Numeric ISO is case-insensitive in practice.
         assert_rfc("2024-03-15", "2024-03-15T00:00:00Z", &cfg);
-        // Title-case month names fail when to_lower is off.
+        // Title-case month names fail when lowercasing is skipped.
         assert_err("March 15, 2024", &cfg);
         assert_rfc("march 15, 2024", "2024-03-15T00:00:00Z", &cfg);
     }
@@ -756,7 +798,7 @@ mod tests {
 
     #[test]
     fn str_to_helpers_agree_with_from_str_parse() {
-        let cfg = def();
+        let cfg = default_cfg();
         let s = "2024-03-15T12:00:00Z";
         let dt = parse(s, &cfg);
 
@@ -780,7 +822,7 @@ mod tests {
 
     #[test]
     fn rfc3339_roundtrip_smoke() {
-        let cfg = def();
+        let cfg = default_cfg();
         for s in [
             "2024-03-15T00:00:00Z",
             "2024-03-15T14:30:45.123456789Z",
@@ -849,7 +891,7 @@ mod tests {
     /// digits (and wrap in release). Must never panic for inputs ≤ STRTIME_SIZE.
     #[test]
     fn digit_counter_no_panic_at_strtime_limit() {
-        let cfg = def();
+        let cfg = default_cfg();
         for n in [255usize, 256, 300, 400, 512] {
             let s = "1".repeat(n);
             // Must not panic; Ok or Err are both acceptable outcomes.
@@ -931,7 +973,7 @@ mod tests {
 
     #[test]
     fn dual_absolute_dates_partially_reinterpreted() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Second ISO date partially consumed as time fields.
         // CHARACTERIZATION: not an error.
         assert_rfc("2024-03-15 2025-04-16", "2024-03-16T12:25:00Z", &cfg);
@@ -940,48 +982,39 @@ mod tests {
         assert_err("March 15 2024 March 16 2025", &cfg);
     }
 
-    // ── 21. Invalid compact forms silently become Unix timestamps ──────────
+    // ── 21. Invalid compact forms ──────────────────────────────────────────
 
     #[test]
-    fn invalid_compact_numeric_falls_through_to_unix() {
-        let cfg = def();
-        // Impossible civil compact dates are not hard-errors under Mode::Auto;
-        // they fall through to the pure-numeric unix path.
+    fn invalid_eight_digit_civil_is_unix_seconds() {
+        let cfg = default_cfg();
+        // 8-digit: valid YYYYMMDD first, else unix seconds (1970–1973).
         assert_rfc("20241315", "1970-08-23T06:35:15Z", &cfg); // month 13
         assert_rfc("20240230", "1970-08-23T06:17:10Z", &cfg); // Feb 30
         assert_rfc("99999999", "1973-03-03T09:46:39Z", &cfg);
-        // Compact datetime with hour 24 → ms unix, not civil reject.
+        // Compact datetime with hour 24 → leftover unix ms, not civil reject.
         assert_rfc("20240315249999", "2611-05-23T21:47:29.999Z", &cfg);
         assert_rfc("20240315243000", "2611-05-23T21:47:23Z", &cfg);
-        // 6-digit invalid YYMMDD likewise.
-        assert_rfc("123456", "1970-01-02T10:17:36Z", &cfg);
-        assert_rfc("991332", "1970-01-12T11:22:12Z", &cfg);
+        // 6-digit invalid YYMMDD is not unix.
+        assert_err("123456", &cfg);
+        assert_err("991332", &cfg);
     }
 
-    // ── 22. Mode::Explicit with empty / missing format list ────────────────
+    // ── 22. ParseFmt::Only with empty / missing format list ─────────────
 
     #[test]
-    fn explicit_mode_empty_parse_list_falls_through() {
-        // CHARACTERIZATION: empty or missing `parse` does *not* force failure;
-        // the Auto path still runs. Only a non-empty list that fails hard-stops.
+    fn only_empty_format_list_fails() {
         let empty = ParseCfg {
-            mode: Mode::Explicit,
-            parse: Some(vec![]),
+            fmt: ParseFmt::Only(vec![]),
             ..Default::default()
         };
-        assert_rfc("15/03/2024", "2024-03-15T00:00:00Z", &empty);
+        assert_err("15/03/2024", &empty);
 
-        let none = ParseCfg {
-            mode: Mode::Explicit,
-            parse: None,
-            ..Default::default()
-        };
-        assert_rfc("15/03/2024", "2024-03-15T00:00:00Z", &none);
+        // Guess (default) still parses.
+        assert_rfc("15/03/2024", "2024-03-15T00:00:00Z", &default_cfg());
 
-        // Non-empty list that cannot match → hard fail (no Auto fallback).
+        // Non-empty list that cannot match → hard fail (no guess fallback).
         let ymd_only = ParseCfg {
-            mode: Mode::Explicit,
-            parse: Some(vec!["%Y-%m-%d".into()]),
+            fmt: ParseFmt::Only(vec!["%Y-%m-%d".into()]),
             ..Default::default()
         };
         assert_rfc("2024-03-15", "2024-03-15T00:00:00Z", &ymd_only);
@@ -996,20 +1029,17 @@ mod tests {
     #[test]
     fn explicit_partial_date_formats_default_missing_fields() {
         let only_year = ParseCfg {
-            mode: Mode::Explicit,
-            parse: Some(vec!["%Y".into()]),
+            fmt: ParseFmt::Only(vec!["%Y".into()]),
             ..Default::default()
         };
         assert_rfc("2024", "2024-01-01T00:00:00Z", &only_year);
         assert_rfc("0001", "0001-01-01T00:00:00Z", &only_year);
         assert_rfc("9999", "9999-01-01T00:00:00Z", &only_year);
-        // Trailing junk after a complete `%Y` match is still accepted
-        // (`fmt_can_end_before_inp`); month/day stay defaulted.
-        assert_rfc("2024-03-15", "2024-01-01T00:00:00Z", &only_year);
+        // Leftover after `%Y` is not a year-only string.
+        assert_err("2024-03-15", &only_year);
 
         let year_month = ParseCfg {
-            mode: Mode::Explicit,
-            parse: Some(vec!["%Y-%m".into()]),
+            fmt: ParseFmt::Only(vec!["%Y-%m".into()]),
             ..Default::default()
         };
         assert_rfc("2024-03", "2024-03-01T00:00:00Z", &year_month);
@@ -1017,8 +1047,7 @@ mod tests {
         assert_err("15/03/2024", &year_month);
 
         let two_digit = ParseCfg {
-            mode: Mode::Explicit,
-            parse: Some(vec!["%y".into()]),
+            fmt: ParseFmt::Only(vec!["%y".into()]),
             ..Default::default()
         };
         assert_rfc("24", "2024-01-01T00:00:00Z", &two_digit);
@@ -1026,8 +1055,7 @@ mod tests {
 
         // Multiple formats: first match wins; partial year still usable.
         let multi = ParseCfg {
-            mode: Mode::Explicit,
-            parse: Some(vec!["%d/%m/%Y".into(), "%Y".into()]),
+            fmt: ParseFmt::Only(vec!["%d/%m/%Y".into(), "%Y".into()]),
             ..Default::default()
         };
         assert_rfc("15/03/2024", "2024-03-15T00:00:00Z", &multi);
@@ -1038,7 +1066,7 @@ mod tests {
 
     #[test]
     fn embedded_date_in_noise_is_accepted() {
-        let cfg = def();
+        let cfg = default_cfg();
         // CHARACTERIZATION: surrounding non-date text is often ignored.
         // Do **not** use from_str_parse as a strict validator for untrusted input.
         assert_rfc("2024-03-15'; DROP TABLE", "2024-03-15T00:00:00Z", &cfg);
@@ -1059,7 +1087,7 @@ mod tests {
 
     #[test]
     fn offset_and_clock_edge_cases() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Offsets well outside civil TZ ranges still apply.
         assert_rfc("2024-03-15T12:00:00+15:00", "2024-03-14T21:00:00Z", &cfg);
         assert_rfc("2024-03-15T12:00:00-13:00", "2024-03-16T01:00:00Z", &cfg);
@@ -1081,7 +1109,7 @@ mod tests {
 
     #[test]
     fn leap_second_slot_only_at_day_boundary_on_leap_days() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Real leap-second insertion days keep second=60.
         assert_rfc("2015-06-30T23:59:60Z", "2015-06-30T23:59:60Z", &cfg);
         assert_rfc("2012-06-30T23:59:60Z", "2012-06-30T23:59:60Z", &cfg);
@@ -1096,7 +1124,7 @@ mod tests {
 
     #[test]
     fn control_and_bidi_prefix_tolerance() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Null / CR-LF / BOM / bidi marks do not block a trailing date.
         assert_rfc("2024-03-15\0", "2024-03-15T00:00:00Z", &cfg);
         assert_rfc("2024-03-15\r\n", "2024-03-15T00:00:00Z", &cfg);
@@ -1112,31 +1140,30 @@ mod tests {
 
     #[test]
     fn pure_numeric_digit_length_unit_edges() {
-        let auto = cfg_mode(Mode::Auto);
-        // 9-digit: not 8-digit YYYYMMDD, not 10-digit unix → hour glued to date.
-        assert_rfc("202403151", "2024-03-15T01:00:00Z", &auto);
+        // 9-digit unguided is unix seconds.
+        assert_rfc("202403151", "1976-05-31T15:05:51Z", &ParseCfg::DEFAULT);
         // 10-digit unix seconds (1e10) → far future.
-        assert_rfc("10000000000", "2286-11-20T17:46:40Z", &auto);
+        assert_rfc("10000000000", "2286-11-20T17:46:40Z", &ParseCfg::DEFAULT);
         // 11-digit still treated as seconds (not ms).
-        assert_rfc("17356896000", "2520-01-08T00:00:00Z", &auto);
+        assert_rfc("17356896000", "2520-01-08T00:00:00Z", &ParseCfg::DEFAULT);
         // 12-digit → milliseconds path.
-        assert_rfc("100000000000", "1973-03-03T09:46:40Z", &auto);
+        assert_rfc("100000000000", "1973-03-03T09:46:40Z", &ParseCfg::DEFAULT);
         // 19-digit → nanoseconds path (i64-max-ish).
         assert_rfc(
             "9223372036854775807",
             "2262-04-11T23:47:16.854775807Z",
-            &auto,
+            &ParseCfg::DEFAULT,
         );
         // 2-digit year pivot boundary.
-        assert_rfc("68", "2068-01-01T00:00:00Z", &auto);
-        assert_rfc("69", "1969-01-01T00:00:00Z", &auto);
-        assert_rfc("00", "2000-01-01T00:00:00Z", &auto);
+        assert_rfc("68", "2068-01-01T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("69", "1969-01-01T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("00", "2000-01-01T00:00:00Z", &ParseCfg::DEFAULT);
         // Signed year / date.
-        assert_rfc("+2024", "2024-01-01T00:00:00Z", &auto);
-        assert_rfc("+2024-03-15", "2024-03-15T00:00:00Z", &auto);
+        assert_rfc("+2024", "2024-01-01T00:00:00Z", &ParseCfg::DEFAULT);
+        assert_rfc("+2024-03-15", "2024-03-15T00:00:00Z", &ParseCfg::DEFAULT);
         // Very large negative pure-numeric still yields a Dt (far past).
         let neg = format!("-{}", "9".repeat(25));
-        let dt = parse(&neg, &auto);
+        let dt = parse(&neg, &ParseCfg::DEFAULT);
         assert!(dt.to_ymd().yr() < -9999);
     }
 
@@ -1161,7 +1188,7 @@ mod tests {
 
     #[test]
     fn display_form_roundtrip_via_from_str_parse() {
-        let cfg = def();
+        let cfg = default_cfg();
         let cases = [
             Dt::ZERO,
             Dt::new(
@@ -1185,7 +1212,7 @@ mod tests {
 
     #[test]
     fn display_form_agrees_with_dt_from_str() {
-        let cfg = def();
+        let cfg = default_cfg();
         for s in [
             "[0s TAI>TAI]",
             "[86400s TAI>UTC]",
@@ -1203,7 +1230,7 @@ mod tests {
 
     #[test]
     fn display_form_not_confused_with_civil_brackets() {
-        let cfg = def();
+        let cfg = default_cfg();
         // Normal civil / Zulu still works.
         assert_rfc("2024-03-15T12:00:00Z", "2024-03-15T12:00:00Z", &cfg);
 

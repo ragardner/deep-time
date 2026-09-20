@@ -38,6 +38,24 @@ impl Dt {
         Scale::TAI,
     );
 
+    /// Day 0 for spreadsheet date-time serials using the 1899-12-30 date base
+    /// (LibreOffice Calc / OpenOffice default).
+    ///
+    /// - 1899-12-30 00:00:00 UTC.
+    /// - Serial `25569` is 1970-01-01. See [`Dt::from_days_since`].
+    pub const SERIAL_EPOCH_1899: Self = Self::from_ymd(1899, 12, 30, Scale::UTC, 0, 0, 0, 0);
+
+    /// 1900-01-01 00:00:00 UTC.
+    ///
+    /// Serial 1 in the OOXML 1900 date base (serials 1–59). Serials ≥ 61 use
+    /// [`SERIAL_EPOCH_1899`](Self::SERIAL_EPOCH_1899) instead.
+    pub const SERIAL_EPOCH_1900: Self = Self::from_ymd(1900, 1, 1, Scale::UTC, 0, 0, 0, 0);
+
+    /// Day 0 for the 1904 spreadsheet date base (Apple / OOXML `date1904`).
+    ///
+    /// - 1904-01-01 00:00:00 UTC.
+    pub const SERIAL_EPOCH_1904: Self = Self::from_ymd(1904, 1, 1, Scale::UTC, 0, 0, 0, 0);
+
     /// TT/TCG/TCB/TDB epoch.
     ///
     /// - 1977-01-01 00:00:00 TAI.

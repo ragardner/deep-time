@@ -214,7 +214,7 @@ mod tests {
         let es_cfg = ParseCfg {
             lang: Lang::Es,
             relative: true,
-            to_lower: true,
+            assume_lowercase: false,
             ref_time: Some(ref_time),
             ..Default::default()
         };

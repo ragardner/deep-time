@@ -248,7 +248,7 @@ pub use ymdhms::YmdHms;
 pub use dt::tdb_hi;
 
 #[cfg(feature = "parse")]
-pub use alloc_parse::types::{Mode, Order, ParseCfg};
+pub use alloc_parse::types::{DateBase, Numeric, Order, ParseCfg, ParseFmt, UnixUnit};
 
 #[cfg(feature = "mars")]
 pub use dt::mars;

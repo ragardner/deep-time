@@ -7,6 +7,14 @@ pub(crate) fn parse_yymmdd(input: &str) -> Option<Dt> {
     parsed.to_dt().ok()
 }
 
+/// 8-digit compact date: YYYYMMDD (e.g. "20240315")
+#[inline]
+pub(crate) fn parse_yyyymmdd(input: &str) -> Option<Dt> {
+    let s = input.strip_prefix('+').unwrap_or(input);
+    let parsed = Parts::from_strptime("%Y%m%d", s, true, true, false).ok()?;
+    parsed.to_dt().ok()
+}
+
 /// Parses year-month (no day) with flexible separators:
 /// - year-first: `"2024-03"`, `"2024/3"`, `"2024.03"`, `"-2024-03"`, `"+2024-05"`, …
 /// - month-first: `"03/2024"`, `"3-2024"`, `"12.2024"` (4-digit year only)
