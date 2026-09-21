@@ -66,8 +66,9 @@ impl Parts {
     /// ### `jiff-tz` / `jiff-tz-bundle`
     ///
     /// Resolving a real IANA name (anything other than a UTC alias such as
-    /// `UTC` / `Zulu`) needs the `jiff-tz` or `jiff-tz-bundle` feature (both
-    /// need `alloc`). Without those features, a non-UTC IANA name returns
+    /// `UTC` / `Zulu`) needs `jiff-tz` (`std`, device's timezone files) or
+    /// `jiff-tz-bundle` (`alloc`, database copied into the binary). Without
+    /// those features, a non-UTC IANA name returns
     /// [`DtErrKind::MissingFeature`](../error/enum.DtErrKind.html#variant.MissingFeature).
     /// With the feature, unknown zone names return
     /// [`DtErrKind::InvalidTimeZone`](../error/enum.DtErrKind.html#variant.InvalidTimeZone).

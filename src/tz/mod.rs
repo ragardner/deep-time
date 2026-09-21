@@ -8,13 +8,14 @@
 //!
 //! | Configuration | [`tz_names`] yields |
 //! |---------------|---------------------|
-//! | `jiff-tz` or `jiff-tz-bundle` (with `alloc`) | All IANA identifiers from the bundled Jiff TZ database |
-//! | `alloc` without `jiff-tz` | [`UTC_ALIASES`] only |
+//! | `jiff-tz` (`std`) | IANA names from the device's timezone files |
+//! | `jiff-tz-bundle` (`alloc`) | IANA names from the copy of the timezone database in the binary |
+//! | `alloc` without either | [`UTC_ALIASES`] only |
 //! | `no_alloc` | [`UTC_ALIASES`] only (no heap) |
 //!
 //! Time zone–aware formatting and calendar math ([`Dt::to_str_in_tz`](../struct.Dt.html#method.to_str_in_tz),
-//! [`Dt::add_hours_tz`](../struct.Dt.html#method.add_hours_tz), etc.) require the `jiff-tz` feature.
-//! [`tz_names`] is independent of those APIs but uses the same database when `jiff-tz` is enabled.
+//! [`Dt::add_hours_tz`](../struct.Dt.html#method.add_hours_tz), etc.) require `jiff-tz` or `jiff-tz-bundle`.
+//! [`tz_names`] is independent of those APIs but uses the same database when either feature is enabled.
 //!
 //! ## Examples
 //!
@@ -65,8 +66,9 @@ pub static UTC_ALIASES: &[&str] = &[
 
 /// Returns an iterator over known time zone names as [`BufStr<49>`](../struct.BufStr.html).
 ///
-/// With `jiff-tz` or `jiff-tz-bundle`, yields every IANA identifier from the Jiff
-/// time zone database. Otherwise yields only [`UTC_ALIASES`].
+/// With `jiff-tz`, yields IANA names from the device's timezone files.
+/// With `jiff-tz-bundle`, yields names from the copy of the timezone database
+/// in the binary. Otherwise yields only [`UTC_ALIASES`].
 pub fn tz_names() -> impl Iterator<Item = BufStr<49>> {
     #[cfg(feature = "alloc")]
     {

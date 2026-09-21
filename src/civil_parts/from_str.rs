@@ -129,8 +129,8 @@ impl Parts {
     ///   `+02:00`, `-0530`, also allowed directly after the date. Hours are not
     ///   range-checked; offset minutes must be `≤ 59`.
     /// - **IANA name** — must be in square brackets, e.g. `[America/New_York]`.
-    ///   Resolving non-UTC aliases requires the `jiff-tz` or `jiff-tz-bundle` feature
-    ///   (both require `alloc`).
+    ///   Resolving non-UTC aliases requires `jiff-tz` (`std`, device's timezone
+    ///   files) or `jiff-tz-bundle` (`alloc`, database copied into the binary).
     /// - **Scale** — library abbreviation, e.g. `TAI`, `UTC`, `TDB`, `GPS`.
     ///
     /// ### Display form

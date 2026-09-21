@@ -136,24 +136,25 @@ serde = [
 jiff = [
     "dep:jiff",
 ]
+# Timezone parse/math/format. Reads the device's timezone files (needs std).
+# On Windows/wasm, jiff also embeds a copy (those systems have no IANA files).
+# No tz-system: we never ask which zone the device is set to.
 jiff-tz = [
     "jiff",
-    "alloc",
-    "jiff?/tz-system",
+    "std",
     "jiff?/tzdb-concatenated",
     "jiff?/tz-fat",
     "jiff?/perf-inline",
     "jiff?/tzdb-zoneinfo",
     "jiff?/tzdb-bundle-platform",
 ]
+# Same timezone APIs; copies the timezone database into the binary (no std).
+# Sibling of jiff-tz, not a superset — must not inherit zoneinfo.
 jiff-tz-bundle = [
     "jiff",
     "alloc",
-    "jiff?/tz-system",
-    "jiff?/tzdb-concatenated",
     "jiff?/tz-fat",
     "jiff?/perf-inline",
-    "jiff?/tzdb-zoneinfo",
     "jiff?/tzdb-bundle-always",
 ]
 
@@ -234,6 +235,7 @@ required-features = ["sidereal-earth", "eop", "std"]
 name = "ccsds_vs_wire"
 required-features = ["wire"]
 
+# cargo bench --bench perf --features "parse,jiff-tz,hifitime"
 [[bench]]
 name = "perf"
 harness = false

@@ -212,8 +212,8 @@ cargo add deep-time --features "parse,jiff-tz"
 | Feature              | Description                                                                  | Requires    |
 |----------------------|------------------------------------------------------------------------------|-------------|
 | `parse`              | Enables the auto-parsers (`from_str_parse`, `from_str_duration`, etc.)       | `alloc`     |
-| `jiff-tz`            | Enables timezone features such as tz parsing, tz calendar math, formatting   | `alloc`     |
-| `jiff-tz-bundle`     | Same as `jiff-tz` but bundles the full timezone database                     | `alloc`     |
+| `jiff-tz`            | Timezone parse, calendar math, formatting. Uses the device's timezone files  | `std`       |
+| `jiff-tz-bundle`     | Same timezone APIs; copies the timezone database into the binary             | `alloc`     |
 | `jiff`               | Enables [`jiff`](https://crates.io/crates/jiff) interop                      | —           |
 | `chrono`             | Enables [`chrono`](https://crates.io/crates/chrono) interop                  | —           |
 | `hifitime`           | Enables [`hifitime`](https://crates.io/crates/hifitime) interop              | —           |
@@ -252,6 +252,7 @@ You only need this if you are building a binary crate in a `no_std` environment 
 
 #### Notes
 
+- If you need named timezones (such as `America/New_York`): enable `jiff-tz`, which reads the device's timezone files (for example `/usr/share/zoneinfo` on Linux) and needs `std`. If you cannot use `std`, enable `jiff-tz-bundle` instead; that copies the timezone database into the binary.
 - The fast multi-format string parser (`Dt::from_str` / `Parts::from_str`) works **without** the `parse` feature.
 - Multi-language **parsing** requires the `parse` feature, but multi-language **formatting** works without it.
 - The `.parse()` implementation on `Dt` automatically chooses between the full parser and the ISO parser depending on enabled features.
