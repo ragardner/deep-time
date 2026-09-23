@@ -75,8 +75,9 @@ use core::fmt;
 ///   differs between functions.**
 /// - **Comparison** (`==`, `Ord`, and [`Dt::cmp`](../struct.Dt.html#method.cmp)) uses only the
 ///   `attos` field. `scale` and `target` are not consulted and no time-scale conversion is
-///   performed. To test whether two values denote the same physical instant, convert both to a
-///   common scale (e.g. with [`Dt::to`](../struct.Dt.html#method.to)) before comparing.
+///   performed. [`Dt::cmp_instant`](../struct.Dt.html#method.cmp_instant) orders two instants
+///   by the attosecond count each has on TAI. Sorting with either order is covered under
+///   [Sorting](#sorting).
 ///
 /// ```rust
 /// use deep_time::{Dt, Scale};
@@ -86,6 +87,7 @@ use core::fmt;
 ///
 /// assert_eq!(tai, relabeled);
 /// assert_ne!(tai, tai.to(Scale::TT)); // .to() converts attos — no longer equal
+/// assert!(tai.cmp_instant(&tai.to(Scale::TT)).is_eq());
 /// ```
 ///
 /// ## Reference epoch and scales
@@ -148,6 +150,11 @@ use core::fmt;
 /// - [`Dt::from_unix_days_f`](../struct.Dt.html#method.from_unix_days_f)
 /// - [`Dt::to_ntp`](../struct.Dt.html#method.to_ntp)
 /// - [`Dt::to_gps_wk_and_tow`](../struct.Dt.html#method.to_gps_wk_and_tow)
+///
+/// ### Comparison and sorting
+///
+/// - [`Dt::cmp`](../struct.Dt.html#method.cmp)
+/// - [`Dt::cmp_instant`](../struct.Dt.html#method.cmp_instant)
 ///
 /// ### Conversions from and to types from other libraries
 ///
@@ -355,26 +362,25 @@ use core::fmt;
 /// let a = from_ymd!(2000, 1, 1; 12, on=Scale::TAI);
 /// let mut b = Dt::from_str("2000-01-01T12 TAI").unwrap();
 ///
-/// // same instant but on the TT time scale
+/// // same instant, on TT. attos changed, so == fails
 /// b = b.to(Scale::TT);
-///
-/// // comparisons only use the attos field
-/// // changing b to TT has changed its attos
 /// assert_ne!(a, b);
+/// assert!(a.cmp_instant(&b).is_eq());
 ///
-/// // to check if two Dt's are the same instant
-/// // they must be on the same time scale and
-/// // from the same epoch
+/// // == agrees once both counts are on TAI
 /// b = b.to(Scale::TAI);
 /// assert_eq!(a, b);
 ///
-/// // Dt also allows various mathematical operations
+/// // subtraction uses attos. this UTC count is 32 s behind TAI
 /// b = b.to(Scale::UTC);
 /// let diff = (a - b).to_sec();
 /// assert_eq!(diff, 32);
 /// ```
 ///
 /// #### Sorting
+///
+/// `sort()` and `sort_unstable()` compare `attos` only. Use them when every
+/// value is on the same scale, or when comparing durations:
 ///
 /// ```rust
 /// # #[cfg(feature = "alloc")]
@@ -394,6 +400,71 @@ use core::fmt;
 /// assert_eq!(times[0], from_ymd!(2000, 1, 1));
 /// assert_eq!(times[1], from_ymd!(2000, 1, 2));
 /// assert_eq!(times[2], from_ymd!(2000, 1, 3));
+/// # }
+/// ```
+///
+/// Noon TAI and noon TT are the same instant, but the TT value stores 32.184 s
+/// more in `attos`, so `sort()` would sort the TT value later than the TAI value.
+///
+/// [`Dt::cmp_instant`](../struct.Dt.html#method.cmp_instant)
+/// on the other hand, converts values to TAI for sorting so noon TAI and that
+/// same noon on TT would compare equal.
+///
+/// `sort_unstable_by(|a, b| a.cmp_instant(b))` doesn't require `alloc`, but
+/// if two values are the same instant, either of them may come first:
+///
+/// ```rust
+/// use deep_time::{Dt, Scale};
+///
+/// let tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+/// let earlier = tai.add_sec(-10);
+/// let mut times = [tai.to(Scale::TT), earlier, tai];
+///
+/// times.sort_unstable_by(|a, b| a.cmp_instant(b));
+///
+/// assert_eq!(times[0], earlier);
+/// assert!(times[1].cmp_instant(&tai).is_eq());
+/// assert!(times[2].cmp_instant(&tai).is_eq());
+/// ```
+///
+/// `sort_by()` requires `alloc`, and it preserves the original order of
+/// values that are equal, but using it with `cmp_instant` means repeated
+/// time scale conversions for the same items.
+///
+/// `sort_by_cached_key(|dt| dt.to_tai().attos)` avoids those repeated
+/// conversions. It asks each value for its TAI attosecond count once, stores
+/// those counts, and sorts by them. `to_tai` on `TDB`, `ET`, `TCB`, `LTC`,
+/// `TCL`, and `UtcHist` is much slower than on `TT`, `UTC`, or `GPS`, so the
+/// repeated conversions in `sort_by` add up.
+///
+/// `binary_search` and `dedup` compare `attos`, the same way `sort()` does.
+/// After a `cmp_instant` sort, pass `cmp_instant` to `binary_search_by` and
+/// `dedup_by`:
+///
+/// ```rust
+/// # #[cfg(feature = "alloc")]
+/// # {
+/// use deep_time::{Dt, Scale};
+///
+/// let tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+/// let earlier = tai.add_sec(-10);
+/// let tt = tai.to(Scale::TT);
+/// let mut times = vec![tt, earlier, tai];
+///
+/// times.sort_by(|a, b| a.cmp_instant(b));
+/// assert_eq!(times, vec![earlier, tt, tai]);
+///
+/// let idx = times
+///     .binary_search_by(|probe| probe.cmp_instant(&tai))
+///     .unwrap();
+/// assert!(times[idx].cmp_instant(&tai).is_eq());
+///
+/// times.dedup_by(|a, b| a.cmp_instant(b).is_eq());
+/// assert_eq!(times, vec![earlier, tt]);
+///
+/// let mut by_tai = vec![tt, earlier, tai];
+/// by_tai.sort_by_cached_key(|dt| dt.to_tai().attos);
+/// assert_eq!(by_tai, vec![earlier, tt, tai]);
 /// # }
 /// ```
 #[derive(Clone, Copy)]

@@ -148,7 +148,7 @@ impl Div<Dt> for Dt {
 }
 
 impl Dt {
-    /// Compares the time values represented by two `Dt`s.
+    /// Compares the raw attosecond counts of two `Dt`s.
     ///
     /// - This comparison is based solely on the raw total attosecond
     ///   value (`self.attos` vs `other.attos`).
@@ -164,8 +164,47 @@ impl Dt {
         }
     }
 
-    /// Returns the smaller of two `Dt`s according to the total physical-time order
-    /// defined by [`Dt::cmp`](#method.cmp).
+    /// Orders two instants by the attosecond count each has on TAI.
+    ///
+    /// Both values are converted with [`Dt::to_tai`](#method.to_tai), and those
+    /// counts are compared. `target` is ignored. `Ordering::Equal` means the
+    /// TAI counts match. `==` stays true when the raw `attos` fields match, so
+    /// a value and that value converted with [`Dt::to`](#method.to) compare
+    /// `Equal` here while remaining unequal under `==`.
+    ///
+    /// Both arguments are instants counted from the library epoch
+    /// (2000-01-01 noon) on their own `scale`. A duration uses
+    /// [`Dt::cmp`](#method.cmp).
+    ///
+    /// `Scale::Custom` is relabeled TAI with the same count. `TDB`, `ET`,
+    /// `TCB`, `LTC`, `TCL`, and `UtcHist` compare as `to_tai` returns them,
+    /// including that model's rounding. Near either end of the `i128` range,
+    /// saturating conversion can collapse distinct counts onto one TAI value.
+    ///
+    /// `sort()` and `sort_unstable()` compare `attos` and do not call this
+    /// function.
+    ///
+    /// To order instants that are on different time scales, pass this method to
+    /// `sort_by` or `sort_unstable_by`. See [Sorting](../struct.Dt.html#sorting)
+    /// for more information.
+    ///
+    /// ```rust
+    /// use deep_time::{Dt, Scale};
+    ///
+    /// let tai = Dt::from_ymd(2000, 1, 1, Scale::TAI, 12, 0, 0, 0);
+    /// let tt = tai.to(Scale::TT);
+    ///
+    /// assert_ne!(tai, tt);
+    /// assert!(tai.cmp_instant(&tt).is_eq());
+    /// assert!(tai.cmp_instant(&tai.add_sec(-10)).is_gt());
+    /// ```
+    #[inline]
+    pub const fn cmp_instant(&self, other: &Self) -> Ordering {
+        self.to_tai().cmp(&other.to_tai())
+    }
+
+    /// Returns the smaller of two `Dt`s according to [`Dt::cmp`](#method.cmp)
+    /// (raw `attos`, no scale conversion).
     ///
     /// This is a `const fn` and can be used in const contexts.
     #[inline]
@@ -176,8 +215,8 @@ impl Dt {
         }
     }
 
-    /// Returns the larger of two `Dt`s according to the total physical-time order
-    /// defined by [`Dt::cmp`](#method.cmp).
+    /// Returns the larger of two `Dt`s according to [`Dt::cmp`](#method.cmp)
+    /// (raw `attos`, no scale conversion).
     ///
     /// See [`Dt::min`](#method.min) for more details.
     #[inline]
