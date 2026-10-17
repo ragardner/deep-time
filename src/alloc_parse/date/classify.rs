@@ -238,21 +238,25 @@ pub(crate) fn classify_date(
 
                                 if match num_date_digits {
                                     8.. => idx + 1 < part_len && part_chars[idx + 1].is_numeric(),
+                                    // The whole string is 10 or 12 digit glyphs, or 8 digits
+                                    // then ':'. A later word is not part of that length,
+                                    // and a fullwidth digit counts as one.
                                     6 => {
                                         is_pure_numeric
-                                            && match bytes_len {
-                                                10 | 12 => {
-                                                    idx + 1 < part_len
-                                                        && part_chars[idx + 1].is_numeric()
-                                                        && num_date_digit_groups == 1
-                                                }
-                                                11 => {
-                                                    idx + 3 < part_len
-                                                        && part_chars[idx + 1].is_numeric()
-                                                        && part_chars[idx + 2].is_numeric()
-                                                        && part_chars[idx + 3] == ':'
-                                                }
-                                                _ => false,
+                                            && num_date_digit_groups == 1
+                                            && range.start == 0
+                                            && range.end == s.len()
+                                            && if part_len == 11 {
+                                                idx + 3 < part_len
+                                                    && to_ascii_digit(part_chars[idx + 1]).is_some()
+                                                    && to_ascii_digit(part_chars[idx + 2]).is_some()
+                                                    && part_chars[idx + 3] == ':'
+                                            } else {
+                                                matches!(part_len, 10 | 12)
+                                                    && idx + 1 < part_len
+                                                    && part_chars
+                                                        .iter()
+                                                        .all(|c| to_ascii_digit(*c).is_some())
                                             }
                                     }
                                     _ => false,
