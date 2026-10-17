@@ -128,9 +128,16 @@ define_ends_with_methods! {
     ends_with_rbracket      => b']',
 }
 
-/// Converts common Unicode decimal digit (ASCII + full-width + others)
-/// to the corresponding ASCII digit string.
+/// One decimal place as an ASCII digit.
+///
+/// Covers ASCII, fullwidth, and the other decimal-digit blocks below.
+/// Ideographic zero (`〇`, U+3007) is included because its value is the
+/// single place 0.
 pub(crate) fn to_ascii_digit(ch: char) -> Option<char> {
+    // Not a decimal digit. `char::to_digit` does not see it.
+    if ch == '\u{3007}' {
+        return Some('0');
+    }
     if let Some(d) = ch.to_digit(10) {
         return Some(DIGIT_CHARS[d as usize]);
     }

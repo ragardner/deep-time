@@ -42,6 +42,7 @@ mod tests {
             ("1wk", 604800000),
             ("1 hour", 3600000),
             ("2 days", 172800000),
+            ("2〇 days", 1_728_000_000), // ideographic zero is the digit 0 → 20 days
             ("1hr 30min", 5400000),
             ("2 hours 30 minutes", 9000000),
             ("1 day and 2 hours", 93600000),

@@ -623,6 +623,8 @@ mod tests {
         assert_rfc("2024,03,15", "2024-03-15T00:00:00Z", &cfg);
         // Fullwidth digits.
         assert_rfc("２０２４-０３-１５", "2024-03-15T00:00:00Z", &cfg);
+        // Ideographic zero is the digit 0.
+        assert_rfc("2〇24-03-15", "2024-03-15T00:00:00Z", &cfg);
         assert_rfc("１５/０３/２０２４", "2024-03-15T00:00:00Z", &cfg);
         // Japanese calendar units.
         assert_rfc("2024年3月15日", "2024-03-15T00:00:00Z", &cfg);
