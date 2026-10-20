@@ -28,6 +28,45 @@ fn send_to_relative_parser(
     Ok(ClassifiedDate::Parsed(dt))
 }
 
+/// Store one clock or offset token from the digits seen so far.
+///
+/// A 1–2 digit clock that already contains a colon is left unstored.
+/// `14:` can then still reach the relative parser. `2PM` is the bare
+/// hour: 1–2 digits and no colon.
+fn push_finished_clock(
+    currently: IndexIn,
+    time_digits: u8,
+    time_colons: u8,
+    offset_colons: u8,
+    time_tokens: &mut Vec<Token>,
+    has_time: &mut bool,
+) {
+    if currently == IndexIn::Offset {
+        time_tokens.push(if offset_colons > 0 {
+            Token::OffsetColon
+        } else {
+            Token::Offset
+        });
+    } else if currently == IndexIn::Time && time_digits > 0 && (time_digits > 2 || time_colons == 0)
+    {
+        let tok = if time_digits <= 2 {
+            Token::H
+        } else if time_digits > 4 {
+            if time_colons > 0 {
+                Token::HmsColon
+            } else {
+                Token::Hms
+            }
+        } else if time_colons > 0 {
+            Token::HmColon
+        } else {
+            Token::Hm
+        };
+        *has_time = true;
+        time_tokens.push(tok);
+    }
+}
+
 /// True when a dictionary hit is not glued inside a larger alphabetic run
 /// (e.g. reject `jun` inside `junk`, `now` inside `knowledge`, `am` inside
 /// `america`).
@@ -316,46 +355,11 @@ pub(crate) fn classify_date(
                         digit_run_len = 0;
                     }
 
-                    if in_time_digit_run && time_digit_run_len > 0 {
-                        // Time-field separators do not end the time value:
-                        // `:` and French `h` in `14h30` (normalised to `:` below).
-                        let is_time_field_sep = *ch == ':'
-                            || (*ch == 'h'
-                                && date_norm.ends_with_ascii_digit()
-                                && idx + 1 < part_len
-                                && part_chars[idx + 1].is_numeric());
-                        if !is_time_field_sep {
-                            if currently == IndexIn::Offset {
-                                let tok = if offset_colons > 0 {
-                                    Token::OffsetColon
-                                } else {
-                                    Token::Offset
-                                };
-                                time_tokens.push(tok);
-                            } else if currently == IndexIn::Time && time_digits > 0 {
-                                // Bare hour (`2PM`): 1–2 digits and no ':'.
-                                // With ':', 1–2 digits alone are not a full Hm/Hms
-                                // token — leave has_time false so inputs like
-                                // `14:00` can still go to the relative parser.
-                                if time_digits > 2 || time_colons == 0 {
-                                    let tok = if time_digits <= 2 {
-                                        Token::H
-                                    } else if time_digits > 4 {
-                                        if time_colons > 0 {
-                                            Token::HmsColon
-                                        } else {
-                                            Token::Hms
-                                        }
-                                    } else if time_colons > 0 {
-                                        Token::HmColon
-                                    } else {
-                                        Token::Hm
-                                    };
-                                    has_time = true;
-                                    time_tokens.push(tok);
-                                }
-                            }
-                        }
+                    // Every non-digit ends the current field. The arms below
+                    // decide whether that also stores the clock token. `:` does
+                    // not. A character stored as `:` (`h`, `時`, `分`) does not.
+                    let time_run_open = in_time_digit_run && time_digit_run_len > 0;
+                    if time_run_open {
                         in_time_digit_run = false;
                         time_digit_run_len = 0;
                     }
@@ -366,6 +370,16 @@ pub(crate) fn classify_date(
 
                     match ch {
                         ' ' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if !date_norm.ends_with_space() {
                                 date_norm.push(' ');
                             }
@@ -471,6 +485,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         '-' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_minus() {
                                 continue;
                             }
@@ -487,6 +511,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         '.' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_dot() {
                                 continue;
                             }
@@ -510,6 +544,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         '/' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_slash() {
                                 continue;
                             }
@@ -520,6 +564,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         ',' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_comma() {
                                 continue;
                             }
@@ -530,6 +584,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         't' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_ascii_digit()
                                 && idx + 1 < part_len
                                 && part_chars[idx + 1].is_numeric()
@@ -540,6 +604,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         'z' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_ascii_digit() {
                                 currently = IndexIn::PostDate;
                                 date_norm.push('Z');
@@ -547,6 +621,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         'w' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if currently == IndexIn::Date
                                 && !has_w
                                 && idx + 1 < part_len
@@ -558,6 +642,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         '+' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_plus() {
                                 continue;
                             }
@@ -570,6 +664,16 @@ pub(crate) fn classify_date(
                             }
                         }
                         '[' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_lbracket() {
                                 continue;
                             }
@@ -578,6 +682,16 @@ pub(crate) fn classify_date(
                             time_tokens.push(Token::LBracket);
                         }
                         ']' => {
+                            if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
+                            }
                             if date_norm.ends_with_rbracket() {
                                 continue;
                             }
@@ -586,19 +700,26 @@ pub(crate) fn classify_date(
                             time_tokens.push(Token::RBracket);
                         }
                         _ => {
-                            if date_norm.ends_with_ascii_digit()
+                            let between_digits = date_norm.ends_with_ascii_digit()
                                 && idx + 1 < part_len
-                                && part_chars[idx + 1].is_numeric()
-                            {
-                                if currently == IndexIn::Date {
-                                    date_norm.push('-');
-                                    num_hyphen = num_hyphen.saturating_add(1);
-                                    date_tokens.push(Token::Hyphen);
-                                } else if currently == IndexIn::Time {
-                                    date_norm.push(':');
-                                    num_colon = num_colon.saturating_add(1);
-                                    time_colons = time_colons.saturating_add(1);
-                                }
+                                && part_chars[idx + 1].is_numeric();
+                            if between_digits && currently == IndexIn::Date {
+                                date_norm.push('-');
+                                num_hyphen = num_hyphen.saturating_add(1);
+                                date_tokens.push(Token::Hyphen);
+                            } else if between_digits && currently == IndexIn::Time {
+                                date_norm.push(':');
+                                num_colon = num_colon.saturating_add(1);
+                                time_colons = time_colons.saturating_add(1);
+                            } else if time_run_open {
+                                push_finished_clock(
+                                    currently,
+                                    time_digits,
+                                    time_colons,
+                                    offset_colons,
+                                    &mut time_tokens,
+                                    &mut has_time,
+                                );
                             }
                         }
                     }
@@ -621,33 +742,14 @@ pub(crate) fn classify_date(
 
             // remaining time/offset run
             if in_time_digit_run && time_digit_run_len > 0 && currently.after_date() {
-                if currently == IndexIn::Offset {
-                    let tok = if offset_colons > 0 {
-                        Token::OffsetColon
-                    } else {
-                        Token::Offset
-                    };
-                    time_tokens.push(tok);
-                } else if currently == IndexIn::Time
-                    && time_digits > 0
-                    && (time_digits > 2 || time_colons == 0)
-                {
-                    let tok = if time_digits <= 2 {
-                        Token::H
-                    } else if time_digits > 4 {
-                        if time_colons > 0 {
-                            Token::HmsColon
-                        } else {
-                            Token::Hms
-                        }
-                    } else if time_colons > 0 {
-                        Token::HmColon
-                    } else {
-                        Token::Hm
-                    };
-                    has_time = true;
-                    time_tokens.push(tok);
-                }
+                push_finished_clock(
+                    currently,
+                    time_digits,
+                    time_colons,
+                    offset_colons,
+                    &mut time_tokens,
+                    &mut has_time,
+                );
                 in_time_digit_run = false;
                 time_digit_run_len = 0;
             }
@@ -673,33 +775,14 @@ pub(crate) fn classify_date(
     }
 
     if in_time_digit_run && time_digit_run_len > 0 && currently.after_date() {
-        if currently == IndexIn::Offset {
-            let tok = if offset_colons > 0 {
-                Token::OffsetColon
-            } else {
-                Token::Offset
-            };
-            time_tokens.push(tok);
-        } else if currently == IndexIn::Time
-            && time_digits > 0
-            && (time_digits > 2 || time_colons == 0)
-        {
-            let tok = if time_digits <= 2 {
-                Token::H
-            } else if time_digits > 4 {
-                if time_colons > 0 {
-                    Token::HmsColon
-                } else {
-                    Token::Hms
-                }
-            } else if time_colons > 0 {
-                Token::HmColon
-            } else {
-                Token::Hm
-            };
-            has_time = true;
-            time_tokens.push(tok);
-        }
+        push_finished_clock(
+            currently,
+            time_digits,
+            time_colons,
+            offset_colons,
+            &mut time_tokens,
+            &mut has_time,
+        );
     }
 
     if num_dot > 1 {

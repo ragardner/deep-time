@@ -626,8 +626,10 @@ mod tests {
         // Ideographic zero is the digit 0.
         assert_rfc("2〇24-03-15", "2024-03-15T00:00:00Z", &cfg);
         assert_rfc("１５/０３/２０２４", "2024-03-15T00:00:00Z", &cfg);
-        // Japanese calendar units.
+        // Japanese calendar units. 時 and 分 sit between clock fields, so
+        // they stay open; 秒 ends the clock.
         assert_rfc("2024年3月15日", "2024-03-15T00:00:00Z", &cfg);
+        assert_rfc("2024年3月15日14時30分45秒", "2024-03-15T14:30:45Z", &cfg);
         // Zero-width space prefix is tolerated.
         assert_rfc("\u{200b}2024-03-15", "2024-03-15T00:00:00Z", &cfg);
         // Tab between date and time is treated like a separator (normalised
