@@ -949,7 +949,8 @@ impl Dt {
     /// Minutes and seconds must be `0..=59`. Fractional seconds (optional) may
     /// follow only the seconds field, up to 18 digits. Requires at least one
     /// `:`. Optional leading `-` and ASCII whitespace. Returns a pure duration
-    /// on `Scale::TAI`.
+    /// on `Scale::TAI`. Fullwidth ASCII characters in U+FF01..=U+FF5E are read
+    /// as the ASCII characters they mirror, so `25：00` is 25 hours.
     ///
     /// Not media duration: two fields are **hours:minutes**, not minutes:seconds.
     #[inline]
@@ -958,36 +959,36 @@ impl Dt {
     }
 
     /// Shared by [`from_str_h_mm_duration`] and relative natural parse.
+    ///
+    /// Each character is passed through [`Dt::fullwidth_to_normal`] as it is read.
+    /// The character that ends a number is kept and used for the next decision.
     pub(crate) fn h_mm_duration_attos(input: &str) -> Result<i128, DtErr> {
-        let bytes = input.as_bytes();
-        let len = bytes.len();
-        let mut pos = 0usize;
-
-        while pos < len && bytes[pos].is_ascii_whitespace() {
-            pos += 1;
+        let mut it = input.chars().map(Dt::fullwidth_to_normal);
+        let mut next = it.next();
+        while next.is_some_and(|c| c.is_ascii_whitespace()) {
+            next = it.next();
         }
-        if pos == len {
+        let Some(mut next) = next else {
             return Err(an_err!(DtErrKind::Empty));
-        }
+        };
 
-        let neg = if bytes[pos] == b'-' {
-            pos += 1;
-            if pos == len {
-                return Err(an_err!(DtErrKind::InvalidInput));
-            }
+        let neg = if next == '-' {
+            next = it.next().ok_or_else(|| an_err!(DtErrKind::InvalidInput))?;
             true
         } else {
             false
         };
 
-        let hours = parse_uint(bytes, &mut pos, len)?;
+        let (hours, stopped) = take_uint(&mut it, next)?;
         // At least one colon is required (H:MM or H:MM:SS).
-        if pos >= len || bytes[pos] != b':' {
+        if stopped != Some(':') {
             return Err(an_err!(DtErrKind::InvalidSyntax));
         }
-        pos += 1;
 
-        let minutes = parse_uint(bytes, &mut pos, len)?;
+        let Some(minute_first) = it.next() else {
+            return Err(an_err!(DtErrKind::ExpectedValue));
+        };
+        let (minutes, mut stopped) = take_uint(&mut it, minute_first)?;
         if minutes > 59 {
             return Err(an_err!(DtErrKind::InvalidInput));
         }
@@ -995,39 +996,48 @@ impl Dt {
         let mut seconds: i128 = 0;
         let mut frac_attos: i128 = 0;
 
-        if pos < len && bytes[pos] == b':' {
-            pos += 1;
-            seconds = parse_uint(bytes, &mut pos, len)?;
-            if seconds > 59 {
+        if stopped == Some(':') {
+            let Some(second_first) = it.next() else {
+                return Err(an_err!(DtErrKind::ExpectedValue));
+            };
+            let (sec, after) = take_uint(&mut it, second_first)?;
+            if sec > 59 {
                 return Err(an_err!(DtErrKind::InvalidInput));
             }
-            if pos < len && bytes[pos] == b'.' {
-                pos += 1;
-                if pos >= len || !bytes[pos].is_ascii_digit() {
-                    return Err(an_err!(DtErrKind::ExpectedValue));
-                }
+            seconds = sec;
+            stopped = after;
+            if stopped == Some('.') {
                 let mut digits = 0u32;
                 let mut frac = 0i128;
-                while pos < len && bytes[pos].is_ascii_digit() {
+                let mut saw_digit = false;
+                stopped = None;
+                for c in &mut it {
+                    if !c.is_ascii_digit() {
+                        stopped = Some(c);
+                        break;
+                    }
+                    saw_digit = true;
                     if digits < 18 {
                         frac = frac
                             .saturating_mul(10)
-                            .saturating_add((bytes[pos] - b'0') as i128);
+                            .saturating_add((c as u8 - b'0') as i128);
                         digits += 1;
                     }
-                    pos += 1;
+                }
+                if !saw_digit {
+                    return Err(an_err!(DtErrKind::ExpectedValue));
                 }
                 frac_attos = frac.saturating_mul(10i128.pow(18 - digits));
             }
-        } else if pos < len && bytes[pos] == b'.' {
+        } else if stopped == Some('.') {
             // No fractional minutes.
             return Err(an_err!(DtErrKind::InvalidSyntax));
         }
 
-        while pos < len && bytes[pos].is_ascii_whitespace() {
-            pos += 1;
+        while stopped.is_some_and(|c| c.is_ascii_whitespace()) {
+            stopped = it.next();
         }
-        if pos != len {
+        if stopped.is_some() {
             return Err(an_err!(DtErrKind::TrailingCharacters));
         }
 
@@ -1044,16 +1054,25 @@ impl Dt {
     }
 }
 
-fn parse_uint(bytes: &[u8], pos: &mut usize, len: usize) -> Result<i128, DtErr> {
-    if *pos >= len || !bytes[*pos].is_ascii_digit() {
+/// Reads a number that starts with `first`.
+///
+/// The returned character is the one that ended the number. `None` means the
+/// input ended on a digit.
+fn take_uint(
+    it: &mut impl Iterator<Item = char>,
+    first: char,
+) -> Result<(i128, Option<char>), DtErr> {
+    if !first.is_ascii_digit() {
         return Err(an_err!(DtErrKind::ExpectedValue));
     }
-    let mut v: i128 = 0;
-    while *pos < len && bytes[*pos].is_ascii_digit() {
+    let mut v = (first as u8 - b'0') as i128;
+    for c in it {
+        if !c.is_ascii_digit() {
+            return Ok((v, Some(c)));
+        }
         v = v
             .saturating_mul(10)
-            .saturating_add((bytes[*pos] - b'0') as i128);
-        *pos += 1;
+            .saturating_add((c as u8 - b'0') as i128);
     }
-    Ok(v)
+    Ok((v, None))
 }

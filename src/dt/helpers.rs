@@ -246,4 +246,21 @@ impl Dt {
     pub const fn attos_to_weeks_f(attos: i128) -> Real {
         Self::attos_to_sec_f(attos) / (SEC_PER_DAY_F * 7.0)
     }
+
+    /// Map one fullwidth ASCII character onto the ASCII character it mirrors.
+    ///
+    /// U+FF01..=U+FF5E (`！`..=`～`) is ASCII `!`..=`~` shifted up by `0xFEE0`.
+    /// Subtracting that shift lands on U+0021..=U+007E. Every other scalar is
+    /// returned unchanged, including ASCII, CJK, the ideographic space, and the
+    /// halfwidth block that starts at U+FF61.
+    #[inline]
+    pub(crate) const fn fullwidth_to_normal(c: char) -> char {
+        let u = c as u32;
+        if u >= 0xFF01 && u <= 0xFF5E {
+            // 0x21..=0x7E fits in one byte and each value is a valid char.
+            ((u - 0xFEE0) as u8) as char
+        } else {
+            c
+        }
+    }
 }

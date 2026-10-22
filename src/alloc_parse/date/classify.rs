@@ -226,7 +226,7 @@ pub(crate) fn classify_date(
             is_pure_numeric = false;
         } else {
             part_chars.clear();
-            part_chars.extend(part.chars());
+            part_chars.extend(part.chars().map(Dt::fullwidth_to_normal));
             let part_len = part_chars.len();
 
             for (idx, ch) in part_chars.iter().enumerate() {

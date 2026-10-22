@@ -553,6 +553,30 @@ mod tests {
     }
 
     #[test]
+    fn fullwidth_bare_clock_matches_the_normal_reading() {
+        let cfg = ref_cfg();
+        let pairs = [
+            ("14：30：45", "14:30:45"),
+            ("１４：３０：４５", "14:30:45"),
+            ("9：30pm", "9:30pm"),
+            ("tomorrow at 14：30：45", "tomorrow at 14:30:45"),
+            ("25：00：00", "25:00:00"),
+            ("24：00", "24:00"),
+            ("72：30", "72:30"),
+            ("14：30：45.123", "14:30:45.123"),
+            ("14：30：45．123", "14:30:45.123"),
+        ];
+        for (fullwidth, ascii) in pairs {
+            let wide = parse(fullwidth, &cfg).to_str_rfc3339_nf(9);
+            let plain = parse(ascii, &cfg).to_str_rfc3339_nf(9);
+            assert_eq!(wide, plain, "{fullwidth:?} vs {ascii:?}");
+        }
+        assert_err("24：60", &cfg);
+        assert_err("24:60", &cfg);
+        assert_err("at 25：00", &cfg);
+    }
+
+    #[test]
     fn invalid_clock_fields_do_not_glue_to_days() {
         let cfg = ref_cfg();
         // Invalid ops duration → Err (not digit-glue into multi-day offsets).
@@ -635,6 +659,41 @@ mod tests {
         // Tab between date and time is treated like a separator (normalised
         // to a hyphen in classify) and the time is still recovered.
         assert_rfc("2024-03-15\t14:30", "2024-03-15T14:30:00Z", &cfg);
+    }
+
+    #[test]
+    fn fullwidth_ascii_matches_the_normal_reading() {
+        let cfg = default_cfg();
+        let pairs = [
+            ("2024－03－15", "2024-03-15"),
+            ("2024／03／15", "2024/03/15"),
+            ("15／03／2024", "15/03/2024"),
+            ("2024．03．15", "2024.03.15"),
+            ("15，03，2024", "15,03,2024"),
+            ("2024：03：15", "2024:03:15"),
+            ("２０２４－０３－１５", "2024-03-15"),
+            ("2024－W11－1", "2024-W11-1"),
+            ("March 15， 2024", "March 15, 2024"),
+            ("2024-03-15 14：30：45", "2024-03-15 14:30:45"),
+            ("2024-03-15T14：30：45", "2024-03-15T14:30:45"),
+            ("2024-03-15Ｔ14:30:45", "2024-03-15T14:30:45"),
+            ("2024-03-15 14ｈ30", "2024-03-15 14h30"),
+            ("2024-03-15T14:30:45Ｚ", "2024-03-15T14:30:45Z"),
+            ("2024-03-15T14:30:45＋09:00", "2024-03-15T14:30:45+09:00"),
+            ("2024-03-15T14:30:45－09:00", "2024-03-15T14:30:45-09:00"),
+            ("2024-03-15T14:30:45+09：00", "2024-03-15T14:30:45+09:00"),
+            ("2024-03-15 14：30：45.123", "2024-03-15 14:30:45.123"),
+            (
+                "２０２４－０３－１５Ｔ１４：３０：４５",
+                "2024-03-15T14:30:45",
+            ),
+            ("６０３８８．５", "60388.5"),
+        ];
+        for (fullwidth, ascii) in pairs {
+            let wide = parse(fullwidth, &cfg).to_str_rfc3339_nf(9);
+            let plain = parse(ascii, &cfg).to_str_rfc3339_nf(9);
+            assert_eq!(wide, plain, "{fullwidth:?} vs {ascii:?}");
+        }
     }
 
     // ── 10. Compact datetime layouts ───────────────────────────────────────

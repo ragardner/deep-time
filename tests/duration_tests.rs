@@ -232,6 +232,27 @@ mod tests {
         assert!(Dt::from_str_h_mm_duration("1:00:60").is_err());
         assert!(Dt::from_str_h_mm_duration("72:30.5").is_err());
         assert!(Dt::from_str_h_mm_duration("1:07:54:30").is_err());
+        assert_eq!(
+            Dt::from_str_h_mm_duration("25：00").unwrap().to_sec(),
+            25 * 3600
+        );
+        assert_eq!(
+            Dt::from_str_h_mm_duration("２５：００").unwrap().to_sec(),
+            25 * 3600
+        );
+        assert_eq!(
+            Dt::from_str_h_mm_duration("14：23：59").unwrap().to_sec(),
+            14 * 3600 + 23 * 60 + 59
+        );
+        let wide_half = Dt::from_str_h_mm_duration("0：00：01．5").unwrap();
+        assert_eq!(wide_half.to_sec(), 1);
+        assert_eq!(wide_half.attos % ATTOS_PER_SEC_I128, ATTOS_PER_SEC_I128 / 2);
+        assert_eq!(
+            Dt::from_str_h_mm_duration("－72：00").unwrap().to_sec(),
+            -72 * 3600
+        );
+        assert!(Dt::from_str_h_mm_duration("24：60").is_err());
+        assert!(Dt::from_str_h_mm_duration("72：30．5").is_err());
     }
 
     #[test]

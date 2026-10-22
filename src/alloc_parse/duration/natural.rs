@@ -268,15 +268,19 @@ fn add_to_total(
     *total_attos = total_attos.saturating_add(contribution.saturating_mul(effective_multiplier));
 }
 
-/// Parses time like "9:45", "14:30", "945", "1245" into (hour, minute)
-fn parse_hms(s: &str) -> Option<(u8, u8, u8, u64)> {
+/// Parses time like "9:45", "14:30", "945", "1245" into (hour, minute).
+///
+/// The bool reports a colon seen in this same loop, after fullwidth ASCII
+/// characters have been converted.
+fn parse_hms(s: &str) -> (bool, Option<(u8, u8, u8, u64)>) {
     let mut values: Vec<u32> = Vec::new();
     let mut current: u32 = 0;
     let mut has_digit = false;
     let mut frac_str = String::new();
     let mut in_fraction = false;
+    let mut saw_colon = false;
 
-    for ch in s.chars() {
+    for ch in s.chars().map(Dt::fullwidth_to_normal) {
         if let Some(digit_val) = to_ascii_digit(ch).and_then(|c| c.to_digit(10)) {
             has_digit = true;
             if in_fraction {
@@ -286,13 +290,14 @@ fn parse_hms(s: &str) -> Option<(u8, u8, u8, u64)> {
             }
         } else if ch == ':' {
             if in_fraction {
-                return None;
+                return (true, None);
             }
+            saw_colon = true;
             values.push(current);
             current = 0;
         } else if ch == '.' {
             if in_fraction {
-                return None;
+                return (saw_colon, None);
             }
             values.push(current);
             current = 0;
@@ -305,7 +310,7 @@ fn parse_hms(s: &str) -> Option<(u8, u8, u8, u64)> {
     }
 
     if values.is_empty() {
-        return None;
+        return (saw_colon, None);
     }
 
     let hour: u8;
@@ -335,12 +340,12 @@ fn parse_hms(s: &str) -> Option<(u8, u8, u8, u64)> {
             minute = values[1] as u8;
             second = values[2] as u8;
         }
-        _ => return None,
+        _ => return (saw_colon, None),
     }
 
     // Final validation (allow second = 60 for leap seconds)
     if hour > 23 || minute > 59 || second > 60 {
-        return None;
+        return (saw_colon, None);
     }
 
     // Fractional seconds → attoseconds
@@ -359,7 +364,14 @@ fn parse_hms(s: &str) -> Option<(u8, u8, u8, u64)> {
         0
     };
 
-    Some((hour, minute, second, attos))
+    (saw_colon, Some((hour, minute, second, attos)))
+}
+
+/// True when `s` contains `:` after fullwidth ASCII characters are converted.
+///
+/// Used for a gap that did not go through `parse_hms`.
+fn gap_has_colon(s: &str) -> bool {
+    s.chars().map(Dt::fullwidth_to_normal).any(|c| c == ':')
 }
 
 impl Dt {
@@ -824,12 +836,17 @@ impl Dt {
                     true
                 };
 
-                if is_time && let Some((h, m, sec, attos)) = parse_hms(part) {
+                let (saw_colon, clock) = if is_time {
+                    parse_hms(part)
+                } else {
+                    (false, None)
+                };
+                if is_time && let Some((h, m, sec, attos)) = clock {
                     target_hour = Some(h);
                     target_minute = Some(m);
                     target_second = Some(sec);
                     target_attos = attos;
-                } else if part.contains(':') {
+                } else if saw_colon || (!is_time && gap_has_colon(part)) {
                     // Colon present but not a civil clock (`parse_hms` rejected, or
                     // this gap sits before a duration unit). Treat as ops H:MM /
                     // H:MM:SS and hard-fail on invalid fields. Do not fall through
