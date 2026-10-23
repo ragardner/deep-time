@@ -33,9 +33,27 @@ struct ParsedNumber {
     sign: Sign,
 }
 
+fn leading_minus(s: &str) -> bool {
+    let mut chars = s.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if Dt::fullwidth_to_normal(first) != '-' {
+        return false;
+    }
+    s[first.len_utf8()..]
+        .trim_start()
+        .chars()
+        .next()
+        .is_some_and(|c| {
+            let c = Dt::fullwidth_to_normal(c);
+            c.is_numeric() || c == '.' || c.is_whitespace()
+        })
+}
+
 fn extract_number(part: &str, part_chars: &mut Vec<char>, d: char) -> Option<ParsedNumber> {
     part_chars.clear();
-    part_chars.extend(part.chars());
+    part_chars.extend(part.chars().map(Dt::fullwidth_to_normal));
 
     let decimal_pos: Option<usize> = {
         let dec_seps: Vec<(usize, char)> = {
@@ -432,14 +450,7 @@ impl Dt {
         let finder = if use_dur_finder { duration_ac } else { date_ac };
         let names = Lang::En.names();
 
-        let overall_negative = if let Some(rest) = s.strip_prefix('-') {
-            rest.trim_start()
-                .chars()
-                .next()
-                .is_some_and(|c| c.is_numeric() || c == '.' || c.is_whitespace())
-        } else {
-            false
-        };
+        let overall_negative = leading_minus(s);
 
         let mut overall_multiplier: i128 = if overall_negative { -1 } else { 1 };
         let mut part_chars: Vec<char> = Vec::with_capacity(50);
@@ -1053,14 +1064,7 @@ impl Dt {
         };
         let finder = if use_dur_finder { duration_ac } else { date_ac };
 
-        let overall_negative = if let Some(rest) = s.strip_prefix('-') {
-            rest.trim_start()
-                .chars()
-                .next()
-                .is_some_and(|c| c.is_numeric() || c == '.' || c.is_whitespace())
-        } else {
-            false
-        };
+        let overall_negative = leading_minus(s);
 
         let mut overall_multiplier: i128 = if overall_negative { -1 } else { 1 };
         let mut part_chars: Vec<char> = Vec::with_capacity(50);
